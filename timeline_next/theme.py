@@ -7,7 +7,6 @@ QTreeView, QPlainTextEdit, QListWidget {
     border: 1px solid #b5b5b5;
     selection-background-color: #cce8ff; selection-color: #101010;
 }
-QTreeView::item { height: 21px; border-right: 1px solid #e5e5e5; border-bottom: 1px solid #eeeeee; }
 QHeaderView::section { background: #eeeeee; color: #202020; padding: 3px 5px; border: 0; border-right: 1px solid #c5c5c5; border-bottom: 1px solid #b5b5b5; }
 """
 

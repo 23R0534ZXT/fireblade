@@ -5,9 +5,27 @@ import copy
 from dataclasses import dataclass, field
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal
 from PySide6.QtGui import QColor, QFont
+from PySide6.QtWidgets import QStyledItemDelegate
 
 from .models import View
 from .workers import Job
+
+
+class GridDelegate(QStyledItemDelegate):
+    """Draw grid lines without a stylesheet that overrides model colors."""
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        size.setHeight(21)
+        return size
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        painter.save()
+        painter.setPen(QColor("#e5e5e5"))
+        painter.drawLine(option.rect.topRight(), option.rect.bottomRight())
+        painter.setPen(QColor("#eeeeee"))
+        painter.drawLine(option.rect.bottomLeft(), option.rect.bottomRight())
+        painter.restore()
 
 
 @dataclass(eq=False, slots=True)

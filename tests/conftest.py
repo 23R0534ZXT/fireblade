@@ -14,3 +14,8 @@ def qt_application():
     apply_theme(application)
     yield application
     application.processEvents()
+
+
+@pytest.fixture(autouse=True)
+def isolated_user_storage(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Profil utilisateur"))

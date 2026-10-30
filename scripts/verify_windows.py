@@ -45,7 +45,7 @@ def verify(executable, report_path, timeout=120):
                               report_tail=raw_report[-3000:], exit_code=code)
         valid = (code == 0 and report.get("status") == "passed" and report.get("frozen") is True
                  and report.get("platform") == "win32" and report.get("pointer_bits") == 64
-                 and report.get("qt_platform") == "windows" and len(report.get("checks", [])) >= 10
+                 and report.get("qt_platform") == "windows" and len(report.get("checks", [])) >= 12
                  and all(item.get("status") == "passed" for item in report.get("checks", [])))
         report["bundle_verification"] = dict(status="passed" if valid else "failed", exit_code=code,
                                              executable_sha256=original_hash,

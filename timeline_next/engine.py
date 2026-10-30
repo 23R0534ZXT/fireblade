@@ -18,7 +18,7 @@ from pathlib import Path
 import duckdb
 
 from .models import Filter, FilterGroup, SortKey, View
-from .conditions import compile_condition
+from .conditions import compile_condition, validate_format_rules
 from .errors import OperationCancelled, job_cancelled
 from .settings import Settings
 
@@ -116,7 +116,7 @@ class Case:
                 temporary.unlink(missing_ok=True)
 
     def column(self, index):
-        if not isinstance(index, int) or not 0 <= index < len(self.headers):
+        if type(index) is not int or not 0 <= index < len(self.headers):
             raise ValueError("Colonne invalide")
         return f'"c{index}"'
 
@@ -242,21 +242,17 @@ class Case:
             raise ValueError("Une colonne ne peut apparaître deux fois dans les groupes")
         for column in view.groups:
             self.column(column)
-        if len(view.format_rules) > 32:
-            raise ValueError("32 règles de coloration au maximum")
-        import re
-        for rule in view.format_rules:
-            self.condition(rule.condition)
-            if rule.target is not None:
-                self.column(rule.target)
-            if not all(isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color) for color in (rule.background, rule.foreground)):
-                raise ValueError("Couleur invalide ; utilisez #RRGGBB")
+        if type(view.global_rules_enabled) is not bool:
+            raise ValueError("L’activation des règles globales doit être un booléen")
+        validate_format_rules(view.format_rules, self.column, self.numeric_expression)
 
-    def page_styles(self, view, rows):
+    def page_styles(self, view, rows, global_rules=()):
         """Evaluate conditions on already loaded values, without rescanning events."""
-        rules = view.format_rules
-        if len(rules) > 32:
-            raise ValueError("32 règles de coloration au maximum")
+        if not view.global_rules_enabled:
+            global_rules = ()
+        if len(view.format_rules) > 32 or len(global_rules) > 32:
+            raise ValueError("32 règles locales et 32 règles globales au maximum")
+        rules = list(view.format_rules) + list(global_rules)
         if not rows or not rules:
             return {}
         projections, args, required = [], [], set()
@@ -350,16 +346,58 @@ class Case:
             return self.db.execute("SELECT count(*) FROM events" + where, args).fetchone()[0]
 
     def bookmark(self, row_id, note):
-        with self.operation(final_check=False):
-            if note is None:
-                self.db.execute("DELETE FROM bookmarks WHERE row_id=?", [row_id])
-            else:
-                self.db.execute("INSERT OR REPLACE INTO bookmarks VALUES (?, ?)", [row_id, note])
-            self._bookmark_revision += 1
+        return self.bookmark_many([row_id], note, "remove" if note is None else "replace")
 
-    def bookmarks(self):
+    def bookmark_many(self, row_ids, note="", mode="mark"):
+        """One transaction for an explicit selection, never all rows in a group."""
+        if mode not in ("mark", "append", "replace", "remove"):
+            raise ValueError("Action de signet inconnue")
+        ids, seen = [], set()
+        for row_id in row_ids:
+            if type(row_id) is not int or not 1 <= row_id <= self.info.get("rows", 0):
+                raise ValueError("Identifiant d’enregistrement invalide")
+            if row_id not in seen:
+                ids.append(row_id)
+                seen.add(row_id)
+                if len(ids) > 100_000:
+                    raise ValueError("Sélection limitée à 100000 enregistrements par opération")
+        if mode != "remove" and not isinstance(note, str):
+            raise ValueError("La note doit être du texte")
+        if not ids:
+            return 0
+        with self.operation(final_check=False):
+            try:
+                self.db.execute("BEGIN")
+                if mode == "remove":
+                    self.db.execute("DELETE FROM bookmarks WHERE row_id IN (SELECT unnest(?::BIGINT[]))", [ids])
+                else:
+                    conflict = {"mark": "DO NOTHING", "replace": "DO UPDATE SET note=excluded.note",
+                                "append": "DO UPDATE SET note=CASE WHEN bookmarks.note='' THEN excluded.note WHEN excluded.note='' THEN bookmarks.note ELSE bookmarks.note || chr(10) || excluded.note END"}[mode]
+                    self.db.execute("INSERT INTO bookmarks SELECT row_id, ? FROM unnest(?::BIGINT[]) AS chosen(row_id) "
+                                    "ON CONFLICT (row_id) " + conflict, ["" if mode == "mark" else note, ids])
+                with self.finalizing_transaction():
+                    self.check_cancelled()
+                    self.db.execute("COMMIT")
+                self._bookmark_revision += 1
+                return len(ids)
+            except BaseException:
+                with self.finalizing_transaction():
+                    try:
+                        self.db.execute("ROLLBACK")
+                    except duckdb.TransactionException:
+                        pass
+                raise
+
+    def bookmarks(self, row_ids=None):
+        if row_ids is not None and not row_ids:
+            return {}
         with self.operation():
-            return dict(self.db.execute("SELECT * FROM bookmarks").fetchall())
+            sql = "SELECT * FROM bookmarks"
+            args = []
+            if row_ids is not None:
+                sql += " WHERE row_id IN (SELECT unnest(?::BIGINT[]))"
+                args = [list(row_ids)]
+            return dict(self.db.execute(sql, args).fetchall())
 
     def save_view(self, name, view):
         with self.operation(final_check=False):
@@ -369,7 +407,7 @@ class Case:
         with self.operation():
             return {name: View.from_json(value) for name, value in self.db.execute("SELECT * FROM views ORDER BY name").fetchall()}
 
-    def export(self, target, view, grouped=False):
+    def export(self, target, view, grouped=False, include_annotations=False):
         target = Path(target).resolve()
         if target in (self.path, Path(self.info["path"]).resolve()):
             raise ValueError("L’export ne peut pas écraser la source ou le dossier d’analyse")
@@ -381,11 +419,24 @@ class Case:
             where, args = self.where(view)
             cols = ", ".join(self.column(i) for i in range(len(self.headers)))
             headers = self.headers
+            if grouped and include_annotations:
+                raise ValueError("Les notes s’exportent par enregistrement, pas par comptage de groupes")
             if grouped and view.groups:
                 cols = ", ".join(self.column(i) for i in view.groups)
                 sql = f"SELECT {cols}, count(*) FROM events{where} GROUP BY {cols} ORDER BY count(*) DESC"
                 headers = [self.headers[i] for i in view.groups] + ["Count"]
             else:
+                if include_annotations:
+                    cols += ", __row_id, EXISTS(SELECT 1 FROM bookmarks b WHERE b.row_id=events.__row_id), (SELECT b.note FROM bookmarks b WHERE b.row_id=events.__row_id)"
+                    headers = headers.copy()
+                    existing = {h.casefold() for h in headers}
+                    for name in ("Fireblade_SourceRecord", "Fireblade_Bookmarked", "Fireblade_Note"):
+                        candidate, number = name, 2
+                        while candidate.casefold() in existing:
+                            candidate = f"{name}_{number}"
+                            number += 1
+                        headers.append(candidate)
+                        existing.add(candidate.casefold())
                 sql = f"SELECT {cols} FROM events{where}{self.order(view)}"
             owns_temporary = False
             try:

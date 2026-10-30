@@ -23,14 +23,15 @@ from .advanced_dialogs import FilterDialog, RulesDialog, SortDialog
 from .grouping import GroupBar, GroupHeader
 from .profiles import detect_profile, profile_view
 from .workspace import WorkspaceMixin
+from .shared_rules import SharedRulesMixin
 from .grid import GridDelegate, GridModel
 from .settings import Settings, load_settings
 from .theme import apply_theme
 from .workers import Job, Signals
 
 
-class Window(WorkspaceMixin, QMainWindow):
-    def __init__(self, settings=None):
+class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
+    def __init__(self, settings=None, rule_path=None):
         super().__init__()
         self.settings = settings or Settings()
         self.setWindowTitle("Fireblade")
@@ -44,6 +45,7 @@ class Window(WorkspaceMixin, QMainWindow):
         self.count_generation = 0
         self.build_ui()
         self.setup_workspace()
+        self.setup_shared_rules(rule_path)
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -74,10 +76,15 @@ class Window(WorkspaceMixin, QMainWindow):
         action(file_menu, "Fermer l’onglet", lambda: self.close_document(self.active_document), "Ctrl+W")
         file_menu.addSeparator()
         export = action(file_menu, "Exporter…", self.export_csv, "Ctrl+E", icon=QStyle.SP_DialogSaveButton)
+        action(file_menu, "Exporter les signets et notes…", self.export_annotations)
         file_menu.addSeparator()
         action(file_menu, "Quitter", self.close, "Alt+F4", False)
         action(edit_menu, "Copier les lignes", self.copy_rows, "Ctrl+C")
         action(edit_menu, "Signet / note…", lambda: self.toggle_bookmark(self.tree.currentIndex()))
+        action(edit_menu, "Marquer la sélection", lambda: self.annotate_selection("mark"), "Ctrl+M")
+        action(edit_menu, "Ajouter une note à la sélection…", lambda: self.annotate_selection("append"))
+        action(edit_menu, "Remplacer les notes de la sélection…", lambda: self.annotate_selection("replace"))
+        action(edit_menu, "Retirer les signets de la sélection", lambda: self.annotate_selection("remove"), "Ctrl+Shift+M")
         grouping = action(view_menu, "Regrouper…", self.group_by)
         action(view_menu, "Colonnes…", self.columns)
         view_menu.addSeparator()
@@ -97,6 +104,14 @@ class Window(WorkspaceMixin, QMainWindow):
         action(analysis_menu, "Charger une vue…", self.load_view, "Ctrl+L")
         analysis_menu.addSeparator()
         action(analysis_menu, "Règles de coloration…", self.edit_rules)
+        global_menu = analysis_menu.addMenu("Règles globales")
+        action(global_menu, "Modifier…", self.edit_global_rules, requires_file=False)
+        action(global_menu, "Recharger depuis le disque", self.reload_global_rules, requires_file=False)
+        action(global_menu, "Importer et remplacer…", lambda: self.import_global_rules(), requires_file=False)
+        action(global_menu, "Exporter…", lambda: self.export_global_rules(), requires_file=False)
+        self.global_rules_action = action(global_menu, "Appliquer à cette vue", self.toggle_global_rules)
+        self.global_rules_action.setCheckable(True)
+        self.global_rules_action.setChecked(True)
         action(analysis_menu, "Surligner un texte…", self.highlight)
         action(analysis_menu, "Afficher la cellule / JSON…", self.cell_details)
         action(analysis_menu, "Provenance et SHA-256…", self.integrity)
@@ -133,6 +148,8 @@ class Window(WorkspaceMixin, QMainWindow):
         layout.setSpacing(4)
         self.source = QLabel()
         self.statusBar().addPermanentWidget(self.source)
+        self.rules_summary = QLabel()
+        self.statusBar().addPermanentWidget(self.rules_summary)
         row = QHBoxLayout()
         row.addWidget(QLabel("Rechercher :"))
         self.search = QLineEdit()
@@ -434,6 +451,7 @@ class Window(WorkspaceMixin, QMainWindow):
         self.case, self.model = None, None
         self.content_stack.setCurrentIndex(0)
         self.source.clear()
+        self.rules_summary.clear()
         self.set_file_actions(False)
         self.cancel_action.setEnabled(False)
         self.setWindowTitle("Fireblade")
@@ -528,7 +546,10 @@ class Window(WorkspaceMixin, QMainWindow):
         self.tree.header().setSortIndicatorShown(section is not None)
         if section is not None:
             self.tree.header().setSortIndicator(section + 1, Qt.DescendingOrder if self.view.descending else Qt.AscendingOrder)
-        self.model.reset(self.view)
+        self.global_rules_action.blockSignals(True)
+        self.global_rules_action.setChecked(self.view.global_rules_enabled)
+        self.global_rules_action.blockSignals(False)
+        self.model.reset(self.view, self.global_rules_for_view())
         self.details.clear()
         self.count_generation += 1
         generation = self.count_generation
@@ -736,7 +757,7 @@ class Window(WorkspaceMixin, QMainWindow):
         if node.group:
             self.details.setPlainText(str(self.model.data(index.siblingAtColumn(0))))
         else:
-            self.details.setPlainText(f"Ligne source : {node.values[0]}\nNote : {self.model.notes.get(node.values[0], '')}\n\n" + "\n\n".join(f"{h}\n{'∅' if v is None else v}" for h, v in zip(self.case.headers, node.values[1:])))
+            self.details.setPlainText(f"Ligne source : {node.values[0]}\nNote : {node.note or ''}\n\n" + "\n\n".join(f"{h}\n{'∅' if v is None else v}" for h, v in zip(self.case.headers, node.values[1:])))
 
     def toggle_bookmark(self, index):
         if not self.model or not index.isValid():
@@ -752,14 +773,40 @@ class Window(WorkspaceMixin, QMainWindow):
         old = self.model.notes.get(row_id)
         note, ok = QInputDialog.getMultiLineText(self, "Signet / note", "Note (vide = retirer le signet)", old if old is not None else "À examiner")
         if ok:
-            case, model = self.case, self.model
-            def work():
-                case.bookmark(row_id, note or None)
-                return case.bookmarks()
-            def done(notes):
-                model.notes = notes
-                self.apply()
-            self.run(work, done, exclusive=True)
+            case = self.case
+            self.run(lambda: case.bookmark(row_id, note or None), lambda _: self.apply(), exclusive=True)
+
+    def annotate_selection(self, mode, note=None):
+        if not self.model or self.busy:
+            return
+        ids = [self.model.node(index).values[0] for index in self.tree.selectionModel().selectedRows()
+               if not self.model.node(index).group]
+        if not ids:
+            self.statusBar().showMessage("Sélectionnez des lignes de données ; les en-têtes de groupes sont ignorés")
+            return
+        if mode in ("append", "replace") and note is None:
+            note, accepted = QInputDialog.getMultiLineText(self, "Note sur la sélection",
+                f"{len(ids)} enregistrement(s) · " + ("ajouter à la suite des notes existantes" if mode == "append" else "remplacer les notes existantes"))
+            if not accepted:
+                return
+        case = self.case
+        def done(count):
+            self.apply()
+            self.statusBar().showMessage(f"{count} enregistrement(s) sélectionné(s) traité(s)")
+        self.run(lambda: case.bookmark_many(ids, note or "", mode), done, exclusive=True)
+
+    def export_annotations(self):
+        if not self.case or self.busy:
+            return
+        target, _ = QFileDialog.getSaveFileName(self, "Exporter les signets et notes de la vue filtrée", "signets.csv", "CSV (*.csv);;Excel (*.xlsx)")
+        if not target:
+            return
+        if not self.export_destination_is_safe(target):
+            return
+        view, case = copy.deepcopy(self.view), self.case
+        view.bookmarks_only = True
+        self.run(lambda: case.export(target, view, include_annotations=True),
+                 lambda _: self.statusBar().showMessage(f"Signets et notes exportés : {target}"), exclusive=True)
 
     def save_view(self):
         if not self.case or self.busy:
@@ -789,6 +836,8 @@ class Window(WorkspaceMixin, QMainWindow):
         target, _ = QFileDialog.getSaveFileName(self, "Exporter les résultats filtrés", "resultats.csv", "CSV (*.csv);;Excel (*.xlsx)")
         if not target:
             return
+        if not self.export_destination_is_safe(target):
+            return
         grouped = False
         if self.view.groups:
             choice, ok = QInputDialog.getItem(self, "Export", "Contenu", ["Lignes filtrées", "Comptages par groupe"], 0, False)
@@ -798,6 +847,14 @@ class Window(WorkspaceMixin, QMainWindow):
         case, view = self.case, copy.deepcopy(self.view)
         self.statusBar().showMessage("Export en cours…")
         self.run(lambda: case.export(target, view, grouped), lambda _: self.statusBar().showMessage(f"Export terminé : {target}"), exclusive=True)
+
+    def export_destination_is_safe(self, target):
+        protected = {Path(s.path).resolve() for s in self.documents} | {Path(s.source_info["path"]).resolve() for s in self.documents}
+        protected.add(self.rule_store.path.resolve())
+        if Path(target).resolve() in protected:
+            self.error("L’export ne peut pas écraser une source, une analyse ouverte ou les règles globales.")
+            return False
+        return True
 
     def integrity(self):
         if self.case and self.case.info:

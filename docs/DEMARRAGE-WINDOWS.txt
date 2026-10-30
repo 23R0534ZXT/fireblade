@@ -40,3 +40,16 @@ Affichage : tri sur plusieurs colonnes et profil forensic détecté.
 Analyse : règles de coloration et cellule / JSON.
 Export : CSV ou XLSX, toutes les lignes filtrées.
 Les anciennes analyses .timeline restent ouvrables. XLS est encore absent.
+
+REGLES GLOBALES ET NOTES
+
+Analyse > Règles globales : modifier, importer, exporter ou recharger.
+Les règles suivent les noms de colonnes, pas leur position. Les colonnes
+manquantes sont signalées ; les règles locales passent avant les globales.
+La bibliothèque est stockée dans %LOCALAPPDATA%\Fireblade\regles-globales.json.
+Elle est distincte des sessions et ne modifie pas les CSV sources.
+
+Sélectionner plusieurs lignes, puis utiliser le menu Edition : marquer
+(Ctrl+M), ajouter une note, remplacer les notes ou retirer (Ctrl+Shift+M).
+Les groupes seuls ne marquent pas automatiquement toutes leurs lignes.
+Fichier > Exporter les signets et notes conserve le filtre actif.

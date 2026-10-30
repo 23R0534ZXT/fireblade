@@ -82,7 +82,7 @@ Un fichier alternatif peut être sélectionné explicitement :
 - Le cache de tri reste une seule table temporaire DuckDB, sans copie des colonnes sources. Le construire au-delà de la première fenêtre évite de matérialiser tous les identifiants pour une consultation courte. Le désactiver avec `cache_sorted_pages = false` permet de comparer le comportement sans cache.
 - Ne pas ajouter de bibliothèque pour une fonction déjà disponible dans Python ou Qt. Garder les valeurs originales dans le moteur ; les conversions d’affichage restent dans la grille.
 
-La mémoire de la grille dépend encore du nombre de branches laissées ouvertes et de la largeur des cellules. Les notes sont actuellement chargées ensemble. Un plafond global en octets demanderait une politique d’éviction supplémentaire : il n’est pas implémenté dans cette version.
+La mémoire de la grille dépend encore du nombre de branches laissées ouvertes et de la largeur des cellules. Les notes des lignes visibles sont chargées avec leur page et disparaissent quand ces lignes sont libérées ; `GridModel.notes` fournit uniquement une vue de ce cache visible. Un plafond global en octets demanderait une politique d’éviction supplémentaire : il n’est pas implémenté dans cette version.
 
 Le parcours de reprise reste une coordination de méthodes ordinaires dans `Window` :
 
@@ -98,10 +98,19 @@ flowchart LR
 
 ## Fonctions avancées
 
-- `conditions.py` compile un arbre ET/OU/NON en SQL paramétré, partagé par les filtres et les couleurs. Limites : 24 niveaux, 1024 conditions et 32 règles de couleur. Les regex utilisent RE2 dans DuckDB. NON considère une comparaison NULL comme non correspondante avant de l’inverser.
+- `conditions.py` compile un arbre ET/OU/NON en SQL paramétré, partagé par les filtres et les couleurs. Limites : 24 niveaux, 1024 conditions par expression, 32 règles locales et 32 règles globales. Les regex utilisent RE2 dans DuckDB. NON considère une comparaison NULL comme non correspondante avant de l’inverser.
 - `advanced_dialogs.py` contient les éditeurs Qt ordinaires des conditions, règles et tris. Aucun SQL utilisateur libre.
 - `workspace.py` gère les onglets et sessions JSON atomiques. Un onglet inactif ne garde ni connexion DuckDB, ni modèle Qt, ni copie de lignes. Revenir à un onglet recharge sa première page ; les branches dépliées, la sélection et le défilement ne sont pas conservés. L’identité des sources est vérifiée avant restauration.
 - `spreadsheets.py` lit XLSX en mode read-only, transcode sur disque et produit XLSX en write-only. L’empreinte d’import est celle du classeur original ; la feuille est enregistrée dans les métadonnées. Les formules restent du texte.
 - `profiles.py` contient des signatures d’en-têtes et dispositions faciles à modifier, sans toucher aux valeurs.
 - `grouping.py` raccorde les gestes Qt d’en-tête à la commande de groupement existante.
 - Les couleurs sont évaluées par DuckDB sur les valeurs de la page déjà chargée, via une petite relation VALUES paramétrée, sans relire la table complète ; seuls les champs référencés par les conditions sont transmis. Seuls les indices des règles correspondantes accompagnent chaque nœud de la grille. Les clés de tri multiples utilisent le même cache sur disque que les tris simples.
+
+## Règles globales et annotations
+
+- `rule_store.py` fournit une bibliothèque JSON versionnée, la validation des règles, leur correspondance par nom de colonne et l’écriture atomique. En cas d’absence ou d’ambiguïté d’une colonne référencée, toute la règle est ignorée. L’égalité de nom est prioritaire, puis une correspondance insensible à la casse est acceptée si elle est unique. La bibliothèque conserve les colonnes des différents exports. Les regex, nombres et dates littéraux sont validés dans une connexion DuckDB temporaire avec un buffer de 16 MB et un thread, fermée avant de poursuivre.
+- `shared_rules.py` raccorde le menu et l’état de chargement à cette bibliothèque. Un fichier invalide n’est jamais écrasé au chargement. Une révision évite d’écraser depuis un éditeur une modification déjà détectable sur disque ; ce contrôle n’est pas un verrou interprocessus. Les commandes d’import/export restent explicites.
+- Les règles globales ne sont pas ajoutées aux vues locales sérialisées. `GridModel` garde séparément les deux listes, applique d’abord les règles locales puis les globales, et conserve seulement les indices correspondants pour les cellules affichées. Le drapeau de désactivation globale appartient à la vue et à la session.
+- `Case.bookmark_many` applique la sélection en une transaction : marquer conserve une note existante, ajouter concatène avec un saut de ligne, remplacer écrase explicitement, retirer supprime le signet. L’annulation est contrôlée avant COMMIT ; le commit et le rollback engagés restent protégés contre une nouvelle interruption. La révision du cache de tri des signets change après validation seulement.
+- Les annotations résident dans les nœuds de page, pas dans un dictionnaire de toutes les notes du dossier. Les en-têtes de groupe ne chargent pas leurs annotations descendantes. `Case.bookmarks(row_ids)` borne la lecture aux identifiants demandés.
+- `Case.export(..., include_annotations=True)` ajoute trois colonnes sans modifier les champs source : numéro d’enregistrement CSV hors en-tête, présence d’un signet et note. L’export reprend le filtre et l’ordre actifs. Les exports regroupés de comptages ne reçoivent pas d’annotations individuelles.

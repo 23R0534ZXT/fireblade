@@ -45,6 +45,9 @@ L’équivalent depuis un terminal Windows est `python -m scripts.build_windows`
 - Groupements à plusieurs niveaux par menu ou en glissant un en-tête dans la barre de groupement.
 - **Tri sur plusieurs colonnes** : ordre, type et sens réglables par colonne.
 - **Règles de coloration** : conditions identiques aux filtres, couleurs du fond/texte, gras, ligne entière ou cellule, priorité et activation. Elles sont calculées seulement pour les pages affichées.
+- **Analyse → Règles globales** : règles réutilisables, import/export JSON et rechargement. Les colonnes sont reconnues par leur nom, même si leur ordre change. Une règle dont une colonne manque est ignorée et signalée. Les règles locales ont priorité ; les règles globales peuvent être désactivées pour une vue.
+- **Édition → Marquer / annoter la sélection** : marquer sans effacer les notes, ajouter une note à leur suite, les remplacer explicitement ou retirer les signets. Les en-têtes de groupes sont ignorés ; seules les lignes sélectionnées sont concernées.
+- **Fichier → Exporter les signets et notes** : export CSV/XLSX des lignes marquées de la vue filtrée, avec numéro d’enregistrement source, présence du signet et note. Les nouvelles colonnes sont suffixées si leurs noms existent déjà dans la source.
 - **Afficher la cellule / JSON** : texte brut ou JSON indenté sans réécriture de la source.
 - **Appliquer le profil détecté** : premiers préréglages MFTECmd, EvtxECmd, PECmd, Hayabusa et Plaso L2T. Ce sont des dispositions de colonnes et tris, pas des parseurs d’artefacts ni une prise en charge de toutes les variantes.
 - Les exports **CSV ou XLSX** portent sur tous les résultats filtrés, pas seulement la page chargée. XLSX utilise plusieurs feuilles au-delà de la limite Excel. Les valeurs sont écrites comme texte, y compris celles qui commencent par `=` ; les cellules trop longues sont refusées sans troncature.
@@ -59,7 +62,7 @@ Une validation finale déjà engagée peut finir malgré une demande d’annulat
 
 Trois dépendances directes : **DuckDB**, **Qt Widgets via PySide6 Essentials** et **openpyxl** pour XLSX. Aucune dépendance à Excel, pandas, un serveur ou un navigateur embarqué.
 La mémoire de buffer DuckDB est limitée à 256 MB par défaut, avec débordement sur disque.
-Ce chiffre n’est pas un plafond de mémoire de tout le processus. Les pages sont bornées et les groupes repliés libèrent leurs descendants.
+Ce chiffre n’est pas un plafond de mémoire de tout le processus. Les pages sont bornées et les groupes repliés libèrent leurs descendants. Les notes sont chargées avec les pages visibles et libérées avec elles ; l’interface ne charge plus tous les signets à l’ouverture.
 `fireblade.toml` règle mémoire, threads, taille des pages et cache de tri.
 Les modules et points de modification sont décrits dans [le guide d’architecture](docs/ARCHITECTURE.md).
 
@@ -72,7 +75,7 @@ En cas d’échec de démarrage du portable, consulter :
 ```
 
 Le bootstrap garde un journal même si une bibliothèque Qt ou DuckDB ne se charge pas.
-Le contrôle du portable couvre aussi les filtres imbriqués, le tri multi-colonnes, les couleurs de cellules, les onglets avec libération des connexions, la session et le parcours XLSX. Il vérifie la fenêtre Qt native Windows, les chemins accentués, un CSV UTF-8 BOM / CRLF en lecture seule, les groupes, les grands entiers, les filtres, l’export verrouillé puis repris, le presse-papiers Unicode, les signets après réouverture et l’annulation d’import avec restauration.
+Le contrôle du portable couvre aussi les règles globales avec colonnes réordonnées et fichier verrouillé, l’annotation multiple, les exports annotés, les filtres imbriqués, le tri multi-colonnes, les couleurs de cellules, les onglets avec libération des connexions, la session et le parcours XLSX. Il vérifie la fenêtre Qt native Windows, les chemins accentués, un CSV UTF-8 BOM / CRLF en lecture seule, les groupes, les grands entiers, les filtres, l’export verrouillé puis repris, le presse-papiers Unicode, les signets après réouverture et l’annulation d’import avec restauration.
 Il mesure aussi le working set du processus Windows. Ce contrôle ne valide pas l’Explorateur par un humain, les partages UNC, tous les chemins longs, une machine Windows vierge ou des exports forensic réels de plusieurs Go.
 Les essais historiques du moteur sont conservés dans `docs/` ; ils ne doivent pas être utilisés comme preuve de validation Windows.
 
@@ -83,3 +86,5 @@ Le nom visible et le portable sont **Fireblade**. Le paquet interne `timeline_ne
 XLSX est lu progressivement, sans exécuter les formules. Les formules sont conservées sous leur texte, pas leur résultat calculé ; styles, zéros ajoutés par un format numérique et macros ne sont pas importés. Les anciens classeurs `.xls` ne sont pas encore pris en charge.
 
 Le [suivi des fonctions](docs/PARITE-TIMELINE-EXPLORER.md) liste les fonctions présentes, partielles et restantes. Fireblade ne revendique pas encore la parité complète ni de meilleures performances mesurées face à Timeline Explorer.
+
+Les règles globales sont conservées dans `%LOCALAPPDATA%\Fireblade\regles-globales.json`, en dehors des données sources. Elles ne sont pas incluses dans une session `.fireblade-session` : les exporter séparément pour partager la même présentation sur un autre poste. Un fichier invalide est signalé et laissé intact ; une analyse reste utilisable. L’import explicite remplace la bibliothèque globale après validation. Limites : 32 règles locales et 32 globales, 1024 conditions au total dans la bibliothèque globale, fichier de 2 Mo au maximum.

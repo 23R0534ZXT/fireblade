@@ -13,12 +13,12 @@ Objectif : couvrir les usages de Timeline Explorer sur Windows, en conservant un
 | Recherche globale | Présent | Mode filtrant ; recherche transversale dans tous les onglets absente |
 | Filtres avancés | ET / OU / NON imbriqués présents | Pas de compatibilité avec la syntaxe d’expressions de Timeline Explorer |
 | Tri multi-colonnes | Présent | Nombres exacts, dates ISO ou texte, sens par colonne |
-| Coloration conditionnelle | Règles locales présentes | Priorités, activation, cellule/ligne, couleurs/gras ; règles globales partagées à ajouter |
-| Signets / notes | Présent | Pas de catégories de tags ni d’annotation en masse |
+| Coloration conditionnelle | Règles locales et globales présentes | Priorités, activation, cellule/ligne, couleurs/gras, partage JSON ; pas de compatibilité avec les fichiers de règles Timeline Explorer |
+| Signets / notes | Signets et annotation en masse présents | Ajout, remplacement et retrait sur sélection ; catégories de tags encore absentes |
 | Vues et disposition des colonnes | Présent | Pas d’import des fichiers de session/disposition Timeline Explorer |
 | Détails et JSON | Présent | Pas de vue XML dédiée ni d’interpréteur forensic des champs |
 | Profils forensic | Premiers préréglages | MFTECmd, EvtxECmd, PECmd, Hayabusa, Plaso L2T ; pas de couverture de tous les outils/versions, ni d’écosystème de plugins |
-| Exports filtrés et comptages | CSV / XLSX présents | Pas de rapport HTML/PDF ni d’export direct des notes |
+| Exports filtrés et comptages | CSV / XLSX présents | Export des signets/notes présent ; pas de rapport HTML/PDF |
 | Annulation et reprise | Présent | Pas de reprise après panne au milieu d’un import |
 | Gros fichiers | Base sur disque et grille paginée | Comparaison instrumentée sous Windows avec Timeline Explorer et vrais CSV multi-Go à réaliser |
 | Distribution Windows | Portable et CI natives | Signature, installateur, mise à jour et tests prolongés sur postes Windows 10/11 restent à faire |

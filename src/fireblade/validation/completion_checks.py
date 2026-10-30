@@ -156,3 +156,23 @@ def check_completion(window, directory, settle, check, expect, captures=None):
             window.grab().save(str(Path(captures) / "completion-full-groups.png"))
 
     check("derived_export_and_immutable_source_provenance", provenance)
+
+    def settings():
+        import copy
+        from PySide6.QtWidgets import QApplication
+        from fireblade.core.preferences import save_preferences
+        old=copy.deepcopy(window.preferences);font=QApplication.font()
+        path=directory/'TLE_settings.xml'
+        path.write_text('<Settings><CopyColumnHeaders>false</CopyColumnHeaders><CopyRightClick>true</CopyRightClick><DateTimeFormat>yyyy-MM-dd HH:mm:ss.fffffffK</DateTimeFormat><DetailsOnTop>true</DetailsOnTop><FontName>Consolas</FontName><FontSize>12.5</FontSize><MultilineTabs>true</MultilineTabs><Theme>Office 2019 Black</Theme></Settings>')
+        before=path.read_bytes();original=QFileDialog.getOpenFileName
+        QFileDialog.getOpenFileName=lambda *a,**k:(str(path),'')
+        try:
+            window.import_tle_settings();settle()
+            expect(window.preferences.font_size==12.5 and window.preferences.theme=='dark','TLE font/theme settings differ')
+            expect(window.splitter.widget(0) is window.details,'DetailsOnTop was not migrated')
+            expect(window.model.date_format=='custom','Custom date format was not applied')
+            expect(path.read_bytes()==before,'Settings import modified its source')
+        finally:
+            QFileDialog.getOpenFileName=original
+            window.preferences=old;save_preferences(old);QApplication.instance().setFont(font);window.apply_preferences()
+    check('documented_tle_settings_font_theme_date_format_and_details',settings)

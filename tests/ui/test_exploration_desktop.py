@@ -305,5 +305,5 @@ def test_completion_acceptance_runs_official_fixtures_in_real_grid(qt_applicatio
     def expect(condition,message):assert condition,message
     def check(name,function):function();completed.append(name)
     check_completion(window,tmp_path,lambda:settle(qt_application,window),check,expect,tmp_path)
-    assert len(completed)==6
+    assert len(completed)==7
     assert (tmp_path/'completion-full-groups.png').is_file()

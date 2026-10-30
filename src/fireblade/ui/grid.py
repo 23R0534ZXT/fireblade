@@ -63,6 +63,7 @@ class GridModel(QAbstractItemModel):
         self.rules = []
         self.dark = False
         self.date_format = "source"
+        self.date_pattern = "yyyy-MM-dd HH:mm:ss.fffffffK"
 
     @property
     def notes(self):
@@ -161,7 +162,11 @@ class GridModel(QAbstractItemModel):
             value = node.values[col]
             if col - 1 in self.view.timestamp_columns and value is not None:
                 from fireblade.core.timestamps import display_timestamp
-                value = display_timestamp(str(value), self.date_format)
+                if self.date_format=='custom':
+                    from fireblade.core.timestamps import format_timestamp
+                    value = format_timestamp(str(value),self.date_pattern)
+                else:
+                    value = display_timestamp(str(value), self.date_format)
             if col - 1 in self.view.boolean_columns and str(value).casefold() in ("true", "false", "0", "1"):
                 return ""
             return "∅" if value is None else str(value).replace("\n", " ↵ ")[:600]

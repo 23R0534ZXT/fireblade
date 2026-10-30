@@ -81,6 +81,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
 
         open_csv = action(file_menu, "Ouvrir un fichier…", self.import_csv, "Ctrl+O", False, QStyle.SP_DialogOpenButton)
         action(file_menu, "Ouvrir une analyse…", self.open_case, "Ctrl+Shift+O", False)
+        action(file_menu, 'Importer les préférences Timeline Explorer…', self.import_tle_settings,requires_file=False)
         action(file_menu, "Importer une session Timeline Explorer…", lambda: self.import_tle_session(), requires_file=False)
         action(file_menu, "Ouvrir une session…", lambda: self.load_session(), requires_file=False)
         action(file_menu, "Enregistrer la session…", lambda: self.save_session(), "Ctrl+Shift+S")
@@ -592,6 +593,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.cancel_action.setEnabled(True)
         self.model = GridModel(case, self.pool, self)
         self.model.date_format = self.preferences.date_format
+        self.model.date_pattern = self.preferences.custom_date_format
         self.model.dark = self.preferences.theme == "dark"
         self.model.bookmark_requested.connect(self.mark_row)
         self.model.status.connect(self.statusBar().showMessage)
@@ -613,7 +615,9 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         name = Path(case.info["path"]).name
         self.setWindowTitle(f"{name} - Fireblade")
         self.source.setText(f"{name}  |  {len(case.headers)} colonnes")
-        self.set_view(initial_view if initial_view is not None else View())
+        if initial_view is None:
+            initial_view=View(pinned_columns=[i for i,h in enumerate(case.headers) if h.casefold() in {name.casefold() for name in self.preferences.first_pinned_columns}])
+        self.set_view(initial_view)
         if header_state is not None:
             self.tree.header().restoreState(header_state)
         self.restore_pins()

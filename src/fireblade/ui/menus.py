@@ -23,8 +23,20 @@ def header_menu(window, section):
         menu.addAction("Retirer du groupement", lambda: window.group_column(column, remove=True))
     menu.addSeparator()
     menu.addAction("Filtrer cette colonne…", lambda: window.add_filter(column))
+    menu.addAction("Filtrer une date…", lambda: window.date_filter(column))
+    intervals = menu.addMenu("Regrouper les dates par")
+    for label, code in [("Valeur entière", "value"), ("Année", "year"), ("Mois", "month"), ("Jour", "day"), ("Heure", "hour")]:
+        intervals.addAction(label, lambda checked=False, value=code: window.group_interval(column, value))
+    menu.addAction("Désépingler la colonne" if column in window.view.pinned_columns else "Épingler la colonne", lambda: window.pin_column(column))
+    def boolean():
+        if column in window.view.boolean_columns:
+            window.view.boolean_columns.remove(column)
+        else:
+            window.view.boolean_columns.append(column)
+        window.apply()
+    menu.addAction("Basculer l’affichage booléen", boolean)
     menu.addSeparator()
-    menu.addAction("Masquer cette colonne", lambda: window.tree.setColumnHidden(section, True))
+    menu.addAction("Masquer cette colonne", lambda: window.hide_column(column))
     menu.addAction("Choisir les colonnes…", window.columns)
     return menu
 
@@ -46,6 +58,10 @@ def cell_menu(window, index):
         menu.addAction("Copier la valeur", lambda: QApplication.clipboard().setText("" if value is None else str(value)))
         menu.addAction("Filtrer sur cette valeur", lambda: window.filter_value(column, value))
         menu.addAction("Exclure cette valeur", lambda: window.filter_value(column, value, exclude=True))
+        if value is not None:
+            menu.addAction("Ouvrir avec…", lambda: window.open_with(str(value)))
+            menu.addAction("Afficher dans l’Explorateur", lambda: window.open_external(str(value)))
+            menu.addAction("Ouvrir le dossier parent", lambda: window.open_external(str(value), directory=True))
         menu.addSeparator()
     menu.addAction("Copier les lignes sélectionnées", window.copy_rows)
     menu.addAction("Signet / note…", lambda: window.edit_bookmark(row_id))

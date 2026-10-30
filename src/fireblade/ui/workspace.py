@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QFileDialog, QTabBar, QVBoxLayout, QWidget
 
 from fireblade.core.engine import Case
 from fireblade.core.models import AnalysisSnapshot, View
+from fireblade.ui.workspace_tabs import WorkspaceTabs
 
 
 def write_session(path, snapshots, active):
@@ -35,8 +36,8 @@ def read_session(path):
     if payload.get("format") != "fireblade-session" or payload.get("version") != 1:
         raise ValueError("Format de session Fireblade inconnu")
     documents = payload.get("documents")
-    if not isinstance(documents, list) or not 1 <= len(documents) <= 100:
-        raise ValueError("Une session doit contenir de 1 à 100 analyses")
+    if not isinstance(documents, list) or not 1 <= len(documents) <= 1000:
+        raise ValueError("Une session doit contenir de 1 à 1000 analyses")
     snapshots, seen = [], set()
     for doc in documents:
         target = Path(doc["path"])
@@ -56,12 +57,13 @@ def read_session(path):
 class WorkspaceMixin:
     def setup_workspace(self):
         self.documents, self.active_document = [], -1
+        self.closed_documents = []
         content = self.takeCentralWidget()
         wrapper = QWidget()
         layout = QVBoxLayout(wrapper)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        self.tabs = QTabBar()
+        self.tabs = WorkspaceTabs()
         self.tabs.setExpanding(False)
         self.tabs.setTabsClosable(True)
         self.tabs.setUsesScrollButtons(True)
@@ -132,6 +134,8 @@ class WorkspaceMixin:
         removing_active = self.documents[index].path == active_path
         if removing_active:
             self.detach()
+        self.closed_documents.append(self.documents[index])
+        self.closed_documents = self.closed_documents[-20:]
         del self.documents[index]
         self.active_document = next((i for i, s in enumerate(self.documents) if s.path == active_path), -1)
         self.sync_tabs()

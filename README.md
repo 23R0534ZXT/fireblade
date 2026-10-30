@@ -2,7 +2,7 @@
 
 [![Tests Windows et exécutable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 
-**Explorateur de données forensic pour Windows : CSV, TSV et XLSX, avec recherche, filtres, regroupements, signets et notes.**
+**Explorateur de données forensic pour Windows : CSV, TSV, XLS et XLSX, avec recherche, filtres, regroupements, signets et notes.**
 
 Fireblade utilise une interface de bureau classique et une base DuckDB sur disque pour explorer les données sans charger toutes les lignes dans la grille. Le projet reste un **prototype** : il ne revendique pas encore la parité complète avec Timeline Explorer ni des gains de performances démontrés sur tous les exports réels.
 
@@ -53,21 +53,23 @@ Pour commencer : regrouper par **Artifact**, ajouter **User** puis **Computer** 
 
 ## Fonctionnalités
 
+Les ajouts de présentation restent dans les menus : le démarrage conserve une grille classique. Voir le [suivi de parité détaillé](docs/development/PARITE-TIMELINE-EXPLORER.md) pour les limites de chaque fonction ; aucune parité exhaustive n’est annoncée.
+
 | Domaine | Disponible |
 |---|---|
-| Import | CSV, TSV, TXT délimité, XLSX avec choix de la feuille ; séparateur et encodage réglables |
-| Recherche | Recherche globale dans l’analyse active, filtres de colonne, filtre ou exclusion depuis une cellule |
+| Import | CSV, TSV, TXT délimité, XLS/XLSX avec choix de feuille ; ouverture multiple et file d’attente |
+| Recherche | Analyse active et recherche entre toutes les analyses ouvertes ; résultats par fichier, filtres et calendrier |
 | Filtres avancés | Arbres ET / OU / NON, texte, égalité, regex RE2, nombres, dates ISO et cellules vides |
-| Regroupements | Plusieurs niveaux, glisser-déposer d’en-tête, comptages filtrés et chargement par pages |
+| Regroupements | Plusieurs niveaux, périodes de dates, effectifs, sommes/moyennes/min/max/distincts, tri des groupes, pagination |
 | Tri | Texte, nombre exact ou date ISO ; plusieurs clés et sens réglables |
-| Onglets | Plusieurs analyses, une seule base active ouverte ; restauration de la vue et des colonnes |
-| Sessions | Enregistrement des références aux analyses, de leur ordre et de leurs vues |
+| Onglets | Recherche par nom, plusieurs rangées, réouverture du dernier fermé ; une seule base active |
+| Sessions | Vues, analyses et dispositions ; import des sources et tags des sessions `.tle_sess` |
 | Signets et notes | Ligne individuelle ou sélection multiple : marquer, ajouter, remplacer, retirer |
-| Présentation | Règles locales et globales, couleurs, gras, ligne ou cellule, priorité et activation |
+| Présentation | Colonnes épinglées, clair/sombre, police et formats de dates ; règles locales/globales, couleurs et gras |
 | Règles partagées | Correspondance par noms de colonnes, import/export JSON, rechargement et désactivation par vue |
-| Détails | Valeurs complètes, notes, cellule brute et JSON indenté |
-| Profils forensic | Premiers préréglages MFTECmd, EvtxECmd, PECmd, Hayabusa et Plaso L2T |
-| Export | CSV/XLSX de toutes les lignes filtrées, comptages de groupes, lignes marquées avec leurs notes |
+| Détails | Valeurs complètes, notes, JSON/XML formaté, panneau à droite/en bas et filtrage depuis les détails |
+| Profils forensic | Catalogue de 222 signatures / 193 noms de formats ; types et présentation ; profils personnels JSON |
+| Export | CSV/XLSX, colonnes visibles dans leur ordre, résultats filtrés, résumés et annotations |
 | Provenance | Chemin, taille, nombre d’enregistrements et empreinte SHA-256 de la source à l’import |
 | Annulation | Requêtes, import, export et annotations ; restauration de l’analyse précédente après import échoué |
 | Aide intégrée | Guide, licences et informations de construction consultables dans le `.exe` |
@@ -77,7 +79,7 @@ Fireblade ouvre les exports déjà produits par les outils forensic. Il ne lit p
 ## Première analyse
 
 1. Cliquer sur **Ouvrir un fichier**, ou utiliser **Ctrl+O**.
-2. Choisir le CSV/TSV/XLSX.
+2. Choisir le CSV/TSV/XLS/XLSX.
 3. Confirmer où enregistrer l’analyse `.timeline`. Pour XLSX, choisir la feuille.
 4. Après l’import, utiliser le clic droit des en-têtes pour trier, filtrer ou regrouper.
 5. Sélectionner des lignes pour poser des signets ou des notes depuis **Édition**.
@@ -126,6 +128,7 @@ Les anciennes analyses `.timeline` restent ouvrables. Celles d’un ancien proto
 - Les tris et filtres numériques évitent de convertir les grands entiers en flottants. Les valeurs hors des bornes de conversion ou malformées ne sont pas assimilées à des nombres valides.
 - Encodages CSV proposés : UTF-8, UTF-16, Windows-1252 et Latin-1. Les champs vides deviennent NULL.
 - Les imports CSV ambigus ou malformés sont signalés. Le séparateur peut être choisi explicitement.
+- Pour XLS, les formules sont lues comme leurs résultats mémorisés ; leur formule originale et la mise en forme ne sont pas disponibles via ce lecteur. Les macros ne sont pas exécutées.
 - Pour XLSX, les formules restent leur texte ; Fireblade ne les exécute pas et n’en recalcule pas le résultat. Les styles, macros et zéros provenant seulement d’un format numérique Excel ne sont pas importés.
 - XLSX est lu progressivement et exporté en écriture progressive. L’export utilise plusieurs feuilles si nécessaire et refuse les cellules dépassant 32767 caractères pour éviter une troncature silencieuse.
 - Les exports XLSX écrivent les données comme texte, y compris les valeurs commençant par `=`. CSV conserve les valeurs d’origine.
@@ -227,7 +230,7 @@ py -3.12 -m venv .venv
 
 Ou double-cliquer sur `scripts/windows/Lancer.cmd`. Ce lanceur prépare l’environnement des sources à la première utilisation. L’installation initiale nécessite Internet ; les lancements suivants peuvent réutiliser les dépendances installées.
 
-Trois dépendances directes d’exécution : **DuckDB**, **PySide6 Essentials** et **openpyxl**. Aucun serveur, navigateur embarqué, chaîne JavaScript ou framework d’injection de dépendances.
+Quatre dépendances directes d’exécution : **DuckDB**, **PySide6 Essentials**, **openpyxl** et **xlrd** (ancien XLS). Aucun serveur, navigateur embarqué, chaîne JavaScript ou framework d’injection de dépendances.
 
 ## Vérifier le code et compiler soi-même
 
@@ -346,7 +349,9 @@ Choisir un nouveau chemin de rapport. Les données de contrôle sont synthétiqu
 ## Limites actuelles
 
 - Prototype en cours de développement, sans revendication de parité complète avec Timeline Explorer.
-- XLS ancien format, catégories de tags, recherche transversale dans tous les onglets, rapports HTML/PDF et profils exhaustifs encore absents.
+- Compatibilité partielle avec les fichiers TLE : sources et tags des sessions, colonnes/groupes/tris de certains layouts ; pas toutes les expressions/règles DevExpress ni les transformations de chaque plugin.
+- Le catalogue de schémas n’est pas une qualification de 193 parseurs : voir [profils et plugins](docs/development/PLUGINS.md).
+- Pas de rapports HTML/PDF ni de catégories de tags personnalisées ; ces absences ne sont pas présentées comme des écarts vérifiés de Timeline Explorer.
 - Sessions par référence aux bases, sans empaquetage autonome d’un dossier d’enquête.
 - Pagination et groupes conservés par fenêtres ; pas de plafond global de RAM garanti en octets.
 - Pas de reprise d’un import après une panne au milieu de l’écriture.

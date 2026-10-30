@@ -20,12 +20,12 @@ QHeaderView::section { background: #eeeeee; color: #202020; padding: 3px 5px; bo
 """
 
 
-def apply_theme(app):
+def apply_theme(app, theme="light"):
     # Native Windows 11 styles can keep dark foregrounds while custom backgrounds
     # are light. Fusion renders every control from the same explicit palette.
-    app.styleHints().setColorScheme(Qt.ColorScheme.Light)
+    app.styleHints().setColorScheme(Qt.ColorScheme.Dark if theme == "dark" else Qt.ColorScheme.Light)
     app.setStyle("Fusion")
-    app.setProperty("fireblade_style", "Fusion light")
+    app.setProperty("fireblade_style", "Fusion " + theme)
     font = QFontDatabase.systemFont(QFontDatabase.GeneralFont)
     if font.pointSizeF() < 9:
         font.setPointSizeF(9)
@@ -41,10 +41,20 @@ def apply_theme(app):
         QPalette.BrightText: "#202020", QPalette.Link: "#0645ad",
         QPalette.LinkVisited: "#663399",
     }
+    if theme == "dark":
+        replacements = {"#f0f0f0": "#303030", "#202020": "#eeeeee", "#ffffff": "#242424",
+                        "#f6f6f6": "#2b2b2b", "#cce8ff": "#315b7d", "#101010": "#ffffff",
+                        "#ffffe1": "#35352b", "#686868": "#b0b0b0", "#0645ad": "#80bfff", "#663399": "#c6a2ee"}
+        roles = {role: replacements.get(color, color) for role, color in roles.items()}
     for group in (QPalette.Active, QPalette.Inactive, QPalette.Disabled):
         for role, color in roles.items():
             palette.setColor(group, role, QColor(color))
     for role in (QPalette.WindowText, QPalette.Text, QPalette.ButtonText):
-        palette.setColor(QPalette.Disabled, role, QColor("#686868"))
+        palette.setColor(QPalette.Disabled, role, QColor("#b0b0b0" if theme == "dark" else "#686868"))
     app.setPalette(palette)
-    app.setStyleSheet(STYLE)
+    stylesheet = STYLE
+    if theme == "dark":
+        import re
+        colors = {**replacements, "#eeeeee": "#383838", "#bcbcbc": "#555555", "#b5b5b5": "#606060", "#c5c5c5": "#555555"}
+        stylesheet = re.sub(r'#[0-9a-fA-F]{6}|\bwhite\b', lambda m: colors.get(m.group(0), "#242424" if m.group(0) == "white" else m.group(0)), STYLE)
+    app.setStyleSheet(stylesheet)

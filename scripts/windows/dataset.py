@@ -24,6 +24,7 @@ def generate(directory,target_bytes=3*1024**3):
     rng=random.Random(0xF1B1ADE)
     counters=[Counter() for _ in COMBINATIONS]
     reference=Counter();samples={};leading=[]
+    size_sums=Counter();day_counts=Counter()
     digest=hashlib.sha256();index=0;last=None
     start=time.perf_counter()
     with source.open('wb') as output:
@@ -46,6 +47,8 @@ def generate(directory,target_bytes=3*1024**3):
                      f'Enregistrement {i}, "activité" {payload}'+ ('\nSeconde ligne : élève' if i%137==0 else ''),
                      f'élève-日本語-{i}',json.dumps(dict(record=i,token=token,payload=payload),ensure_ascii=False),'']
                 writer.writerow(row)
+                size_sums[artifact]+=int(row[11])
+                day_counts[stamp[:10] if stamp not in ('','bad-date') else None]+=1
                 normalized=[value if value!='' else None for value in row]
                 for cols,counter in zip(COMBINATIONS,counters):counter[tuple(normalized[c] for c in cols)]+=1
                 reference['user042']+=user=='user042'
@@ -78,7 +81,9 @@ def generate(directory,target_bytes=3*1024**3):
     scenarios.append(dict(columns=[6],levels=[dict(path=[],expected=[(None,reference['empty_ids'])]+[(v,1) for v in sorted(leading)[:249]],partial=True)]))
     result=dict(format='fireblade-qa-dataset',source=str(source.resolve()),bytes=source.stat().st_size,rows=index,
                 sha256=digest.hexdigest(),seed='0xF1B1ADE',headers=HEADERS,reference=reference,samples=samples,
-                groups=scenarios,filtered_groups=filtered_groups,generation_seconds=round(time.perf_counter()-start,3),
+                groups=scenarios,filtered_groups=filtered_groups,
+                advanced=dict(size_sums=dict(size_sums), day_counts=[[key,value] for key,value in day_counts.items()]),
+                generation_seconds=round(time.perf_counter()-start,3),
                 description='Synthetic varied UTF-8 BOM/CRLF, unique random payloads, multiline quotes, Unicode, NULLs and exact large IDs. Filesystem cache not purged.')
     (directory/'spec.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
     return result

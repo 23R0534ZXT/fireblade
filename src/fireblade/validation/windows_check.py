@@ -370,6 +370,8 @@ def run_check(app, report_path):
             expect(rows[1][-1] == "À examiner\n=1+1" and rows[2][1] == "9007199254740993", "Notes ou identifiants altérés dans l’export annoté.")
         check("bulk_selection_notes_and_annotated_export", selection_notes_and_export)
 
+        from fireblade.validation.feature_checks import check_features
+        check_features(window, directory, settle, check, expect, report_path.parent)
         report["memory"] = windows_memory()
         report["status"] = "passed"
     except Exception as exc:

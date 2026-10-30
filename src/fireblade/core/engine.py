@@ -18,6 +18,7 @@ from pathlib import Path
 import duckdb
 
 from fireblade.core.models import Filter, FilterGroup, SortKey, View
+from fireblade.core.summaries import group_expression, summary_expressions, group_order
 from fireblade.core.conditions import compile_condition, validate_format_rules
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.settings import Settings
@@ -27,7 +28,7 @@ from fireblade.core import csv_chunks
 class Case:
     PAGE_SIZE = Settings().page_size
 
-    def __init__(self, path: str | Path, memory_mb=None, threads=None, settings=None):
+    def __init__(self, path: str | Path, memory_mb=None, threads=None, settings=None, read_only=False):
         self.settings = settings or Settings()
         overrides = {}
         if memory_mb is not None:
@@ -43,7 +44,7 @@ class Case:
         self.cancelled = threading.Event()
         self._page_cache_key = None
         self._bookmark_revision = 0
-        self.db = duckdb.connect(str(self.path))
+        self.db = duckdb.connect(str(self.path), read_only=read_only)
         self.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
         self.db.execute(f"SET threads={self.settings.threads}")
         self.db.execute("SET enable_progress_bar=false")
@@ -178,6 +179,8 @@ class Case:
                 self.db.execute("BEGIN")
                 if sheet is not None:
                     from fireblade.core.spreadsheets import csv_from_sheet
+                    if source.suffix.lower() == ".xls":
+                        from fireblade.core.legacy_excel import csv_from_sheet
                     incoming = csv_from_sheet(source, sheet, self.path.parent, self.check_cancelled)
                 else:
                     incoming = self.utf8_input(source, encoding)
@@ -229,7 +232,7 @@ class Case:
                             headers=headers, rows=count, encoding=encoding,
                             delimiter=delimiter or "auto", schema_version=1)
                 if sheet is not None:
-                    info.update(format="xlsx", sheet=sheet)
+                    info.update(format=source.suffix.lower().lstrip("."), sheet=sheet)
                 self.db.execute("CREATE TABLE metadata (key VARCHAR PRIMARY KEY, value VARCHAR)")
                 self.db.execute("INSERT INTO metadata VALUES ('source', ?)", [json.dumps(info)])
                 self.db.execute("CREATE TABLE bookmarks (row_id BIGINT PRIMARY KEY, note VARCHAR)")
@@ -263,7 +266,7 @@ class Case:
             clauses.append("(" + sql + ")")
             args.extend(values)
         for i, val in enumerate(path):
-            clauses.append(f"{self.column(view.groups[i])} IS NOT DISTINCT FROM ?")
+            clauses.append(f"{group_expression(self, view, view.groups[i])} IS NOT DISTINCT FROM ?")
             args.append(val)
         if view.bookmarks_only:
             clauses.append("__row_id IN (SELECT row_id FROM bookmarks)")
@@ -282,6 +285,21 @@ class Case:
         if type(view.global_rules_enabled) is not bool:
             raise ValueError("L’activation des règles globales doit être un booléen")
         validate_format_rules(view.format_rules, self.column, self.numeric_expression)
+        summary_expressions(self, view)
+        group_order(self, view, self.column(0))
+        for mapping in (view.pinned_columns, view.boolean_columns, view.timestamp_columns):
+            if not isinstance(mapping, list) or len(mapping) != len(set(mapping)):
+                raise ValueError("Liste de colonnes invalide")
+            for column in mapping:
+                self.column(column)
+        if not isinstance(view.pinned_widths, dict) or any(not isinstance(key, str) or not key.isdecimal()
+                or not 0 <= int(key) <= len(self.headers) or type(width) is not int or not 20 <= width <= 10000
+                for key, width in view.pinned_widths.items()):
+            raise ValueError("Largeurs de colonnes épinglées invalides")
+        for column in view.group_intervals:
+            if not isinstance(column, str) or not column.isdecimal():
+                raise ValueError("Intervalle de groupement invalide")
+            group_expression(self, view, int(column))
 
     def page_styles(self, view, rows, global_rules=()):
         """Evaluate conditions on already loaded values, without rescanning events."""
@@ -348,8 +366,10 @@ class Case:
             where, args = self.where(view, path)
             limit, offset = max(1, min(limit, self.settings.page_size)), max(0, offset)
             if len(path) < len(view.groups):
-                col = self.column(view.groups[len(path)])
-                sql = f"SELECT {col}, count(*) FROM events{where} GROUP BY {col} ORDER BY count(*) DESC, {col} ASC NULLS LAST LIMIT ? OFFSET ?"
+                col = group_expression(self, view, view.groups[len(path)])
+                summaries = summary_expressions(self, view)
+                extra = ", " + ", ".join(summaries) if summaries else ""
+                sql = f"SELECT {col}, count(*){extra} FROM events{where} GROUP BY {col} ORDER BY {group_order(self, view, col)} LIMIT ? OFFSET ?"
             else:
                 order = self.order(view)
                 key = (where, tuple(args), order, self._bookmark_revision if view.bookmarks_only else None)
@@ -444,7 +464,7 @@ class Case:
         with self.operation():
             return {name: View.from_json(value) for name, value in self.db.execute("SELECT * FROM views ORDER BY name").fetchall()}
 
-    def export(self, target, view, grouped=False, include_annotations=False):
+    def export(self, target, view, grouped=False, include_annotations=False, columns=None):
         target = Path(target).resolve()
         if target in (self.path, Path(self.info["path"]).resolve()):
             raise ValueError("L’export ne peut pas écraser la source ou le dossier d’analyse")
@@ -454,15 +474,22 @@ class Case:
             raise ValueError(f"Le fichier temporaire existe déjà : {temporary}")
         with self.operation(final_check=False), self.serial_query_threads():
             where, args = self.where(view)
-            cols = ", ".join(self.column(i) for i in range(len(self.headers)))
-            headers = self.headers
+            selected = list(range(len(self.headers))) if columns is None else list(columns)
+            if not selected or len(selected) != len(set(selected)):
+                raise ValueError("Choisissez au moins une colonne distincte à exporter")
+            cols = ", ".join(self.column(i) for i in selected)
+            headers = [self.headers[i] for i in selected]
             if grouped and include_annotations:
                 raise ValueError("Les notes s’exportent par enregistrement, pas par comptage de groupes")
             if grouped and view.groups:
-                cols = ", ".join(self.column(i) for i in view.groups)
-                ties = ', '.join(self.column(i) + ' ASC NULLS LAST' for i in view.groups)
-                sql = f"SELECT {cols}, count(*) FROM events{where} GROUP BY {cols} ORDER BY count(*) DESC, {ties}"
-                headers = [self.headers[i] for i in view.groups] + ["Count"]
+                expressions = [group_expression(self, view, i) for i in view.groups]
+                cols = ", ".join(expressions)
+                ties = ', '.join(col + ' ASC NULLS LAST' for col in expressions)
+                summaries = summary_expressions(self, view)
+                extra = ", " + ", ".join(summaries) if summaries else ""
+                primary = group_order(self, view, expressions[0], include_tie=False)
+                sql = f"SELECT {cols}, count(*){extra} FROM events{where} GROUP BY {cols} ORDER BY {primary}, {ties}"
+                headers = [self.headers[i] for i in view.groups] + ["Count"] + [f"{s.operation}({self.headers[s.column]})" for s in view.summaries]
             else:
                 if include_annotations:
                     cols += ", __row_id, EXISTS(SELECT 1 FROM bookmarks b WHERE b.row_id=events.__row_id), (SELECT b.note FROM bookmarks b WHERE b.row_id=events.__row_id)"

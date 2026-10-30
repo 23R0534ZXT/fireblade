@@ -49,6 +49,7 @@ class GridModel(QAbstractItemModel):
     status = Signal(str)
     error = Signal(str)
     loaded = Signal()
+    bookmark_requested = Signal(int, bool)
 
     def __init__(self, case, pool, parent=None):
         super().__init__(parent)
@@ -60,6 +61,8 @@ class GridModel(QAbstractItemModel):
         self.jobs = set()
         self.global_rules = []
         self.rules = []
+        self.dark = False
+        self.date_format = "source"
 
     @property
     def notes(self):
@@ -148,18 +151,32 @@ class GridModel(QAbstractItemModel):
                 if col:
                     return ""
                 label = self.case.headers[self.view.groups[len(node.path) - 1]]
-                value, count = node.values
-                return f"{label} : {'∅' if value is None else value}  ({count:,})"
+                value, count = node.values[:2]
+                result = f"{label} : {'∅' if value is None else value}  ({count:,})"
+                if self.view.summaries:
+                    result += " · " + " · ".join(f"{s.operation}({self.case.headers[s.column]})={value}" for s, value in zip(self.view.summaries, node.values[2:]))
+                return result
             if col == 0:
                 return ("★ " if node.note is not None else "") + str(node.values[0])
             value = node.values[col]
+            if col - 1 in self.view.timestamp_columns and value is not None:
+                from fireblade.core.timestamps import display_timestamp
+                value = display_timestamp(str(value), self.date_format)
+            if col - 1 in self.view.boolean_columns and str(value).casefold() in ("true", "false", "0", "1"):
+                return ""
             return "∅" if value is None else str(value).replace("\n", " ↵ ")[:600]
+        if role == Qt.CheckStateRole and not node.group and col == 0:
+            return Qt.Checked if node.note is not None else Qt.Unchecked
+        if role == Qt.CheckStateRole and not node.group and col > 0 and col - 1 in self.view.boolean_columns:
+            value = str(node.values[col]).casefold()
+            if value in ("true", "false", "0", "1"):
+                return Qt.Checked if value in ("true", "1") else Qt.Unchecked
         if role == Qt.ToolTipRole and not node.group:
             return (node.note or "") if col == 0 else str(node.values[col])[:4000]
         if role == Qt.ForegroundRole and node.group:
-            return QColor("#202020")
+            return QColor("#eeeeee" if self.dark else "#202020")
         if role == Qt.BackgroundRole and node.group:
-            return QColor("#e9edf2")
+            return QColor("#39434f" if self.dark else "#e9edf2")
         if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole):
             for rule_index in node.styles:
                 rule = self.rules[rule_index]
@@ -172,10 +189,22 @@ class GridModel(QAbstractItemModel):
                     font.setBold(rule.bold)
                     return font
         if role == Qt.BackgroundRole and not node.group and node.note is not None:
-            return QColor("#fff4c2")
+            return QColor("#665c27" if self.dark else "#fff4c2")
         if role == Qt.BackgroundRole and not node.group and self.view.highlight:
             if any(self.view.highlight.casefold() in str(v).casefold() for v in node.values[1:] if v is not None):
-                return QColor("#fce2e2")
+                return QColor("#674242" if self.dark else "#fce2e2")
+
+    def flags(self, index):
+        flags = super().flags(index)
+        if index.isValid() and index.column() == 0 and not self.node(index).group:
+            flags |= Qt.ItemIsUserCheckable
+        return flags
+
+    def setData(self, index, value, role=Qt.EditRole):
+        if role == Qt.CheckStateRole and index.isValid() and index.column() == 0 and not self.node(index).group:
+            self.bookmark_requested.emit(self.node(index).values[0], value == Qt.Checked or value == Qt.Checked.value)
+            return True
+        return False
 
     def hasChildren(self, parent=QModelIndex()):
         return parent.column() <= 0 and self.node(parent).group

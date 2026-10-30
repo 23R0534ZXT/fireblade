@@ -5,6 +5,7 @@ import base64
 import json
 import argparse
 import sys
+from xml.parsers.expat import ExpatError
 from pathlib import Path
 
 from PySide6.QtCore import QModelIndex, QThreadPool, QTimer, Qt
@@ -28,11 +29,13 @@ from fireblade.ui.grid import GridDelegate, GridModel
 from fireblade.core.settings import Settings, load_settings
 from fireblade.ui.theme import apply_theme
 from fireblade.ui.workers import Job, Signals
+from fireblade.ui.exploration import ExplorationMixin
+from fireblade.ui.pinned_grid import PinnedTree
 from fireblade.runtime.resources import default_config
 from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses
 
 
-class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
+class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
     def __init__(self, settings=None, rule_path=None):
         super().__init__()
         self.settings = settings or Settings()
@@ -51,6 +54,7 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.build_ui()
         self.setup_workspace()
         self.setup_shared_rules(rule_path)
+        self.setup_exploration()
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -77,9 +81,12 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
 
         open_csv = action(file_menu, "Ouvrir un fichier…", self.import_csv, "Ctrl+O", False, QStyle.SP_DialogOpenButton)
         action(file_menu, "Ouvrir une analyse…", self.open_case, "Ctrl+Shift+O", False)
+        action(file_menu, "Importer une session Timeline Explorer…", lambda: self.import_tle_session(), requires_file=False)
         action(file_menu, "Ouvrir une session…", lambda: self.load_session(), requires_file=False)
         action(file_menu, "Enregistrer la session…", lambda: self.save_session(), "Ctrl+Shift+S")
         action(file_menu, "Fermer l’onglet", lambda: self.close_document(self.active_document), "Ctrl+W")
+        action(file_menu, "Vider la file d’ouverture", self.clear_open_queue, requires_file=False)
+        action(file_menu, "Rouvrir le dernier onglet fermé", self.reopen_closed, "Ctrl+Shift+T", False)
         file_menu.addSeparator()
         export = action(file_menu, "Exporter…", self.export_csv, "Ctrl+E", icon=QStyle.SP_DialogSaveButton)
         action(file_menu, "Exporter les signets et notes…", self.export_annotations)
@@ -93,6 +100,13 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(edit_menu, "Retirer les signets de la sélection", lambda: self.annotate_selection("remove"), "Ctrl+Shift+M")
         grouping = action(view_menu, "Regrouper…", self.group_by)
         action(view_menu, "Colonnes…", self.columns)
+        action(view_menu, "Réinitialiser les largeurs", self.reset_widths, "Ctrl+R")
+        action(view_menu, "Résumés et tri des groupes…", self.edit_groups)
+        action(view_menu, "Déplier les groupes de la page", self.expand_groups, "Ctrl+Alt+M")
+        action(view_menu, "Replier tous les groupes", self.collapse_groups, "Ctrl+K")
+        action(view_menu, "Analyses ouvertes…", self.choose_document, "Ctrl+Shift+P", False)
+        action(view_menu, "Messages…", self.show_messages, requires_file=False)
+        action(view_menu, "Préférences…", self.edit_preferences, requires_file=False)
         view_menu.addSeparator()
         self.sort_action = action(view_menu, "Options de tri", lambda checked: self.sort_options.setVisible(checked), requires_file=False)
         self.sort_action.setCheckable(True)
@@ -102,12 +116,19 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(view_menu, "Onglet suivant", lambda: self.next_document(), "Ctrl+Tab", False)
         action(view_menu, "Onglet précédent", lambda: self.next_document(-1), "Ctrl+Shift+Tab", False)
         action(view_menu, "Appliquer le profil détecté", self.apply_profile)
+        action(view_menu, "Profils et plugins…", self.manage_plugins, requires_file=False)
+        action(view_menu, "Légende des supertimelines…", self.show_legend, requires_file=False)
         action(view_menu, "Tri sur plusieurs colonnes…", self.edit_sort)
+        action(filter_menu, "Expression textuelle…", self.edit_filter_text)
         action(filter_menu, "Éditeur ET / OU / NON…", self.edit_filters, "Ctrl+Shift+F")
         add_filter = action(filter_menu, "Ajouter un filtre…", self.add_filter)
+        action(filter_menu, "Effacer les filtres", self.clear_filters, "Ctrl+Alt+E")
         action(filter_menu, "Réinitialiser", self.reset)
+        action(filter_menu, "Rechercher dans toutes les analyses…", self.find_workspace, "Ctrl+F")
         action(analysis_menu, "Enregistrer la vue…", self.save_view, "Ctrl+S")
         action(analysis_menu, "Charger une vue…", self.load_view, "Ctrl+L")
+        action(analysis_menu, "Exporter la disposition…", self.export_layout)
+        action(analysis_menu, "Importer une disposition…", self.import_layout)
         analysis_menu.addSeparator()
         action(analysis_menu, "Règles de coloration…", self.edit_rules)
         global_menu = analysis_menu.addMenu("Règles globales")
@@ -205,8 +226,8 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         change_groups.clicked.connect(self.group_by)
         group_row.addWidget(change_groups)
         layout.addLayout(group_row)
-        splitter = QSplitter(Qt.Vertical)
-        self.tree = QTreeView()
+        splitter = self.splitter = QSplitter(Qt.Vertical)
+        self.tree = PinnedTree()
         self.tree.setItemDelegate(GridDelegate(self.tree))
         self.tree.setHeader(GroupHeader(self.tree))
         self.tree.setUniformRowHeights(True)
@@ -263,6 +284,9 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         QMessageBox.warning(self, "Opération impossible", str(message))
 
     def interrupt_queries(self):
+        self._expand_generation += 1
+        if self.workspace_search:
+            self.workspace_search.interrupt()
         for job in tuple(self.jobs):
             job.cancel()
         if self.model:
@@ -324,11 +348,9 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         return True
 
     def import_csv(self):
-        if not self.can_open_file():
-            return
-        path, _ = QFileDialog.getOpenFileName(self, "Ouvrir un fichier", "", "Données (*.csv *.tsv *.txt *.xlsx);;Tous les fichiers (*)")
-        if path:
-            self.import_file(path)
+        paths, _ = QFileDialog.getOpenFileNames(self, "Ouvrir des fichiers", "", "Données (*.csv *.tsv *.txt *.xlsx *.xls);;Tous les fichiers (*)")
+        if paths:
+            self.queue_files(paths)
 
     def import_file(self, path):
         if not self.can_open_file():
@@ -374,7 +396,7 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
             self.error(message)
 
         def importing():
-            if path.suffix.lower() == ".xlsx":
+            if path.suffix.lower() in (".xlsx", ".xls"):
                 return candidate.import_excel(path, sheet, progress.progress.emit)
             return candidate.import_csv(path, delimiter, encoding, progress.progress.emit)
         sheet = dialog.sheet.currentText() if dialog.sheet is not None else None
@@ -385,6 +407,7 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
     def snapshot_analysis(self):
         if not self.case or not self.model:
             return None
+        self.capture_pin_widths()
         return AnalysisSnapshot(str(self.case.path), copy.deepcopy(self.case.info),
                                 copy.deepcopy(self.view), bytes(self.tree.header().saveState()))
 
@@ -415,6 +438,8 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         path = Path(path)
         if path.suffix.lower() == ".fireblade-session":
             self.load_session(path)
+        elif path.suffix.lower() == ".tle_sess":
+            self.import_tle_session(path)
         elif path.suffix.lower() == ".timeline":
             self.load_case(path)
         else:
@@ -426,24 +451,33 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         if len(urls) != 1 or not urls[0].isLocalFile():
             return None
         path = Path(urls[0].toLocalFile())
-        if not path.is_file() or path.suffix.lower() not in (".csv", ".tsv", ".txt", ".xlsx", ".timeline", ".fireblade-session"):
+        if not path.is_file() or path.suffix.lower() not in (".csv", ".tsv", ".txt", ".xlsx", ".xls", ".timeline", ".fireblade-session", ".tle_sess"):
             return None
         return path
 
+    @staticmethod
+    def dropped_files(mime):
+        urls = mime.urls() if mime.hasUrls() else []
+        allowed = (".csv", ".tsv", ".txt", ".xlsx", ".xls", ".timeline", ".fireblade-session", ".tle_sess")
+        if not urls or len(urls) > 1000 or any(not url.isLocalFile() for url in urls):
+            return []
+        paths = [Path(url.toLocalFile()) for url in urls]
+        return paths if all(path.is_file() and path.suffix.lower() in allowed for path in paths) else []
+
     def dragEnterEvent(self, event):
-        if not self.busy and self.dropped_file(event.mimeData()) is not None:
+        if self.dropped_files(event.mimeData()):
             event.acceptProposedAction()
         else:
             event.ignore()
 
     def dropEvent(self, event):
-        path = self.dropped_file(event.mimeData())
-        if path is None or not self.can_open_file():
+        paths = self.dropped_files(event.mimeData())
+        if not paths:
             event.ignore()
             return
         event.acceptProposedAction()
         # Let the OS finish the drop before displaying the import dialog.
-        QTimer.singleShot(0, lambda: self.open_path(path))
+        QTimer.singleShot(0, lambda: self.queue_files(paths))
 
     def detach(self):
         self.remember_active()
@@ -504,6 +538,9 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.set_file_actions(True)
         self.cancel_action.setEnabled(True)
         self.model = GridModel(case, self.pool, self)
+        self.model.date_format = self.preferences.date_format
+        self.model.dark = self.preferences.theme == "dark"
+        self.model.bookmark_requested.connect(self.mark_row)
         self.model.status.connect(self.statusBar().showMessage)
         self.model.error.connect(self.error)
         self.tree.setModel(self.model)
@@ -526,6 +563,7 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.set_view(initial_view if initial_view is not None else View())
         if header_state is not None:
             self.tree.header().restoreState(header_state)
+        self.restore_pins()
         self.track_case()
 
     def apply(self, *_):
@@ -558,7 +596,9 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.global_rules_action.blockSignals(True)
         self.global_rules_action.setChecked(self.view.global_rules_enabled)
         self.global_rules_action.blockSignals(False)
+        self._expand_generation += 1
         self.model.reset(self.view, self.global_rules_for_view())
+        self.detail_fields = []
         self.details.clear()
         self.count_generation += 1
         generation = self.count_generation
@@ -571,6 +611,7 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
                  on_cancel=lambda: self.count_label.setText("Comptage interrompu") if generation == self.count_generation else None)
 
     def reset(self):
+        self.tree.set_pins([])
         self.set_view(View())
 
     def set_view(self, view):
@@ -594,6 +635,7 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         for widget, blocked in zip(widgets, previous):
             widget.blockSignals(blocked)
         self.apply()
+        self.restore_pins()
         if self.view.header_state:
             try:
                 self.tree.header().restoreState(base64.b64decode(self.view.header_state, validate=True))
@@ -669,7 +711,7 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         for i, label in enumerate(self.case.headers, 1):
             item = QListWidgetItem(label)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Unchecked if self.tree.isColumnHidden(i) else Qt.Checked)
+            item.setCheckState(Qt.Unchecked if self.tree.isColumnHidden(i) and i - 1 not in self.view.pinned_columns else Qt.Checked)
             listing.addItem(item)
             checks.append(item)
         layout.addWidget(listing)
@@ -679,7 +721,10 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         layout.addWidget(buttons)
         if dialog.exec():
             for i, item in enumerate(checks, 1):
-                self.tree.setColumnHidden(i, item.checkState() != Qt.Checked)
+                if item.checkState() != Qt.Checked:
+                    self.hide_column(i - 1)
+                elif i - 1 not in self.view.pinned_columns:
+                    self.tree.setColumnHidden(i, False)
 
     def show_header_menu(self, position):
         header = self.tree.header()
@@ -690,6 +735,8 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
 
     def show_cell_menu(self, position):
         index = self.tree.indexAt(position)
+        if self.copy_on_right_click(index):
+            return
         menu = cell_menu(self, index)
         if menu:
             if not self.tree.selectionModel().isRowSelected(index.row(), index.parent()):
@@ -764,9 +811,19 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
             return
         node = self.model.node(index)
         if node.group:
+            self.detail_fields = []
             self.details.setPlainText(str(self.model.data(index.siblingAtColumn(0))))
         else:
-            self.details.setPlainText(f"Ligne source : {node.values[0]}\nNote : {node.note or ''}\n\n" + "\n\n".join(f"{h}\n{'∅' if v is None else v}" for h, v in zip(self.case.headers, node.values[1:])))
+            text = f"Ligne source : {node.values[0]}\nNote : {node.note or ''}\n\n"
+            self.detail_fields = []
+            parts, position = [text], len(text.encode('utf-16-le')) // 2
+            for column, (header, value) in enumerate(zip(self.case.headers, node.values[1:])):
+                block = f"{header}\n{'∅' if value is None else value}\n\n"
+                end = position + len(block.encode('utf-16-le')) // 2
+                self.detail_fields.append((position,end,column,value))
+                parts.append(block)
+                position = end
+            self.details.setPlainText(''.join(parts))
 
     def toggle_bookmark(self, index):
         if not self.model or not index.isValid():
@@ -847,6 +904,10 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
             return
         if not self.export_destination_is_safe(target):
             return
+        columns = self.visible_columns()
+        if not columns:
+            self.error("Choisissez au moins une colonne visible à exporter")
+            return
         grouped = False
         if self.view.groups:
             choice, ok = QInputDialog.getItem(self, "Export", "Contenu", ["Lignes filtrées", "Comptages par groupe"], 0, False)
@@ -855,7 +916,7 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
             grouped = choice == "Comptages par groupe"
         case, view = self.case, copy.deepcopy(self.view)
         self.statusBar().showMessage("Export en cours…")
-        self.run(lambda: case.export(target, view, grouped), lambda _: self.statusBar().showMessage(f"Export terminé : {target}"), exclusive=True)
+        self.run(lambda: case.export(target, view, grouped, columns=columns), lambda _: self.statusBar().showMessage(f"Export terminé : {target}"), exclusive=True)
 
     def export_destination_is_safe(self, target):
         protected = {Path(s.path).resolve() for s in self.documents} | {Path(s.source_info["path"]).resolve() for s in self.documents}
@@ -946,7 +1007,7 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         dialog.resize(800, 520)
         layout = QVBoxLayout(dialog)
         mode = QComboBox()
-        mode.addItems(["Texte brut", "JSON formaté"])
+        mode.addItems(["Texte brut", "JSON formaté", "XML formaté"])
         layout.addWidget(mode)
         text = QPlainTextEdit(raw)
         text.setReadOnly(True)
@@ -956,12 +1017,23 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         def render():
             try:
                 if mode.currentIndex() and len(raw) > 2 * 1024 * 1024:
-                    raise ValueError("JSON limité à 2 Mo pour préserver la réactivité ; texte brut disponible")
-                text.setPlainText(json.dumps(json.loads(raw), ensure_ascii=False, indent=2) if mode.currentIndex() else raw)
+                    raise ValueError("Formatage limité à 2 Mo pour préserver la réactivité ; texte brut disponible")
+                if mode.currentIndex() == 2:
+                    if "<!DOCTYPE" in raw.upper() or "<!ENTITY" in raw.upper():
+                        raise ValueError("Les déclarations DTD et entités ne sont pas prises en charge")
+                    from xml.dom.minidom import parseString
+                    document = parseString(raw)
+                    try:
+                        value = document.toprettyxml(indent="  ")
+                    finally:
+                        document.unlink()
+                else:
+                    value = json.dumps(json.loads(raw), ensure_ascii=False, indent=2) if mode.currentIndex() else raw
+                text.setPlainText(value)
                 message.clear()
-            except (ValueError, RecursionError) as exc:
+            except (ValueError, RecursionError, ExpatError) as exc:
                 text.setPlainText(raw)
-                message.setText(f"JSON non formatable : {exc}")
+                message.setText(f"Cellule non formatable : {exc}")
         mode.currentIndexChanged.connect(render)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
         buttons.rejected.connect(dialog.reject)
@@ -984,11 +1056,13 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         import io
         out = io.StringIO(newline="")
         writer = csv.writer(out, delimiter="\t")
-        writer.writerow(self.case.headers)
+        columns = self.visible_columns()
+        if self.preferences.copy_headers:
+            writer.writerow([self.case.headers[i] for i in columns])
         for index in self.tree.selectionModel().selectedRows():
             node = self.model.node(index)
             if not node.group:
-                writer.writerow(node.values[1:])
+                writer.writerow([node.values[i + 1] for i in columns])
         QApplication.clipboard().setText(out.getvalue())
 
     def closeEvent(self, event):

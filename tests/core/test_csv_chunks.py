@@ -9,6 +9,26 @@ from fireblade.core.errors import OperationCancelled
 from fireblade.core.models import View
 
 
+def test_wide_unicode_records_are_flushed_without_accumulating_hundreds_of_rows(tmp_path):
+    source = tmp_path / 'wide.csv'
+    values = [[str(i), 'élève-日本語 "texte"\n'*1200] for i in range(20)]
+    with source.open('w', encoding='utf-8', newline='') as outgoing:
+        writer = csv.writer(outgoing)
+        writer.writerow(['ID', 'Value'])
+        writer.writerows(values)
+    actual = []
+    for path, count in csv_chunks.csv_chunks(source, ['ID', 'Value'], ',', tmp_path, 8192, lambda: None):
+        # A single oversized logical record is indivisible; it must be flushed
+        # immediately rather than accumulated with the next 255 records.
+        assert count == 1
+        with path.open(encoding='utf-8', newline='') as incoming:
+            reader = csv.reader(incoming)
+            assert next(reader) == ['ID', 'Value']
+            actual.extend(reader)
+    assert actual == values
+    assert not list(tmp_path.glob('.fireblade-import-*'))
+
+
 @pytest.mark.parametrize('delimiter', [',', ';', '\t', '|'])
 def test_chunked_import_preserves_dialect_duplicates_multiline_and_record_order(tmp_path, monkeypatch, delimiter):
     monkeypatch.setattr(csv_chunks, 'CHUNK_BYTES', 8192)

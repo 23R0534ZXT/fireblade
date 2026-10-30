@@ -69,7 +69,10 @@ class GuiRun:
             if not w.jobs and not w.pool.activeThreadCount() and (w.model is None or not w.model.jobs):
                 self.app.processEvents()
                 return
-            QTest.qWait(10)
+            # qWait runs Qt's nested event loop while retaining Python's GIL.
+            # That can starve CSV/XLSX worker code and falsify performance tests.
+            # Pump widgets, then explicitly give worker threads the interpreter.
+            time.sleep(.01)
         raise TimeoutError('GUI work timed out: '+self.window.statusBar().currentMessage())
 
     def check(self,name,operation):

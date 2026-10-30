@@ -92,7 +92,12 @@ def test_styles_match_sql_and_only_requested_rows(case):
              FormatRule(FilterGroup("or", [Filter(0, "eq", "alice"), Filter(0, "empty")])),
              FormatRule(enabled=False)]
     view = View(format_rules=rules)
-    assert case.page_styles(view, case.page(view)[:2]) == {1: (1,), 2: (0,)}
+    visible_rows = case.page(view)[:2]
+    assert case.page_styles(view, visible_rows) == {1: (1,), 2: (0,)}
+    # Formatting must describe the values actually displayed, not a second read
+    # of a newer table version, and must not scan the full event table.
+    case.db.execute("DROP TABLE events")
+    assert case.page_styles(view, visible_rows) == {1: (1,), 2: (0,)}
     assert case.page_styles(view, []) == {}
 
 

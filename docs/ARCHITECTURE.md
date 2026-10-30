@@ -104,4 +104,4 @@ flowchart LR
 - `spreadsheets.py` lit XLSX en mode read-only, transcode sur disque et produit XLSX en write-only. L’empreinte d’import est celle du classeur original ; la feuille est enregistrée dans les métadonnées. Les formules restent du texte.
 - `profiles.py` contient des signatures d’en-têtes et dispositions faciles à modifier, sans toucher aux valeurs.
 - `grouping.py` raccorde les gestes Qt d’en-tête à la commande de groupement existante.
-- Les couleurs sont évaluées par DuckDB uniquement pour les identifiants de la page affichée ; seuls les indices des règles correspondantes accompagnent chaque nœud de la grille. Les clés de tri multiples utilisent le même cache sur disque que les tris simples.
+- Les couleurs sont évaluées par DuckDB sur les valeurs de la page déjà chargée, via une petite relation VALUES paramétrée, sans relire la table complète ; seuls les champs référencés par les conditions sont transmis. Seuls les indices des règles correspondantes accompagnent chaque nœud de la grille. Les clés de tri multiples utilisent le même cache sur disque que les tris simples.

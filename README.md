@@ -28,7 +28,7 @@ Si aucune Release n’est encore disponible, ouvrir une [exécution réussie d�
 
 Extraire le ZIP, puis ouvrir **`Fireblade-test-3GiB.csv`** dans Fireblade. Il contient **2 441 216 enregistrements, 18 colonnes et 3 222 648 632 octets** (environ 3,22 Go). C’est le même contenu que celui utilisé pour la qualification Windows, vérifié par SHA-256 ; les données sont synthétiques.
 
-Le ZIP contient le CSV entier et un manifeste `dataset.json`, également [versionné dans le dépôt](docs/validation/datasets/3gib.json). Aucun Python ni générateur n’est nécessaire pour l’utiliser. Le fichier volumineux est publié dans une Release pour garder le clone Git léger ; son générateur, les tests et la documentation sont sur `main`.
+Le ZIP contient le CSV entier et un manifeste `dataset.json`, également [versionné dans le dépôt](docs/validation/datasets/3gib.json). Aucun Python ni générateur n’est nécessaire pour l’utiliser. Le fichier volumineux est publié dans une Release pour garder le clone Git léger ; son générateur, les tests et la documentation sont sur `main`. Les tests Windows réutilisent ce CSV, localement ou depuis le cache Actions, et vérifient son SHA-256 à chaque préparation. Ils ne le régénèrent plus.
 
 Pour commencer : regrouper par **Artifact**, ajouter **User** puis **Computer** au groupement ; après réinitialisation, filtrer `User` sur `user042` doit donner **9 405 enregistrements**. Voir [les étapes et résultats attendus](docs/guides/TESTER-3GIB.md).
 

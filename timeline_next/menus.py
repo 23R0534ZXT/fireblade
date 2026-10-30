@@ -49,4 +49,8 @@ def cell_menu(window, index):
         menu.addSeparator()
     menu.addAction("Copier les lignes sélectionnées", window.copy_rows)
     menu.addAction("Signet / note…", lambda: window.edit_bookmark(row_id))
+    menu.addSeparator()
+    menu.addAction("Marquer la sélection", lambda: window.annotate_selection("mark"))
+    menu.addAction("Ajouter une note à la sélection…", lambda: window.annotate_selection("append"))
+    menu.addAction("Retirer les signets de la sélection", lambda: window.annotate_selection("remove"))
     return menu

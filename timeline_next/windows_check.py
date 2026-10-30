@@ -24,6 +24,7 @@ from PySide6.QtWidgets import QDialog
 from .app import Window
 from .dialogs import ImportDialog
 from .models import Filter, FilterGroup, FormatRule, SortKey, View
+from .rule_store import RuleBook, RuleStore
 from .windows_paths import analyses_directory
 
 
@@ -122,7 +123,7 @@ def run_check(app, report_path):
         source.chmod(stat.S_IREAD)
         readonly.append(source)
         case_path = directory / "analyse été.timeline"
-        window = Window()
+        window = Window(rule_path=directory / "règles globales.json")
         window.error = lambda message: errors.append(str(message))
         window.show()
         app.processEvents()
@@ -298,6 +299,59 @@ def run_check(app, report_path):
             finally:
                 result.close()
         check("xlsx_sheet_import_export_and_literal_formulas", excel_roundtrip)
+
+        def shared_rules_across_columns():
+            book = RuleBook(["User", "Absent"], [
+                FormatRule(FilterGroup("and", [Filter(0, "eq", "élève")]), "#ffc7ce", target=0),
+                FormatRule(FilterGroup("and", [Filter(1, "eq", "x")]), "#aabbcc")])
+            window.rule_store.replace(book)
+            window.reload_global_rules()
+            settle()
+            expect("non applicable" in window.rules_summary.text(), "Les règles inapplicables ne sont pas signalées.")
+            rearranged = directory / "colonnes réordonnées.csv"
+            rearranged.write_text("User,RecordID,Artifact\nélève,0001,MFT\nbob,9007199254740993,EVTX\nélève,2,MFT\n", encoding="utf-8")
+            import_with_dialog(rearranged, directory / "colonnes.timeline")
+            settle()
+            expect(window.model.data(window.model.index(0, 1), Qt.BackgroundRole).name() == "#ffc7ce", "La règle globale ne suit pas le nom de colonne.")
+            window.set_view(View(format_rules=[FormatRule(FilterGroup("and", [Filter(0, "eq", "élève")]), "#aabbcc", target=0)]))
+            settle()
+            expect(window.model.data(window.model.index(0, 1), Qt.BackgroundRole).name() == "#aabbcc", "La règle locale doit être prioritaire.")
+            window.set_view(View(global_rules_enabled=False))
+            settle()
+            expect(window.model.data(window.model.index(0, 1), Qt.BackgroundRole) is None, "La désactivation globale par vue ne fonctionne pas.")
+            expect(RuleStore(window.rule_store.path).load() == book, "Les règles globales n’ont pas été persistées.")
+            before = window.rule_store.path.read_bytes()
+            denied = False
+            with window.rule_store.path.open("rb"):
+                try:
+                    window.rule_store.save(RuleBook())
+                except PermissionError:
+                    denied = True
+            expect(denied and window.rule_store.path.read_bytes() == before, "Le verrouillage Windows des règles n’a pas préservé la configuration.")
+            expect(not list(directory.glob("*.partial")), "Un fichier de règles temporaire reste après l’échec.")
+        check("shared_rules_column_names_priority_persistence_and_windows_lock", shared_rules_across_columns)
+
+        def selection_notes_and_export():
+            selection = window.tree.selectionModel()
+            for number in (0, 1):
+                selection.select(window.model.index(number, 0), QItemSelectionModel.Select | QItemSelectionModel.Rows)
+            window.annotate_selection("mark")
+            settle()
+            expect(window.case.bookmarks() == {1: "", 2: ""}, "La sélection n’a pas été marquée exactement.")
+            selection = window.tree.selectionModel()
+            for number in (0, 1):
+                selection.select(window.model.index(number, 0), QItemSelectionModel.Select | QItemSelectionModel.Rows)
+            window.annotate_selection("append", "À examiner\n=1+1")
+            settle()
+            expect(window.case.bookmarks() == {1: "À examiner\n=1+1", 2: "À examiner\n=1+1"}, "L’annotation collective est incorrecte.")
+            expect(window.model.notes == window.case.bookmarks(), "Les notes de la page visible n’ont pas été actualisées.")
+            exported = directory / "signets et notes.csv"
+            window.case.export(exported, View(bookmarks_only=True), include_annotations=True)
+            with exported.open(encoding="utf-8-sig", newline="") as incoming:
+                rows = list(csv.reader(incoming))
+            expect(len(rows) == 3 and rows[0][-3:] == ["Fireblade_SourceRecord", "Fireblade_Bookmarked", "Fireblade_Note"], "L’export annoté n’a pas les bonnes colonnes ou lignes.")
+            expect(rows[1][-1] == "À examiner\n=1+1" and rows[2][1] == "9007199254740993", "Notes ou identifiants altérés dans l’export annoté.")
+        check("bulk_selection_notes_and_annotated_export", selection_notes_and_export)
 
         report["memory"] = windows_memory()
         report["status"] = "passed"

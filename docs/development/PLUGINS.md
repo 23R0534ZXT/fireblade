@@ -29,3 +29,9 @@ Menu **Affichage → Profils et plugins → Installer un profil JSON**. Exemple 
 Il est également possible de déposer le fichier dans `%LOCALAPPDATA%\Fireblade\Plugins`. Le gestionnaire signale les fichiers invalides. Limites : 100 fichiers, 2 Mo par fichier, 1024 noms par liste. Aucun code du fichier JSON n’est exécuté. Les DLL C# de Timeline Explorer ne sont pas chargées.
 
 Pour un nouveau traitement qui dépasse une présentation, créer un module Python distinct dans `core/`, avec un test sur un petit export représentatif, puis le raccorder explicitement. Un moteur de script général dans l’interface n’est pas nécessaire.
+
+## Transformations déclaratives
+
+Les profils acceptent aussi une liste `transforms` : colonnes UTC à partir d’une date ISO, Unix, FILETIME, WebKit, .NET ou OLE ; expression scalaire ; indicateurs MACB ; catégories de timeline. Le registre et les limites sont décrits dans [COMPATIBILITE.md](COMPATIBILITE.md). Une vue SQL persistante ajoute ces résultats à la grille, aux filtres, regroupements et exports. Le CSV et les valeurs source ne sont pas réécrits.
+
+Les adaptations intégrées couvrent les traitements temporels et catégories des familles Plaso/L2T, Psort, ForensicTimeline et mactime, ainsi que les dates séparées de PeScan/Wisp. Des métadonnées d’alias facilitent la migration des layouts de 45 profils. Le catalogue de 193 noms reste un catalogue de reconnaissance : il n’exécute pas 193 parsers binaires ou de textes spécialisés.

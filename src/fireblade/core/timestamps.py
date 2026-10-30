@@ -20,3 +20,9 @@ def display_timestamp(value, mode='source'):
         # Never remove precision greater than seven source digits.
         fraction = (fraction or '').ljust(7, '0')
     return date + ' ' + clock + ('.' + fraction if fraction else '') + zone
+
+
+def timestamp_key(column):
+    """UTC nanosecond order key, including dates outside TIMESTAMP_NS's range."""
+    return (f"cast(epoch_us(try_cast({column} AS TIMESTAMPTZ)) AS HUGEINT)*1000 + "
+            f"try_cast(right(rpad(regexp_extract({column}, '\\.([0-9]+)',1),9,'0'),3) AS HUGEINT)")

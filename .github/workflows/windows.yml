@@ -50,7 +50,7 @@ jobs:
 
   publish:
     name: Publish standalone prototype
-    needs: qualification
+    needs: [qualification, native_storage]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: windows-latest
     permissions:
@@ -81,6 +81,29 @@ jobs:
             gh release create $env:RELEASE_TAG dist/Fireblade.exe --target $env:GITHUB_SHA --prerelease --title "Fireblade - prototype Windows" --notes-file $notes --repo $env:GITHUB_REPOSITORY
           }
           if ($LASTEXITCODE -ne 0) { throw 'Publication du fichier autonome impossible' }
+
+  native_storage:
+    name: Native Windows UNC and long paths
+    needs: tests
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: '1'
+      FIREBLADE_TEST_SMB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: >-
+          python -m pip install --only-binary=:all: -r requirements/runtime.txt pytest
+      - run: python -m pytest tests/core/test_native_windows_storage.py -q --junitxml=artifacts/windows-storage.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-native-storage
+          path: artifacts/
+          retention-days: 14
 
   portable:
     name: Windows x64 executable

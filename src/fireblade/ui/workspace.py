@@ -110,13 +110,13 @@ class WorkspaceMixin:
         try:
             if not Path(snapshot.path).is_file():
                 raise FileNotFoundError(f"Analyse introuvable : {snapshot.path}")
-            candidate = Case(snapshot.path, settings=self.settings)
+            candidate = self.connection_work(lambda: Case(snapshot.path, settings=self.settings))
             if candidate.info != snapshot.source_info:
                 raise ValueError("Cette analyse a été remplacée par un autre jeu de données.")
             candidate.validate_view(snapshot.view)
         except Exception as exc:
             if candidate:
-                candidate.close()
+                self.connection_work(candidate.close)
             self.sync_tabs()
             self.error(exc)
             return
@@ -153,7 +153,8 @@ class WorkspaceMixin:
         try:
             target = Path(path).resolve()
             protected = {Path(s.path).resolve() for s in self.documents} | {Path(s.source_info["path"]).resolve() for s in self.documents}
-            if target in protected:
+            from fireblade.core.paths import protected_destination
+            if protected_destination(target,protected):
                 raise ValueError("La session ne peut pas écraser une analyse ou sa source.")
             write_session(target, self.documents, self.active_document)
             self.statusBar().showMessage("Session enregistrée : onglets, vues et dispositions des colonnes")
@@ -178,18 +179,18 @@ class WorkspaceMixin:
                         raise ValueError(f"Analyse remplacée : {snapshot.path}")
                     existing.validate_view(snapshot.view)
                 else:
-                    with_case = Case(snapshot.path, settings=self.settings)
+                    with_case = self.connection_work(lambda: Case(snapshot.path, settings=self.settings))
                     try:
                         if with_case.info != snapshot.source_info:
                             raise ValueError(f"Analyse remplacée : {snapshot.path}")
                         with_case.validate_view(snapshot.view)
                     finally:
-                        with_case.close()
+                        self.connection_work(with_case.close)
             self.detach()
             self.documents, self.active_document = snapshots, -1
             self.sync_tabs()
             self.switch_document(active)
         except Exception as exc:
             if candidate:
-                candidate.close()
+                self.connection_work(candidate.close)
             self.error(exc)

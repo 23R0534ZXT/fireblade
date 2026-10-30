@@ -25,7 +25,15 @@ def compile_condition(condition, column, numeric_expression, depth=0, budget=Non
         return (" AND " if condition.logic == "and" else " OR ").join(parts), args
     if not isinstance(condition, Filter):
         raise ValueError("Condition invalide")
-    col, op, value = column(condition.column), condition.operator, condition.value
+    op, value = condition.operator, condition.value
+    if op == "expression":
+        from fireblade.core.expressions import compile_expression
+        owner = getattr(column, '__self__', None)
+        headers = getattr(owner, 'headers', None)
+        if headers is None:
+            raise ValueError("Le schéma des colonnes est nécessaire pour cette expression")
+        return compile_expression(value, headers, column, numeric_expression)
+    col = column(condition.column)
     if not isinstance(value, str):
         raise ValueError("La valeur d’une condition doit être du texte")
     if op in ("empty", "not_empty"):
@@ -39,8 +47,11 @@ def compile_condition(condition, column, numeric_expression, depth=0, budget=Non
     if op in ("gt", "ge", "lt", "le", "after", "before", "date_before", "date_after", "date_eq", "date_ne"):
         comparison = {"gt": ">", "ge": ">=", "lt": "<", "le": "<=", "after": ">=", "before": "<=", "date_before": "<", "date_after": ">", "date_eq": "=", "date_ne": "<>"}[op]
         typ = "TIMESTAMP" if op in ("after", "before", "date_before", "date_after", "date_eq", "date_ne") else "DECIMAL(38,10)"
-        expr = f"try_cast({col} AS {typ})" if typ == "TIMESTAMP" else numeric_expression(col)
-        return f"{expr} {comparison} cast(? AS {typ})", [value]
+        if typ == 'TIMESTAMP':
+            from fireblade.core.timestamps import timestamp_key
+            return f'({timestamp_key(col)}) {comparison} ({timestamp_key("cast(? AS VARCHAR)")})', [value,value]
+        return f'{numeric_expression(col)} {comparison} cast(? AS {typ})', [value]
+
     if op in ("text_gt", "text_ge", "text_lt", "text_le"):
         comparison = {"text_gt": ">", "text_ge": ">=", "text_lt": "<", "text_le": "<="}[op]
         return f"{col} {comparison} ?", [value]

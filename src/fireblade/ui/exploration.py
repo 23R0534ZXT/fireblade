@@ -160,49 +160,21 @@ class ExplorationMixin:
 
     def collapse_groups(self):
         self._expand_generation += 1
+        if self.view.expand_all:
+            view = copy.deepcopy(self.view)
+            view.expand_all = False
+            self.set_view(view)
+            return
         self.tree.collapseAll()
         self.tree.frozen.collapseAll()
 
     def expand_groups(self):
-        """Expand the loaded group page progressively, with a total node budget.
-
-        Enumerating every leaf of a multi-GB file would defeat paging. Additional
-        pages remain accessible with Next; this command never fetches them all.
-        """
-        if not self.model or not self.view.groups:
+        if not self.model or not self.view.groups or self.busy:
             return
-        self._expand_generation += 1
-        generation, model = self._expand_generation, self.model
-        budget = max(1, self.settings.max_loaded_rows // self.settings.page_size)
-        pending = [(QModelIndex(), 0)]
-        expanded = 0
-        def step():
-            nonlocal expanded
-            if generation != self._expand_generation or model is not self.model:
-                return
-            if model.jobs:
-                QTimer.singleShot(20, step)
-                return
-            if not pending:
-                self.statusBar().showMessage(f"{expanded} groupe(s) déplié(s) dans la limite des pages chargées")
-                return
-            parent, row = pending.pop()
-            if row >= model.rowCount(parent):
-                QTimer.singleShot(0, step)
-                return
-            pending.append((parent, row + 1))
-            index = model.index(row, 0, parent)
-            node = model.node(index)
-            if node.group:
-                if expanded >= budget:
-                    self.statusBar().showMessage("Dépliage limité pour préserver la mémoire ; ouvrez les autres groupes à la demande")
-                    return
-                expanded += 1
-                self.tree.setExpanded(index, True)
-                if len(node.path) < len(self.view.groups):
-                    pending.append((index, 0))
-            QTimer.singleShot(20, step)
-        step()
+        view = copy.deepcopy(self.view)
+        view.expand_all = True
+        self.set_view(view)
+        self.statusBar().showMessage('Dépliage complet · index sur disque, navigation avec Suivant/Précédent ; annulation possible')
 
     def find_workspace(self):
         if not self.documents or not self.can_open_file():
@@ -325,14 +297,10 @@ class ExplorationMixin:
         from fireblade.core.layout import read_layout
         try:
             if Path(source).suffix.lower() in (".layout", ".local"):
-                from fireblade.core.tle_compat import read_tle_columns
-                columns = read_tle_columns(source, self.case.headers)
-                from fireblade.core.models import SortKey
-                view = copy.deepcopy(self.view)
-                view.groups = [c['column'] for c in sorted(columns, key=lambda c:c['group']) if c['group'] >= 0]
-                view.pinned_columns = [c['column'] for c in columns if c['pinned']]
-                view.sorts = [SortKey(c['column'], 'timestamp' if c['column'] in view.timestamp_columns else 'text', c['sort']=='Descending')
-                              for c in sorted(columns,key=lambda c:c['sort_index']) if c['sort'] in ('Ascending','Descending')]
+                from fireblade.core.tle_layout import read_tle_layout
+                layout = read_tle_layout(source, self.case.headers)
+                columns, view = layout.columns, layout.view
+                self.case.validate_view(view)
                 self.tree.set_pins([])
                 self.set_view(view)
                 header = self.tree.header()
@@ -344,7 +312,7 @@ class ExplorationMixin:
                         self.tree.setColumnHidden(section,c['position']<0)
                     else:
                         self.tree.frozen.setColumnWidth(section,c['width'])
-                self.statusBar().showMessage('Colonnes, groupes et tris du layout TLE importés ; types de tri à vérifier')
+                self.statusBar().showMessage('Layout TLE importé : colonnes, filtres, recherche, groupes, résumés et règles. '+ '; '.join(layout.warnings))
             else:
                 self.set_view(read_layout(source, self.case.headers))
         except (OSError, ValueError, TypeError, KeyError, ParseError) as exc:
@@ -353,7 +321,7 @@ class ExplorationMixin:
     def edit_filter_text(self):
         if not self.case or self.busy:
             return
-        text, accepted = QInputDialog.getMultiLineText(self, "Expression de filtre", "Syntaxe : Contains([Colonne], 'texte') And [ID] >= 10\nFonctions acceptées : Contains, StartsWith, EndsWith, IsNull, IsNullOrEmpty ; In, Between, And, Or, Not.")
+        text, accepted = QInputDialog.getMultiLineText(self, "Expression de filtre", "Syntaxe : Contains([Colonne], 'texte') And [ID] >= 10\nFonctions : Contains, Upper, Substring, Iif, IsNull, ToInt, Round, GetYear, AddDays, DateDiffDay… ; calculs, In, Between, Like, And, Or, Not.")
         if not accepted:
             return
         from fireblade.core.filter_text import parse_filter

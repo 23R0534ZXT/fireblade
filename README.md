@@ -347,10 +347,20 @@ Pour relancer les contrôles intégrés sans script supplémentaire :
 
 Choisir un nouveau chemin de rapport. Les données de contrôle sont synthétiques ; cette commande ne réalise pas une expertise sur les fichiers de l’utilisateur.
 
+## Conversions et compatibilité TLE
+
+**Analyse → Convertir une date** crée une colonne UTC distincte : ISO, dates jour/mois ou mois/jour, Unix s/ms/us/ns, FILETIME, WebKit, ticks .NET et OLE Automation. Les décalages explicites, fuseaux IANA et 142 identifiants Windows sont pris en charge. La précision atteint neuf décimales, y compris avant 1970 ; les valeurs invalides deviennent NULL dans la colonne dérivée, sans retirer leur enregistrement. Le contrôle des colonnes dérivées compte ces NULL. Les heures locales ambiguës ou inexistantes suivent les conventions DST d’ICU : utiliser un décalage explicite lorsque l’enquête doit les départager.
+
+**Analyse → Ajouter une colonne calculée** accepte des expressions imbriquées (`Iif`, texte, nombres, dates). Les colonnes dérivées sont des vues SQL persistantes ; aucune copie complète supplémentaire de la table n’est nécessaire. Elles sont utilisables pour filtrer, regrouper, trier et exporter. Les transformations des profils JSON passent par le même registre explicite.
+
+**Déplier tous les groupes (vue paginée)** indexe toute la hiérarchie sur disque, y compris au-delà des premiers groupes. Suivant/Précédent parcourent une fenêtre bornée de lignes. Le repli rétablit l’arbre interactif ; l’indexation est annulable. La première indexation peut prendre du temps et utilise de l’espace temporaire.
+
+L’import des layouts TLE traduit les noms `col…`, les filtres et expressions compatibles, la recherche, les groupes temporels, les résumés et les règles de couleur textuelles/de valeur. Les tests incluent quatre layouts XML officiels et les deux fixtures Plaso de TLEFilePlugins. Une règle non traduite est refusée ; une colonne absente de la version du CSV est signalée. Voir [les détails et limites](docs/development/COMPATIBILITE.md).
+
 ## Limites actuelles
 
 - Prototype en cours de développement, sans revendication de parité complète avec Timeline Explorer.
-- Compatibilité partielle avec les fichiers TLE : sources et tags des sessions, colonnes/groupes/tris de certains layouts ; pas toutes les expressions/règles DevExpress ni les transformations de chaque plugin.
+- Compatibilité partielle avec les fichiers TLE : sources et tags des sessions, colonnes/groupes/tris de certains layouts ; expressions courantes, règles textuelles et de valeur, résumés, recherche et noms de contrôles ; les règles graphiques DevExpress et les réglages spécifiques non traduits restent signalés.
 - Le catalogue de schémas n’est pas une qualification de 193 parseurs : voir [profils et plugins](docs/development/PLUGINS.md).
 - Pas de rapports HTML/PDF ni de catégories de tags personnalisées ; ces absences ne sont pas présentées comme des écarts vérifiés de Timeline Explorer.
 - Sessions par référence aux bases, sans empaquetage autonome d’un dossier d’enquête.
@@ -382,6 +392,6 @@ Le rendu clair utilise une palette et un style Fusion cohérents, y compris lors
 
 Les captures Windows sont contrôlées sur les préférences clair/sombre et les facteurs d’échelle 1, 1,25, 1,5 et 2. Le contrôle cherche les pixels des glyphes réellement dessinés, notamment dans les menus et boutons, y compris les états inactifs et désactivés.
 
-La qualification en charge génère un vrai fichier CSV d’au moins **3 GiB** (plus de 3 Go décimaux), avec des contenus variés, Unicode, champs multilignes, valeurs vides et grands identifiants. Elle importe intégralement le fichier dans le programme autonome, vérifie les comptages avec une référence Python indépendante, parcourt des groupes imbriqués et des pages profondes, puis teste filtres, tris, règles, notes, sessions, exports complets et annulations. Les rapports contiennent durées, mémoire, réactivité et captures.
+La qualification en charge réutilise le CSV publié de **3 GiB** (plus de 3 Go décimaux), avec des contenus variés, Unicode, champs multilignes, valeurs vides et grands identifiants. Elle importe intégralement le fichier dans le programme autonome, vérifie les comptages avec une référence Python indépendante, parcourt des groupes imbriqués et des pages profondes, puis teste filtres, tris, règles, notes, sessions, exports complets et annulations. Les rapports contiennent durées, mémoire, réactivité et captures.
 
 Il s’agit de parcours automatisés QtTest, exécutés avec le plugin Windows natif : ils ne sont pas présentés comme une manipulation physique humaine ni comme des essais sur tous les exports d’enquête existants. Les données restent synthétiques et le cache disque n’est pas purgé. Voir les artefacts `Windows-visual-captures` et `Windows-3GiB-report-and-captures` de l’exécution concernée et [la procédure](docs/validation/QUALIFICATION.md).

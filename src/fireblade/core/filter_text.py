@@ -154,7 +154,7 @@ class Parser:
         return FilterGroup('not', [result]) if negate else result
 
 
-def parse_filter(text, headers):
+def _parse_simple_filter(text, headers):
     parser = Parser(text, headers)
     if not parser.tokens:
         return FilterGroup()
@@ -162,3 +162,12 @@ def parse_filter(text, headers):
     if parser.position != len(parser.tokens):
         raise ValueError('Texte supplémentaire après la condition')
     return result if isinstance(result, FilterGroup) else FilterGroup('and', [result])
+
+
+def parse_filter(text, headers):
+    try:
+        return _parse_simple_filter(text, headers)
+    except ValueError:
+        from fireblade.core.expressions import compile_expression
+        compile_expression(text, headers, lambda i: f'"c{i}"', lambda c: f'try_cast({c} AS DECIMAL(38,10))')
+        return FilterGroup('and', [Filter(0,'expression',text)])

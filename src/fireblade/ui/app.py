@@ -8,7 +8,7 @@ import sys
 from xml.parsers.expat import ExpatError
 from pathlib import Path
 
-from PySide6.QtCore import QModelIndex, QThreadPool, QTimer, Qt
+from PySide6.QtCore import QModelIndex, QThreadPool, QTimer, Qt, QEventLoop
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
     QDialogButtonBox, QFileDialog, QFormLayout, QHBoxLayout, QHeaderView,
@@ -102,7 +102,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(view_menu, "Colonnes…", self.columns)
         action(view_menu, "Réinitialiser les largeurs", self.reset_widths, "Ctrl+R")
         action(view_menu, "Résumés et tri des groupes…", self.edit_groups)
-        action(view_menu, "Déplier les groupes de la page", self.expand_groups, "Ctrl+Alt+M")
+        action(view_menu, "Déplier tous les groupes (vue paginée)", self.expand_groups, "Ctrl+Alt+M")
         action(view_menu, "Replier tous les groupes", self.collapse_groups, "Ctrl+K")
         action(view_menu, "Analyses ouvertes…", self.choose_document, "Ctrl+Shift+P", False)
         action(view_menu, "Messages…", self.show_messages, requires_file=False)
@@ -143,6 +143,10 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(analysis_menu, "Afficher la cellule / JSON…", self.cell_details)
         action(analysis_menu, "Provenance et SHA-256…", self.integrity)
         analysis_menu.addSeparator()
+        from fireblade.ui.derived_columns import edit_derived, quality
+        action(analysis_menu, 'Convertir une date…', lambda: edit_derived(self))
+        action(analysis_menu, 'Ajouter une colonne calculée…', lambda: edit_derived(self,expression=True))
+        action(analysis_menu, 'Contrôler les colonnes dérivées…', lambda: quality(self))
         self.cancel_action = action(analysis_menu, "Interrompre la requête", self.interrupt_queries, requires_file=False)
         self.cancel_action.setEnabled(False)
         action(help_menu, "Guide d’utilisation", lambda: show_guide(self), "F1", False)
@@ -306,7 +310,11 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             self.cancel_action.setEnabled(self.case is not None)
         job = Job(fn)
         self.jobs.add(job)
+        released = False
         def release():
+            nonlocal released
+            if released:return False
+            released = True
             self.jobs.discard(job)
             job.signals.done.disconnect(finish)
             job.signals.error.disconnect(fail)
@@ -316,20 +324,21 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
                 self.busy = False
                 self.centralWidget().setEnabled(True)
                 self.set_file_actions(self.model is not None)
+            return True
 
         def finish(value):
-            release()
+            if not release():return
             done(value)
 
         def fail(message):
-            release()
+            if not release():return
             if on_error:
                 on_error(message)
             else:
                 self.error(message)
 
         def was_cancelled():
-            release()
+            if not release():return
             self.statusBar().showMessage("Opération annulée.")
             if on_cancel:
                 on_cancel()
@@ -340,6 +349,50 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         job.signals.progress.connect(self.statusBar().showMessage)
         self.pool.start(job)
         return job
+
+    def connection_work(self, function, message='Ouverture de l’analyse…'):
+        """Keep Windows painting/timers alive during native connect/checkpoint.
+
+        A local event loop preserves the existing synchronous ownership protocol;
+        all controls that could mutate the workspace stay disabled until return.
+        The serialized pool owns the actual DuckDB call.
+        """
+        loop = QEventLoop(self)
+        previous_busy = self.busy
+        previous_cancel = self.cancel_action.isEnabled()
+        self.cancel_action.setEnabled(False)
+        self.busy = True
+        self.centralWidget().setEnabled(False)
+        self.set_file_actions(False)
+        self.statusBar().showMessage(message)
+        result, errors = [], []
+        job = Job(function)
+        def done(value):
+            result.append(value)
+            loop.quit()
+        def failed(error):
+            errors.append(error)
+            loop.quit()
+        job.signals.done.connect(done)
+        job.signals.error.connect(failed)
+        job.signals.cancelled.connect(lambda: failed('Opération annulée'))
+        self.jobs.add(job)
+        try:
+            self.pool.start(job)
+            loop.exec()
+        finally:
+            self.jobs.discard(job)
+            job.signals.done.disconnect()
+            job.signals.error.disconnect()
+            job.signals.cancelled.disconnect()
+            self.busy = previous_busy
+            self.cancel_action.setEnabled(previous_cancel)
+            self.centralWidget().setEnabled(not previous_busy)
+            self.set_file_actions(self.model is not None and not previous_busy)
+            loop.deleteLater()
+        if errors:
+            raise RuntimeError(errors[0])
+        return result[0]
 
     def can_open_file(self):
         if self.busy or self.pool.activeThreadCount() or self.jobs or (self.model and self.model.jobs):
@@ -372,7 +425,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             self.error("Choisissez un nouveau nom : une base existante ne sera pas écrasée.")
             return
         try:
-            candidate = Case(target, settings=self.settings)
+            candidate = self.connection_work(lambda: Case(target, settings=self.settings))
         except Exception as exc:
             self.error(exc)
             return
@@ -421,7 +474,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             path = Path(snapshot.path)
             if not path.is_file():
                 raise FileNotFoundError(f"Analyse introuvable : {path}")
-            restored = Case(path, settings=self.settings)
+            restored = self.connection_work(lambda: Case(path, settings=self.settings))
             if restored.info != snapshot.source_info:
                 raise ValueError("L’analyse précédente a été remplacée par un autre jeu de données.")
             self.attach(restored, initial_view=snapshot.view, header_state=snapshot.header_state)
@@ -430,7 +483,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
                 if self.case is restored:
                     self.detach()
                 else:
-                    restored.close()
+                    self.connection_work(restored.close)
             return str(exc) or type(exc).__name__
         return None
 
@@ -487,7 +540,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             self.model.generation += 1
         self.pool.waitForDone()
         if self.case:
-            self.case.close()
+            self.connection_work(self.case.close, 'Fermeture de l’analyse · enregistrement sur disque…')
         self.tree.setModel(None)
         if self.model:
             self.model.deleteLater()
@@ -517,16 +570,16 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             self.statusBar().showMessage("Cette analyse est déjà ouverte.")
             return
         try:
-            candidate = Case(path, settings=self.settings)
+            candidate = self.connection_work(lambda: Case(path, settings=self.settings))
             if not candidate.headers:
-                candidate.close()
+                self.connection_work(candidate.close)
                 raise ValueError("Base vide ou import inachevé")
         except Exception as exc:
             self.error(exc)
             return
         existing = next((i for i, doc in enumerate(self.documents) if doc.path == str(path.resolve())), -1)
         if existing >= 0:
-            candidate.close()
+            self.connection_work(candidate.close)
             self.switch_document(existing)
             return
         self.detach()
@@ -789,7 +842,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
     def more(self):
         if not self.model:
             return
-        index = self.tree.currentIndex()
+        index = QModelIndex() if self.view.expand_all else self.tree.currentIndex()
         if index.isValid():
             index = index.siblingAtColumn(0)
             if not self.model.node(index).group:
@@ -799,7 +852,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
     def previous(self):
         if not self.model:
             return
-        index = self.tree.currentIndex()
+        index = QModelIndex() if self.view.expand_all else self.tree.currentIndex()
         if index.isValid():
             index = index.siblingAtColumn(0)
             if not self.model.node(index).group:
@@ -921,7 +974,8 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
     def export_destination_is_safe(self, target):
         protected = {Path(s.path).resolve() for s in self.documents} | {Path(s.source_info["path"]).resolve() for s in self.documents}
         protected.add(self.rule_store.path.resolve())
-        if Path(target).resolve() in protected:
+        from fireblade.core.paths import protected_destination
+        if protected_destination(target,protected):
             self.error("L’export ne peut pas écraser une source, une analyse ouverte ou les règles globales.")
             return False
         return True
@@ -985,13 +1039,21 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         if profile is None:
             self.statusBar().showMessage("Aucun profil reconnu : affichage CSV générique conservé")
             return
-        view, order = profile_view(profile, self.case.headers)
-        self.set_view(view)
-        header = self.tree.header()
-        for position, column in enumerate(order, 1):
-            header.moveSection(header.visualIndex(column + 1), position)
-            self.tree.setColumnHidden(column + 1, False)
-        self.statusBar().showMessage(f"Profil {profile.name} appliqué ; valeurs sources inchangées")
+        from fireblade.core.profiles import profile_transformations
+        def finish():
+            view, order = profile_view(profile, self.case.headers)
+            self.set_view(view)
+            header = self.tree.header()
+            for position,column in enumerate(order,1):
+                header.moveSection(header.visualIndex(column+1),position)
+                self.tree.setColumnHidden(column+1,False)
+            self.statusBar().showMessage(f'Profil {profile.name} appliqué ; valeurs sources intactes, conversions dans des colonnes dérivées')
+        definitions = profile_transformations(profile,self.case.headers)
+        if definitions:
+            from fireblade.ui.derived_columns import add_columns
+            add_columns(self,definitions,finish)
+        else:
+            finish()
 
     def cell_details(self):
         if not self.model or self.busy:

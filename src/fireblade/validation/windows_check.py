@@ -372,6 +372,8 @@ def run_check(app, report_path):
 
         from fireblade.validation.feature_checks import check_features
         check_features(window, directory, settle, check, expect, report_path.parent)
+        from fireblade.validation.completion_checks import check_completion
+        check_completion(window,directory,settle,check,expect,report_path.parent)
         report["memory"] = windows_memory()
         report["status"] = "passed"
     except Exception as exc:

@@ -14,7 +14,7 @@ class ImportDialog(QDialog):
 
     def __init__(self, source, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Ouvrir un CSV")
+        self.setWindowTitle("Importer les données")
         self.setMinimumWidth(520)
         source = Path(source)
         directory = analyses_directory() if sys.platform == "win32" else source.parent
@@ -36,7 +36,16 @@ class ImportDialog(QDialog):
         destination.addWidget(browse)
         form.addRow("Enregistrer l’analyse :", destination)
         layout.addLayout(form)
+        self.sheet = None
+        excel = source.suffix.lower() == ".xlsx"
+        if excel:
+            from .spreadsheets import sheet_names
+            self.sheet = QComboBox()
+            self.sheet.addItems(sheet_names(source))
+            form.addRow("Feuille Excel :", self.sheet)
+            layout.addWidget(QLabel("Valeurs et formules importées comme texte ; la mise en forme Excel n’est pas conservée."))
         options = QCheckBox("Options du CSV")
+        options.setVisible(not excel)
         layout.addWidget(options)
         advanced = QWidget()
         fields = QFormLayout(advanced)

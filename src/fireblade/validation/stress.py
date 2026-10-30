@@ -369,24 +369,26 @@ def run_stress(app,spec_path,report_path):
                 def forward(message):
                     if message=='Écriture des enregistrements sur disque…':audit['write_started']=time.monotonic()
                     elif message=='Vérification de l’intégrité de la source…':audit['native_finished']=True
+                    elif message.startswith('Import sur disque · ') and message.endswith(' enregistrements écrits…'):
+                        audit['written_records']=int(message.split(' · ')[1].split(' ')[0].replace(',',''))
                     progress(message)
                 try:return native(case,source,delimiter,encoding,forward)
                 except OperationCancelled as exc:
-                    audit['native_exception']=type(exc.__cause__).__name__
+                    audit['cancel_exception_cause']=type(exc.__cause__).__name__
                     audit['tables_after_rollback']=case.db.execute('SHOW TABLES').fetchall()
                     raise
             def cancel():
-                if 'write_started' in audit and time.monotonic()-audit['write_started']>.25 and not audit.get('native_finished'):
+                if audit.get('written_records',0)>0 and not audit.get('native_finished'):
                     timer.stop();run.window.interrupt_queries()
             Case.import_csv=traced;timer.timeout.connect(cancel);timer.start(25)
             try:run.import_csv(source,run.out/'cancelled.timeline')
             finally:timer.stop();Case.import_csv=native
-            expect(audit.get('native_exception')=='InterruptException','Import was not interrupted in native CSV processing')
+            expect(audit.get('written_records',0)>0,'Import was not interrupted after actual database writes')
             expect(audit.get('tables_after_rollback')==[],'Partial tables survived rollback')
             expect(run.window.case.path==full_case and run.window.view==previous,'Previous analysis/view not restored')
             expect(run.window.tree.isColumnHidden(14),'Column layout not restored after cancelled import')
             return audit
-        run.check('cancel_native_3_GiB_import_rollback_and_restore_prior_workspace',cancelled_import)
+        run.check('cancel_partial_3_GiB_import_rollback_and_restore_prior_workspace',cancelled_import)
 
         def final_integrity():
             def digest():

@@ -29,12 +29,14 @@ Une graine fixe rend la génération reproductible. Pendant la génération, Pyt
 - Vues nommées, colonnes, changement d’onglet, libération et réouverture de la base, session et persistance des notes.
 - CSV et XLSX filtrés avec annotations, comptages exportés et export CSV complet de plusieurs Go. Le CSV complet est relu indépendamment et son SHA-256 comparé à la source du générateur.
 - Annulation après le début d’écriture d’un export, préservation de la destination et nettoyage du temporaire.
-- Interruption pendant le traitement CSV natif d’un second import 3 GiB, vérification de l’exception native, du rollback sans tables partielles et de la restauration de l’analyse précédente.
+- Annulation d’un second import 3 GiB après l’écriture effective d’au moins un lot, vérification du rollback sans tables partielles et de la restauration de l’analyse précédente.
 - Empreinte finale de la source et réutilisation de la base.
 
 ## Mesures
 
 Chaque étape enregistre sa durée. Le processus Windows mesure son working set et son pic avec l’API système ; un timer de l’interface relève ses intervalles pour signaler les longues pauses. Les versions, système, CPU logique, police et style sont enregistrés. La croissance du working set après échauffement des cycles est contrôlée ; un seuil QA de 1536 MiB repère un emballement, sans constituer un plafond de RAM garanti par le produit.
+
+Le premier passage de cette qualification a trouvé un dépassement mémoire réel à l’import du fichier de 3 222 648 632 octets. Le moteur traite désormais les gros CSV par fichiers temporaires bornés à 16 MiB (moins avec un budget réduit), séparés sur les limites d’enregistrements CSV complets. Chaque lot est inséré par DuckDB dans la même transaction ; l’annulation retire tous les lots. Les champs multilignes, séparateurs, encodages, doublons d’en-têtes et grands identifiants sont vérifiés. Les exports utilisent un seul espace de tri pour tenir dans le budget mémoire.
 
 Les rapports JSON et PNG sont publiés dans Actions. Les CSV et bases volumineuses ne sont pas joints aux artefacts. Le générateur et la graine permettent de reconstruire les données.
 

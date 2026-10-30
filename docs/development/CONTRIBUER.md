@@ -62,3 +62,9 @@ Utiliser un nouveau dossier pour les données générées. Indiquer le système,
 - Décrire le problème concret, le comportement obtenu et les vérifications utiles dans la PR.
 
 Le workflow valide la PR, puis main après intégration. Seul main publie une préversion avec le fichier autonome. Le statut de prototype reste explicite.
+
+## Vérifier avant d’utiliser un binaire
+
+Le README principal contient un parcours de récupération des sources, revue des scripts, construction locale et calcul SHA-256. Une archive de sources permet de compiler sans utiliser le binaire publié. Le commit sélectionné doit correspondre à la préversion souhaitée ; un dépôt privé nécessite un accès explicite ou une archive partagée.
+
+Les notes de Release indiquent le SHA-256 du fichier publié. Cette empreinte permet de vérifier un téléchargement, pas de certifier qu’un logiciel est sûr. La construction n’étant pas reproductible bit à bit, ne pas exiger que le SHA-256 de la construction locale soit identique à celui de la Release.

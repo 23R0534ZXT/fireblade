@@ -6,11 +6,23 @@ import os
 from pathlib import Path
 import platform
 import shutil
+import subprocess
 import sys
 import tomllib
 
 DISTRIBUTIONS = ("duckdb", "PySide6-Essentials", "shiboken6", "openpyxl", "et-xmlfile", "pyinstaller")
 RUNTIME_DLLS = ("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll")
+
+
+def source_revision(root):
+    try:
+        revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, check=True,
+                                  capture_output=True, text=True, timeout=5).stdout.strip()
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=root, check=True,
+                                capture_output=True, text=True, timeout=5).stdout.strip()
+        return revision, bool(status)
+    except (OSError, subprocess.SubprocessError):
+        return os.environ.get("GITHUB_SHA"), None
 
 
 def runtime_binaries():
@@ -57,8 +69,9 @@ def stage_resources(root, destination):
         raise RuntimeError("La licence de l’interpréteur Python est introuvable dans son installation.")
     (legal / "DEPENDENCIES.json").write_text(json.dumps(packages, ensure_ascii=False, indent=2), encoding="utf-8")
     version = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    revision, modified = source_revision(root)
     info = dict(application="Fireblade", version=version, platform="Windows x64", packaging="onefile",
-                python=sys.version.split()[0], machine=platform.machine(), source_commit=os.environ.get("GITHUB_SHA"),
+                python=sys.version.split()[0], machine=platform.machine(), source_commit=revision, source_modified=modified,
                 maturity="prototype", dependencies=[dict(name=p["name"], version=p["version"]) for p in packages])
     (destination / "build").mkdir(exist_ok=True)
     (destination / "build" / "build-info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")

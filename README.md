@@ -32,6 +32,7 @@ Si aucune Release n’est encore disponible, ouvrir une [exécution réussie d�
 - [Configuration](#configuration)
 - [Organisation du dépôt](#organisation-du-dépôt)
 - [Lancer les sources](#lancer-les-sources)
+- [Vérifier le code et compiler soi-même](#vérifier-le-code-et-compiler-soi-même)
 - [Construire le fichier Windows](#construire-le-fichier-windows)
 - [Tests et publication](#tests-et-publication)
 - [Diagnostic](#diagnostic)
@@ -216,6 +217,68 @@ py -3.12 -m venv .venv
 Ou double-cliquer sur `scripts/windows/Lancer.cmd`. Ce lanceur prépare l’environnement des sources à la première utilisation. L’installation initiale nécessite Internet ; les lancements suivants peuvent réutiliser les dépendances installées.
 
 Trois dépendances directes d’exécution : **DuckDB**, **PySide6 Essentials** et **openpyxl**. Aucun serveur, navigateur embarqué, chaîne JavaScript ou framework d’injection de dépendances.
+
+## Vérifier le code et compiler soi-même
+
+Il n’est pas nécessaire d’utiliser le binaire fourni : vous pouvez lire les sources et fabriquer votre propre `Fireblade.exe`. Cette démarche permet de choisir le code et les dépendances utilisés pour votre construction ; elle ne remplace pas leur examen.
+
+### 1. Récupérer les sources
+
+Télécharger **Source code (zip)** depuis la préversion souhaitée dans [Releases](https://github.com/23R0534ZXT/fireblade/releases), puis extraire l’archive. Cette archive correspond au tag de la préversion.
+
+Ou, avec Git :
+
+```powershell
+git clone https://github.com/23R0534ZXT/fireblade.git
+cd fireblade
+git rev-parse HEAD
+```
+
+Pour reconstruire une préversion précise, sélectionner son tag ou son commit plutôt que la branche main qui peut évoluer. Le commit utilisé par le binaire publié figure dans les notes de Release et dans **Aide → À propos**. Avec Git, `git checkout --detach` suivi de ce commit permet de travailler sur cette révision exacte.
+
+Si le dépôt est privé, son propriétaire doit vous donner accès aux sources ou vous transmettre leur archive. Recevoir uniquement le `.exe` ne donne pas automatiquement accès au dépôt.
+
+### 2. Examiner ce qui sera exécuté
+
+Avant de lancer la construction, consulter :
+
+| Élément | À examiner |
+|---|---|
+| `src/fireblade/` | Code du programme, accès aux fichiers et logique d’analyse |
+| `scripts/windows/build.py` | Préparation de l’environnement, commande PyInstaller et vérification du binaire |
+| `scripts/windows/bundle.py` | Ressources et bibliothèques embarquées, licences et provenance |
+| `scripts/windows/verify.py` | Conditions du contrôle du fichier autonome |
+| `requirements/runtime.txt` | Versions épinglées des dépendances d’exécution |
+| `requirements/windows-build.txt` | Outils ajoutés pour fabriquer l’exécutable |
+| `.github/workflows/windows.yml` | Étapes exécutées pour les binaires publiés |
+
+La construction installe ses dépendances depuis PyPI dans `.venv-build`. Ces dépendances ont leurs propres sources et licences, référencées dans `licenses/THIRD_PARTY.md`. Elles font aussi partie de ce qu’il faut examiner si votre politique exige une revue complète.
+
+### 3. Construire votre propre fichier
+
+Sur Windows x64, installer [Python 3.12 64 bits depuis python.org](https://www.python.org/downloads/windows/). Ouvrir PowerShell dans le dossier extrait ou cloné, là où se trouve `pyproject.toml`, puis lancer :
+
+```powershell
+py -3.12 -m scripts.windows.build
+```
+
+La commande prépare les outils, construit le programme et lance ses contrôles Windows. Après succès, votre fichier est **`dist/Fireblade.exe`**. Aucun installateur ou environnement Python n’est ensuite requis sur le poste qui reçoit ce fichier.
+
+Les scripts et dépendances nécessaires à la compilation sont dans le dépôt ; le `.exe` fourni dans Releases n’est pas utilisé pour produire le vôtre. Les contrôles et leurs résultats se trouvent dans `artifacts/windows-single-file.json`.
+
+### 4. Identifier votre binaire et vérifier un téléchargement
+
+Calculer l’empreinte du fichier construit :
+
+```powershell
+Get-FileHash .\dist\Fireblade.exe -Algorithm SHA256
+```
+
+Pour un fichier téléchargé, remplacer ce chemin par celui du téléchargement et comparer son SHA-256 à celui indiqué dans les notes de sa Release. Cela vérifie que les octets correspondent au fichier annoncé ; une empreinte ne prouve pas à elle seule l’innocuité d’un programme.
+
+**La construction n’est pas encore reproductible octet pour octet.** Un binaire compilé localement peut donc avoir un SHA-256 différent du binaire publié, même à partir du même commit : versions des outils, métadonnées et environnement de construction peuvent intervenir. Ne pas interpréter cette différence seule comme la preuve d’une modification malveillante.
+
+Le fichier publié n’est pas encore signé avec un certificat de signature de code. Un avertissement Windows sur l’éditeur ou la réputation ne constitue, à lui seul, ni une preuve de malveillance ni une garantie d’innocuité. Les sources, la provenance de construction et les rapports restent consultables pour décider selon votre propre politique.
 
 ## Construire le fichier Windows
 

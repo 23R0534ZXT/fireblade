@@ -5,7 +5,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PySide6.QtWidgets import QApplication
-from timeline_next.theme import apply_theme
+from fireblade.ui.theme import apply_theme
 
 
 @pytest.fixture(scope="session", autouse=True)

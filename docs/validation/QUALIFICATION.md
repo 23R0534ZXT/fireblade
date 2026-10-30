@@ -1,6 +1,6 @@
 # Qualification visuelle et CSV 3 GiB
 
-Cette suite complète les tests unitaires et les treize contrôles rapides du fichier autonome. Elle vise les problèmes de rendu et les opérations longues qui ne sont pas démontrés par quelques enregistrements de test. Une Release ne peut être publiée que si cette suite réussit aussi.
+Cette suite complète les tests unitaires et les treize contrôles rapides du fichier autonome. Elle vise les problèmes de rendu et les opérations longues qui ne sont pas démontrés par quelques enregistrements de test. Une Release du programme ne peut être publiée que si cette suite réussit aussi.
 
 ## Ce qui est exécuté
 
@@ -17,6 +17,8 @@ Les captures couvrent accueil, menus, boutons, grille, recherche, éditeurs et f
 `scripts/windows/dataset.py` écrit séquentiellement un fichier réel d’au moins 3 × 1024³ octets. Il ne crée pas un fichier creux et ne répète pas seulement un petit bloc. Les colonnes comprennent dates, artefacts, utilisateurs, machines, grands identifiants, chemins, tailles, hachages et contenus pseudo-aléatoires uniques, commandes, JSON, Unicode, cellules vides, guillemets et champs multilignes.
 
 Une graine fixe rend la génération reproductible. Pendant la génération, Python calcule indépendamment des comptages de référence. La taille, le nombre d’enregistrements, le SHA-256 et le temps de génération sont conservés. Les données sont synthétiques ; le cache du système de fichiers n’est pas purgé.
+
+Pour un essai manuel sans générateur, le [CSV complet est aussi publié en ZIP dans une Release dédiée](https://github.com/23R0534ZXT/fireblade/releases/tag/test-data-3gib), avec manifeste et empreintes. Voir [les étapes et résultats attendus](../guides/TESTER-3GIB.md).
 
 ### Parcours dans le programme
 
@@ -40,7 +42,7 @@ Le premier passage de cette qualification a trouvé un dépassement mémoire ré
 
 Le pilote traite les événements Qt puis cède explicitement l’interpréteur aux workers Python. Une attente QtTest longue conservait le GIL et faussait fortement les temps CSV/XLSX ; cette attente n’est plus utilisée pour patienter sur les opérations de fond.
 
-Les rapports JSON et PNG sont publiés dans Actions. Les CSV et bases volumineuses ne sont pas joints aux artefacts. Le générateur et la graine permettent de reconstruire les données.
+Les rapports JSON et PNG sont publiés dans Actions. Les CSV et bases volumineuses ne sont pas joints aux artefacts de chaque exécution. Le CSV de référence dispose d’un téléchargement séparé dans la Release des données ; le générateur et la graine permettent également de le reconstruire.
 
 ## Reproduire sur Windows
 

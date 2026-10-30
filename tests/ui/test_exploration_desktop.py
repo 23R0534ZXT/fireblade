@@ -230,3 +230,26 @@ def test_actual_visible_tab_click_switches_analysis_and_preserves_state(qt_appli
     QTest.mouseClick(bar,Qt.LeftButton,pos=bar.tabRect(local).center())
     settle(qt_application,window)
     assert window.case.path==tmp_path/'second.timeline'
+
+
+def test_five_long_wrapped_tabs_remain_clickable_after_font_and_geometry_change(qt_application,tmp_path):
+    from PySide6.QtTest import QTest
+    names=['événements Windows.csv','deuxième.csv','preuve été.xlsx','colonnes réordonnées.csv','fonctions étendues.csv']
+    w=Window();errors=[];w.error=errors.append;w.show()
+    try:
+        paths=[]
+        for i,name in enumerate(names):
+            source=tmp_path/name;source.write_text('ID\n'+str(i)+'\n')
+            case=Case(tmp_path/(str(i)+'.timeline'));case.import_csv(source)
+            w.detach();w.attach(case);settle(qt_application,w);paths.append(case.path)
+        w.preferences.multiline_tabs=True;w.preferences.theme='dark';w.tabs.setFixedWidth(260)
+        w.apply_preferences();qt_application.processEvents()
+        for i in [0,4,1,3,2]:
+            bar,local=w.tabs.tab_widget(i)
+            rect=bar.tabRect(local).intersected(bar.rect())
+            assert rect.isValid()
+            QTest.mouseClick(bar,Qt.LeftButton,pos=rect.center());settle(qt_application,w)
+            assert w.case.path==paths[i],(i,w.active_document,bar.geometry())
+        assert not errors
+    finally:
+        w.preferences.theme='light';w.apply_preferences();settle(qt_application,w);w.close()

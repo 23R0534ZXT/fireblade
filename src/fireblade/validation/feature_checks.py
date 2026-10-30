@@ -137,10 +137,16 @@ def check_features(window, directory, settle, check, expect, captures=None):
             from PySide6.QtTest import QTest
             before=window.active_document
             bar,local=window.tabs.tab_widget(0)
-            QTest.mouseClick(bar,Qt.LeftButton,pos=bar.tabRect(local).center());settle()
-            expect(str(window.case.path)==window.documents[0].path,'Clicking the first tab of another row did not switch documents')
+            rect=bar.tabRect(local).intersected(bar.rect())
+            expect(rect.isValid(),'First wrapped tab has no visible click target')
+            QTest.mouseClick(bar,Qt.LeftButton,pos=rect.center());settle()
+            expect(str(window.case.path)==window.documents[0].path,
+                   f'Wrapped tab did not switch: active={window.active_document}, rect={rect.getRect()}, bar={bar.geometry().getRect()}')
             bar,local=window.tabs.tab_widget(before)
-            QTest.mouseClick(bar,Qt.LeftButton,pos=bar.tabRect(local).center());settle()
+            rect=bar.tabRect(local).intersected(bar.rect())
+            expect(rect.isValid(),'Return tab has no visible click target')
+            QTest.mouseClick(bar,Qt.LeftButton,pos=rect.center());settle()
+            expect(window.active_document==before,'Return click did not restore the original document')
             from fireblade.validation.appearance import rendered_contrast
             bar=window.menuBar()
             rendered_contrast(bar,bar.actionGeometry(bar.actions()[0]).adjusted(4,2,-4,-2))

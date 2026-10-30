@@ -39,7 +39,10 @@ def cell_menu(window, index):
     menu = QMenu(window)
     if index.column() > 0:
         column, value = index.column() - 1, node.values[index.column()]
-        menu.addAction("Afficher la cellule / JSON…", window.cell_details)
+        def show_cell():
+            window.tree.setCurrentIndex(index)
+            window.cell_details()
+        menu.addAction("Afficher la cellule / JSON…", show_cell)
         menu.addAction("Copier la valeur", lambda: QApplication.clipboard().setText("" if value is None else str(value)))
         menu.addAction("Filtrer sur cette valeur", lambda: window.filter_value(column, value))
         menu.addAction("Exclure cette valeur", lambda: window.filter_value(column, value, exclude=True))

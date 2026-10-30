@@ -317,6 +317,7 @@ class Window(WorkspaceMixin, QMainWindow):
             self.error(exc)
             return
         if not dialog.exec():
+            dialog.deleteLater()
             return
         target, delimiter, encoding = dialog.values()
         if target.exists():
@@ -351,6 +352,7 @@ class Window(WorkspaceMixin, QMainWindow):
                 return candidate.import_excel(path, sheet, progress.progress.emit)
             return candidate.import_csv(path, delimiter, encoding, progress.progress.emit)
         sheet = dialog.sheet.currentText() if dialog.sheet is not None else None
+        dialog.deleteLater()
         self.run(importing,
                  lambda _: self.attach(candidate), exclusive=True, on_cancel=cancelled, on_error=failed)
 

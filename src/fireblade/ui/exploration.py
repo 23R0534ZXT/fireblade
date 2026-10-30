@@ -45,12 +45,15 @@ class ExplorationMixin:
         p = self.preferences
         apply_theme(QApplication.instance(), p.theme)
         font = QFont(p.font_family) if p.font_family else QApplication.font()
-        font.setPointSize(p.font_size)
+        font.setPointSizeF(p.font_size)
         QApplication.instance().setFont(font)
         self.splitter.setOrientation(Qt.Horizontal if p.details_position == "right" else Qt.Vertical)
+        self.splitter.insertWidget(0,self.details if p.details_position=='top' else self.tree)
+        self.splitter.setSizes([125,570] if p.details_position=='top' else [570,125])
         self.tabs.set_multiline(p.multiline_tabs)
         if self.model:
             self.model.date_format = p.date_format
+            self.model.date_pattern = p.custom_date_format
             self.model.dark = p.theme == "dark"
             self.model.layoutChanged.emit()
 
@@ -64,6 +67,18 @@ class ExplorationMixin:
             except (OSError, ValueError) as exc:
                 self.error(exc)
         dialog.deleteLater()
+
+    def import_tle_settings(self):
+        source,_=QFileDialog.getOpenFileName(self,'Importer les préférences TLE','TLE_settings.xml','Préférences TLE (*.xml)')
+        if not source:return
+        from fireblade.core.tle_settings import read_tle_settings
+        try:
+            result=read_tle_settings(source,self.preferences)
+            save_preferences(result.preferences)
+            self.preferences=result.preferences
+            self.apply_preferences()
+            self.statusBar().showMessage('Préférences TLE importées. '+' ; '.join(result.warnings))
+        except (ValueError,TypeError,OSError,ParseError) as exc:self.error(exc)
 
     def visible_columns(self):
         header = self.tree.header()

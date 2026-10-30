@@ -38,7 +38,7 @@ Le lecteur prend en charge les propriétés XML de colonnes et leurs noms de con
 
 Une colonne absente d’une version d’export est signalée. Une expression qui dépend d’un champ absent ou une règle non traduite arrête l’import au lieu de modifier silencieusement les résultats. Les couleurs ARGB sont composées sur un fond clair et cette adaptation est signalée ; seul le gras des polices de règles est repris. Les règles à barres, échelles de couleurs et jeux d’icônes ne sont pas traduites. Les options propres à DevExpress ne deviennent pas automatiquement des préférences Qt.
 
-Les sessions `.tle_sess` reprennent sources et tags ; les layouts restent des fichiers séparés à importer sur l’analyse correspondante. Les paramètres propriétaires de l’application et plugins binaires ne sont pas désérialisés.
+Les sessions `.tle_sess` reprennent sources et tags ; les layouts restent des fichiers séparés à importer sur l’analyse correspondante. Le fichier documenté `Settings/TLE_settings.xml` reprend police (y compris les tailles fractionnaires), copie, onglets, détails en haut/bas, formats de dates et épinglage par défaut. Les thèmes DevExpress sont adaptés aux thèmes clair/sombre de Fireblade ; les préférences inconnues sont signalées. Les plugins binaires ne sont pas désérialisés.
 
 ## Dépliage et ressources
 

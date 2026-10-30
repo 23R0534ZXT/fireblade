@@ -32,6 +32,7 @@ Références : [manuel officiel](https://github.com/EZToolsManuals/EZToolsManual
 | Réinitialiser les largeurs | Ajouté | Ctrl+R |
 | Dispositions enregistrées | Présent | Vues dans l’analyse et fichier portable `.fireblade-view` |
 | Import des layouts TLE | Partiel | Colonnes et noms de contrôles, filtres compatibles, recherche, groupes temporels, tris, résumés, règles expression/valeur ; règles graphiques non traduites refusées |
+| Import des préférences TLE | Ajouté | `TLE_settings.xml` : copie, police et taille fractionnaire, onglets, détails haut/bas, format des dates, épinglage simple ; thèmes adaptés, champs inconnus signalés |
 | Sessions Fireblade | Présent | Références aux bases ; données conservées séparément |
 | Import `.tle_sess` | Ajouté | Sources et tags ; réimporte les sources présentes, UTF-8 pour CSV ; dispositions séparées |
 | Règles de couleur locales/globales | Présent | Texte, fond, gras, cellule/ligne, priorité et partage JSON Fireblade |
@@ -43,7 +44,7 @@ Références : [manuel officiel](https://github.com/EZToolsManuals/EZToolsManual
 | Profils forensic | Étendus | 222 signatures / 193 noms ; métadonnées de présentation, pas 193 parseurs qualifiés |
 | Plugins externes | Ajoutés | Profils JSON installables/rechargeables ; pas de compatibilité binaire avec les DLL TLE |
 | Supertimelines | Partiel | Plaso/L2T, Psort, mactime et ForensicTimeline : dates UTC, MACB, catégories et couleurs ; valeurs sources conservées. Assemblage de dates PeScan/Wisp ; pas de chargement des DLL .NET |
-| Thème et police | Ajoutés | Clair/sombre explicites, famille/taille, dates source/ISO/7 décimales |
+| Thème et police | Ajoutés | Clair/sombre explicites, famille/taille fractionnaire, dates source/ISO/7 décimales et format personnalisé |
 | Copier au clic droit / en-têtes | Ajoutés | Préférences ; Maj+clic droit conserve l’accès au menu |
 | Ouvrir avec / Explorateur | Ajouté | Programme choisi par l’utilisateur ; chemins locaux, aucune interprétation par shell |
 | Messages | Ajoutés | Fenêtre bornée aux 500 dernières entrées ; diagnostic de démarrage conservé |

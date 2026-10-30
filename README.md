@@ -355,7 +355,7 @@ Choisir un nouveau chemin de rapport. Les données de contrôle sont synthétiqu
 
 **Déplier tous les groupes (vue paginée)** indexe toute la hiérarchie sur disque, y compris au-delà des premiers groupes. Suivant/Précédent parcourent une fenêtre bornée de lignes. Le repli rétablit l’arbre interactif ; l’indexation est annulable. La première indexation peut prendre du temps et utilise de l’espace temporaire.
 
-L’import des layouts TLE traduit les noms `col…`, les filtres et expressions compatibles, la recherche, les groupes temporels, les résumés et les règles de couleur textuelles/de valeur. Les tests incluent quatre layouts XML officiels et les deux fixtures Plaso de TLEFilePlugins. Une règle non traduite est refusée ; une colonne absente de la version du CSV est signalée. Voir [les détails et limites](docs/development/COMPATIBILITE.md).
+L’import des layouts TLE traduit les noms `col…`, les filtres et expressions compatibles, la recherche, les groupes temporels, les résumés et les règles de couleur textuelles/de valeur. Les tests incluent quatre layouts XML officiels et les deux fixtures Plaso de TLEFilePlugins. Une règle non traduite est refusée ; une colonne absente de la version du CSV est signalée. **Fichier → Importer les préférences Timeline Explorer** reprend aussi le fichier documenté `TLE_settings.xml` (police, taille, copie, onglets, format des dates, détails et épinglage par défaut), avec compte rendu des adaptations. Voir [les détails et limites](docs/development/COMPATIBILITE.md).
 
 ## Limites actuelles
 

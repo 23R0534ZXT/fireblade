@@ -48,6 +48,7 @@ def verify(executable, report_path, timeout=120):
         if not valid:
             report["status"] = "failed"
         report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(json.dumps(report, indent=2, ensure_ascii=False), flush=True)
     if not valid:
         raise RuntimeError(f"La vérification Windows a échoué. Rapport : {report_path}")
     return report

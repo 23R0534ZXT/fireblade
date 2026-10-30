@@ -106,7 +106,7 @@ def run_check(app, report_path):
         expect(report["pointer_bits"] == 64, "Un Python ou exécutable 64 bits est requis.")
         expect(app.platformName() == "windows", "Le plugin Qt Windows natif doit être utilisé, pas offscreen.")
         work = tempfile.TemporaryDirectory(prefix="TimelineNext vérification ")
-        directory = Path(work.name)
+        directory = Path(work.name).resolve()  # Windows TEMP may contain an 8.3 alias such as RUNNER~1.
         source = directory / "événements Windows.csv"
         with source.open("w", encoding="utf-8-sig", newline="") as output:
             writer = csv.writer(output, lineterminator="\r\n")
@@ -223,6 +223,8 @@ def run_check(app, report_path):
     except Exception as exc:
         report["status"] = "failed"
         report["error"] = str(exc) or type(exc).__name__
+        report["ui_errors"] = list(errors)
+        report["current_case"] = str(window.case.path) if window is not None and window.case is not None else None
     finally:
         if window is not None:
             try:

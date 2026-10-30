@@ -7,6 +7,17 @@ import tempfile
 CHUNK_BYTES = 16 * 1024 * 1024
 
 
+class _Utf8Writer:
+    def __init__(self, output):
+        self.output, self.bytes_written = output, 0
+
+    def write(self, value):
+        data = value.encode('utf-8')
+        self.output.write(data)
+        self.bytes_written += len(data)
+        return len(value)
+
+
 def csv_chunks(source, headers, delimiter, directory, byte_limit, check_cancelled):
     # Native read_csv -> CREATE TABLE can retain a query's string arena even
     # after table pages spill. A fresh native query for each bounded file frees
@@ -22,8 +33,9 @@ def csv_chunks(source, headers, delimiter, directory, byte_limit, check_cancelle
             while not done:
                 check_cancelled()
                 count = 0
-                with chunk.open('w', encoding='utf-8', newline='') as outgoing:
-                    writer = csv.writer(outgoing)
+                with chunk.open('wb') as outgoing:
+                    sink = _Utf8Writer(outgoing)
+                    writer = csv.writer(sink)
                     writer.writerow(headers)
                     for record in reader:
                         if not record:
@@ -35,8 +47,10 @@ def csv_chunks(source, headers, delimiter, directory, byte_limit, check_cancelle
                         count += 1
                         if count % 256 == 0:
                             check_cancelled()
-                            if outgoing.tell() >= byte_limit:
-                                break
+                        # Byte counting avoids flushing/seeking for every row,
+                        # and a wide row cannot overshoot by another 255 rows.
+                        if sink.bytes_written >= byte_limit:
+                            break
                     else:
                         done = True
                 if count:

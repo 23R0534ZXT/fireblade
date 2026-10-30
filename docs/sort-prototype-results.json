@@ -1,0 +1,109 @@
+{
+  "python": "3.12.14",
+  "duckdb": "1.5.6",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "source_bytes": 1129468693,
+  "source_rows": 2890000,
+  "memory_limit_mb": 256,
+  "threads": 2,
+  "timings": {
+    "native_decimal": [
+      {
+        "offset": 0,
+        "seconds": 18.2119,
+        "rows": 250,
+        "sha256": "438aa5021a49d784edbd44bda4d4229e3b889b4ed865f1f41b5eca0465bc0249"
+      },
+      {
+        "offset": 250,
+        "seconds": 22.3542,
+        "rows": 250,
+        "sha256": "4d7b381c6cd4f182cab53663972557229dca2cf03c28712e8b816b3a9b7fd54f"
+      },
+      {
+        "offset": 500,
+        "seconds": 19.5662,
+        "rows": 250,
+        "sha256": "c58389866a4d26c60e76a39d0195daa35505e630eba3f1ce5458151dca0f1422"
+      },
+      {
+        "offset": 1000,
+        "seconds": 21.6433,
+        "rows": 250,
+        "sha256": "7fc20dbb1a64616a543eb81f1f57372f695570592c72b3420dc40e34be466536"
+      },
+      {
+        "offset": 1000000,
+        "seconds": 22.3295,
+        "rows": 250,
+        "sha256": "aa1176ca282c2f2fc60021ea1585eecd53c5f8b4b87094d7fa42a175d1199a84"
+      }
+    ],
+    "integer_path_no_cache": [
+      {
+        "offset": 0,
+        "seconds": 0.3499,
+        "rows": 250,
+        "sha256": "438aa5021a49d784edbd44bda4d4229e3b889b4ed865f1f41b5eca0465bc0249"
+      },
+      {
+        "offset": 250,
+        "seconds": 0.34,
+        "rows": 250,
+        "sha256": "4d7b381c6cd4f182cab53663972557229dca2cf03c28712e8b816b3a9b7fd54f"
+      },
+      {
+        "offset": 500,
+        "seconds": 0.3908,
+        "rows": 250,
+        "sha256": "c58389866a4d26c60e76a39d0195daa35505e630eba3f1ce5458151dca0f1422"
+      },
+      {
+        "offset": 1000,
+        "seconds": 0.3438,
+        "rows": 250,
+        "sha256": "7fc20dbb1a64616a543eb81f1f57372f695570592c72b3420dc40e34be466536"
+      },
+      {
+        "offset": 1000000,
+        "seconds": 2.6097,
+        "rows": 250,
+        "sha256": "aa1176ca282c2f2fc60021ea1585eecd53c5f8b4b87094d7fa42a175d1199a84"
+      }
+    ],
+    "integer_path_with_cache": [
+      {
+        "offset": 0,
+        "seconds": 0.3664,
+        "rows": 250,
+        "sha256": "438aa5021a49d784edbd44bda4d4229e3b889b4ed865f1f41b5eca0465bc0249"
+      },
+      {
+        "offset": 250,
+        "seconds": 0.3648,
+        "rows": 250,
+        "sha256": "4d7b381c6cd4f182cab53663972557229dca2cf03c28712e8b816b3a9b7fd54f"
+      },
+      {
+        "offset": 500,
+        "seconds": 0.3652,
+        "rows": 250,
+        "sha256": "c58389866a4d26c60e76a39d0195daa35505e630eba3f1ce5458151dca0f1422"
+      },
+      {
+        "offset": 1000,
+        "seconds": 1.7806,
+        "rows": 250,
+        "sha256": "7fc20dbb1a64616a543eb81f1f57372f695570592c72b3420dc40e34be466536"
+      },
+      {
+        "offset": 1000000,
+        "seconds": 0.0454,
+        "rows": 250,
+        "sha256": "aa1176ca282c2f2fc60021ea1585eecd53c5f8b4b87094d7fa42a175d1199a84"
+      }
+    ]
+  },
+  "peak_process_rss_mib": 408.3,
+  "caveat": "Synthetic/repetitive case; same process and sequential warm-cache phases; no Windows or real artefact measurements."
+}

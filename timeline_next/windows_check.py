@@ -121,7 +121,7 @@ def run_check(app, report_path):
         readonly.append(source)
         case_path = directory / "analyse été.timeline"
         window = Window()
-        window.error = errors.append  # Fail the report instead of blocking on an error modal.
+        window.error = lambda message: errors.append(str(message))
         window.show()
         app.processEvents()
 
@@ -137,7 +137,8 @@ def run_check(app, report_path):
         def importing():
             import_with_dialog(source, case_path)
             settle()
-            expect(window.case is not None and window.case.path == case_path, "L’analyse n’a pas été ouverte.")
+            expect(window.case is not None and window.case.path == case_path,
+                   f"L’analyse n’a pas été ouverte. Erreurs : {errors}")
             rows = window.case.page(View())
             expect(rows[0][2:4] == ("élève", "0001"), "Accents ou zéros initiaux altérés.")
             expect(rows[1][3] == "9007199254740993" and rows[1][-1] == "Ligne A\nLigne B", "Grand entier ou cellule multiligne altéré.")

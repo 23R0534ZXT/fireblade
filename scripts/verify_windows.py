@@ -37,7 +37,12 @@ def verify(executable, report_path, timeout=120):
         if not report_path.is_file():
             report = dict(status="failed", error="Le processus n’a pas produit de rapport.", exit_code=code)
         else:
-            report = json.loads(report_path.read_text(encoding="utf-8"))
+            raw_report = report_path.read_text(encoding="utf-8")
+            try:
+                report = json.loads(raw_report)
+            except json.JSONDecodeError:
+                report = dict(status="failed", error="Le rapport du processus est incomplet.",
+                              report_tail=raw_report[-3000:], exit_code=code)
         valid = (code == 0 and report.get("status") == "passed" and report.get("frozen") is True
                  and report.get("platform") == "win32" and report.get("pointer_bits") == 64
                  and report.get("qt_platform") == "windows" and len(report.get("checks", [])) >= 7

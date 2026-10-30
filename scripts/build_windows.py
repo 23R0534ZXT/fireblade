@@ -23,7 +23,10 @@ def main():
     subprocess.run([str(python), "-m", "pip", "install", "--only-binary=:all:",
                     "-r", "requirements.txt", "pyinstaller>=6,<7"], check=True)
     subprocess.run([str(python), "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed",
-                    "--onedir", "--name", "TimelineNext", "--collect-all", "duckdb", "launch.py"], check=True)
+                    "--onedir", "--name", "TimelineNext", "--collect-all", "duckdb",
+                    # DuckDB's native bindings load these value types dynamically.
+                    "--hidden-import", "decimal", "--hidden-import", "uuid",
+                    "--hidden-import", "fractions", "launch.py"], check=True)
     destination = root / "dist" / "TimelineNext"
     for source, name in [("timeline-next.toml", "timeline-next.toml"),
                          ("Verifier-Windows.cmd", "Verifier-Windows.cmd"),

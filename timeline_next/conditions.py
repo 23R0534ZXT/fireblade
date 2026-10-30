@@ -26,6 +26,8 @@ def compile_condition(condition, column, numeric_expression, depth=0, budget=Non
     if not isinstance(condition, Filter):
         raise ValueError("Condition invalide")
     col, op, value = column(condition.column), condition.operator, condition.value
+    if not isinstance(value, str):
+        raise ValueError("La valeur d’une condition doit être du texte")
     if op in ("empty", "not_empty"):
         return (f"({col} IS NULL OR {col}='')" if op == "empty" else f"({col} IS NOT NULL AND {col}<>'')"), []
     if op in ("eq", "ne"):
@@ -40,3 +42,17 @@ def compile_condition(condition, column, numeric_expression, depth=0, budget=Non
         expr = f"try_cast({col} AS {typ})" if typ == "TIMESTAMP" else numeric_expression(col)
         return f"{expr} {comparison} cast(? AS {typ})", [value]
     raise ValueError(f"Opérateur inconnu : {op}")
+
+
+def validate_format_rules(rules, column, numeric_expression, limit=32):
+    import re
+    if len(rules) > limit:
+        raise ValueError(f"{limit} règles de coloration au maximum")
+    for rule in rules:
+        compile_condition(rule.condition, column, numeric_expression)
+        if rule.target is not None:
+            column(rule.target)
+        if type(rule.enabled) is not bool or type(rule.bold) is not bool:
+            raise ValueError("Activation et gras doivent être des booléens")
+        if not all(isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color) for color in (rule.background, rule.foreground)):
+            raise ValueError("Couleur invalide ; utilisez #RRGGBB")

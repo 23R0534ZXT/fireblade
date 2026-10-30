@@ -62,6 +62,7 @@ class View:
     format_rules: list[FormatRule] = field(default_factory=list)
     header_state: str = ""
     sorts: list[SortKey] = field(default_factory=list)
+    global_rules_enabled: bool = True
 
     def to_json(self):
         return json.dumps(asdict(self), ensure_ascii=False)

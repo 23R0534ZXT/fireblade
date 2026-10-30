@@ -301,6 +301,9 @@ def test_failed_import_reopens_previous_view_layout_and_notes(app, window, tmp_p
     assert window.search.text() == "alice"
     assert window.case.count(window.view) == 2
     assert window.case.bookmarks() == {1: "Keep this note"}
+    assert window.model.notes == {}  # Collapsed groups hold no row annotations.
+    window.model.fetchMore(window.model.index(0, 0))
+    settle(app, window)
     assert window.model.notes == {1: "Keep this note"}
     assert window.tree.header().visualIndex(1) == 3
     assert window.tree.isColumnHidden(3)

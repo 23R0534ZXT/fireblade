@@ -144,3 +144,34 @@ def test_new_view_fields_roundtrip_and_invalid_sql_fields_fail_early(case):
     view.summaries[0].operation = 'sum); DROP TABLE events; --'
     with pytest.raises(ValueError):
         case.validate_view(view)
+
+
+def test_repeated_header_schemas_never_repeat_visual_column_indices():
+    from fireblade.core.profile_catalog import CATALOG
+    from fireblade.core.profiles import Profile
+    for data in CATALOG:
+        # DuckDB disambiguates source headers; emulate that public naming rule
+        # to verify every advertised schema has a complete visual permutation.
+        headers=[];seen=set()
+        for name in data['signature']:
+            candidate=name;number=1
+            while candidate.casefold() in seen:
+                candidate=name+'_'+str(number);number+=1
+            headers.append(candidate);seen.add(candidate.casefold())
+        profile=Profile(data['name'],tuple(data['signature']),tuple(data['timestamp']),tuple(data['columns']),tuple(data['booleans']))
+        _view,order=profile_view(profile,headers)
+        assert sorted(order)==list(range(len(headers))), data['name']
+
+
+@pytest.mark.parametrize('encoding',['utf-8-sig','utf-16','cp1252'])
+def test_powershell_type_metadata_only_skips_first_line(tmp_path,encoding):
+    source=tmp_path/'history.csv'
+    source.write_text('#TYPE System.Management.Automation.PSCustomObject\r\nUser,Command\r\nalice,Get-Process\r\n#TYPE kept,Get-Date\r\n',encoding=encoding,newline='')
+    original=source.read_bytes()
+    case=Case(tmp_path/'powershell.timeline')
+    try:
+        case.import_csv(source,encoding=encoding)
+        assert case.headers==['User','Command']
+        assert case.page(View())==[(1,'alice','Get-Process'),(2,'#TYPE kept','Get-Date')]
+        assert source.read_bytes()==original
+    finally:case.close()

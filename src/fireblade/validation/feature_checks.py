@@ -109,6 +109,13 @@ def check_features(window, directory, settle, check, expect, captures=None):
         expect(view.timestamp_columns==[0] and bool(view.format_rules),'Catalog typing or severity rules absent')
         import xlrd
         expect(xlrd.__version__=='2.0.2','Legacy XLS reader not bundled')
+        ps=directory/'powershell.csv'
+        ps.write_text('#TYPE System.Object\nUser,Command\nalice,Get-Process\n#TYPE kept,Get-Date\n')
+        imported=Case(directory/'powershell.timeline',settings=window.settings)
+        try:
+            imported.import_csv(ps)
+            expect(imported.page(View())==[(1,'alice','Get-Process'),(2,'#TYPE kept','Get-Date')],'PowerShell metadata handling lost data')
+        finally:imported.close()
     check('bundled_forensic_catalog_and_legacy_excel_dependency',schema_plugins)
 
     def legacy_session():

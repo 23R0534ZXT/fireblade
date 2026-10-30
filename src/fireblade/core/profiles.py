@@ -61,6 +61,6 @@ def profile_view(profile, headers):
             conditions = [Filter(column, "contains", token) for column in descriptions for token in tokens]
             if conditions:
                 view.format_rules.append(FormatRule(FilterGroup("or", conditions), color))
-    order = [lookup[h.casefold()] for h in profile.columns if h.casefold() in lookup]
+    order = list(dict.fromkeys(lookup[h.casefold()] for h in profile.columns if h.casefold() in lookup))
     order += [i for i in range(len(headers)) if i not in order]
     return view, order

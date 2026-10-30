@@ -24,7 +24,7 @@ def report_argument(arguments):
 
 
 def open_log():
-    for directory in (logs_directory(), Path(tempfile.gettempdir()) / "TimelineNext"):
+    for directory in (logs_directory(), Path(tempfile.gettempdir()) / "Fireblade"):
         try:
             directory.mkdir(parents=True, exist_ok=True)
             path = directory / "demarrage.log"
@@ -56,10 +56,10 @@ def notify_failure(log_path):
     if os.name != "nt":
         return
     import ctypes
-    message = "Timeline Next n’a pas pu démarrer."
+    message = "Fireblade n’a pas pu démarrer."
     if log_path:
         message += f"\n\nLe journal d’erreur se trouve ici :\n{log_path}"
-    ctypes.windll.user32.MessageBoxW(None, message, "Timeline Next", 0x10)
+    ctypes.windll.user32.MessageBoxW(None, message, "Fireblade", 0x10)
 
 
 def main():

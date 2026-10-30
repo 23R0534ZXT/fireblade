@@ -17,7 +17,8 @@ from pathlib import Path
 
 import duckdb
 
-from .models import Filter, View
+from .models import Filter, FilterGroup, SortKey, View
+from .conditions import compile_condition
 from .errors import OperationCancelled, job_cancelled
 from .settings import Settings
 
@@ -133,6 +134,12 @@ class Case:
                     raise ValueError("La détection automatique n’a pas trouvé de séparateur cohérent. Choisissez le séparateur dans Options du CSV.")
 
     def import_csv(self, source, delimiter=None, encoding="utf-8", progress=lambda _: None):
+        return self._import_table(source, delimiter, encoding, progress)
+
+    def import_excel(self, source, sheet, progress=lambda _: None):
+        return self._import_table(source, ",", "utf-8", progress, sheet=sheet)
+
+    def _import_table(self, source, delimiter, encoding, progress, sheet=None):
         source = Path(source).resolve()
         if self.headers:
             raise ValueError("Ce dossier contient déjà un import")
@@ -158,7 +165,12 @@ class Case:
             try:
                 self.check_cancelled()
                 self.db.execute("BEGIN")
-                with self.utf8_input(source, encoding) as input_path:
+                if sheet is not None:
+                    from .spreadsheets import csv_from_sheet
+                    incoming = csv_from_sheet(source, sheet, self.path.parent, self.check_cancelled)
+                else:
+                    incoming = self.utf8_input(source, encoding)
+                with incoming as input_path:
                     self.check_cancelled()
                     relation = self.db.read_csv(str(input_path), **options)
                     headers = relation.columns
@@ -179,6 +191,8 @@ class Case:
                 info = dict(path=str(source), size=before.st_size, sha256=sha,
                             headers=headers, rows=count, encoding=encoding,
                             delimiter=delimiter or "auto", schema_version=1)
+                if sheet is not None:
+                    info.update(format="xlsx", sheet=sheet)
                 self.db.execute("CREATE TABLE metadata (key VARCHAR PRIMARY KEY, value VARCHAR)")
                 self.db.execute("INSERT INTO metadata VALUES ('source', ?)", [json.dumps(info)])
                 self.db.execute("CREATE TABLE bookmarks (row_id BIGINT PRIMARY KEY, note VARCHAR)")
@@ -203,34 +217,72 @@ class Case:
         if view.search:
             clauses.append("(" + " OR ".join(f"contains(lower(coalesce({self.column(i)}, '')), lower(?))" for i in range(len(self.headers))) + ")")
             args += [view.search] * len(self.headers)
-        for f in view.filters:
-            col = self.column(f.column)
-            op = f.operator
-            if op in ("empty", "not_empty"):
-                clauses.append(f"({col} IS NULL OR {col}='')" if op == "empty" else f"({col} IS NOT NULL AND {col}<>'')")
-            elif op in ("eq", "ne"):
-                clauses.append(f"{col} {'=' if op == 'eq' else 'IS DISTINCT FROM'} ?")
-                args.append(f.value)
-            elif op in ("contains", "not_contains", "starts", "regex"):
-                fn = {"contains":"contains", "not_contains":"contains", "starts":"starts_with", "regex":"regexp_matches"}[op]
-                expr = f"{fn}(coalesce({col}, ''), ?)" if op == "regex" else f"{fn}(lower(coalesce({col}, '')), lower(?))"
-                clauses.append(("NOT " if op == "not_contains" else "") + expr)
-                args.append(f.value)
-            elif op in ("gt", "ge", "lt", "le", "after", "before"):
-                cmp = {"gt":">", "ge":">=", "lt":"<", "le":"<=", "after":">=", "before":"<="}[op]
-                typ = "TIMESTAMP" if op in ("after", "before") else "DECIMAL(38,10)"
-                # Invalid operands are errors, malformed source values simply don't match.
-                expression = f"try_cast({col} AS {typ})" if typ == "TIMESTAMP" else self.numeric_expression(col)
-                clauses.append(f"{expression} {cmp} cast(? AS {typ})")
-                args.append(f.value)
-            else:
-                raise ValueError(f"Opérateur inconnu : {op}")
+        if view.filters:
+            sql, values = self.condition(FilterGroup("and", view.filters))
+            clauses.append("(" + sql + ")")
+            args.extend(values)
+        if view.expression is not None:
+            sql, values = self.condition(view.expression)
+            clauses.append("(" + sql + ")")
+            args.extend(values)
         for i, val in enumerate(path):
             clauses.append(f"{self.column(view.groups[i])} IS NOT DISTINCT FROM ?")
             args.append(val)
         if view.bookmarks_only:
             clauses.append("__row_id IN (SELECT row_id FROM bookmarks)")
         return (" WHERE " + " AND ".join(clauses) if clauses else ""), args
+
+    def condition(self, expression):
+        return compile_condition(expression, self.column, self.numeric_expression)
+
+    def validate_view(self, view):
+        self.where(view)
+        self.order(view)
+        if len(view.groups) != len(set(view.groups)):
+            raise ValueError("Une colonne ne peut apparaître deux fois dans les groupes")
+        for column in view.groups:
+            self.column(column)
+        if len(view.format_rules) > 32:
+            raise ValueError("32 règles de coloration au maximum")
+        import re
+        for rule in view.format_rules:
+            self.condition(rule.condition)
+            if rule.target is not None:
+                self.column(rule.target)
+            if not all(isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color) for color in (rule.background, rule.foreground)):
+                raise ValueError("Couleur invalide ; utilisez #RRGGBB")
+
+    def page_styles(self, view, rows):
+        """Evaluate conditions on already loaded values, without rescanning events."""
+        rules = view.format_rules
+        if len(rules) > 32:
+            raise ValueError("32 règles de coloration au maximum")
+        if not rows or not rules:
+            return {}
+        projections, args, required = [], [], set()
+        def collect_columns(condition):
+            if isinstance(condition, Filter):
+                required.add(condition.column)
+            else:
+                for child in condition.children:
+                    collect_columns(child)
+        for rule in rules:
+            if rule.target is not None:
+                self.column(rule.target)
+            sql, values = self.condition(rule.condition) if rule.enabled else ("FALSE", [])
+            if rule.enabled:
+                collect_columns(rule.condition)
+            projections.append("(" + sql + ")")
+            args.extend(values)
+        columns = sorted(required)
+        aliases = ["__row_id"] + [self.column(i) for i in columns]
+        record = "(cast(? AS BIGINT)" + ", cast(? AS VARCHAR)" * len(columns) + ")"
+        values = [value for row in rows for value in [row[0]] + [row[i + 1] for i in columns]]
+        with self.operation():
+            result = self.db.execute(
+                "WITH visible(" + ",".join(aliases) + ") AS (VALUES " + ",".join(record for _ in rows) + ") "
+                "SELECT __row_id, " + ", ".join(projections) + " FROM visible", values + args).fetchall()
+        return {row[0]: tuple(i for i, matched in enumerate(row[1:]) if matched) for row in result}
 
     @staticmethod
     def numeric_expression(column):
@@ -242,16 +294,20 @@ class Case:
                 f"ELSE try_cast({column} AS DECIMAL(38,10)) END")
 
     def order(self, view):
-        if view.sort_column is None:
-            return " ORDER BY __row_id"
-        col = self.column(view.sort_column)
-        if view.sort_type not in ("text", "number", "timestamp"):
-            raise ValueError("Type de tri invalide")
-        if view.sort_type == "number":
-            col = self.numeric_expression(col)
-        elif view.sort_type == "timestamp":
-            col = f"try_cast({col} AS TIMESTAMP)"
-        return f" ORDER BY {col} {'DESC' if view.descending else 'ASC'} NULLS LAST, __row_id"
+        keys = view.sorts or ([SortKey(view.sort_column, view.sort_type, view.descending)] if view.sort_column is not None else [])
+        if len(keys) > 16 or len({key.column for key in keys}) != len(keys):
+            raise ValueError("16 colonnes de tri distinctes au maximum")
+        parts = []
+        for key in keys:
+            col = self.column(key.column)
+            if key.kind not in ("text", "number", "timestamp"):
+                raise ValueError("Type de tri invalide")
+            if key.kind == "number":
+                col = self.numeric_expression(col)
+            elif key.kind == "timestamp":
+                col = f"try_cast({col} AS TIMESTAMP)"
+            parts.append(f"{col} {'DESC' if key.descending else 'ASC'} NULLS LAST")
+        return " ORDER BY " + ", ".join(parts + ["__row_id"])
 
     def page(self, view: View, path=(), offset=0, limit=None):
         limit = self.settings.page_size if limit is None else limit
@@ -264,7 +320,7 @@ class Case:
             else:
                 order = self.order(view)
                 key = (where, tuple(args), order, self._bookmark_revision if view.bookmarks_only else None)
-                if (self.settings.cache_sorted_pages and view.sort_column is not None
+                if (self.settings.cache_sorted_pages and (view.sort_column is not None or view.sorts)
                         and (offset >= self.settings.max_loaded_rows or self._page_cache_key == key)):
                     return self.sorted_page(where, args, order, key, offset, limit)
                 sql = f"SELECT * FROM events{where}{order} LIMIT ? OFFSET ?"
@@ -334,13 +390,19 @@ class Case:
             owns_temporary = False
             try:
                 cursor = self.db.execute(sql, args)
-                with temporary.open("x", encoding="utf-8-sig", newline="") as out:
-                    owns_temporary = True
-                    writer = csv.writer(out)
-                    writer.writerow(headers)
-                    while batch := cursor.fetchmany(self.settings.export_batch_rows):
-                        self.check_cancelled()
-                        writer.writerows(batch)
+                if target.suffix.lower() == ".xlsx":
+                    from .spreadsheets import write_xlsx
+                    with temporary.open("xb"):
+                        owns_temporary = True
+                    write_xlsx(temporary, headers, cursor, self.settings.export_batch_rows, self.check_cancelled)
+                else:
+                    with temporary.open("x", encoding="utf-8-sig", newline="") as out:
+                        owns_temporary = True
+                        writer = csv.writer(out)
+                        writer.writerow(headers)
+                        while batch := cursor.fetchmany(self.settings.export_batch_rows):
+                            self.check_cancelled()
+                            writer.writerows(batch)
                 self.check_cancelled()
                 os.replace(temporary, target)
             except Exception:

@@ -1,1 +1,1 @@
-"""Timeline Next — local forensic CSV exploration."""
+"""Fireblade — local forensic CSV exploration."""

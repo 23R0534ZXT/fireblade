@@ -62,7 +62,7 @@ jobs:
           retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
-          name: TimelineNext-Windows-x64
-          path: dist/TimelineNext-Windows-x64.zip
+          name: Fireblade-Windows-x64
+          path: dist/Fireblade-Windows-x64.zip
           if-no-files-found: error
           retention-days: 14

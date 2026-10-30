@@ -37,7 +37,10 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         super().__init__()
         self.settings = settings or Settings()
         self.setWindowTitle("Fireblade")
-        self.resize(1280, 800)
+        screen = QApplication.primaryScreen()
+        available = screen.availableGeometry() if screen else None
+        self.resize(min(1280, max(640, int(available.width() * .9))) if available else 1280,
+                    min(800, max(420, int(available.height() * .9))) if available else 800)
         self.case, self.model = None, None
         self.view = View()
         self.pool = QThreadPool(self)
@@ -214,7 +217,7 @@ class Window(SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.tree.setAnimated(False)
         self.tree.setIndentation(16)
         self.tree.header().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.tree.header().setMinimumHeight(24)
+        self.tree.header().setMinimumHeight(max(26, self.fontMetrics().height() + 8))
         self.tree.doubleClicked.connect(self.toggle_bookmark)
         self.tree.expanded.connect(lambda index: self.model.fetchMore(index) if self.model and not self.model.node(index).children else None)
         self.tree.collapsed.connect(lambda index: self.model.unload(index) if self.model else None)
@@ -1002,6 +1005,9 @@ def main():
     parser.add_argument("--config", type=Path, help="Fichier de configuration TOML")
     parser.add_argument("file", nargs="?", type=Path, help="CSV ou analyse à ouvrir")
     parser.add_argument("--self-test-report", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--appearance-report", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--stress-spec", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--stress-report", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
     config = args.config if args.config is not None else default_config()
     try:
@@ -1011,6 +1017,13 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Fireblade")
     apply_theme(app)
+    if args.appearance_report is not None:
+        from fireblade.validation.appearance import run_appearance
+        raise SystemExit(run_appearance(app,args.appearance_report))
+    if args.stress_report is not None:
+        if args.stress_spec is None:parser.error("--stress-spec is required")
+        from fireblade.validation.stress import run_stress
+        raise SystemExit(run_stress(app,args.stress_spec,args.stress_report))
     if args.self_test_report is not None:
         from fireblade.validation.windows_check import run_check
         raise SystemExit(run_check(app, args.self_test_report))

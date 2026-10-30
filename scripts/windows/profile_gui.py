@@ -9,17 +9,17 @@ from PySide6.QtTest import QTest
 from fireblade.core.models import View,Filter,SortKey
 from fireblade.validation.gui_driver import GuiRun
 from fireblade.ui.theme import apply_theme
-from scripts.windows.dataset import generate
+from scripts.windows.existing_dataset import prepare
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out',type=Path,required=True)
-    parser.add_argument('--gib',type=int,default=3)
+    parser.add_argument('--data',type=Path,required=True)
     args=parser.parse_args()
     if os.name!='nt':raise SystemExit('This diagnostic requires native Windows')
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    spec=generate(out/'data',target_bytes=args.gib*1024**3)
+    spec=prepare(args.data,out)
     app=QApplication([]);apply_theme(app)
     run=GuiRun(app,out/'profile.json','Windows source stall diagnostic, not frozen qualification')
     error=None

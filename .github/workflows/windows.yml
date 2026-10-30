@@ -135,10 +135,16 @@ jobs:
             artifacts/visual/**/*.json
             artifacts/visual/**/*.png
           retention-days: 14
-      - name: Generate a varied CSV of at least 3 GiB and independent reference counts
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/fireblade-data
+          key: fireblade-csv-2382777d3917a973a1e5104b3bc404d02d3901aeff8104d34fc30e4264776cf0
+      - name: Reuse the published 3-GiB CSV and verify its SHA-256
         id: dataset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: always() && !cancelled()
-        run: python -m scripts.windows.qualify generate --directory "$env:RUNNER_TEMP/fireblade-data" --out artifacts/large-data --gib 3
+        run: python -m scripts.windows.qualify prepare --directory "$env:RUNNER_TEMP/fireblade-data" --out artifacts/large-data --gib 3
       - name: Import group sort filter annotate export cancel and reopen in the actual EXE
         if: ${{ !cancelled() && steps.dataset.outcome == 'success' }}
         run: python -m scripts.windows.qualify run --directory "$env:RUNNER_TEMP/fireblade-data" --out artifacts/large-data --exe dist/Fireblade.exe
@@ -168,7 +174,13 @@ jobs:
           python-version: '3.12'
       - run: >-
           python -m pip install --only-binary=:all: -r requirements/runtime.txt
-      - run: python -m scripts.windows.profile_gui --out artifacts/profile --gib 3
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/fireblade-data
+          key: fireblade-csv-2382777d3917a973a1e5104b3bc404d02d3901aeff8104d34fc30e4264776cf0
+      - run: python -m scripts.windows.profile_gui --out artifacts/profile --data "$env:RUNNER_TEMP/fireblade-data"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

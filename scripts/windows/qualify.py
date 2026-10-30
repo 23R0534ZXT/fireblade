@@ -1,4 +1,4 @@
-"""Generate >=3 GiB, then exercise the actual standalone Windows EXE."""
+"""Reuse the existing >=3-GiB CSV, then exercise the actual Windows EXE."""
 import argparse
 import json
 import os
@@ -8,21 +8,19 @@ import stat
 import subprocess
 import tempfile
 
-from scripts.windows.dataset import generate
+from scripts.windows.existing_dataset import prepare
 from scripts.windows.qa_process import run_executable
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('operation',choices=['generate','run'])
+    parser=argparse.ArgumentParser();parser.add_argument('operation',choices=['prepare','generate','run'])
     parser.add_argument('--directory',type=Path,required=True);parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--exe',type=Path);parser.add_argument('--gib',type=float,default=3)
     args=parser.parse_args();args.out=args.out.resolve();args.directory=args.directory.resolve();args.out.mkdir(parents=True,exist_ok=True)
-    if args.operation=='generate':
+    if args.operation in ('prepare','generate'):
         if args.gib<3:parser.error('Qualification requires at least 3 GiB')
         if shutil.disk_usage(args.directory.parent).free<12*1024**3:raise RuntimeError('At least 12 GiB free disk space is required')
-        spec=generate(args.directory,int(args.gib*1024**3))
-        summary={k:v for k,v in spec.items() if k not in ('groups','samples')}
-        (args.out/'dataset.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
+        prepare(args.directory,args.out)
         return
     spec=args.directory/'spec.json'
     data=json.loads(spec.read_text(encoding='utf-8'))

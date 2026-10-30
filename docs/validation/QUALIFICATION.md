@@ -14,11 +14,13 @@ Les captures couvrent accueil, menus, boutons, grille, recherche, éditeurs et f
 
 ### Fichier volumineux
 
-`scripts/windows/dataset.py` écrit séquentiellement un fichier réel d’au moins 3 × 1024³ octets. Il ne crée pas un fichier creux et ne répète pas seulement un petit bloc. Les colonnes comprennent dates, artefacts, utilisateurs, machines, grands identifiants, chemins, tailles, hachages et contenus pseudo-aléatoires uniques, commandes, JSON, Unicode, cellules vides, guillemets et champs multilignes.
+Les tests réutilisent le **CSV déjà publié**, sans le régénérer : **3 222 648 632 octets, 2 441 216 enregistrements**, SHA-256 `2382777d3917a973a1e5104b3bc404d02d3901aeff8104d34fc30e4264776cf0`.
 
-Une graine fixe rend la génération reproductible. Pendant la génération, Python calcule indépendamment des comptages de référence. La taille, le nombre d’enregistrements, le SHA-256 et le temps de génération sont conservés. Les données sont synthétiques ; le cache du système de fichiers n’est pas purgé.
+`scripts/windows/existing_dataset.py` vérifie le fichier présent dans le dossier de données. À défaut, il récupère le ZIP de la [Release des données](https://github.com/23R0534ZXT/fireblade/releases/tag/test-data-3gib), vérifie son empreinte puis extrait le même CSV et vérifie son empreinte. Un fichier présent mais différent est refusé sans être remplacé. GitHub Actions met ce CSV en cache avec une clé contenant son SHA-256 ; chaque utilisation vérifie quand même son contenu.
 
-Pour un essai manuel sans générateur, le [CSV complet est aussi publié en ZIP dans une Release dédiée](https://github.com/23R0534ZXT/fireblade/releases/tag/test-data-3gib), avec manifeste et empreintes. Voir [les étapes et résultats attendus](../guides/TESTER-3GIB.md).
+Le [manifeste](datasets/3gib.json) identifie le téléchargement et le [référentiel des résultats](datasets/3gib-reference.json) conserve les comptages, sommes et échantillons indépendants calculés lors de sa création initiale. Les données restent synthétiques ; le cache disque n’est pas purgé. Le générateur historique reste disponible pour créer explicitement un autre jeu de données, mais les parcours de qualification et de diagnostic ne l’appellent plus.
+
+Pour tester manuellement le CSV publié, voir [les étapes et résultats attendus](../guides/TESTER-3GIB.md).
 
 ### Parcours dans le programme
 
@@ -29,7 +31,7 @@ Pour un essai manuel sans générateur, le [CSV complet est aussi publié en ZIP
 - Tris de grands entiers et de dates dans les deux sens ; tri multi-colonnes, pages profondes, cache et retour arrière.
 - Règles globales/locales, sélection à la souris, marquage, ajout, remplacement et retrait des notes, résultats vides et reprise.
 - Vues nommées, colonnes, changement d’onglet, libération et réouverture de la base, session et persistance des notes.
-- CSV et XLSX filtrés avec annotations, comptages exportés et export CSV complet de plusieurs Go. Le CSV complet est relu indépendamment et son SHA-256 comparé à la source du générateur.
+- CSV et XLSX filtrés avec annotations, comptages exportés et export CSV complet de plusieurs Go. Le CSV complet est relu indépendamment et son SHA-256 comparé au CSV de référence publié.
 - Annulation après le début d’écriture d’un export, préservation de la destination et nettoyage du temporaire.
 - Annulation d’un second import 3 GiB après l’écriture effective d’au moins un lot, vérification du rollback sans tables partielles et de la restauration de l’analyse précédente.
 - Empreinte finale de la source et réutilisation de la base.
@@ -42,17 +44,17 @@ Le premier passage de cette qualification a trouvé un dépassement mémoire ré
 
 Le pilote traite les événements Qt puis cède explicitement l’interpréteur aux workers Python. Une attente QtTest longue conservait le GIL et faussait fortement les temps CSV/XLSX ; cette attente n’est plus utilisée pour patienter sur les opérations de fond.
 
-Les rapports JSON et PNG sont publiés dans Actions. Les CSV et bases volumineuses ne sont pas joints aux artefacts de chaque exécution. Le CSV de référence dispose d’un téléchargement séparé dans la Release des données ; le générateur et la graine permettent également de le reconstruire.
+Les rapports JSON et PNG sont publiés dans Actions. Les CSV et bases volumineuses ne sont pas joints aux artefacts de chaque exécution. Le CSV de référence dispose d’un téléchargement séparé dans la Release des données et est réutilisé entre les essais.
 
 ## Reproduire sur Windows
 
 ```powershell
 python -m scripts.windows.visual_matrix --exe dist/Fireblade.exe --out artifacts/visual
-python -m scripts.windows.qualify generate --directory C:\Temp\fireblade-data --out artifacts/large-data --gib 3
+python -m scripts.windows.qualify prepare --directory C:\Temp\fireblade-data --out artifacts/large-data --gib 3
 python -m scripts.windows.qualify run --directory C:\Temp\fireblade-data --out artifacts/large-data --exe dist/Fireblade.exe
 ```
 
-Utiliser un dossier de données nouveau et au moins 12 GiB libres avant génération. Les sorties sont destinées aux développeurs ; l’utilisateur final conserve uniquement le .exe.
+Réutiliser le même dossier de données et prévoir au moins 12 GiB libres pour la qualification. Si le CSV est absent, installer GitHub CLI (`gh`) et s’authentifier pour accéder à la Release privée, ou extraire manuellement le ZIP publié dans ce dossier. La commande `prepare` contrôle le SHA-256 ; elle ne crée pas de nouveau CSV. L’ancienne commande `generate` est conservée comme alias de `prepare` et ne régénère plus le fichier. Les sorties sont destinées aux développeurs ; l’utilisateur final conserve uniquement le .exe.
 
 ## Limites
 
@@ -65,4 +67,4 @@ Le contrôle embarqué `feature_checks.py` ajoute dix parcours : résumés et pr
 
 Chaque variante Windows/DPI de la matrice vérifie désormais aussi le thème sombre propre à l’application et capture sa zone épinglée. Le contrôle des glyphes utilise le contraste effectif avec le fond, dans les deux thèmes.
 
-Le générateur 3 GiB conserve exactement le même contenu CSV et le même SHA-256 ; il ajoute au manifeste des oracles de sommes de tailles par artefact et de comptes par journée. Le parcours intégré compare ces références avec les nouveaux résumés et groupes de dates, vérifie une projection CSV et recherche dans deux analyses dont la base multi-Go. Le catalogue d’en-têtes est une aide de présentation et ne remplace pas une qualification de tous les exports réels des outils référencés.
+Le référentiel du CSV existant contient les sommes de tailles par artefact et les comptes par journée calculés indépendamment lors de sa création. Le parcours intégré compare ces références avec les nouveaux résumés et groupes de dates, vérifie une projection CSV et recherche dans deux analyses dont la base multi-Go. Le catalogue d’en-têtes est une aide de présentation et ne remplace pas une qualification de tous les exports réels des outils référencés.

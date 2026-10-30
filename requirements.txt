@@ -1,3 +1,5 @@
 # Pinned dependencies for the Windows prototype; install prebuilt wheels.
 duckdb==1.5.6
 PySide6-Essentials==6.12.0
+
+openpyxl==3.1.5

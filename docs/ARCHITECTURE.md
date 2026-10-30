@@ -1,12 +1,12 @@
-# Modifier Timeline Next
+# Modifier Fireblade
 
-L’application utilise Python standard et **deux dépendances d’exécution** : DuckDB et PySide6 Essentials (Qt Widgets). Il n’y a pas de serveur à démarrer, de chaîne de compilation JavaScript, de navigateur embarqué ou de gestionnaire de plugins. Les tests et PyInstaller restent des outils de développement optionnels.
+L’application utilise Python standard et **trois dépendances directes** : DuckDB, PySide6 Essentials (Qt Widgets) et openpyxl (XLSX). Il n’y a pas de serveur à démarrer, de chaîne de compilation JavaScript, de navigateur embarqué ou de gestionnaire de plugins. Les tests et PyInstaller restent des outils de développement optionnels.
 
 ## Où modifier quoi
 
 | Besoin | Fichier | Responsabilité |
 |---|---|---|
-| Ajuster RAM, threads, pagination et taille des blocs exportés | `timeline-next.toml` | Configuration utilisateur, relue au lancement |
+| Ajuster RAM, threads, pagination et taille des blocs exportés | `fireblade.toml` | Configuration utilisateur, relue au lancement |
 | Ajouter / valider un paramètre de ressources | `timeline_next/settings.py` | Dataclass et lecture TOML standard Python |
 | Changer les vues, l’état temporaire de reprise ou les opérateurs disponibles | `timeline_next/models.py` | Objets Python simples, sans Qt ni DuckDB |
 | Modifier import, requêtes, groupes, signets ou export | `timeline_next/engine.py` | Moteur sans dépendance à l’interface |
@@ -49,7 +49,7 @@ Pour une nouvelle option de vue, ajouter un champ avec une valeur par défaut da
 
 ## Régler les ressources
 
-Le fichier `timeline-next.toml` à la racine du projet est chargé automatiquement. Avec l’exécutable Windows, le fichier se place à côté du `.exe`. Les paramètres restent facultatifs et leurs valeurs par défaut sont définies à un seul endroit : `Settings`. Les clés inconnues et les valeurs incohérentes produisent une erreur explicite au lancement.
+Le fichier `fireblade.toml` à la racine du projet est chargé automatiquement. Avec l’exécutable Windows, le fichier se place à côté du `.exe`. Les paramètres restent facultatifs et leurs valeurs par défaut sont définies à un seul endroit : `Settings`. Les clés inconnues et les valeurs incohérentes produisent une erreur explicite au lancement.
 
 ```toml
 [resources]
@@ -95,3 +95,13 @@ flowchart LR
     D -->|Erreur ou annulation| F[Fermer l’importeur]
     F --> G[Rouvrir et restaurer l’analyse précédente]
 ```
+
+## Fonctions avancées
+
+- `conditions.py` compile un arbre ET/OU/NON en SQL paramétré, partagé par les filtres et les couleurs. Limites : 24 niveaux, 1024 conditions et 32 règles de couleur. Les regex utilisent RE2 dans DuckDB. NON considère une comparaison NULL comme non correspondante avant de l’inverser.
+- `advanced_dialogs.py` contient les éditeurs Qt ordinaires des conditions, règles et tris. Aucun SQL utilisateur libre.
+- `workspace.py` gère les onglets et sessions JSON atomiques. Un onglet inactif ne garde ni connexion DuckDB, ni modèle Qt, ni copie de lignes. Revenir à un onglet recharge sa première page ; les branches dépliées, la sélection et le défilement ne sont pas conservés. L’identité des sources est vérifiée avant restauration.
+- `spreadsheets.py` lit XLSX en mode read-only, transcode sur disque et produit XLSX en write-only. L’empreinte d’import est celle du classeur original ; la feuille est enregistrée dans les métadonnées. Les formules restent du texte.
+- `profiles.py` contient des signatures d’en-têtes et dispositions faciles à modifier, sans toucher aux valeurs.
+- `grouping.py` raccorde les gestes Qt d’en-tête à la commande de groupement existante.
+- Les couleurs sont évaluées par DuckDB sur les valeurs de la page déjà chargée, via une petite relation VALUES paramétrée, sans relire la table complète ; seuls les champs référencés par les conditions sont transmis. Seuls les indices des règles correspondantes accompagnent chaque nœud de la grille. Les clés de tri multiples utilisent le même cache sur disque que les tris simples.

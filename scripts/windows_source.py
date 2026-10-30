@@ -19,7 +19,7 @@ def main():
     python = root / ".venv" / "Scripts" / "python.exe"
     if not python.exists():
         subprocess.run([sys.executable, "-m", "venv", str(root / ".venv")], check=True)
-    probe = "import importlib.metadata as m; assert m.version('duckdb') == '1.5.6'; assert m.version('PySide6-Essentials') == '6.12.0'"
+    probe = "import importlib.metadata as m; assert m.version('duckdb') == '1.5.6'; assert m.version('PySide6-Essentials') == '6.12.0'; assert m.version('openpyxl') == '3.1.5'"
     if subprocess.run([str(python), "-c", probe], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
         subprocess.run([str(python), "-m", "pip", "install", "--only-binary=:all:", "-r", "requirements.txt"], check=True)
     environment = os.environ.copy()

@@ -1,6 +1,6 @@
 # Utiliser Fireblade
 
-Fireblade est un explorateur local de CSV, TSV et XLSX pour l’analyse forensic sur Windows. Il affiche une grille classique : recherche, filtres, tris, groupes, signets et notes.
+Fireblade est un explorateur local de CSV, TSV, XLS et XLSX pour l’analyse forensic sur Windows. Il affiche une grille classique : recherche, filtres, tris, groupes, signets et notes.
 
 ## Démarrage
 
@@ -11,13 +11,13 @@ Le programme prépare ses bibliothèques dans le dossier temporaire de Windows a
 ## Ouvrir des données
 
 1. Cliquer sur **Fichier → Ouvrir un fichier** ou appuyer sur **Ctrl+O**.
-2. Choisir un CSV, TSV, TXT ou XLSX.
-3. Confirmer le nom et l’emplacement du fichier d’analyse `.timeline`. Pour XLSX, sélectionner la feuille ; la première ligne doit contenir les noms de colonnes.
+2. Choisir un CSV, TSV, TXT, XLS ou XLSX.
+3. Confirmer le nom et l’emplacement du fichier d’analyse `.timeline`. Pour XLS/XLSX, sélectionner la feuille ; la première ligne doit contenir les noms de colonnes.
 4. Attendre la fin de l’import. La source est lue sans réécriture.
 
 Pour un CSV, les options permettent de préciser le séparateur et l’encodage : UTF-8, UTF-16, Windows-1252 ou Latin-1. Si la détection est ambiguë, sélectionner explicitement le séparateur. Les cellules vides sont normalisées en NULL.
 
-Les valeurs sont conservées comme texte pour préserver les zéros initiaux et les grands identifiants. Les formules XLSX sont importées comme texte, sans calcul. Les styles et zéros provenant seulement d’un format numérique Excel ne sont pas importés. L’ancien format XLS n’est pas pris en charge.
+Les valeurs sont conservées comme texte pour préserver les zéros initiaux et les grands identifiants. Les formules XLSX sont importées comme texte, sans calcul. Les styles et zéros provenant seulement d’un format numérique Excel ne sont pas importés. XLS est aussi pris en charge : les formules sont lues comme leurs résultats mémorisés ; les macros ne sont pas exécutées.
 
 ## Rechercher et filtrer
 
@@ -82,7 +82,7 @@ Le panneau **Détails** affiche les valeurs complètes et la note de la ligne. *
 
 Les signets et notes sont enregistrés dans `.timeline`. **Ctrl+S** enregistre une vue nommée dans cette analyse ; **Ctrl+L** la recharge.
 
-**Fichier → Exporter** produit un CSV ou un XLSX de tous les résultats filtrés, même si la grille n’en montre qu’une page. Pour une vue regroupée, choisir les lignes ou les comptages par groupe.
+**Fichier → Exporter** produit un CSV ou un XLSX des colonnes visibles dans leur ordre, pour tous les résultats filtrés, même si la grille n’en montre qu’une page. Pour une vue regroupée, choisir les lignes ou les comptages par groupe.
 
 **Exporter les signets et notes** exporte les lignes marquées de la vue filtrée et ajoute trois colonnes : numéro d’enregistrement source, présence du signet et note. Le numéro correspond à l’ordre des enregistrements importés, hors en-tête ; un champ multiligne CSV peut occuper plusieurs lignes physiques.
 
@@ -130,3 +130,47 @@ Si un import est refusé, vérifier le séparateur, l’encodage, l’en-tête o
 Si le programme ne démarre pas, consulter le journal de démarrage. Vérifier aussi que le profil utilisateur et le dossier temporaire Windows sont accessibles en écriture. Un fichier de règles invalide est laissé intact ; corriger et recharger, ou importer explicitement une bibliothèque valide.
 
 Fireblade reste un prototype. Les tests automatisés ne remplacent pas les essais sur les exports réels de plusieurs Go et sur les postes d’enquête.
+
+## Recherche entre fichiers et onglets
+
+**Filtres → Rechercher dans toutes les analyses** ou **Ctrl+F** cherche dans les bases des onglets ouverts. Les comptages concernent tous leurs enregistrements, pas les pages chargées. Une option conserve les filtres et signets de chaque vue. Un double-clic sur un résultat ouvre l’analyse filtrée. Une erreur par fichier est affichée, sans omission silencieuse.
+
+La recherche parcourt une analyse à la fois et peut être interrompue. **Affichage → Analyses ouvertes** filtre les noms ou chemins. **Ctrl+Maj+T** rouvre le dernier onglet fermé avec sa vue et ses notes. Les préférences permettent les onglets sur plusieurs rangées. Une fermeture conserve au maximum 20 snapshots.
+
+La boîte Ouvrir accepte plusieurs fichiers. Les fichiers déposés pendant une opération attendent dans une file séquentielle. Chaque import conserve sa confirmation de destination ; annuler une confirmation passe au fichier suivant. **Fichier → Vider la file d’ouverture** retire les fichiers en attente sans interrompre l’opération courante.
+
+## Résumés et périodes de groupement
+
+**Affichage → Résumés et tri des groupes** ajoute des calculs : non vides, valeurs distinctes, somme, moyenne, minimum et maximum. Le type choisi s’applique au calcul ; les valeurs numériques ou dates invalides sont ignorées par leur conversion. Les comptes concernent tous les enregistrements filtrés. Trier par effectif, valeur ou résumé, en choisissant le sens ; l’export des groupes inclut les résumés.
+
+Le menu d’un en-tête propose le groupement des dates par année, mois, jour ou heure et un filtre calendrier. Le filtre d’un mois s’arrête au début du mois suivant, exclu. Les dates invalides apparaissent sous NULL dans les groupes temporels.
+
+**Ctrl+K** replie les groupes et libère leurs descendants. **Déplier les groupes de la page** ouvre progressivement les branches dans une limite liée aux pages chargées : il ne matérialise pas toutes les lignes d’un fichier multi-Go. **Suivant/Précédent** permettent de poursuivre l’analyse.
+
+## Colonnes épinglées, copie et export
+
+Le menu d’un en-tête permet d’épingler une colonne à gauche, ou de la désépingler. La zone épinglée partage le même modèle et la même sélection ; elle ne charge pas une autre copie des données. Les colonnes épinglées apparaissent en premier dans les copies et exports, puis les autres colonnes visibles dans leur ordre. Masquer une colonne épinglée la retire également de la zone épinglée. **Ctrl+R** réinitialise les largeurs.
+
+La case à cocher de la colonne Ligne/groupe marque une ligne sans demander de note ; les notes restent accessibles par double-clic et par le menu Édition. Une colonne source reconnue comme booléenne peut s’afficher en cases sans devenir éditable. Le menu de l’en-tête permet aussi de basculer cet affichage.
+
+## Préférences et détails
+
+**Affichage → Préférences** règle le thème clair/sombre, la famille et taille de police, les dates reconnues (source, ISO, ISO à sept décimales), la position du panneau de détails, la copie des en-têtes et la copie immédiate au clic droit. **Maj+clic droit** conserve le menu contextuel lorsque la copie immédiate est active. Les préférences sont enregistrées dans `%LOCALAPPDATA%\Fireblade\preferences.json`.
+
+Le détail et l’export conservent le texte source, même si la grille présente une date ou un booléen. Le format à sept décimales ne retire pas les décimales supplémentaires présentes dans la source. Le clic droit d’un champ du panneau Détails permet de copier sa valeur complète, la filtrer ou l’exclure. La fenêtre de cellule peut formater du JSON ou XML jusqu’à 2 Mo ; les DTD et entités XML sont refusées.
+
+Le menu d’une cellule propose **Ouvrir avec** (programme choisi explicitement) et l’Explorateur pour les chemins existants sur ce poste. Il ne suit pas automatiquement les chemins des preuves vers un autre système.
+
+## Profils, supertimelines et compatibilité TLE
+
+**Affichage → Profils et plugins** affiche les schémas embarqués et installe des profils personnels JSON. **Appliquer le profil détecté** propose colonnes, dates, booléens et présentation. Le catalogue est décrit dans [la documentation des profils](../development/PLUGINS.md). Reconnaître un en-tête ne garantit pas tous les traitements du plugin Timeline Explorer correspondant. Les DLL C# TLE ne sont pas chargées.
+
+La légende des supertimelines décrit les premières catégories de coloration des profils reconnus. Vérifier les valeurs de l’événement ; une couleur seule ne constitue pas une conclusion forensic.
+
+**Analyse → Exporter/importer la disposition** partage une vue `.fireblade-view` entre analyses ayant exactement les mêmes colonnes. L’import accepte aussi certains layouts XML TLE pour l’ordre, les largeurs, l’épinglage à gauche, les groupes et les tris. Les filtres et règles non compatibles provoquent un message explicite au lieu d’être ignorés.
+
+**Fichier → Importer une session Timeline Explorer** lit un `.tle_sess`, vérifie ses sources et les réimporte dans de nouvelles bases, avec les tags. Les sources doivent être disponibles ; le CSV est lu en UTF-8, les classeurs utilisent leur première feuille pour cette migration. Les dispositions sont séparées. En cas d’échec ou d’annulation, les nouvelles bases de cette migration sont supprimées et l’analyse précédente est restaurée.
+
+**Filtres → Expression textuelle** accepte une grammaire limitée et contrôlée : `Contains`, `StartsWith`, `EndsWith`, `IsNull`, `IsNullOrEmpty`, `In`, `Between`, comparaisons, `And`, `Or`, `Not`. Exemples : `Contains([User], 'alice') And [ID] >= 10` ; `[Date] >= #2026-01-01# And [Date] < #2026-02-01#`. Les fonctions DevExpress non prises en charge sont refusées. L’éditeur ET/OU/NON permet de construire les conditions sans connaître cette syntaxe.
+
+**Affichage → Messages** montre les 500 derniers messages de la session. Le journal de démarrage reste disponible séparément.

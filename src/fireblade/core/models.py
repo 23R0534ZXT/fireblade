@@ -49,6 +49,13 @@ class SortKey:
 
 
 @dataclass
+class Summary:
+    column: int
+    operation: str = "count"
+    kind: str = "number"
+
+
+@dataclass
 class View:
     search: str = ""
     filters: list[Filter] = field(default_factory=list)
@@ -63,6 +70,15 @@ class View:
     header_state: str = ""
     sorts: list[SortKey] = field(default_factory=list)
     global_rules_enabled: bool = True
+    summaries: list[Summary] = field(default_factory=list)
+    group_order: str = "count"
+    group_descending: bool = True
+    group_summary: int = 0
+    group_intervals: dict[str, str] = field(default_factory=dict)
+    pinned_columns: list[int] = field(default_factory=list)
+    pinned_widths: dict[str, int] = field(default_factory=dict)
+    boolean_columns: list[int] = field(default_factory=list)
+    timestamp_columns: list[int] = field(default_factory=list)
 
     def to_json(self):
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -78,6 +94,7 @@ class View:
             raise ValueError("32 règles de coloration au maximum")
         data["format_rules"] = [FormatRule(**{**r, "condition": condition_from_dict(r["condition"])}) for r in rules]
         data["sorts"] = [SortKey(**key) for key in data.get("sorts", [])]
+        data["summaries"] = [Summary(**item) for item in data.get("summaries", [])]
         return cls(**data)
 
 
@@ -93,8 +110,9 @@ class AnalysisSnapshot:
 
 OPERATORS = [("Contient", "contains"), ("Ne contient pas", "not_contains"),
     ("Égal à (exact)", "eq"), ("Différent de (exact)", "ne"),
-    ("Commence par", "starts"), ("Expression régulière RE2", "regex"),
+    ("Commence par", "starts"), ("Finit par", "ends"), ("Expression régulière RE2", "regex"),
     ("Vide / NULL", "empty"), ("Non vide", "not_empty"),
     ("Nombre >", "gt"), ("Nombre ≥", "ge"), ("Nombre <", "lt"),
-    ("Nombre ≤", "le"), ("Date ≥ (ISO)", "after"), ("Date ≤ (ISO)", "before")]
+    ("Nombre ≤", "le"), ("Date ≥ (ISO)", "after"), ("Date ≤ (ISO)", "before"), ("Date < (ISO)", "date_before"), ("Date > (ISO)", "date_after"), ("Date égale", "date_eq"), ("Date différente", "date_ne"),
+    ("Texte >", "text_gt"), ("Texte ≥", "text_ge"), ("Texte <", "text_lt"), ("Texte ≤", "text_le")]
 

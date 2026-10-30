@@ -30,13 +30,14 @@ def rendered_contrast(widget,rect=None):
     if not colors:raise AssertionError('Empty text capture')
     background=colors.most_common(1)[0][0]
     bg=luminance(background)
-    # Text in the deliberately light theme must have actual dark glyph pixels.
-    dark=[(rgb,count) for rgb,count in colors.items() if luminance(rgb)<.2]
-    ink=sum(count for _,count in dark)
-    contrast=max(((bg+.05)/(luminance(rgb)+.05) for rgb,_ in dark),default=1)
+    # Check actual glyphs in either explicit application theme. This catches
+    # white-on-white and black-on-black regressions, not only palette settings.
+    foreground=[(rgb,count) for rgb,count in colors.items() if (luminance(rgb)>.5 if bg<.3 else luminance(rgb)<.2)]
+    ink=sum(count for _,count in foreground)
+    contrast=max(((max(bg,luminance(rgb))+.05)/(min(bg,luminance(rgb))+.05) for rgb,_ in foreground),default=1)
     if ink<5 or contrast<4.5:
         raise AssertionError(f'Illegible rendered text: ink={ink}, contrast={contrast:.2f}, background={background}')
-    return dict(dark_pixels=ink,contrast=round(contrast,2),background=background)
+    return dict(ink_pixels=ink,contrast=round(contrast,2),background=background)
 
 
 def run_appearance(app,report_path):
@@ -92,5 +93,20 @@ def run_appearance(app,report_path):
             run.capture('04-inactive');popup.close();popup.deleteLater()
             return value
         run.check('inactive_window_text',inactive)
+        def app_dark():
+            run.window.preferences.theme='dark'
+            run.window.apply_preferences()
+            run.app.processEvents()
+            bar=run.window.menuBar()
+            result=rendered_contrast(bar,bar.actionGeometry(bar.actions()[0]).adjusted(4,2,-4,-2))
+            run.window.pin_column(1)
+            run.app.processEvents()
+            assert run.window.tree.frozen.columnWidth(2)>0
+            run.capture('05-dark-pinned')
+            run.window.pin_column(1)
+            run.window.preferences.theme='light'
+            run.window.apply_preferences()
+            return result
+        run.check('application_dark_theme_and_pinned_grid',app_dark)
     except Exception as exc:error=exc
     return run.finish(error)

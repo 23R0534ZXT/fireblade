@@ -37,13 +37,15 @@ class ImportDialog(QDialog):
         form.addRow("Enregistrer l’analyse :", destination)
         layout.addLayout(form)
         self.sheet = None
-        excel = source.suffix.lower() == ".xlsx"
+        excel = source.suffix.lower() in (".xlsx", ".xls")
         if excel:
             from fireblade.core.spreadsheets import sheet_names
+            if source.suffix.lower() == ".xls":
+                from fireblade.core.legacy_excel import sheet_names
             self.sheet = QComboBox()
             self.sheet.addItems(sheet_names(source))
             form.addRow("Feuille Excel :", self.sheet)
-            layout.addWidget(QLabel("Valeurs et formules importées comme texte ; la mise en forme Excel n’est pas conservée."))
+            layout.addWidget(QLabel("XLSX : formules comme texte. XLS : résultats mémorisés. Styles et macros non importés."))
         options = QCheckBox("Options du CSV")
         options.setVisible(not excel)
         layout.addWidget(options)

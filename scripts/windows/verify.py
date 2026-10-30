@@ -54,7 +54,7 @@ def verify(executable, report_path, timeout=180):
         valid = (code == 0 and report.get("status") == "passed" and report.get("frozen") is True
                  and report.get("platform") == "win32" and report.get("pointer_bits") == 64
                  and report.get("qt_platform") == "windows" and report.get("packaging") == "onefile"
-                 and len(report.get("checks", [])) >= 13 and adjacent == [executable.name] and extraction_cleaned
+                 and len(report.get("checks", [])) >= 23 and adjacent == [executable.name] and extraction_cleaned
                  and all(item.get("status") == "passed" for item in report.get("checks", [])))
         report["bundle_verification"] = dict(status="passed" if valid else "failed", exit_code=code,
                                              executable_sha256=original_hash, single_file_distribution=True,

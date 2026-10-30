@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QComboBox, QLineEdit, QPlainTextEdit, QPushButton
 
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled
-from fireblade.core.models import Filter, FilterGroup, FormatRule, View
+from fireblade.core.models import Filter, FilterGroup, FormatRule, Summary, View
 from fireblade.core.rule_store import RuleBook
 from fireblade.ui.advanced_dialogs import FilterDialog, SortDialog
 from fireblade.validation.gui_driver import GuiRun
@@ -391,6 +391,57 @@ def run_stress(app,spec_path,report_path):
             expect(run.window.tree.isColumnHidden(14),'Column layout not restored after cancelled import')
             return audit
         run.check('cancel_partial_3_GiB_import_rollback_and_restore_prior_workspace',cancelled_import)
+
+        def advanced_groups():
+            view=View(groups=[1], summaries=[Summary(11,'sum')],group_order='summary')
+            run.window.set_view(view);run.settle()
+            actual=node_values()
+            expected=sorted(spec['advanced']['size_sums'].items(),key=lambda item:(-item[1],item[0]))
+            expect([(row[0],int(row[2])) for row in actual]==expected,'Large-data group sums differ from independent generator')
+            view=View(groups=[0],group_intervals={'0':'day'},group_order='value',group_descending=False)
+            run.window.set_view(view);run.settle()
+            expected=sorted(spec['advanced']['day_counts'],key=lambda item:(item[0] is None,item[0] or ''))
+            expect(node_values()==expected,'Large-data temporal groups differ from independent generator')
+            run.window.pin_column(1);run.app.processEvents()
+            expect(run.window.tree.frozen.columnWidth(2)>0,'Pinned grid is not visible with large data')
+            run.capture('10-advanced-groups-pinned')
+            run.window.pin_column(1)
+        run.check('advanced_summaries_temporal_groups_and_pinned_3_GiB_grid',advanced_groups)
+
+        def projected_export():
+            from fireblade.core.filter_text import parse_filter
+            view=View(expression=parse_filter("[User] = 'user042'",run.window.case.headers))
+            target=run.out/'visible-columns.csv'
+            run.work(lambda:run.window.case.export(target,view,columns=[6,3,1]),300)
+            with target.open(encoding='utf-8-sig',newline='') as incoming:
+                reader=csv.reader(incoming)
+                expect(next(reader)==['RecordID','User','Artifact'],'Projection columns are wrong')
+                total=0
+                for row in reader:
+                    expect(row[1]=='user042','Projection contains a filtered-out record')
+                    total+=1
+            expect(total==spec['reference']['user042'],'Projected export lost filtered records')
+            target.unlink()
+        run.check('text_expression_and_visible_column_export_on_3_GiB',projected_export)
+
+        def search_large_and_small():
+            from fireblade.ui.cross_search import WorkspaceSearch
+            from fireblade.core.models import AnalysisSnapshot
+            small_source=run.out/'cross-search.csv'
+            small_source.write_text('User,Text\nuser042,one\nother,two\n')
+            run.window.remember_active()
+            current=copy.deepcopy(next(doc for doc in run.window.documents if doc.path==str(full_case)))
+            def operation():
+                small=Case(run.out/'cross-search.timeline',settings=run.window.settings)
+                try:
+                    small.import_csv(small_source)
+                    snapshot=AnalysisSnapshot(str(small.path),small.info,View(),b'')
+                finally:small.close()
+                task=WorkspaceSearch([current,snapshot],run.window.settings,run.window.case)
+                return task.find('user042')
+            hits=run.work(operation,300)
+            expect([hit.count for hit in hits]==[spec['reference']['user042'],1],'Cross-file search differs on large and small analyses')
+        run.check('cross_file_search_in_full_3_GiB_and_second_analysis',search_large_and_small)
 
         def final_integrity():
             def digest():

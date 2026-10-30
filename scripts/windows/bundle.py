@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tomllib
 
-DISTRIBUTIONS = ("duckdb", "PySide6-Essentials", "shiboken6", "openpyxl", "et-xmlfile", "pyinstaller")
+DISTRIBUTIONS = ("duckdb", "PySide6-Essentials", "shiboken6", "openpyxl", "et-xmlfile", "xlrd", "pyinstaller")
 RUNTIME_DLLS = ("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll")
 
 

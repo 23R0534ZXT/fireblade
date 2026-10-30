@@ -57,3 +57,12 @@ Utiliser un dossier de données nouveau et au moins 12 GiB libres avant généra
 ## Limites
 
 Les runners GitHub ne remplacent pas un poste utilisateur Windows 10/11 ni les données réelles d’une enquête. Les partages UNC, politiques de parc, gestes physiques de l’Explorateur, toutes les variantes de CSV, pannes brutales et sessions de plusieurs jours restent hors de cette qualification. « Tout testé » serait une affirmation excessive ; les rapports détaillent ce qui a effectivement été exercé.
+
+
+## Fonctions supplémentaires de la grille
+
+Le contrôle embarqué `feature_checks.py` ajoute dix parcours : résumés et précision, navigation temporelle, épinglage, expressions/projections, recherche entre fichiers, cases booléennes/signets, réouverture, catalogue et lecteur XLS, session TLE, glyphes du thème sombre. Ils s’exécutent dans le véritable EXE avec les autres contrôles de fichier unique. Les nouveaux tests de sources couvrent aussi un vrai classeur BIFF XLS synthétique à deux feuilles, des erreurs de migration et les rejets de syntaxe.
+
+Chaque variante Windows/DPI de la matrice vérifie désormais aussi le thème sombre propre à l’application et capture sa zone épinglée. Le contrôle des glyphes utilise le contraste effectif avec le fond, dans les deux thèmes.
+
+Le générateur 3 GiB conserve exactement le même contenu CSV et le même SHA-256 ; il ajoute au manifeste des oracles de sommes de tailles par artefact et de comptes par journée. Le parcours intégré compare ces références avec les nouveaux résumés et groupes de dates, vérifie une projection CSV et recherche dans deux analyses dont la base multi-Go. Le catalogue d’en-têtes est une aide de présentation et ne remplace pas une qualification de tous les exports réels des outils référencés.

@@ -32,15 +32,18 @@ def compile_condition(condition, column, numeric_expression, depth=0, budget=Non
         return (f"({col} IS NULL OR {col}='')" if op == "empty" else f"({col} IS NOT NULL AND {col}<>'')"), []
     if op in ("eq", "ne"):
         return f"{col} {'=' if op == 'eq' else 'IS DISTINCT FROM'} ?", [value]
-    if op in ("contains", "not_contains", "starts", "regex"):
-        fn = {"contains": "contains", "not_contains": "contains", "starts": "starts_with", "regex": "regexp_matches"}[op]
+    if op in ("contains", "not_contains", "starts", "ends", "regex"):
+        fn = {"contains": "contains", "not_contains": "contains", "starts": "starts_with", "ends": "ends_with", "regex": "regexp_matches"}[op]
         expr = f"{fn}(coalesce({col}, ''), ?)" if op == "regex" else f"{fn}(lower(coalesce({col}, '')), lower(?))"
         return ("NOT " if op == "not_contains" else "") + expr, [value]
-    if op in ("gt", "ge", "lt", "le", "after", "before"):
-        comparison = {"gt": ">", "ge": ">=", "lt": "<", "le": "<=", "after": ">=", "before": "<="}[op]
-        typ = "TIMESTAMP" if op in ("after", "before") else "DECIMAL(38,10)"
+    if op in ("gt", "ge", "lt", "le", "after", "before", "date_before", "date_after", "date_eq", "date_ne"):
+        comparison = {"gt": ">", "ge": ">=", "lt": "<", "le": "<=", "after": ">=", "before": "<=", "date_before": "<", "date_after": ">", "date_eq": "=", "date_ne": "<>"}[op]
+        typ = "TIMESTAMP" if op in ("after", "before", "date_before", "date_after", "date_eq", "date_ne") else "DECIMAL(38,10)"
         expr = f"try_cast({col} AS {typ})" if typ == "TIMESTAMP" else numeric_expression(col)
         return f"{expr} {comparison} cast(? AS {typ})", [value]
+    if op in ("text_gt", "text_ge", "text_lt", "text_le"):
+        comparison = {"text_gt": ">", "text_ge": ">=", "text_lt": "<", "text_le": "<="}[op]
+        return f"{col} {comparison} ?", [value]
     raise ValueError(f"Opérateur inconnu : {op}")
 
 

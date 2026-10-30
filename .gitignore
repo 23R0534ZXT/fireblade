@@ -1,0 +1,13 @@
+.venv/
+.venv-build/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+artifacts/
+*.spec
+*.timeline
+*.timeline.wal
+*.timeline.tmp/
+*.partial

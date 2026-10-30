@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "timeline-explorer-next"
+version = "0.4.0"
+description = "Local, disk-backed forensic CSV explorer"
+requires-python = ">=3.11"
+dependencies = ["duckdb>=1.4,<2", "PySide6-Essentials>=6.8,<7"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "psutil>=6", "pyinstaller>=6"]
+
+[project.scripts]
+timeline-next = "timeline_next.bootstrap:main"
+
+[tool.setuptools.packages.find]
+include = ["timeline_next*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

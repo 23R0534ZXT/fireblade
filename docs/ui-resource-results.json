@@ -1,0 +1,20 @@
+{
+  "scenario": "Open existing case; group; expand/collapse first group",
+  "platform": "posix",
+  "rows": 2890000,
+  "source_bytes": 1129468693,
+  "cycles": 8,
+  "memory_limit_mb": 256,
+  "peak_process_rss_mib": 138.9,
+  "rss_after_each_collapse_mib": [
+    135.1,
+    136.3,
+    137.0,
+    137.3,
+    137.7,
+    138.4,
+    138.7,
+    138.9
+  ],
+  "caveat": "Offscreen Qt, synthetic data, no import or real Windows measurements."
+}

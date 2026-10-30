@@ -40,6 +40,9 @@ class GuiRun:
         self.window.show()
         self.report['font'] = dict(family=app.font().family(), point_size=app.font().pointSizeF())
         self.report['style'] = app.property('fireblade_style')
+        from fireblade.validation.responsiveness import ResponsivenessProbe
+        self.probe = ResponsivenessProbe()
+        self.stalls = []
         self.lags = []
         self.last_tick = time.monotonic()
         self.last_flush = 0
@@ -50,7 +53,12 @@ class GuiRun:
 
     def tick(self):
         now = time.monotonic()
-        self.lags.append(now-self.last_tick)
+        gap=now-self.last_tick
+        self.lags.append(gap)
+        if gap>.25:
+            self.stalls.append(dict(gap_ms=round(gap*1000,1),phase=self.report.get('current_check'),
+                                    status=self.window.statusBar().currentMessage(),stack=self.probe.latest_stack))
+            self.stalls=sorted(self.stalls,key=lambda item:item['gap_ms'],reverse=True)[:20]
         self.last_tick = now
         if now-self.last_flush > 5:
             self.flush()
@@ -80,12 +88,14 @@ class GuiRun:
     def check(self,name,operation):
         self.report['current_check']=name
         self.flush()
+        first_tick=len(self.lags)
         start=time.perf_counter()
         try:
             result=operation()
             if self.errors:
                 raise AssertionError(repr(self.errors))
             item=dict(name=name,status='passed',seconds=round(time.perf_counter()-start,3))
+            item['max_timer_gap_ms']=round(max(self.lags[first_tick:],default=0)*1000,1)
             if result is not None:item['details']=result
             if os.name=='nt':item['memory']=windows_memory()
             self.report['checks'].append(item)
@@ -195,6 +205,8 @@ class GuiRun:
         self.report['status']='failed' if error or self.errors else 'passed'
         self.report['ui_errors']=self.errors
         self.timer.stop()
+        self.report['responsiveness_diagnostics']=self.probe.stop()
+        self.report['responsiveness_stalls']=self.stalls
         if self.lags:
             ordered=sorted(self.lags)
             self.report['ui_heartbeat']=dict(interval_ms=50,max_gap_ms=round(max(ordered)*1000,1),

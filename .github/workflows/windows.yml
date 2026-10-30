@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      profile_only:
+        description: Run only the native Windows source stall diagnostic
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,6 +20,7 @@ concurrency:
 
 jobs:
   tests:
+    if: ${{ !inputs.profile_only }}
     name: Windows / Python ${{ matrix.python }}
     runs-on: windows-latest
     timeout-minutes: 15
@@ -143,4 +149,30 @@ jobs:
           path: |
             artifacts/large-data/*.json
             artifacts/large-data/*.png
+          retention-days: 14
+
+
+  profile:
+    name: Native Windows responsiveness diagnostic
+    if: github.event_name == 'workflow_dispatch' && inputs.profile_only
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: windows
+      PYTHONUTF8: '1'
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --only-binary=:all: -r requirements/runtime.txt
+      - run: python -m scripts.windows.profile_gui --out artifacts/profile --gib 3
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-responsiveness-profile
+          path: |
+            artifacts/profile/*.json
+            artifacts/profile/*.png
           retention-days: 14

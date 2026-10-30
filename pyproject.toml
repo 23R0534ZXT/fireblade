@@ -1,11 +1,13 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "fireblade-forensics"
 version = "0.4.0"
 description = "Local, disk-backed forensic CSV explorer"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = ["duckdb>=1.4,<2", "PySide6-Essentials>=6.8,<7", "openpyxl>=3.1.5,<4"]
 
@@ -13,11 +15,12 @@ dependencies = ["duckdb>=1.4,<2", "PySide6-Essentials>=6.8,<7", "openpyxl>=3.1.5
 dev = ["pytest>=8", "psutil>=6", "pyinstaller>=6"]
 
 [project.scripts]
-fireblade = "timeline_next.bootstrap:main"
-timeline-next = "timeline_next.bootstrap:main"
+fireblade = "fireblade.runtime.bootstrap:main"
 
 [tool.setuptools.packages.find]
-include = ["timeline_next*"]
+where = ["src"]
+include = ["fireblade*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src", "."]

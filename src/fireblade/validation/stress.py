@@ -444,6 +444,23 @@ def run_stress(app,spec_path,report_path):
             expect([hit.count for hit in hits]==[spec['reference']['user042'],1],'Cross-file search differs on large and small analyses')
         run.check('cross_file_search_in_full_3_GiB_and_second_analysis',search_large_and_small)
 
+        def complete_expansion():
+            case=run.window.case
+            view=View(groups=[1,3,4],summaries=[Summary(11,'sum')],group_order='value',group_descending=False)
+            run.window.set_view(view);run.settle();run.window.expand_groups();run.settle(600)
+            expect(run.window.view.expand_all,'Complete expansion is not active')
+            def audit():
+                return case.db.execute('SELECT count(*) FILTER (WHERE depth=0),count(DISTINCT row_id),min(row_id),max(row_id),count(*) FILTER (WHERE depth>0) FROM __fireblade_outline').fetchone()
+            leaves,distinct,minimum,maximum,groups=run.work(audit,300)
+            expect((leaves,distinct,minimum,maximum)==(rows,rows,1,rows),'Full hierarchy lost/duplicated source IDs')
+            middle=run.work(lambda:case.outline_page(view,offset=rows//2),300)
+            expect(len(middle)==case.settings.page_size,'Deep full-hierarchy page is missing')
+            expect(len(run.window.model.root.children)<=case.settings.max_loaded_rows,'Expanded grid exceeded its row window')
+            run.capture('11-complete-expanded-hierarchy')
+            run.window.collapse_groups();run.settle()
+            return dict(indexed_records=leaves,indexed_groups=groups,deep_page_offset=rows//2)
+        run.check('complete_three_level_expansion_all_3_GiB_records_and_deep_page',complete_expansion)
+
         def final_integrity():
             def digest():
                 with source.open('rb') as incoming:return hashlib.file_digest(incoming,'sha256').hexdigest()

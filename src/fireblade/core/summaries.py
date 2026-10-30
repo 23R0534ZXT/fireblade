@@ -1,7 +1,7 @@
 """Validated grouping expressions. Only generated identifiers enter SQL."""
 
 OPERATIONS = ("count", "distinct", "sum", "avg", "min", "max")
-INTERVALS = {"year": "%Y", "month": "%Y-%m", "day": "%Y-%m-%d", "hour": "%Y-%m-%d %H:00"}
+INTERVALS = {"year": "%Y", "month": "%Y-%m", "day": "%Y-%m-%d", "hour": "%Y-%m-%d %H:00", "week": "%G-W%V", "minute": "%Y-%m-%d %H:%M", "second": "%Y-%m-%d %H:%M:%S"}
 
 
 def group_expression(case, view, column):
@@ -9,9 +9,11 @@ def group_expression(case, view, column):
     interval = view.group_intervals.get(str(column), "value")
     if interval == "value":
         return col
+    if interval == 'quarter':
+        return f"strftime(cast(try_cast({col} AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP), '%Y') || '-Q' || cast(quarter(cast(try_cast({col} AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)) AS VARCHAR)"
     if interval not in INTERVALS:
         raise ValueError("Intervalle inconnu : année, mois, jour ou heure attendu")
-    return f"strftime(try_cast({col} AS TIMESTAMP), '{INTERVALS[interval]}')"
+    return f"strftime(cast(try_cast({col} AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP), '{INTERVALS[interval]}')"
 
 
 def summary_expressions(case, view):
@@ -33,7 +35,7 @@ def summary_expressions(case, view):
         if summary.kind == "number":
             col = case.numeric_expression(col)
         elif summary.kind == "timestamp":
-            col = f"try_cast({col} AS TIMESTAMP)"
+            col = f"cast(try_cast({col} AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP)"
         expressions.append(f"{summary.operation}({col})")
     return expressions
 

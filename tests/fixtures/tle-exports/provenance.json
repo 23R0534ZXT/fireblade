@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/EricZimmerman/TLEFilePlugins",
+  "commit": "7199c81ba45a97be74b4e05da43cbaabecccf5ca",
+  "directory": "TLEFile.Test/TestFiles",
+  "kind": "Upstream regression fixtures; synthetic, not investigator evidence",
+  "license": "MIT; licenses/TLEFilePlugins-MIT.txt",
+  "files": [
+    {
+      "file": "SuperTimelinePlaso.csv",
+      "sha256": "874e59066107923a43dbf2ff99c75d194f6e714e6f7a3b3f46c481bc80978018"
+    },
+    {
+      "file": "SuperTimelineLowerCase.csv",
+      "sha256": "088abcd2813f96e3ed5ab5b8cca04fdb3494a7b2e888b215dbf5479b9eb0dae2"
+    }
+  ]
+}

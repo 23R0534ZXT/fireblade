@@ -77,7 +77,7 @@ class GridModel(QAbstractItemModel):
 
     def reset(self, view, global_rules=()):
         self.case.validate_view(view)
-        validate_format_rules(global_rules, self.case.column, self.case.numeric_expression)
+        validate_format_rules(global_rules, self.case.expression_column, self.case.numeric_expression)
         self.beginResetModel()
         self.generation += 1
         for job in self.jobs:
@@ -155,7 +155,7 @@ class GridModel(QAbstractItemModel):
                 result = f"{label} : {'∅' if value is None else value}  ({count:,})"
                 if self.view.summaries:
                     result += " · " + " · ".join(f"{s.operation}({self.case.headers[s.column]})={value}" for s, value in zip(self.view.summaries, node.values[2:]))
-                return result
+                return (("    " * (len(node.path)-1) + "▾ ") if self.view.expand_all else "") + result
             if col == 0:
                 return ("★ " if node.note is not None else "") + str(node.values[0])
             value = node.values[col]
@@ -207,7 +207,7 @@ class GridModel(QAbstractItemModel):
         return False
 
     def hasChildren(self, parent=QModelIndex()):
-        return parent.column() <= 0 and self.node(parent).group
+        return parent.column() <= 0 and self.node(parent).group and (not self.view.expand_all or not parent.isValid())
 
     def canFetchMore(self, parent=QModelIndex()):
         # QTreeView may eagerly call fetchMore during relayout. Paging is explicit
@@ -222,7 +222,14 @@ class GridModel(QAbstractItemModel):
         node.loading = True
         view, path, offset = copy.deepcopy(self.view), node.path, node.offset + len(node.children)
         global_rules = copy.deepcopy(self.global_rules)
+        outline = view.expand_all and bool(view.groups)
         def read_page():
+            if outline:
+                records = self.case.outline_page(view,offset=offset)
+                rows = [r['values'] for r in records if not r['group']]
+                styles = self.case.page_styles(view,rows,global_rules)
+                notes = self.case.bookmarks([r[0] for r in rows])
+                return records,styles,notes
             rows = self.case.page(view, path, offset)
             leaves = len(path) >= len(view.groups)
             styles = self.case.page_styles(view, rows, global_rules) if leaves else {}
@@ -260,8 +267,13 @@ class GridModel(QAbstractItemModel):
                     self.endRemoveRows()
                 start = len(node.children)
                 self.beginInsertRows(parent, start, start + len(rows) - 1)
-                node.children += [Node(node, path + (r[0],) if groups else path,
-                                       r, groups, more=groups, styles=styles.get(r[0], ()), note=notes.get(r[0]) if not groups else None) for r in rows]
+                if outline:
+                    node.children += [Node(node,r['path'],r['values'],r['group'],more=False,
+                         styles=styles.get(r['values'][0],()) if not r['group'] else (),
+                         note=notes.get(r['values'][0]) if not r['group'] else None) for r in rows]
+                else:
+                    node.children += [Node(node, path + (r[0],) if groups else path,
+                                           r, groups, more=groups, styles=styles.get(r[0], ()), note=notes.get(r[0]) if not groups else None) for r in rows]
                 self.endInsertRows()
             self.status.emit(f"{offset + len(rows):,} éléments chargés dans ce niveau")
             self.loaded.emit()

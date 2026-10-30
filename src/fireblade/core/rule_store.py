@@ -27,6 +27,8 @@ class RuleBook:
     rules: list = field(default_factory=list)
 
     def column(self, index):
+        if type(index) is int and index in (-1,-2,-3):
+            return {-1:'__row_id',-2:'__fb_tag',-3:'__fb_note'}[index]
         if type(index) is not int or not 0 <= index < len(self.headers):
             raise ValueError("Colonne invalide dans les règles globales")
         return f'"c{index}"'
@@ -97,9 +99,16 @@ class RuleBook:
                 mapping[i] = exact[name]
             elif len(matches) == 1:
                 mapping[i] = matches[0]
+        mapping.update({-1:-1,-2:-2,-3:-3})
         adapted, skipped = [], []
         for number, source in enumerate(self.rules, 1):
-            required = {condition.column for condition in atoms(source.condition)}
+            required = set()
+            for condition in atoms(source.condition):
+                if condition.operator == 'expression':
+                    from fireblade.core.expressions import referenced_columns
+                    required.update(referenced_columns(condition.value,self.headers))
+                else:
+                    required.add(condition.column)
             if source.target is not None:
                 required.add(source.target)
             absent = sorted(required - mapping.keys())
@@ -108,7 +117,8 @@ class RuleBook:
                 continue
             rule = copy.deepcopy(source)
             for condition in atoms(rule.condition):
-                condition.column = mapping[condition.column]
+                if condition.operator != 'expression':
+                    condition.column = mapping[condition.column]
             if rule.target is not None:
                 rule.target = mapping[rule.target]
             adapted.append(rule)

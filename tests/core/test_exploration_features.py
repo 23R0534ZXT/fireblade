@@ -86,7 +86,7 @@ def test_text_filter_parser_compiles_bound_conditions(case, text, count):
     assert case.count(view) == count
 
 
-@pytest.mark.parametrize('text', ["[missing] = 1", "__import__('os')", "[ID] = 1; DROP TABLE events", "Contains([ID])", "Iif([ID],1,2)", "("*30 + "[ID]=1" + ")"*30])
+@pytest.mark.parametrize('text', ["[missing] = 1", "__import__('os')", "[ID] = 1; DROP TABLE events", "Contains([ID])", "Iif([ID],1)", "("*30 + "[ID]=1" + ")"*30])
 def test_text_filter_rejects_unknown_or_executable_syntax(case, text):
     with pytest.raises(ValueError):
         parse_filter(text, case.headers)

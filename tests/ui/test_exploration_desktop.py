@@ -253,3 +253,57 @@ def test_five_long_wrapped_tabs_remain_clickable_after_font_and_geometry_change(
         assert not errors
     finally:
         w.preferences.theme='light';w.apply_preferences();settle(qt_application,w);w.close()
+
+
+def test_complete_expansion_pages_all_groups_and_collapse_restores_tree(qt_application,window):
+    window.set_view(View(groups=[0,1],summaries=[Summary(2,'sum')]))
+    settle(qt_application,window)
+    window.expand_groups();settle(qt_application,window)
+    assert window.view.expand_all
+    nodes=window.model.root.children
+    assert len(nodes)==7
+    assert len([n for n in nodes if not n.group])==3
+    assert any('▾' in window.model.data(window.model.index(i,0)) for i,n in enumerate(nodes) if n.group)
+    assert all(not window.model.hasChildren(window.model.index(i,0)) for i in range(len(nodes)))
+    window.collapse_groups();settle(qt_application,window)
+    assert not window.view.expand_all and window.model.rowCount()==2
+    assert window.model.hasChildren(window.model.index(0,0))
+
+
+def test_native_connection_work_keeps_gui_timer_running_and_uses_worker(qt_application,window):
+    import threading
+    from PySide6.QtCore import QTimer
+    main=threading.get_ident();ticks=[];worker=[]
+    timer=QTimer();timer.setInterval(10);timer.timeout.connect(lambda:ticks.append(time.monotonic()));timer.start()
+    def slow_native_operation():
+        worker.append(threading.get_ident());time.sleep(.3);return 42
+    try:
+        assert window.connection_work(slow_native_operation)==42
+        assert worker[0]!=main and len(ticks)>=5
+        assert not window.busy and window.centralWidget().isEnabled()
+        with pytest.raises(RuntimeError,match='expected failure'):
+            window.connection_work(lambda:(_ for _ in ()).throw(ValueError('expected failure')))
+        assert not window.busy
+    finally:timer.stop()
+
+
+def test_user_derived_column_dialog_updates_grid_without_reopening_case(qt_application,window,monkeypatch):
+    from fireblade.ui.derived_columns import DerivedDialog,edit_derived
+    original=window.case;source_bytes=Path(original.info['path']).read_bytes()
+    def accept(dialog):
+        dialog.name.setText('WhenUTC');dialog.source.setCurrentText('Time');dialog.zone.setCurrentText('Europe/Paris');return 1
+    monkeypatch.setattr(DerivedDialog,'exec',accept)
+    edit_derived(window);settle(qt_application,window)
+    assert window.case is original and window.model.columnCount()==7
+    assert window.model.node(window.model.index(0,0)).values[-1]=='2026-01-01T11:00:00.123456700Z'
+    assert Path(original.info['path']).read_bytes()==source_bytes
+
+
+def test_completion_acceptance_runs_official_fixtures_in_real_grid(qt_application,window,tmp_path):
+    from fireblade.validation.completion_checks import check_completion
+    completed=[]
+    def expect(condition,message):assert condition,message
+    def check(name,function):function();completed.append(name)
+    check_completion(window,tmp_path,lambda:settle(qt_application,window),check,expect,tmp_path)
+    assert len(completed)==6
+    assert (tmp_path/'completion-full-groups.png').is_file()

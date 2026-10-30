@@ -34,7 +34,9 @@ def main():
                "--hidden-import", "decimal", "--hidden-import", "uuid", "--hidden-import", "fractions"]
     for source, target in [(generated, "resources"), (root / "config" / "fireblade.toml", "resources/config"),
                            (root / "docs" / "guides" / "UTILISATION.md", "resources/docs/guides"),
-                           (root / "LICENSE", "resources")]:
+                           (root / "LICENSE", "resources"),
+                           (root / "tests" / "fixtures" / "tle-exports", "resources/qa/tle-exports"),
+                           (root / "tests" / "fixtures" / "tle-layouts", "resources/qa/tle-layouts")]:
         command += ["--add-data", f"{source}{os.pathsep}{target}"]
     for source in json.loads((generated.parent / "runtime-binaries.json").read_text(encoding="utf-8")):
         command += ["--add-binary", f"{source}{os.pathsep}."]

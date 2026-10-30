@@ -68,3 +68,13 @@ Le contrôle embarqué `feature_checks.py` ajoute dix parcours : résumés et pr
 Chaque variante Windows/DPI de la matrice vérifie désormais aussi le thème sombre propre à l’application et capture sa zone épinglée. Le contrôle des glyphes utilise le contraste effectif avec le fond, dans les deux thèmes.
 
 Le référentiel du CSV existant contient les sommes de tailles par artefact et les comptes par journée calculés indépendamment lors de sa création. Le parcours intégré compare ces références avec les nouveaux résumés et groupes de dates, vérifie une projection CSV et recherche dans deux analyses dont la base multi-Go. Le catalogue d’en-têtes est une aide de présentation et ne remplace pas une qualification de tous les exports réels des outils référencés.
+
+## Contrôles des ajouts de compatibilité
+
+Le binaire autonome exécute aussi les fixtures Plaso officielles de TLEFilePlugins, la normalisation UTC/MACB/catégories, les expressions imbriquées, l’import de leur layout XML et de sept règles de couleur, le dépliage complet, les limites d’époques et la précision FILETIME, puis un export dérivé avec contrôle d’intégrité. Les fixtures officielles sont des données synthétiques de régression, pas des pièces d’une enquête réelle.
+
+Sur le même CSV publié de 3 GiB, un contrôle indexe les trois niveaux de groupes et tous les enregistrements. Il vérifie nombre et unicité des identifiants source, première/dernière ligne, une page profonde et la fenêtre bornée du modèle Qt. Il ne régénère pas le CSV.
+
+Un job Windows séparé exerce des chemins Unicode de plus de 260 caractères et un vrai partage SMB temporaire `\\localhost\FirebladeQA…`. Il teste import UNC, export filtré, réouverture et refus d’écraser la source via son alias local. Le partage est retiré dans le nettoyage ; aucun pare-feu n’est ouvert. Ce job bloque la publication s’il échoue. Il ne représente pas toutes les stratégies d’authentification d’un partage d’entreprise.
+
+Les appels natifs de connexion et de fermeture passent dans le worker avec traitement des événements Qt pendant l’attente ; un contrôle vérifie le timer et le fil d’exécution. Les mesures sur gros fichier restent nécessaires pour quantifier les autres pauses.

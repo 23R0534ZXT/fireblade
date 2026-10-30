@@ -44,18 +44,24 @@ class Case:
         self.cancelled = threading.Event()
         self._page_cache_key = None
         self._bookmark_revision = 0
+        self._outline_key = None
         self.db = duckdb.connect(str(self.path), read_only=read_only)
         self.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
         self.db.execute(f"SET threads={self.settings.threads}")
         self.db.execute("SET enable_progress_bar=false")
+        self.db.execute("SET TimeZone='UTC'")
         self.db.execute("SET preserve_insertion_order=true")
         self.db.execute("SET temp_directory=?", [str(self.path) + ".tmp"])
         self.headers: list[str] = []
         if self.db.execute("SELECT count(*) FROM information_schema.tables WHERE table_name='metadata'").fetchone()[0]:
             self.info = json.loads(self.db.execute("SELECT value FROM metadata WHERE key='source'").fetchone()[0])
-            self.headers = self.info["headers"]
+            self.headers = list(self.info["headers"])
+            row = self.db.execute("SELECT value FROM metadata WHERE key='derived'").fetchone()
+            self.derived = json.loads(row[0]) if row else []
+            self.headers += [d['name'] for d in self.derived]
         else:
             self.info = {}
+            self.derived = []
 
     def close(self):
         with self.lock:
@@ -260,6 +266,56 @@ class Case:
                         pass
                 raise
 
+    def add_derived_columns(self, definitions):
+        """Add declarative columns atomically; source metadata/bytes stay intact."""
+        from fireblade.core.derived import compile_definition
+        if not self.headers:
+            raise ValueError('Importez une source avant de calculer des colonnes')
+        definitions = list(definitions)
+        if not definitions or len(self.derived) + len(definitions) > 64:
+            raise ValueError('De 1 à 64 colonnes dérivées par analyse')
+        planned = self.derived + definitions
+        headers = list(self.info['headers'])
+        sql = 'SELECT * FROM "__fireblade_source_events"'
+        for definition in planned:
+            name = definition.get('name') if isinstance(definition, dict) else None
+            if not isinstance(name, str) or name.casefold() in {h.casefold() for h in headers}:
+                raise ValueError('Nom de colonne dérivée absent ou déjà utilisé')
+            def column(index):
+                if type(index) is not int or not 0 <= index < len(headers):
+                    raise ValueError('Une colonne dérivée ne peut référencer que les colonnes précédentes')
+                return f'"c{index}"'
+            expression = compile_definition(definition, headers, column, self.numeric_expression)
+            sql = f'SELECT events.*, cast(({expression}) AS VARCHAR) AS "c{len(headers)}" FROM ({sql}) AS events'
+            headers.append(name)
+        with self.operation(final_check=False):
+            try:
+                self.db.execute('BEGIN')
+                if not self.derived:
+                    self.db.execute('ALTER TABLE events RENAME TO "__fireblade_source_events"')
+                else:
+                    self.db.execute('DROP VIEW events')
+                self.db.execute('CREATE VIEW events AS ' + sql)
+                # Bind the entire plan before committing, without scanning the file.
+                self.db.execute('SELECT * FROM events LIMIT 0')
+                self.db.execute("INSERT OR REPLACE INTO metadata VALUES ('derived', ?)", [json.dumps(planned)])
+                with self.finalizing_transaction():
+                    self.check_cancelled()
+                    self.db.execute('COMMIT')
+            except BaseException:
+                with self.finalizing_transaction():
+                    self.db.execute('ROLLBACK')
+                raise
+            self.headers, self.derived = headers, planned
+            self._page_cache_key = self._outline_key = None
+        return headers
+
+    def derived_quality(self, columns=None):
+        """Report missing/invalid derived values; never discard their rows."""
+        columns = list(range(len(self.info['headers']),len(self.headers))) if columns is None else columns
+        with self.operation():
+            return {self.headers[i]: self.db.execute(f'SELECT count(*) FILTER (WHERE {self.column(i)} IS NULL),count(*) FROM events').fetchone() for i in columns}
+
     def where(self, view: View, path=()):
         clauses, args = [], []
         if view.search:
@@ -280,19 +336,30 @@ class Case:
             clauses.append("__row_id IN (SELECT row_id FROM bookmarks)")
         return (" WHERE " + " AND ".join(clauses) if clauses else ""), args
 
+    def expression_column(self,index):
+        if index == -1:
+            return 'cast(events.__row_id AS VARCHAR)'
+        if index == -2:
+            return 'cast(EXISTS(SELECT 1 FROM bookmarks b WHERE b.row_id=events.__row_id) AS VARCHAR)'
+        if index == -3:
+            return '(SELECT b.note FROM bookmarks b WHERE b.row_id=events.__row_id)'
+        return self.column(index)
+
     def condition(self, expression):
-        return compile_condition(expression, self.column, self.numeric_expression)
+        return compile_condition(expression, self.expression_column, self.numeric_expression)
 
     def validate_view(self, view):
         self.where(view)
         self.order(view)
+        if type(view.expand_all) is not bool:
+            raise ValueError("expand_all doit être un booléen")
         if len(view.groups) != len(set(view.groups)):
             raise ValueError("Une colonne ne peut apparaître deux fois dans les groupes")
         for column in view.groups:
             self.column(column)
         if type(view.global_rules_enabled) is not bool:
             raise ValueError("L’activation des règles globales doit être un booléen")
-        validate_format_rules(view.format_rules, self.column, self.numeric_expression)
+        validate_format_rules(view.format_rules, self.expression_column, self.numeric_expression)
         summary_expressions(self, view)
         group_order(self, view, self.column(0))
         for mapping in (view.pinned_columns, view.boolean_columns, view.timestamp_columns):
@@ -321,7 +388,11 @@ class Case:
         projections, args, required = [], [], set()
         def collect_columns(condition):
             if isinstance(condition, Filter):
-                required.add(condition.column)
+                if condition.operator == 'expression':
+                    from fireblade.core.expressions import referenced_columns
+                    required.update(referenced_columns(condition.value,self.headers))
+                else:
+                    required.add(condition.column)
             else:
                 for child in condition.children:
                     collect_columns(child)
@@ -333,14 +404,14 @@ class Case:
                 collect_columns(rule.condition)
             projections.append("(" + sql + ")")
             args.extend(values)
-        columns = sorted(required)
+        columns = sorted(i for i in required if i>=0)
         aliases = ["__row_id"] + [self.column(i) for i in columns]
         record = "(cast(? AS BIGINT)" + ", cast(? AS VARCHAR)" * len(columns) + ")"
         values = [value for row in rows for value in [row[0]] + [row[i + 1] for i in columns]]
         with self.operation():
             result = self.db.execute(
                 "WITH visible(" + ",".join(aliases) + ") AS (VALUES " + ",".join(record for _ in rows) + ") "
-                "SELECT __row_id, " + ", ".join(projections) + " FROM visible", values + args).fetchall()
+                "SELECT __row_id, " + ", ".join(projections) + " FROM visible AS events", values + args).fetchall()
         return {row[0]: tuple(i for i, matched in enumerate(row[1:]) if matched) for row in result}
 
     @staticmethod
@@ -364,7 +435,8 @@ class Case:
             if key.kind == "number":
                 col = self.numeric_expression(col)
             elif key.kind == "timestamp":
-                col = f"try_cast({col} AS TIMESTAMP)"
+                from fireblade.core.timestamps import timestamp_key
+                col = timestamp_key(col)
             parts.append(f"{col} {'DESC' if key.descending else 'ASC'} NULLS LAST")
         return " ORDER BY " + ", ".join(parts + ["__row_id"])
 
@@ -386,6 +458,10 @@ class Case:
                     return self.sorted_page(where, args, order, key, offset, limit)
                 sql = f"SELECT * FROM events{where}{order} LIMIT ? OFFSET ?"
             return self.db.execute(sql, args + [limit, offset]).fetchall()
+
+    def outline_page(self, view, offset=0, limit=None, progress=lambda _: None):
+        from fireblade.core.outline import outline_page
+        return outline_page(self,view,offset,limit,progress)
 
     def sorted_page(self, where, args, order, key, offset, limit):
         """One temporary order at a time, containing IDs rather than full rows.
@@ -474,7 +550,8 @@ class Case:
 
     def export(self, target, view, grouped=False, include_annotations=False, columns=None):
         target = Path(target).resolve()
-        if target in (self.path, Path(self.info["path"]).resolve()):
+        from fireblade.core.paths import protected_destination
+        if protected_destination(target,(self.path, self.info["path"])):
             raise ValueError("L’export ne peut pas écraser la source ou le dossier d’analyse")
         # Atomic replacement: failed exports never leave an apparently complete CSV.
         temporary = target.with_name(target.name + ".partial")

@@ -8,7 +8,6 @@ import json
 import shutil
 import threading
 import uuid
-import xml.etree.ElementTree as ET
 
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
@@ -93,41 +92,5 @@ class TleSessionImport:
 
 
 def read_tle_columns(path, headers):
-    path = Path(path)
-    if path.stat().st_size > 4 * 1024 * 1024:
-        raise ValueError('Disposition limitée à 4 Mo')
-    raw = path.read_text(encoding='utf-8-sig')
-    if '<!DOCTYPE' in raw.upper() or '<!ENTITY' in raw.upper():
-        raise ValueError('DTD et entités non prises en charge')
-    root = ET.fromstring(raw)
-    known = {header.casefold(): i for i, header in enumerate(headers)}
-    columns = []
-    for node in root.iter():
-        values = {child.attrib.get('name'): child.text or '' for child in node if child.tag == 'property'}
-        field = values.get('FieldName')
-        if field is None:
-            continue
-        # Internal TLE line and tag fields have no source-column counterpart.
-        if field.casefold() in ('line','tag','color') and field.casefold() not in known:
-            continue
-        if field.casefold() not in known:
-            raise ValueError(f'Colonne du layout absente de la source : {field}')
-        index = known[field.casefold()]
-        visible = int(values.get('VisibleIndex', len(columns)))
-        width = int(values.get('Width', '150'))
-        if not 20 <= width <= 10000:
-            raise ValueError('Largeur de colonne invalide')
-        fixed = values.get('Fixed', 'None')
-        if fixed not in ('None','Left','0','1',''):
-            raise ValueError('Seules les colonnes épinglées à gauche sont importables')
-        columns.append(dict(column=index, position=visible, width=width, pinned=fixed in ('Left','1'),
-                            group=int(values.get('GroupIndex','-1')), sort=values.get('SortOrder','None'),
-                            sort_index=int(values.get('SortIndex','-1'))))
-    if not columns or len({c['column'] for c in columns}) != len(columns):
-        raise ValueError('Disposition sans colonnes reconnues ou avec doublons')
-    for node in root.iter('property'):
-        if node.attrib.get('name') in ('ActiveFilterString','FilterString') and (node.text or '').strip():
-            raise ValueError('Ce layout contient un filtre : importez son expression séparément pour vérifier sa traduction')
-        if node.attrib.get('name') in ('FormatRules','FormatConditions') and (list(node) or node.attrib.get('value','0') != '0'):
-            raise ValueError('Les règles de couleur de ce layout ne sont pas compatibles ; utilisez des règles Fireblade')
-    return columns
+    from fireblade.core.tle_layout import read_tle_layout
+    return read_tle_layout(path, headers).columns

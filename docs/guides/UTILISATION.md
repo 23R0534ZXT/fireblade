@@ -147,7 +147,7 @@ La boîte Ouvrir accepte plusieurs fichiers. Les fichiers déposés pendant une 
 
 Le menu d’un en-tête propose le groupement des dates par année, mois, jour ou heure et un filtre calendrier. Le filtre d’un mois s’arrête au début du mois suivant, exclu. Les dates invalides apparaissent sous NULL dans les groupes temporels.
 
-**Ctrl+K** replie les groupes et libère leurs descendants. **Déplier les groupes de la page** ouvre progressivement les branches dans une limite liée aux pages chargées : il ne matérialise pas toutes les lignes d’un fichier multi-Go. **Suivant/Précédent** permettent de poursuivre l’analyse.
+**Ctrl+K** replie les groupes et libère leurs descendants. **Déplier tous les groupes (vue paginée)** construit un index de toute la hiérarchie sur disque. Tous les groupes et enregistrements sont parcourables avec **Suivant/Précédent**, sans matérialiser des millions de lignes dans Qt. Le premier dépliage peut prendre du temps ; **Interrompre la requête** l’annule. Le repli rétablit l’arbre interactif.
 
 ## Colonnes épinglées, copie et export
 
@@ -173,6 +173,14 @@ La légende des supertimelines décrit les premières catégories de coloration 
 
 **Fichier → Importer une session Timeline Explorer** lit un `.tle_sess`, vérifie ses sources et les réimporte dans de nouvelles bases, avec les tags. Les sources doivent être disponibles ; le CSV est lu en UTF-8, les classeurs utilisent leur première feuille pour cette migration. Les dispositions sont séparées. En cas d’échec ou d’annulation, les nouvelles bases de cette migration sont supprimées et l’analyse précédente est restaurée.
 
-**Filtres → Expression textuelle** accepte une grammaire limitée et contrôlée : `Contains`, `StartsWith`, `EndsWith`, `IsNull`, `IsNullOrEmpty`, `In`, `Between`, comparaisons, `And`, `Or`, `Not`. Exemples : `Contains([User], 'alice') And [ID] >= 10` ; `[Date] >= #2026-01-01# And [Date] < #2026-02-01#`. Les fonctions DevExpress non prises en charge sont refusées. L’éditeur ET/OU/NON permet de construire les conditions sans connaître cette syntaxe.
+**Filtres → Expression textuelle** accepte une grammaire limitée et contrôlée : `Contains`, `StartsWith`, `EndsWith`, `IsNull`, `IsNullOrEmpty`, `In`, `Between`, comparaisons, `And`, `Or`, `Not`. Exemples : `Contains([User], 'alice') And [ID] >= 10` ; `[Date] >= #2026-01-01# And [Date] < #2026-02-01#`. Les expressions acceptent aussi fonctions imbriquées, calculs, `Iif`, `Upper`, `Substring`, `ToInt`, `Round`, `GetYear`, `AddDays`, `DateDiffDay` et les champs virtuels `Line`, `Tag`, `Note`. Les fonctions DevExpress non prises en charge sont refusées. L’éditeur ET/OU/NON permet de construire les conditions sans connaître cette syntaxe.
 
 **Affichage → Messages** montre les 500 derniers messages de la session. Le journal de démarrage reste disponible séparément.
+
+## Colonnes dérivées
+
+**Analyse → Convertir une date…** : choisir la colonne, éventuellement une seconde colonne d’heure, le format source et le fuseau des dates sans décalage. Le résultat est une nouvelle colonne UTC à neuf décimales ; la source reste intacte. Formats : ISO, dates US/européennes, Unix s/ms/us/ns, FILETIME, WebKit, .NET et OLE. Les fuseaux IANA et Windows sont acceptés. Les heures locales suivent les conventions DST d’ICU ; pour lever une ambiguïté, fournir un décalage explicite.
+
+**Ajouter une colonne calculée…** : saisir un nom et une expression, par exemple `Iif([Size] > 1024, 'large', 'small')`. La colonne est calculée par DuckDB et persistée dans l’analyse. **Contrôler les colonnes dérivées…** compte les valeurs NULL ; celles-ci peuvent indiquer une source vide, invalide ou hors plage. Aucun enregistrement n’est supprimé.
+
+L’application d’un profil peut proposer ces colonnes normalisées, les catégories et les indicateurs MACB. Elles restent disponibles après réouverture et dans les exports.

@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/EricZimmerman/TLEFilePlugins",
+  "commit": "7199c81ba45a97be74b4e05da43cbaabecccf5ca",
+  "license": "MIT; licenses/TLEFilePlugins-MIT.txt",
+  "files": [
+    {
+      "file": "ForensicTimeline.layout",
+      "upstream_file": "TLEFileTimelines.ForensicTimeline.layout",
+      "sha256": "60b0da082d872e99cdd9d8c71a9bc5fe641ecdfaf07ac9edfeb0b784ffb97956"
+    },
+    {
+      "file": "SuperTimeline.layout",
+      "upstream_file": "TLEFileTimelines.SuperTimeline.layout",
+      "sha256": "c5bc303e9266b4903f71b8cf1909cd3b9d8397a1182cace005aef851c2ff0ec5"
+    },
+    {
+      "file": "EvtxECmd.layout",
+      "upstream_file": "TLEFileEZTools.EvtxECmd.layout",
+      "sha256": "a89e464a74e0df4ded84e585651486ae86a14413113fb208520d7c7cb1cb0d45"
+    },
+    {
+      "file": "HayabusaStandard.layout",
+      "upstream_file": "TLEFileMisc.HayabusaStandard.layout",
+      "sha256": "66152492f929722a21be365c9b5eba058e827bb0abf4a9ae51df6e6cd86c9f47"
+    }
+  ]
+}

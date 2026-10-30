@@ -74,6 +74,7 @@ class View:
     group_order: str = "count"
     group_descending: bool = True
     group_summary: int = 0
+    expand_all: bool = False
     group_intervals: dict[str, str] = field(default_factory=dict)
     pinned_columns: list[int] = field(default_factory=list)
     pinned_widths: dict[str, int] = field(default_factory=dict)
@@ -114,5 +115,5 @@ OPERATORS = [("Contient", "contains"), ("Ne contient pas", "not_contains"),
     ("Vide / NULL", "empty"), ("Non vide", "not_empty"),
     ("Nombre >", "gt"), ("Nombre ≥", "ge"), ("Nombre <", "lt"),
     ("Nombre ≤", "le"), ("Date ≥ (ISO)", "after"), ("Date ≤ (ISO)", "before"), ("Date < (ISO)", "date_before"), ("Date > (ISO)", "date_after"), ("Date égale", "date_eq"), ("Date différente", "date_ne"),
-    ("Texte >", "text_gt"), ("Texte ≥", "text_ge"), ("Texte <", "text_lt"), ("Texte ≤", "text_le")]
+    ("Texte >", "text_gt"), ("Texte ≥", "text_ge"), ("Texte <", "text_lt"), ("Texte ≤", "text_le"), ("Expression nommée", "expression")]
 

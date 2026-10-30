@@ -460,7 +460,8 @@ class Case:
                 raise ValueError("Les notes s’exportent par enregistrement, pas par comptage de groupes")
             if grouped and view.groups:
                 cols = ", ".join(self.column(i) for i in view.groups)
-                sql = f"SELECT {cols}, count(*) FROM events{where} GROUP BY {cols} ORDER BY count(*) DESC"
+                ties = ', '.join(self.column(i) + ' ASC NULLS LAST' for i in view.groups)
+                sql = f"SELECT {cols}, count(*) FROM events{where} GROUP BY {cols} ORDER BY count(*) DESC, {ties}"
                 headers = [self.headers[i] for i in view.groups] + ["Count"]
             else:
                 if include_annotations:

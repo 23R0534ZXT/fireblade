@@ -1,10 +1,9 @@
 """Optional analysis controls, kept out of the startup flow."""
 import copy
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDateEdit, QDialog,
-    QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel, QListWidget, QPushButton,
-    QSpinBox, QTableWidget, QVBoxLayout)
+    QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel, QPushButton,
+    QSpinBox, QTableWidget)
 from fireblade.core.models import Summary
 
 

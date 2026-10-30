@@ -8,7 +8,7 @@ from PySide6.QtCore import QModelIndex, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (QApplication, QDialog, QDialogButtonBox, QFileDialog,
     QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPlainTextEdit, QVBoxLayout)
-from fireblade.core.models import Filter, View
+from fireblade.core.models import Filter
 from fireblade.core.preferences import load_preferences, save_preferences, Preferences
 from fireblade.ui.exploration_dialogs import DateFilterDialog, GroupsDialog
 from fireblade.ui.preferences_dialog import PreferencesDialog
@@ -474,7 +474,6 @@ class ExplorationMixin:
         self.run(lambda: case.bookmark_many([row_id], '', 'mark' if checked else 'remove'), lambda _: self.apply(), exclusive=True)
 
     def details_menu(self, position):
-        from PySide6.QtWidgets import QMenu
         cursor = self.details.cursorForPosition(position)
         field = next((field for field in self.detail_fields if field[0] <= cursor.position() < field[1]), None)
         menu = self.details.createStandardContextMenu()

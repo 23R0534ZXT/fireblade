@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 import time
 
-from PySide6.QtCore import QItemSelectionModel, QModelIndex, QTimer, Qt
+from PySide6.QtCore import QModelIndex, QTimer, Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QComboBox, QLineEdit, QPlainTextEdit, QPushButton
+from PySide6.QtWidgets import QLineEdit, QPlainTextEdit, QPushButton
 
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled

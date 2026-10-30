@@ -75,6 +75,8 @@ def run_stress(app,spec_path,report_path):
         tree=run.window.tree
         for i,modifier in ((0,Qt.NoModifier),(1,Qt.ControlModifier)):
             index=run.window.model.index(i,0)
+            tree.scrollTo(index)
+            run.app.processEvents()
             QTest.mouseClick(tree.viewport(),Qt.LeftButton,modifier,pos=tree.visualRect(index).center())
         return [run.window.model.node(index).values[0] for index in tree.selectionModel().selectedRows()]
 

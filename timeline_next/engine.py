@@ -253,25 +253,35 @@ class Case:
                 raise ValueError("Couleur invalide ; utilisez #RRGGBB")
 
     def page_styles(self, view, rows):
-        """Evaluate the same conditions as filters, only for visible row IDs."""
+        """Evaluate conditions on already loaded values, without rescanning events."""
         rules = view.format_rules
         if len(rules) > 32:
             raise ValueError("32 règles de coloration au maximum")
         if not rows or not rules:
             return {}
-        projections, args = [], []
+        projections, args, required = [], [], set()
+        def collect_columns(condition):
+            if isinstance(condition, Filter):
+                required.add(condition.column)
+            else:
+                for child in condition.children:
+                    collect_columns(child)
         for rule in rules:
             if rule.target is not None:
                 self.column(rule.target)
             sql, values = self.condition(rule.condition) if rule.enabled else ("FALSE", [])
+            if rule.enabled:
+                collect_columns(rule.condition)
             projections.append("(" + sql + ")")
             args.extend(values)
-        ids = [row[0] for row in rows]
+        columns = sorted(required)
+        aliases = ["__row_id"] + [self.column(i) for i in columns]
+        record = "(cast(? AS BIGINT)" + ", cast(? AS VARCHAR)" * len(columns) + ")"
+        values = [value for row in rows for value in [row[0]] + [row[i + 1] for i in columns]]
         with self.operation():
             result = self.db.execute(
-                "SELECT __row_id, " + ", ".join(projections) +
-                " FROM events WHERE __row_id IN (" + ",".join("?" for _ in ids) + ")",
-                args + ids).fetchall()
+                "WITH visible(" + ",".join(aliases) + ") AS (VALUES " + ",".join(record for _ in rows) + ") "
+                "SELECT __row_id, " + ", ".join(projections) + " FROM visible", values + args).fetchall()
         return {row[0]: tuple(i for i, matched in enumerate(row[1:]) if matched) for row in result}
 
     @staticmethod

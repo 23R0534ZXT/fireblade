@@ -15,10 +15,11 @@ from fireblade.runtime.windows_paths import logs_directory
 
 
 def report_argument(arguments):
+    flags = ("--self-test-report", "--appearance-report", "--stress-report")
     for index, argument in enumerate(arguments):
-        if argument == "--self-test-report" and index + 1 < len(arguments):
+        if argument in flags and index + 1 < len(arguments):
             return Path(arguments[index + 1])
-        if argument.startswith("--self-test-report="):
+        if any(argument.startswith(flag + "=") for flag in flags):
             return Path(argument.split("=", 1)[1])
     return None
 

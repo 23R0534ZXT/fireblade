@@ -16,7 +16,7 @@ class GridDelegate(QStyledItemDelegate):
     """Draw grid lines without a stylesheet that overrides model colors."""
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
-        size.setHeight(21)
+        size.setHeight(max(22, option.fontMetrics.height() + 6))
         return size
 
     def paint(self, painter, option, index):

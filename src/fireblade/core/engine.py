@@ -21,6 +21,7 @@ from fireblade.core.models import Filter, FilterGroup, SortKey, View
 from fireblade.core.conditions import compile_condition, validate_format_rules
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.settings import Settings
+from fireblade.core import csv_chunks
 
 
 class Case:
@@ -79,6 +80,16 @@ class Case:
     def check_cancelled(self):
         if self.cancelled.is_set() or job_cancelled():
             raise OperationCancelled()
+
+    @contextmanager
+    def serial_query_threads(self):
+        """Wide external sorts need one spill workspace within a small budget."""
+        self.db.execute('SET threads=1')
+        try:
+            yield
+        finally:
+            with self.finalizing_transaction():
+                self.db.execute(f'SET threads={self.settings.threads}')
 
     @contextmanager
     def operation(self, final_check=True):
@@ -181,7 +192,33 @@ class Case:
                     projections = [f'"{h.replace(chr(34), chr(34)*2)}" AS "c{i}"' for i, h in enumerate(headers)]
                     progress("Écriture des enregistrements sur disque…")
                     self.check_cancelled()
-                    relation.project('row_number() OVER () AS "__row_id", ' + ", ".join(projections)).create("events")
+                    chunk_bytes = min(csv_chunks.CHUNK_BYTES, self.settings.memory_mb * 1024 * 1024 // 16)
+                    if input_path.stat().st_size <= chunk_bytes:
+                        relation.project('row_number() OVER () AS "__row_id", ' + ", ".join(projections)).create("events")
+                    else:
+                        # Release the original reader's sample buffers before the
+                        # bounded queries. Explicit IDs preserve source order.
+                        del relation
+                        separator = delimiter or self.db.execute(
+                            'SELECT Delimiter FROM sniff_csv(?, header=true, skip=0, comment=\'\', '
+                            'quote=\'"\', escape=\'"\', sample_size=20480)', [str(input_path)]).fetchone()[0]
+                        written = 0
+                        self.db.execute('CREATE TABLE events (__row_id BIGINT, ' +
+                                        ', '.join(f'"c{i}" VARCHAR' for i in range(len(headers))) + ')')
+                        chunks = csv_chunks.csv_chunks(input_path, headers, separator, self.path.parent,
+                                                       chunk_bytes, self.check_cancelled)
+                        try:
+                            for chunk, records in chunks:
+                                self.check_cancelled()
+                                batch_options = dict(options, delimiter=',')
+                                batch = self.db.read_csv(str(chunk), **batch_options)
+                                batch = batch.project(f'row_number() OVER () + {written} AS "__row_id", ' + ", ".join(projections))
+                                batch.insert_into('events')
+                                del batch
+                                written += records
+                                progress(f'Import sur disque · {written:,} enregistrements écrits…')
+                        finally:
+                            chunks.close()
                 count = self.db.execute("SELECT count(*) FROM events").fetchone()[0]
                 progress("Vérification de l’intégrité de la source…")
                 after_sha = digest()
@@ -415,7 +452,7 @@ class Case:
         temporary = target.with_name(target.name + ".partial")
         if temporary.exists():
             raise ValueError(f"Le fichier temporaire existe déjà : {temporary}")
-        with self.operation(final_check=False):
+        with self.operation(final_check=False), self.serial_query_threads():
             where, args = self.where(view)
             cols = ", ".join(self.column(i) for i in range(len(self.headers)))
             headers = self.headers
@@ -423,7 +460,8 @@ class Case:
                 raise ValueError("Les notes s’exportent par enregistrement, pas par comptage de groupes")
             if grouped and view.groups:
                 cols = ", ".join(self.column(i) for i in view.groups)
-                sql = f"SELECT {cols}, count(*) FROM events{where} GROUP BY {cols} ORDER BY count(*) DESC"
+                ties = ', '.join(self.column(i) + ' ASC NULLS LAST' for i in view.groups)
+                sql = f"SELECT {cols}, count(*) FROM events{where} GROUP BY {cols} ORDER BY count(*) DESC, {ties}"
                 headers = [self.headers[i] for i in view.groups] + ["Count"]
             else:
                 if include_annotations:

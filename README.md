@@ -306,7 +306,7 @@ Le fichier final contient Python, Qt, DuckDB et XLSX ainsi que l’aide et les r
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Le workflow Windows teste les sources avec Qt natif sur Python 3.11, 3.12 et 3.13, puis construit et lance le véritable `.exe`. Il contrôle notamment import en lecture seule, Unicode, grands entiers, groupes, annulations, export verrouillé, presse-papiers, sessions, XLSX, règles partagées et annotations.
+Le workflow Windows teste les sources avec Qt natif sur Python 3.11, 3.12 et 3.13, puis construit et lance le véritable `.exe`. La publication est aussi bloquée tant que la matrice visuelle et la qualification 3 GiB n’ont pas réussi. Il contrôle notamment import en lecture seule, Unicode, grands entiers, groupes, annulations, export verrouillé, presse-papiers, sessions, XLSX, règles partagées et annotations.
 
 Pour le fichier unique, le contrôle vérifie aussi les ressources embarquées, l’absence de DLL ou de configuration à côté du programme et le nettoyage du dossier temporaire d’extraction. Voir le **[périmètre de validation](docs/validation/WINDOWS.md)**.
 
@@ -358,3 +358,13 @@ Un signalement utile indique la version ou le commit affiché dans **Aide → À
 ## Licence
 
 Le code du projet conserve la **[licence MIT](LICENSE)** et son attribution existante. Les composants intégrés gardent leurs propres licences ; leurs notices sont accessibles dans **Aide → Licences** et documentées dans **[licenses/THIRD_PARTY.md](licenses/THIRD_PARTY.md)**.
+
+## Contraste Windows et qualification en charge
+
+Le rendu clair utilise une palette et un style Fusion cohérents, y compris lorsque Windows préfère le mode sombre. La police générale du système et les tailles logiques Qt remplacent le réglage fixe en pixels ; les hauteurs de lignes suivent les métriques de police. Ce changement corrige le cas de texte blanc sur fond clair observé dans une préversion.
+
+Les captures Windows sont contrôlées sur les préférences clair/sombre et les facteurs d’échelle 1, 1,25, 1,5 et 2. Le contrôle cherche les pixels des glyphes réellement dessinés, notamment dans les menus et boutons, y compris les états inactifs et désactivés.
+
+La qualification en charge génère un vrai fichier CSV d’au moins **3 GiB** (plus de 3 Go décimaux), avec des contenus variés, Unicode, champs multilignes, valeurs vides et grands identifiants. Elle importe intégralement le fichier dans le programme autonome, vérifie les comptages avec une référence Python indépendante, parcourt des groupes imbriqués et des pages profondes, puis teste filtres, tris, règles, notes, sessions, exports complets et annulations. Les rapports contiennent durées, mémoire, réactivité et captures.
+
+Il s’agit de parcours automatisés QtTest, exécutés avec le plugin Windows natif : ils ne sont pas présentés comme une manipulation physique humaine ni comme des essais sur tous les exports d’enquête existants. Les données restent synthétiques et le cache disque n’est pas purgé. Voir les artefacts `Windows-visual-captures` et `Windows-3GiB-report-and-captures` de l’exécution concernée et [la procédure](docs/validation/QUALIFICATION.md).

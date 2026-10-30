@@ -44,7 +44,7 @@ jobs:
 
   publish:
     name: Publish standalone prototype
-    needs: portable
+    needs: qualification
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: windows-latest
     permissions:
@@ -101,4 +101,46 @@ jobs:
           name: Fireblade-exe
           path: dist/Fireblade.exe
           if-no-files-found: error
+          retention-days: 14
+
+  qualification:
+    name: Windows visual and 3-GiB qualification
+    needs: portable
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: Fireblade-exe
+          path: dist
+      - name: Render light and dark Windows preferences at 100 125 150 200 percent
+        run: python -m scripts.windows.visual_matrix --exe dist/Fireblade.exe --out artifacts/visual
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-visual-captures
+          path: |
+            artifacts/visual/**/*.json
+            artifacts/visual/**/*.png
+          retention-days: 14
+      - name: Generate a varied CSV of at least 3 GiB and independent reference counts
+        id: dataset
+        if: always() && !cancelled()
+        run: python -m scripts.windows.qualify generate --directory "$env:RUNNER_TEMP/fireblade-data" --out artifacts/large-data --gib 3
+      - name: Import group sort filter annotate export cancel and reopen in the actual EXE
+        if: ${{ !cancelled() && steps.dataset.outcome == 'success' }}
+        run: python -m scripts.windows.qualify run --directory "$env:RUNNER_TEMP/fireblade-data" --out artifacts/large-data --exe dist/Fireblade.exe
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-3GiB-report-and-captures
+          path: |
+            artifacts/large-data/*.json
+            artifacts/large-data/*.png
           retention-days: 14

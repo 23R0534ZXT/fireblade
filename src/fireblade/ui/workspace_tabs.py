@@ -40,15 +40,22 @@ class WorkspaceTabs(QWidget):
             self.currentChanged.emit(index)
         self.schedule()
 
-    def tabRect(self, index):
-        from PySide6.QtCore import QRect
+    def tab_widget(self, index):
         offset = 0
         for bar in self.rows:
             if offset <= index < offset + bar.count():
-                rect = bar.tabRect(index - offset)
-                return QRect(bar.mapTo(self, rect.topLeft()), rect.size())
+                return bar, index - offset
             offset += bar.count()
-        return QRect()
+        raise IndexError('Onglet introuvable')
+
+    def tabRect(self, index):
+        from PySide6.QtCore import QRect
+        try:
+            bar, local = self.tab_widget(index)
+        except IndexError:
+            return QRect()
+        rect = bar.tabRect(local)
+        return QRect(bar.mapTo(self, rect.topLeft()), rect.size())
 
     def currentIndex(self):
         return self.active
@@ -97,6 +104,9 @@ class WorkspaceTabs(QWidget):
                 bar.setTabToolTip(local, self.tips[index])
             bar.setCurrentIndex(indices.index(self.active) if self.active in indices else -1)
             bar.currentChanged.connect(lambda local, items=indices: self.setCurrentIndex(items[local]) if local >= 0 else None)
+            # In another row, QTabBar can already consider local index 0 its
+            # current item. A click must still activate that document globally.
+            bar.tabBarClicked.connect(lambda local, items=indices: self.setCurrentIndex(items[local]) if local >= 0 else None)
             bar.tabCloseRequested.connect(lambda local, items=indices: self.tabCloseRequested.emit(items[local]))
             self.layout.addWidget(bar)
             self.rows.append(bar)

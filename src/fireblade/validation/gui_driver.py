@@ -38,6 +38,8 @@ class GuiRun:
         self.window = Window(rule_path=self.out/'qa-global-rules.json')
         self.window.error = lambda error: self.errors.append(str(error))
         self.window.show()
+        self.report['font'] = dict(family=app.font().family(), point_size=app.font().pointSizeF())
+        self.report['style'] = app.property('fireblade_style')
         self.lags = []
         self.last_tick = time.monotonic()
         self.last_flush = 0

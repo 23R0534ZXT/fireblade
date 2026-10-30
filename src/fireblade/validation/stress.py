@@ -270,7 +270,8 @@ def run_stress(app,spec_path,report_path):
             run.import_csv(small,run.out/'small.timeline')
             expect(run.window.tabs.count()==2,'Second tab missing')
             # Click the first tab as a user would.
-            QTest.mouseClick(run.window.tabs,Qt.LeftButton,pos=run.window.tabs.tabRect(0).center());run.settle()
+            bar,local=run.window.tabs.tab_widget(0)
+            QTest.mouseClick(bar,Qt.LeftButton,pos=bar.tabRect(local).center());run.settle()
             expect(run.window.case.path==full_case,'Wrong analysis after tab switch')
             expect(run.window.tree.isColumnHidden(14),'Column layout lost')
             run.window.load_session(session);run.settle()

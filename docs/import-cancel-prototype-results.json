@@ -1,0 +1,20 @@
+{
+  "python": "3.12.14",
+  "duckdb": "1.5.6",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "source_bytes": 1129468693,
+  "source_sha256": "e8ebfa1f9e00cfb4fdc40888e7207d5ce2f01ee14235023bdf722d46f064bd53",
+  "source_unchanged": true,
+  "phase_messages": [
+    "Calcul SHA-256 de la source\u2026",
+    "Import sur disque \u00b7 d\u00e9tection du sch\u00e9ma\u2026",
+    "\u00c9criture des enregistrements sur disque\u2026"
+  ],
+  "native_progress_at_cancel": 26.92217932144941,
+  "requested_progress_percent": 25.0,
+  "native_exception": "InterruptException",
+  "seconds_to_stop_and_rollback": 0.0023,
+  "tables_after_cancel": [],
+  "retry_rows": 2,
+  "caveat": "Existing synthetic CSV, Linux, one cancellation during native import. No Windows or crash/power-loss test."
+}

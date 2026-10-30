@@ -1,0 +1,56 @@
+name: Package downloadable 3-GiB test CSV
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-test-data-3gib
+  cancel-in-progress: false
+
+jobs:
+  package:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate, compress and independently verify the complete CSV
+        run: python -m scripts.windows.package_dataset --directory artifacts/test-data --source-commit "$env:GITHUB_SHA"
+      - name: Require the exact CSV used in Windows qualification
+        shell: pwsh
+        run: |
+          $dataManifest = Get-Content artifacts/test-data/publication.json -Raw | ConvertFrom-Json
+          if ($dataManifest.bytes -ne 3222648632 -or $dataManifest.rows -ne 2441216 -or $dataManifest.sha256 -ne '2382777d3917a973a1e5104b3bc404d02d3901aeff8104d34fc30e4264776cf0') {
+            throw 'Generated CSV does not match the qualified dataset'
+          }
+      - name: Upload data assets to the prepared draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $dataDraftState = gh release view test-data-3gib --repo $env:GITHUB_REPOSITORY --json isDraft --jq '.isDraft'
+          if ($LASTEXITCODE -ne 0 -or $dataDraftState.Trim() -ne 'true') {
+            throw 'The data release must exist as a draft; published assets will not be replaced'
+          }
+          gh release upload test-data-3gib artifacts/test-data/Fireblade-test-3GiB.zip artifacts/test-data/dataset.json artifacts/test-data/publication.json artifacts/test-data/SHA256SUMS.txt --clobber --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Dataset asset upload failed' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Test-data-publication-metadata
+          path: |
+            artifacts/test-data/publication.json
+            artifacts/test-data/dataset.json
+            artifacts/test-data/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14

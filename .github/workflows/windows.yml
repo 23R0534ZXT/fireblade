@@ -62,11 +62,17 @@ jobs:
           RELEASE_TAG: prototype-${{ github.sha }}
         run: |
           $PSNativeCommandUseErrorActionPreference = $false
+          $hash = (Get-FileHash dist/Fireblade.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $notes = Join-Path $env:RUNNER_TEMP 'fireblade-release-notes.md'
+          Get-Content docs/development/RELEASE-NOTES.md -Raw | Set-Content $notes -Encoding utf8
+          Add-Content $notes "`nCommit : $env:GITHUB_SHA`n`nSHA-256 de Fireblade.exe : $hash" -Encoding utf8
           gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:RELEASE_TAG dist/Fireblade.exe --clobber --repo $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { throw 'Envoi du fichier autonome impossible' }
+            gh release edit $env:RELEASE_TAG --notes-file $notes --repo $env:GITHUB_REPOSITORY
           } else {
-            gh release create $env:RELEASE_TAG dist/Fireblade.exe --target $env:GITHUB_SHA --prerelease --title "Fireblade - prototype Windows" --notes-file docs/development/RELEASE-NOTES.md --repo $env:GITHUB_REPOSITORY
+            gh release create $env:RELEASE_TAG dist/Fireblade.exe --target $env:GITHUB_SHA --prerelease --title "Fireblade - prototype Windows" --notes-file $notes --repo $env:GITHUB_REPOSITORY
           }
           if ($LASTEXITCODE -ne 0) { throw 'Publication du fichier autonome impossible' }
 

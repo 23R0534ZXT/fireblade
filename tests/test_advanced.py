@@ -275,6 +275,7 @@ def test_format_rule_precedes_bookmark_and_targets_only_one_cell(case):
     case.bookmark(1, "investigate")
     window = Window()
     window.attach(case)
+    window.show()
     settle(app, window)
     view = View(format_rules=[FormatRule(FilterGroup("and", [Filter(0, "eq", "alice")]), "#ff0000", "#0000ff", True, 1)])
     window.set_view(view)
@@ -282,4 +283,8 @@ def test_format_rule_precedes_bookmark_and_targets_only_one_cell(case):
     assert window.model.data(window.model.index(0, 2), Qt.BackgroundRole).name() == "#ff0000"
     assert window.model.data(window.model.index(0, 2), Qt.FontRole).bold()
     assert window.model.data(window.model.index(0, 1), Qt.BackgroundRole).name() == "#fff4c2"
+    window.tree.clearSelection()
+    rectangle = window.tree.visualRect(window.model.index(0, 2))
+    pixel = window.tree.viewport().grab().toImage().pixelColor(rectangle.right() - 8, rectangle.bottom() - 4)
+    assert pixel.name() == "#ff0000"
     assert window.close()

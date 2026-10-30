@@ -23,7 +23,7 @@ from .advanced_dialogs import FilterDialog, RulesDialog, SortDialog
 from .grouping import GroupBar, GroupHeader
 from .profiles import detect_profile, profile_view
 from .workspace import WorkspaceMixin
-from .grid import GridModel
+from .grid import GridDelegate, GridModel
 from .settings import Settings, load_settings
 from .theme import apply_theme
 from .workers import Job, Signals
@@ -181,6 +181,7 @@ class Window(WorkspaceMixin, QMainWindow):
         layout.addLayout(group_row)
         splitter = QSplitter(Qt.Vertical)
         self.tree = QTreeView()
+        self.tree.setItemDelegate(GridDelegate(self.tree))
         self.tree.setHeader(GroupHeader(self.tree))
         self.tree.setUniformRowHeights(True)
         self.tree.setAlternatingRowColors(True)

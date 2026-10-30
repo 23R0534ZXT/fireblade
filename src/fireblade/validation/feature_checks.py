@@ -132,13 +132,23 @@ def check_features(window, directory, settle, check, expect, captures=None):
         try:
             window.preferences.multiline_tabs=True
             window.preferences.theme='dark'
+            window.tabs.setFixedWidth(260)
             window.apply_preferences();QApplication.processEvents()
+            from PySide6.QtTest import QTest
+            before=window.active_document
+            bar,local=window.tabs.tab_widget(0)
+            QTest.mouseClick(bar,Qt.LeftButton,pos=bar.tabRect(local).center());settle()
+            expect(str(window.case.path)==window.documents[0].path,'Clicking the first tab of another row did not switch documents')
+            bar,local=window.tabs.tab_widget(before)
+            QTest.mouseClick(bar,Qt.LeftButton,pos=bar.tabRect(local).center());settle()
             from fireblade.validation.appearance import rendered_contrast
             bar=window.menuBar()
             rendered_contrast(bar,bar.actionGeometry(bar.actions()[0]).adjusted(4,2,-4,-2))
             if captures:
                 window.grab().save(str(Path(captures)/'extended-dark.png'))
         finally:
+            window.tabs.setMinimumWidth(0)
+            window.tabs.setMaximumWidth(16777215)
             window.preferences=original
             window.apply_preferences()
             QApplication.processEvents()

@@ -204,3 +204,29 @@ def test_first_pin_after_hidden_view_receives_rows_renders_cell_text(qt_applicat
     assert rendered_contrast(window.tree.frozen.viewport(),rect.adjusted(5,3,-5,-3))['ink_pixels']>=5
     window.preferences.theme='light'
     window.apply_preferences()
+
+
+@pytest.mark.parametrize('wrapped',[False,True])
+def test_actual_visible_tab_click_switches_analysis_and_preserves_state(qt_application,window,tmp_path,wrapped):
+    from PySide6.QtTest import QTest
+    first=window.case.path
+    window.case.bookmark(1,'Keep this annotation')
+    window.view.filters=[Filter(1,'eq','alice')]
+    window.apply();settle(qt_application,window)
+    source=tmp_path/'second.csv';source.write_text('ID\nsecond-analysis\n')
+    case=Case(tmp_path/'second.timeline');case.import_csv(source)
+    window.detach();window.attach(case);settle(qt_application,window)
+    window.preferences.multiline_tabs=wrapped
+    if wrapped:window.tabs.setFixedWidth(180)
+    window.apply_preferences();qt_application.processEvents()
+    if wrapped:assert len(window.tabs.rows)==2
+    bar,local=window.tabs.tab_widget(0)
+    QTest.mouseClick(bar,Qt.LeftButton,pos=bar.tabRect(local).center())
+    settle(qt_application,window)
+    assert window.case.path==first
+    assert window.case.count(window.view)==2
+    assert window.case.bookmarks()=={1:'Keep this annotation'}
+    bar,local=window.tabs.tab_widget(1)
+    QTest.mouseClick(bar,Qt.LeftButton,pos=bar.tabRect(local).center())
+    settle(qt_application,window)
+    assert window.case.path==tmp_path/'second.timeline'

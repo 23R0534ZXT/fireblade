@@ -52,6 +52,10 @@ def check_features(window, directory, settle, check, expect, captures=None):
         expect(window.tree.frozen.model() is window.model,'Pinned grid duplicated its data model')
         expect(window.tree.frozen.columnWidth(5)>0 and window.tree.frozen.isVisible(),'Pinned field not visible')
         expect(4 in window.visible_columns(),'Pinned field missing from export projection')
+        from fireblade.validation.appearance import rendered_contrast
+        rect=window.tree.frozen.visualRect(window.model.index(0,5))
+        expect(rect.isValid() and rect.height()>0,'Pinned row is not laid out')
+        rendered_contrast(window.tree.frozen.viewport(),rect.adjusted(5,3,-5,-3))
         window.tree.horizontalScrollBar().setValue(window.tree.horizontalScrollBar().maximum())
         expect(window.tree.frozen.isVisible(),'Pinned columns disappeared on scroll')
         if captures:

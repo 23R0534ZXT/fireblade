@@ -1,6 +1,6 @@
 # Architecture de Fireblade
 
-L’application utilise Python et trois dépendances directes : DuckDB, PySide6 Essentials et openpyxl. Le code est organisé sous `src/fireblade` et les imports nomment explicitement leur couche.
+L’application utilise Python et quatre dépendances directes : DuckDB, PySide6 Essentials, openpyxl et xlrd. Le code est organisé sous `src/fireblade` et les imports nomment explicitement leur couche.
 
 ## Couches
 

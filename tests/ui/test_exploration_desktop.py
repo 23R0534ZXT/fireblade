@@ -190,3 +190,17 @@ def test_hidden_pinned_column_is_removed_from_both_grids_and_export(qt_applicati
     assert 1 not in window.view.pinned_columns
     assert 1 not in window.visible_columns()
     assert not window.tree.frozen.isVisible()
+
+
+def test_first_pin_after_hidden_view_receives_rows_renders_cell_text(qt_application,window):
+    from fireblade.validation.appearance import rendered_contrast
+    window.preferences.theme='dark'
+    window.apply_preferences()
+    qt_application.processEvents()
+    window.pin_column(1)
+    qt_application.processEvents()
+    rect=window.tree.frozen.visualRect(window.model.index(0,2))
+    assert rect.isValid() and rect.height()>0
+    assert rendered_contrast(window.tree.frozen.viewport(),rect.adjusted(5,3,-5,-3))['ink_pixels']>=5
+    window.preferences.theme='light'
+    window.apply_preferences()

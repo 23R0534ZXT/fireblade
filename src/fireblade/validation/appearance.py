@@ -102,6 +102,10 @@ def run_appearance(app,report_path):
             run.window.pin_column(1)
             run.app.processEvents()
             assert run.window.tree.frozen.columnWidth(2)>0
+            frozen=run.window.tree.frozen
+            rect=frozen.visualRect(run.window.model.index(0,2))
+            assert rect.isValid() and rect.height()>0, 'Pinned data row has no visible rectangle'
+            result['pinned_cell']=rendered_contrast(frozen.viewport(),rect.adjusted(5,3,-5,-3))
             run.capture('05-dark-pinned')
             run.window.pin_column(1)
             run.window.preferences.theme='light'

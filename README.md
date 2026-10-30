@@ -126,6 +126,7 @@ Les anciennes analyses `.timeline` restent ouvrables. Celles d’un ancien proto
 
 - Les colonnes sont stockées comme texte, notamment pour préserver `0001` et les grands identifiants Windows.
 - Les tris et filtres numériques évitent de convertir les grands entiers en flottants. Les valeurs hors des bornes de conversion ou malformées ne sont pas assimilées à des nombres valides.
+- Le préambule `#TYPE` des exports CSV PowerShell est reconnu uniquement en première ligne ; les enregistrements ordinaires commençant par `#TYPE` restent conservés.
 - Encodages CSV proposés : UTF-8, UTF-16, Windows-1252 et Latin-1. Les champs vides deviennent NULL.
 - Les imports CSV ambigus ou malformés sont signalés. Le séparateur peut être choisi explicitement.
 - Pour XLS, les formules sont lues comme leurs résultats mémorisés ; leur formule originale et la mise en forme ne sont pas disponibles via ce lecteur. Les macros ne sont pas exécutées.

@@ -111,14 +111,22 @@ class Case:
 
     @contextmanager
     def utf8_input(self, source, encoding):
-        if encoding.lower() in ("utf-8", "utf8", "utf-8-sig"):
+        utf8 = encoding.lower() in ("utf-8", "utf8", "utf-8-sig")
+        # PowerShell Export-Csv can prepend a #TYPE metadata line. Detect it
+        # only at the beginning; ordinary data records starting #TYPE survive.
+        with source.open(encoding="utf-8-sig" if utf8 else encoding, newline="", errors="strict") as probe:
+            first = probe.readline(65536)
+            powershell = first.startswith("#TYPE ") and first.endswith(("\n", "\r"))
+        if utf8 and not powershell:
             yield source
             return
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", newline="", suffix=".csv", dir=self.path.parent, delete=False) as out:
                 temporary = Path(out.name)
-                with source.open(encoding=encoding, newline="", errors="strict") as incoming:
+                with source.open(encoding="utf-8-sig" if utf8 else encoding, newline="", errors="strict") as incoming:
+                    if powershell:
+                        incoming.readline()
                     while chunk := incoming.read(1024 * 1024):
                         self.check_cancelled()
                         out.write(chunk)

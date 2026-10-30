@@ -1,0 +1,32 @@
+TIMELINE NEXT — PROTOTYPE POUR WINDOWS 64 BITS
+
+1. Extraire tout le dossier TimelineNext.
+2. Double-cliquer sur TimelineNext.exe.
+3. Ouvrir un CSV, confirmer où enregistrer son analyse.
+
+Python n'est pas requis pour ce dossier portable. Garder le dossier _internal
+avec l'exécutable. Aucune installation système ni droit administrateur requis.
+
+L'analyse est proposée par défaut dans :
+  %LOCALAPPDATA%\TimelineNext\Analyses
+On peut choisir un autre emplacement. Le CSV source est lu sans réécriture.
+
+Un clic droit sur un en-tête donne accès aux tris, filtres et regroupements.
+Les notes, signets et vues enregistrées restent dans les fichiers .timeline.
+
+DIAGNOSTIC
+
+Si le programme ne démarre pas, son journal est dans :
+  %LOCALAPPDATA%\TimelineNext\Journaux\demarrage.log
+
+Verifier-Windows.cmd exécute un contrôle automatique avec des données factices.
+Le rapport est enregistré dans :
+  %LOCALAPPDATA%\TimelineNext\Verifications
+Ce contrôle ne remplace pas des essais avec vos exports réels de plusieurs Go.
+
+Le fichier verification-windows.json indique le contrôle effectué lors de la
+construction de ce dossier. Il ne doit pas être interprété comme une validation
+de production ni une garantie pour toutes les versions de Windows.
+
+Le programme est en cours de développement. Les essais manuels de l'Explorateur,
+des partages réseau, des longs chemins et des sessions prolongées restent utiles.

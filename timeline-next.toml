@@ -1,0 +1,10 @@
+# Resource settings. No additional configuration library required.
+[resources]
+memory_mb = 256
+threads = 2
+page_size = 250
+# Window per parent, including groups; must be a multiple of page_size.
+max_loaded_rows = 1000
+export_batch_rows = 2048
+# Cache one order when navigating beyond the first max_loaded_rows records.
+cache_sorted_pages = true

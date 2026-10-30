@@ -63,8 +63,10 @@ def test_cancelled_streaming_export_preserves_target_and_allows_retry(tmp_path, 
                 case.export(target, View())
         assert target.read_bytes() == b"original export"
         assert not target.with_name(target.name + ".partial").exists()
+        assert int(case.db.execute("SELECT current_setting('threads')").fetchone()[0]) == case.settings.threads
         assert case.count(View()) == 5000
         case.export(target, View())
+        assert int(case.db.execute("SELECT current_setting('threads')").fetchone()[0]) == case.settings.threads
         assert len(target.read_text(encoding="utf-8-sig").splitlines()) == 5001
     finally:
         case.close()

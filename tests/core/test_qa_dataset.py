@@ -4,7 +4,7 @@ import hashlib
 from scripts.windows.dataset import generate
 
 
-def test_dataset_reference_matches_independent_CSV_readback(tmp_path):
+def test_dataset_reference_matches_independent_CSV_readback(tmp_path, monkeypatch):
     spec=generate(tmp_path/'data',64*1024)
     source=__import__('pathlib').Path(spec['source'])
     with source.open('rb') as incoming:assert hashlib.file_digest(incoming,'sha256').hexdigest()==spec['sha256']
@@ -20,9 +20,12 @@ def test_dataset_reference_matches_independent_CSV_readback(tmp_path):
     for index,values in spec['samples'].items():assert [v or None for v in records[int(index)-1]]==values
     assert '\n' in records[137][14] and '日本語' in records[137][15]
     from fireblade.core.engine import Case
+    from fireblade.core import csv_chunks
     from fireblade.core.models import View
     case=Case(tmp_path/'roundtrip.timeline')
     try:
+        # Exercise multiple bounded queries even with this small unit fixture.
+        monkeypatch.setattr(csv_chunks,'CHUNK_BYTES',64*1024)
         case.import_csv(source)
         target=tmp_path/'export.csv'
         case.export(target,View())

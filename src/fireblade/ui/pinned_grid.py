@@ -60,6 +60,10 @@ class PinnedTree(QTreeView):
         finally:
             self._syncing = False
         self.position_pins()
+        # A hidden QTreeView with all sections hidden can cache zero-height
+        # items while rows arrive. Showing columns must rebuild that layout.
+        self.frozen.doItemsLayout()
+        self.frozen.viewport().update()
 
     def pin_resized(self, column, _old, width):
         if not self._syncing and column in self.pinned and width > 0:

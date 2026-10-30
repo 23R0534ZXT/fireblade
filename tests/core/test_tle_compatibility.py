@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import pytest
 
@@ -49,3 +48,11 @@ def test_devexpress_column_layout_reads_order_width_pinning_group_and_sort(tmp_p
     assert columns[1]['sort']=='Descending'
     path.write_text('<!DOCTYPE x [<!ENTITY x "foo">]><x/>')
     with pytest.raises(ValueError):read_tle_columns(path,['ID','User'])
+
+
+@pytest.mark.parametrize('payload',[[],None,True,'unexpected'])
+def test_non_object_session_and_layout_fail_as_normal_input_errors(tmp_path,payload):
+    path=tmp_path/'invalid.json';path.write_text(json.dumps(payload))
+    from fireblade.core.layout import read_layout
+    with pytest.raises(ValueError):read_tle_session(path)
+    with pytest.raises(ValueError):read_layout(path,['ID'])

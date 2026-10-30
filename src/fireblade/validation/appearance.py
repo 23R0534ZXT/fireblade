@@ -1,10 +1,10 @@
 """Inspect actual rendered glyph pixels, not just QColor roles."""
 from collections import Counter
 
-from PySide6.QtCore import QRect, Qt
-from PySide6.QtGui import QImage, QPalette
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QImage
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QDialogButtonBox, QLabel, QLineEdit, QPushButton, QToolButton
+from PySide6.QtWidgets import QDialogButtonBox, QPushButton, QToolButton
 
 from fireblade.ui.advanced_dialogs import FilterDialog, RulesDialog, SortDialog
 from fireblade.core.models import FilterGroup

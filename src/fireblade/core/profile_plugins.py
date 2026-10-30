@@ -1,5 +1,4 @@
 """Declarative plugins: field names, types and layout; no arbitrary code execution."""
-from dataclasses import asdict
 import json
 from pathlib import Path
 

@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
-from fireblade.core.models import AnalysisSnapshot, View, SortKey
+from fireblade.core.models import AnalysisSnapshot, View
 
 
 def read_tle_session(path):
@@ -20,6 +20,8 @@ def read_tle_session(path):
     if path.stat().st_size > 4 * 1024 * 1024:
         raise ValueError('Session limitée à 4 Mo')
     data = json.loads(path.read_text(encoding='utf-8-sig'))
+    if not isinstance(data, dict):
+        raise ValueError('Session TLE invalide')
     files = data.get('SessionFiles')
     if not isinstance(files, dict) or not 1 <= len(files) <= 1000:
         raise ValueError('Session TLE : SessionFiles doit référencer de 1 à 1000 fichiers')

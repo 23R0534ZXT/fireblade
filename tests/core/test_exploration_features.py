@@ -10,7 +10,7 @@ from fireblade.core.engine import Case
 from fireblade.core.filter_text import parse_filter
 from fireblade.core.models import Filter, Summary, View
 from fireblade.core.profile_plugins import load_plugins
-from fireblade.core.profiles import all_profiles, detect_profile, profile_view
+from fireblade.core.profiles import detect_profile, profile_view
 from fireblade.core.timestamps import display_timestamp
 
 

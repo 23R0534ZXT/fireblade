@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import tempfile
 
-from PySide6.QtWidgets import QFileDialog, QTabBar, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFileDialog, QVBoxLayout, QWidget
 
 from fireblade.core.engine import Case
 from fireblade.core.models import AnalysisSnapshot, View

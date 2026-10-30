@@ -12,6 +12,11 @@ class WorkspaceTabs(QWidget):
         self.labels, self.tips, self.active = [], [], -1
         self.multiline, self.pending = False, False
         self.rows = []
+        self._building = False
+        self._signature = None
+        self._timer = QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self.rebuild)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
@@ -38,9 +43,28 @@ class WorkspaceTabs(QWidget):
         if self.active != index:
             self.active = index
             self.currentChanged.emit(index)
-        self.schedule()
+        self.update_active()
+
+    def replace_documents(self, labels, tips, active):
+        changed = self.labels != labels or self.tips != tips
+        self.labels, self.tips, self.active = list(labels), list(tips), active
+        if changed:
+            self.schedule()
+        else:
+            self.update_active()
+
+    def update_active(self):
+        offset = 0
+        for bar in self.rows:
+            bar.blockSignals(True)
+            bar.setCurrentIndex(self.active - offset if offset <= self.active < offset + bar.count() else -1)
+            bar.blockSignals(False)
+            offset += bar.count()
 
     def tab_widget(self, index):
+        if self.pending:
+            self.rebuild()
+        self.layout.activate()
         offset = 0
         for bar in self.rows:
             if offset <= index < offset + bar.count():
@@ -74,12 +98,19 @@ class WorkspaceTabs(QWidget):
         self.schedule()
 
     def schedule(self):
-        if not self.pending:
+        if not self.pending and not self._building:
             self.pending = True
-            QTimer.singleShot(0, self.rebuild)
+            self._timer.start(0)
 
     def rebuild(self):
+        self._timer.stop()
         self.pending = False
+        signature = (tuple(self.labels), tuple(self.tips), self.multiline, self.width(), self.font().toString())
+        if signature == self._signature:
+            self.update_active()
+            return
+        self._signature = signature
+        self._building = True
         for bar in self.rows:
             self.layout.removeWidget(bar)
             bar.deleteLater()
@@ -109,10 +140,13 @@ class WorkspaceTabs(QWidget):
             bar.tabBarClicked.connect(lambda local, items=indices: self.setCurrentIndex(items[local]) if local >= 0 else None)
             bar.tabCloseRequested.connect(lambda local, items=indices: self.tabCloseRequested.emit(items[local]))
             self.layout.addWidget(bar)
+            bar.show()
             self.rows.append(bar)
         self.setFixedHeight(sum(bar.sizeHint().height() for bar in self.rows))
+        self.layout.activate()
+        self._building = False
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if self.multiline:
+        if self.multiline and event.oldSize().width() != event.size().width():
             self.schedule()

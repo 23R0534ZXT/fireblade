@@ -81,12 +81,8 @@ class WorkspaceMixin:
 
     def sync_tabs(self):
         self.tabs.blockSignals(True)
-        while self.tabs.count():
-            self.tabs.removeTab(0)
-        for snapshot in self.documents:
-            index = self.tabs.addTab(Path(snapshot.source_info["path"]).name)
-            self.tabs.setTabToolTip(index, snapshot.path)
-        self.tabs.setCurrentIndex(self.active_document)
+        self.tabs.replace_documents([Path(s.source_info["path"]).name for s in self.documents],
+                                    [s.path for s in self.documents], self.active_document)
         self.tabs.setVisible(bool(self.documents))
         self.tabs.blockSignals(False)
 

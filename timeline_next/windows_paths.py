@@ -5,7 +5,7 @@ from pathlib import Path
 
 def user_directory():
     base = os.environ.get("LOCALAPPDATA")
-    return (Path(base) if base else Path.home() / "AppData" / "Local") / "TimelineNext"
+    return (Path(base) if base else Path.home() / "AppData" / "Local") / "Fireblade"
 
 
 def analyses_directory():

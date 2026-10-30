@@ -23,12 +23,12 @@ def main():
     subprocess.run([str(python), "-m", "pip", "install", "--only-binary=:all:",
                     "-r", "requirements.txt", "pyinstaller>=6,<7"], check=True)
     subprocess.run([str(python), "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed",
-                    "--onedir", "--name", "TimelineNext", "--collect-all", "duckdb",
+                    "--onedir", "--name", "Fireblade", "--collect-all", "duckdb",
                     # DuckDB's native bindings load these value types dynamically.
                     "--hidden-import", "decimal", "--hidden-import", "uuid",
                     "--hidden-import", "fractions", "launch.py"], check=True)
-    destination = root / "dist" / "TimelineNext"
-    for source, name in [("timeline-next.toml", "timeline-next.toml"),
+    destination = root / "dist" / "Fireblade"
+    for source, name in [("fireblade.toml", "fireblade.toml"),
                          ("Verifier-Windows.cmd", "Verifier-Windows.cmd"),
                          ("docs/DEMARRAGE-WINDOWS.txt", "LIRE-MOI.txt"),
                          ("examples/demo.csv", "exemple.csv"), ("LICENSE", "LICENSE")]:
@@ -39,13 +39,13 @@ def main():
     report_path = root / "artifacts" / "windows-portable.json"
     if report_path.exists():
         report_path.unlink()
-    verify(destination / "TimelineNext.exe", report_path)
+    verify(destination / "Fireblade.exe", report_path)
     shutil.copy2(report_path, destination / "verification-windows.json")
-    archive_path = root / "dist" / "TimelineNext-Windows-x64.zip"
+    archive_path = root / "dist" / "Fireblade-Windows-x64.zip"
     with ZipFile(archive_path, "w", ZIP_DEFLATED) as archive:
         for file in sorted(destination.rglob("*")):
             if file.is_file():
-                archive.write(file, Path("TimelineNext") / file.relative_to(destination))
+                archive.write(file, Path("Fireblade") / file.relative_to(destination))
     print(f"Portable Windows vérifié : {archive_path}")
 
 

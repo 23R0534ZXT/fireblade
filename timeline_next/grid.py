@@ -4,7 +4,7 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
 
 from .models import View
 from .workers import Job
@@ -22,6 +22,7 @@ class Node:
     offset: int = 0
     revision: int = 0
     job: Job | None = None
+    styles: tuple = ()
 
 
 class GridModel(QAbstractItemModel):
@@ -40,6 +41,7 @@ class GridModel(QAbstractItemModel):
         self.notes = case.bookmarks()
 
     def reset(self, view):
+        self.case.validate_view(view)
         self.beginResetModel()
         self.generation += 1
         for job in self.jobs:
@@ -123,6 +125,17 @@ class GridModel(QAbstractItemModel):
             return QColor("#202020")
         if role == Qt.BackgroundRole and node.group:
             return QColor("#e9edf2")
+        if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole):
+            for rule_index in node.styles:
+                rule = self.view.format_rules[rule_index]
+                if rule.target is None or col == rule.target + 1:
+                    if role == Qt.BackgroundRole:
+                        return QColor(rule.background)
+                    if role == Qt.ForegroundRole:
+                        return QColor(rule.foreground)
+                    font = QFont()
+                    font.setBold(rule.bold)
+                    return font
         if role == Qt.BackgroundRole and not node.group and node.values[0] in self.notes:
             return QColor("#fff4c2")
         if role == Qt.BackgroundRole and not node.group and self.view.highlight:
@@ -144,7 +157,11 @@ class GridModel(QAbstractItemModel):
         revision = node.revision
         node.loading = True
         view, path, offset = copy.deepcopy(self.view), node.path, node.offset + len(node.children)
-        job = Job(lambda: self.case.page(view, path, offset))
+        def read_page():
+            rows = self.case.page(view, path, offset)
+            styles = self.case.page_styles(view, rows) if len(path) >= len(view.groups) else {}
+            return rows, styles
+        job = Job(read_page)
         node.job = job
         self.jobs.add(job)
         self.status.emit("Lecture sur disque…")
@@ -157,7 +174,8 @@ class GridModel(QAbstractItemModel):
             if node.job is job:
                 node.job = None
 
-        def complete(rows):
+        def complete(result):
+            rows, styles = result
             release()
             if generation != self.generation or revision != node.revision or not self.attached(node):
                 return
@@ -176,7 +194,7 @@ class GridModel(QAbstractItemModel):
                 start = len(node.children)
                 self.beginInsertRows(parent, start, start + len(rows) - 1)
                 node.children += [Node(node, path + (r[0],) if groups else path,
-                                       r, groups, more=groups) for r in rows]
+                                       r, groups, more=groups, styles=styles.get(r[0], ())) for r in rows]
                 self.endInsertRows()
             self.status.emit(f"{offset + len(rows):,} éléments chargés dans ce niveau")
             self.loaded.emit()

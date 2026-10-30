@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import base64
+import json
 import argparse
 import sys
 from pathlib import Path
@@ -16,18 +18,22 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
 from .dialogs import ImportDialog
 from .engine import Case
 from .menus import cell_menu, header_menu
-from .models import AnalysisSnapshot, Filter, View, OPERATORS
+from .models import AnalysisSnapshot, Filter, FilterGroup, SortKey, View, OPERATORS
+from .advanced_dialogs import FilterDialog, RulesDialog, SortDialog
+from .grouping import GroupBar, GroupHeader
+from .profiles import detect_profile, profile_view
+from .workspace import WorkspaceMixin
 from .grid import GridModel
 from .settings import Settings, load_settings
 from .theme import apply_theme
 from .workers import Job, Signals
 
 
-class Window(QMainWindow):
+class Window(WorkspaceMixin, QMainWindow):
     def __init__(self, settings=None):
         super().__init__()
         self.settings = settings or Settings()
-        self.setWindowTitle("Timeline Next")
+        self.setWindowTitle("Fireblade")
         self.resize(1280, 800)
         self.case, self.model = None, None
         self.view = View()
@@ -37,6 +43,7 @@ class Window(QMainWindow):
         self.busy = False
         self.count_generation = 0
         self.build_ui()
+        self.setup_workspace()
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -60,8 +67,11 @@ class Window(QMainWindow):
                 item.setEnabled(False)
             return item
 
-        open_csv = action(file_menu, "Ouvrir un CSV…", self.import_csv, "Ctrl+O", False, QStyle.SP_DialogOpenButton)
+        open_csv = action(file_menu, "Ouvrir un fichier…", self.import_csv, "Ctrl+O", False, QStyle.SP_DialogOpenButton)
         action(file_menu, "Ouvrir une analyse…", self.open_case, "Ctrl+Shift+O", False)
+        action(file_menu, "Ouvrir une session…", lambda: self.load_session(), requires_file=False)
+        action(file_menu, "Enregistrer la session…", lambda: self.save_session(), "Ctrl+Shift+S")
+        action(file_menu, "Fermer l’onglet", lambda: self.close_document(self.active_document), "Ctrl+W")
         file_menu.addSeparator()
         export = action(file_menu, "Exporter…", self.export_csv, "Ctrl+E", icon=QStyle.SP_DialogSaveButton)
         file_menu.addSeparator()
@@ -76,12 +86,19 @@ class Window(QMainWindow):
         self.details_action = action(view_menu, "Détails de la ligne", lambda checked: self.details.setVisible(checked), requires_file=False)
         self.details_action.setCheckable(True)
         self.details_action.setChecked(True)
+        action(view_menu, "Onglet suivant", lambda: self.next_document(), "Ctrl+Tab", False)
+        action(view_menu, "Onglet précédent", lambda: self.next_document(-1), "Ctrl+Shift+Tab", False)
+        action(view_menu, "Appliquer le profil détecté", self.apply_profile)
+        action(view_menu, "Tri sur plusieurs colonnes…", self.edit_sort)
+        action(filter_menu, "Éditeur ET / OU / NON…", self.edit_filters, "Ctrl+Shift+F")
         add_filter = action(filter_menu, "Ajouter un filtre…", self.add_filter)
         action(filter_menu, "Réinitialiser", self.reset)
         action(analysis_menu, "Enregistrer la vue…", self.save_view, "Ctrl+S")
         action(analysis_menu, "Charger une vue…", self.load_view, "Ctrl+L")
         analysis_menu.addSeparator()
-        action(analysis_menu, "Coloration des lignes…", self.highlight)
+        action(analysis_menu, "Règles de coloration…", self.edit_rules)
+        action(analysis_menu, "Surligner un texte…", self.highlight)
+        action(analysis_menu, "Afficher la cellule / JSON…", self.cell_details)
         action(analysis_menu, "Provenance et SHA-256…", self.integrity)
         analysis_menu.addSeparator()
         self.cancel_action = action(analysis_menu, "Interrompre la requête", self.interrupt_queries, requires_file=False)
@@ -156,7 +173,7 @@ class Window(QMainWindow):
         layout.addWidget(self.sort_options)
         self.sort_options.hide()
         group_row = QHBoxLayout()
-        self.groups_label = QLabel("Groupement : aucun")
+        self.groups_label = GroupBar(self.group_column)
         group_row.addWidget(self.groups_label, 1)
         change_groups = QPushButton("Regrouper…")
         change_groups.clicked.connect(self.group_by)
@@ -164,6 +181,7 @@ class Window(QMainWindow):
         layout.addLayout(group_row)
         splitter = QSplitter(Qt.Vertical)
         self.tree = QTreeView()
+        self.tree.setHeader(GroupHeader(self.tree))
         self.tree.setUniformRowHeights(True)
         self.tree.setAlternatingRowColors(True)
         self.tree.setSelectionBehavior(QTreeView.SelectRows)
@@ -281,7 +299,7 @@ class Window(QMainWindow):
     def import_csv(self):
         if not self.can_open_file():
             return
-        path, _ = QFileDialog.getOpenFileName(self, "Ouvrir un CSV", "", "CSV / TSV (*.csv *.tsv *.txt);;Tous les fichiers (*)")
+        path, _ = QFileDialog.getOpenFileName(self, "Ouvrir un fichier", "", "Données (*.csv *.tsv *.txt *.xlsx);;Tous les fichiers (*)")
         if path:
             self.import_file(path)
 
@@ -292,7 +310,11 @@ class Window(QMainWindow):
         if not path.is_file():
             self.error("Le fichier source est introuvable.")
             return
-        dialog = ImportDialog(path, self)
+        try:
+            dialog = ImportDialog(path, self)
+        except Exception as exc:
+            self.error(exc)
+            return
         if not dialog.exec():
             return
         target, delimiter, encoding = dialog.values()
@@ -323,7 +345,12 @@ class Window(QMainWindow):
                 message += f"\n\nImpossible de rouvrir l’analyse précédente :\n{recovery_error}"
             self.error(message)
 
-        self.run(lambda: candidate.import_csv(path, delimiter, encoding, progress.progress.emit),
+        def importing():
+            if path.suffix.lower() == ".xlsx":
+                return candidate.import_excel(path, sheet, progress.progress.emit)
+            return candidate.import_csv(path, delimiter, encoding, progress.progress.emit)
+        sheet = dialog.sheet.currentText() if dialog.sheet is not None else None
+        self.run(importing,
                  lambda _: self.attach(candidate), exclusive=True, on_cancel=cancelled, on_error=failed)
 
     def snapshot_analysis(self):
@@ -357,7 +384,9 @@ class Window(QMainWindow):
 
     def open_path(self, path):
         path = Path(path)
-        if path.suffix.lower() == ".timeline":
+        if path.suffix.lower() == ".fireblade-session":
+            self.load_session(path)
+        elif path.suffix.lower() == ".timeline":
             self.load_case(path)
         else:
             self.import_file(path)
@@ -368,7 +397,7 @@ class Window(QMainWindow):
         if len(urls) != 1 or not urls[0].isLocalFile():
             return None
         path = Path(urls[0].toLocalFile())
-        if not path.is_file() or path.suffix.lower() not in (".csv", ".tsv", ".txt", ".timeline"):
+        if not path.is_file() or path.suffix.lower() not in (".csv", ".tsv", ".txt", ".xlsx", ".timeline", ".fireblade-session"):
             return None
         return path
 
@@ -388,6 +417,7 @@ class Window(QMainWindow):
         QTimer.singleShot(0, lambda: self.open_path(path))
 
     def detach(self):
+        self.remember_active()
         # Never close a connection while a queued page request still refers to it.
         self.count_generation += 1
         if self.model:
@@ -403,7 +433,7 @@ class Window(QMainWindow):
         self.source.clear()
         self.set_file_actions(False)
         self.cancel_action.setEnabled(False)
-        self.setWindowTitle("Timeline Next")
+        self.setWindowTitle("Fireblade")
 
     def open_case(self):
         if not self.can_open_file():
@@ -429,6 +459,11 @@ class Window(QMainWindow):
                 raise ValueError("Base vide ou import inachevé")
         except Exception as exc:
             self.error(exc)
+            return
+        existing = next((i for i, doc in enumerate(self.documents) if doc.path == str(path.resolve())), -1)
+        if existing >= 0:
+            candidate.close()
+            self.switch_document(existing)
             return
         self.detach()
         self.attach(candidate)
@@ -456,26 +491,36 @@ class Window(QMainWindow):
             self.sort_column.addItem(h, i)
         self.sort_column.blockSignals(False)
         name = Path(case.info["path"]).name
-        self.setWindowTitle(f"{name} - Timeline Next")
+        self.setWindowTitle(f"{name} - Fireblade")
         self.source.setText(f"{name}  |  {len(case.headers)} colonnes")
         self.set_view(initial_view if initial_view is not None else View())
         if header_state is not None:
             self.tree.header().restoreState(header_state)
+        self.track_case()
 
     def apply(self, *_):
         if not self.case or not self.model or self.busy:
+            return
+        try:
+            self.case.validate_view(self.view)
+        except ValueError as exc:
+            self.error(exc)
             return
         self.view.search = self.search.text()
         self.view.bookmarks_only = self.only_notes.isChecked()
         self.view.sort_column = self.sort_column.currentData()
         self.view.sort_type = self.sort_type.currentData()
         self.view.descending = self.desc.isChecked()
+        if self.view.sorts and (self.view.sorts[0].column, self.view.sorts[0].kind, self.view.sorts[0].descending) != (self.view.sort_column, self.view.sort_type, self.view.descending):
+            self.view.sorts = []
         self.filters.clear()
         for f in self.view.filters:
             label = dict((v, k) for k, v in OPERATORS)[f.operator]
             self.filters.addItem(f"{self.case.headers[f.column]}  {label}  {f.value}")
-        self.filters.setVisible(bool(self.view.filters))
-        self.groups_label.setText("Groupement : " + " > ".join(self.case.headers[i] for i in self.view.groups) if self.view.groups else "Groupement : aucun")
+        if self.view.expression is not None:
+            self.filters.addItem("Expression ET / OU / NON · ouvrir l’éditeur pour modifier")
+        self.filters.setVisible(bool(self.view.filters) or self.view.expression is not None)
+        self.groups_label.setText("Groupement : " + " > ".join(self.case.headers[i] for i in self.view.groups) if self.view.groups else "Glissez un en-tête ici pour regrouper")
         section = self.view.sort_column
         self.tree.header().setSortIndicatorShown(section is not None)
         if section is not None:
@@ -496,7 +541,16 @@ class Window(QMainWindow):
         self.set_view(View())
 
     def set_view(self, view):
+        if self.case:
+            try:
+                self.case.validate_view(view)
+            except (ValueError, TypeError) as exc:
+                self.error(exc)
+                return
         self.view = copy.deepcopy(view)
+        if self.view.sorts:
+            first = self.view.sorts[0]
+            self.view.sort_column, self.view.sort_type, self.view.descending = first.column, first.kind, first.descending
         widgets = [self.search, self.only_notes, self.sort_column, self.sort_type, self.desc]
         previous = [widget.blockSignals(True) for widget in widgets]
         self.search.setText(self.view.search)
@@ -507,6 +561,11 @@ class Window(QMainWindow):
         for widget, blocked in zip(widgets, previous):
             widget.blockSignals(blocked)
         self.apply()
+        if self.view.header_state:
+            try:
+                self.tree.header().restoreState(base64.b64decode(self.view.header_state, validate=True))
+            except ValueError:
+                self.statusBar().showMessage("Disposition des colonnes invalide ; disposition par défaut conservée")
 
     def add_filter(self, column_index=None):
         if not self.case or self.busy:
@@ -532,7 +591,11 @@ class Window(QMainWindow):
             self.apply()
 
     def remove_filter(self, item):
-        del self.view.filters[self.filters.row(item)]
+        index = self.filters.row(item)
+        if index >= len(self.view.filters):
+            self.edit_filters()
+            return
+        del self.view.filters[index]
         self.apply()
 
     def group_by(self):
@@ -604,6 +667,7 @@ class Window(QMainWindow):
     def set_sort(self, column, descending=False, sort_type=None):
         if not self.case or self.busy or not 0 <= column < len(self.case.headers):
             return
+        self.view.sorts = []
         widgets = [self.sort_column, self.desc, self.sort_type]
         previous = [w.blockSignals(True) for w in widgets]
         self.sort_column.setCurrentIndex(self.sort_column.findData(column))
@@ -700,6 +764,7 @@ class Window(QMainWindow):
         name, ok = QInputDialog.getText(self, "Enregistrer la vue", "Nom (un nom existant sera remplacé)")
         if ok and name.strip():
             case, view = self.case, copy.deepcopy(self.view)
+            view.header_state = base64.b64encode(bytes(self.tree.header().saveState())).decode("ascii")
             self.run(lambda: case.save_view(name.strip(), view), lambda _: self.statusBar().showMessage("Vue enregistrée dans l’analyse"))
 
     def load_view(self):
@@ -718,7 +783,7 @@ class Window(QMainWindow):
     def export_csv(self):
         if not self.case or self.busy:
             return
-        target, _ = QFileDialog.getSaveFileName(self, "Exporter les résultats filtrés", "resultats.csv", "CSV (*.csv)")
+        target, _ = QFileDialog.getSaveFileName(self, "Exporter les résultats filtrés", "resultats.csv", "CSV (*.csv);;Excel (*.xlsx)")
         if not target:
             return
         grouped = False
@@ -735,6 +800,105 @@ class Window(QMainWindow):
         if self.case and self.case.info:
             info = self.case.info
             QMessageBox.information(self, "Provenance de l’import", f"Source : {info['path']}\nOctets : {info['size']}\nLignes : {info['rows']}\nSHA-256 à l’import :\n{info['sha256']}\n\nLa source est lue sans modification. L’identifiant de ligne correspond à l’ordre des enregistrements CSV, hors en-tête (un enregistrement peut occuper plusieurs lignes physiques).")
+
+    def edit_filters(self):
+        if not self.case or self.busy:
+            return
+        children = copy.deepcopy(self.view.filters)
+        if self.view.expression is not None:
+            children.append(copy.deepcopy(self.view.expression))
+        dialog = FilterDialog(self.case.headers, FilterGroup("and", children), self)
+        accepted = dialog.exec()
+        dialog.deleteLater()
+        if accepted:
+            expression = dialog.expression
+            try:
+                # Check casts and regular expressions on a single bound query.
+                self.case.condition(expression)
+            except ValueError as exc:
+                self.error(exc)
+                return
+            self.view.filters = []
+            self.view.expression = expression if expression.children else None
+            self.apply()
+
+    def edit_sort(self):
+        if not self.case or self.busy:
+            return
+        keys = self.view.sorts or ([SortKey(self.view.sort_column, self.view.sort_type, self.view.descending)] if self.view.sort_column is not None else [])
+        dialog = SortDialog(self.case.headers, keys, self)
+        accepted = dialog.exec()
+        dialog.deleteLater()
+        if accepted:
+            view = copy.deepcopy(self.view)
+            view.sorts = dialog.keys
+            first = dialog.keys[0] if dialog.keys else None
+            view.sort_column = first.column if first else None
+            view.sort_type = first.kind if first else "text"
+            view.descending = first.descending if first else False
+            self.set_view(view)
+
+    def edit_rules(self):
+        if not self.case or self.busy:
+            return
+        dialog = RulesDialog(self.case.headers, self.view.format_rules, self)
+        accepted = dialog.exec()
+        dialog.deleteLater()
+        if accepted:
+            self.view.format_rules = dialog.rules
+            self.apply()
+
+    def apply_profile(self):
+        if not self.case or self.busy:
+            return
+        profile = detect_profile(self.case.headers)
+        if profile is None:
+            self.statusBar().showMessage("Aucun profil reconnu : affichage CSV générique conservé")
+            return
+        view, order = profile_view(profile, self.case.headers)
+        self.set_view(view)
+        header = self.tree.header()
+        for position, column in enumerate(order, 1):
+            header.moveSection(header.visualIndex(column + 1), position)
+            self.tree.setColumnHidden(column + 1, False)
+        self.statusBar().showMessage(f"Profil {profile.name} appliqué ; valeurs sources inchangées")
+
+    def cell_details(self):
+        if not self.model or self.busy:
+            return
+        index = self.tree.currentIndex()
+        if not index.isValid() or self.model.node(index).group or index.column() == 0:
+            self.statusBar().showMessage("Sélectionnez une cellule de données")
+            return
+        raw = self.model.node(index).values[index.column()]
+        raw = "" if raw is None else str(raw)
+        dialog = QDialog(self)
+        dialog.setWindowTitle(self.case.headers[index.column() - 1])
+        dialog.resize(800, 520)
+        layout = QVBoxLayout(dialog)
+        mode = QComboBox()
+        mode.addItems(["Texte brut", "JSON formaté"])
+        layout.addWidget(mode)
+        text = QPlainTextEdit(raw)
+        text.setReadOnly(True)
+        layout.addWidget(text)
+        message = QLabel()
+        layout.addWidget(message)
+        def render():
+            try:
+                if mode.currentIndex() and len(raw) > 2 * 1024 * 1024:
+                    raise ValueError("JSON limité à 2 Mo pour préserver la réactivité ; texte brut disponible")
+                text.setPlainText(json.dumps(json.loads(raw), ensure_ascii=False, indent=2) if mode.currentIndex() else raw)
+                message.clear()
+            except (ValueError, RecursionError) as exc:
+                text.setPlainText(raw)
+                message.setText(f"JSON non formatable : {exc}")
+        mode.currentIndexChanged.connect(render)
+        buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        dialog.exec()
+        dialog.deleteLater()
 
     def highlight(self):
         if not self.case or self.busy:
@@ -774,14 +938,16 @@ def main():
     parser.add_argument("--self-test-report", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
     base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-    default_config = base / "timeline-next.toml"
+    default_config = base / "fireblade.toml"
+    if not default_config.exists():
+        default_config = base / "timeline-next.toml"  # Existing configurations remain readable.
     config = args.config if args.config is not None else default_config if default_config.exists() else None
     try:
         settings = load_settings(config)
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
     app = QApplication(sys.argv)
-    app.setApplicationName("TimelineNext")
+    app.setApplicationName("Fireblade")
     apply_theme(app)
     if args.self_test_report is not None:
         from .windows_check import run_check

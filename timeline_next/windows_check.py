@@ -18,12 +18,12 @@ import time
 
 import duckdb
 from PySide6 import __version__ as pyside_version
-from PySide6.QtCore import QItemSelectionModel, QTimer, qVersion
+from PySide6.QtCore import QItemSelectionModel, QTimer, Qt, qVersion
 from PySide6.QtWidgets import QDialog
 
 from .app import Window
 from .dialogs import ImportDialog
-from .models import Filter, View
+from .models import Filter, FilterGroup, FormatRule, SortKey, View
 from .windows_paths import analyses_directory
 
 
@@ -88,7 +88,7 @@ def run_check(app, report_path):
             report["checks"].append(dict(name=name, status="failed", error=str(exc)))
             raise
 
-    def import_with_dialog(source, target):
+    def import_with_dialog(source, target, sheet=None):
         def accept_dialog():
             dialog = app.activeModalWidget()
             if not isinstance(dialog, ImportDialog):
@@ -97,6 +97,8 @@ def run_check(app, report_path):
                     dialog.reject()
                 return
             dialog.target.setText(str(target))
+            if sheet is not None:
+                dialog.sheet.setCurrentText(sheet)
             dialog.accept()
         QTimer.singleShot(0, accept_dialog)
         window.open_path(source)
@@ -105,7 +107,7 @@ def run_check(app, report_path):
         expect(os.name == "nt" and sys.platform == "win32", "Ce contrôle exige un véritable processus Windows.")
         expect(report["pointer_bits"] == 64, "Un Python ou exécutable 64 bits est requis.")
         expect(app.platformName() == "windows", "Le plugin Qt Windows natif doit être utilisé, pas offscreen.")
-        work = tempfile.TemporaryDirectory(prefix="TimelineNext vérification ")
+        work = tempfile.TemporaryDirectory(prefix="Fireblade vérification ")
         directory = Path(work.name).resolve()  # Windows TEMP may contain an 8.3 alias such as RUNNER~1.
         source = directory / "événements Windows.csv"
         with source.open("w", encoding="utf-8-sig", newline="") as output:
@@ -218,6 +220,80 @@ def run_check(app, report_path):
             expect(window.case.path == case_path and window.view == saved_view, "L’analyse précédente n’a pas été restaurée.")
             expect(window.tree.isColumnHidden(5) and window.case.bookmarks() == {1: "À conserver"}, "Colonnes ou notes non restaurées.")
         check("cancel_import_and_restore_previous_workspace", cancelled_import)
+
+        def boolean_rules_and_sort():
+            expression = FilterGroup("and", [FilterGroup("or", [Filter(1, "eq", "élève"), Filter(1, "eq", "bob")]),
+                                            FilterGroup("not", [Filter(2, "eq", "2")])])
+            rule = FormatRule(FilterGroup("and", [Filter(2, "gt", "9007199254740992")]),
+                              "#ffc7ce", "#111111", True, 2)
+            view = View(expression=expression, format_rules=[rule], sorts=[SortKey(0), SortKey(2, "number", True)])
+            window.set_view(view)
+            settle()
+            expect([r[0] for r in window.case.page(window.view)] == [2, 1], "Expression imbriquée ou tri multi-colonnes incorrect.")
+            expect(window.model.data(window.model.index(0, 3), Qt.BackgroundRole).name() == "#ffc7ce", "Coloration de cellule non appliquée.")
+            expect(window.model.data(window.model.index(0, 3), Qt.FontRole).bold(), "Mise en gras non appliquée.")
+            window.case.save_view("avancé", window.view)
+            expect(window.case.views()["avancé"] == window.view, "Vue avancée non persistée.")
+        check("boolean_expression_multisort_and_cell_formatting", boolean_rules_and_sort)
+
+        def tabs_and_session():
+            from .engine import Case
+            old_connection = window.case.db
+            previous_view = window.view
+            second_csv = directory / "deuxième.csv"
+            second_csv.write_text("Name\nDeuxième fichier\n", encoding="utf-8")
+            second_path = directory / "deuxième.timeline"
+            other = Case(second_path)
+            other.import_csv(second_csv)
+            other.close()
+            window.load_case(second_path)
+            settle()
+            expect(window.tabs.count() == 2 and window.case.path == second_path, "Deuxième onglet absent.")
+            released = False
+            try:
+                old_connection.execute("SELECT 1")
+            except duckdb.ConnectionException:
+                released = True
+            expect(released, "La connexion de l’onglet inactif consomme encore des ressources.")
+            window.switch_document(0)
+            settle()
+            expect(window.view == previous_view and window.tree.isColumnHidden(5), "Vue ou colonnes perdues au changement d’onglet.")
+            session = directory / "enquête.fireblade-session"
+            window.save_session(session)
+            window.close_document(0)
+            settle()
+            window.load_session(session)
+            settle()
+            expect(window.tabs.count() == 2 and window.case.path == case_path and window.view == previous_view,
+                   "La session n’a pas restauré ses onglets et filtres.")
+        check("tabs_release_inactive_connection_and_session_restore", tabs_and_session)
+
+        def excel_roundtrip():
+            from openpyxl import Workbook, load_workbook
+            excel_source = directory / "preuve été.xlsx"
+            workbook = Workbook()
+            workbook.active.append(["Ignore"])
+            sheet = workbook.create_sheet("Événements")
+            sheet.append(["ID", "Details"])
+            sheet.append(["0001", "=1+1"])
+            sheet.append(["9007199254740993", "Ligne A\nLigne B"])
+            workbook.save(excel_source)
+            workbook.close()
+            before = hashlib.sha256(excel_source.read_bytes()).hexdigest()
+            import_with_dialog(excel_source, directory / "excel.timeline", "Événements")
+            settle()
+            expect(window.case.page(View()) == [(1, "0001", "=1+1"), (2, "9007199254740993", "Ligne A\nLigne B")], "Import Excel altéré.")
+            expect(window.case.info["sha256"] == before, "La provenance Excel ne référence pas le classeur source.")
+            output = directory / "résultats.xlsx"
+            window.case.export(output, View())
+            result = load_workbook(output, read_only=True, data_only=False)
+            try:
+                rows = list(result.active.iter_rows())
+                expect(rows[1][1].data_type == "s" and rows[1][1].value == "=1+1", "Une formule exportée n’est pas du texte littéral.")
+                expect(rows[2][0].value == "9007199254740993", "Grand entier altéré dans l’export Excel.")
+            finally:
+                result.close()
+        check("xlsx_sheet_import_export_and_literal_formulas", excel_roundtrip)
 
         report["memory"] = windows_memory()
         report["status"] = "passed"

@@ -39,7 +39,7 @@ class SharedRulesMixin:
             self.rules_summary.setText("Règles globales : désactivées")
             self.rules_summary.setToolTip("Désactivées pour cette vue uniquement")
             return []
-        rules, skipped = self.rule_book.adapt(self.case.headers)
+        rules, skipped = self.rule_book.adapt(self.case.headers,self.case.expression_functions)
         active = sum(rule.enabled for rule in rules)
         self.rules_summary.setText(f"Règles globales : {active} active(s)" + (f", {len(skipped)} non applicable(s)" if skipped else "") if self.rule_book.rules else "")
         self.rules_summary.setToolTip("\n".join(skipped) if skipped else str(self.rule_store.path))
@@ -60,13 +60,14 @@ class SharedRulesMixin:
         if not book.headers:
             self.statusBar().showMessage("Ouvrez une analyse pour proposer ses noms de colonnes")
             return
-        dialog = RulesDialog(book.headers, book.rules, self)
+        dialog = RulesDialog(book.headers, book.rules, self,functions={**book.functions,**(self.case.expression_functions if self.case else {})})
         dialog.setWindowTitle("Règles globales · colonnes absentes = règle non appliquée")
         accepted = dialog.exec()
         dialog.deleteLater()
         if not accepted:
             return
         book.rules = dialog.rules
+        if self.case:book.functions.update(self.case.expression_functions)
         try:
             self.rule_store.save(book)
         except Exception as exc:

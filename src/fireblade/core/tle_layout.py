@@ -285,10 +285,29 @@ def read_tle_layout(path, headers):
             rule_node = properties(item).get("Rule")
             if rule_node is None:
                 rule_node = item
-            rule_type = text(item, "RuleType", "#FormatConditionRuleExpression")
+            rule_type = text(item, "RuleType") or text(rule_node,"Type") or rule_node.get("Type") or "#FormatConditionRuleExpression"
             enabled = text(item, "Enabled", "true").lower() != "false"
+            from fireblade.core.tle_graphics import read_graphic
+            graphic=read_graphic(item,rule_node,rule_type,text,properties,color,resolve,aliases,warnings)
+            if graphic is not None:
+                view.format_rules.append(graphic)
+                continue
             condition_text = text(rule_node, "Expression") or text(item, "Expression")
-            if condition_text:
+            statistic='';stat_rank='10';stat_percent=False;value_column=None
+            normalized_type=rule_type.lstrip('#').split(',')[0].split('.')[-1]
+            if normalized_type in ('FormatConditionRuleTopBottom','FormatConditionRuleAboveBelowAverage','FormatConditionRuleUniqueDuplicate'):
+                name=text(item,'ColumnName') or text(item,'Column')
+                value_column=aliases[name] if name in aliases else resolve(name)
+                if normalized_type=='FormatConditionRuleTopBottom':
+                    statistic='bottom' if text(rule_node,'TopBottom','Top')=='Bottom' else 'top'
+                    stat_rank=text(rule_node,'Rank','10');stat_percent=text(rule_node,'RankType','Number')=='Percent'
+                elif normalized_type=='FormatConditionRuleAboveBelowAverage':
+                    average=text(rule_node,'AverageType','Above')
+                    if average not in ('Above','Below'):raise ValueError('Type de moyenne non traduit : '+average)
+                    statistic='below_avg' if average=='Below' else 'above_avg'
+                else:statistic='unique' if text(rule_node,'UniqueDuplicate','Duplicate')=='Unique' else 'duplicate'
+                condition=FilterGroup()
+            elif condition_text:
                 condition = expression(condition_text)
             elif rule_type in ("#FormatConditionRuleValue", "FormatConditionRuleValue"):
                 colname = text(item, "ColumnName") or text(item, "Column")
@@ -338,6 +357,9 @@ def read_tle_layout(path, headers):
                 name = text(item, "ColumnApplyToName") or text(item, "ColumnName")
                 target = aliases[name] if name in aliases else resolve(name)
             font = text(appearance, "Font")
+            size_match=re.search(r',\s*(\d+(?:\.\d+)?)\s*pt\b',font,re.I)
+            font_family=font.split(',')[0].strip() if size_match else ''
+            font_size=float(size_match.group(1)) if size_match else 0
             view.format_rules.append(
                 FormatRule(
                     condition,
@@ -349,6 +371,10 @@ def read_tle_layout(path, headers):
                     italic='italic' in font.lower(),
                     underline='underline' in font.lower(),
                     strikeout='strikeout' in font.lower(),
+                    font_family=font_family,font_size=font_size,
+                    statistic=statistic,stat_rank=stat_rank,stat_percent=stat_percent,value_column=value_column,
+                    stop_if_true=text(item,'StopIfTrue','false').lower()=='true',
+                    use_background=bool(text(appearance,'BackColor')),use_foreground=bool(text(appearance,'ForeColor')),use_font=bool(font),
                 )
             )
     if text(root, "GroupSummarySortInfoState"):

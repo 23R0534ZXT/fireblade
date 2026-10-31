@@ -191,14 +191,14 @@ L’application d’un profil peut proposer ces colonnes normalisées, les caté
 
 Les profils forensic reconnus s’appliquent automatiquement aux nouveaux imports, avant l’affichage de leurs colonnes. Désactiver **Appliquer le profil forensic reconnu à l’import** dans les préférences pour garder une grille générique. L’ajout d’une colonne dérivée conserve l’ordre, les largeurs, le masquage et l’épinglage des colonnes existantes.
 
-## Mises en forme graphiques
+## Mises en forme graphiques et statistiques
 
-Dans **Analyse → Règles de coloration**, ajouter une règle puis choisir une colonne cible, une condition et un mode : barre de données, dégradé ou indicateur à trois niveaux. Indiquer deux bornes numériques finies, minimum strictement inférieur au maximum. Les mêmes bornes s’appliquent à toutes les pages et aux exports de règles ; aucun calcul de minimum/maximum sur le seul écran visible n’est effectué.
+Dans **Analyse → Règles de coloration**, ajouter une règle et choisir la cible. L’onglet Apparence contient fond/texte, styles, police propre à la règle et classement, moyenne, valeurs uniques ou doublons. Pour une règle statistique sur toute la ligne, choisir explicitement son champ de valeurs. « Fond actif », « Texte actif » et « Police active » permettent de combiner plusieurs règles ; désactiver « Arrêter après cette règle » pour laisser les suivantes contribuer.
 
-Les barres sont dessinées sous le texte de la cellule. Le dégradé interpole la couleur Fond au minimum et la couleur Texte au maximum, avec un texte contrasté. Les indicateurs rouge/ambre/vert divisent l’intervalle en trois parties égales. Les valeurs hors intervalle sont ramenées aux extrémités pour le dessin ; les valeurs absentes, invalides ou infinies restent sans graphique. Les données originales ne sont pas modifiées. CSV/XLSX exportent les données ; ils ne reproduisent pas ces dessins de la grille.
+L’onglet Graphique propose barres, dégradés à deux/trois couleurs et icônes. Les bornes se choisissent indépendamment : fixes, automatiques, pourcentage de la plage ou percentiles exacts. Les calculs portent sur tout le résultat filtré, pas seulement la page. Le premier calcul peut prendre du temps ; les pages suivantes utilisent le cache. Les barres négatives disposent d’une couleur et d’un axe zéro ; les icônes ont trois à cinq niveaux avec seuils stricts ou inclusifs, couleurs et images personnalisables.
 
-Les règles se conservent dans les vues et bibliothèques globales Fireblade. Les variantes graphiques propriétaires des layouts TLE ne sont pas encore importées automatiquement.
+Les valeurs invalides restent sans graphique. Masquer les valeurs ne change ni les données, ni leur copie ou leur export. Les règles se conservent dans les vues et bibliothèques globales. CSV/XLSX exportent les données sans les dessins de la grille. Les règles XML standards des layouts TLE sont traduites ; toute adaptation est signalée.
 
-Les exports PeScan/Wisp avec quatre lignes de préambule sont reconnus si leur en-tête correspond au schéma public attendu. Le préambule reste présent dans le fichier source et son SHA-256 est conservé.
+## Plugins de lecture et fonctions TLE
 
-Les règles proposent également gras, italique, souligné et barré. Ces attributs sont conservés dans les vues et bibliothèques Fireblade et repris lors de l’import des règles compatibles d’un layout TLE.
+**Fichier → Importer avec un plugin TLE (.NET)…** permet de choisir une DLL de lecteur et une source. **Analyse → Charger des fonctions .NET…** ajoute ses fonctions aux expressions, pour l’analyse active. Ces fonctions doivent être rechargées après réouverture ; aucune DLL n’est exécutée automatiquement depuis une vue. Utiliser l’import CSV natif pour les gros volumes habituels. Voir le [guide des plugins](../development/PLUGINS.md) pour les contrats et limites.

@@ -64,21 +64,64 @@ def validate_format_rules(rules, column, numeric_expression, limit=32):
         raise ValueError(f"{limit} règles de coloration au maximum")
     for rule in rules:
         from decimal import Decimal, InvalidOperation
-        if rule.visual not in ('none', 'bar', 'scale', 'icon'):
+        if rule.icon_set not in ('circles','arrows','signs') or not isinstance(rule.icon_colors,list) or not 3<=len(rule.icon_colors)<=5 or not isinstance(rule.icon_images,list) or len(rule.icon_images)!=len(rule.icon_colors):
+            raise ValueError('Jeu d’icônes invalide')
+        from fireblade.core.icon_assets import png_bytes
+        for encoded in rule.icon_images:
+            if encoded:png_bytes(encoded)
+            elif encoded!='':raise ValueError('Icône invalide')
+        if rule.statistic not in ('','top','bottom','above_avg','below_avg','unique','duplicate'):raise ValueError('Règle statistique inconnue')
+        if rule.statistic and rule.value_column is None and rule.target is None:raise ValueError('Champ de valeurs requis pour la règle statistique')
+        if rule.statistic in ('top','bottom'):
+            try:
+                rank=Decimal(rule.stat_rank)
+                if not rank.is_finite() or rank<=0 or (rule.stat_percent and rank>100) or (not rule.stat_percent and rank!=rank.to_integral_value()):raise ValueError('Rang positif entier ou pourcentage entre 0 et 100 requis')
+            except (InvalidOperation,TypeError):raise ValueError('Rang invalide') from None
+        if rule.value_column is not None:column(rule.value_column)
+        if rule.visual=='scale3':
+            try:
+                middle=Decimal(rule.middle_value)
+                if not middle.is_finite() or rule.middle_mode not in ('fixed','percent','percentile'):raise ValueError('Point médian invalide')
+                if rule.middle_mode!='fixed' and not 0<=middle<=100:raise ValueError('Point médian entre 0 et 100')
+            except (InvalidOperation,TypeError):raise ValueError('Point médian invalide') from None
+        if rule.maximum_mode not in ('','fixed','auto','percent','percentile') or rule.icon_threshold_mode not in ('number','percent','percentile'):
+            raise ValueError('Mode de seuil inconnu')
+        if not isinstance(rule.icon_thresholds,list) or len(rule.icon_thresholds) not in (0,len(rule.icon_colors)-1):
+            raise ValueError('Nombre de seuils incorrect')
+        if not isinstance(rule.icon_comparisons,list) or len(rule.icon_comparisons) not in (0,len(rule.icon_colors)-1) or any(v not in ('>','>=') for v in rule.icon_comparisons):raise ValueError('Comparaisons d’icônes invalides')
+        if rule.icon_floor_mode not in ('number','percent','percentile') or rule.icon_floor_comparison not in ('>','>='):raise ValueError('Plancher d’icônes invalide')
+        if rule.icon_floor:
+            try:
+                floor=Decimal(rule.icon_floor)
+                if not floor.is_finite() or rule.icon_floor_mode!='number' and not 0<=floor<=100:raise ValueError('Plancher numérique invalide')
+            except (InvalidOperation,TypeError):raise ValueError('Plancher numérique invalide') from None
+        try:
+            thresholds=[Decimal(v) for v in rule.icon_thresholds]
+            if any(not v.is_finite() for v in thresholds) or any(a>=b for a,b in zip(thresholds,thresholds[1:])):raise ValueError('Seuils non finis ou non croissants')
+            if rule.icon_threshold_mode!='number' and any(not 0<=v<=100 for v in thresholds):raise ValueError('Percentiles et pourcentages entre 0 et 100')
+        except (InvalidOperation,TypeError):raise ValueError('Seuils numériques invalides') from None
+        if rule.bound_mode not in ('fixed','auto','percent','percentile'):
+            raise ValueError('Mode de bornes inconnu')
+        if not isinstance(rule.font_family,str) or len(rule.font_family)>256 or type(rule.font_size) not in (int,float) or not 0<=rule.font_size<=96:
+            raise ValueError('Police ou taille invalide (0 = héritée, maximum 96 points)')
+        if rule.visual not in ('none', 'bar', 'scale', 'scale3', 'icon'):
             raise ValueError('Mode graphique inconnu')
         if rule.visual != 'none':
-            if rule.target is None:
+            if rule.value_column is None and rule.target is None:
                 raise ValueError('Choisissez une colonne pour la règle graphique')
             try:
                 low, high = Decimal(rule.minimum), Decimal(rule.maximum)
-                if not low.is_finite() or not high.is_finite() or low >= high:
-                    raise ValueError('Les bornes doivent être finies et minimum < maximum')
+                modes=(rule.bound_mode,rule.maximum_mode or rule.bound_mode)
+                for mode,value in zip(modes,(low,high)):
+                    if mode!='auto' and not value.is_finite():raise ValueError('Bornes finies requises')
+                    if mode in ('percent','percentile') and not 0<=value<=100:raise ValueError('Pourcentages entre 0 et 100')
+                if modes[0]==modes[1] and modes[0]!='auto' and low>=high:raise ValueError('Minimum strictement inférieur au maximum requis')
             except (InvalidOperation, TypeError):
                 raise ValueError('Bornes numériques invalides') from None
         compile_condition(rule.condition, column, numeric_expression)
         if rule.target is not None:
             column(rule.target)
-        if any(type(v) is not bool for v in (rule.enabled, rule.bold, rule.italic, rule.underline, rule.strikeout)):
+        if any(type(v) is not bool for v in (rule.enabled, rule.bold, rule.italic, rule.underline, rule.strikeout,rule.stop_if_true,rule.use_background,rule.use_foreground,rule.use_font,rule.show_values,rule.zero_based,rule.draw_axis,rule.stat_percent,rule.stat_ignore_case,rule.stat_include_null)):
             raise ValueError("Activation et gras doivent être des booléens")
-        if not all(isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color) for color in (rule.background, rule.foreground)):
+        if not all(isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color) for color in (rule.background, rule.foreground,rule.middle_color,rule.negative_color,rule.axis_color,*rule.icon_colors)):
             raise ValueError("Couleur invalide ; utilisez #RRGGBB")

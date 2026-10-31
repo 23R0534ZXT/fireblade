@@ -81,3 +81,27 @@ def test_sigcheck_layout_boolean_filter_targets_converted_status(tmp_path):
         assert layout.columns[0]['column']==case.headers.index('Fireblade_Bool_Verified')
         assert layout.columns[0]['column'] in layout.view.boolean_columns
     finally:case.close()
+
+
+@pytest.mark.parametrize('kind,properties,expected', [
+ ('TopBottom','<property name="TopBottom">Bottom</property><property name="Rank">1</property>',{1}),
+ ('AboveBelowAverage','<property name="AverageType">Above</property>',{3}),
+ ('UniqueDuplicate','<property name="UniqueDuplicate">Duplicate</property>',set()),
+])
+def test_statistical_layout_rules_execute(tmp_path,kind,properties,expected):
+    path=tmp_path/'s.layout';path.write_text(f'''<XtraSerializer><property name="Columns"><property name="Item1"><property name="FieldName">Value</property></property></property><property name="FormatRules"><property name="Item1"><property name="ColumnName">Value</property><property name="RuleType">#FormatConditionRule{kind}</property><property name="Rule">{properties}<property name="Appearance"><property name="BackColor">Red</property></property></property></property></property></XtraSerializer>''')
+    source=tmp_path/'s.csv';source.write_text('Value\n1\n3\n100\n');case=Case(tmp_path/'s.timeline')
+    try:
+        case.import_csv(source);view=read_tle_layout(path,case.headers).view;case.validate_view(view)
+        assert {k for k,v in case.page_styles(view,case.page(view)).items() if v}==expected
+    finally:case.close()
+
+
+def test_graphical_layout_preserves_descending_icon_threshold_comparisons_and_floor(tmp_path):
+    path=tmp_path/'s.layout'
+    icons=''.join(f'<property name="Item{i}"><property name="Value">{v}</property><property name="ValueComparison">Greater</property></property>' for i,v in enumerate([67,33,0]))
+    path.write_text(f'''<XtraSerializer><property name="Columns"><property name="Item1"><property name="FieldName">Value</property></property></property><property name="FormatRules"><property name="Item1"><property name="ColumnName">Value</property><property name="RuleType">#FormatConditionRuleIconSet</property><property name="Rule"><property name="IconSet"><property name="ValueType">Number</property><property name="Icons">{icons}</property></property></property></property></property></XtraSerializer>''')
+    rule=read_tle_layout(path,['Value']).view.format_rules[0]
+    assert rule.icon_thresholds==['33','67'] and rule.icon_comparisons==['>','>'] and rule.icon_floor=='0' and rule.icon_floor_comparison=='>'
+    from fireblade.ui.visual_rules import icon_level
+    assert [icon_level(rule,str(v),max(0,min(1,v/100))) for v in [-1,0,1,33,34,67,68]]==[-1,-1,0,0,1,1,2]

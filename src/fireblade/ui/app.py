@@ -80,6 +80,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             return item
 
         open_csv = action(file_menu, "Ouvrir un fichier…", self.import_csv, "Ctrl+O", False, QStyle.SP_DialogOpenButton)
+        action(file_menu, "Importer avec un plugin TLE (.NET)…", self.import_with_tle_plugin, requires_file=False)
         action(file_menu, "Ouvrir une analyse…", self.open_case, "Ctrl+Shift+O", False)
         action(file_menu, 'Importer les préférences Timeline Explorer…', self.import_tle_settings,requires_file=False)
         action(file_menu, "Importer une session Timeline Explorer…", lambda: self.import_tle_session(), requires_file=False)
@@ -132,6 +133,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(analysis_menu, "Importer une disposition…", self.import_layout)
         analysis_menu.addSeparator()
         action(analysis_menu, "Règles de coloration…", self.edit_rules)
+        action(analysis_menu, "Charger des fonctions .NET…", self.load_dotnet_functions)
         global_menu = analysis_menu.addMenu("Règles globales")
         action(global_menu, "Modifier…", self.edit_global_rules, requires_file=False)
         action(global_menu, "Recharger depuis le disque", self.reload_global_rules, requires_file=False)
@@ -414,7 +416,38 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         if paths:
             self.queue_files(paths)
 
-    def import_file(self, path):
+    def dotnet_functions_loaded(self,names):
+        self.apply()
+        self.statusBar().showMessage('Fonctions chargées : '+', '.join(names))
+
+    def load_dotnet_functions(self):
+        if not self.case or self.busy:return
+        from fireblade.core.tle_plugins import register_functions
+        path,_=QFileDialog.getOpenFileName(self,'DLL contenant les fonctions Evaluate','','Bibliothèque .NET (*.dll)')
+        if path:
+            self.run(lambda:register_functions(self.case,path),self.dotnet_functions_loaded,exclusive=True)
+
+    def import_with_tle_plugin(self):
+        if not self.can_open_file():return
+        from fireblade.core.tle_plugins import inspect_plugin
+        from PySide6.QtWidgets import QInputDialog
+        plugin,_=QFileDialog.getOpenFileName(self,'Choisir le plugin TLE et ses dépendances','','Plugin TLE (*.dll)')
+        if not plugin:return
+        def inspected(readers):
+            if not readers:self.error('Aucun lecteur TLE public trouvé dans cette DLL');return
+            labels=[r['description']+' · '+r['type'] for r in readers]
+            choice,ok=QInputDialog.getItem(self,'Lecteur TLE','Lecteur :',labels,0,False)
+            if not ok:return
+            source,_=QFileDialog.getOpenFileName(self,'Source à traiter par le plugin','','Tous les fichiers (*)')
+            if source:
+                selected=(plugin,readers[labels.index(choice)]['type'])
+                def start():
+                    if self.pool.activeThreadCount():QTimer.singleShot(10,start)
+                    else:self.import_file(source,selected)
+                QTimer.singleShot(0,start)
+        self.run(lambda:inspect_plugin(plugin),inspected,exclusive=True)
+
+    def import_file(self, path, tle_plugin=None):
         if not self.can_open_file():
             return
         path = Path(path)
@@ -422,7 +455,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             self.error("Le fichier source est introuvable.")
             return
         try:
-            dialog = ImportDialog(path, self)
+            dialog = ImportDialog(path, self, plugin=True) if tle_plugin is not None else ImportDialog(path, self)
         except Exception as exc:
             self.error(exc)
             return
@@ -458,6 +491,12 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             self.error(message)
 
         def importing():
+            if tle_plugin is not None:
+                from fireblade.core.tle_plugins import import_plugin
+                import_plugin(candidate,path,*tle_plugin,progress.progress.emit)
+                fields=candidate.info['plugin']['columns']
+                view=View(boolean_columns=[i for i,c in enumerate(fields) if 'System.Boolean' in (c.get('type') or '')],timestamp_columns=[i for i,c in enumerate(fields) if 'System.DateTime' in (c.get('type') or '')])
+                return ('Plugin TLE',view,None)
             if path.suffix.lower() in (".xlsx", ".xls"):
                 candidate.import_excel(path, sheet, progress.progress.emit)
             else:
@@ -473,7 +512,8 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             if order:
                 header=self.tree.header()
                 for position,column in enumerate(order,1):header.moveSection(header.visualIndex(column+1),position)
-            if name:self.statusBar().showMessage(f'Profil {name} détecté et appliqué ; valeurs sources intactes')
+            if tle_plugin is not None:self.statusBar().showMessage('Plugin TLE exécuté ; source originale conservée et transformations tracées')
+            elif name:self.statusBar().showMessage(f'Profil {name} détecté et appliqué ; valeurs sources intactes')
         sheet = dialog.sheet.currentText() if dialog.sheet is not None else None
         dialog.deleteLater()
         self.run(importing,imported,exclusive=True,on_cancel=cancelled,on_error=failed)
@@ -1055,8 +1095,8 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         accepted = dialog.exec()
         dialog.deleteLater()
         if accepted:
-            self.view.format_rules = dialog.rules
-            self.apply()
+            view=copy.deepcopy(self.view);view.format_rules=dialog.rules
+            self.set_view(view)
 
     def apply_profile(self):
         if not self.case or self.busy:

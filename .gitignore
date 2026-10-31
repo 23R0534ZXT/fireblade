@@ -11,3 +11,6 @@ artifacts/
 *.timeline.wal
 *.timeline.tmp/
 *.partial
+
+**/bin/
+**/obj/

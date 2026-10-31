@@ -26,12 +26,16 @@ def main():
         shutil.rmtree(generated)
     subprocess.run([str(python), "-m", "scripts.windows.bundle", "--root", str(root),
                     "--destination", str(generated)], check=True)
+    from scripts.windows.build_plugin_host import build as build_host
+    host=build_host(root,python)
+    shutil.copytree(host.parent,generated/"plugin-host",dirs_exist_ok=True)
+    shutil.copy2(root/"build/windows/plugin-fixture/Fireblade.PluginFixture.dll",generated/"plugin-host/Fireblade.PluginFixture.dll")
     staging = root / "build" / "windows" / "output"
     command = [str(python), "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--onefile",
                "--name", "Fireblade", "--paths", str(root / "src"),
                "--distpath", str(staging), "--workpath", str(root / "build" / "windows" / "pyinstaller"),
                "--specpath", str(root / "build" / "windows"), "--collect-all", "duckdb",
-               "--hidden-import", "decimal", "--hidden-import", "uuid", "--hidden-import", "fractions"]
+               "--hidden-import", "numpy", "--hidden-import", "decimal", "--hidden-import", "uuid", "--hidden-import", "fractions"]
     for source, target in [(generated, "resources"), (root / "config" / "fireblade.toml", "resources/config"),
                            (root / "docs" / "guides" / "UTILISATION.md", "resources/docs/guides"),
                            (root / "LICENSE", "resources"),

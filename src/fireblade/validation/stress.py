@@ -496,6 +496,30 @@ def run_stress(app,spec_path,report_path):
             return dict(derived_quality=quality,filtered_count=spec['reference']['date_after'])
         run.check('derived_utc_conversion_quality_filter_sort_on_all_existing_3_GiB_records',derived_utc_large_data)
 
+        def graphical_whole_data():
+            from decimal import Decimal,localcontext
+            import numpy as np
+            # Independent numeric oracle only: the existing CSV is never regenerated.
+            values=np.arange(rows,dtype=np.int64);values*=7919;values%=10**10;values.sort()
+            def percentile(p):
+                with localcontext() as ctx:
+                    ctx.prec=80;rank=Decimal(rows-1)*Decimal(p)/100;i=int(rank)
+                    return Decimal(int(values[i]))+(Decimal(int(values[min(rows-1,i+1)]))-Decimal(int(values[i])))*(rank-i)
+            oracle=[percentile(p) for p in (25,50,75)]
+            rule=FormatRule(target=11,visual='scale3',bound_mode='percentile',minimum='25',maximum='75',middle_mode='percentile',middle_value='50')
+            run.window.set_view(View(format_rules=[rule]));run.settle(600)
+            actual=run.window.model.rules[0]
+            expect(list(map(Decimal,(actual.minimum,actual.middle_value,actual.maximum)))==oracle,'Whole-data percentiles differ from independent integer oracle')
+            cache=len(run.window.case._visual_bounds_cache)
+            deep=run.work(lambda:run.window.case.page(run.window.view,offset=rows//2),300)
+            from fireblade.core.visual_bounds import resolve_rules
+            repeated=run.work(lambda:resolve_rules(run.window.case,run.window.view,[rule]),300)[0]
+            expect(repeated==actual and len(run.window.case._visual_bounds_cache)==cache,'Bounds changed on deep-page navigation')
+            expect(len(deep)==run.window.settings.page_size,'Deep percentile page missing')
+            run.capture('14-exact-percentiles-all-records')
+            return dict(records=rows,percentiles=[str(v) for v in oracle],cache_entries=cache)
+        run.check('exact_whole_3_GiB_percentile_graphics_and_deep_page_cache',graphical_whole_data)
+
         def final_integrity():
             def digest():
                 with source.open('rb') as incoming:return hashlib.file_digest(incoming,'sha256').hexdigest()

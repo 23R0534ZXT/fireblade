@@ -1,6 +1,6 @@
 # Architecture de Fireblade
 
-L’application utilise Python et quatre dépendances directes : DuckDB, PySide6 Essentials, openpyxl et xlrd. Le code est organisé sous `src/fireblade` et les imports nomment explicitement leur couche.
+L’application utilise Python et cinq dépendances directes : DuckDB, PySide6 Essentials, openpyxl, xlrd et NumPy. Le pont de compatibilité TLE est un petit exécutable C# autonome, séparé du moteur principal. Le code est organisé sous `src/fireblade` et les imports nomment explicitement leur couche.
 
 ## Couches
 
@@ -11,7 +11,7 @@ L’application utilise Python et quatre dépendances directes : DuckDB, PySide6
 | `runtime/` | Bootstrap, ressources intégrées et emplacements Windows | Bibliothèque standard ; chargement différé de l’interface |
 | `validation/` | Parcours automatiques dans le programme Windows | UI, core et API Windows |
 
-Le moteur reste importable sans Qt. Les modèles métier sont des dataclasses simples. Les menus et dialogues n’importent pas la classe Window ; leurs commandes sont raccordées par l’interface. Aucun conteneur d’injection, serveur ou système de plugins n’est nécessaire.
+Le moteur reste importable sans Qt. Les modèles métier sont des dataclasses simples. Les menus et dialogues n’importent pas la classe Window ; leurs commandes sont raccordées par l’interface. Aucun conteneur d’injection ou serveur n’est nécessaire. Le chargement des DLL de compatibilité est explicite et isolé dans un processus dédié.
 
 ## Où modifier quoi
 
@@ -83,7 +83,7 @@ Avant un nouvel import, Window mémorise seulement le chemin de l’ancienne ana
 - Replier un groupe libère ses descendants et leurs annotations.
 - Les notes résident dans les nœuds chargés ; `GridModel.notes` expose seulement ce cache de pages.
 - Un onglet inactif ne garde ni connexion DuckDB ni modèle Qt.
-- Les couleurs sont évaluées sur une petite relation VALUES paramétrée, alimentée par les seules colonnes nécessaires des lignes déjà chargées. La table complète n’est pas relue pour colorer une page.
+- Les couleurs sont évaluées sur une petite relation VALUES paramétrée, alimentée par les seules colonnes nécessaires des lignes déjà chargées. Les modes statistiques et les bornes dynamiques ont un calcul global initial mis en cache ; les conditions ordinaires restent locales à la page.
 - Les règles locales et globales restent séparées, avec priorité locale : au maximum 32 de chaque type.
 - Un cache temporaire de tri contient des couples position/identifiant. Il évite de refaire le tri pour les pages profondes et disparaît à la fermeture.
 - Les callbacks des jobs terminés sont déconnectés pour libérer leurs références.
@@ -107,3 +107,12 @@ La configuration explicite et celle du profil ont priorité sur le défaut embar
 `scripts/windows/verify.py` ne copie que le `.exe` dans un dossier vide. Il retire les chemins du Python hôte, isole TEMP/LOCALAPPDATA, lance les contrôles et vérifie le nettoyage. La construction ne publie le binaire dans `dist/` qu’après succès.
 
 La publication GitHub ne s’exécute qu’après succès sur main. Les rapports sont des artefacts de développement séparés ; le seul fichier joint à la préversion est le programme.
+
+
+## Modules de compatibilité optionnels
+
+`core/visual_bounds.py` calcule les bornes dynamiques ; `statistical_rules.py` les conditions de population ; `tle_graphics.py` traduit les propriétés XML déclaratives. `ui/visual_rules.py` et `grid.py` dessinent les cellules chargées. Les modèles restent des dataclasses sérialisables.
+
+`plugin_host/Program.cs` est l’adaptateur C# de réflexion pour `ProcessFile`/`DataList` et `Evaluate(object[])`. `core/tle_plugins.py` gère son processus, l’annulation, la provenance et le protocole JSON UTF-8. Les fonctions personnalisées utilisent une session persistante ; leur appel interprocessus est plus lent qu’une fonction SQL native. Le programme principal ne charge ni CLR ni NumPy pour un CSV ordinaire. Les imports DLL peuvent consommer la mémoire exigée par leur `DataList` ; ce coût est distinct du chemin natif borné.
+
+Le SDK .NET 10 est nécessaire à la construction. `build_plugin_host.py` publie le helper Windows avec son runtime autonome, teste le vrai GenericCsv amont à une révision et archive SHA-256 épinglées, puis l’intègre à PyInstaller avec ses licences. Les sources C# sont petites et modifiables indépendamment ; aucune distribution DevExpress n’est intégrée.

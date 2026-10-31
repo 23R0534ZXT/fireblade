@@ -29,6 +29,8 @@ Un changement de requête, d’import, d’annulation ou de persistance doit êt
 
 ## Construire
 
+Installer aussi le [SDK .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0) (Windows x64). Il construit le petit hôte de plugins avec son runtime intégré ; l’utilisateur final n’installe pas .NET. La construction télécharge les paquets NuGet et les sources publiques épinglées du lecteur GenericCsv utilisé pour la qualification.
+
 ```powershell
 py -3.12 -m scripts.windows.build
 ```

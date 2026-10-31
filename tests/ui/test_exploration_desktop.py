@@ -307,3 +307,80 @@ def test_completion_acceptance_runs_official_fixtures_in_real_grid(qt_applicatio
     check_completion(window,tmp_path,lambda:settle(qt_application,window),check,expect,tmp_path)
     assert len(completed)==7
     assert (tmp_path/'completion-full-groups.png').is_file()
+
+
+def test_many_manual_expansions_keep_a_bounded_cache(qt_application,tmp_path):
+    from fireblade.core.settings import Settings
+    source=tmp_path/'manual.csv'
+    source.write_text('Group,ID\n'+'\n'.join(f'g{i//10:02},{i}' for i in range(1000))+'\n')
+    settings=Settings(page_size=25,max_loaded_rows=100)
+    case=Case(tmp_path/'manual.timeline',settings=settings);case.import_csv(source)
+    w=Window(settings=settings);errors=[];w.error=errors.append
+    try:
+        w.attach(case,View(groups=[0]));settle(qt_application,w)
+        for i in range(20):
+            index=w.model.index(i,0);w.tree.setExpanded(index,True);settle(qt_application,w)
+            pending=[w.model.root];total=0
+            while pending:
+                node=pending.pop();total+=len(node.children);pending.extend(node.children)
+            assert total<=100
+        assert not w.tree.isExpanded(w.model.index(0,0))
+        assert w.tree.isExpanded(w.model.index(19,0))
+        assert w.case.count(View())==1000 and not errors
+    finally:
+        settle(qt_application,w);w.close()
+
+
+def test_connection_ownership_waits_for_runnable_tail_before_reopen(qt_application,window,monkeypatch):
+    from fireblade.ui.workers import Job
+    class TailJob(Job):
+        def run(self):
+            super().run()
+            time.sleep(.05)
+    monkeypatch.setattr('fireblade.ui.app.Job',TailJob)
+    assert window.connection_work(lambda:42)==42
+    assert window.pool.activeThreadCount()==0
+    assert window.can_open_file()
+
+
+def test_open_official_plaso_csv_applies_profile_before_showing_grid(qt_application,tmp_path,monkeypatch):
+    from fireblade.ui.dialogs import ImportDialog
+    import shutil
+    fixture=Path(__file__).parents[1]/'fixtures'/'tle-exports'/'SuperTimelinePlaso.csv'
+    source=tmp_path/'plaso.csv';shutil.copy2(fixture,source);before=source.read_bytes()
+    w=Window();errors=[];w.error=errors.append
+    target=tmp_path/'plaso.timeline'
+    def accept(dialog):dialog.target.setText(str(target));dialog.accept();return dialog.result()
+    monkeypatch.setattr(ImportDialog,'exec',accept)
+    try:
+        w.import_file(source);settle(qt_application,w)
+        assert 'Timestamp' in w.case.headers and 'Fireblade_Category' in w.case.headers
+        assert w.view.timestamp_columns and w.view.format_rules
+        assert w.model.node(w.model.index(0,0)).values[-3:] == ('2020-01-02T03:04:05.000000000Z','1','FileOpening')
+        assert source.read_bytes()==before and len(w.case.info['headers'])==17
+        w.preferences.auto_profiles=False;target=tmp_path/'generic.timeline'
+        w.import_file(source);settle(qt_application,w)
+        assert len(w.case.headers)==17 and not w.case.derived
+        assert not errors
+    finally:
+        settle(qt_application,w);w.close()
+
+
+def test_derived_refresh_preserves_column_order_width_hidden_and_pins(qt_application,window):
+    from fireblade.ui.derived_columns import add_columns
+    window.tree.header().moveSection(window.tree.header().visualIndex(3),1)
+    window.tree.setColumnWidth(3,233);window.tree.setColumnHidden(2,True)
+    window.pin_column(4);settle(qt_application,window)
+    before=[window.tree.header().logicalIndex(i) for i in range(window.tree.header().count())]
+    add_columns(window,[dict(name='DoubleID',operation='expression',expression='[ID]*2')]);settle(qt_application,window)
+    assert [window.tree.header().logicalIndex(i) for i in range(len(before))]==before
+    assert window.tree.columnWidth(3)==233 and window.tree.isColumnHidden(2)
+    assert window.view.pinned_columns==[4] and window.tree.frozen.isVisible()
+
+
+def test_old_model_never_exposes_a_new_backend_column_before_schema_refresh(qt_application,window):
+    model=window.model;count=model.columnCount();last=model.data(model.index(0,count-1))
+    window.case.add_derived_columns([dict(name='WorkerColumn',operation='expression',expression='[ID]+1')])
+    assert model.columnCount()==count
+    assert model.data(model.index(0,count-1))==last
+    assert not model.index(0,count).isValid()

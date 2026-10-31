@@ -434,7 +434,7 @@ class ExplorationMixin:
             self.error(exc)
             return
         snapshot = self.snapshot_analysis()
-        task = TleSessionImport(references, analyses_directory(), self.settings)
+        task = TleSessionImport(references, analyses_directory(), self.settings,auto_profiles=self.preferences.auto_profiles)
         self.workspace_search = task
         self.detach()
         def failed(message="Import de session annulé"):

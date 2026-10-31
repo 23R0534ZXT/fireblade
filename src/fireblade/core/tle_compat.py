@@ -39,8 +39,9 @@ def read_tle_session(path):
 
 
 class TleSessionImport:
-    def __init__(self, references, directory, settings):
+    def __init__(self, references, directory, settings, auto_profiles=True):
         self.references, self.directory, self.settings = references, Path(directory), settings
+        self.auto_profiles = auto_profiles
         self.current = None
         self.lock = threading.Lock()
         self.cancelled = threading.Event()
@@ -72,10 +73,12 @@ class TleSessionImport:
                             from fireblade.core.legacy_excel import sheet_names
                         case.import_excel(source, sheet_names(source)[0])
                     else:
-                        case.import_csv(source)
+                        case.import_csv(source,encoding="auto")
+                    from fireblade.core.profiles import prepare_case_profile
+                    _name,view,_order=prepare_case_profile(case,self.auto_profiles)
                     if tags:
                         case.bookmark_many(tags, '', 'mark')
-                    snapshots.append(AnalysisSnapshot(str(target), case.info, View(), b''))
+                    snapshots.append(AnalysisSnapshot(str(target), case.info, view or View(), b''))
                 finally:
                     with self.lock:
                         self.current = None

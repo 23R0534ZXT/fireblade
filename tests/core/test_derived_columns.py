@@ -84,3 +84,42 @@ def test_submicrosecond_sort_and_date_filter_respect_offsets(tmp_path):
         assert [r[0] for r in case.page(View(sort_column=0,sort_type='timestamp'))]==[2,3,1]
         assert [r[0] for r in case.page(View(filters=[Filter(0,'date_after','2026-01-01T00:00:00.123456701Z')]))]==[1]
     finally:case.close()
+
+
+@pytest.mark.parametrize('family,field,values,expected',[
+    ('Sigcheck','Verified',['Signed','Unsigned','signed',None],['true','false','false','false']),
+    ('Autoruns','Enabled',['enabled','disabled','Enabled',None],['true','false','false','false']),
+])
+def test_microsoft_plugin_textual_booleans_preserve_original_values(tmp_path,family,field,values,expected):
+    from fireblade.core.profiles import Profile,profile_transformations,profile_view
+    source=tmp_path/'s.csv'
+    with source.open('w',newline='') as f:
+        writer=csv.writer(f);writer.writerow([field,'ID'])
+        for i,value in enumerate(values):writer.writerow([value,i])
+    case=Case(tmp_path/'c.timeline')
+    try:
+        case.import_csv(source);profile=Profile(family,(field,),(),(field,),booleans=(field,))
+        case.add_derived_columns(profile_transformations(profile,case.headers))
+        rows=case.page(View());assert [r[1] for r in rows]==values
+        assert [r[-1] for r in rows]==expected
+        view,_=profile_view(profile,case.headers)
+        assert len(case.headers)-1 in view.boolean_columns
+    finally:case.close()
+
+
+def test_forensic_excel_text_timestamps_and_nanosecond_group_extrema(tmp_path):
+    from fireblade.core.models import Summary
+    source=tmp_path/'s.csv'
+    with source.open('w',newline='') as f:
+        w=csv.writer(f);w.writerow(['Group','Time'])
+        w.writerow(['A','="2026-01-01 00:00:00.123456799"'])
+        w.writerow(['A','="2026-01-01 00:00:00.123456701"'])
+    case=Case(tmp_path/'c.timeline')
+    try:
+        case.import_csv(source)
+        case.add_derived_columns([dict(name='UTC',operation='timestamp',columns=['Time'],format='invariant')])
+        assert case.page(View())[0][-1]=='2026-01-01T00:00:00.123456799Z'
+        summary=case.page(View(groups=[0],summaries=[Summary(2,'min','timestamp'),Summary(2,'max','timestamp')]))[0]
+        assert summary[2:] == ('2026-01-01T00:00:00.123456701Z','2026-01-01T00:00:00.123456799Z')
+        assert case.page(View())[0][2].startswith('="')
+    finally:case.close()

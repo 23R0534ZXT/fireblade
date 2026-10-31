@@ -133,6 +133,31 @@ def check_completion(window, directory, settle, check, expect, captures=None):
                 "Timestamp precision/conversion differs in bundled runtime",
             )
 
+        expect(
+            case.db.execute(
+                "SELECT "
+                + timestamp_sql(
+                    literal("2026-01-01 12:00:00.1234567"),
+                    "iso",
+                    literal("Europe/Paris"),
+                )
+            ).fetchone()[0]
+            == "2026-01-01T11:00:00.123456700Z",
+            "Named timezone data unavailable in bundled runtime",
+        )
+        expect(
+            case.count(
+                View(
+                    expression=parse_filter(
+                        "AddTicks(#2026-01-01T00:00:00.1234567Z#,1) = #2026-01-01T00:00:00.1234568Z#",
+                        case.headers,
+                    )
+                )
+            )
+            == 3,
+            "Bundled date expressions lost a FILETIME tick",
+        )
+
     check("bundled_native_timestamp_precision_and_epoch_boundaries", precision)
 
     def provenance():
@@ -161,18 +186,38 @@ def check_completion(window, directory, settle, check, expect, captures=None):
         import copy
         from PySide6.QtWidgets import QApplication
         from fireblade.core.preferences import save_preferences
-        old=copy.deepcopy(window.preferences);font=QApplication.font()
-        path=directory/'TLE_settings.xml'
-        path.write_text('<Settings><CopyColumnHeaders>false</CopyColumnHeaders><CopyRightClick>true</CopyRightClick><DateTimeFormat>yyyy-MM-dd HH:mm:ss.fffffffK</DateTimeFormat><DetailsOnTop>true</DetailsOnTop><FontName>Consolas</FontName><FontSize>12.5</FontSize><MultilineTabs>true</MultilineTabs><Theme>Office 2019 Black</Theme></Settings>')
-        before=path.read_bytes();original=QFileDialog.getOpenFileName
-        QFileDialog.getOpenFileName=lambda *a,**k:(str(path),'')
+
+        old = copy.deepcopy(window.preferences)
+        font = QApplication.font()
+        path = directory / "TLE_settings.xml"
+        path.write_text(
+            "<Settings><CopyColumnHeaders>false</CopyColumnHeaders><CopyRightClick>true</CopyRightClick><DateTimeFormat>yyyy-MM-dd HH:mm:ss.fffffffK</DateTimeFormat><DetailsOnTop>true</DetailsOnTop><FontName>Consolas</FontName><FontSize>12.5</FontSize><MultilineTabs>true</MultilineTabs><Theme>Office 2019 Black</Theme></Settings>"
+        )
+        before = path.read_bytes()
+        original = QFileDialog.getOpenFileName
+        QFileDialog.getOpenFileName = lambda *a, **k: (str(path), "")
         try:
-            window.import_tle_settings();settle()
-            expect(window.preferences.font_size==12.5 and window.preferences.theme=='dark','TLE font/theme settings differ')
-            expect(window.splitter.widget(0) is window.details,'DetailsOnTop was not migrated')
-            expect(window.model.date_format=='custom','Custom date format was not applied')
-            expect(path.read_bytes()==before,'Settings import modified its source')
+            window.import_tle_settings()
+            settle()
+            expect(
+                window.preferences.font_size == 12.5
+                and window.preferences.theme == "dark",
+                "TLE font/theme settings differ",
+            )
+            expect(
+                window.splitter.widget(0) is window.details,
+                "DetailsOnTop was not migrated",
+            )
+            expect(
+                window.model.date_format == "custom",
+                "Custom date format was not applied",
+            )
+            expect(path.read_bytes() == before, "Settings import modified its source")
         finally:
-            QFileDialog.getOpenFileName=original
-            window.preferences=old;save_preferences(old);QApplication.instance().setFont(font);window.apply_preferences()
-    check('documented_tle_settings_font_theme_date_format_and_details',settings)
+            QFileDialog.getOpenFileName = original
+            window.preferences = old
+            save_preferences(old)
+            QApplication.instance().setFont(font)
+            window.apply_preferences()
+
+    check("documented_tle_settings_font_theme_date_format_and_details", settings)

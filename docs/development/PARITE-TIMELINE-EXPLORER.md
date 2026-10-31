@@ -34,7 +34,7 @@ Références : [manuel officiel](https://github.com/EZToolsManuals/EZToolsManual
 | Import des layouts TLE | Partiel | Colonnes et noms de contrôles, filtres compatibles, recherche, groupes temporels, tris, résumés, règles expression/valeur ; règles graphiques non traduites refusées |
 | Import des préférences TLE | Ajouté | `TLE_settings.xml` : copie, police et taille fractionnaire, onglets, détails haut/bas, format des dates, épinglage simple ; thèmes adaptés, champs inconnus signalés |
 | Sessions Fireblade | Présent | Références aux bases ; données conservées séparément |
-| Import `.tle_sess` | Ajouté | Sources et tags ; réimporte les sources présentes, UTF-8 pour CSV ; dispositions séparées |
+| Import `.tle_sess` | Ajouté | Sources et tags ; réimporte les sources présentes, BOM UTF-8/16/32 pour CSV ; dispositions séparées |
 | Règles de couleur locales/globales | Présent | Texte, fond, gras, cellule/ligne, priorité et partage JSON Fireblade |
 | Signets / tags | Étendu | Case à cocher, sélection multiple et filtre des signets |
 | Notes libres | Présent | Ajout/remplacement/retrait en masse ; export annoté |

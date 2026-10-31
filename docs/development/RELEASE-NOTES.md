@@ -1,28 +1,11 @@
-Fireblade — prototype Windows x64.
+# Fireblade — prototype Windows 0.4
 
-Télécharger uniquement **Fireblade.exe**, puis le lancer. Python et Excel ne sont pas requis ; aucun dossier `_internal`, fichier de configuration ou script à conserver à côté du programme.
+Télécharger uniquement **Fireblade.exe**, puis le lancer sous Windows x64. Python, Excel et une installation préalable ne sont pas nécessaires. Le guide, les réglages par défaut et les licences sont intégrés ; les analyses et préférences personnelles sont enregistrées séparément dans le profil Windows. L’exécutable n’est pas signé.
 
-Le guide, les réglages par défaut et les notices de licence sont intégrés. Les analyses, notes et réglages personnels sont enregistrés séparément dans le profil Windows.
+Cette évolution complète les expressions imbriquées, les colonnes calculées persistantes et les conversions UTC avec neuf décimales et fuseaux Windows/IANA. Elle ajoute les adaptations de supertimelines, la migration des préférences `TLE_settings.xml` et des layouts TLE : colonnes, recherche, filtres compatibles, groupes, résumés et règles par valeur/expression. Les sources restent intactes et identifiées par SHA-256.
 
-Cette préversion est publiée après les tests des sources sur Windows et le lancement du véritable exécutable depuis un dossier vide, sans les chemins du Python hôte. Les rapports détaillés sont disponibles dans l’exécution GitHub Actions associée au commit.
+Le dépliage complet utilise un index sur disque et une fenêtre de lignes bornée. Le cache des branches ouvertes manuellement est également limité. Les lectures de pages profondes acquièrent uniquement les identifiants demandés ; un index facultatif accélère leur accès. L’ajout d’une colonne conserve la disposition de la grille. Les connexions et checkpoints passent au worker, et les alias de fichiers sont contrôlés avant export.
 
-Le projet reste un prototype. Les essais utilisent notamment des données synthétiques et ne garantissent pas encore les performances sur tous les exports forensic réels de plusieurs Go ni tous les parcours Windows 10/11.
+La publication nécessite les tests des sources sur trois versions de Python sous Windows, les chemins longs et UNC/SMB, le lancement du véritable EXE seul dans un dossier vide, les captures clair/sombre à 100/125/150/200 %, ainsi qu’un parcours sur le CSV de 3 GiB déjà publié. Ce CSV est réutilisé et vérifié par SHA-256, sans régénération. Les contrôles couvrent notamment les groupements, le dépliage complet, les filtres, tris, conversions UTC, annotations, exports, annulations et réouvertures. Les captures et mesures propres à ce commit sont dans GitHub Actions.
 
-Cette préversion corrige le contraste des textes et contrôles Windows en imposant un thème clair cohérent. La publication nécessite aussi les contrôles visuels clair/sombre à plusieurs échelles et un parcours d’analyse sur un CSV synthétique varié d’au moins 3 GiB. Les captures, temps, mémoire et limites précises sont dans les rapports de l’exécution.
-
-Le gros import est fractionné en lots bornés dans une transaction unique et les exports utilisent un seul espace de tri. Ces changements corrigent les dépassements mémoire trouvés pendant la qualification, sans augmenter le budget DuckDB par défaut de 256 MB.
-
-
-Cette évolution ajoute la recherche entre analyses, les résumés et périodes de groupement, les colonnes épinglées, l’export des colonnes visibles, les préférences clair/sombre et police, les onglets sur plusieurs rangées et leur recherche/réouverture, la lecture XLS, les cases de signets et booléens, les détails XML et le filtrage depuis les détails. L’ouverture multiple utilise une file séquentielle. La distribution reste un seul Fireblade.exe.
-
-Le catalogue de présentation comporte 222 signatures pour 193 noms de formats. Il ne correspond pas à 193 parseurs forensic qualifiés. Les profils personnels JSON sont rechargeables ; les DLL de Timeline Explorer ne sont pas chargées. La migration `.tle_sess` reprend les sources et tags ; l’import de layouts XML est limité aux propriétés de colonnes, groupes et tris. La grammaire textuelle accepte les opérateurs courants documentés, pas tout le langage DevExpress. Voir le suivi de parité dans le dépôt.
-
-La validation du binaire inclut dix nouveaux parcours de fonctions, des captures du thème sombre et des colonnes épinglées, ainsi que des contrôles supplémentaires sur le CSV de 3 GiB : résumés comparés au générateur indépendant, groupes temporels, projection d’export et recherche entre une grande et une petite analyse. Les mesures de l’ancienne préversion ne sont pas attribuées à celle-ci : consulter ses propres rapports Actions. Des pauses longues d’interface ont été mesurées dans les qualifications précédentes ; leur disparition n’est pas annoncée.
-
-## Extension de compatibilité en cours de qualification
-
-Expressions imbriquées texte/nombre/date et calculs ; colonnes dérivées persistantes, conversion UTC avec précision nanoseconde et fuseaux Windows/IANA ; adaptations de supertimelines ; import de filtres, recherche, résumés et règles de valeur/expression des layouts TLE ; dépliage complet indexé sur disque. Les connexions/checkpoints natifs passent au worker et les destinations d’export sont comparées par identité de fichier, y compris leurs alias.
-
-Les contrôles Windows ajoutés portent sur les fixtures et layouts officiels, les chemins longs et UNC et le dépliage complet sur le CSV existant de 3 GiB. La publication reste conditionnée à leur réussite ; les résultats d’anciennes versions ne prouvent pas ces changements. Les DLL .NET, fonctions personnalisées et règles graphiques DevExpress ne sont pas annoncées compatibles. L’exécutable reste un prototype 0.4 et n’est pas signé.
-
-La migration des préférences `TLE_settings.xml` reprend aussi les tailles de police fractionnaires, les formats de dates personnalisés, les onglets, la copie, l’épinglage par défaut et les détails en haut/bas. Les adaptations de thèmes et champs non traduits sont signalées.
+Le projet reste un prototype : ces vérifications automatisées ne remplacent pas une validation manuelle prolongée sous Windows 10/11 ni un benchmark face à Timeline Explorer sur le même poste. Le catalogue de 222 signatures / 193 noms n’est pas un ensemble de 193 parseurs qualifiés. Les DLL .NET, fonctions DevExpress personnalisées, règles graphiques et paramètres propriétaires non traduits ne sont pas annoncés compatibles. Les heures locales sans offset peuvent rester ambiguës. Voir [le suivi de parité](PARITE-TIMELINE-EXPLORER.md) et [les limites de compatibilité](COMPATIBILITE.md).

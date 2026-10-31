@@ -127,6 +127,10 @@ class FunctionSession:
 
 
 def _register_functions(case,path):
+    # A cancelled/failed host can be reloaded explicitly without reopening the case.
+    dead={s for s in case._plugin_sessions if s.process.poll() is not None}
+    case._plugin_functions={n:s for n,s in case._plugin_functions.items() if s not in dead}
+    case._plugin_sessions=[s for s in case._plugin_sessions if s not in dead]
     if not case._plugin_udf:
         def plugin_scalar(name,payload):
             session=case._plugin_functions.get(name.casefold())

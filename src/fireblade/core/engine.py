@@ -70,7 +70,7 @@ class Case:
 
     @property
     def expression_functions(self):
-        return {name:session.types.get(name,"text") for name,session in self._plugin_functions.items()}
+        return {name:session.types.get(name,"text") for name,session in self._plugin_functions.items() if session.process.poll() is None}
 
     def close(self):
         with self.lock:
@@ -125,6 +125,10 @@ class Case:
                     self.check_cancelled()
             except duckdb.InterruptException as exc:
                 raise OperationCancelled() from exc
+            except duckdb.Error as exc:
+                # Python UDF exceptions are wrapped by DuckDB as InvalidInputException.
+                if self.cancelled.is_set() or job_cancelled():raise OperationCancelled() from exc
+                raise
 
     @contextmanager
     def utf8_input(self, source, encoding):

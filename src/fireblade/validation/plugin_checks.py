@@ -23,8 +23,19 @@ def verify(host,fixture):
                 register_functions(case,fixture)
                 for expression in ("PluginNumber('FixtureDouble', 21) = 42", "PluginText('FixtureEcho', 'évidence') = 'évidence'", "PluginText('FixtureEcho', Null) Is Null", "FixtureTypes([Time],[LargeId]) = True"):
                     view=View(expression=FilterGroup('and',[Filter(0,'expression',expression)]));assert case.count(view)==1
+                import threading
+                from fireblade.core.errors import OperationCancelled
+                timer=threading.Timer(.15,case.interrupt);timer.start()
+                try:
+                    try:case.count(View(expression=FilterGroup('and',[Filter(0,'expression',"FixturePause() = 'done'")])) )
+                    except OperationCancelled:pass
+                    else:raise AssertionError('Plugin query was not cancelled')
+                finally:timer.cancel();timer.join()
+                assert case.count(View())==1
+                register_functions(case,fixture)
+                assert case.count(View(expression=FilterGroup('and',[Filter(0,'expression',"FixtureDouble(21)=42")])))==1
             finally:case.close()
-        return dict(status='passed',checks=['plugin inspection','typed import','source provenance','exact numeric UDF','Unicode UDF','NULL UDF'])
+        return dict(status='passed',checks=['plugin inspection','typed import','source provenance','exact numeric UDF','Unicode UDF','NULL UDF','UDF cancellation','explicit reload after cancellation'])
     finally:
         if previous is None:os.environ.pop('FIREBLADE_PLUGIN_HOST',None)
         else:os.environ['FIREBLADE_PLUGIN_HOST']=previous

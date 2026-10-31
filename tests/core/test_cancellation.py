@@ -95,3 +95,18 @@ def test_failed_export_does_not_remove_another_writers_partial(tmp_path, monkeyp
         assert target.read_bytes() == b"original"
     finally:
         case.close()
+
+
+def test_python_udf_cancellation_is_normalized_and_connection_reusable(tmp_path):
+    import threading,time
+    case=Case(tmp_path/'udf.timeline')
+    def callback():
+        time.sleep(.15);case.check_cancelled();return 'value'
+    case.db.create_function('slow_callback',callback,[],'VARCHAR',side_effects=True)
+    timer=threading.Timer(.05,case.interrupt);timer.start()
+    try:
+        with pytest.raises(OperationCancelled):
+            with case.operation():case.db.execute('SELECT slow_callback()').fetchall()
+        timer.join()
+        with case.operation():assert case.db.execute('SELECT 42').fetchone()[0]==42
+    finally:timer.cancel();case.close()

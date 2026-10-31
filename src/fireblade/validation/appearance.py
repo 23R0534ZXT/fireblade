@@ -84,10 +84,12 @@ def run_appearance(app,report_path):
                 if isinstance(dialog,RulesDialog):
                     QTest.mouseClick(next(b for b in dialog.findChildren(QPushButton) if b.text()=='Ajouter'),Qt.LeftButton)
                     dialog.target.setCurrentIndex(1)
+                    # Adding the editor posts layout requests; settle those before scrolling.
+                    QTest.qWait(50)
                     # Exercise every newly scrollable section at every Windows DPI.
                     appearance=dialog.format_tabs.widget(0)
                     appearance.ensureWidgetVisible(dialog.all_source_rows);QTest.qWait(20)
-                    assert appearance.viewport().rect().contains(dialog.all_source_rows.mapTo(appearance.viewport(),dialog.all_source_rows.rect().center()))
+                    assert appearance.viewport().rect().contains(dialog.all_source_rows.mapTo(appearance.viewport(),dialog.all_source_rows.rect().center())), 'Source-scope checkbox inaccessible after settled layout'
                     run.capture('03-rules-statistics',dialog)
                     dialog.format_tabs.setCurrentIndex(1);dialog.visual.setCurrentIndex(dialog.visual.findData('icon'))
                     dialog.icon_levels.setCurrentIndex(dialog.icon_levels.findData(5));QTest.qWait(20)

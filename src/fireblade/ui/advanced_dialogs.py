@@ -217,6 +217,18 @@ class RulesDialog(QDialog):
         self.bold = QCheckBox("Gras")
         controls.addWidget(self.bold)
         layout.addLayout(controls)
+        visual_row = QHBoxLayout()
+        self.visual = QComboBox()
+        for label, code in [('Couleurs / gras', 'none'), ('Barre de données', 'bar'), ('Dégradé fond → texte', 'scale'), ('Indicateur à trois niveaux', 'icon')]:
+            self.visual.addItem(label, code)
+        self.visual.setToolTip('Les modes graphiques nécessitent une colonne cible. Bornes fixes pour toutes les pages ; les valeurs invalides restent sans graphique. Le dégradé va de la couleur Fond à la couleur Texte ; les indicateurs sont rouge, ambre et vert.')
+        self.minimum, self.maximum = QLineEdit('0'), QLineEdit('100')
+        visual_row.addWidget(self.visual)
+        visual_row.addWidget(QLabel('Minimum'))
+        visual_row.addWidget(self.minimum)
+        visual_row.addWidget(QLabel('Maximum'))
+        visual_row.addWidget(self.maximum)
+        layout.addLayout(visual_row)
         self.editor = ExpressionEditor(headers)
         layout.addWidget(self.editor)
         self.message = QLabel()
@@ -241,7 +253,7 @@ class RulesDialog(QDialog):
     def store(self):
         if self.current >= 0:
             self.rules[self.current] = FormatRule(self.editor.value(), self.background.property("color"),
-                self.foreground.property("color"), self.bold.isChecked(), self.target.currentData(), self.enabled.isChecked())
+                self.foreground.property("color"), self.bold.isChecked(), self.target.currentData(), self.enabled.isChecked(), self.visual.currentData(), self.minimum.text(), self.maximum.text())
 
     def refresh(self, selected):
         self.listing.blockSignals(True)
@@ -267,6 +279,9 @@ class RulesDialog(QDialog):
         self.enabled.setChecked(rule.enabled)
         self.target.setCurrentIndex(self.target.findData(rule.target))
         self.bold.setChecked(rule.bold)
+        self.visual.setCurrentIndex(self.visual.findData(rule.visual))
+        self.minimum.setText(rule.minimum)
+        self.maximum.setText(rule.maximum)
         self.set_color(self.background, rule.background)
         self.set_color(self.foreground, rule.foreground)
         old = self.editor
@@ -278,7 +293,7 @@ class RulesDialog(QDialog):
         self.editor = ExpressionEditor(self.headers, rule.condition)
         self.layout().replaceWidget(old, self.editor)
         old.deleteLater()
-        for widget in (self.editor, self.enabled, self.target, self.background, self.foreground, self.bold):
+        for widget in (self.editor, self.enabled, self.target, self.background, self.foreground, self.bold, self.visual, self.minimum, self.maximum):
             widget.setEnabled(index >= 0)
         self.message.clear()
 
@@ -313,6 +328,8 @@ class RulesDialog(QDialog):
     def accept(self):
         try:
             self.store()
+            from fireblade.core.rule_store import RuleBook
+            RuleBook(self.headers, self.rules).validate()
         except ValueError as exc:
             self.message.setText(str(exc))
             return

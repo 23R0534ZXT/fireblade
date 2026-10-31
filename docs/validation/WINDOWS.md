@@ -19,7 +19,7 @@ Après les tests des sources, `scripts/windows/build.py` construit un exécutabl
 5. Vérifie qu’il n’existe toujours que le `.exe` à côté du programme et que son dossier d’extraction temporaire est nettoyé.
 6. Enregistre le rapport et le SHA-256 du binaire effectivement exécuté.
 
-Les trente contrôles couvrent notamment le démarrage natif, les ressources intégrées, CSV en lecture seule et Unicode, groupes et précision numérique, export verrouillé puis repris, presse-papiers, réouverture, annulation d’import, couleurs, onglets/sessions, XLS/XLSX, règles globales et annotations collectives. Ils vérifient aussi les fixtures Plaso et layouts officiels, les colonnes dérivées, fuseaux, nanosecondes et le dépliage complet.
+Les contrôles intégrés couvrent notamment le démarrage natif, les ressources intégrées, CSV en lecture seule et Unicode, groupes et précision numérique, export verrouillé puis repris, presse-papiers, réouverture, annulation d’import, couleurs, onglets/sessions, XLS/XLSX, règles globales et annotations collectives. Ils vérifient aussi les fixtures Plaso et layouts officiels, les colonnes dérivées, fuseaux, nanosecondes, le dépliage complet et les nouveaux formats statistiques/graphiques. Le helper .NET intégré est réellement exécuté avec une DLL de qualification, y compris annulation et rechargement des fonctions. Le build compile et exécute également le lecteur GenericCsv amont épinglé.
 
 La construction ne copie le fichier dans `dist/Fireblade.exe` qu’après succès. Le rapport reste dans `artifacts/windows-single-file.json`, destiné aux développeurs. Il n’est pas requis à côté du programme.
 

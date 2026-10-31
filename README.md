@@ -67,6 +67,7 @@ Les ajouts de présentation restent dans les menus : le démarrage conserve une 
 | Signets et notes | Ligne individuelle ou sélection multiple : marquer, ajouter, remplacer, retirer |
 | Présentation | Colonnes épinglées, clair/sombre, police et formats de dates ; règles locales/globales, couleurs, styles de texte, barres, dégradés et indicateurs |
 | Règles partagées | Correspondance par noms de colonnes, import/export JSON, rechargement et désactivation par vue |
+| Plugins TLE | Lecteurs DLL explicites et fonctions personnalisées, helper .NET autonome intégré |
 | Détails | Valeurs complètes, notes, JSON/XML formaté, panneau à droite/en bas et filtrage depuis les détails |
 | Profils forensic | Catalogue de 222 signatures / 193 noms de formats ; types et présentation ; profils personnels JSON |
 | Export | CSV/XLSX, colonnes visibles dans leur ordre, résultats filtrés, résumés et annotations |
@@ -313,7 +314,7 @@ La construction :
 4. Copie uniquement ce `.exe` dans un dossier vide et le lance avec un environnement isolé.
 5. Publie le fichier dans **`dist/Fireblade.exe`** après réussite des contrôles.
 
-Le fichier final contient Python, Qt, DuckDB et XLSX ainsi que l’aide et les réglages par défaut. Les scripts de construction et les rapports ne sont pas des fichiers à distribuer à côté du programme.
+Le fichier final contient Python, Qt, DuckDB, XLS/XLSX, NumPy et l’hôte .NET autonome, ainsi que l’aide et les réglages par défaut. Les scripts de construction et les rapports ne sont pas des fichiers à distribuer à côté du programme.
 
 ## Tests et publication
 
@@ -328,6 +329,8 @@ Pour le fichier unique, le contrôle vérifie aussi les ressources embarquées, 
 Après succès sur `main`, le workflow publie une préversion GitHub dont le seul fichier joint est `Fireblade.exe`. Les rapports restent dans Actions. Les constructions de PR sont vérifiées mais ne créent pas de Release.
 
 Le numéro du paquet reste celui du prototype ; il ne constitue pas une validation de production.
+
+Dernière qualification : [`fe2518a`](https://github.com/23R0534ZXT/fireblade/actions/runs/41237678884), **317 tests réussis par version Python Windows**, 32 contrôles du fichier unique, huit variantes visuelles et 43 contrôles sur les 3 GiB existants. Pic du processus : **454,3 Mio** ; pause maximale mesurée : **3,125 s**. [Rapports et limites](docs/validation/AJOUTS-TLE.md) · [Télécharger cet EXE](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-fe2518a5dc14c43bce0797fe305739bc706fbfed).
 
 ## Diagnostic
 

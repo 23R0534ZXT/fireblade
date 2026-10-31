@@ -27,7 +27,12 @@ def header_menu(window, section):
     intervals = menu.addMenu("Regrouper les dates par")
     for label, code in [("Valeur entière", "value"), ("Année", "year"), ("Mois", "month"), ("Jour", "day"), ("Heure", "hour")]:
         intervals.addAction(label, lambda checked=False, value=code: window.group_interval(column, value))
-    menu.addAction("Désépingler la colonne" if column in window.view.pinned_columns else "Épingler la colonne", lambda: window.pin_column(column))
+    pinned = column in window.view.pinned_columns + window.view.right_pinned_columns
+    menu.addAction("Désépingler la colonne" if pinned else "Épingler la colonne", lambda: window.pin_column(column))
+    if column in window.view.right_pinned_columns:
+        menu.addAction("Épingler à gauche", lambda: window.pin_column(column, 'left'))
+    else:
+        menu.addAction("Épingler à droite", lambda: window.pin_column(column, 'right'))
     def boolean():
         if column in window.view.boolean_columns:
             window.view.boolean_columns.remove(column)

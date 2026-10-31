@@ -21,3 +21,6 @@ Qualification de ce binaire : 317 tests réussis sur chacune des trois versions 
 
 
 Nouveau lot : reprise automatique des DLL approuvées et des lecteurs de session ; helper CLR4 pour les anciens plugins .NET Framework ; objets et collections imbriqués dans les expressions ; icônes supplémentaires ; couleurs de thème configurables. Aucun contrôle fonctionnel n’est retiré. L’exécutable de ce lot est publié uniquement après la validation Windows du workflow.
+
+
+Épinglage des colonnes à droite ajouté au menu d’en-tête, avec déplacement entre côtés et désépinglage. Les volets partagent le même modèle paginé et la sélection. Copie/export suivent l’ordre gauche, centre, droite. Vues et sessions conservent les côtés et largeurs ; les layouts TLE acceptent Fixed=Right. Les tests couvrent aussi le défilement, la sélection, le masquage, les groupes et l’ajout de colonnes calculées.

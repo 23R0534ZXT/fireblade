@@ -657,7 +657,8 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.model.dark = self.preferences.theme == "dark"
         self.model.bookmark_requested.connect(self.mark_row)
         self.model.memory_evicted.connect(self.tree.collapse)
-        self.model.memory_evicted.connect(self.tree.frozen.collapse)
+        for panel in self.tree.frozen_views:
+            self.model.memory_evicted.connect(panel.collapse)
         self.model.status.connect(self.statusBar().showMessage)
         self.model.error.connect(self.error)
         self.tree.setModel(self.model)
@@ -830,7 +831,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         for i, label in enumerate(self.case.headers, 1):
             item = QListWidgetItem(label)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Unchecked if self.tree.isColumnHidden(i) and i - 1 not in self.view.pinned_columns else Qt.Checked)
+            item.setCheckState(Qt.Unchecked if self.tree.isColumnHidden(i) and i - 1 not in self.view.pinned_columns + self.view.right_pinned_columns else Qt.Checked)
             listing.addItem(item)
             checks.append(item)
         layout.addWidget(listing)
@@ -842,7 +843,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             for i, item in enumerate(checks, 1):
                 if item.checkState() != Qt.Checked:
                     self.hide_column(i - 1)
-                elif i - 1 not in self.view.pinned_columns:
+                elif i - 1 not in self.view.pinned_columns + self.view.right_pinned_columns:
                     self.tree.setColumnHidden(i, False)
 
     def show_header_menu(self, position):
@@ -998,6 +999,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             return
         name, ok = QInputDialog.getText(self, "Enregistrer la vue", "Nom (un nom existant sera remplacé)")
         if ok and name.strip():
+            self.capture_pin_widths()
             case, view = self.case, copy.deepcopy(self.view)
             view.header_state = base64.b64encode(bytes(self.tree.header().saveState())).decode("ascii")
             self.run(lambda: case.save_view(name.strip(), view), lambda _: self.statusBar().showMessage("Vue enregistrée dans l’analyse"))

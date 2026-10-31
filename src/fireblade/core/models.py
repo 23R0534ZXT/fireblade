@@ -118,6 +118,7 @@ class View:
     pinned_widths: dict[str, int] = field(default_factory=dict)
     boolean_columns: list[int] = field(default_factory=list)
     timestamp_columns: list[int] = field(default_factory=list)
+    right_pinned_columns: list[int] = field(default_factory=list)
 
     def to_json(self):
         return json.dumps(asdict(self), ensure_ascii=False)

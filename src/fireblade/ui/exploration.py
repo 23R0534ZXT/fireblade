@@ -31,15 +31,16 @@ class ExplorationMixin:
             self.statusBar().showMessage(f"Préférences ignorées : {exc}")
         self.statusBar().messageChanged.connect(self.record_message)
         self.apply_preferences()
-        self.tree.frozen.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.tree.frozen.customContextMenuRequested.connect(self.frozen_menu)
-        self.tree.frozen.doubleClicked.connect(self.toggle_bookmark)
-        self.tree.frozen.header().sectionResized.connect(lambda *_: self.capture_pin_widths())
+        for panel in self.tree.frozen_views:
+            panel.setContextMenuPolicy(Qt.CustomContextMenu)
+            panel.customContextMenuRequested.connect(lambda pos, p=panel: self.frozen_menu(pos, p))
+            panel.doubleClicked.connect(self.toggle_bookmark)
+            panel.header().sectionResized.connect(lambda *_: self.capture_pin_widths())
+            panel.header().setContextMenuPolicy(Qt.CustomContextMenu)
+            panel.header().customContextMenuRequested.connect(lambda pos, p=panel: self.frozen_header_menu(pos, p))
         self.detail_fields = []
         self.details.setContextMenuPolicy(Qt.CustomContextMenu)
         self.details.customContextMenuRequested.connect(self.details_menu)
-        self.tree.frozen.header().setContextMenuPolicy(Qt.CustomContextMenu)
-        self.tree.frozen.header().customContextMenuRequested.connect(self.frozen_header_menu)
 
     def apply_preferences(self):
         p = self.preferences
@@ -82,34 +83,45 @@ class ExplorationMixin:
 
     def visible_columns(self):
         header = self.tree.header()
-        pinned = list(self.view.pinned_columns)
-        return pinned + [section - 1 for position in range(header.count())
-                         if (section := header.logicalIndex(position)) > 0
-                         and section - 1 not in pinned and not self.tree.isColumnHidden(section)]
+        left, right = self.view.pinned_columns, self.view.right_pinned_columns
+        pinned = set(left + right)
+        return left + [section - 1 for position in range(header.count())
+                       if (section := header.logicalIndex(position)) > 0
+                       and section - 1 not in pinned and not self.tree.isColumnHidden(section)] + right
 
     def hide_column(self, column):
-        if column in self.view.pinned_columns:
+        if column in self.view.pinned_columns + self.view.right_pinned_columns:
             self.pin_column(column)
         self.tree.setColumnHidden(column + 1, True)
 
-    def pin_column(self, column):
-        if column in self.view.pinned_columns:
-            self.view.pinned_columns.remove(column)
-        else:
-            self.view.pinned_columns.append(column)
-        # Keep line/group first so expansion and source IDs remain accessible.
-        self.tree.set_pins([0] + [c + 1 for c in self.view.pinned_columns] if self.view.pinned_columns else [])
+    def pin_column(self, column, side=None):
+        if side not in (None, 'left', 'right'):
+            raise ValueError('Côté d’épinglage invalide')
+        self.case.column(column)
+        self.capture_pin_widths()
+        was_pinned = column in self.view.pinned_columns + self.view.right_pinned_columns
+        for pinned in (self.view.pinned_columns, self.view.right_pinned_columns):
+            if column in pinned:
+                pinned.remove(column)
+        if side is not None or not was_pinned:
+            target = self.view.right_pinned_columns if side == 'right' else self.view.pinned_columns
+            target.append(column)
+        self.restore_pins()
+        self.capture_pin_widths()
 
     def capture_pin_widths(self):
         if self.tree._syncing:
             return
-        self.view.pinned_widths = {str(section): self.tree.frozen.columnWidth(section) for section in self.tree.pinned
-                                   if self.tree.frozen.columnWidth(section) >= 20}
+        self.view.pinned_widths = {str(section): self.tree.frozen_for(section).columnWidth(section)
+                                  for section in self.tree.all_pinned
+                                  if self.tree.frozen_for(section).columnWidth(section) >= 20}
 
     def restore_pins(self):
         for section, width in self.view.pinned_widths.items():
             self.tree._widths[int(section)] = width
-        self.tree.set_pins([0] + [c + 1 for c in self.view.pinned_columns] if self.view.pinned_columns else [])
+        any_pins = self.view.pinned_columns or self.view.right_pinned_columns
+        self.tree.set_pins([0] + [c + 1 for c in self.view.pinned_columns] if any_pins else [],
+                           [c + 1 for c in self.view.right_pinned_columns])
 
     def reset_widths(self):
         if not self.model:
@@ -117,24 +129,26 @@ class ExplorationMixin:
         for column in range(self.model.columnCount()):
             width = 210 if column == 0 else 150
             self.tree.setColumnWidth(column, width)
-            if column in self.tree.pinned:
-                self.tree.frozen.setColumnWidth(column, width)
+            if column in self.tree.all_pinned:
+                self.tree.frozen_for(column).setColumnWidth(column, width)
 
-    def frozen_menu(self, position):
+    def frozen_menu(self, position, panel=None):
         from fireblade.ui.menus import cell_menu
-        index = self.tree.frozen.indexAt(position)
+        panel = panel if panel is not None else self.tree.frozen
+        index = panel.indexAt(position)
         if self.copy_on_right_click(index):
             return
         menu = cell_menu(self, index)
         if menu:
             if not self.tree.selectionModel().isRowSelected(index.row(), index.parent()):
                 self.tree.setCurrentIndex(index)
-            menu.exec(self.tree.frozen.viewport().mapToGlobal(position))
+            menu.exec(panel.viewport().mapToGlobal(position))
             menu.deleteLater()
 
-    def frozen_header_menu(self, position):
+    def frozen_header_menu(self, position, panel=None):
         from fireblade.ui.menus import header_menu
-        header = self.tree.frozen.header()
+        panel = panel if panel is not None else self.tree.frozen
+        header = panel.header()
         menu = header_menu(self, header.logicalIndexAt(position))
         if menu:
             menu.exec(header.mapToGlobal(position))
@@ -181,7 +195,8 @@ class ExplorationMixin:
             self.set_view(view)
             return
         self.tree.collapseAll()
-        self.tree.frozen.collapseAll()
+        for panel in self.tree.frozen_views:
+            panel.collapseAll()
 
     def expand_groups(self):
         if not self.model or not self.view.groups or self.busy:
@@ -323,10 +338,10 @@ class ExplorationMixin:
                     section=c['column']+1
                     header.moveSection(header.visualIndex(section), min(position,header.count()-1))
                     self.tree.setColumnWidth(section,c['width'])
-                    if c['column'] not in view.pinned_columns:
+                    if c['column'] not in view.pinned_columns + view.right_pinned_columns:
                         self.tree.setColumnHidden(section,c['position']<0)
                     else:
-                        self.tree.frozen.setColumnWidth(section,c['width'])
+                        self.tree.frozen_for(section).setColumnWidth(section,c['width'])
                 self.statusBar().showMessage('Layout TLE importé : colonnes, filtres, recherche, groupes, résumés et règles. '+ '; '.join(layout.warnings))
             else:
                 self.set_view(read_layout(source, self.case.headers))

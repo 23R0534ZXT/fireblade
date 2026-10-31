@@ -394,11 +394,13 @@ class Case:
         validate_format_rules(view.format_rules, self.expression_column, self.numeric_expression)
         summary_expressions(self, view)
         group_order(self, view, self.column(0))
-        for mapping in (view.pinned_columns, view.boolean_columns, view.timestamp_columns):
+        for mapping in (view.pinned_columns, view.right_pinned_columns, view.boolean_columns, view.timestamp_columns):
             if not isinstance(mapping, list) or len(mapping) != len(set(mapping)):
                 raise ValueError("Liste de colonnes invalide")
             for column in mapping:
                 self.column(column)
+        if set(view.pinned_columns) & set(view.right_pinned_columns):
+            raise ValueError("Une colonne ne peut être épinglée des deux côtés")
         if not isinstance(view.pinned_widths, dict) or any(not isinstance(key, str) or not key.isdecimal()
                 or not 0 <= int(key) <= len(self.headers) or type(width) is not int or not 20 <= width <= 10000
                 for key, width in view.pinned_widths.items()):

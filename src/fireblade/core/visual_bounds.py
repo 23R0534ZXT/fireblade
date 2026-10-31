@@ -11,11 +11,12 @@ def interpolate(a,b,t):
 
 
 def resolve_rules(case,view,rules):
-    where,args=case.where(view)
+    filtered_where,filtered_args=case.where(view)
     cache=getattr(case,'_visual_bounds_cache',None)
     if cache is None:cache=case._visual_bounds_cache={}
     output=[]
     for rule in rules:
+        where,args=("",[]) if rule.all_source_rows else (filtered_where,filtered_args)
         modes=(rule.bound_mode,rule.maximum_mode or rule.bound_mode)
         dynamic_icons=rule.visual=='icon' and bool(rule.icon_thresholds) and rule.icon_threshold_mode in ('percent','percentile') or rule.visual=='icon' and rule.icon_floor and rule.icon_floor_mode in ('percent','percentile')
         if not rule.enabled or rule.visual=='none' or (modes==('fixed','fixed') and not dynamic_icons and not (rule.visual=='scale3' and rule.middle_mode in ('percent','percentile'))):output.append(rule);continue

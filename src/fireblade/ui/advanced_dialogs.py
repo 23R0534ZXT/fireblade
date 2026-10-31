@@ -190,7 +190,8 @@ class RulesDialog(QDialog):
         self.headers, self.rules = headers, copy.deepcopy(rules)
         self.functions=functions if functions is not None else getattr(getattr(parent,"case",None),"expression_functions",{})
         self.setWindowTitle("Règles de coloration · première règle correspondante prioritaire")
-        self.resize(850, 540)
+        area=self.screen().availableGeometry()
+        self.resize(min(850,max(360,area.width()-30)),min(540,max(381,area.height()-50)))
         self.current = -1
         layout = QVBoxLayout(self)
         self.listing = QListWidget()
@@ -258,7 +259,7 @@ class RulesDialog(QDialog):
         for widget in (self.use_background,self.use_foreground,self.use_font,self.stop_if_true):flags.addWidget(widget)
         appearance.layout().addLayout(flags)
         statistics=QHBoxLayout();self.statistic=QComboBox()
-        for label,code in [('Conditions seulement',''),('Valeurs les plus élevées','top'),('Valeurs les plus basses','bottom'),('Au-dessus de la moyenne','above_avg'),('Sous la moyenne','below_avg'),('Valeurs uniques','unique'),('Doublons','duplicate')]:self.statistic.addItem(label,code)
+        for label,code in [('Conditions seulement',''),('Valeurs les plus élevées','top'),('Valeurs les plus basses','bottom'),('Au-dessus de la moyenne','above_avg'),('Sous la moyenne','below_avg'),('Moyenne ou plus','above_eq_avg'),('Moyenne ou moins','below_eq_avg'),('Valeurs uniques','unique'),('Doublons','duplicate')]:self.statistic.addItem(label,code)
         self.stat_rank=QLineEdit('10');self.stat_rank.setMaximumWidth(80);self.stat_percent=QCheckBox('Pourcent')
         self.stat_column=QComboBox();self.stat_column.addItem('Valeurs du champ cible',None)
         for i,h in enumerate(headers):self.stat_column.addItem(h,i)
@@ -267,6 +268,19 @@ class RulesDialog(QDialog):
         appearance.layout().addLayout(statistics)
         matching=QHBoxLayout();self.stat_ignore_case=QCheckBox('Doublons sans distinction de casse');self.stat_include_null=QCheckBox('Inclure les valeurs vides')
         matching.addWidget(self.stat_ignore_case);matching.addWidget(self.stat_include_null);appearance.layout().addLayout(matching)
+        self.all_source_rows=QCheckBox('Calculer les statistiques et bornes sur toute la source (ignorer les filtres)');appearance.layout().addWidget(self.all_source_rows)
+        dates=QHBoxLayout();self.relative_date=QComboBox()
+        from fireblade.core.date_ranges import RANGES
+        for name in RANGES:self.relative_date.addItem(name,name)
+        add_date=QPushButton('Ajouter une condition de date relative')
+        add_date.setToolTip('UTC ; semaines du lundi au dimanche. Utilise le champ de valeurs ou la cible sélectionnée.')
+        def date_condition():
+            col=self.value_column.currentData()
+            if col is None:col=self.target.currentData()
+            if col is None:self.message.setText('Choisir un champ de valeurs ou une colonne cible');return
+            name=self.headers[col].replace(']',']]')
+            self.editor.add_node(self.editor.root,Filter(col,'expression',f"InDateRange([{name}], '{self.relative_date.currentData()}')"))
+        add_date.clicked.connect(date_condition);dates.addWidget(self.relative_date);dates.addWidget(add_date);appearance.layout().addLayout(dates)
         self.show_values=QCheckBox('Afficher les valeurs');graphic_content.layout().addWidget(self.show_values)
         bar=QHBoxLayout();self.zero_based=QCheckBox('Bornes automatiques incluant zéro');self.draw_axis=QCheckBox('Tracer l’axe zéro')
         self.negative_color=QPushButton('Couleur négative');self.axis_color=QPushButton('Couleur de l’axe')
@@ -353,7 +367,7 @@ class RulesDialog(QDialog):
                 foreground=self.foreground.property('color'),bold=self.bold.isChecked(),target=self.target.currentData(),enabled=self.enabled.isChecked(),visual=self.visual.currentData(),
                 minimum=self.minimum.text(),maximum=self.maximum.text(),italic=self.italic.isChecked(),underline=self.underline.isChecked(),strikeout=self.strikeout.isChecked(),
                 bound_mode=self.bound_mode.currentData(),maximum_mode=(self.high_mode.currentData() if self.rules[self.current].maximum_mode or self.high_mode.currentData()!=self.bound_mode.currentData() else ""),font_family=self.font_family.currentText() if self.custom_font.isChecked() else '',font_size=self.font_size.value(),
-                statistic=self.statistic.currentData(),stat_rank=self.stat_rank.text(),stat_percent=self.stat_percent.isChecked(),stat_ignore_case=self.stat_ignore_case.isChecked(),stat_include_null=self.stat_include_null.isChecked(),
+                all_source_rows=self.all_source_rows.isChecked(),statistic=self.statistic.currentData(),stat_rank=self.stat_rank.text(),stat_percent=self.stat_percent.isChecked(),stat_ignore_case=self.stat_ignore_case.isChecked(),stat_include_null=self.stat_include_null.isChecked(),
                 zero_based=self.zero_based.isChecked(),draw_axis=self.draw_axis.isChecked(),negative_color=self.negative_color.property("color"),axis_color=self.axis_color.property("color"),
                 stop_if_true=self.stop_if_true.isChecked(),use_background=self.use_background.isChecked(),use_foreground=self.use_foreground.isChecked(),use_font=self.use_font.isChecked(),show_values=self.show_values.isChecked(),
                 value_column=self.value_column.currentData(),middle_color=self.middle_color.property("color"),middle_value=self.middle_value.text(),middle_mode=self.middle_mode.currentData(),
@@ -386,7 +400,7 @@ class RulesDialog(QDialog):
         rule = self.rules[index] if index >= 0 else FormatRule()
         self.statistic.setCurrentIndex(self.statistic.findData(rule.statistic));self.stat_rank.setText(rule.stat_rank)
         self.enabled.setChecked(rule.enabled)
-        for name in ("use_background","use_foreground","use_font","stop_if_true","show_values","zero_based","draw_axis","stat_percent","stat_ignore_case","stat_include_null"):getattr(self,name).setChecked(getattr(rule,name))
+        for name in ("use_background","use_foreground","use_font","stop_if_true","show_values","zero_based","draw_axis","stat_percent","stat_ignore_case","stat_include_null","all_source_rows"):getattr(self,name).setChecked(getattr(rule,name))
         self.set_color(self.negative_color,rule.negative_color);self.set_color(self.axis_color,rule.axis_color)
         self.target.setCurrentIndex(self.target.findData(rule.target))
         self.bold.setChecked(rule.bold)
@@ -426,7 +440,7 @@ class RulesDialog(QDialog):
         self.editor = ExpressionEditor(self.headers, rule.condition)
         self.layout().replaceWidget(old, self.editor)
         old.deleteLater()
-        for widget in (self.editor, self.enabled, self.target, self.background, self.foreground, self.bold, self.visual, self.minimum, self.maximum, self.italic, self.underline, self.strikeout, self.bound_mode, self.custom_font, self.font_family, self.font_size,self.high_mode,self.value_column,self.middle_color,self.middle_mode,self.middle_value,self.stop_if_true,self.use_background,self.use_foreground,self.use_font,self.show_values,self.zero_based,self.draw_axis,self.negative_color,self.axis_color,self.statistic,self.stat_rank,self.stat_column,self.stat_percent,self.stat_ignore_case,self.stat_include_null):
+        for widget in (self.all_source_rows,self.editor, self.enabled, self.target, self.background, self.foreground, self.bold, self.visual, self.minimum, self.maximum, self.italic, self.underline, self.strikeout, self.bound_mode, self.custom_font, self.font_family, self.font_size,self.high_mode,self.value_column,self.middle_color,self.middle_mode,self.middle_value,self.stop_if_true,self.use_background,self.use_foreground,self.use_font,self.show_values,self.zero_based,self.draw_axis,self.negative_color,self.axis_color,self.statistic,self.stat_rank,self.stat_column,self.stat_percent,self.stat_ignore_case,self.stat_include_null):
             widget.setEnabled(index >= 0)
         for widget in [self.icon_set,self.icon_levels,self.icon_threshold_mode,*self.icon_thresholds,*self.icon_colors,*self.icon_images]:widget.setEnabled(index>=0)
         self.message.clear()

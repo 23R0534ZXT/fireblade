@@ -81,9 +81,28 @@ def run_appearance(app,report_path):
                     QTest.mouseClick(next(b for b in dialog.findChildren(QPushButton) if b.text()=='Ajouter'),Qt.LeftButton)
                     combo=dialog.table.cellWidget(0,0)
                     results['sort_combo']=rendered_contrast(combo,combo.rect().adjusted(4,3,-20,-3))
+                if isinstance(dialog,RulesDialog):
+                    QTest.mouseClick(next(b for b in dialog.findChildren(QPushButton) if b.text()=='Ajouter'),Qt.LeftButton)
+                    dialog.target.setCurrentIndex(1)
+                    # Exercise every newly scrollable section at every Windows DPI.
+                    appearance=dialog.format_tabs.widget(0)
+                    appearance.ensureWidgetVisible(dialog.all_source_rows);QTest.qWait(20)
+                    assert appearance.viewport().rect().contains(dialog.all_source_rows.mapTo(appearance.viewport(),dialog.all_source_rows.rect().center()))
+                    run.capture('03-rules-statistics',dialog)
+                    dialog.format_tabs.setCurrentIndex(1);dialog.visual.setCurrentIndex(dialog.visual.findData('icon'))
+                    dialog.icon_levels.setCurrentIndex(dialog.icon_levels.findData(5));QTest.qWait(20)
+                    for widget in (dialog.bound_mode,dialog.icon_colors[4],dialog.icon_floor):
+                        scroll=dialog.format_tabs.widget(1);scroll.ensureWidgetVisible(widget);QTest.qWait(20)
+                        assert scroll.viewport().rect().contains(widget.mapTo(scroll.viewport(),widget.rect().center())), 'Rule control inaccessible after scrolling'
+                    run.capture('03-rules-graphics',dialog)
+                    appearance.verticalScrollBar().setValue(0)
+                    dialog.format_tabs.setCurrentIndex(0)
                 run.capture('03-'+name,dialog)
                 buttons=dialog.findChild(QDialogButtonBox)
                 results[name]=rendered_contrast(buttons.button(QDialogButtonBox.Ok))
+                if isinstance(dialog,RulesDialog):
+                    QTest.mouseClick(buttons.button(QDialogButtonBox.Ok),Qt.LeftButton)
+                    assert dialog.result()==1 and len(dialog.rules)==1 and len(dialog.rules[0].icon_colors)==5
                 dialog.close();dialog.deleteLater()
             return results
         run.check('filter_and_rules_editor_text',editors)

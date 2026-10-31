@@ -1,0 +1,2561 @@
+[
+  {
+    "status": "passed",
+    "kind": "appearance",
+    "started_utc": "2026-10-31T20:17:20.644075+00:00",
+    "platform": "win32",
+    "frozen": true,
+    "qt_platform": "windows",
+    "operating_system": "Windows-2025Server-10.0.26100-SP0",
+    "machine": "AMD64",
+    "cpu_count": 4,
+    "python": "3.12.10",
+    "duckdb": "1.5.6",
+    "qt": "6.12.0",
+    "automation": "QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+    "checks": [
+      {
+        "name": "welcome_menu_and_buttons_rendered_text",
+        "status": "passed",
+        "seconds": 0.187,
+        "max_timer_gap_ms": 156.0,
+        "details": {
+          "menu": {
+            "ink_pixels": 94,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "open_button": {
+            "ink_pixels": 131,
+            "contrast": 15.61,
+            "background": [
+              250,
+              250,
+              250
+            ]
+          },
+          "toolbar": {
+            "ink_pixels": 191,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "disabled_toolbar": {
+            "ink_pixels": 89,
+            "contrast": 4.89,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 94.8,
+          "working_set_mib": 94.8
+        }
+      },
+      {
+        "name": "import_via_visible_confirmation",
+        "status": "passed",
+        "seconds": 0.25,
+        "max_timer_gap_ms": 94.0,
+        "memory": {
+          "peak_working_set_mib": 108.9,
+          "working_set_mib": 108.4
+        }
+      },
+      {
+        "name": "loaded_grid_search_text",
+        "status": "passed",
+        "seconds": 0.222,
+        "max_timer_gap_ms": 188.0,
+        "details": {
+          "ink_pixels": 157,
+          "contrast": 16.29,
+          "background": [
+            255,
+            255,
+            255
+          ],
+          "checkbox": {
+            "ink_pixels": 94,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "tab": {
+            "ink_pixels": 169,
+            "contrast": 14.55,
+            "background": [
+              242,
+              242,
+              242
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 111.1,
+          "working_set_mib": 108.8
+        }
+      },
+      {
+        "name": "filter_and_rules_editor_text",
+        "status": "passed",
+        "seconds": 0.761,
+        "max_timer_gap_ms": 125.0,
+        "details": {
+          "filters": {
+            "ink_pixels": 39,
+            "contrast": 15.76,
+            "background": [
+              251,
+              251,
+              252
+            ]
+          },
+          "rules": {
+            "ink_pixels": 39,
+            "contrast": 15.75,
+            "background": [
+              251,
+              251,
+              251
+            ]
+          },
+          "sort_combo": {
+            "ink_pixels": 96,
+            "contrast": 16.29,
+            "background": [
+              255,
+              255,
+              255
+            ]
+          },
+          "sort": {
+            "ink_pixels": 39,
+            "contrast": 15.76,
+            "background": [
+              251,
+              251,
+              252
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 121.0,
+          "working_set_mib": 117.1
+        }
+      },
+      {
+        "name": "inactive_window_text",
+        "status": "passed",
+        "seconds": 0.167,
+        "max_timer_gap_ms": 78.0,
+        "details": {
+          "ink_pixels": 94,
+          "contrast": 14.3,
+          "background": [
+            240,
+            240,
+            240
+          ]
+        },
+        "memory": {
+          "peak_working_set_mib": 121.0,
+          "working_set_mib": 113.6
+        }
+      },
+      {
+        "name": "application_dark_theme_and_pinned_grid",
+        "status": "passed",
+        "seconds": 0.223,
+        "max_timer_gap_ms": 141.0,
+        "details": {
+          "ink_pixels": 84,
+          "contrast": 11.38,
+          "background": [
+            48,
+            48,
+            48
+          ],
+          "pinned_cell": {
+            "ink_pixels": 53,
+            "contrast": 13.38,
+            "background": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 121.0,
+          "working_set_mib": 116.9
+        }
+      }
+    ],
+    "screenshots": [
+      "01-welcome.png",
+      "02-grid.png",
+      "03-filters.png",
+      "03-rules-statistics.png",
+      "03-rules-graphics.png",
+      "03-rules.png",
+      "03-sort.png",
+      "04-inactive.png",
+      "05-dark-pinned.png"
+    ],
+    "style": "Fusion light",
+    "font": {
+      "family": "Segoe UI",
+      "point_size": 10.0
+    },
+    "scale_factor": 1.0,
+    "current_check": "application_dark_theme_and_pinned_grid",
+    "ui_errors": [],
+    "responsiveness_diagnostics": {
+      "main_thread_native_calls": [],
+      "sampler_gaps": [
+        {
+          "seconds": 0.265,
+          "before": [
+            {
+              "file": "entrypoint.py",
+              "line": 5,
+              "function": "<module>"
+            },
+            {
+              "file": "bootstrap.py",
+              "line": 82,
+              "function": "main"
+            },
+            {
+              "file": "app.py",
+              "line": 1224,
+              "function": "main"
+            },
+            {
+              "file": "appearance.py",
+              "line": 110,
+              "function": "run_appearance"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 94,
+              "function": "check"
+            },
+            {
+              "file": "appearance.py",
+              "line": 88,
+              "function": "editors"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 54,
+              "function": "tick"
+            },
+            {
+              "file": "responsiveness.py",
+              "line": 37,
+              "function": "profile"
+            }
+          ],
+          "after": [
+            {
+              "file": "entrypoint.py",
+              "line": 5,
+              "function": "<module>"
+            },
+            {
+              "file": "bootstrap.py",
+              "line": 82,
+              "function": "main"
+            },
+            {
+              "file": "app.py",
+              "line": 1224,
+              "function": "main"
+            },
+            {
+              "file": "appearance.py",
+              "line": 110,
+              "function": "run_appearance"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 94,
+              "function": "check"
+            },
+            {
+              "file": "appearance.py",
+              "line": 102,
+              "function": "editors"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 111,
+              "function": "capture"
+            }
+          ]
+        }
+      ],
+      "interpretation": "Sampler gaps can reflect GIL contention or host scheduling; native call timings identify work executed synchronously by the UI thread."
+    },
+    "responsiveness_stalls": [],
+    "ui_heartbeat": {
+      "interval_ms": 50,
+      "max_gap_ms": 188.0,
+      "p95_gap_ms": 141.0,
+      "samples": 22
+    },
+    "memory": {
+      "peak_working_set_mib": 121.0,
+      "working_set_mib": 114.6
+    },
+    "finished_utc": "2026-10-31T20:17:23.545261+00:00",
+    "windows_preference": "light",
+    "requested_scale": 1,
+    "exit_code": 0
+  },
+  {
+    "status": "passed",
+    "kind": "appearance",
+    "started_utc": "2026-10-31T20:17:27.169492+00:00",
+    "platform": "win32",
+    "frozen": true,
+    "qt_platform": "windows",
+    "operating_system": "Windows-2025Server-10.0.26100-SP0",
+    "machine": "AMD64",
+    "cpu_count": 4,
+    "python": "3.12.10",
+    "duckdb": "1.5.6",
+    "qt": "6.12.0",
+    "automation": "QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+    "checks": [
+      {
+        "name": "welcome_menu_and_buttons_rendered_text",
+        "status": "passed",
+        "seconds": 0.174,
+        "max_timer_gap_ms": 156.0,
+        "details": {
+          "menu": {
+            "ink_pixels": 120,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "open_button": {
+            "ink_pixels": 177,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          },
+          "toolbar": {
+            "ink_pixels": 237,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "disabled_toolbar": {
+            "ink_pixels": 91,
+            "contrast": 4.89,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 92.9,
+          "working_set_mib": 90.7
+        }
+      },
+      {
+        "name": "import_via_visible_confirmation",
+        "status": "passed",
+        "seconds": 0.229,
+        "max_timer_gap_ms": 94.0,
+        "memory": {
+          "peak_working_set_mib": 107.5,
+          "working_set_mib": 106.7
+        }
+      },
+      {
+        "name": "loaded_grid_search_text",
+        "status": "passed",
+        "seconds": 0.192,
+        "max_timer_gap_ms": 172.0,
+        "details": {
+          "ink_pixels": 199,
+          "contrast": 16.29,
+          "background": [
+            255,
+            255,
+            255
+          ],
+          "checkbox": {
+            "ink_pixels": 124,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "tab": {
+            "ink_pixels": 201,
+            "contrast": 15.34,
+            "background": [
+              248,
+              248,
+              248
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 109.7,
+          "working_set_mib": 107.4
+        }
+      },
+      {
+        "name": "filter_and_rules_editor_text",
+        "status": "passed",
+        "seconds": 0.834,
+        "max_timer_gap_ms": 109.0,
+        "details": {
+          "filters": {
+            "ink_pixels": 53,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          },
+          "rules": {
+            "ink_pixels": 53,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          },
+          "sort_combo": {
+            "ink_pixels": 121,
+            "contrast": 16.29,
+            "background": [
+              255,
+              255,
+              255
+            ]
+          },
+          "sort": {
+            "ink_pixels": 53,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 124.4,
+          "working_set_mib": 114.8
+        }
+      },
+      {
+        "name": "inactive_window_text",
+        "status": "passed",
+        "seconds": 0.168,
+        "max_timer_gap_ms": 78.0,
+        "details": {
+          "ink_pixels": 120,
+          "contrast": 14.3,
+          "background": [
+            240,
+            240,
+            240
+          ]
+        },
+        "memory": {
+          "peak_working_set_mib": 124.4,
+          "working_set_mib": 112.2
+        }
+      },
+      {
+        "name": "application_dark_theme_and_pinned_grid",
+        "status": "passed",
+        "seconds": 0.224,
+        "max_timer_gap_ms": 125.0,
+        "details": {
+          "ink_pixels": 115,
+          "contrast": 11.38,
+          "background": [
+            48,
+            48,
+            48
+          ],
+          "pinned_cell": {
+            "ink_pixels": 71,
+            "contrast": 13.38,
+            "background": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 124.4,
+          "working_set_mib": 111.5
+        }
+      }
+    ],
+    "screenshots": [
+      "01-welcome.png",
+      "02-grid.png",
+      "03-filters.png",
+      "03-rules-statistics.png",
+      "03-rules-graphics.png",
+      "03-rules.png",
+      "03-sort.png",
+      "04-inactive.png",
+      "05-dark-pinned.png"
+    ],
+    "style": "Fusion light",
+    "font": {
+      "family": "Segoe UI",
+      "point_size": 10.0
+    },
+    "scale_factor": 1.25,
+    "current_check": "application_dark_theme_and_pinned_grid",
+    "ui_errors": [],
+    "responsiveness_diagnostics": {
+      "main_thread_native_calls": [],
+      "sampler_gaps": [],
+      "interpretation": "Sampler gaps can reflect GIL contention or host scheduling; native call timings identify work executed synchronously by the UI thread."
+    },
+    "responsiveness_stalls": [],
+    "ui_heartbeat": {
+      "interval_ms": 50,
+      "max_gap_ms": 172.0,
+      "p95_gap_ms": 125.0,
+      "samples": 22
+    },
+    "memory": {
+      "peak_working_set_mib": 124.4,
+      "working_set_mib": 111.5
+    },
+    "finished_utc": "2026-10-31T20:17:29.186993+00:00",
+    "windows_preference": "light",
+    "requested_scale": 1.25,
+    "exit_code": 0
+  },
+  {
+    "status": "passed",
+    "kind": "appearance",
+    "started_utc": "2026-10-31T20:17:32.843833+00:00",
+    "platform": "win32",
+    "frozen": true,
+    "qt_platform": "windows",
+    "operating_system": "Windows-2025Server-10.0.26100-SP0",
+    "machine": "AMD64",
+    "cpu_count": 4,
+    "python": "3.12.10",
+    "duckdb": "1.5.6",
+    "qt": "6.12.0",
+    "automation": "QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+    "checks": [
+      {
+        "name": "welcome_menu_and_buttons_rendered_text",
+        "status": "passed",
+        "seconds": 0.2,
+        "max_timer_gap_ms": 172.0,
+        "details": {
+          "menu": {
+            "ink_pixels": 157,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "open_button": {
+            "ink_pixels": 239,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          },
+          "toolbar": {
+            "ink_pixels": 363,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "disabled_toolbar": {
+            "ink_pixels": 159,
+            "contrast": 4.89,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 93.6,
+          "working_set_mib": 91.4
+        }
+      },
+      {
+        "name": "import_via_visible_confirmation",
+        "status": "passed",
+        "seconds": 0.209,
+        "max_timer_gap_ms": 78.0,
+        "memory": {
+          "peak_working_set_mib": 108.3,
+          "working_set_mib": 108.1
+        }
+      },
+      {
+        "name": "loaded_grid_search_text",
+        "status": "passed",
+        "seconds": 0.246,
+        "max_timer_gap_ms": 265.0,
+        "details": {
+          "ink_pixels": 327,
+          "contrast": 16.29,
+          "background": [
+            255,
+            255,
+            255
+          ],
+          "checkbox": {
+            "ink_pixels": 179,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "tab": {
+            "ink_pixels": 322,
+            "contrast": 15.34,
+            "background": [
+              248,
+              248,
+              248
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 110.9,
+          "working_set_mib": 108.6
+        }
+      },
+      {
+        "name": "filter_and_rules_editor_text",
+        "status": "passed",
+        "seconds": 0.852,
+        "max_timer_gap_ms": 110.0,
+        "details": {
+          "filters": {
+            "ink_pixels": 86,
+            "contrast": 15.19,
+            "background": [
+              246,
+              247,
+              248
+            ]
+          },
+          "rules": {
+            "ink_pixels": 86,
+            "contrast": 14.94,
+            "background": [
+              245,
+              245,
+              245
+            ]
+          },
+          "sort_combo": {
+            "ink_pixels": 189,
+            "contrast": 16.29,
+            "background": [
+              255,
+              255,
+              255
+            ]
+          },
+          "sort": {
+            "ink_pixels": 86,
+            "contrast": 15.19,
+            "background": [
+              246,
+              247,
+              248
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 122.0,
+          "working_set_mib": 116.9
+        }
+      },
+      {
+        "name": "inactive_window_text",
+        "status": "passed",
+        "seconds": 0.184,
+        "max_timer_gap_ms": 94.0,
+        "details": {
+          "ink_pixels": 157,
+          "contrast": 14.3,
+          "background": [
+            240,
+            240,
+            240
+          ]
+        },
+        "memory": {
+          "peak_working_set_mib": 122.0,
+          "working_set_mib": 113.2
+        }
+      },
+      {
+        "name": "application_dark_theme_and_pinned_grid",
+        "status": "passed",
+        "seconds": 0.25,
+        "max_timer_gap_ms": 172.0,
+        "details": {
+          "ink_pixels": 137,
+          "contrast": 11.38,
+          "background": [
+            48,
+            48,
+            48
+          ],
+          "pinned_cell": {
+            "ink_pixels": 87,
+            "contrast": 13.38,
+            "background": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 122.0,
+          "working_set_mib": 113.0
+        }
+      }
+    ],
+    "screenshots": [
+      "01-welcome.png",
+      "02-grid.png",
+      "03-filters.png",
+      "03-rules-statistics.png",
+      "03-rules-graphics.png",
+      "03-rules.png",
+      "03-sort.png",
+      "04-inactive.png",
+      "05-dark-pinned.png"
+    ],
+    "style": "Fusion light",
+    "font": {
+      "family": "Segoe UI",
+      "point_size": 10.0
+    },
+    "scale_factor": 1.5,
+    "current_check": "application_dark_theme_and_pinned_grid",
+    "ui_errors": [],
+    "responsiveness_diagnostics": {
+      "main_thread_native_calls": [],
+      "sampler_gaps": [
+        {
+          "seconds": 0.266,
+          "before": [
+            {
+              "file": "entrypoint.py",
+              "line": 5,
+              "function": "<module>"
+            },
+            {
+              "file": "bootstrap.py",
+              "line": 82,
+              "function": "main"
+            },
+            {
+              "file": "app.py",
+              "line": 1224,
+              "function": "main"
+            },
+            {
+              "file": "appearance.py",
+              "line": 110,
+              "function": "run_appearance"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 94,
+              "function": "check"
+            },
+            {
+              "file": "appearance.py",
+              "line": 88,
+              "function": "editors"
+            },
+            {
+              "file": "responsiveness.py",
+              "line": 37,
+              "function": "profile"
+            }
+          ],
+          "after": [
+            {
+              "file": "entrypoint.py",
+              "line": 5,
+              "function": "<module>"
+            },
+            {
+              "file": "bootstrap.py",
+              "line": 82,
+              "function": "main"
+            },
+            {
+              "file": "app.py",
+              "line": 1224,
+              "function": "main"
+            },
+            {
+              "file": "appearance.py",
+              "line": 110,
+              "function": "run_appearance"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 94,
+              "function": "check"
+            },
+            {
+              "file": "appearance.py",
+              "line": 102,
+              "function": "editors"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 111,
+              "function": "capture"
+            }
+          ]
+        }
+      ],
+      "interpretation": "Sampler gaps can reflect GIL contention or host scheduling; native call timings identify work executed synchronously by the UI thread."
+    },
+    "responsiveness_stalls": [
+      {
+        "gap_ms": 265.0,
+        "phase": "loaded_grid_search_text",
+        "status": "2 éléments chargés dans ce niveau",
+        "stack": [
+          {
+            "file": "entrypoint.py",
+            "line": 5,
+            "function": "<module>"
+          },
+          {
+            "file": "bootstrap.py",
+            "line": 82,
+            "function": "main"
+          },
+          {
+            "file": "app.py",
+            "line": 1224,
+            "function": "main"
+          },
+          {
+            "file": "appearance.py",
+            "line": 73,
+            "function": "run_appearance"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 94,
+            "function": "check"
+          },
+          {
+            "file": "appearance.py",
+            "line": 71,
+            "function": "loaded"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 109,
+            "function": "capture"
+          }
+        ]
+      }
+    ],
+    "ui_heartbeat": {
+      "interval_ms": 50,
+      "max_gap_ms": 265.0,
+      "p95_gap_ms": 172.0,
+      "samples": 22
+    },
+    "memory": {
+      "peak_working_set_mib": 122.0,
+      "working_set_mib": 113.0
+    },
+    "finished_utc": "2026-10-31T20:17:34.980778+00:00",
+    "windows_preference": "light",
+    "requested_scale": 1.5,
+    "exit_code": 0
+  },
+  {
+    "status": "passed",
+    "kind": "appearance",
+    "started_utc": "2026-10-31T20:17:38.279104+00:00",
+    "platform": "win32",
+    "frozen": true,
+    "qt_platform": "windows",
+    "operating_system": "Windows-2025Server-10.0.26100-SP0",
+    "machine": "AMD64",
+    "cpu_count": 4,
+    "python": "3.12.10",
+    "duckdb": "1.5.6",
+    "qt": "6.12.0",
+    "automation": "QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+    "checks": [
+      {
+        "name": "welcome_menu_and_buttons_rendered_text",
+        "status": "passed",
+        "seconds": 0.316,
+        "max_timer_gap_ms": 281.0,
+        "details": {
+          "menu": {
+            "ink_pixels": 329,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "open_button": {
+            "ink_pixels": 498,
+            "contrast": 15.75,
+            "background": [
+              251,
+              251,
+              251
+            ]
+          },
+          "toolbar": {
+            "ink_pixels": 735,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "disabled_toolbar": {
+            "ink_pixels": 353,
+            "contrast": 4.89,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 95.4,
+          "working_set_mib": 95.4
+        }
+      },
+      {
+        "name": "import_via_visible_confirmation",
+        "status": "passed",
+        "seconds": 0.239,
+        "max_timer_gap_ms": 94.0,
+        "memory": {
+          "peak_working_set_mib": 110.2,
+          "working_set_mib": 109.7
+        }
+      },
+      {
+        "name": "loaded_grid_search_text",
+        "status": "passed",
+        "seconds": 0.288,
+        "max_timer_gap_ms": 250.0,
+        "details": {
+          "ink_pixels": 602,
+          "contrast": 16.29,
+          "background": [
+            255,
+            255,
+            255
+          ],
+          "checkbox": {
+            "ink_pixels": 360,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "tab": {
+            "ink_pixels": 696,
+            "contrast": 15.34,
+            "background": [
+              248,
+              248,
+              248
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 113.4,
+          "working_set_mib": 113.4
+        }
+      },
+      {
+        "name": "filter_and_rules_editor_text",
+        "status": "passed",
+        "seconds": 1.005,
+        "max_timer_gap_ms": 156.0,
+        "details": {
+          "filters": {
+            "ink_pixels": 175,
+            "contrast": 15.58,
+            "background": [
+              249,
+              250,
+              250
+            ]
+          },
+          "rules": {
+            "ink_pixels": 175,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          },
+          "sort_combo": {
+            "ink_pixels": 369,
+            "contrast": 16.29,
+            "background": [
+              255,
+              255,
+              255
+            ]
+          },
+          "sort": {
+            "ink_pixels": 175,
+            "contrast": 15.58,
+            "background": [
+              249,
+              250,
+              250
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 130.7,
+          "working_set_mib": 120.2
+        }
+      },
+      {
+        "name": "inactive_window_text",
+        "status": "passed",
+        "seconds": 0.196,
+        "max_timer_gap_ms": 125.0,
+        "details": {
+          "ink_pixels": 329,
+          "contrast": 14.3,
+          "background": [
+            240,
+            240,
+            240
+          ]
+        },
+        "memory": {
+          "peak_working_set_mib": 130.7,
+          "working_set_mib": 117.4
+        }
+      },
+      {
+        "name": "application_dark_theme_and_pinned_grid",
+        "status": "passed",
+        "seconds": 0.309,
+        "max_timer_gap_ms": 141.0,
+        "details": {
+          "ink_pixels": 317,
+          "contrast": 11.38,
+          "background": [
+            48,
+            48,
+            48
+          ],
+          "pinned_cell": {
+            "ink_pixels": 209,
+            "contrast": 13.38,
+            "background": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 130.7,
+          "working_set_mib": 114.2
+        }
+      }
+    ],
+    "screenshots": [
+      "01-welcome.png",
+      "02-grid.png",
+      "03-filters.png",
+      "03-rules-statistics.png",
+      "03-rules-graphics.png",
+      "03-rules.png",
+      "03-sort.png",
+      "04-inactive.png",
+      "05-dark-pinned.png"
+    ],
+    "style": "Fusion light",
+    "font": {
+      "family": "Segoe UI",
+      "point_size": 10.0
+    },
+    "scale_factor": 2.0,
+    "current_check": "application_dark_theme_and_pinned_grid",
+    "ui_errors": [],
+    "responsiveness_diagnostics": {
+      "main_thread_native_calls": [],
+      "sampler_gaps": [
+        {
+          "seconds": 0.281,
+          "before": [
+            {
+              "file": "entrypoint.py",
+              "line": 5,
+              "function": "<module>"
+            },
+            {
+              "file": "bootstrap.py",
+              "line": 82,
+              "function": "main"
+            },
+            {
+              "file": "app.py",
+              "line": 1224,
+              "function": "main"
+            },
+            {
+              "file": "appearance.py",
+              "line": 110,
+              "function": "run_appearance"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 94,
+              "function": "check"
+            },
+            {
+              "file": "appearance.py",
+              "line": 88,
+              "function": "editors"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 54,
+              "function": "tick"
+            },
+            {
+              "file": "responsiveness.py",
+              "line": 37,
+              "function": "profile"
+            }
+          ],
+          "after": [
+            {
+              "file": "entrypoint.py",
+              "line": 5,
+              "function": "<module>"
+            },
+            {
+              "file": "bootstrap.py",
+              "line": 82,
+              "function": "main"
+            },
+            {
+              "file": "app.py",
+              "line": 1224,
+              "function": "main"
+            },
+            {
+              "file": "appearance.py",
+              "line": 110,
+              "function": "run_appearance"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 94,
+              "function": "check"
+            },
+            {
+              "file": "appearance.py",
+              "line": 102,
+              "function": "editors"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 111,
+              "function": "capture"
+            },
+            {
+              "file": "responsiveness.py",
+              "line": 37,
+              "function": "profile"
+            }
+          ]
+        }
+      ],
+      "interpretation": "Sampler gaps can reflect GIL contention or host scheduling; native call timings identify work executed synchronously by the UI thread."
+    },
+    "responsiveness_stalls": [
+      {
+        "gap_ms": 281.0,
+        "phase": "welcome_menu_and_buttons_rendered_text",
+        "status": "Prêt",
+        "stack": [
+          {
+            "file": "entrypoint.py",
+            "line": 5,
+            "function": "<module>"
+          },
+          {
+            "file": "bootstrap.py",
+            "line": 82,
+            "function": "main"
+          },
+          {
+            "file": "app.py",
+            "line": 1224,
+            "function": "main"
+          },
+          {
+            "file": "appearance.py",
+            "line": 62,
+            "function": "run_appearance"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 94,
+            "function": "check"
+          },
+          {
+            "file": "appearance.py",
+            "line": 59,
+            "function": "welcome"
+          },
+          {
+            "file": "appearance.py",
+            "line": 29,
+            "function": "rendered_contrast"
+          }
+        ]
+      }
+    ],
+    "ui_heartbeat": {
+      "interval_ms": 50,
+      "max_gap_ms": 281.0,
+      "p95_gap_ms": 156.0,
+      "samples": 25
+    },
+    "memory": {
+      "peak_working_set_mib": 130.7,
+      "working_set_mib": 114.2
+    },
+    "finished_utc": "2026-10-31T20:17:40.844795+00:00",
+    "windows_preference": "light",
+    "requested_scale": 2,
+    "exit_code": 0
+  },
+  {
+    "status": "passed",
+    "kind": "appearance",
+    "started_utc": "2026-10-31T20:17:44.446291+00:00",
+    "platform": "win32",
+    "frozen": true,
+    "qt_platform": "windows",
+    "operating_system": "Windows-2025Server-10.0.26100-SP0",
+    "machine": "AMD64",
+    "cpu_count": 4,
+    "python": "3.12.10",
+    "duckdb": "1.5.6",
+    "qt": "6.12.0",
+    "automation": "QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+    "checks": [
+      {
+        "name": "welcome_menu_and_buttons_rendered_text",
+        "status": "passed",
+        "seconds": 0.134,
+        "max_timer_gap_ms": 109.0,
+        "details": {
+          "menu": {
+            "ink_pixels": 94,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "open_button": {
+            "ink_pixels": 131,
+            "contrast": 15.61,
+            "background": [
+              250,
+              250,
+              250
+            ]
+          },
+          "toolbar": {
+            "ink_pixels": 191,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "disabled_toolbar": {
+            "ink_pixels": 89,
+            "contrast": 4.89,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 92.9,
+          "working_set_mib": 90.7
+        }
+      },
+      {
+        "name": "import_via_visible_confirmation",
+        "status": "passed",
+        "seconds": 0.212,
+        "max_timer_gap_ms": 63.0,
+        "memory": {
+          "peak_working_set_mib": 107.2,
+          "working_set_mib": 106.8
+        }
+      },
+      {
+        "name": "loaded_grid_search_text",
+        "status": "passed",
+        "seconds": 0.156,
+        "max_timer_gap_ms": 171.0,
+        "details": {
+          "ink_pixels": 157,
+          "contrast": 16.29,
+          "background": [
+            255,
+            255,
+            255
+          ],
+          "checkbox": {
+            "ink_pixels": 94,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "tab": {
+            "ink_pixels": 169,
+            "contrast": 14.55,
+            "background": [
+              242,
+              242,
+              242
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 109.5,
+          "working_set_mib": 107.3
+        }
+      },
+      {
+        "name": "filter_and_rules_editor_text",
+        "status": "passed",
+        "seconds": 0.738,
+        "max_timer_gap_ms": 110.0,
+        "details": {
+          "filters": {
+            "ink_pixels": 39,
+            "contrast": 15.76,
+            "background": [
+              251,
+              251,
+              252
+            ]
+          },
+          "rules": {
+            "ink_pixels": 39,
+            "contrast": 15.75,
+            "background": [
+              251,
+              251,
+              251
+            ]
+          },
+          "sort_combo": {
+            "ink_pixels": 96,
+            "contrast": 16.29,
+            "background": [
+              255,
+              255,
+              255
+            ]
+          },
+          "sort": {
+            "ink_pixels": 39,
+            "contrast": 15.76,
+            "background": [
+              251,
+              251,
+              252
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 119.4,
+          "working_set_mib": 113.9
+        }
+      },
+      {
+        "name": "inactive_window_text",
+        "status": "passed",
+        "seconds": 0.169,
+        "max_timer_gap_ms": 78.0,
+        "details": {
+          "ink_pixels": 94,
+          "contrast": 14.3,
+          "background": [
+            240,
+            240,
+            240
+          ]
+        },
+        "memory": {
+          "peak_working_set_mib": 119.4,
+          "working_set_mib": 112.1
+        }
+      },
+      {
+        "name": "application_dark_theme_and_pinned_grid",
+        "status": "passed",
+        "seconds": 0.218,
+        "max_timer_gap_ms": 125.0,
+        "details": {
+          "ink_pixels": 84,
+          "contrast": 11.38,
+          "background": [
+            48,
+            48,
+            48
+          ],
+          "pinned_cell": {
+            "ink_pixels": 53,
+            "contrast": 13.38,
+            "background": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 119.4,
+          "working_set_mib": 112.4
+        }
+      }
+    ],
+    "screenshots": [
+      "01-welcome.png",
+      "02-grid.png",
+      "03-filters.png",
+      "03-rules-statistics.png",
+      "03-rules-graphics.png",
+      "03-rules.png",
+      "03-sort.png",
+      "04-inactive.png",
+      "05-dark-pinned.png"
+    ],
+    "style": "Fusion light",
+    "font": {
+      "family": "Segoe UI",
+      "point_size": 10.0
+    },
+    "scale_factor": 1.0,
+    "current_check": "application_dark_theme_and_pinned_grid",
+    "ui_errors": [],
+    "responsiveness_diagnostics": {
+      "main_thread_native_calls": [],
+      "sampler_gaps": [],
+      "interpretation": "Sampler gaps can reflect GIL contention or host scheduling; native call timings identify work executed synchronously by the UI thread."
+    },
+    "responsiveness_stalls": [],
+    "ui_heartbeat": {
+      "interval_ms": 50,
+      "max_gap_ms": 171.0,
+      "p95_gap_ms": 125.0,
+      "samples": 21
+    },
+    "memory": {
+      "peak_working_set_mib": 119.4,
+      "working_set_mib": 111.4
+    },
+    "finished_utc": "2026-10-31T20:17:46.275737+00:00",
+    "windows_preference": "dark",
+    "requested_scale": 1,
+    "exit_code": 0
+  },
+  {
+    "status": "passed",
+    "kind": "appearance",
+    "started_utc": "2026-10-31T20:17:50.285975+00:00",
+    "platform": "win32",
+    "frozen": true,
+    "qt_platform": "windows",
+    "operating_system": "Windows-2025Server-10.0.26100-SP0",
+    "machine": "AMD64",
+    "cpu_count": 4,
+    "python": "3.12.10",
+    "duckdb": "1.5.6",
+    "qt": "6.12.0",
+    "automation": "QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+    "checks": [
+      {
+        "name": "welcome_menu_and_buttons_rendered_text",
+        "status": "passed",
+        "seconds": 0.142,
+        "max_timer_gap_ms": 109.0,
+        "details": {
+          "menu": {
+            "ink_pixels": 120,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "open_button": {
+            "ink_pixels": 177,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          },
+          "toolbar": {
+            "ink_pixels": 237,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "disabled_toolbar": {
+            "ink_pixels": 91,
+            "contrast": 4.89,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 92.9,
+          "working_set_mib": 90.8
+        }
+      },
+      {
+        "name": "import_via_visible_confirmation",
+        "status": "passed",
+        "seconds": 0.215,
+        "max_timer_gap_ms": 78.0,
+        "memory": {
+          "peak_working_set_mib": 107.9,
+          "working_set_mib": 107.5
+        }
+      },
+      {
+        "name": "loaded_grid_search_text",
+        "status": "passed",
+        "seconds": 0.179,
+        "max_timer_gap_ms": 188.0,
+        "details": {
+          "ink_pixels": 199,
+          "contrast": 16.29,
+          "background": [
+            255,
+            255,
+            255
+          ],
+          "checkbox": {
+            "ink_pixels": 124,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "tab": {
+            "ink_pixels": 201,
+            "contrast": 15.34,
+            "background": [
+              248,
+              248,
+              248
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 110.4,
+          "working_set_mib": 110.4
+        }
+      },
+      {
+        "name": "filter_and_rules_editor_text",
+        "status": "passed",
+        "seconds": 0.813,
+        "max_timer_gap_ms": 125.0,
+        "details": {
+          "filters": {
+            "ink_pixels": 53,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          },
+          "rules": {
+            "ink_pixels": 53,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          },
+          "sort_combo": {
+            "ink_pixels": 121,
+            "contrast": 16.29,
+            "background": [
+              255,
+              255,
+              255
+            ]
+          },
+          "sort": {
+            "ink_pixels": 53,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 122.4,
+          "working_set_mib": 117.7
+        }
+      },
+      {
+        "name": "inactive_window_text",
+        "status": "passed",
+        "seconds": 0.168,
+        "max_timer_gap_ms": 78.0,
+        "details": {
+          "ink_pixels": 120,
+          "contrast": 14.3,
+          "background": [
+            240,
+            240,
+            240
+          ]
+        },
+        "memory": {
+          "peak_working_set_mib": 122.4,
+          "working_set_mib": 113.1
+        }
+      },
+      {
+        "name": "application_dark_theme_and_pinned_grid",
+        "status": "passed",
+        "seconds": 0.259,
+        "max_timer_gap_ms": 156.0,
+        "details": {
+          "ink_pixels": 115,
+          "contrast": 11.38,
+          "background": [
+            48,
+            48,
+            48
+          ],
+          "pinned_cell": {
+            "ink_pixels": 71,
+            "contrast": 13.38,
+            "background": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 122.4,
+          "working_set_mib": 111.9
+        }
+      }
+    ],
+    "screenshots": [
+      "01-welcome.png",
+      "02-grid.png",
+      "03-filters.png",
+      "03-rules-statistics.png",
+      "03-rules-graphics.png",
+      "03-rules.png",
+      "03-sort.png",
+      "04-inactive.png",
+      "05-dark-pinned.png"
+    ],
+    "style": "Fusion light",
+    "font": {
+      "family": "Segoe UI",
+      "point_size": 10.0
+    },
+    "scale_factor": 1.25,
+    "current_check": "application_dark_theme_and_pinned_grid",
+    "ui_errors": [],
+    "responsiveness_diagnostics": {
+      "main_thread_native_calls": [],
+      "sampler_gaps": [
+        {
+          "seconds": 0.281,
+          "before": [
+            {
+              "file": "entrypoint.py",
+              "line": 5,
+              "function": "<module>"
+            },
+            {
+              "file": "bootstrap.py",
+              "line": 82,
+              "function": "main"
+            },
+            {
+              "file": "app.py",
+              "line": 1224,
+              "function": "main"
+            },
+            {
+              "file": "appearance.py",
+              "line": 110,
+              "function": "run_appearance"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 94,
+              "function": "check"
+            },
+            {
+              "file": "appearance.py",
+              "line": 88,
+              "function": "editors"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 54,
+              "function": "tick"
+            },
+            {
+              "file": "responsiveness.py",
+              "line": 37,
+              "function": "profile"
+            }
+          ],
+          "after": [
+            {
+              "file": "entrypoint.py",
+              "line": 5,
+              "function": "<module>"
+            },
+            {
+              "file": "bootstrap.py",
+              "line": 82,
+              "function": "main"
+            },
+            {
+              "file": "app.py",
+              "line": 1224,
+              "function": "main"
+            },
+            {
+              "file": "appearance.py",
+              "line": 110,
+              "function": "run_appearance"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 94,
+              "function": "check"
+            },
+            {
+              "file": "appearance.py",
+              "line": 102,
+              "function": "editors"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 111,
+              "function": "capture"
+            }
+          ]
+        }
+      ],
+      "interpretation": "Sampler gaps can reflect GIL contention or host scheduling; native call timings identify work executed synchronously by the UI thread."
+    },
+    "responsiveness_stalls": [],
+    "ui_heartbeat": {
+      "interval_ms": 50,
+      "max_gap_ms": 188.0,
+      "p95_gap_ms": 156.0,
+      "samples": 20
+    },
+    "memory": {
+      "peak_working_set_mib": 122.4,
+      "working_set_mib": 111.9
+    },
+    "finished_utc": "2026-10-31T20:17:52.264322+00:00",
+    "windows_preference": "dark",
+    "requested_scale": 1.25,
+    "exit_code": 0
+  },
+  {
+    "status": "passed",
+    "kind": "appearance",
+    "started_utc": "2026-10-31T20:17:55.837312+00:00",
+    "platform": "win32",
+    "frozen": true,
+    "qt_platform": "windows",
+    "operating_system": "Windows-2025Server-10.0.26100-SP0",
+    "machine": "AMD64",
+    "cpu_count": 4,
+    "python": "3.12.10",
+    "duckdb": "1.5.6",
+    "qt": "6.12.0",
+    "automation": "QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+    "checks": [
+      {
+        "name": "welcome_menu_and_buttons_rendered_text",
+        "status": "passed",
+        "seconds": 0.21,
+        "max_timer_gap_ms": 187.0,
+        "details": {
+          "menu": {
+            "ink_pixels": 157,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "open_button": {
+            "ink_pixels": 239,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          },
+          "toolbar": {
+            "ink_pixels": 363,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "disabled_toolbar": {
+            "ink_pixels": 159,
+            "contrast": 4.89,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 93.4,
+          "working_set_mib": 91.1
+        }
+      },
+      {
+        "name": "import_via_visible_confirmation",
+        "status": "passed",
+        "seconds": 0.227,
+        "max_timer_gap_ms": 78.0,
+        "memory": {
+          "peak_working_set_mib": 108.4,
+          "working_set_mib": 108.1
+        }
+      },
+      {
+        "name": "loaded_grid_search_text",
+        "status": "passed",
+        "seconds": 0.221,
+        "max_timer_gap_ms": 188.0,
+        "details": {
+          "ink_pixels": 327,
+          "contrast": 16.29,
+          "background": [
+            255,
+            255,
+            255
+          ],
+          "checkbox": {
+            "ink_pixels": 179,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "tab": {
+            "ink_pixels": 322,
+            "contrast": 15.34,
+            "background": [
+              248,
+              248,
+              248
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 110.8,
+          "working_set_mib": 110.8
+        }
+      },
+      {
+        "name": "filter_and_rules_editor_text",
+        "status": "passed",
+        "seconds": 0.871,
+        "max_timer_gap_ms": 125.0,
+        "details": {
+          "filters": {
+            "ink_pixels": 86,
+            "contrast": 15.19,
+            "background": [
+              246,
+              247,
+              248
+            ]
+          },
+          "rules": {
+            "ink_pixels": 86,
+            "contrast": 14.94,
+            "background": [
+              245,
+              245,
+              245
+            ]
+          },
+          "sort_combo": {
+            "ink_pixels": 189,
+            "contrast": 16.29,
+            "background": [
+              255,
+              255,
+              255
+            ]
+          },
+          "sort": {
+            "ink_pixels": 86,
+            "contrast": 15.19,
+            "background": [
+              246,
+              247,
+              248
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 121.6,
+          "working_set_mib": 118.2
+        }
+      },
+      {
+        "name": "inactive_window_text",
+        "status": "passed",
+        "seconds": 0.186,
+        "max_timer_gap_ms": 125.0,
+        "details": {
+          "ink_pixels": 157,
+          "contrast": 14.3,
+          "background": [
+            240,
+            240,
+            240
+          ]
+        },
+        "memory": {
+          "peak_working_set_mib": 121.6,
+          "working_set_mib": 112.6
+        }
+      },
+      {
+        "name": "application_dark_theme_and_pinned_grid",
+        "status": "passed",
+        "seconds": 0.251,
+        "max_timer_gap_ms": 125.0,
+        "details": {
+          "ink_pixels": 137,
+          "contrast": 11.38,
+          "background": [
+            48,
+            48,
+            48
+          ],
+          "pinned_cell": {
+            "ink_pixels": 87,
+            "contrast": 13.38,
+            "background": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 121.6,
+          "working_set_mib": 112.5
+        }
+      }
+    ],
+    "screenshots": [
+      "01-welcome.png",
+      "02-grid.png",
+      "03-filters.png",
+      "03-rules-statistics.png",
+      "03-rules-graphics.png",
+      "03-rules.png",
+      "03-sort.png",
+      "04-inactive.png",
+      "05-dark-pinned.png"
+    ],
+    "style": "Fusion light",
+    "font": {
+      "family": "Segoe UI",
+      "point_size": 10.0
+    },
+    "scale_factor": 1.5,
+    "current_check": "application_dark_theme_and_pinned_grid",
+    "ui_errors": [],
+    "responsiveness_diagnostics": {
+      "main_thread_native_calls": [],
+      "sampler_gaps": [],
+      "interpretation": "Sampler gaps can reflect GIL contention or host scheduling; native call timings identify work executed synchronously by the UI thread."
+    },
+    "responsiveness_stalls": [],
+    "ui_heartbeat": {
+      "interval_ms": 50,
+      "max_gap_ms": 188.0,
+      "p95_gap_ms": 125.0,
+      "samples": 22
+    },
+    "memory": {
+      "peak_working_set_mib": 121.6,
+      "working_set_mib": 112.5
+    },
+    "finished_utc": "2026-10-31T20:17:58.003036+00:00",
+    "windows_preference": "dark",
+    "requested_scale": 1.5,
+    "exit_code": 0
+  },
+  {
+    "status": "passed",
+    "kind": "appearance",
+    "started_utc": "2026-10-31T20:18:01.521503+00:00",
+    "platform": "win32",
+    "frozen": true,
+    "qt_platform": "windows",
+    "operating_system": "Windows-2025Server-10.0.26100-SP0",
+    "machine": "AMD64",
+    "cpu_count": 4,
+    "python": "3.12.10",
+    "duckdb": "1.5.6",
+    "qt": "6.12.0",
+    "automation": "QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+    "checks": [
+      {
+        "name": "welcome_menu_and_buttons_rendered_text",
+        "status": "passed",
+        "seconds": 0.494,
+        "max_timer_gap_ms": 453.0,
+        "details": {
+          "menu": {
+            "ink_pixels": 329,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "open_button": {
+            "ink_pixels": 498,
+            "contrast": 15.75,
+            "background": [
+              251,
+              251,
+              251
+            ]
+          },
+          "toolbar": {
+            "ink_pixels": 735,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "disabled_toolbar": {
+            "ink_pixels": 353,
+            "contrast": 4.89,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 95.1,
+          "working_set_mib": 95.1
+        }
+      },
+      {
+        "name": "import_via_visible_confirmation",
+        "status": "passed",
+        "seconds": 0.27,
+        "max_timer_gap_ms": 110.0,
+        "memory": {
+          "peak_working_set_mib": 110.4,
+          "working_set_mib": 110.4
+        }
+      },
+      {
+        "name": "loaded_grid_search_text",
+        "status": "passed",
+        "seconds": 0.392,
+        "max_timer_gap_ms": 359.0,
+        "details": {
+          "ink_pixels": 602,
+          "contrast": 16.29,
+          "background": [
+            255,
+            255,
+            255
+          ],
+          "checkbox": {
+            "ink_pixels": 360,
+            "contrast": 14.3,
+            "background": [
+              240,
+              240,
+              240
+            ]
+          },
+          "tab": {
+            "ink_pixels": 696,
+            "contrast": 15.34,
+            "background": [
+              248,
+              248,
+              248
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 114.0,
+          "working_set_mib": 114.0
+        }
+      },
+      {
+        "name": "filter_and_rules_editor_text",
+        "status": "passed",
+        "seconds": 1.039,
+        "max_timer_gap_ms": 203.0,
+        "details": {
+          "filters": {
+            "ink_pixels": 175,
+            "contrast": 15.58,
+            "background": [
+              249,
+              250,
+              250
+            ]
+          },
+          "rules": {
+            "ink_pixels": 175,
+            "contrast": 15.88,
+            "background": [
+              252,
+              252,
+              252
+            ]
+          },
+          "sort_combo": {
+            "ink_pixels": 369,
+            "contrast": 16.29,
+            "background": [
+              255,
+              255,
+              255
+            ]
+          },
+          "sort": {
+            "ink_pixels": 175,
+            "contrast": 15.58,
+            "background": [
+              249,
+              250,
+              250
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 128.1,
+          "working_set_mib": 122.1
+        }
+      },
+      {
+        "name": "inactive_window_text",
+        "status": "passed",
+        "seconds": 0.226,
+        "max_timer_gap_ms": 125.0,
+        "details": {
+          "ink_pixels": 329,
+          "contrast": 14.3,
+          "background": [
+            240,
+            240,
+            240
+          ]
+        },
+        "memory": {
+          "peak_working_set_mib": 128.1,
+          "working_set_mib": 114.7
+        }
+      },
+      {
+        "name": "application_dark_theme_and_pinned_grid",
+        "status": "passed",
+        "seconds": 0.335,
+        "max_timer_gap_ms": 140.0,
+        "details": {
+          "ink_pixels": 317,
+          "contrast": 11.38,
+          "background": [
+            48,
+            48,
+            48
+          ],
+          "pinned_cell": {
+            "ink_pixels": 209,
+            "contrast": 13.38,
+            "background": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "memory": {
+          "peak_working_set_mib": 128.1,
+          "working_set_mib": 114.1
+        }
+      }
+    ],
+    "screenshots": [
+      "01-welcome.png",
+      "02-grid.png",
+      "03-filters.png",
+      "03-rules-statistics.png",
+      "03-rules-graphics.png",
+      "03-rules.png",
+      "03-sort.png",
+      "04-inactive.png",
+      "05-dark-pinned.png"
+    ],
+    "style": "Fusion light",
+    "font": {
+      "family": "Segoe UI",
+      "point_size": 10.0
+    },
+    "scale_factor": 2.0,
+    "current_check": "application_dark_theme_and_pinned_grid",
+    "ui_errors": [],
+    "responsiveness_diagnostics": {
+      "main_thread_native_calls": [],
+      "sampler_gaps": [
+        {
+          "seconds": 0.281,
+          "before": [
+            {
+              "file": "entrypoint.py",
+              "line": 5,
+              "function": "<module>"
+            },
+            {
+              "file": "bootstrap.py",
+              "line": 82,
+              "function": "main"
+            },
+            {
+              "file": "app.py",
+              "line": 1224,
+              "function": "main"
+            },
+            {
+              "file": "appearance.py",
+              "line": 110,
+              "function": "run_appearance"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 94,
+              "function": "check"
+            },
+            {
+              "file": "appearance.py",
+              "line": 88,
+              "function": "editors"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 54,
+              "function": "tick"
+            },
+            {
+              "file": "responsiveness.py",
+              "line": 37,
+              "function": "profile"
+            }
+          ],
+          "after": [
+            {
+              "file": "entrypoint.py",
+              "line": 5,
+              "function": "<module>"
+            },
+            {
+              "file": "bootstrap.py",
+              "line": 82,
+              "function": "main"
+            },
+            {
+              "file": "app.py",
+              "line": 1224,
+              "function": "main"
+            },
+            {
+              "file": "appearance.py",
+              "line": 110,
+              "function": "run_appearance"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 94,
+              "function": "check"
+            },
+            {
+              "file": "appearance.py",
+              "line": 102,
+              "function": "editors"
+            },
+            {
+              "file": "gui_driver.py",
+              "line": 111,
+              "function": "capture"
+            },
+            {
+              "file": "responsiveness.py",
+              "line": 37,
+              "function": "profile"
+            }
+          ]
+        }
+      ],
+      "interpretation": "Sampler gaps can reflect GIL contention or host scheduling; native call timings identify work executed synchronously by the UI thread."
+    },
+    "responsiveness_stalls": [
+      {
+        "gap_ms": 453.0,
+        "phase": "welcome_menu_and_buttons_rendered_text",
+        "status": "Prêt",
+        "stack": [
+          {
+            "file": "entrypoint.py",
+            "line": 5,
+            "function": "<module>"
+          },
+          {
+            "file": "bootstrap.py",
+            "line": 82,
+            "function": "main"
+          },
+          {
+            "file": "app.py",
+            "line": 1224,
+            "function": "main"
+          },
+          {
+            "file": "appearance.py",
+            "line": 62,
+            "function": "run_appearance"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 94,
+            "function": "check"
+          },
+          {
+            "file": "appearance.py",
+            "line": 59,
+            "function": "welcome"
+          },
+          {
+            "file": "appearance.py",
+            "line": 29,
+            "function": "rendered_contrast"
+          }
+        ]
+      },
+      {
+        "gap_ms": 359.0,
+        "phase": "loaded_grid_search_text",
+        "status": "2 éléments chargés dans ce niveau",
+        "stack": [
+          {
+            "file": "entrypoint.py",
+            "line": 5,
+            "function": "<module>"
+          },
+          {
+            "file": "bootstrap.py",
+            "line": 82,
+            "function": "main"
+          },
+          {
+            "file": "app.py",
+            "line": 1224,
+            "function": "main"
+          },
+          {
+            "file": "appearance.py",
+            "line": 73,
+            "function": "run_appearance"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 94,
+            "function": "check"
+          },
+          {
+            "file": "appearance.py",
+            "line": 70,
+            "function": "loaded"
+          },
+          {
+            "file": "appearance.py",
+            "line": 29,
+            "function": "rendered_contrast"
+          }
+        ]
+      }
+    ],
+    "ui_heartbeat": {
+      "interval_ms": 50,
+      "max_gap_ms": 453.0,
+      "p95_gap_ms": 203.0,
+      "samples": 25
+    },
+    "memory": {
+      "peak_working_set_mib": 128.1,
+      "working_set_mib": 114.1
+    },
+    "finished_utc": "2026-10-31T20:18:04.533491+00:00",
+    "windows_preference": "dark",
+    "requested_scale": 2,
+    "exit_code": 0
+  }
+]

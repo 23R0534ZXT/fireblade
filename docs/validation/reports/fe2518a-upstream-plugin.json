@@ -1,0 +1,22 @@
+{
+  "status": "passed",
+  "repository": "EricZimmerman/TLEFilePlugins",
+  "revision": "7199c81ba45a97be74b4e05da43cbaabecccf5ca",
+  "archive_sha256": "4ef5612909efd622175e0d63e72018918a4712bf25ec11890646ff47b0676aa1",
+  "reader": {
+    "type": "TLEFileGenericCsv.GenericCsv",
+    "description": "Generic CSV/TSV plugin. Adds Tag and Line number columns when loading the file",
+    "author": "Eric Zimmerman",
+    "headers": []
+  },
+  "checks": [
+    "real upstream DLL",
+    "Unicode",
+    "leading zeros",
+    "large identifier",
+    "source provenance"
+  ],
+  "source_commit": "fe2518a5dc14c43bce0797fe305739bc706fbfed",
+  "workflow_run": 41237678884,
+  "executable_sha256": "2cdddd70f7e0aaf6a320fa483f5f76e6d0fa72aefeae9bf268946b8e4f30afb9"
+}

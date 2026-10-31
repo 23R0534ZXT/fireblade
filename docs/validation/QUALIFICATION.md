@@ -1,6 +1,22 @@
 # Qualification visuelle et CSV 3 GiB
 
-Cette suite complète les tests unitaires et les trente contrôles rapides du fichier autonome. Elle vise les problèmes de rendu et les opérations longues qui ne sont pas démontrés par quelques enregistrements de test. Une Release du programme ne peut être publiée que si cette suite réussit aussi.
+Cette suite complète les tests unitaires et les contrôles rapides du fichier autonome. Elle vise les problèmes de rendu et les opérations longues qui ne sont pas démontrés par quelques enregistrements de test. Une Release du programme ne peut être publiée que si cette suite réussit aussi.
+
+## Résultat du 31 octobre 2026 — `fe2518a`
+
+[Exécution Windows réussie](https://github.com/23R0534ZXT/fireblade/actions/runs/41237678884) · [EXE publié](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-fe2518a5dc14c43bce0797fe305739bc706fbfed).
+
+- Sources : **317 tests réussis, 3 ignorés**, sur chacune des versions Python 3.11, 3.12 et 3.13. Deux tests nécessitent le helper construit ; ils sont exercés dans le build et l’EXE. Le test SMB est réservé au job de stockage.
+- Stockage natif : **3 contrôles réussis**, dont le partage UNC/SMB et les chemins longs.
+- Fichier unique : **32 contrôles réussis** dans le véritable EXE déplacé seul dans un dossier vide, chemins Python/.NET retirés du PATH, helper autonome réellement exécuté. [Rapport](reports/fe2518a-single-file.json).
+- Lecteur public TLEFileGenericCsv compilé/exécuté avec une révision et archive épinglées. [Provenance](reports/fe2518a-upstream-plugin.json).
+- **8 variantes visuelles réussies**, préférences Windows clair/sombre, zoom 100/125/150/200 %, contrôles défilants et sauvegarde des règles compris. [Matrice](reports/fe2518a-visual.json).
+- **43 contrôles réussis** sur les mêmes **3 222 648 632 octets / 2 441 216 enregistrements**, avec vérification SHA-256 avant/après, sans régénération. Import : **152,600 s** ; export complet et relecture indépendante : **130,243 s**. [Rapport](reports/fe2518a-3gib.json).
+- Percentiles exacts sur l’ensemble des lignes, contrôle de la page profonde et du cache : **4,147 s** ; pause maximale du timer pendant cette étape : **172 ms**.
+
+Le pic du processus mesuré est de **454,3 Mio**, avec un budget DuckDB de 256 Mo. Le timer de 50 ms a un P95 de **78 ms** et un maximum de **3 125 ms** sur le parcours complet. Une pause de plus de trois secondes reste donc observée ; la fluidité totale n’est pas établie. Ces valeurs ne comparent pas Fireblade à TLE sur le même poste.
+
+La Release contient uniquement `Fireblade.exe`, **114 179 101 octets**. Le fichier publié a été téléchargé et son SHA-256 correspond à celui du binaire exécuté : `2cdddd70f7e0aaf6a320fa483f5f76e6d0fa72aefeae9bf268946b8e4f30afb9`. Python, .NET et Excel ne sont pas à installer chez le destinataire. Les analyses et préférences restent des données séparées dans son profil Windows.
 
 ## Résultat du 31 octobre 2026 — `63fa493`
 
@@ -61,6 +77,7 @@ Pour tester manuellement le CSV publié, voir [les étapes et résultats attendu
 - CSV et XLSX filtrés avec annotations, comptages exportés et export CSV complet de plusieurs Go. Le CSV complet est relu indépendamment et son SHA-256 comparé au CSV de référence publié.
 - Annulation après le début d’écriture d’un export, préservation de la destination et nettoyage du temporaire.
 - Annulation d’un second import 3 GiB après l’écriture effective d’au moins un lot, vérification du rollback sans tables partielles et de la restauration de l’analyse précédente.
+- Percentiles exacts de Size sur les 2 441 216 lignes, comparés à un oracle numérique indépendant ; stabilité des bornes et du cache sur une page profonde.
 - Empreinte finale de la source et réutilisation de la base.
 
 ## Mesures

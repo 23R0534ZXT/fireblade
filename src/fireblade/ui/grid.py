@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QStyledItemDelegate
 
 from fireblade.core.models import View
 from fireblade.core.conditions import validate_format_rules
-from fireblade.ui.visual_rules import VISUAL_ROLE, visual_value
+from fireblade.ui.visual_rules import VISUAL_ROLE, visual_value, contrast_color
 from fireblade.ui.workers import Job
 
 
@@ -241,7 +241,7 @@ class GridModel(QAbstractItemModel):
                             return graphic[2] if rule.visual == 'scale' else None
                         if role == Qt.ForegroundRole:
                             if rule.visual == 'scale':
-                                return QColor('#101010' if graphic[2].lightness() > 140 else '#ffffff')
+                                return contrast_color(graphic[2])
                             return None
                     if role == VISUAL_ROLE:
                         return None

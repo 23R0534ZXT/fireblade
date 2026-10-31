@@ -19,3 +19,13 @@ def visual_value(rule, value):
     if rule.visual == 'icon':
         color = QColor(('#c62828', '#c58b00', '#218739')[min(2, int(fraction*3))])
     return rule.visual, fraction, color
+
+
+def contrast_color(background):
+    """Choose the higher-contrast black/white text using relative luminance."""
+    channels = [value/255 for value in background.getRgb()[:3]]
+    linear = [value/12.92 if value <= .04045 else ((value+.055)/1.055)**2.4 for value in channels]
+    luminance = sum(weight*value for weight,value in zip((.2126,.7152,.0722),linear))
+    black_ratio = (luminance+.05)/.05
+    white_ratio = 1.05/(luminance+.05)
+    return QColor('#000000' if black_ratio >= white_ratio else '#ffffff')

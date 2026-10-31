@@ -80,7 +80,7 @@ def add_columns(window, definitions, finished=None):
     window.capture_pin_widths()
     view = copy.deepcopy(window.view)
     header=window.tree.header()
-    layout=[(header.logicalIndex(i),window.tree.columnWidth(header.logicalIndex(i)),window.tree.isColumnHidden(header.logicalIndex(i))) for i in range(header.count())]
+    layout=[(header.logicalIndex(i),window.tree.frozen_for(header.logicalIndex(i)).columnWidth(header.logicalIndex(i)),window.tree.isColumnHidden(header.logicalIndex(i))) for i in range(header.count())]
 
     def done(_):
         window.tree.setModel(None)
@@ -93,7 +93,7 @@ def add_columns(window, definitions, finished=None):
             header.moveSection(header.visualIndex(section),position)
             window.tree.setColumnWidth(section,width)
             window.tree.setColumnHidden(section,hidden)
-            if section in window.tree.pinned:window.tree.frozen.setColumnWidth(section,width)
+            if section in window.tree.all_pinned:window.tree.frozen_for(section).setColumnWidth(section,width)
         if finished:
             finished()
         else:

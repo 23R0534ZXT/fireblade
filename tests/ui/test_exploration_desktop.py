@@ -384,3 +384,86 @@ def test_old_model_never_exposes_a_new_backend_column_before_schema_refresh(qt_a
     assert model.columnCount()==count
     assert model.data(model.index(0,count-1))==last
     assert not model.index(0,count).isValid()
+
+
+def test_right_pin_menu_shared_selection_geometry_copy_and_export(qt_application,window,tmp_path):
+    import csv
+    from PySide6.QtCore import QItemSelectionModel
+    from PySide6.QtTest import QTest
+    from fireblade.ui.menus import header_menu
+    window.resize(780,500)
+    window.pin_column(1)
+    menu=header_menu(window,3)
+    next(a for a in menu.actions() if a.text()=='Épingler à droite').trigger();menu.deleteLater()
+    settle(qt_application,window)
+    tree=window.tree;right=tree.right_frozen;index=window.model.index(0,3)
+    assert window.view.right_pinned_columns==[2] and tree.right_pinned==[3]
+    assert all(p.model() is window.model and p.selectionModel() is tree.selectionModel() for p in tree.frozen_views)
+    assert right.isVisible() and tree.isColumnHidden(3)
+    assert tree.frozen.geometry().right()<tree.viewport().geometry().left()
+    assert tree.viewport().geometry().right()<right.geometry().left()
+    before=right.geometry()
+    tree.horizontalScrollBar().setValue(tree.horizontalScrollBar().maximum());qt_application.processEvents()
+    assert right.geometry()==before
+    rect=right.visualRect(index);assert rect.isValid() and right.viewport().rect().contains(rect.center())
+    QTest.mouseClick(right.viewport(),Qt.LeftButton,pos=rect.center());qt_application.processEvents()
+    assert tree.selectionModel().isRowSelected(0,index.parent()) and tree.currentIndex().row()==0
+    assert right.viewport().mapTo(tree,rect.topLeft()).y()==tree.viewport().mapTo(tree,tree.visualRect(window.model.index(0,1)).topLeft()).y()
+    assert window.visible_columns()==[1,0,3,4,2]
+    window.copy_rows()
+    assert QApplication.clipboard().text().splitlines()[0].split('\t')==['User','Artifact','Flag','Time','ID']
+    target=tmp_path/'right.csv';window.case.export(target,window.view,columns=window.visible_columns())
+    with target.open(encoding='utf-8-sig',newline='') as f:assert next(csv.reader(f))==['User','Artifact','Flag','Time','ID']
+    window.hide_column(2);qt_application.processEvents()
+    assert not right.isVisible() and 2 not in window.visible_columns()
+
+
+def test_pin_switch_width_roundtrip_grouping_and_derived_refresh(qt_application,window):
+    from fireblade.ui.derived_columns import add_columns
+    window.pin_column(2);window.tree.frozen.setColumnWidth(3,237)
+    window.pin_column(2,'right');settle(qt_application,window)
+    assert window.view.pinned_columns==[] and window.tree.right_frozen.columnWidth(3)==237
+    window.case.save_view('right',window.view)
+    saved=window.case.views()['right'];assert saved.right_pinned_columns==[2]
+    window.set_view(saved);settle(qt_application,window)
+    assert window.tree.right_frozen.columnWidth(3)==237
+    add_columns(window,[dict(name='Double',operation='expression',expression='[ID]*2')]);settle(qt_application,window)
+    assert window.tree.right_frozen.columnWidth(3)==237 and window.view.right_pinned_columns==[2]
+    grouped=copy.deepcopy(window.view);grouped.groups=[0];window.set_view(grouped);settle(qt_application,window)
+    first=window.model.index(0,0);window.tree.frozen.expand(first);settle(qt_application,window)
+    assert all(p.isExpanded(first) for p in window.tree.frozen_views) and window.tree.isExpanded(first)
+    window.collapse_groups();settle(qt_application,window)
+    assert not window.tree.right_frozen.isExpanded(first)
+    window.pin_column(2);qt_application.processEvents()
+    assert not window.tree.right_frozen.isVisible() and window.tree.columnWidth(3)==237
+
+
+def test_narrow_pinned_sides_keep_center_and_legacy_views(qt_application,window):
+    import json
+    legacy=json.loads(View().to_json());legacy.pop('right_pinned_columns')
+    assert View.from_json(json.dumps(legacy)).right_pinned_columns==[]
+    with pytest.raises(ValueError,match='deux côtés'):
+        window.case.validate_view(View(pinned_columns=[1],right_pinned_columns=[1]))
+    window.pin_column(1);window.pin_column(2,'right')
+    window.tree.frozen.setColumnWidth(2,800);window.tree.right_frozen.setColumnWidth(3,800)
+    window.resize(500,400);qt_application.processEvents();window.tree.position_pins()
+    assert window.tree.viewport().width()>=80
+    assert window.tree.frozen.geometry().right()<window.tree.right_frozen.geometry().left()
+
+
+def test_right_pin_vertical_scroll_and_empty_filter_share_loaded_rows(qt_application,window,tmp_path):
+    from PySide6.QtCore import QPoint
+    source=tmp_path/'scroll.csv'
+    source.write_text('A,B,C,D,E\n'+''.join(f'{i},user{i},id{i},text{i},value{i}\n' for i in range(120)))
+    case=Case(tmp_path/'scroll.timeline');case.import_csv(source)
+    window.detach();window.attach(case);window.resize(780,460)
+    window.pin_column(1);window.pin_column(4,'right');settle(qt_application,window)
+    tree=window.tree;tree.verticalScrollBar().setValue(12);qt_application.processEvents()
+    indexes=[v.indexAt(QPoint(10,10)) for v in (tree,*tree.frozen_views)]
+    assert all(i.isValid() for i in indexes)
+    assert len({window.model.node(i).values[0] for i in indexes})==1
+    tree.right_frozen.verticalScrollBar().setValue(20);qt_application.processEvents()
+    assert all(v.verticalScrollBar().value()==20 for v in (tree,*tree.frozen_views))
+    filtered=copy.deepcopy(window.view);filtered.filters=[Filter(0,'eq','absent')]
+    window.set_view(filtered);settle(qt_application,window)
+    assert window.model.rowCount()==0 and tree.right_frozen.isVisible()

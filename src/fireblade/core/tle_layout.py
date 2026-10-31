@@ -151,9 +151,9 @@ def read_tle_layout(path, headers):
         if not 20 <= width <= 10000:
             raise ValueError("Largeur de colonne invalide")
         fixed = text(node, "Fixed", "None")
-        if fixed not in ("None", "Left", "0", "1", ""):
+        if fixed not in ("None", "Left", "Right", "0", "1", "2", ""):
             raise ValueError(
-                "Colonne épinglée à droite : cette disposition nécessite une adaptation"
+                "Côté d’épinglage non traduit : " + fixed
             )
         group = int(text(node, "GroupIndex", "-1"))
         columns.append(
@@ -161,7 +161,8 @@ def read_tle_layout(path, headers):
                 column=index,
                 position=visible,
                 width=width,
-                pinned=fixed in ("Left", "1"),
+                pinned=fixed in ("Left", "Right", "1", "2"),
+                pin_side="right" if fixed in ("Right", "2") else "left" if fixed in ("Left", "1") else None,
                 group=group,
                 sort=text(node, "SortOrder", "None"),
                 sort_index=int(text(node, "SortIndex", "-1")),
@@ -196,7 +197,8 @@ def read_tle_layout(path, headers):
         for c in sorted(columns, key=lambda c: c["group"])
         if c["group"] >= 0
     ]
-    view.pinned_columns = [c["column"] for c in columns if c["pinned"]]
+    view.pinned_columns = [c["column"] for c in columns if c["pin_side"] == "left" and c["position"] >= 0]
+    view.right_pinned_columns = [c["column"] for c in columns if c["pin_side"] == "right" and c["position"] >= 0]
     view.sorts = [
         SortKey(
             c["column"],

@@ -208,3 +208,8 @@ Les règles statistiques et graphiques proposent aussi un calcul sur toute la so
 
 
 **Affichage → Préférences → Personnaliser les couleurs** règle le fond des fenêtres, le texte, les champs, les lignes alternées et la sélection. « Rétablir les couleurs du thème » retrouve les réglages clair/sombre. Les règles d’icônes proposent aussi triangles, carrés, losanges, étoiles, classements et drapeaux ; les PNG personnels restent utilisables.
+
+
+## Épingler une colonne à droite
+
+Clic droit sur l’en-tête → **Épingler à droite**. La colonne reste visible à droite pendant le défilement horizontal. Les deux côtés peuvent être utilisés simultanément. Le même menu permet de déplacer la colonne à gauche ou de la désépingler. Masquer une colonne épinglée la retire aussi de son volet. Les vues, dispositions et sessions conservent le côté et la largeur ; copie et export placent les colonnes épinglées à droite en fin de tableau. Les layouts TLE `Fixed=Right` sont repris.

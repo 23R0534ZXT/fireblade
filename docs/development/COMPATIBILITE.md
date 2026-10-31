@@ -34,7 +34,7 @@ Exemple de profil personnel :
 
 ## Migration de layouts
 
-Le lecteur prend en charge les propriétés XML de colonnes et leurs noms de contrôle, ordre, visibilité, largeur, épinglage à gauche, tris, groupes et intervalles temporels ; filtres actifs, recherche, résumés, règles de format par expression ou valeur. Les quatre layouts officiels de régression sont conservés sous `tests/fixtures/tle-layouts`, avec provenance et empreintes.
+Le lecteur prend en charge les propriétés XML de colonnes et leurs noms de contrôle, ordre, visibilité, largeur, épinglage à gauche ou à droite, tris, groupes et intervalles temporels ; filtres actifs, recherche, résumés, règles de format par expression ou valeur. Les quatre layouts officiels de régression sont conservés sous `tests/fixtures/tle-layouts`, avec provenance et empreintes.
 
 Une colonne absente d’une version d’export est signalée. Une expression qui dépend d’un champ absent ou une règle non traduite arrête l’import au lieu de modifier silencieusement les résultats. Les couleurs ARGB sont composées sur un fond clair et cette adaptation est signalée ; gras, italique, souligné et barré des polices de règles sont repris. Les règles standards à barres, échelles de deux/trois couleurs et jeux de trois à cinq icônes sont traduites, ainsi que les classements, moyennes, doublons et valeurs uniques. Les seuils, leurs comparaisons strictes et le plancher sont conservés. Les formes prédéfinies sont adaptées et signalées ; les images PNG intégrées sont conservées. Les options propres à DevExpress ne deviennent pas automatiquement des préférences Qt.
 

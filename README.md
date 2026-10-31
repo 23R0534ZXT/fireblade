@@ -65,7 +65,7 @@ Les ajouts de présentation restent dans les menus : le démarrage conserve une 
 | Onglets | Recherche par nom, plusieurs rangées, réouverture du dernier fermé ; une seule base active |
 | Sessions | Vues, analyses et dispositions ; import des sources et tags des sessions `.tle_sess` |
 | Signets et notes | Ligne individuelle ou sélection multiple : marquer, ajouter, remplacer, retirer |
-| Présentation | Colonnes épinglées, clair/sombre, police et formats de dates ; règles locales/globales, couleurs, styles de texte, barres, dégradés et indicateurs |
+| Présentation | Colonnes épinglées à gauche/droite, clair/sombre, police et formats de dates ; règles locales/globales, couleurs, styles de texte, barres, dégradés et indicateurs |
 | Règles partagées | Correspondance par noms de colonnes, import/export JSON, rechargement et désactivation par vue |
 | Plugins TLE | Lecteurs DLL explicites et fonctions personnalisées, helper .NET autonome intégré |
 | Détails | Valeurs complètes, notes, JSON/XML formaté, panneau à droite/en bas et filtrage depuis les détails |

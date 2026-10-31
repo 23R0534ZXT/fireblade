@@ -121,3 +121,12 @@ def test_documented_xml_variants_and_predefined_style(tmp_path,kind,properties,e
         assert view.format_rules[0].bold and view.format_rules[0].use_foreground and not view.format_rules[0].use_background
         assert {k for k,v in case.page_styles(view,case.page(view)).items() if v}==expected
     finally:case.close()
+
+
+def test_layout_imports_both_pinned_sides_and_keeps_hidden_fixed_columns_hidden(tmp_path):
+    path=tmp_path/'both.layout'
+    columns=''.join(f'<property name="Item{i}"><property name="FieldName">{name}</property><property name="Fixed">{side}</property><property name="VisibleIndex">{position}</property></property>' for i,(name,side,position) in enumerate([('A','Left',0),('B','Right',1),('C','Right',-1)]))
+    path.write_text(f'<XtraSerializer><property name="Columns">{columns}</property></XtraSerializer>')
+    layout=read_tle_layout(path,['A','B','C'])
+    assert layout.view.pinned_columns==[0] and layout.view.right_pinned_columns==[1]
+    assert layout.columns[1]['pin_side']=='right' and layout.columns[2]['position']==-1

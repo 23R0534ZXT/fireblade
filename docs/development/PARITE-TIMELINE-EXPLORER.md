@@ -28,7 +28,7 @@ Références : [manuel officiel](https://github.com/EZToolsManuals/EZToolsManual
 | Tri des groupes | Étendu | Valeur, effectif ou résumé ; sens réglable, départage stable |
 | Déplier/replier les groupes | Étendu | Hiérarchie complète indexée sur disque, toutes les lignes accessibles dans une fenêtre paginée bornée ; repli vers l’arbre interactif |
 | Colonnes visibles, ordre, largeurs | Présent | Copie et export suivent les colonnes visibles dans leur ordre visuel |
-| Colonnes épinglées | Ajoutées | À gauche, modèle et sélection partagés ; état dans la vue |
+| Colonnes épinglées | Ajoutées | À gauche et à droite simultanément, modèle et sélection partagés ; côtés et largeurs enregistrés dans la vue |
 | Réinitialiser les largeurs | Ajouté | Ctrl+R |
 | Dispositions enregistrées | Présent | Vues dans l’analyse et fichier portable `.fireblade-view` |
 | Import des layouts TLE | Partiel | Colonnes et noms de contrôles, filtres compatibles, recherche, groupes temporels, tris, résumés, règles expression/valeur, statistiques et graphiques standards ; variantes non traduites refusées |

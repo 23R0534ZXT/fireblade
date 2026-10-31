@@ -78,6 +78,8 @@ def import_plugin(case,source,plugin,type_name,progress=lambda _:None):
             plugin=dict(path=str(plugin),sha256=plugin_hash,type=type_name,columns=result['columns'],transformed=True))
         info=case._import_table(target,',','utf-8',progress,provenance=provenance)
         if info['rows']!=result['rows']:raise ValueError('Comptage du plugin incohérent')
+        from fireblade.core.plugin_registry import approve
+        approve(plugin,source=source,reader=type_name)
         return info
 
 
@@ -126,11 +128,7 @@ class FunctionSession:
         self.logs.close()
 
 
-def _register_functions(case,path):
-    # A cancelled/failed host can be reloaded explicitly without reopening the case.
-    dead={s for s in case._plugin_sessions if s.process.poll() is not None}
-    case._plugin_functions={n:s for n,s in case._plugin_functions.items() if s not in dead}
-    case._plugin_sessions=[s for s in case._plugin_sessions if s not in dead]
+def ensure_udf(case):
     if not case._plugin_udf:
         def plugin_scalar(name,payload):
             session=case._plugin_functions.get(name.casefold())
@@ -138,6 +136,14 @@ def _register_functions(case,path):
             return session.evaluate(name,json.loads(payload))
         case.db.create_function('__fireblade_plugin_eval',plugin_scalar,['VARCHAR','VARCHAR'],'VARCHAR',null_handling='special',side_effects=True)
         case._plugin_udf=True
+
+
+def _register_functions(case,path):
+    # A cancelled/failed host can be reloaded explicitly without reopening the case.
+    dead={s for s in case._plugin_sessions if s.process.poll() is not None}
+    case._plugin_functions={n:s for n,s in case._plugin_functions.items() if s not in dead}
+    case._plugin_sessions=[s for s in case._plugin_sessions if s not in dead]
+    ensure_udf(case)
     session=FunctionSession(path,case.check_cancelled)
     if not session.names:session.close();raise ValueError('Aucune fonction Evaluate(object[]) avec propriété Name trouvée')
     overlap=set(n.casefold() for n in session.names)&set(case._plugin_functions)
@@ -149,5 +155,10 @@ def _register_functions(case,path):
     return session.names
 
 
-def register_functions(case,path):
-    with case.operation():return _register_functions(case,path)
+def register_functions(case,path,remember=True):
+    with case.operation():
+        names=_register_functions(case,path)
+        if remember and not case._read_only:
+            from fireblade.core.plugin_registry import remember_functions
+            remember_functions(case,path)
+        return names

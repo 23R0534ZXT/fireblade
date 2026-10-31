@@ -49,6 +49,8 @@ class Case:
         self._read_only = read_only
         self._plugin_sessions=[]
         self._plugin_functions={}
+        self._saved_function_types={}
+        self.plugin_restore_errors=[]
         self.db = duckdb.connect(str(self.path), read_only=read_only)
         self.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
         self.db.execute(f"SET threads={self.settings.threads}")
@@ -64,13 +66,18 @@ class Case:
             row = self.db.execute("SELECT value FROM metadata WHERE key='derived'").fetchone()
             self.derived = json.loads(row[0]) if row else []
             self.headers += [d['name'] for d in self.derived]
+            from fireblade.core.plugin_registry import restore_functions
+            try:restore_functions(self)
+            except BaseException:
+                self.close()
+                raise
         else:
             self.info = {}
             self.derived = []
 
     @property
     def expression_functions(self):
-        return {name:session.types.get(name,"text") for name,session in self._plugin_functions.items() if session.process.poll() is None}
+        return self._saved_function_types | {name:session.types.get(name,"text") for name,session in self._plugin_functions.items() if session.process.poll() is None}
 
     def close(self):
         with self.lock:

@@ -34,8 +34,13 @@ def verify(host,fixture):
                 assert case.count(View())==1
                 register_functions(case,fixture)
                 assert case.count(View(expression=FilterGroup('and',[Filter(0,'expression',"FixtureDouble(21)=42")])))==1
+                imported_path=case.path
             finally:case.close()
-        return dict(status='passed',checks=['plugin inspection','typed import','source provenance','exact numeric UDF','Unicode UDF','NULL UDF','UDF cancellation','explicit reload after cancellation'])
+            reopened=Case(imported_path)
+            try:
+                assert reopened.count(View(expression=FilterGroup('and',[Filter(0,'expression',"FixtureDouble(21)=42")])))==1
+            finally:reopened.close()
+        return dict(status='passed',checks=['plugin inspection','typed import','source provenance','exact numeric UDF','Unicode UDF','NULL UDF','UDF cancellation','explicit reload after cancellation','automatic restore on reopen'])
     finally:
         if previous is None:os.environ.pop('FIREBLADE_PLUGIN_HOST',None)
         else:os.environ['FIREBLADE_PLUGIN_HOST']=previous

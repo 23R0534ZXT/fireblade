@@ -30,7 +30,7 @@ def read_tle_session(path):
             raise ValueError('Référence ou liste de tags invalide (100000 tags maximum par fichier)')
         source = Path(source)
         source = (path.parent/source).resolve() if not source.is_absolute() else source.resolve()
-        if not source.is_file() or source.suffix.lower() not in ('.csv','.tsv','.txt','.xlsx','.xls'):
+        if not source.is_file():
             raise ValueError(f'Fichier de session absent ou non pris en charge : {source}')
         if any(type(tag) is not int or tag < 1 for tag in tags):
             raise ValueError('Les tags doivent être des numéros d’enregistrement positifs')
@@ -67,17 +67,34 @@ class TleSessionImport:
                         self.current = case
                     if self.cancelled.is_set():
                         raise OperationCancelled()
-                    if source.suffix.lower() in ('.xls','.xlsx'):
+                    from fireblade.core.plugin_registry import reader_for_source
+                    reader=reader_for_source(source)
+                    if reader:
+                        from fireblade.core.tle_plugins import import_plugin
+                        import_plugin(case,source,*reader)
+                    elif source.suffix.lower() in ('.xls','.xlsx'):
                         from fireblade.core.spreadsheets import sheet_names
                         if source.suffix.lower() == '.xls':
                             from fireblade.core.legacy_excel import sheet_names
                         case.import_excel(source, sheet_names(source)[0])
-                    else:
+                    elif source.suffix.lower() in ('.csv','.tsv','.txt'):
                         case.import_csv(source,encoding="auto")
+                    else:raise ValueError('Aucun lecteur enregistré pour : '+str(source))
                     from fireblade.core.profiles import prepare_case_profile
                     _name,view,_order=prepare_case_profile(case,self.auto_profiles)
+                    if reader:
+                        view=view or View();fields=case.info['plugin']['columns']
+                        view.boolean_columns=sorted(set(view.boolean_columns)|{i for i,c in enumerate(fields) if 'System.Boolean' in c.get('type','')})
+                        view.timestamp_columns=sorted(set(view.timestamp_columns)|{i for i,c in enumerate(fields) if 'System.DateTime' in c.get('type','')})
                     if tags:
-                        case.bookmark_many(tags, '', 'mark')
+                        if reader and 'TLE_SourceLine' in case.headers:
+                            column=case.column(case.headers.index('TLE_SourceLine'))
+                            ids=[]
+                            for start in range(0,len(tags),500):
+                                batch=tags[start:start+500]
+                                ids.extend(row[0] for row in case.db.execute(f'SELECT __row_id FROM events WHERE try_cast({column} AS BIGINT) IN ('+','.join('?' for _ in batch)+')',batch).fetchall())
+                            if ids:case.bookmark_many(ids,'','mark')
+                        else:case.bookmark_many(tags, '', 'mark')
                     snapshots.append(AnalysisSnapshot(str(target), case.info, view or View(), b''))
                 finally:
                     with self.lock:

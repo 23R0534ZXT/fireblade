@@ -27,9 +27,15 @@ def read_graphic(item,node,kind,text,properties,color,resolve,aliases,warnings):
     foreground=color(first('MaximumColor','MaxColor','EndColor',default='Blue'),'#0000ff',warnings)
     rule=FormatRule(condition=FilterGroup(),target=target,value_column=value_column,visual=modes[name],background=background,foreground=foreground,
         minimum=low,maximum=high,bound_mode=lower,maximum_mode=upper,use_font=False,show_values=text(node,'ShowValues','true').lower()!='false',stop_if_true=text(item,'StopIfTrue','false').lower()=='true',enabled=text(item,'Enabled','true').lower()!='false')
+    predefined=text(node,'PredefinedName')
+    if predefined and rule.visual in ('scale','scale3'):
+        palette=[p.strip() for p in predefined.split('-')]
+        if len(palette)!=(3 if rule.visual=='scale3' else 2):raise ValueError('Échelle prédéfinie non traduite : '+predefined)
+        if not first('MinimumColor','MinColor','StartColor'):rule.background=color(palette[0],'#ffffff',warnings)
+        if not first('MaximumColor','MaxColor','EndColor'):rule.foreground=color(palette[-1],'#0000ff',warnings)
     rule.zero_based=text(node,'AutomaticType','Default')=='ZeroBased'
     if rule.visual=='scale3':
-        rule.middle_color=color(first('MiddleColor','MidColor',default='Yellow'),'#ffff00',warnings)
+        rule.middle_color=color(first('MiddleColor','MidColor',default=(palette[1] if predefined else 'Yellow')),'#ffff00',warnings)
         middle_type=first('MiddleType','MidType',default='Automatic')
         rule.middle_mode='percent' if middle_type in ('Automatic','Auto','Default') else mode(middle_type)
         rule.middle_value=first('Middle','MiddleValue','MidValue',default='50')

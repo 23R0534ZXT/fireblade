@@ -105,3 +105,19 @@ def test_graphical_layout_preserves_descending_icon_threshold_comparisons_and_fl
     assert rule.icon_thresholds==['33','67'] and rule.icon_comparisons==['>','>'] and rule.icon_floor=='0' and rule.icon_floor_comparison=='>'
     from fireblade.ui.visual_rules import icon_level
     assert [icon_level(rule,str(v),max(0,min(1,v/100))) for v in [-1,0,1,33,34,67,68]]==[-1,-1,0,0,1,1,2]
+
+
+@pytest.mark.parametrize('kind,properties,expected',[
+ ('UniqueDuplicate','<property name="FormatType">Unique</property>',{3}),
+ ('AboveBelowAverage','<property name="AverageType">EqualOrAbove</property>',{3}),
+ ('Contains','<property name="Values"><property name="Item1">1</property><property name="Item2">3</property></property>',{1,2,3}),
+ ('Value','<property name="Condition">None</property>',{1,2,3}),
+])
+def test_documented_xml_variants_and_predefined_style(tmp_path,kind,properties,expected):
+    path=tmp_path/'s.layout';path.write_text(f'''<XtraSerializer><property name="Columns"><property name="Item1"><property name="FieldName">Value</property></property></property><property name="FormatRules"><property name="Item1"><property name="ColumnName">Value</property><property name="RuleType">#FormatConditionRule{kind}</property><property name="Rule">{properties}<property name="PredefinedName">Red Bold Text</property></property></property></property></XtraSerializer>''')
+    source=tmp_path/'s.csv';source.write_text('Value\n1\n1\n3\n');case=Case(tmp_path/'s.timeline')
+    try:
+        case.import_csv(source);view=read_tle_layout(path,case.headers).view;case.validate_view(view)
+        assert view.format_rules[0].bold and view.format_rules[0].use_foreground and not view.format_rules[0].use_background
+        assert {k for k,v in case.page_styles(view,case.page(view)).items() if v}==expected
+    finally:case.close()

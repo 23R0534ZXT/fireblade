@@ -202,3 +202,6 @@ Les valeurs invalides restent sans graphique. Masquer les valeurs ne change ni l
 ## Plugins de lecture et fonctions TLE
 
 **Fichier → Importer avec un plugin TLE (.NET)…** permet de choisir une DLL de lecteur et une source. **Analyse → Charger des fonctions .NET…** ajoute ses fonctions aux expressions, pour l’analyse active. Ces fonctions doivent être rechargées après réouverture ; aucune DLL n’est exécutée automatiquement depuis une vue. Utiliser l’import CSV natif pour les gros volumes habituels. Voir le [guide des plugins](../development/PLUGINS.md) pour les contrats et limites.
+
+
+Les règles statistiques et graphiques proposent aussi un calcul sur toute la source, en ignorant le filtre actif. Les moyennes acceptent les comparaisons strictes ou inclusives. Les dates relatives utilisent `InDateRange([Date], 'Today')` et les périodes proposées dans l’éditeur de règles ; les jours sont calculés en UTC, les semaines commencent le lundi. L’import XML reprend les dates relatives combinées, les listes de valeurs et les douze styles texte/fond prédéfinis documentés de DevExpress. Les palettes prédéfinies sont adaptées ; les styles personnalisés inconnus restent refusés.

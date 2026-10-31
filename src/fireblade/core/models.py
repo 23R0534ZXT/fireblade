@@ -53,6 +53,7 @@ class FormatRule:
     stat_percent: bool = False
     stat_ignore_case: bool = False
     stat_include_null: bool = False
+    all_source_rows: bool = False
     zero_based: bool = False
     negative_color: str = "#d64c4c"
     axis_color: str = "#777777"

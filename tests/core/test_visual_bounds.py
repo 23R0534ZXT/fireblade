@@ -40,3 +40,12 @@ def test_middle_percentiles_zero_based_and_independent_percent_range(tmp_path):
         resolved=resolve_rules(case,View(),[replace(rule,bound_mode='auto',zero_based=True)])[0]
         assert (Decimal(resolved.minimum),Decimal(resolved.maximum))==(0,100)
     finally:case.close()
+
+
+def test_explicit_all_source_bounds_do_not_mix_with_filtered_cache(tmp_path):
+    source=tmp_path/'s.csv';source.write_text('Value\n1\n2\n100\n');case=Case(tmp_path/'s.timeline')
+    try:
+        case.import_csv(source);rule=FormatRule(target=0,visual='bar',bound_mode='auto')
+        view=View(filters=[Filter(0,'le','2')]);both=resolve_rules(case,view,[replace(rule,all_source_rows=True),rule])
+        assert [Decimal(r.maximum) for r in both]==[100,2]
+    finally:case.close()

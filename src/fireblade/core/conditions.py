@@ -70,7 +70,7 @@ def validate_format_rules(rules, column, numeric_expression, limit=32):
         for encoded in rule.icon_images:
             if encoded:png_bytes(encoded)
             elif encoded!='':raise ValueError('Icône invalide')
-        if rule.statistic not in ('','top','bottom','above_avg','below_avg','unique','duplicate'):raise ValueError('Règle statistique inconnue')
+        if rule.statistic not in ('','top','bottom','above_avg','below_avg','above_eq_avg','below_eq_avg','unique','duplicate'):raise ValueError('Règle statistique inconnue')
         if rule.statistic and rule.value_column is None and rule.target is None:raise ValueError('Champ de valeurs requis pour la règle statistique')
         if rule.statistic in ('top','bottom'):
             try:
@@ -121,7 +121,7 @@ def validate_format_rules(rules, column, numeric_expression, limit=32):
         compile_condition(rule.condition, column, numeric_expression)
         if rule.target is not None:
             column(rule.target)
-        if any(type(v) is not bool for v in (rule.enabled, rule.bold, rule.italic, rule.underline, rule.strikeout,rule.stop_if_true,rule.use_background,rule.use_foreground,rule.use_font,rule.show_values,rule.zero_based,rule.draw_axis,rule.stat_percent,rule.stat_ignore_case,rule.stat_include_null)):
+        if any(type(v) is not bool for v in (rule.enabled, rule.bold, rule.italic, rule.underline, rule.strikeout,rule.stop_if_true,rule.use_background,rule.use_foreground,rule.use_font,rule.show_values,rule.zero_based,rule.draw_axis,rule.stat_percent,rule.stat_ignore_case,rule.stat_include_null,rule.all_source_rows)):
             raise ValueError("Activation et gras doivent être des booléens")
         if not all(isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color) for color in (rule.background, rule.foreground,rule.middle_color,rule.negative_color,rule.axis_color,*rule.icon_colors)):
             raise ValueError("Couleur invalide ; utilisez #RRGGBB")

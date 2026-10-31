@@ -16,7 +16,8 @@ def source_column(rule):return rule.value_column if rule.value_column is not Non
 def matches(case,view,rules,rows,numbers):
     active=[(i,r) for i,r in enumerate(rules) if r.enabled and r.statistic]
     if not active or not rows:return {}
-    where,args=case.where(view)
+    filtered_where,filtered_args=case.where(view)
+    where,args=filtered_where,filtered_args
     context=(where,tuple(args),case._bookmark_revision,getattr(case,'_visual_query_revision',0))
     result={}
     with case.operation():
@@ -24,11 +25,12 @@ def matches(case,view,rules,rows,numbers):
             for name in getattr(case,'_stat_frequencies',{}).values():case.db.execute(f'DROP TABLE IF EXISTS "{name}"')
             case._stat_context=context;case._stat_frequencies={};case._stat_data={};case._stat_counts=OrderedDict();case._stat_bytes=0
         for index,rule in active:
-            column=source_column(rule);raw=case.column(column);key=(column,rule.statistic,rule.stat_rank,rule.stat_percent)
+            where,args=("",[]) if rule.all_source_rows else (filtered_where,filtered_args)
+            column=source_column(rule);raw=case.column(column);key=(column,rule.statistic,rule.stat_rank,rule.stat_percent,rule.all_source_rows)
             selected=set()
             if rule.statistic in ('unique','duplicate'):
                 transformed=f'lower({raw})' if rule.stat_ignore_case else raw
-                frequency_key=(column,rule.stat_ignore_case)
+                frequency_key=(column,rule.stat_ignore_case,rule.all_source_rows)
                 if frequency_key not in case._stat_frequencies:
                     name='__fb_frequency_'+uuid.uuid4().hex
                     with case.serial_query_threads():case.db.execute(f'CREATE TEMP TABLE "{name}" AS SELECT hash({transformed}) AS h,count(*) AS n FROM events{where} GROUP BY 1',args)
@@ -37,7 +39,7 @@ def matches(case,view,rules,rows,numbers):
                 values=list(dict.fromkeys(row[column+1] for row in rows if rule.stat_include_null or row[column+1] is not None))
                 found={};missing=[]
                 for value in values:
-                    count_key=(column,rule.stat_ignore_case,value)
+                    count_key=(column,rule.stat_ignore_case,rule.all_source_rows,value)
                     if count_key in case._stat_counts:found[value]=case._stat_counts[count_key][0];case._stat_counts.move_to_end(count_key)
                     else:missing.append(value)
                 if missing:
@@ -57,7 +59,7 @@ def matches(case,view,rules,rows,numbers):
                         count=exact.get(normal,0) if count>1 else count;found[original]=count
                         cost=sys.getsizeof(original)+128
                         if cost<=131072:
-                            count_key=(column,rule.stat_ignore_case,original)
+                            count_key=(column,rule.stat_ignore_case,rule.all_source_rows,original)
                             while case._stat_counts and case._stat_bytes+cost>8*1024**2:
                                 _,(_,removed)=case._stat_counts.popitem(last=False);case._stat_bytes-=removed
                             case._stat_counts[count_key]=(count,cost);case._stat_bytes+=cost
@@ -69,7 +71,7 @@ def matches(case,view,rules,rows,numbers):
             else:
                 if key not in case._stat_data:
                     expression=case.numeric_expression(raw);valid=f'SELECT v FROM (SELECT {expression} AS v FROM events{where}) s WHERE v IS NOT NULL'
-                    if rule.statistic in ('above_avg','below_avg'):
+                    if rule.statistic in ('above_avg','below_avg','above_eq_avg','below_eq_avg'):
                         total=Decimal(0);count=0
                         with localcontext() as precision:
                             precision.prec=80;cursor=case.db.execute(valid,args)
@@ -95,11 +97,11 @@ def matches(case,view,rules,rows,numbers):
                 for row in rows:
                     value=numbers.get((row[0],column))
                     if value is None:continue
-                    if rule.statistic in ('above_avg','below_avg'):
+                    if rule.statistic in ('above_avg','below_avg','above_eq_avg','below_eq_avg'):
                         total,count=data
                         with localcontext() as precision:
                             precision.prec=80;comparison=value*count
-                            valid=count and (comparison>total if rule.statistic=='above_avg' else comparison<total)
+                            valid=count and {'above_avg':comparison>total,'below_avg':comparison<total,'above_eq_avg':comparison>=total,'below_eq_avg':comparison<=total}[rule.statistic]
                     else:valid=data is not None and (value>=data if rule.statistic=='top' else value<=data)
                     if valid:selected.add(row[0])
             case.check_cancelled();result[index]=selected

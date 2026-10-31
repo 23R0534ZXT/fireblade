@@ -299,14 +299,29 @@ def read_tle_layout(path, headers):
                 name=text(item,'ColumnName') or text(item,'Column')
                 value_column=aliases[name] if name in aliases else resolve(name)
                 if normalized_type=='FormatConditionRuleTopBottom':
-                    statistic='bottom' if text(rule_node,'TopBottom','Top')=='Bottom' else 'top'
+                    rank_side=text(rule_node,'TopBottom','Top');rank_type=text(rule_node,'RankType','Automatic')
+                    if rank_side not in ('Top','Bottom') or rank_type not in ('Automatic','Number','Percent'):raise ValueError('Type de classement non traduit')
+                    statistic='bottom' if rank_side=='Bottom' else 'top'
                     stat_rank=text(rule_node,'Rank','10');stat_percent=text(rule_node,'RankType','Number')=='Percent'
                 elif normalized_type=='FormatConditionRuleAboveBelowAverage':
                     average=text(rule_node,'AverageType','Above')
-                    if average not in ('Above','Below'):raise ValueError('Type de moyenne non traduit : '+average)
-                    statistic='below_avg' if average=='Below' else 'above_avg'
-                else:statistic='unique' if text(rule_node,'UniqueDuplicate','Duplicate')=='Unique' else 'duplicate'
+                    if average not in ('Above','Below','EqualOrAbove','EqualOrBelow'):raise ValueError('Type de moyenne non traduit : '+average)
+                    statistic={'Above':'above_avg','Below':'below_avg','EqualOrAbove':'above_eq_avg','EqualOrBelow':'below_eq_avg'}[average]
+                else:
+                    unique_type=text(rule_node,'FormatType') or text(rule_node,'UniqueDuplicate','Duplicate')
+                    if unique_type not in ('Unique','Duplicate'):raise ValueError('Type de doublon non traduit')
+                    statistic='unique' if unique_type=='Unique' else 'duplicate'
                 condition=FilterGroup()
+            elif normalized_type in ('FormatConditionRuleDateOccuring','FormatConditionRuleDateOccurring'):
+                name=text(item,'ColumnName') or text(item,'Column');col=aliases[name] if name in aliases else resolve(name)
+                field=headers[col].replace(']',']]');dates=[v.strip() for v in text(rule_node,'DateType','Yesterday').replace('|',',').split(',')]
+                condition=FilterGroup('or',[Filter(col,'expression',f"InDateRange([{field}], '{date}')") for date in dates])
+                warnings.append('Dates relatives adaptées à UTC ; semaine commençant le lundi')
+            elif normalized_type=='FormatConditionRuleContains':
+                name=text(item,'ColumnName') or text(item,'Column');col=aliases[name] if name in aliases else resolve(name)
+                values=properties(rule_node).get('Values')
+                if values is None:raise ValueError('Liste de valeurs de format absente')
+                condition=FilterGroup('or',[Filter(col,'eq',v.text or '') for v in values])
             elif condition_text:
                 condition = expression(condition_text)
             elif rule_type in ("#FormatConditionRuleValue", "FormatConditionRuleValue"):
@@ -324,7 +339,8 @@ def read_tle_layout(path, headers):
                     "BeginsWith": "starts",
                     "EndsWith": "ends",
                 }
-                if op in ("Between", "NotBetween"):
+                if op=="None":condition=FilterGroup()
+                elif op in ("Between", "NotBetween"):
                     condition = FilterGroup(
                         "and",
                         [
@@ -360,21 +376,30 @@ def read_tle_layout(path, headers):
             size_match=re.search(r',\s*(\d+(?:\.\d+)?)\s*pt\b',font,re.I)
             font_family=font.split(',')[0].strip() if size_match else ''
             font_size=float(size_match.group(1)) if size_match else 0
+            predefined=text(rule_node,'PredefinedName')
+            if predefined and not (text(appearance,'BackColor') or text(appearance,'ForeColor') or font):
+                from fireblade.core.tle_styles import style
+                defaults=style(predefined)
+            else:defaults={}
+            options=properties(appearance).get('Options')
+            def use_option(name,present):
+                flag=(text(options,name) if options is not None else '') or text(appearance,'Options.'+name)
+                return flag.lower()=='true' if flag else present
             view.format_rules.append(
                 FormatRule(
                     condition,
-                    background,
-                    foreground,
-                    "bold" in font.lower(),
+                    defaults.get("background",background),
+                    defaults.get("foreground",foreground),
+                    defaults.get("bold","bold" in font.lower()),
                     target,
                     enabled,
-                    italic='italic' in font.lower(),
+                    italic=defaults.get('italic','italic' in font.lower()),
                     underline='underline' in font.lower(),
-                    strikeout='strikeout' in font.lower(),
+                    strikeout=defaults.get('strikeout','strikeout' in font.lower()),
                     font_family=font_family,font_size=font_size,
                     statistic=statistic,stat_rank=stat_rank,stat_percent=stat_percent,value_column=value_column,
                     stop_if_true=text(item,'StopIfTrue','false').lower()=='true',
-                    use_background=bool(text(appearance,'BackColor')),use_foreground=bool(text(appearance,'ForeColor')),use_font=bool(font),
+                    use_background=use_option('UseBackColor','background' in defaults or bool(text(appearance,'BackColor'))),use_foreground=use_option('UseForeColor','foreground' in defaults or bool(text(appearance,'ForeColor'))),use_font=use_option('UseFont',any(k in defaults for k in ('bold','italic','strikeout')) or bool(font)),
                 )
             )
     if text(root, "GroupSummarySortInfoState"):

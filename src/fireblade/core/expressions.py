@@ -822,6 +822,12 @@ class Compiler:
                 return result(
                     f"date_diff('{unit}',{args[0].sql},{args[1].sql})", "number"
                 )
+        if name=='indaterange':
+            arity(2)
+            if args[1].sql!='?' or len(args[1].parameters)!=1 or not isinstance(args[1].parameters[0],str):raise ValueError('Nom de période constant requis')
+            from fireblade.core.date_ranges import compile_range
+            date=self.cast(args[0],'date');sql,repeats=compile_range(date.sql,args[1].parameters[0])
+            return Value(sql,'boolean',date.parameters*repeats)
         predicates = {
             "istoday": ("day", 0),
             "isyesterday": ("day", -1),

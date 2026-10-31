@@ -336,7 +336,7 @@ def test_graphical_rule_editor_model_persistence_and_paint(case, mode, tmp_path)
     from PySide6.QtGui import QImage, QPainter, QColor
     from PySide6.QtWidgets import QStyleOptionViewItem
     app = QApplication.instance() or QApplication([])
-    rule = FormatRule(target=1, visual=mode, minimum='0', maximum='5000', background='#ff0000', foreground='#0000ff')
+    rule = FormatRule(target=1, visual=mode, italic=True, underline=True, strikeout=True, minimum='0', maximum='5000', background='#ff0000', foreground='#0000ff')
     rule.condition = FilterGroup('and', [Filter(1, 'not_empty')])
     encoded = RuleBook(case.headers, [rule]).to_bytes()
     assert RuleBook.from_bytes(encoded).rules == [rule]
@@ -346,6 +346,8 @@ def test_graphical_rule_editor_model_persistence_and_paint(case, mode, tmp_path)
     try:
         window.set_view(View(format_rules=[rule]));settle(app, window)
         index = window.model.index(0,2)
+        font = index.data(Qt.FontRole)
+        assert font.italic() and font.underline() and font.strikeOut()
         graphic = visual_value(rule,'4624')
         assert graphic[1] == pytest.approx(4624/5000)
         assert visual_value(rule,None) is None and visual_value(rule,'NaN') is None

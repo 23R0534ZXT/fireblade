@@ -251,6 +251,9 @@ class GridModel(QAbstractItemModel):
                         return QColor(rule.foreground)
                     font = QFont()
                     font.setBold(rule.bold)
+                    font.setItalic(rule.italic)
+                    font.setUnderline(rule.underline)
+                    font.setStrikeOut(rule.strikeout)
                     return font
         if role == Qt.BackgroundRole and not node.group and node.note is not None:
             return QColor("#665c27" if self.dark else "#fff4c2")

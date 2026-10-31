@@ -346,10 +346,11 @@ def read_tle_layout(path, headers):
                     "bold" in font.lower(),
                     target,
                     enabled,
+                    italic='italic' in font.lower(),
+                    underline='underline' in font.lower(),
+                    strikeout='strikeout' in font.lower(),
                 )
             )
-            if any(x in font.lower() for x in ("italic", "underline", "strikeout")):
-                warnings.append("Police de règle : seul le gras est repris")
     if text(root, "GroupSummarySortInfoState"):
         warnings.append("Tri de résumés sérialisé TLE : vérifier le tri des groupes")
     if len(view.format_rules) > 32 or len(view.summaries) > 16:

@@ -38,7 +38,7 @@ def test_layout_filter_rules_summaries_and_datetime_groups_execute(tmp_path):
       <property name="Item2"><property name="FieldName">Size</property><property name="SortOrder">Descending</property><property name="SortIndex">0</property></property></property>
     <property name="ActiveFilterString">Upper([User]) = 'ALICE' And [Size] * 2 &gt;= 10</property>
     <property name="GroupSummary"><property name="Item1"><property name="FieldName">Size</property><property name="SummaryType">Sum</property></property></property>
-    <property name="FormatRules"><property name="Item1"><property name="ApplyToRow">true</property><property name="RuleType">#FormatConditionRuleExpression</property><property name="Rule"><property name="Expression">[Size]&gt;5</property><property name="Appearance"><property name="BackColor">255, 0, 0</property><property name="ForeColor">White</property><property name="Font">Segoe UI, 10pt, style=Bold</property></property></property></property></property>
+    <property name="FormatRules"><property name="Item1"><property name="ApplyToRow">true</property><property name="RuleType">#FormatConditionRuleExpression</property><property name="Rule"><property name="Expression">[Size]&gt;5</property><property name="Appearance"><property name="BackColor">255, 0, 0</property><property name="ForeColor">White</property><property name="Font">Segoe UI, 10pt, style=Bold, Italic, Underline, Strikeout</property></property></property></property></property>
     </XtraSerializer>''')
     source=tmp_path/'s.csv';source.write_text('User,Size\nalice,4\nalice,7\nbob,8\n')
     case=Case(tmp_path/'s.timeline')
@@ -50,6 +50,8 @@ def test_layout_filter_rules_summaries_and_datetime_groups_execute(tmp_path):
         leaves=case.page(layout.view,('alice',))
         assert case.page_styles(layout.view,leaves)=={2:(0,)}
         assert layout.view.format_rules[0].foreground=='#ffffff'
+        font_rule=layout.view.format_rules[0]
+        assert font_rule.bold and font_rule.italic and font_rule.underline and font_rule.strikeout
     finally:case.close()
 
 

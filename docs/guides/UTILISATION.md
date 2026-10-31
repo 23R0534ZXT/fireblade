@@ -200,3 +200,5 @@ Les barres sont dessinées sous le texte de la cellule. Le dégradé interpole l
 Les règles se conservent dans les vues et bibliothèques globales Fireblade. Les variantes graphiques propriétaires des layouts TLE ne sont pas encore importées automatiquement.
 
 Les exports PeScan/Wisp avec quatre lignes de préambule sont reconnus si leur en-tête correspond au schéma public attendu. Le préambule reste présent dans le fichier source et son SHA-256 est conservé.
+
+Les règles proposent également gras, italique, souligné et barré. Ces attributs sont conservés dans les vues et bibliothèques Fireblade et repris lors de l’import des règles compatibles d’un layout TLE.

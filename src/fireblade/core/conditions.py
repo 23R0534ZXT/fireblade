@@ -78,7 +78,7 @@ def validate_format_rules(rules, column, numeric_expression, limit=32):
         compile_condition(rule.condition, column, numeric_expression)
         if rule.target is not None:
             column(rule.target)
-        if type(rule.enabled) is not bool or type(rule.bold) is not bool:
+        if any(type(v) is not bool for v in (rule.enabled, rule.bold, rule.italic, rule.underline, rule.strikeout)):
             raise ValueError("Activation et gras doivent être des booléens")
         if not all(isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color) for color in (rule.background, rule.foreground)):
             raise ValueError("Couleur invalide ; utilisez #RRGGBB")

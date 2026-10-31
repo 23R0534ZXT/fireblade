@@ -1,5 +1,7 @@
 # Fireblade — prototype Windows 0.4
 
+Cette évolution ajoute les barres de données, dégradés de deux couleurs et indicateurs à trois niveaux dans les règles de coloration. Les bornes numériques sont explicites et identiques sur toutes les pages. Les règles conservent désormais aussi italique, souligné et barré, y compris lors de l’import des styles compatibles de layouts TLE. Les préambules PeScan/Wisp sont reconnus après vérification de leur en-tête attendu. Les variantes graphiques XML DevExpress ne sont pas encore traduites.
+
 Télécharger uniquement **Fireblade.exe**, puis le lancer sous Windows x64. Python, Excel et une installation préalable ne sont pas nécessaires. Le guide, les réglages par défaut et les licences sont intégrés ; les analyses et préférences personnelles sont enregistrées séparément dans le profil Windows. L’exécutable n’est pas signé.
 
 Cette évolution complète les expressions imbriquées, les colonnes calculées persistantes et les conversions UTC avec neuf décimales et fuseaux Windows/IANA. Elle ajoute les adaptations de supertimelines, la migration des préférences `TLE_settings.xml` et des layouts TLE : colonnes, recherche, filtres compatibles, groupes, résumés et règles par valeur/expression. Les sources restent intactes et identifiées par SHA-256.

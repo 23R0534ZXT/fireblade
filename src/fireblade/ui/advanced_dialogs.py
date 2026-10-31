@@ -216,6 +216,9 @@ class RulesDialog(QDialog):
         controls.addWidget(self.foreground)
         self.bold = QCheckBox("Gras")
         controls.addWidget(self.bold)
+        self.italic, self.underline, self.strikeout = QCheckBox('Italique'), QCheckBox('Souligné'), QCheckBox('Barré')
+        for widget in (self.italic, self.underline, self.strikeout):
+            controls.addWidget(widget)
         layout.addLayout(controls)
         visual_row = QHBoxLayout()
         self.visual = QComboBox()
@@ -253,7 +256,7 @@ class RulesDialog(QDialog):
     def store(self):
         if self.current >= 0:
             self.rules[self.current] = FormatRule(self.editor.value(), self.background.property("color"),
-                self.foreground.property("color"), self.bold.isChecked(), self.target.currentData(), self.enabled.isChecked(), self.visual.currentData(), self.minimum.text(), self.maximum.text())
+                self.foreground.property("color"), self.bold.isChecked(), self.target.currentData(), self.enabled.isChecked(), self.visual.currentData(), self.minimum.text(), self.maximum.text(), self.italic.isChecked(), self.underline.isChecked(), self.strikeout.isChecked())
 
     def refresh(self, selected):
         self.listing.blockSignals(True)
@@ -279,6 +282,9 @@ class RulesDialog(QDialog):
         self.enabled.setChecked(rule.enabled)
         self.target.setCurrentIndex(self.target.findData(rule.target))
         self.bold.setChecked(rule.bold)
+        self.italic.setChecked(rule.italic)
+        self.underline.setChecked(rule.underline)
+        self.strikeout.setChecked(rule.strikeout)
         self.visual.setCurrentIndex(self.visual.findData(rule.visual))
         self.minimum.setText(rule.minimum)
         self.maximum.setText(rule.maximum)
@@ -293,7 +299,7 @@ class RulesDialog(QDialog):
         self.editor = ExpressionEditor(self.headers, rule.condition)
         self.layout().replaceWidget(old, self.editor)
         old.deleteLater()
-        for widget in (self.editor, self.enabled, self.target, self.background, self.foreground, self.bold, self.visual, self.minimum, self.maximum):
+        for widget in (self.editor, self.enabled, self.target, self.background, self.foreground, self.bold, self.visual, self.minimum, self.maximum, self.italic, self.underline, self.strikeout):
             widget.setEnabled(index >= 0)
         self.message.clear()
 

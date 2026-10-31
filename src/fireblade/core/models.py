@@ -42,6 +42,9 @@ class FormatRule:
     visual: str = "none"
     minimum: str = "0"
     maximum: str = "100"
+    italic: bool = False
+    underline: bool = False
+    strikeout: bool = False
 
 
 @dataclass

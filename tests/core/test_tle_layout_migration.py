@@ -59,3 +59,23 @@ def test_untranslatable_expression_or_format_rule_is_never_silently_dropped(tmp_
     for value in ('<property name="ActiveFilterString">Unknown([ID])</property>', '<property name="FormatRules"><property name="Item1"><property name="RuleType">#UnknownRule</property></property></property>'):
         path.write_text(prefix+value+'</XtraSerializer>')
         with pytest.raises(ValueError):read_tle_layout(path,['ID'])
+
+
+def test_sigcheck_layout_boolean_filter_targets_converted_status(tmp_path):
+    definition=next(p for p in CATALOG if p['name']=='Sigcheck')
+    source=tmp_path/'sigcheck.csv'
+    with source.open('w',newline='') as f:
+        w=csv.DictWriter(f,fieldnames=definition['signature']);w.writeheader()
+        verified=next(h for h in definition['signature'] if h.casefold()=='verified')
+        w.writerow({verified:'Signed'});w.writerow({verified:'Unsigned'})
+    case=Case(tmp_path/'s.timeline')
+    try:
+        case.import_csv(source)
+        case.add_derived_columns(profile_transformations(detect_profile(case.headers),case.headers))
+        path=tmp_path/'sigcheck.layout'
+        path.write_text('<XtraSerializer><property name="Columns"><property name="Item1"><property name="Name">colVerified</property></property></property><property name="ActiveFilterString">[Verified] = True</property></XtraSerializer>')
+        layout=read_tle_layout(path,case.headers)
+        assert case.count(layout.view)==1
+        assert layout.columns[0]['column']==case.headers.index('Fireblade_Bool_Verified')
+        assert layout.columns[0]['column'] in layout.view.boolean_columns
+    finally:case.close()

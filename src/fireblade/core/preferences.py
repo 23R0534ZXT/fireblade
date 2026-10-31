@@ -16,6 +16,7 @@ class Preferences:
     font_size: int = 10
     copy_headers: bool = True
     right_click_copy: bool = False
+    auto_profiles: bool = True
     multiline_tabs: bool = False
     date_format: str = "source"
     details_position: str = "bottom"
@@ -44,7 +45,12 @@ class Preferences:
             raise ValueError("La police doit mesurer de 8 à 32 points")
         if any(
             type(getattr(self, key)) is not bool
-            for key in ("copy_headers", "right_click_copy", "multiline_tabs")
+            for key in (
+                "copy_headers",
+                "right_click_copy",
+                "multiline_tabs",
+                "auto_profiles",
+            )
         ):
             raise ValueError("Préférence booléenne invalide")
         from fireblade.core.timestamps import date_pattern

@@ -368,12 +368,20 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.statusBar().showMessage(message)
         result, errors = [], []
         job = Job(function)
+        def finish_when_idle():
+            # A queued done signal can arrive before QRunnable.run has returned.
+            # Keep processing events until ownership really leaves the pool;
+            # otherwise an immediate reopen is rejected by can_open_file().
+            if self.pool.activeThreadCount():
+                QTimer.singleShot(1,finish_when_idle)
+            else:
+                loop.quit()
         def done(value):
             result.append(value)
-            loop.quit()
+            finish_when_idle()
         def failed(error):
             errors.append(error)
-            loop.quit()
+            finish_when_idle()
         job.signals.done.connect(done)
         job.signals.error.connect(failed)
         job.signals.cancelled.connect(lambda: failed('Opération annulée'))
@@ -451,12 +459,24 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
 
         def importing():
             if path.suffix.lower() in (".xlsx", ".xls"):
-                return candidate.import_excel(path, sheet, progress.progress.emit)
-            return candidate.import_csv(path, delimiter, encoding, progress.progress.emit)
+                candidate.import_excel(path, sheet, progress.progress.emit)
+            else:
+                candidate.import_csv(path, delimiter, encoding, progress.progress.emit)
+            from fireblade.core.profiles import prepare_case_profile
+            return prepare_case_profile(candidate,self.preferences.auto_profiles)
+        def imported(result):
+            name,view,order=result
+            if view is not None:
+                wanted={n.casefold() for n in self.preferences.first_pinned_columns}
+                view.pinned_columns=[i for i,h in enumerate(candidate.headers) if h.casefold() in wanted]
+            self.attach(candidate,view)
+            if order:
+                header=self.tree.header()
+                for position,column in enumerate(order,1):header.moveSection(header.visualIndex(column+1),position)
+            if name:self.statusBar().showMessage(f'Profil {name} détecté et appliqué ; valeurs sources intactes')
         sheet = dialog.sheet.currentText() if dialog.sheet is not None else None
         dialog.deleteLater()
-        self.run(importing,
-                 lambda _: self.attach(candidate), exclusive=True, on_cancel=cancelled, on_error=failed)
+        self.run(importing,imported,exclusive=True,on_cancel=cancelled,on_error=failed)
 
     def snapshot_analysis(self):
         if not self.case or not self.model:
@@ -596,6 +616,8 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.model.date_pattern = self.preferences.custom_date_format
         self.model.dark = self.preferences.theme == "dark"
         self.model.bookmark_requested.connect(self.mark_row)
+        self.model.memory_evicted.connect(self.tree.collapse)
+        self.model.memory_evicted.connect(self.tree.frozen.collapse)
         self.model.status.connect(self.statusBar().showMessage)
         self.model.error.connect(self.error)
         self.tree.setModel(self.model)

@@ -91,3 +91,45 @@ def test_additional_scalar_functions_preserve_values_and_parameter_order(case,te
 def test_long_flat_logic_is_not_mistaken_for_nested_parentheses(case):
     text=' And '.join(["Abs([Other]) >= 0"]*50)
     assert case.count(View(expression=parse_filter(text,case.headers)))==3
+
+
+def test_annotation_changes_invalidate_sorted_filter_cache(tmp_path):
+    from fireblade.core.settings import Settings
+    source=tmp_path/'cache.csv';source.write_text('ID\n'+'\n'.join(str(i) for i in range(1,61))+'\n')
+    case=Case(tmp_path/'cache.timeline',settings=Settings(page_size=25,max_loaded_rows=25))
+    try:
+        case.import_csv(source);case.bookmark_many(range(1,41))
+        view=View(expression=parse_filter('[Tag] = True',case.headers),sort_column=0,sort_type='number')
+        assert [r[0] for r in case.page(view,offset=25)]==list(range(26,41))
+        case.bookmark_many(range(1,31),mode='remove')
+        assert case.page(view,offset=25)==[]
+        assert [r[0] for r in case.page(view)]==list(range(31,41))
+        case.add_derived_columns([dict(name='IsTagged',operation='expression',expression='Iif([Tag], 1, 0)')])
+        assert case.page(View())[0][-1]=='0.0000000000'
+        case.bookmark(1,'changed')
+        assert case.page(View())[0][-1]=='1.0000000000'
+    finally:case.close()
+
+
+def test_nested_date_functions_and_comparisons_keep_submicrosecond_values(tmp_path):
+    source=tmp_path/'ns.csv';source.write_text('Time\n2026-01-01T00:00:00.123456799Z\n2026-01-01T01:00:00.123456700+01:00\n2026-01-01T00:00:00.123456701Z\n')
+    case=Case(tmp_path/'ns.timeline')
+    try:
+        case.import_csv(source)
+        for text in ("Iif([Time] = #2026-01-01T00:00:00.123456701Z#,True,False)",
+                     "ToDateTime([Time]) = #2026-01-01T00:00:00.123456701Z#",
+                     "AddDays([Time],1) = #2026-01-02T00:00:00.123456701Z#",
+                     "AddMonths([Time],1) = #2026-02-01T00:00:00.123456701Z#",
+                     "AddYears([Time],1) = #2027-01-01T00:00:00.123456701Z#",
+                     "AddMilliseconds([Time],0.000001) = #2026-01-01T00:00:00.123456702Z#",
+                     "Iif(True,ToDateTime([Time]),#2000-01-01#) = #2026-01-01T00:00:00.123456701Z#",
+                     "AddTicks([Time],1) = #2026-01-01T00:00:00.123456801Z#",
+                     "AddMicroseconds([Time],1) = #2026-01-01T00:00:00.123457701Z#",
+                     "DateDiffNanosecond(#2026-01-01T00:00:00.123456700Z#,[Time]) = 1",
+                     "ToStr(ToDateTime([Time])) = '2026-01-01T00:00:00.123456701Z'"):
+
+
+            assert [r[0] for r in case.page(View(expression=parse_filter(text,case.headers)))]==[3],text
+        case.add_derived_columns([dict(name='Tomorrow',operation='expression',expression='AddDays([Time],1)')])
+        assert case.page(View())[0][-1]=='2026-01-02T00:00:00.123456799Z'
+    finally:case.close()

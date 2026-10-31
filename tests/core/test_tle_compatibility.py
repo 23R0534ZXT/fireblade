@@ -56,3 +56,16 @@ def test_non_object_session_and_layout_fail_as_normal_input_errors(tmp_path,payl
     from fireblade.core.layout import read_layout
     with pytest.raises(ValueError):read_tle_session(path)
     with pytest.raises(ValueError):read_layout(path,['ID'])
+
+
+@pytest.mark.parametrize('encoding',['utf-16','utf-32'])
+def test_tle_session_detects_powershell_csv_bom_without_changing_source(tmp_path,encoding):
+    source=tmp_path/'powershell.csv';source.write_text('#TYPE Evidence\nID,Text\n001,évidence\n',encoding=encoding)
+    before=source.read_bytes();session=tmp_path/'session.tle_sess';session.write_text(json.dumps({'SessionFiles':{'powershell.csv':[1]}}))
+    snapshot=TleSessionImport(read_tle_session(session),tmp_path/'cases',Settings()).run()[0]
+    case=Case(snapshot.path)
+    try:
+        assert case.info['encoding']==encoding
+        assert case.page(View())[0][1:]==('001','évidence')
+        assert case.bookmarks()=={1:''} and source.read_bytes()==before
+    finally:case.close()

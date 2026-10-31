@@ -74,8 +74,11 @@ class Parser:
             return token[1:-1], 'date'
         if kind == 3:
             return token, 'number'
-        if token.casefold() in ('true', 'false', 'null'):
-            return token.upper(), 'null' if token.casefold() == 'null' else 'text'
+        if token.casefold() in ('true','false'):
+            # Boolean literals need the typed compiler, including CSV booleans
+            # whose textual casing differs from the literal.
+            raise ValueError('Comparaison booléenne typée')
+        if token.casefold()=='null':return 'NULL','null'
         if token.casefold() in ('datetime', 'todate'):
             self.take('(')
             value, _kind = self.literal()

@@ -143,7 +143,9 @@ def test_import_dialog_never_overwrites_existing_file(app, tmp_path, monkeypatch
     dialog.accept()
     assert dialog.result() == QDialog.Accepted
     assert dialog.values()[0] == tmp_path / "fresh.timeline"
-    assert dialog.values()[1:] == (None, "utf-8")
+    assert dialog.values()[1:] == (None, "auto")
+    dialog.encoding.setCurrentIndex(dialog.encoding.findData("cp1252"))
+    assert dialog.values()[2] == "cp1252"
 
 
 def test_drag_drop_import_unicode_path_and_reopen(app, tmp_path, monkeypatch):

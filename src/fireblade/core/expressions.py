@@ -223,6 +223,11 @@ class Value:
     sql: str
     kind: str
     parameters: list
+    date_ns: "Value | None" = None
+
+    def __post_init__(self):
+        if len(self.sql) > 1024 * 1024 or len(self.parameters) > 4096:
+            raise ValueError("Expression compilée trop volumineuse")
 
 
 class Compiler:
@@ -230,7 +235,41 @@ class Compiler:
         self.column, self.numeric = column, numeric
         self.nodes = 0
 
+    def nanoseconds(self, value):
+        if value.date_ns is not None:
+            return value.date_ns
+        if value.kind == "null":
+            return Value("NULL::HUGEINT", "number", [])
+        from fireblade.core.timestamps import timestamp_key
+
+        return Value(
+            timestamp_key(f"cast({value.sql} AS VARCHAR)"),
+            "number",
+            value.parameters * 2,
+        )
+
+    def date_value(self, ns):
+        from fireblade.core.derived import timestamp_sql
+
+        return Value(
+            timestamp_sql(f"cast(({ns.sql}) AS VARCHAR)", "unix_ns"),
+            "date",
+            ns.parameters,
+            ns,
+        )
+
     def cast(self, value, kind):
+        if kind == "date":
+            return Value(
+                f"try_cast({value.sql} AS TIMESTAMPTZ)",
+                "date",
+                value.parameters,
+                self.nanoseconds(value),
+            )
+        if kind == "text" and value.kind == "date":
+            ns = self.nanoseconds(value)
+            date = self.date_value(ns)
+            return Value(date.sql, "text", date.parameters, ns)
         if kind == "boolean":
             return Value(
                 f"coalesce(try_cast(({value.sql}) AS BOOLEAN),FALSE)",
@@ -264,7 +303,10 @@ class Compiler:
                 "date": "cast(? AS TIMESTAMPTZ)",
                 "boolean": "cast(? AS BOOLEAN)",
             }[node.kind]
-            return Value(sql, node.kind, [node.value])
+            value = Value(sql, node.kind, [node.value])
+            if node.kind == "date":
+                value.date_ns = self.nanoseconds(Value("?", "text", [node.value]))
+            return value
         args = [self.emit(child, depth + 1) for child in node.children]
         if node.kind == "unary":
             value = args[0]
@@ -291,6 +333,11 @@ class Compiler:
             return self.binary(node.value, *args)
         if node.kind == "in":
             left = args[0]
+            if (
+                len(left.sql) * len(args) > 1024 * 1024
+                or len(left.parameters) * len(args) > 4096
+            ):
+                raise ValueError("Liste In trop volumineuse")
             branches = [self.binary("=", left, right) for right in args[1:]]
             return Value(
                 "(" + " OR ".join(f"({b.sql})" for b in branches) + ")",
@@ -335,7 +382,11 @@ class Compiler:
                 if "boolean" in (left.kind, right.kind)
                 else "text"
             )
-            left, right = self.cast(left, kind), self.cast(right, kind)
+            left, right = (
+                (self.nanoseconds(left), self.nanoseconds(right))
+                if kind == "date"
+                else (self.cast(left, kind), self.cast(right, kind))
+            )
             operator = "=" if op == "==" else "<>" if op == "!=" else op
         elif op == "+" and "text" in (left.kind, right.kind):
             left, right = self.cast(left, "text"), self.cast(right, "text")
@@ -403,7 +454,6 @@ class Compiler:
             "tosingle": "tofloat",
             "getdayofmonth": "getday",
             "addticks": "addtick",
-            "addtimespan": "addtick",
         }
         name = names.get(name, name)
         if name in ("contains", "startswith", "endswith", "matches", "like"):
@@ -442,6 +492,11 @@ class Compiler:
             kind = next(
                 (a.kind for a in args if a.kind not in ("column", "null")), "text"
             )
+            if kind == "date":
+                args = [self.nanoseconds(a) for a in args]
+                return self.date_value(
+                    result("coalesce(" + ",".join(a.sql for a in args) + ")", "number")
+                )
             args = [self.cast(a, kind) for a in args]
             return result("coalesce(" + ",".join(a.sql for a in args) + ")", kind)
         if name in ("iif", "if"):
@@ -458,14 +513,25 @@ class Compiler:
             ordered = []
             for i in range(0, len(args) - 1, 2):
                 condition = self.cast(args[i], "boolean")
-                value = self.cast(args[i + 1], kind)
+                value = (
+                    self.nanoseconds(args[i + 1])
+                    if kind == "date"
+                    else self.cast(args[i + 1], kind)
+                )
                 clauses.append(f"WHEN {condition.sql} THEN {value.sql}")
                 ordered.extend([condition, value])
-            default = self.cast(args[-1], kind)
-            ordered.append(default)
-            return result(
-                "CASE " + " ".join(clauses) + f" ELSE {default.sql} END", kind, ordered
+            default = (
+                self.nanoseconds(args[-1])
+                if kind == "date"
+                else self.cast(args[-1], kind)
             )
+            ordered.append(default)
+            value = result(
+                "CASE " + " ".join(clauses) + f" ELSE {default.sql} END",
+                "number" if kind == "date" else kind,
+                ordered,
+            )
+            return self.date_value(value) if kind == "date" else value
         if name in ("tostr", "toint", "tofloat", "todatetime", "todate", "datetime"):
             arity(1)
             if name in ("todatetime", "todate", "datetime"):
@@ -672,14 +738,50 @@ class Compiler:
                 "month",
                 "year",
                 "millisecond",
+                "microsecond",
+                "nanosecond",
+                "tick",
             ):
                 arity(2)
                 unit = name[len(prefix) :].rstrip("s")
                 if prefix == "add":
-                    args = [self.cast(args[0], "date"), self.cast(args[1], "number")]
-                    return result(
-                        f"TRY({args[0].sql}+({args[1].sql})*INTERVAL 1 {unit.upper()})",
-                        "date",
+                    base = self.nanoseconds(args[0])
+                    amount = self.cast(args[1], "number")
+                    scales = {
+                        "tick": 100,
+                        "microsecond": 1000,
+                        "nanosecond": 1,
+                        "millisecond": 1000000,
+                        "second": 1000000000,
+                        "minute": 60000000000,
+                        "hour": 3600000000000,
+                        "day": 86400000000000,
+                    }
+                    if unit in scales:
+                        ns = Value(
+                            f"TRY(({base.sql})+try_cast(({amount.sql})*{scales[unit]} AS HUGEINT))",
+                            "number",
+                            base.parameters + amount.parameters,
+                        )
+                    else:
+                        # Bind the source ns once, retaining the submicrosecond
+                        # tail while ICU performs month/year calendar arithmetic.
+                        tail = "((__fb_cal%1000)+1000)%1000"
+                        stamp = f"make_timestamptz(cast((__fb_cal-({tail}))//1000 AS BIGINT))"
+                        body = f"TRY(cast(epoch_us({stamp}+({amount.sql})*INTERVAL 1 {unit.upper()}) AS HUGEINT)*1000+({tail}))"
+                        ns = Value(
+                            f"list_extract(list_transform([({base.sql})],lambda __fb_cal:{body}),1)",
+                            "number",
+                            base.parameters + amount.parameters,
+                        )
+                    return self.date_value(ns)
+                if unit in ("tick", "microsecond", "nanosecond"):
+                    left, right = self.nanoseconds(args[0]), self.nanoseconds(args[1])
+                    scale = {"tick": 100, "microsecond": 1000, "nanosecond": 1}[unit]
+                    return Value(
+                        f"TRY((({right.sql})-({left.sql}))//{scale})",
+                        "number",
+                        right.parameters + left.parameters,
                     )
                 args = typed("date")
                 return result(
@@ -708,7 +810,13 @@ class Compiler:
 
 
 def compile_scalar(text, headers, column, numeric):
-    return Compiler(column, numeric).emit(parse(text, tuple(headers)))
+    compiler = Compiler(column, numeric)
+    value = compiler.emit(parse(text, tuple(headers)))
+    return (
+        compiler.date_value(compiler.nanoseconds(value))
+        if value.kind == "date"
+        else value
+    )
 
 
 def compile_expression(text, headers, column, numeric):

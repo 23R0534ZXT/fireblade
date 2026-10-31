@@ -43,21 +43,25 @@ class Node:
     job: Job | None = None
     styles: tuple = ()
     note: str | None = None
+    used: int = 0
 
 
 class GridModel(QAbstractItemModel):
     status = Signal(str)
     error = Signal(str)
     loaded = Signal()
+    memory_evicted = Signal(QModelIndex)
     bookmark_requested = Signal(int, bool)
 
     def __init__(self, case, pool, parent=None):
         super().__init__(parent)
         self.case, self.pool = case, pool
+        self.headers = tuple(case.headers)
         self.settings = case.settings
         self.view = View()
         self.root = Node()
         self.generation = 0
+        self._cache_clock = 0
         self.jobs = set()
         self.global_rules = []
         self.rules = []
@@ -119,6 +123,35 @@ class GridModel(QAbstractItemModel):
             node.children.clear()
             self.endRemoveRows()
 
+    def trim_cache(self, target, extra):
+        """Bound manual expansion too; retain the branch being navigated.
+
+        The root window and a page per level remain available. Least recently
+        fetched sibling branches can be reopened; evidence stays on disk.
+        """
+        if self.view.expand_all:return
+        protected={self.root};ancestor=target
+        while ancestor is not None:
+            protected.add(ancestor);ancestor=ancestor.parent
+        pending=list(self.root.children);total=0;candidates=[]
+        while pending:
+            node=pending.pop();total+=1;pending.extend(node.children)
+            if node.group and node.children and node not in protected:candidates.append(node)
+        limit=max(self.settings.max_loaded_rows,len(self.root.children)+self.settings.page_size*(len(self.view.groups)+1))
+        def descendants(node):
+            count=0;pending=list(node.children)
+            while pending:
+                child=pending.pop();count+=1;pending.extend(child.children)
+            return count
+        for node in sorted(candidates,key=lambda n:n.used):
+            if total+extra<=limit:break
+            if not self.attached(node) or not node.children:continue
+            removed=descendants(node)
+            index=self.createIndex(node.parent.children.index(node),0,node)
+            self.unload(index)
+            self.memory_evicted.emit(index)
+            total-=removed
+
     def index(self, row, column, parent=QModelIndex()):
         node = self.node(parent)
         if row < 0 or row >= len(node.children) or column < 0 or column >= self.columnCount():
@@ -137,11 +170,11 @@ class GridModel(QAbstractItemModel):
         return 0 if parent.column() > 0 else len(self.node(parent).children)
 
     def columnCount(self, parent=QModelIndex()):
-        return len(self.case.headers) + 1
+        return len(self.headers) + 1
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return "Ligne / groupe" if section == 0 else self.case.headers[section - 1]
+            return "Ligne / groupe" if section == 0 else self.headers[section - 1] if 0<section<=len(self.headers) else None
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
@@ -224,6 +257,8 @@ class GridModel(QAbstractItemModel):
         if parent.column() > 0 or not node.group or not node.more or node.loading:
             return
         revision = node.revision
+        self._cache_clock += 1
+        node.used = self._cache_clock
         node.loading = True
         view, path, offset = copy.deepcopy(self.view), node.path, node.offset + len(node.children)
         global_rules = copy.deepcopy(self.global_rules)
@@ -270,6 +305,7 @@ class GridModel(QAbstractItemModel):
                         self.cancel_branch(child)
                     node.children.clear()
                     self.endRemoveRows()
+                self.trim_cache(node,len(rows))
                 start = len(node.children)
                 self.beginInsertRows(parent, start, start + len(rows) - 1)
                 if outline:

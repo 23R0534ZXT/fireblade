@@ -34,6 +34,10 @@ class PreferencesDialog(QDialog):
         self.headers.setChecked(preferences.copy_headers)
         self.right = QCheckBox("Copier la cellule au clic droit (Maj : menu)")
         self.right.setChecked(preferences.right_click_copy)
+        self.auto_profiles = QCheckBox(
+            "Appliquer le profil forensic reconnu à l’import"
+        )
+        self.auto_profiles.setChecked(preferences.auto_profiles)
         self.multiline = QCheckBox("Afficher les onglets sur plusieurs rangées")
         self.multiline.setChecked(preferences.multiline_tabs)
         self.dates = QComboBox()
@@ -63,7 +67,7 @@ class PreferencesDialog(QDialog):
         self.pins.setMaximumHeight(70)
         self.pins.setPlaceholderText("Un nom de colonne par ligne")
         form.addRow("Épinglage par défaut", self.pins)
-        for widget in (self.headers, self.right, self.multiline):
+        for widget in (self.headers, self.right, self.multiline, self.auto_profiles):
             form.addRow(widget)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
@@ -85,6 +89,7 @@ class PreferencesDialog(QDialog):
             self.multiline.isChecked(),
             self.dates.currentData(),
         )
+        p.auto_profiles = self.auto_profiles.isChecked()
         p.details_position = self.details.currentData()
         p.custom_date_format = self.pattern.text()
         p.first_pinned_columns = [

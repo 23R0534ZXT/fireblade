@@ -45,6 +45,8 @@ class Case:
         self._page_cache_key = None
         self._bookmark_revision = 0
         self._outline_key = None
+        self._source_index_tried = False
+        self._read_only = read_only
         self.db = duckdb.connect(str(self.path), read_only=read_only)
         self.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
         self.db.execute(f"SET threads={self.settings.threads}")
@@ -181,6 +183,9 @@ class Case:
                 return h.hexdigest()
             before = source.stat()
             sha = digest()
+            if encoding=='auto':
+                from fireblade.core.encodings import bom_encoding
+                encoding=bom_encoding(source)
             progress("Import sur disque · détection du schéma…")
             options = dict(header=True, all_varchar=True, sample_size=20480,
                            encoding="utf-8", strict_mode=True, ignore_errors=False,
@@ -282,6 +287,7 @@ class Case:
             if not isinstance(name, str) or name.casefold() in {h.casefold() for h in headers}:
                 raise ValueError('Nom de colonne dérivée absent ou déjà utilisé')
             def column(index):
+                if index in (-1,-2,-3):return self.expression_column(index)
                 if type(index) is not int or not 0 <= index < len(headers):
                     raise ValueError('Une colonne dérivée ne peut référencer que les colonnes précédentes')
                 return f'"c{index}"'
@@ -292,6 +298,10 @@ class Case:
             try:
                 self.db.execute('BEGIN')
                 if not self.derived:
+                    # DuckDB blocks renaming a table with dependent indexes.
+                    # Rebuild our optional navigation index on its new storage
+                    # name, only when a point page is subsequently requested.
+                    self.db.execute('DROP INDEX IF EXISTS "__fireblade_source_id"')
                     self.db.execute('ALTER TABLE events RENAME TO "__fireblade_source_events"')
                 else:
                     self.db.execute('DROP VIEW events')
@@ -308,6 +318,7 @@ class Case:
                 raise
             self.headers, self.derived = headers, planned
             self._page_cache_key = self._outline_key = None
+            self._source_index_tried = False
         return headers
 
     def derived_quality(self, columns=None):
@@ -452,7 +463,7 @@ class Case:
                 sql = f"SELECT {col}, count(*){extra} FROM events{where} GROUP BY {col} ORDER BY {group_order(self, view, col)} LIMIT ? OFFSET ?"
             else:
                 order = self.order(view)
-                key = (where, tuple(args), order, self._bookmark_revision if view.bookmarks_only else None)
+                key = (where, tuple(args), order, self._bookmark_revision)
                 if (self.settings.cache_sorted_pages and (view.sort_column is not None or view.sorts)
                         and (offset >= self.settings.max_loaded_rows or self._page_cache_key == key)):
                     return self.sorted_page(where, args, order, key, offset, limit)
@@ -462,6 +473,26 @@ class Case:
     def outline_page(self, view, offset=0, limit=None, progress=lambda _: None):
         from fireblade.core.outline import outline_page
         return outline_page(self,view,offset,limit,progress)
+
+    def rows_by_ids(self, ids):
+        """Bounded point acquisition. Caller holds operation()/the query lock."""
+        ids=list(ids)
+        if not ids:return {}
+        if len(ids)>self.settings.page_size or any(type(i) is not int for i in ids):
+            raise ValueError('Page d’identifiants invalide')
+        # The native on-disk ID index avoids rescanning wide evidence payloads
+        # for every deep page. It is optional and skipped for tiny budgets or a
+        # read-only analysis; failed allocation falls back to a regular scan.
+        if not self._source_index_tried and self.settings.cache_sorted_pages and self.settings.memory_mb>=128 and not self._read_only:
+            self._source_index_tried=True
+            table='__fireblade_source_events' if self.derived else 'events'
+            try:
+                with self.serial_query_threads():
+                    self.db.execute(f'CREATE INDEX IF NOT EXISTS "__fireblade_source_id" ON "{table}"(__row_id)')
+            except duckdb.OutOfMemoryException:
+                pass
+        query='SELECT * FROM events WHERE __row_id IN ('+','.join('?' for _ in ids)+')'
+        return {row[0]:row for row in self.db.execute(query,ids).fetchall()}
 
     def sorted_page(self, where, args, order, key, offset, limit):
         """One temporary order at a time, containing IDs rather than full rows.
@@ -476,10 +507,12 @@ class Case:
                 f'SELECT row_number() OVER ({order}) AS position, __row_id FROM events{where}', args)
             self.check_cancelled()
             self._page_cache_key = key
-        return self.db.execute(
-            'SELECT e.* FROM events e JOIN "__timeline_order" p USING (__row_id) '
-            'WHERE p.position > ? AND p.position <= ? ORDER BY p.position',
-            [offset, offset + limit]).fetchall()
+        ids=[row[0] for row in self.db.execute(
+            'SELECT __row_id FROM "__timeline_order" WHERE position>? AND position<=? ORDER BY position',
+            [offset,offset+limit]).fetchall()]
+        records=self.rows_by_ids(ids)
+        return [records[i] for i in ids]
+
 
     def count(self, view):
         with self.operation():

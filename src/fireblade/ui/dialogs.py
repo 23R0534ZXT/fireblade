@@ -56,7 +56,8 @@ class ImportDialog(QDialog):
         for label, value in [("Automatique", None), ("Virgule", ","), ("Point-virgule", ";"), ("Tabulation", "\t"), ("Pipe", "|")]:
             self.separator.addItem(label, value)
         self.encoding = QComboBox()
-        self.encoding.addItems(["utf-8", "utf-16", "cp1252", "latin-1"])
+        self.encoding.addItem('Automatique (BOM)','auto')
+        for codec in ('utf-8','utf-16','utf-32','cp1252','latin-1'):self.encoding.addItem(codec,codec)
         fields.addRow("Séparateur :", self.separator)
         fields.addRow("Encodage :", self.encoding)
         layout.addWidget(advanced)
@@ -95,4 +96,4 @@ class ImportDialog(QDialog):
 
     def values(self):
         return (Path(self.target.text()).expanduser(), self.separator.currentData(),
-                self.encoding.currentText())
+                self.encoding.currentData())

@@ -77,7 +77,10 @@ class DerivedDialog(QDialog):
 
 def add_columns(window, definitions, finished=None):
     case = window.case
+    window.capture_pin_widths()
     view = copy.deepcopy(window.view)
+    header=window.tree.header()
+    layout=[(header.logicalIndex(i),window.tree.columnWidth(header.logicalIndex(i)),window.tree.isColumnHidden(header.logicalIndex(i))) for i in range(header.count())]
 
     def done(_):
         window.tree.setModel(None)
@@ -85,6 +88,12 @@ def add_columns(window, definitions, finished=None):
             window.model.deleteLater()
         window.model = None
         window.attach(case, view)
+        header=window.tree.header()
+        for position,(section,width,hidden) in enumerate(layout):
+            header.moveSection(header.visualIndex(section),position)
+            window.tree.setColumnWidth(section,width)
+            window.tree.setColumnHidden(section,hidden)
+            if section in window.tree.pinned:window.tree.frozen.setColumnWidth(section,width)
         if finished:
             finished()
         else:

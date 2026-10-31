@@ -349,6 +349,8 @@ Choisir un nouveau chemin de rapport. Les données de contrôle sont synthétiqu
 
 ## Conversions et compatibilité TLE
 
+Les profils forensic reconnus sont appliqués automatiquement lors de l’import ; une préférence permet de conserver l’affichage générique. Les conversions restent dans des colonnes distinctes.
+
 **Analyse → Convertir une date** crée une colonne UTC distincte : ISO, dates jour/mois ou mois/jour, Unix s/ms/us/ns, FILETIME, WebKit, ticks .NET et OLE Automation. Les décalages explicites, fuseaux IANA et 142 identifiants Windows sont pris en charge. La précision atteint neuf décimales, y compris avant 1970 ; les valeurs invalides deviennent NULL dans la colonne dérivée, sans retirer leur enregistrement. Le contrôle des colonnes dérivées compte ces NULL. Les heures locales ambiguës ou inexistantes suivent les conventions DST d’ICU : utiliser un décalage explicite lorsque l’enquête doit les départager.
 
 **Analyse → Ajouter une colonne calculée** accepte des expressions imbriquées (`Iif`, texte, nombres, dates). Les colonnes dérivées sont des vues SQL persistantes ; aucune copie complète supplémentaire de la table n’est nécessaire. Elles sont utilisables pour filtrer, regrouper, trier et exporter. Les transformations des profils JSON passent par le même registre explicite.

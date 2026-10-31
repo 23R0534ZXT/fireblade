@@ -79,6 +79,25 @@ def read_tle_layout(path, headers):
         field_aliases["Color"] = "Fireblade_Category"
 
     def resolve(name, virtual=False):
+        typed_name = name[3:] if name.startswith("col") else name
+        if profile and typed_name.casefold() in {
+            h.casefold() for h in profile.timestamp
+        }:
+            normalized = [
+                i
+                for i, h in enumerate(headers)
+                if h.casefold() == ("Fireblade_UTC_" + typed_name).casefold()
+            ]
+            if len(normalized) == 1:
+                return normalized[0]
+        if profile and profile.name in ("Sigcheck", "SigcheckTroy", "Autoruns"):
+            boolean = [
+                i
+                for i, h in enumerate(headers)
+                if h.casefold() == ("Fireblade_Bool_" + typed_name).casefold()
+            ]
+            if len(boolean) == 1:
+                return boolean[0]
         original = name
         exact = [i for i, h in enumerate(headers) if h.casefold() == name.casefold()]
         if not exact:
@@ -99,7 +118,16 @@ def read_tle_layout(path, headers):
 
     columns = []
     warnings = []
-    view = View()
+    if profile:
+        from fireblade.core.profiles import profile_view
+
+        types, _ = profile_view(profile, headers)
+        view = View(
+            boolean_columns=types.boolean_columns,
+            timestamp_columns=types.timestamp_columns,
+        )
+    else:
+        view = View()
     container = properties(root).get("Columns")
     if container is None:
         raise ValueError("Disposition sans collection Columns")

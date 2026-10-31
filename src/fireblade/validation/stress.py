@@ -444,6 +444,23 @@ def run_stress(app,spec_path,report_path):
             expect([hit.count for hit in hits]==[spec['reference']['user042'],1],'Cross-file search differs on large and small analyses')
         run.check('cross_file_search_in_full_3_GiB_and_second_analysis',search_large_and_small)
 
+        def bounded_manual_expansion():
+            run.window.set_view(View(groups=[3]));run.settle()
+            model=run.window.model;maximum=0
+            for i in range(12):
+                index=model.index(i,0)
+                run.window.tree.setExpanded(index,True);run.settle()
+                pending=[model.root];total=0
+                while pending:
+                    node=pending.pop();total+=len(node.children);pending.extend(node.children)
+                maximum=max(maximum,total)
+                expect(total<=model.settings.max_loaded_rows,'Manual expansion grew beyond its cache window')
+            expect(not run.window.tree.isExpanded(model.index(0,0)),'Old cached branch was not released')
+            expect(run.window.tree.isExpanded(model.index(11,0)),'Active branch was evicted')
+            run.capture('12-bounded-manual-groups')
+            return dict(opened_groups=12,maximum_cached_nodes=maximum,source_records=count(View()))
+        run.check('manual_group_expansion_bounded_cache_on_existing_3_GiB',bounded_manual_expansion)
+
         def complete_expansion():
             case=run.window.case
             view=View(groups=[1,3,4],summaries=[Summary(11,'sum')],group_order='value',group_descending=False)
@@ -460,6 +477,24 @@ def run_stress(app,spec_path,report_path):
             run.window.collapse_groups();run.settle()
             return dict(indexed_records=leaves,indexed_groups=groups,deep_page_offset=rows//2)
         run.check('complete_three_level_expansion_all_3_GiB_records_and_deep_page',complete_expansion)
+
+        def derived_utc_large_data():
+            from fireblade.ui.derived_columns import add_columns
+            case=run.window.case
+            add_columns(run.window,[dict(name='ValidationUTC',operation='timestamp',columns=['Timestamp'],format='iso')])
+            run.settle(600)
+            column=case.headers.index('ValidationUTC')
+            quality=run.work(lambda:case.derived_quality([column]),300)
+            expected_bad=next(number for day,number in spec['advanced']['day_counts'] if day is None)
+            expect(quality['ValidationUTC']==(expected_bad,rows),'UTC conversion changed valid/invalid record counts')
+            view=View(filters=[Filter(column,'after','2026-10-31')],sort_column=column,sort_type='timestamp')
+            run.window.set_view(view);run.settle(600)
+            expect(count(view)==spec['reference']['date_after'],'Derived UTC date filter differs from independent oracle')
+            values=run.window.model.node(run.window.model.index(0,0)).values
+            expect(values[-1].startswith('2026-10-31T') and values[-1].endswith('Z'),'Derived UTC sorted page differs')
+            run.capture('13-derived-utc-large-data')
+            return dict(derived_quality=quality,filtered_count=spec['reference']['date_after'])
+        run.check('derived_utc_conversion_quality_filter_sort_on_all_existing_3_GiB_records',derived_utc_large_data)
 
         def final_integrity():
             def digest():

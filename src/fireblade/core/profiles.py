@@ -220,6 +220,11 @@ def profile_view(profile, headers):
             FormatRule(FilterGroup("and", [Filter(category, "eq", name)]), color)
             for name, color in COLORS.items()
         ]
+    view.boolean_columns += [
+        i
+        for i, h in enumerate(headers)
+        if h.startswith("Fireblade_Bool_") and i not in view.boolean_columns
+    ]
     order = list(
         dict.fromkeys(
             lookup[h.casefold()] for h in profile.columns if h.casefold() in lookup
@@ -245,8 +250,10 @@ def profile_transformations(profile, headers):
     def timestamp(name, columns, fmt="invariant", zone_column=None):
         if not all(columns):
             return
-        if name.casefold() in lookup and name.casefold() not in {h.casefold() for h in profile.signature}:
-            return # a previously synthesized plugin timestamp
+        if name.casefold() in lookup and name.casefold() not in {
+            h.casefold() for h in profile.signature
+        }:
+            return  # a previously synthesized plugin timestamp
         target = name if name.casefold() not in lookup else "Fireblade_UTC_" + name
         if target.casefold() in lookup:
             return
@@ -290,6 +297,28 @@ def profile_transformations(profile, headers):
         for field in profile.timestamp:
             if actual(field):
                 timestamp(field, [actual(field)])
+    # These plugins explicitly convert textual status fields to booleans.
+    # Preserve their exact comparisons in a separate column.
+    boolean_field = (
+        ("Verified", "Signed")
+        if profile.name in ("Sigcheck", "SigcheckTroy")
+        else ("Enabled", "enabled")
+        if profile.name == "Autoruns"
+        else None
+    )
+    if boolean_field:
+        field, expected = boolean_field
+        source = actual(field)
+        target = "Fireblade_Bool_" + field
+        if source and not actual(target):
+            quoted = "[" + source.replace("]", "]]") + "]"
+            result.append(
+                dict(
+                    name=target,
+                    operation="expression",
+                    expression=f"Iif({quoted} = '{expected}', True, False)",
+                )
+            )
     if actual("macb") and not actual("Fireblade_MACBMask"):
         result.append(
             dict(name="Fireblade_MACBMask", operation="macb", columns=[actual("macb")])
@@ -331,3 +360,18 @@ def profile_transformations(profile, headers):
                     )
                 )
     return [d for d in result if d["name"].casefold() not in lookup]
+
+
+def prepare_case_profile(case, enabled=True):
+    """Run in the import worker, before the grid can observe a changing schema."""
+    if not enabled:
+        return None, None, None
+    profile = detect_profile(case.headers)
+    if profile is None:
+        return None, None, None
+    definitions = profile_transformations(profile, case.headers)
+    if definitions:
+        case.add_derived_columns(definitions)
+    view, order = profile_view(profile, case.headers)
+    case.validate_view(view)
+    return profile.name, view, order

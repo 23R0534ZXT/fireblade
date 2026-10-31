@@ -105,7 +105,7 @@ def validate_definition(data):
     return dict(data)
 
 
-def timestamp_sql(value, fmt="iso", zone="'UTC'"):
+def timestamp_sql(value, fmt="iso", zone="'UTC'", suppress_input_errors=True):
     if fmt not in FORMATS:
         raise ValueError("Format temporel inconnu")
     # All arithmetic up to the final timestamp uses 128-bit integers. Avoid a
@@ -123,6 +123,10 @@ def timestamp_sql(value, fmt="iso", zone="'UTC'"):
         "ole": f"try_cast((trunc({decimal})+abs(({decimal})-trunc({decimal}))-25569)*86400000000000 AS HUGEINT)",
     }.get(fmt)
     if ns is None:
+        if fmt == "invariant":
+            # Some forensic CSV exporters protect timestamps as Excel text.
+            # Interpret the wrapper in the derived field, retain raw evidence.
+            value = f"trim(trim({value}, '='), '\"')"
         # Preserve the submicrosecond tail that TIMESTAMPTZ itself cannot hold.
         fraction = f"rpad(substr(regexp_extract({value}, '\\.([0-9]+)', 1),1,9),9,'0')"
         formats = {
@@ -157,12 +161,13 @@ def timestamp_sql(value, fmt="iso", zone="'UTC'"):
         )
 
         ns = f"CASE WHEN length(regexp_extract({value}, '\\.([0-9]+)',1))<=9 THEN cast(epoch_us(date_trunc('second',{stamp})) AS HUGEINT)*1000+try_cast({fraction} AS HUGEINT) END"
-    # A scalar subquery factors the expression without a Python UDF. TRY turns
-    # invalid/out-of-range values into NULL, never drops their source records.
-    return f"""(SELECT TRY(CASE WHEN n BETWEEN -62135596800000000000 AND 253402300799999999999
-        THEN strftime(make_timestamp(cast(((n-r)//1000000000)*1000000 AS BIGINT)), '%Y-%m-%dT%H:%M:%S')
-        ||'.'||lpad(cast(r AS VARCHAR),9,'0')||'Z' END)
-        FROM (SELECT n, ((n%1000000000)+1000000000)%1000000000 AS r FROM (SELECT TRY({ns}) AS n) a) b)"""
+    # Row-local SQL lambdas factor the nanosecond value without a correlated
+    # subquery/hash join. Memory remains bounded for millions of distinct times.
+    rendered = """TRY(CASE WHEN __fb_n BETWEEN -62135596800000000000 AND 253402300799999999999
+        THEN strftime(make_timestamp(cast(((__fb_n-__fb_r)//1000000000)*1000000 AS BIGINT)), '%Y-%m-%dT%H:%M:%S')
+        ||'.'||lpad(cast(__fb_r AS VARCHAR),9,'0')||'Z' END)"""
+    source=f'TRY({ns})' if suppress_input_errors else ns
+    return f"list_extract(list_transform([{source}], lambda __fb_n: list_extract(list_transform([((__fb_n%1000000000)+1000000000)%1000000000], lambda __fb_r: {rendered}),1)),1)"
 
 
 def compile_definition(data, headers, column, numeric):

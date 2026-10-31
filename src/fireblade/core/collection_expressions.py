@@ -3,7 +3,7 @@ import re
 
 
 def translate(text,headers):
-    if not re.search(r"\]\s*(?:\[|\.)",text):return text
+    if not re.search(r"\]\s*(?:\[|\.)|\[[^\]]*\.",text):return text
     tokens=sorted(('['+h.replace(']',']]')+']' for h in headers),key=len,reverse=True)
     def end_group(start,left,right):
         depth=0;quote=None;i=start
@@ -34,8 +34,23 @@ def translate(text,headers):
         if ch in ("'",'"'):string=ch;result.append(ch);i+=1;continue
         match_field=field_pattern.match(text,i) if ch=='[' and field_pattern else None
         token=match_field.group(0) if match_field else None
+        parts=[]
+        stop=i+len(token) if token else i
+        if not token and ch=='[':
+            field=re.match(r'\[((?:[^\]]|\]\])+)\]',text[i:])
+            if field:
+                full=field.group(1).replace(']]',']')
+                parent=next((h for h in sorted(headers,key=len,reverse=True) if full.casefold().startswith(h.casefold()+'.')),None)
+                if parent:
+                    token='['+parent.replace(']',']]')+']';parts=full[len(parent)+1:].split('.');stop=i+field.end()
         if token:
-            stop=i+len(token)
+            while chain:=re.match(r'\s*\.\s*\[((?:[^\]]|\]\])+)\]',text[stop:]):
+                parts.append(chain.group(1).replace(']]',']'));stop+=chain.end()
+            collection=token
+            if parts:
+                import json
+                path='$.'+'.'.join(json.dumps(part,ensure_ascii=False) for part in parts)
+                collection=f'JsonValue({token},{quote(path)})' 
             while stop<len(text) and text[stop].isspace():stop+=1
             predicate=None
             if stop<len(text) and text[stop]=='[':
@@ -43,7 +58,6 @@ def translate(text,headers):
             match=re.match(r'\s*\.\s*(Count|Exists|Sum|Avg|Average|Min|Max|Single)\s*\(',text[stop:],re.I)
             if match:
                 start=stop+match.end()-1;close=end_group(start,'(',')');argument=text[start+1:close].strip();name=match.group(1).lower()
-                collection=token
                 if predicate is not None:collection=f'JsonFilter({collection},{quote(predicate)})'
                 if name=='count':replacement=f'JsonCount({collection})' if not argument else f'JsonCount(JsonFilter({collection},{quote(argument)}))'
                 elif name=='exists':replacement=f'JsonAny({collection},{quote(argument or "True")})'
@@ -53,5 +67,7 @@ def translate(text,headers):
                     name='avg' if name=='average' else name
                     replacement=f'Json{name.title()}Expr({collection},{quote(argument)})'
                 result.append(replacement);i=close+1;continue
+            if parts:
+                result.append(collection);i=stop;continue
         result.append(ch);i+=1
     return ''.join(result)

@@ -1,6 +1,6 @@
 """Explicit readers for TLE session references and column-layout XML.
 
-These readers do not execute plugins, .NET assemblies or serialized objects.
+Session sources reuse DLL readers already selected by the user; arbitrary serialized objects are never executed.
 Unsupported layout expressions are rejected instead of being silently discarded.
 """
 from pathlib import Path

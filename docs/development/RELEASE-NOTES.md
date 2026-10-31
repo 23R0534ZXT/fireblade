@@ -18,3 +18,6 @@ Le projet reste un prototype : ces vérifications automatisées ne remplacent pa
 L’éditeur de règles conserve les polices absentes du poste et reste navigable à fort zoom. Les règles importées reprennent aussi les dates relatives combinées, styles texte/fond prédéfinis et moyennes inclusives. L’annulation d’une fonction .NET remonte comme une annulation et permet de recharger explicitement le plugin dans la même analyse.
 
 Qualification de ce binaire : 317 tests réussis sur chacune des trois versions Python Windows ; trois contrôles de stockage ; 32 contrôles intégrés ; huit variantes visuelles ; 43 contrôles sur les 3 GiB existants, sans régénération. Pic du processus : 454,3 Mio ; timer P95 78 ms, maximum 3 125 ms. Une pause de plus de trois secondes reste observée. Les rapports sont conservés dans le dépôt, sous `docs/validation/reports/fe2518a-*`.
+
+
+Nouveau lot : reprise automatique des DLL approuvées et des lecteurs de session ; helper CLR4 pour les anciens plugins .NET Framework ; objets et collections imbriqués dans les expressions ; icônes supplémentaires ; couleurs de thème configurables. Aucun contrôle fonctionnel n’est retiré. L’exécutable de ce lot est publié uniquement après la validation Windows du workflow.

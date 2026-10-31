@@ -31,7 +31,13 @@ def check_completion(window, directory, settle, check, expect, captures=None):
         result=verify(resource_path('plugin-host/Fireblade.PluginHost.exe'),resource_path('plugin-host/Fireblade.PluginFixture.dll'))
         expect(result['status']=='passed','Bundled .NET plugin helper failed')
     import sys
-    if getattr(sys,'frozen',False):check('bundled_dotnet_reader_and_custom_functions',dotnet_plugin)
+    if getattr(sys,'frozen',False):
+        check('bundled_dotnet_reader_and_custom_functions',dotnet_plugin)
+        def legacy_plugin():
+            from fireblade.validation.legacy_plugin_checks import verify
+            result=verify(resource_path('plugin-host/Fireblade.PluginHost.exe'),resource_path('plugin-host/legacy/Fireblade.LegacyHost.exe'),resource_path('plugin-host/legacy/Fireblade.LegacyFixture.dll'))
+            expect(result['status']=='passed','Legacy CLR4 reader or functions failed')
+        check('bundled_legacy_clr4_reader_functions_and_automatic_restore',legacy_plugin)
 
     def normalize():
         from fireblade.ui.derived_columns import add_columns

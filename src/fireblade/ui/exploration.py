@@ -43,7 +43,7 @@ class ExplorationMixin:
 
     def apply_preferences(self):
         p = self.preferences
-        apply_theme(QApplication.instance(), p.theme)
+        apply_theme(QApplication.instance(), p.theme, p.theme_palette)
         font = QFont(p.font_family) if p.font_family else QApplication.font()
         font.setPointSizeF(p.font_size)
         QApplication.instance().setFont(font)

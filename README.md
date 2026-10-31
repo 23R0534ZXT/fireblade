@@ -412,9 +412,14 @@ Les règles proposent maintenant des bornes automatiques, pourcentages et **perc
 
 **Fichier → Importer avec un plugin TLE (.NET)…** sélectionne explicitement une DLL et son lecteur `ProcessFile`/`DataList`. Le moteur .NET Windows est intégré à l’exécutable et démarre dans un processus séparé. Le chemin d’import CSV natif reste le choix ordinaire pour les gros volumes. Un lecteur tiers peut matérialiser tout son résultat en mémoire ; son coût dépend de son implémentation. Les valeurs converties sont identifiées comme telles ; l’empreinte de la source et celle du plugin sont conservées.
 
-**Analyse → Charger des fonctions .NET…** rend accessibles les fonctions `Name`/`Evaluate(object[])`, par leur nom ou `Custom('Nom', …)`. Les adaptateurs `PluginText/Number/Bool/Date` permettent de préciser le type. Les fonctions doivent être rechargées explicitement après réouverture d’une analyse qui les utilise ; aucune DLL n’est exécutée automatiquement depuis un fichier d’analyse.
+**Analyse → Charger des fonctions .NET…** rend accessibles les fonctions `Name`/`Evaluate(object[])`, par leur nom ou `Custom('Nom', …)`. Les adaptateurs `PluginText/Number/Bool/Date` permettent de préciser le type. Les fonctions déjà choisies pour une analyse sont rechargées automatiquement à sa réouverture, après contrôle de l’empreinte de la DLL et de son approbation locale. Une analyse reçue d’un autre poste ne peut pas lancer une DLL inconnue automatiquement.
 
 Les collections JSON acceptent la syntaxe `[Items][[Amount] > 5].Sum([Amount])`, ainsi que `Count`, `Exists`, `Avg`, `Min`, `Max` et `Single`. Il s’agit de collections JSON stockées dans une cellule, pas d’un ORM DevExpress. Voir [compatibilité](docs/development/COMPATIBILITE.md) et [plugins](docs/development/PLUGINS.md).
 
 
 Les règles statistiques et graphiques proposent aussi un calcul sur toute la source, en ignorant le filtre actif. Les moyennes acceptent les comparaisons strictes ou inclusives. Les dates relatives utilisent `InDateRange([Date], 'Today')` et les périodes proposées dans l’éditeur de règles ; les jours sont calculés en UTC, les semaines commencent le lundi. L’import XML reprend les dates relatives combinées, les listes de valeurs et les douze styles texte/fond prédéfinis documentés de DevExpress. Les palettes prédéfinies sont adaptées ; les styles personnalisés inconnus restent refusés.
+
+
+### Derniers ajouts sur main
+
+Reprise automatique des fonctions approuvées, lecteurs de session mémorisés, sélection du helper .NET Framework/CLR4 ou moderne, navigation dans les objets/collections imbriqués, formes d’icônes supplémentaires (étoiles, classements, drapeaux, triangles, carrés, losanges) et couleurs de thème personnalisables. Les tests ciblés sont exécutés localement ; la construction et la qualification du nouvel EXE sont visibles dans [GitHub Actions](https://github.com/23R0534ZXT/fireblade/actions). Le lien de qualification précédent identifie explicitement le dernier binaire déjà publié.

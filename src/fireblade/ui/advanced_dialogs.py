@@ -293,7 +293,7 @@ class RulesDialog(QDialog):
         self.icon_levels=QComboBox()
         for count in (3,4,5):self.icon_levels.addItem(f'{count} niveaux',count)
         self.icon_set=QComboBox()
-        for label,code in [('Ronds','circles'),('Flèches','arrows'),('Signes','signs')]:self.icon_set.addItem(label,code)
+        for label,code in [('Ronds','circles'),('Flèches','arrows'),('Signes','signs'),('Triangles','triangles'),('Carrés','squares'),('Losanges','diamonds'),('Étoiles','stars'),('Classements','ratings'),('Drapeaux','flags')]:self.icon_set.addItem(label,code)
         self.icon_threshold_mode=QComboBox()
         for label,code in [('Seuils en pourcent','percent'),('Seuils numériques','number'),('Seuils en percentiles','percentile')]:self.icon_threshold_mode.addItem(label,code)
         icons.addWidget(self.icon_levels,0,0);icons.addWidget(self.icon_set,0,1);icons.addWidget(self.icon_threshold_mode,0,2,1,2)

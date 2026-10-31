@@ -64,7 +64,7 @@ def validate_format_rules(rules, column, numeric_expression, limit=32):
         raise ValueError(f"{limit} règles de coloration au maximum")
     for rule in rules:
         from decimal import Decimal, InvalidOperation
-        if rule.icon_set not in ('circles','arrows','signs') or not isinstance(rule.icon_colors,list) or not 3<=len(rule.icon_colors)<=5 or not isinstance(rule.icon_images,list) or len(rule.icon_images)!=len(rule.icon_colors):
+        if rule.icon_set not in ('circles','arrows','signs','triangles','squares','diamonds','stars','ratings','flags') or not isinstance(rule.icon_colors,list) or not 3<=len(rule.icon_colors)<=5 or not isinstance(rule.icon_images,list) or len(rule.icon_images)!=len(rule.icon_colors):
             raise ValueError('Jeu d’icônes invalide')
         from fireblade.core.icon_assets import png_bytes
         for encoded in rule.icon_images:

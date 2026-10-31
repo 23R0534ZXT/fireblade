@@ -49,6 +49,9 @@ class GridDelegate(QStyledItemDelegate):
                 elif settings and settings[0]=='signs':
                     symbols={3:('−','!','+'),4:('−−','−','+','++'),5:('−−','−','0','+','++')}
                     painter.setPen(color);painter.drawText(box,Qt.AlignCenter,symbols[settings[3]][level])
+                elif settings and settings[0] in ('triangles','squares','diamonds','stars','ratings','flags'):
+                    from fireblade.ui.icon_shapes import paint_shape
+                    paint_shape(painter,box,settings[0],level,settings[3],color)
                 else:painter.drawEllipse(box.adjusted(3,3,-3,-3))
         painter.setPen(QColor("#e5e5e5"))
         painter.drawLine(option.rect.topRight(), option.rect.bottomRight())

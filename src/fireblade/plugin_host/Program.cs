@@ -2,18 +2,32 @@ using System.Collections;
 using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
+#if !NETFRAMEWORK
 using System.Runtime.Loader;
+#endif
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
 internal static class Program
 {
-    static readonly JsonSerializerOptions Json = new() { WriteIndented = false };
+    static readonly JsonSerializerOptions Json = new() { WriteIndented = false, IncludeFields = true };
     static Assembly Load(string path)
     {
         path = Path.GetFullPath(path);
         var folder = Path.GetDirectoryName(path)!;
+#if NETFRAMEWORK
+        AppDomain.CurrentDomain.AssemblyResolve += (_, args) =>
+        {
+            var name=new AssemblyName(args.Name);
+            foreach(var directory in new[]{folder,Path.GetDirectoryName(folder) ?? folder}) {
+                var candidate=Path.Combine(directory,name.Name+".dll");
+                if(File.Exists(candidate))return Assembly.LoadFrom(candidate);
+            }
+            return null;
+        };
+        return Assembly.LoadFrom(path);
+#else
         AssemblyLoadContext.Default.Resolving += (_, name) =>
         {
             foreach(var directory in new[]{folder,Path.GetDirectoryName(folder) ?? folder}) {
@@ -23,6 +37,7 @@ internal static class Program
             return null;
         };
         return AssemblyLoadContext.Default.LoadFromAssemblyPath(path);
+#endif
     }
     static IEnumerable<Type> Types(Assembly assembly)
     {
@@ -45,14 +60,20 @@ internal static class Program
             headers=(contract.GetProperty("ExpectedHeaders")?.GetValue(reader) as IEnumerable)?.Cast<object>().Select(x=>x.ToString()).ToArray()
         };
     }).ToArray();
+    static string ObjectCell(object value) {
+        try {return JsonSerializer.Serialize(value,Json);}
+        catch(NotSupportedException) {return value.ToString() ?? "";}
+        catch(JsonException) {return value.ToString() ?? "";}
+    }
     static string Cell(object? value) => value switch
     {
         null => "",
+        string text => text,
         DateTime d => d.ToString("O",CultureInfo.InvariantCulture),
         DateTimeOffset d => d.ToString("O",CultureInfo.InvariantCulture),
         IEnumerable list when value is not string => JsonSerializer.Serialize(value,Json),
         IFormattable f => f.ToString(null,CultureInfo.InvariantCulture) ?? "",
-        _ => value.ToString() ?? ""
+        _ => ObjectCell(value)
     };
     static void Record(TextWriter output, IEnumerable<string> cells)
     {
@@ -128,7 +149,8 @@ internal static class Program
             var instance=Activator.CreateInstance(type)!;
             var name=contract.GetProperty("Name")!.GetValue(instance)?.ToString();
             if(string.IsNullOrWhiteSpace(name))continue;
-            if(!result.TryAdd(name,(instance,contract.GetMethod("Evaluate",[typeof(object[])])!)))throw new InvalidOperationException("Nom de fonction dupliqué : "+name);
+            if(result.ContainsKey(name))throw new InvalidOperationException("Nom de fonction dupliqué : "+name);
+            result.Add(name,(instance,contract.GetMethod("Evaluate",[typeof(object[])])!));
         }
         return result;
     }
@@ -201,7 +223,9 @@ internal static class Program
     {
         CultureInfo.CurrentCulture=CultureInfo.InvariantCulture;
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        Console.InputEncoding=new UTF8Encoding(false);Console.OutputEncoding=new UTF8Encoding(false);
+        Console.SetIn(new StreamReader(Console.OpenStandardInput(),new UTF8Encoding(false)));
+        Console.SetOut(new StreamWriter(Console.OpenStandardOutput(),new UTF8Encoding(false)){AutoFlush=true});
+        Console.SetError(new StreamWriter(Console.OpenStandardError(),new UTF8Encoding(false)){AutoFlush=true});
         try
         {
             if(args.Length==1 && args[0]=="--self-test")
@@ -216,6 +240,19 @@ internal static class Program
                 } finally {Directory.Delete(folder,true);}
                 return 0;
             }
+#if !NETFRAMEWORK
+            if(args.Length==2 && args[0]=="framework") {
+                using var input=File.OpenRead(args[1]);
+                using var pe=new System.Reflection.PortableExecutable.PEReader(input);
+                var metadata=System.Reflection.Metadata.PEReaderExtensions.GetMetadataReader(pe);
+                string framework="";
+                foreach(var handle in metadata.CustomAttributes) {
+                    var attr=metadata.GetCustomAttribute(handle);var blob=metadata.GetBlobReader(attr.Value);
+                    try {if(blob.ReadUInt16()==1) {var value=blob.ReadSerializedString();if(value!=null && (value.StartsWith(".NETFramework,Version=") || value.StartsWith(".NETCoreApp,Version=") || value.StartsWith(".NETStandard,Version=")))framework=value;}}catch(BadImageFormatException) { }
+                }
+                Console.WriteLine(JsonSerializer.Serialize(new {framework},Json));return 0;
+            }
+#endif
             if(args.Length<2)throw new ArgumentException("inspect DLL | convert DLL TYPE SOURCE TARGET");
             var protocol=Console.Out;
             if(args[0]=="serve")Console.SetOut(Console.Error);

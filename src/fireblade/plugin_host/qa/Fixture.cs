@@ -6,7 +6,7 @@ public sealed class FixtureReader {
  public HashSet<string> ExpectedHeaders {get;}=["Text,Identifier"];
  public void ProcessFile(string path)=>DataList.Add(new FixtureRow {Text=File.ReadAllText(path),Identifier="0001"});
 }
-public sealed class FixtureRow {public string Text{get;set;}="";public string Identifier{get;set;}="";public bool Flag{get;set;}=true;public DateTime Time{get;set;}=new DateTime(2026,1,1,0,0,0,DateTimeKind.Utc).AddTicks(1);public ulong LargeId{get;set;}=9007199254740993;}
+public sealed class FixtureRow {public string Text{get;set;}="";public string Identifier{get;set;}="";public bool Flag{get;set;}=true;public DateTime Time{get;set;}=new DateTime(2026,1,1,0,0,0,DateTimeKind.Utc).AddTicks(1);public ulong LargeId{get;set;}=9007199254740993;public FixtureDetails Details {get;set;}=new FixtureDetails();}
 public sealed class FixtureDouble {
  public string Name=>"FixtureDouble";
  public object Evaluate(params object[] values)=>decimal.Parse(values[0].ToString()!,CultureInfo.InvariantCulture)*2;
@@ -29,3 +29,5 @@ public sealed class FixturePause {
  public object Evaluate(params object[] values) {Thread.Sleep(10000);return "done";}
  public Type ResultType(params Type[] values)=>typeof(string);
 }
+public sealed class FixtureDetails {public string Name{get;set;}="évidence";public List<FixtureAmount> Children{get;set;}=[new(){Amount=3},new(){Amount=7}];}
+public sealed class FixtureAmount {public int Amount{get;set;}}

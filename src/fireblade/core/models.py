@@ -45,6 +45,37 @@ class FormatRule:
     italic: bool = False
     underline: bool = False
     strikeout: bool = False
+    bound_mode: str = "fixed"
+    font_family: str = ""
+    font_size: float = 0.0
+    statistic: str = ""
+    stat_rank: str = "10"
+    stat_percent: bool = False
+    stat_ignore_case: bool = False
+    stat_include_null: bool = False
+    zero_based: bool = False
+    negative_color: str = "#d64c4c"
+    axis_color: str = "#777777"
+    draw_axis: bool = True
+    stop_if_true: bool = True
+    use_background: bool = True
+    use_foreground: bool = True
+    use_font: bool = True
+    show_values: bool = True
+    value_column: int | None = None
+    middle_color: str = "#ffffbf"
+    middle_value: str = "50"
+    middle_mode: str = "percent"
+    maximum_mode: str = ""
+    icon_comparisons: list[str] = field(default_factory=list)
+    icon_floor: str = ""
+    icon_floor_mode: str = "number"
+    icon_floor_comparison: str = ">="
+    icon_thresholds: list[str] = field(default_factory=list)
+    icon_threshold_mode: str = "percent"
+    icon_set: str = "circles"
+    icon_colors: list[str] = field(default_factory=lambda:["#c62828","#c58b00","#218739"])
+    icon_images: list[str] = field(default_factory=lambda:["","",""])
 
 
 @dataclass

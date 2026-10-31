@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass, field
-from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal, QPoint, QRect
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPolygon
 from PySide6.QtWidgets import QStyledItemDelegate
 
 from fireblade.core.models import View
 from fireblade.core.conditions import validate_format_rules
-from fireblade.ui.visual_rules import VISUAL_ROLE, visual_value, contrast_color
+from fireblade.ui.visual_rules import VISUAL_ROLE, BAR_ROLE, ICON_ROLE, visual_value, contrast_color, icon_image, icon_level
 from fireblade.ui.workers import Job
 
 
@@ -17,7 +17,7 @@ class GridDelegate(QStyledItemDelegate):
     """Draw grid lines without a stylesheet that overrides model colors."""
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
-        size.setHeight(max(22, option.fontMetrics.height() + 6))
+        size.setHeight(max(22, option.fontMetrics.height() + 6, getattr(index.model(),"max_rule_height",0)))
         return size
 
     def paint(self, painter, option, index):
@@ -30,10 +30,26 @@ class GridDelegate(QStyledItemDelegate):
             painter.setBrush(color)
             painter.setClipRect(option.rect)
             if mode == 'bar':
-                painter.drawRect(option.rect.left()+2, option.rect.bottom()-4,
-                                 max(0, round((option.rect.width()-4)*fraction)), 3)
+                bar=index.data(BAR_ROLE)
+                axis=bar[0] if bar else 0
+                width=option.rect.width()-4;left=option.rect.left()+2
+                a,b=round(left+width*axis),round(left+width*fraction)
+                painter.drawRect(min(a,b),option.rect.bottom()-4,abs(b-a),3)
+                if bar and bar[1]:painter.setPen(QColor(bar[2]));painter.drawLine(a,option.rect.bottom()-6,a,option.rect.bottom()-1)
             elif mode == 'icon':
-                painter.drawEllipse(option.rect.right()-10, option.rect.top()+3, 7, 7)
+                settings=index.data(ICON_ROLE)
+                level=settings[2] if settings else min(2,int(fraction*3));side=min(16,option.rect.height()-4)
+                box=QRect(option.rect.right()-side-2,option.rect.center().y()-side//2,side,side)
+                image=icon_image(settings[1]) if settings and settings[1] else None
+                if image is not None and not image.isNull():painter.drawImage(box,image)
+                elif settings and settings[0]=='arrows':
+                    d=max(2,side//2-1);shaft=max(1,d//3)
+                    painter.save();painter.translate(box.center());painter.rotate(180-180*level/(settings[3]-1))
+                    painter.drawPolygon(QPolygon([QPoint(0,-d),QPoint(d,0),QPoint(shaft,0),QPoint(shaft,d),QPoint(-shaft,d),QPoint(-shaft,0),QPoint(-d,0)]));painter.restore()
+                elif settings and settings[0]=='signs':
+                    symbols={3:('−','!','+'),4:('−−','−','+','++'),5:('−−','−','0','+','++')}
+                    painter.setPen(color);painter.drawText(box,Qt.AlignCenter,symbols[settings[3]][level])
+                else:painter.drawEllipse(box.adjusted(3,3,-3,-3))
         painter.setPen(QColor("#e5e5e5"))
         painter.drawLine(option.rect.topRight(), option.rect.bottomRight())
         painter.setPen(QColor("#eeeeee"))
@@ -99,9 +115,16 @@ class GridModel(QAbstractItemModel):
         self.generation += 1
         for job in self.jobs:
             job.cancel()
+        self.case._visual_query_revision=getattr(self.case,"_visual_query_revision",0)+1
         self.view, self.root = copy.deepcopy(view), Node()
         self.global_rules = copy.deepcopy(list(global_rules)) if view.global_rules_enabled else []
         self.rules = self.view.format_rules + self.global_rules
+        self.max_rule_height=0
+        for rule in self.rules:
+            if rule.enabled and rule.use_font and rule.font_size:
+                font=QFont(rule.font_family) if rule.font_family else QFont()
+                font.setPointSizeF(rule.font_size)
+                self.max_rule_height=max(self.max_rule_height,QFontMetrics(font).height()+6)
         self.endResetModel()
         self.fetchMore(QModelIndex())
 
@@ -188,6 +211,13 @@ class GridModel(QAbstractItemModel):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
             return "Ligne / groupe" if section == 0 else self.headers[section - 1] if 0<section<=len(self.headers) else None
 
+    def cell_rules(self,node,col):
+        for i in node.styles:
+            rule=self.rules[i]
+            if rule.target is None or col==rule.target+1:
+                yield rule
+                if rule.stop_if_true:break
+
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return None
@@ -204,6 +234,8 @@ class GridModel(QAbstractItemModel):
                 return (("    " * (len(node.path)-1) + "▾ ") if self.view.expand_all else "") + result
             if col == 0:
                 return ("★ " if node.note is not None else "") + str(node.values[0])
+            for rule in self.cell_rules(node,col):
+                if rule.visual!='none' and not rule.show_values:return ''
             value = node.values[col]
             if col - 1 in self.view.timestamp_columns and value is not None:
                 from fireblade.core.timestamps import display_timestamp
@@ -227,39 +259,42 @@ class GridModel(QAbstractItemModel):
             return QColor("#eeeeee" if self.dark else "#202020")
         if role == Qt.BackgroundRole and node.group:
             return QColor("#39434f" if self.dark else "#e9edf2")
-        if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole, VISUAL_ROLE):
-            for rule_index in node.styles:
-                rule = self.rules[rule_index]
-                if rule.target is None or col == rule.target + 1:
-                    if rule.visual != 'none':
-                        graphic = visual_value(rule, node.values[col])
-                        if graphic is None:
-                            continue
-                        if role == VISUAL_ROLE:
-                            return graphic if rule.visual != 'scale' else None
-                        if role == Qt.BackgroundRole:
-                            return graphic[2] if rule.visual == 'scale' else None
-                        if role == Qt.ForegroundRole:
-                            if rule.visual == 'scale':
-                                return contrast_color(graphic[2])
-                            return None
-                    if role == VISUAL_ROLE:
-                        return None
-                    if role == Qt.BackgroundRole:
-                        return QColor(rule.background)
-                    if role == Qt.ForegroundRole:
-                        return QColor(rule.foreground)
-                    font = QFont()
-                    font.setBold(rule.bold)
-                    font.setItalic(rule.italic)
-                    font.setUnderline(rule.underline)
-                    font.setStrikeOut(rule.strikeout)
+        if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole, VISUAL_ROLE, ICON_ROLE, BAR_ROLE):
+            for rule in self.cell_rules(node,col):
+                if rule.visual!='none':
+                    value_column=rule.value_column if rule.value_column is not None else rule.target
+                    value=node.values[value_column+1]
+                    graphic=visual_value(rule,value)
+                    if graphic is None:continue
+                    scale=rule.visual in ('scale','scale3')
+                    if role==BAR_ROLE and rule.visual=='bar':
+                        from decimal import Decimal
+                        low,high=Decimal(rule.minimum),Decimal(rule.maximum)
+                        axis=float(max(Decimal(0),min(Decimal(1),-low/(high-low)))) if low<0 and low<high else 0
+                        return axis,rule.draw_axis and low<0,rule.axis_color
+                    if role==ICON_ROLE and rule.visual=='icon':
+                        level=icon_level(rule,value,graphic[1])
+                        return rule.icon_set,rule.icon_images[level],level,len(rule.icon_colors)
+                    if role==VISUAL_ROLE and not scale:return graphic
+                    if role==Qt.BackgroundRole and scale and rule.use_background:return graphic[2]
+                    if role==Qt.ForegroundRole and scale and rule.use_foreground and rule.use_background:return contrast_color(graphic[2])
+                else:
+                    if role==Qt.BackgroundRole and rule.use_background:return QColor(rule.background)
+                    if role==Qt.ForegroundRole and rule.use_foreground:return QColor(rule.foreground)
+                if role==Qt.FontRole and rule.use_font:
+                    font=QFont(rule.font_family) if rule.font_family else QFont()
+                    if rule.font_size:font.setPointSizeF(rule.font_size)
+                    font.setBold(rule.bold);font.setItalic(rule.italic);font.setUnderline(rule.underline);font.setStrikeOut(rule.strikeout)
                     return font
         if role == Qt.BackgroundRole and not node.group and node.note is not None:
             return QColor("#665c27" if self.dark else "#fff4c2")
         if role == Qt.BackgroundRole and not node.group and self.view.highlight:
             if any(self.view.highlight.casefold() in str(v).casefold() for v in node.values[1:] if v is not None):
                 return QColor("#674242" if self.dark else "#fce2e2")
+
+        if role==Qt.ForegroundRole and not node.group:
+            background=self.data(index,Qt.BackgroundRole)
+            if isinstance(background,QColor):return contrast_color(background)
 
     def flags(self, index):
         flags = super().flags(index)
@@ -293,17 +328,19 @@ class GridModel(QAbstractItemModel):
         global_rules = copy.deepcopy(self.global_rules)
         outline = view.expand_all and bool(view.groups)
         def read_page():
+            from fireblade.core.visual_bounds import resolve_rules
+            render_rules=resolve_rules(self.case,view,view.format_rules+global_rules)
             if outline:
                 records = self.case.outline_page(view,offset=offset)
                 rows = [r['values'] for r in records if not r['group']]
                 styles = self.case.page_styles(view,rows,global_rules)
                 notes = self.case.bookmarks([r[0] for r in rows])
-                return records,styles,notes
+                return records,styles,notes,render_rules
             rows = self.case.page(view, path, offset)
             leaves = len(path) >= len(view.groups)
             styles = self.case.page_styles(view, rows, global_rules) if leaves else {}
             notes = self.case.bookmarks([row[0] for row in rows]) if leaves else {}
-            return rows, styles, notes
+            return rows, styles, notes,render_rules
         job = Job(read_page)
         node.job = job
         self.jobs.add(job)
@@ -318,10 +355,11 @@ class GridModel(QAbstractItemModel):
                 node.job = None
 
         def complete(result):
-            rows, styles, notes = result
+            rows, styles, notes, render_rules = result
             release()
             if generation != self.generation or revision != node.revision or not self.attached(node):
                 return
+            self.rules=render_rules
             node.loading = False
             node.more = len(rows) == self.settings.page_size
             if rows:

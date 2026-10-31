@@ -8,6 +8,13 @@ from dataclasses import dataclass
 from functools import lru_cache
 import re
 
+CUSTOM_FUNCTIONS = {}
+
+def register_function_metadata(mapping):
+    for name,kind in mapping.items():
+        if isinstance(name,str) and re.fullmatch(r'[A-Za-z_]\w{0,127}',name) and kind in ('text','number','date','boolean'):
+            CUSTOM_FUNCTIONS[name.casefold()]=kind
+
 TOKEN = re.compile(
     r"""\s*(?:(\[(?:[^\]]|\]\])*\])|('(?:[^']|'')*'|"(?:[^"]|"")*")|(#(?:[^#]+)#)|(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?)|([A-Za-z_]\w*)|(>=|<=|<>|!=|==|&&|\|\||[=<>(),+*/%&|^!~-]))"""
 )
@@ -198,6 +205,8 @@ class Parser:
 
 @lru_cache(maxsize=256)
 def parse(text, headers):
+    from fireblade.core.collection_expressions import translate
+    text=translate(text,headers)
     parser = Parser(text, headers)
     if not parser.tokens:
         return Node("boolean", True)
@@ -231,8 +240,9 @@ class Value:
 
 
 class Compiler:
-    def __init__(self, column, numeric):
+    def __init__(self, column, numeric, collection_depth=0):
         self.column, self.numeric = column, numeric
+        self.collection_depth=collection_depth
         self.nodes = 0
 
     def nanoseconds(self, value):
@@ -415,6 +425,31 @@ class Compiler:
             "boolean",
             left.parameters + right.parameters,
         )
+
+    def plugin_arguments(self,args):
+        owner=getattr(self.column,'__self__',None)
+        columns=getattr(owner,'info',{}).get('plugin',{}).get('columns',[])
+        output=[];parameters=[]
+        for value in args:
+            tag=None;expression=value.sql;params=value.parameters
+            column=re.fullmatch(r'"c(\d+)"',value.sql)
+            if column and int(column.group(1))<len(columns):
+                clr=columns[int(column.group(1))].get('type','') or ''
+                for source,target in [('DateTimeOffset','dateoffset'),('DateTime','date'),('UInt64','u64'),('Int64','i64'),('UInt32','u32'),('Int32','i32'),('UInt16','u16'),('Int16','i16'),('Byte','u8'),('Decimal','decimal'),('Double','double'),('Single','single'),('Boolean','bool')]:
+                    if 'System.'+source in clr:tag=target;break
+            if value.kind=='date':
+                tag='date';canonical=self.date_value(self.nanoseconds(value));expression=canonical.sql;params=canonical.parameters
+            elif value.kind=='number':
+                tag='decimal'
+                if len(value.parameters)==1 and value.sql.startswith('cast(? AS DECIMAL'):
+                    literal=str(value.parameters[0])
+                    if re.fullmatch(r'[+-]?\d+',literal):
+                        number=int(literal)
+                        tag='i32' if -(2**31)<=number<2**31 else 'i64' if -(2**63)<=number<2**63 else 'decimal'
+            elif value.kind=='boolean':tag='bool'
+            output.append(f"json_object('$fb_type','{tag}','value',cast({expression} AS VARCHAR))" if tag else expression)
+            parameters+=params
+        return 'json_array('+','.join(output)+')',parameters
 
     def function(self, name, args):
         def arity(low, high=None):
@@ -806,6 +841,67 @@ class Compiler:
                 f"date_trunc('{unit}',{args[0].sql})=date_trunc('{unit}',current_timestamp)+INTERVAL '{offset}' {unit.upper()}",
                 "boolean",
             )
+        if name in ('jsonvalue','jsoncount'):
+            arity(1,2)
+            path=args[1] if len(args)>1 else Value("'$'",'text',[])
+            function='json_extract_string' if name=='jsonvalue' else 'json_array_length'
+            return Value(f"TRY({function}(try_cast({args[0].sql} AS JSON),{path.sql}))",'text' if name=='jsonvalue' else 'number',args[0].parameters+path.parameters)
+        if name=='jsonsingle' and len(args)==1:
+            array=f'try_cast(try_cast({args[0].sql} AS JSON) AS JSON[])'
+            return Value(f"CASE WHEN array_length({array})>1 THEN error('Single : plusieurs objets correspondent') ELSE cast(list_extract({array},1) AS VARCHAR) END",'text',args[0].parameters*2)
+        if name in ('jsonfilter','jsonany','jsonall','jsonsumexpr','jsonavgexpr','jsonminexpr','jsonmaxexpr','jsonsingle'):
+            arity(2)
+            if self.collection_depth>=16:raise ValueError('16 niveaux de collections maximum')
+            predicate=args[1]
+            if predicate.sql!='?' or len(predicate.parameters)!=1 or not isinstance(predicate.parameters[0],str):raise ValueError('L’expression de collection doit être un texte constant')
+            expression=predicate.parameters[0]
+            fields=list(dict.fromkeys(re.findall(r'\[((?:[^\]]|\]\])+)\]',expression)))
+            fields=[f.replace(']]',']') for f in fields]
+            import json
+            def column(index):
+                if index<0:raise ValueError('Champs virtuels indisponibles dans une collection')
+                path='$.'+json.dumps(fields[index],ensure_ascii=False)
+                return "json_extract_string(__fb_item,'"+path.replace("'","''")+"')"
+            nested=Compiler(column,self.numeric,self.collection_depth+1)
+            child=nested.emit(parse(expression,tuple(fields)))
+            array=f'try_cast(try_cast({args[0].sql} AS JSON) AS JSON[])'
+            parameters=args[0].parameters+child.parameters
+            if name in ('jsonfilter','jsonany','jsonall'):
+                child=nested.cast(child,'boolean');parameters=args[0].parameters+child.parameters
+                filtered=f'list_filter({array},__fb_item -> ({child.sql}))'
+                if name=='jsonfilter':return Value(f'cast(to_json({filtered}) AS VARCHAR)','text',parameters)
+                sql=f'array_length({filtered})>0' if name=='jsonany' else f'array_length({filtered})=array_length({array})'
+                if name=='jsonall':parameters+=args[0].parameters
+                return Value(f'coalesce(({sql}),FALSE)','boolean',parameters)
+            if name=='jsonsingle':
+                values=f'list_transform({array},__fb_item -> ({child.sql}))'
+                return Value(f"CASE WHEN array_length({array})>1 THEN error('Single : plusieurs objets correspondent') ELSE list_extract({values},1) END",child.kind,args[0].parameters+parameters)
+            child=nested.cast(child,'number');parameters=args[0].parameters+child.parameters
+            operation={'jsonsumexpr':'sum','jsonavgexpr':'avg','jsonminexpr':'min','jsonmaxexpr':'max'}[name]
+            return Value(f'list_{operation}(list_transform({array},__fb_item -> ({child.sql})))','number',parameters)
+        if name=='custom':
+            arity(1,32)
+            if args[0].sql!='?' or len(args[0].parameters)!=1:raise ValueError('Nom de fonction Custom constant requis')
+            target=args[0].parameters[0].casefold()
+            owner=getattr(self.column,'__self__',None);functions=getattr(owner,'expression_functions',CUSTOM_FUNCTIONS)
+            if target not in functions:raise ValueError('Fonction personnalisée non chargée : '+target)
+            return self.function(target,args[1:])
+        owner=getattr(self.column,'__self__',None)
+        functions=getattr(owner,'expression_functions',CUSTOM_FUNCTIONS)
+        if name in ('plugintext','pluginnumber','pluginbool','plugindate'):
+            arity(1,32)
+            if args[0].sql!='?' or len(args[0].parameters)!=1:raise ValueError('Nom de fonction .NET constant requis')
+            target=str(args[0].parameters[0]).casefold()
+            if owner is not None and hasattr(owner,'expression_functions') and target not in functions:raise ValueError('Charger les fonctions .NET avant d’utiliser '+target)
+            array,parameters=self.plugin_arguments(args[1:])
+            value=Value('__fireblade_plugin_eval(?,cast('+array+' AS VARCHAR))','text',[target]+parameters)
+            kind={'plugintext':'text','pluginnumber':'number','pluginbool':'boolean','plugindate':'date'}[name]
+            return Value(f'try_cast({value.sql} AS BOOLEAN)','boolean',value.parameters) if kind=='boolean' else self.cast(value,kind)
+        if name in functions:
+            array,parameters=self.plugin_arguments(args)
+            value=Value('__fireblade_plugin_eval(?,cast('+array+' AS VARCHAR))','text',[name]+parameters)
+            kind=functions[name]
+            return Value(f'try_cast({value.sql} AS BOOLEAN)','boolean',value.parameters) if kind=='boolean' else self.cast(value,kind)
         raise ValueError(f"Fonction non prise en charge : {name}")
 
 

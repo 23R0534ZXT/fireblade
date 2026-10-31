@@ -1,11 +1,12 @@
 """Ordinary Qt editors for Boolean conditions and ordered formatting rules."""
 import copy
+from dataclasses import replace
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog,
-    QDialogButtonBox, QHBoxLayout, QLabel, QLineEdit, QListWidget, QMessageBox,
-    QPushButton, QTableWidget, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
+    QDoubleSpinBox, QFontComboBox, QDialogButtonBox, QHBoxLayout, QLabel, QLineEdit, QListWidget, QMessageBox,
+    QGridLayout, QScrollArea, QTabWidget, QFileDialog, QPushButton, QTableWidget, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from fireblade.core.models import Filter, FilterGroup, FormatRule, SortKey, OPERATORS
 
@@ -184,15 +185,16 @@ class SortDialog(QDialog):
 
 
 class RulesDialog(QDialog):
-    def __init__(self, headers, rules, parent=None):
+    def __init__(self, headers, rules, parent=None, functions=None):
         super().__init__(parent)
         self.headers, self.rules = headers, copy.deepcopy(rules)
+        self.functions=functions if functions is not None else getattr(getattr(parent,"case",None),"expression_functions",{})
         self.setWindowTitle("Règles de coloration · première règle correspondante prioritaire")
         self.resize(850, 540)
         self.current = -1
         layout = QVBoxLayout(self)
         self.listing = QListWidget()
-        self.listing.setMaximumHeight(115)
+        self.listing.setMaximumHeight(80)
         layout.addWidget(self.listing)
         row = QHBoxLayout()
         for label, callback in [("Ajouter", self.add), ("Supprimer", self.remove), ("Monter", lambda: self.move(-1)), ("Descendre", lambda: self.move(1))]:
@@ -200,6 +202,13 @@ class RulesDialog(QDialog):
             button.clicked.connect(callback)
             row.addWidget(button)
         layout.addLayout(row)
+        self.format_tabs=QTabWidget();self.format_tabs.setMaximumHeight(190)
+        appearance=QWidget();appearance.setLayout(QVBoxLayout())
+        graphic_content=QWidget();graphic_content.setLayout(QVBoxLayout())
+        graphic_scroll=QScrollArea();graphic_scroll.setWidgetResizable(True);graphic_scroll.setWidget(graphic_content)
+        appearance_scroll=QScrollArea();appearance_scroll.setWidgetResizable(True);appearance_scroll.setWidget(appearance)
+        self.format_tabs.addTab(appearance_scroll,'Apparence');self.format_tabs.addTab(graphic_scroll,'Graphique')
+        layout.addWidget(self.format_tabs)
         controls = QHBoxLayout()
         self.enabled = QCheckBox("Active")
         controls.addWidget(self.enabled)
@@ -219,19 +228,86 @@ class RulesDialog(QDialog):
         self.italic, self.underline, self.strikeout = QCheckBox('Italique'), QCheckBox('Souligné'), QCheckBox('Barré')
         for widget in (self.italic, self.underline, self.strikeout):
             controls.addWidget(widget)
-        layout.addLayout(controls)
+        appearance.layout().addLayout(controls)
         visual_row = QHBoxLayout()
         self.visual = QComboBox()
-        for label, code in [('Couleurs / gras', 'none'), ('Barre de données', 'bar'), ('Dégradé fond → texte', 'scale'), ('Indicateur à trois niveaux', 'icon')]:
-            self.visual.addItem(label, code)
-        self.visual.setToolTip('Les modes graphiques nécessitent une colonne cible. Bornes fixes pour toutes les pages ; les valeurs invalides restent sans graphique. Le dégradé va de la couleur Fond à la couleur Texte ; les indicateurs sont rouge, ambre et vert.')
-        self.minimum, self.maximum = QLineEdit('0'), QLineEdit('100')
+        for label, code in [('Couleurs / texte', 'none'), ('Barre de données', 'bar'), ('Dégradé à 2 couleurs', 'scale'), ('Dégradé à 3 couleurs','scale3'), ('Icônes', 'icon')]:self.visual.addItem(label,code)
+        self.visual.setToolTip('Les bornes et percentiles portent sur tous les résultats filtrés, avec cache entre les pages.')
         visual_row.addWidget(self.visual)
-        visual_row.addWidget(QLabel('Minimum'))
-        visual_row.addWidget(self.minimum)
-        visual_row.addWidget(QLabel('Maximum'))
-        visual_row.addWidget(self.maximum)
-        layout.addLayout(visual_row)
+        self.value_column=QComboBox();self.value_column.addItem('Valeurs du champ cible',None)
+        for i,h in enumerate(headers):self.value_column.addItem(h,i)
+        visual_row.addWidget(self.value_column);graphic_content.layout().addLayout(visual_row)
+        self.minimum,self.maximum=QLineEdit('0'),QLineEdit('100')
+        self.bound_mode,self.high_mode=QComboBox(),QComboBox()
+        for combo in (self.bound_mode,self.high_mode):
+            for label,code in [('Valeur fixe','fixed'),('Automatique','auto'),('Pourcent de la plage','percent'),('Percentile exact','percentile')]:combo.addItem(label,code)
+        bounds=QHBoxLayout()
+        for widget in (QLabel('Minimum'),self.bound_mode,self.minimum,QLabel('Maximum'),self.high_mode,self.maximum):bounds.addWidget(widget)
+        graphic_content.layout().addLayout(bounds)
+        middle=QHBoxLayout();self.middle_color=QPushButton('Couleur médiane');self.middle_color.clicked.connect(lambda:self.pick_color(self.middle_color))
+        self.middle_value=QLineEdit('50');self.middle_mode=QComboBox()
+        for label,code in [('Valeur fixe','fixed'),('Pourcent de la plage','percent'),('Percentile exact','percentile')]:self.middle_mode.addItem(label,code)
+        for widget in (self.middle_color,self.middle_mode,self.middle_value):middle.addWidget(widget)
+        graphic_content.layout().addLayout(middle)
+        fonts=QHBoxLayout();self.font_family=QFontComboBox();self.font_size=QDoubleSpinBox()
+        self.font_size.setRange(0,96);self.font_size.setSpecialValueText('Taille héritée');self.font_size.setDecimals(2)
+        self.custom_font=QCheckBox('Police propre à cette règle')
+        fonts.addWidget(self.custom_font);fonts.addWidget(self.font_family);fonts.addWidget(self.font_size)
+        appearance.layout().addLayout(fonts)
+        flags=QHBoxLayout();self.use_background=QCheckBox('Fond actif');self.use_foreground=QCheckBox('Texte actif');self.use_font=QCheckBox('Police active');self.stop_if_true=QCheckBox('Arrêter après cette règle')
+        for widget in (self.use_background,self.use_foreground,self.use_font,self.stop_if_true):flags.addWidget(widget)
+        appearance.layout().addLayout(flags)
+        statistics=QHBoxLayout();self.statistic=QComboBox()
+        for label,code in [('Conditions seulement',''),('Valeurs les plus élevées','top'),('Valeurs les plus basses','bottom'),('Au-dessus de la moyenne','above_avg'),('Sous la moyenne','below_avg'),('Valeurs uniques','unique'),('Doublons','duplicate')]:self.statistic.addItem(label,code)
+        self.stat_rank=QLineEdit('10');self.stat_rank.setMaximumWidth(80);self.stat_percent=QCheckBox('Pourcent')
+        self.stat_column=QComboBox();self.stat_column.addItem('Valeurs du champ cible',None)
+        for i,h in enumerate(headers):self.stat_column.addItem(h,i)
+        self.stat_column.currentIndexChanged.connect(self.value_column.setCurrentIndex);self.value_column.currentIndexChanged.connect(self.stat_column.setCurrentIndex)
+        for widget in (self.statistic,self.stat_column,self.stat_rank,self.stat_percent):statistics.addWidget(widget)
+        appearance.layout().addLayout(statistics)
+        matching=QHBoxLayout();self.stat_ignore_case=QCheckBox('Doublons sans distinction de casse');self.stat_include_null=QCheckBox('Inclure les valeurs vides')
+        matching.addWidget(self.stat_ignore_case);matching.addWidget(self.stat_include_null);appearance.layout().addLayout(matching)
+        self.show_values=QCheckBox('Afficher les valeurs');graphic_content.layout().addWidget(self.show_values)
+        bar=QHBoxLayout();self.zero_based=QCheckBox('Bornes automatiques incluant zéro');self.draw_axis=QCheckBox('Tracer l’axe zéro')
+        self.negative_color=QPushButton('Couleur négative');self.axis_color=QPushButton('Couleur de l’axe')
+        self.negative_color.clicked.connect(lambda:self.pick_color(self.negative_color));self.axis_color.clicked.connect(lambda:self.pick_color(self.axis_color))
+        for widget in (self.zero_based,self.draw_axis,self.negative_color,self.axis_color):bar.addWidget(widget)
+        graphic_content.layout().addLayout(bar)
+        self.icons_widget=QWidget();icons=QGridLayout(self.icons_widget)
+        self.icon_levels=QComboBox()
+        for count in (3,4,5):self.icon_levels.addItem(f'{count} niveaux',count)
+        self.icon_set=QComboBox()
+        for label,code in [('Ronds','circles'),('Flèches','arrows'),('Signes','signs')]:self.icon_set.addItem(label,code)
+        self.icon_threshold_mode=QComboBox()
+        for label,code in [('Seuils en pourcent','percent'),('Seuils numériques','number'),('Seuils en percentiles','percentile')]:self.icon_threshold_mode.addItem(label,code)
+        icons.addWidget(self.icon_levels,0,0);icons.addWidget(self.icon_set,0,1);icons.addWidget(self.icon_threshold_mode,0,2,1,2)
+        self.icon_colors=[];self.icon_images=[];self.icon_thresholds=[];self.icon_comparisons=[]
+        for i in range(5):
+            color=QPushButton(f'Couleur {i+1}');image=QPushButton(f'Image {i+1}')
+            color.clicked.connect(lambda _=False,b=color:self.pick_color(b));image.clicked.connect(lambda _=False,b=image:self.pick_icon(b))
+            icons.addWidget(color,1,i);icons.addWidget(image,2,i);self.icon_colors.append(color);self.icon_images.append(image)
+            if i<4:
+                threshold=QLineEdit();threshold.setPlaceholderText(f'Seuil {i+1}')
+                comparison=QComboBox();comparison.addItem('≥','>=');comparison.addItem('>','>')
+                pair=QWidget();pair.setLayout(QHBoxLayout());pair.layout().setContentsMargins(0,0,0,0);pair.layout().addWidget(comparison);pair.layout().addWidget(threshold)
+                icons.addWidget(pair,3,i);self.icon_thresholds.append(threshold);self.icon_comparisons.append(comparison)
+        floor=QHBoxLayout();self.icon_floor=QLineEdit();self.icon_floor.setPlaceholderText('Plancher facultatif')
+        self.icon_floor_mode=QComboBox()
+        for label,code in [('Valeur','number'),('Pourcent','percent'),('Percentile','percentile')]:self.icon_floor_mode.addItem(label,code)
+        self.icon_floor_comparison=QComboBox();self.icon_floor_comparison.addItem('≥','>=');self.icon_floor_comparison.addItem('>','>')
+        for widget in (self.icon_floor,self.icon_floor_mode,self.icon_floor_comparison):floor.addWidget(widget)
+        icons.addLayout(floor,5,0,1,5)
+        clear=QPushButton('Effacer images');clear.clicked.connect(lambda:[b.setProperty('image','') for b in self.icon_images]);icons.addWidget(clear,4,0,1,2)
+        graphic_content.layout().addWidget(self.icons_widget)
+        def update_icons():
+            count=self.icon_levels.currentData()
+            self.icons_widget.setVisible(self.visual.currentData()=='icon')
+            for i in range(5):
+                self.icon_colors[i].setVisible(i<count);self.icon_images[i].setVisible(i<count)
+                if i<4:
+                    self.icon_thresholds[i].parentWidget().setVisible(i<count-1)
+        self.visual.currentIndexChanged.connect(update_icons);self.icon_levels.currentIndexChanged.connect(update_icons)
+        self._update_icons=update_icons
         self.editor = ExpressionEditor(headers)
         layout.addWidget(self.editor)
         self.message = QLabel()
@@ -242,6 +318,21 @@ class RulesDialog(QDialog):
         layout.addWidget(buttons)
         self.listing.currentRowChanged.connect(self.select)
         self.refresh(0 if self.rules else -1)
+
+    def pick_icon(self,button):
+        path,_=QFileDialog.getOpenFileName(self,'Choisir une icône','','Images (*.png *.jpg *.jpeg *.bmp)')
+        if not path:return
+        from PySide6.QtGui import QImageReader
+        from PySide6.QtCore import QBuffer,QIODevice,QSize
+        import base64
+        reader=QImageReader(path);size=reader.size()
+        if not size.isValid() or size.width()*size.height()>16000000:
+            self.message.setText('Image invalide ou trop grande (16 mégapixels maximum)');return
+        reader.setScaledSize(QSize(32,32));image=reader.read()
+        if image.isNull():self.message.setText(reader.errorString());return
+        buffer=QBuffer();buffer.open(QIODevice.WriteOnly);image.save(buffer,'PNG')
+        button.setProperty('image',base64.b64encode(bytes(buffer.data())).decode('ascii'))
+        button.setToolTip('Image intégrée dans la règle, sans dépendance au fichier original')
 
     def pick_color(self, button):
         color = QColorDialog.getColor(QColor(button.property("color") or "#ffffff"), self)
@@ -255,8 +346,22 @@ class RulesDialog(QDialog):
 
     def store(self):
         if self.current >= 0:
-            self.rules[self.current] = FormatRule(self.editor.value(), self.background.property("color"),
-                self.foreground.property("color"), self.bold.isChecked(), self.target.currentData(), self.enabled.isChecked(), self.visual.currentData(), self.minimum.text(), self.maximum.text(), self.italic.isChecked(), self.underline.isChecked(), self.strikeout.isChecked())
+            count=self.icon_levels.currentData()
+            thresholds=[b.text().strip() for b in self.icon_thresholds[:count-1]]
+            if not any(thresholds):thresholds=[]
+            self.rules[self.current] = replace(self.rules[self.current],condition=self.editor.value(),background=self.background.property('color'),
+                foreground=self.foreground.property('color'),bold=self.bold.isChecked(),target=self.target.currentData(),enabled=self.enabled.isChecked(),visual=self.visual.currentData(),
+                minimum=self.minimum.text(),maximum=self.maximum.text(),italic=self.italic.isChecked(),underline=self.underline.isChecked(),strikeout=self.strikeout.isChecked(),
+                bound_mode=self.bound_mode.currentData(),maximum_mode=(self.high_mode.currentData() if self.rules[self.current].maximum_mode or self.high_mode.currentData()!=self.bound_mode.currentData() else ""),font_family=self.font_family.currentText() if self.custom_font.isChecked() else '',font_size=self.font_size.value(),
+                statistic=self.statistic.currentData(),stat_rank=self.stat_rank.text(),stat_percent=self.stat_percent.isChecked(),stat_ignore_case=self.stat_ignore_case.isChecked(),stat_include_null=self.stat_include_null.isChecked(),
+                zero_based=self.zero_based.isChecked(),draw_axis=self.draw_axis.isChecked(),negative_color=self.negative_color.property("color"),axis_color=self.axis_color.property("color"),
+                stop_if_true=self.stop_if_true.isChecked(),use_background=self.use_background.isChecked(),use_foreground=self.use_foreground.isChecked(),use_font=self.use_font.isChecked(),show_values=self.show_values.isChecked(),
+                value_column=self.value_column.currentData(),middle_color=self.middle_color.property("color"),middle_value=self.middle_value.text(),middle_mode=self.middle_mode.currentData(),
+                icon_set=self.icon_set.currentData(),icon_colors=[b.property('color') for b in self.icon_colors[:count]],icon_images=[b.property('image') or '' for b in self.icon_images[:count]],
+                icon_threshold_mode=self.icon_threshold_mode.currentData(),icon_thresholds=thresholds,
+                icon_comparisons=([c.currentData() for c in self.icon_comparisons[:count-1]] if self.rules[self.current].icon_comparisons or any(c.currentData()!=">=" for c in self.icon_comparisons[:count-1]) else []),
+                icon_floor=self.icon_floor.text(),icon_floor_mode=self.icon_floor_mode.currentData(),icon_floor_comparison=self.icon_floor_comparison.currentData())
+
 
     def refresh(self, selected):
         self.listing.blockSignals(True)
@@ -279,13 +384,35 @@ class RulesDialog(QDialog):
             return
         self.current = index
         rule = self.rules[index] if index >= 0 else FormatRule()
+        self.statistic.setCurrentIndex(self.statistic.findData(rule.statistic));self.stat_rank.setText(rule.stat_rank)
         self.enabled.setChecked(rule.enabled)
+        for name in ("use_background","use_foreground","use_font","stop_if_true","show_values","zero_based","draw_axis","stat_percent","stat_ignore_case","stat_include_null"):getattr(self,name).setChecked(getattr(rule,name))
+        self.set_color(self.negative_color,rule.negative_color);self.set_color(self.axis_color,rule.axis_color)
         self.target.setCurrentIndex(self.target.findData(rule.target))
         self.bold.setChecked(rule.bold)
         self.italic.setChecked(rule.italic)
         self.underline.setChecked(rule.underline)
         self.strikeout.setChecked(rule.strikeout)
         self.visual.setCurrentIndex(self.visual.findData(rule.visual))
+        self.value_column.setCurrentIndex(self.value_column.findData(rule.value_column))
+        self.set_color(self.middle_color,rule.middle_color);self.middle_value.setText(rule.middle_value);self.middle_mode.setCurrentIndex(self.middle_mode.findData(rule.middle_mode))
+        self.bound_mode.setCurrentIndex(self.bound_mode.findData(rule.bound_mode))
+        self.high_mode.setCurrentIndex(self.high_mode.findData(rule.maximum_mode or rule.bound_mode))
+        self.custom_font.setChecked(bool(rule.font_family))
+        if rule.font_family:
+            from PySide6.QtGui import QFont
+            self.font_family.setEditText(rule.font_family)
+        self.font_size.setValue(rule.font_size)
+        self.icon_set.setCurrentIndex(self.icon_set.findData(rule.icon_set))
+        self.icon_levels.setCurrentIndex(self.icon_levels.findData(len(rule.icon_colors)))
+        self.icon_threshold_mode.setCurrentIndex(self.icon_threshold_mode.findData(rule.icon_threshold_mode))
+        defaults=['#c62828','#f57c00','#c58b00','#8dbb38','#218739']
+        for i,button in enumerate(self.icon_colors):self.set_color(button,rule.icon_colors[i] if i<len(rule.icon_colors) else defaults[i])
+        for i,button in enumerate(self.icon_images):button.setProperty('image',rule.icon_images[i] if i<len(rule.icon_images) else '')
+        for i,field in enumerate(self.icon_thresholds):field.setText(rule.icon_thresholds[i] if i<len(rule.icon_thresholds) else '')
+        for i,combo in enumerate(self.icon_comparisons):combo.setCurrentIndex(combo.findData(rule.icon_comparisons[i] if i<len(rule.icon_comparisons) else '>='))
+        self.icon_floor.setText(rule.icon_floor);self.icon_floor_mode.setCurrentIndex(self.icon_floor_mode.findData(rule.icon_floor_mode));self.icon_floor_comparison.setCurrentIndex(self.icon_floor_comparison.findData(rule.icon_floor_comparison))
+        self._update_icons()
         self.minimum.setText(rule.minimum)
         self.maximum.setText(rule.maximum)
         self.set_color(self.background, rule.background)
@@ -299,8 +426,9 @@ class RulesDialog(QDialog):
         self.editor = ExpressionEditor(self.headers, rule.condition)
         self.layout().replaceWidget(old, self.editor)
         old.deleteLater()
-        for widget in (self.editor, self.enabled, self.target, self.background, self.foreground, self.bold, self.visual, self.minimum, self.maximum, self.italic, self.underline, self.strikeout):
+        for widget in (self.editor, self.enabled, self.target, self.background, self.foreground, self.bold, self.visual, self.minimum, self.maximum, self.italic, self.underline, self.strikeout, self.bound_mode, self.custom_font, self.font_family, self.font_size,self.high_mode,self.value_column,self.middle_color,self.middle_mode,self.middle_value,self.stop_if_true,self.use_background,self.use_foreground,self.use_font,self.show_values,self.zero_based,self.draw_axis,self.negative_color,self.axis_color,self.statistic,self.stat_rank,self.stat_column,self.stat_percent,self.stat_ignore_case,self.stat_include_null):
             widget.setEnabled(index >= 0)
+        for widget in [self.icon_set,self.icon_levels,self.icon_threshold_mode,*self.icon_thresholds,*self.icon_colors,*self.icon_images]:widget.setEnabled(index>=0)
         self.message.clear()
 
     def add(self):
@@ -335,7 +463,7 @@ class RulesDialog(QDialog):
         try:
             self.store()
             from fireblade.core.rule_store import RuleBook
-            RuleBook(self.headers, self.rules).validate()
+            RuleBook(self.headers,self.rules,self.functions).validate()
         except ValueError as exc:
             self.message.setText(str(exc))
             return

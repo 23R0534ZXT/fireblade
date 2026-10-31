@@ -31,21 +31,21 @@ Références : [manuel officiel](https://github.com/EZToolsManuals/EZToolsManual
 | Colonnes épinglées | Ajoutées | À gauche, modèle et sélection partagés ; état dans la vue |
 | Réinitialiser les largeurs | Ajouté | Ctrl+R |
 | Dispositions enregistrées | Présent | Vues dans l’analyse et fichier portable `.fireblade-view` |
-| Import des layouts TLE | Partiel | Colonnes et noms de contrôles, filtres compatibles, recherche, groupes temporels, tris, résumés, règles expression/valeur ; règles graphiques non traduites refusées |
+| Import des layouts TLE | Partiel | Colonnes et noms de contrôles, filtres compatibles, recherche, groupes temporels, tris, résumés, règles expression/valeur, statistiques et graphiques standards ; variantes non traduites refusées |
 | Import des préférences TLE | Ajouté | `TLE_settings.xml` : copie, police et taille fractionnaire, onglets, détails haut/bas, format des dates, épinglage simple ; thèmes adaptés, champs inconnus signalés |
 | Sessions Fireblade | Présent | Références aux bases ; données conservées séparément |
 | Import `.tle_sess` | Ajouté | Sources et tags ; réimporte les sources présentes, BOM UTF-8/16/32 pour CSV ; dispositions séparées |
-| Barres, dégradés, indicateurs | Ajoutés | Colonne numérique, bornes fixes communes à toutes les pages, trois niveaux ; persistance Fireblade. Les variantes XML DevExpress restent à traduire |
+| Barres, dégradés, indicateurs | Ajoutés | Bornes fixes/auto/percent/percentile exact sur tout le filtre, deux/trois couleurs, barres négatives et axe, trois/cinq icônes avec seuils et PNG ; migration XML standard |
 | Préambules PeScan/Wisp | Ajoutés | Quatre lignes retirées de la copie de travail seulement, après vérification de l’en-tête public exact |
-| Règles de couleur locales/globales | Présent | Texte, fond, gras/italique/souligné/barré, cellule/ligne, priorité et partage JSON Fireblade |
+| Règles de couleur locales/globales | Présent | Texte, fond, police/taille par règle, styles, cellule/ligne, combinaison par propriété et arrêt ; top/bottom, moyenne, uniques/doublons ; partage JSON |
 | Signets / tags | Étendu | Case à cocher, sélection multiple et filtre des signets |
 | Notes libres | Présent | Ajout/remplacement/retrait en masse ; export annoté |
 | Booléens sous forme de cases | Ajoutés | Champs reconnus ou bascule depuis l’en-tête ; aucune mutation de la source |
 | Panneau de détails | Étendu | En bas/à droite, copie et filtrage depuis un champ |
 | Cellule complète, JSON, XML | Étendu | Texte brut sans troncature ; formatage limité à 2 Mo, pas de DTD/entités XML |
 | Profils forensic | Étendus | 222 signatures / 193 noms ; métadonnées de présentation, pas 193 parseurs qualifiés |
-| Plugins externes | Ajoutés | Profils JSON installables/rechargeables ; pas de compatibilité binaire avec les DLL TLE |
-| Supertimelines | Partiel | Plaso/L2T, Psort, mactime et ForensicTimeline : dates UTC, MACB, catégories et couleurs ; valeurs sources conservées. Assemblage de dates PeScan/Wisp ; pas de chargement des DLL .NET |
+| Plugins externes | Ajoutés | Profils JSON ; pont explicite ProcessFile/DataList et fonctions Name/Evaluate, runtime .NET intégré ; dépendances tierces nécessaires au plugin |
+| Supertimelines | Partiel | Plaso/L2T, Psort, mactime et ForensicTimeline : dates UTC, MACB, catégories et couleurs ; valeurs sources conservées. Assemblage de dates PeScan/Wisp ; chargement explicite possible via le pont .NET |
 | Thème et police | Ajoutés | Clair/sombre explicites, famille/taille fractionnaire, dates source/ISO/7 décimales et format personnalisé |
 | Copier au clic droit / en-têtes | Ajoutés | Préférences ; Maj+clic droit conserve l’accès au menu |
 | Ouvrir avec / Explorateur | Ajouté | Programme choisi par l’utilisateur ; chemins locaux, aucune interprétation par shell |
@@ -58,7 +58,7 @@ Références : [manuel officiel](https://github.com/EZToolsManuals/EZToolsManual
 
 ## Équivalence encore à établir
 
-La grille DevExpress de Timeline Explorer contient des possibilités qui ne sont pas intégralement inventoriées dans son manuel. Fireblade ne prétend donc pas à une parité exhaustive. Les fonctions utilisateur et agrégats de collections DevExpress, règles graphiques (barres, échelles et icônes), détails de rendu et paramètres propriétaires non traduits ne sont pas annoncés équivalents. Les parsers de textes spécialisés hors CSV et les DLL .NET TLE ne sont pas exécutés. Les heures locales sans décalage peuvent rester ambiguës ; voir COMPATIBILITE.md. La validation des gestes physiques sur Windows 10/11 et de chaque format réel reste distincte des tests automatisés.
+Les grandes familles précédemment absentes ont maintenant une implémentation : formats statistiques/graphiques, bornes et seuils dynamiques, styles par règle, lecteurs/fonctions .NET et agrégats de collections JSON. Cela ne prouve pas l’équivalence de toutes les variantes d’une grille DevExpress ni de chaque DLL tierce. Les pictogrammes prédéfinis sont adaptés ; les objets CLR et relations ORM arbitraires ne deviennent pas automatiquement des collections JSON. Les sessions TLE utilisent le lecteur natif ; une DLL particulière se sélectionne séparément. Les dépendances propriétaires ou les API .NET Framework non compatibles peuvent empêcher un lecteur tiers de fonctionner. La qualification de chaque export réel et les gestes physiques prolongés sous Windows restent distincts des tests automatisés.
 
 Le dépliage complet conserve la hiérarchie sur disque et charge seulement une fenêtre de lignes ; la première indexation prend du temps et requiert du disque temporaire. Les sessions sont limitées à 1000 références et les historiques de fermeture à 20 snapshots.
 

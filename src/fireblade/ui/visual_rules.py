@@ -9,15 +9,28 @@ VISUAL_ROLE = int(Qt.UserRole) + 91
 def visual_value(rule, value):
     try:
         number, low, high = Decimal(str(value)), Decimal(rule.minimum), Decimal(rule.maximum)
-        if not all(v.is_finite() for v in (number, low, high)) or low >= high:
+        if not all(v.is_finite() for v in (number, low, high)) or low > high:
             return None
-        fraction = float(max(Decimal(0), min(Decimal(1), (number-low)/(high-low))))
+        fraction = .5 if low==high else float(max(Decimal(0), min(Decimal(1), (number-low)/(high-low))))
     except (InvalidOperation, ValueError, TypeError, ArithmeticError):
         return None
-    start, end = QColor(rule.background), QColor(rule.foreground)
-    color = QColor(*(round(a+(b-a)*fraction) for a,b in zip(start.getRgb()[:3],end.getRgb()[:3])))
+    start,end=QColor(rule.background),QColor(rule.foreground)
+    weight=fraction
+    if rule.visual=='scale3':
+        middle=Decimal(rule.middle_value)
+        if rule.middle_mode=='percent':middle=low+(high-low)*middle/100
+        if low==high:start=end=QColor(rule.middle_color);weight=.5
+        elif low<middle<high:
+            if number<=middle:end=QColor(rule.middle_color);weight=float(max(Decimal(0),min(Decimal(1),(number-low)/(middle-low))))
+            else:start=QColor(rule.middle_color);weight=float(max(Decimal(0),min(Decimal(1),(number-middle)/(high-middle))))
+        elif middle<=low:start=QColor(rule.middle_color)
+        else:end=QColor(rule.middle_color)
+    color = QColor(*(round(a+(b-a)*weight) for a,b in zip(start.getRgb()[:3],end.getRgb()[:3])))
+    if rule.visual=='bar' and number<0:color=QColor(rule.negative_color)
     if rule.visual == 'icon':
-        color = QColor(('#c62828', '#c58b00', '#218739')[min(2, int(fraction*3))])
+        level=icon_level(rule,value,fraction)
+        if level<0:return None
+        color = QColor(rule.icon_colors[level])
     return rule.visual, fraction, color
 
 
@@ -29,3 +42,27 @@ def contrast_color(background):
     black_ratio = (luminance+.05)/.05
     white_ratio = 1.05/(luminance+.05)
     return QColor('#000000' if black_ratio >= white_ratio else '#ffffff')
+
+
+from functools import lru_cache
+from PySide6.QtGui import QImage
+from fireblade.core.icon_assets import png_bytes
+ICON_ROLE = int(Qt.UserRole)+92
+
+@lru_cache(maxsize=96)
+def icon_image(encoded):
+    return QImage.fromData(png_bytes(encoded),'PNG')
+
+
+def icon_level(rule,value,fraction):
+    if rule.icon_floor:
+        number=Decimal(str(value)) if rule.icon_floor_mode=='number' else Decimal(str(fraction))*100
+        floor=Decimal(rule.icon_floor)
+        if number<floor or number==floor and rule.icon_floor_comparison=='>':return -1
+    if rule.icon_thresholds:
+        if rule.icon_threshold_mode=='number':number=Decimal(str(value))
+        else:number=Decimal(str(fraction))*100
+        return sum(number>Decimal(t) if rule.icon_comparisons and rule.icon_comparisons[i]=='>' else number>=Decimal(t) for i,t in enumerate(rule.icon_thresholds))
+    return min(len(rule.icon_colors)-1,int(fraction*len(rule.icon_colors)))
+
+BAR_ROLE=int(Qt.UserRole)+93

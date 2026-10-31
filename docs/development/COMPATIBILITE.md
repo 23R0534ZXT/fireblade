@@ -1,6 +1,6 @@
 # Compatibilité et transformations
 
-Le moteur est Python + DuckDB + Qt. Aucun moteur .NET, serveur, langage de script de plugin ou `eval` n’est ajouté. Les fichiers d’origine restent en lecture seule ; leur empreinte et leur schéma d’acquisition ne sont jamais remplacés par les colonnes dérivées.
+Le moteur est Python + DuckDB + Qt. Un hôte .NET autonome, lancé uniquement sur demande, permet l’utilisation explicite de lecteurs et de fonctions TLE. Aucun serveur ni `eval` Python n’est ajouté. Les fichiers d’origine restent en lecture seule ; leur empreinte et leur schéma d’acquisition ne sont jamais remplacés par les colonnes dérivées.
 
 ## Expressions
 
@@ -8,7 +8,7 @@ Le parseur produit un arbre contrôlé, puis du SQL paramétré. Les identifiant
 
 Fonctions principales : `Contains`, `StartsWith`, `EndsWith`, `Like`, regex RE2, `Upper`, `Lower`, `Trim`, `Len`, `Substring`, `Replace`, `Insert`, `Remove`, `Concat`, `PadLeft/Right`, `CharIndex`, `Iif`, `IsNull`, `IsNullOrEmpty`, `Coalesce`, conversions de types, calculs, fonctions mathématiques, `GetYear/Month/Day/Hour/Minute/Second`, `AddDays/Months/Years`, `DateDiffDay`, dates relatives et opérateurs logiques/bit à bit. Les noms de colonnes s’écrivent entre crochets. `Line`, `Tag`, `Note` désignent les annotations internes seulement si aucune colonne source ne porte ce nom.
 
-Ce registre ne prétend pas exécuter les fonctions .NET personnalisées ni les agrégats d’objets enfants de DevExpress. Une fonction non reconnue provoque une erreur explicite.
+Les collections JSON proposent `Count`, `Exists`, `Sum`, `Avg/Average`, `Min`, `Max` et `Single`, avec sélection d’objets et expressions internes. Exemple : `[Items][[Amount] > 5].Sum([Amount])`. `Single` renvoie NULL sur zéro objet et une erreur sur plusieurs objets. Les fonctions .NET chargées explicitement sont disponibles par nom ou `Custom`, et par les adaptateurs typés `PluginText/Number/Bool/Date`. Les dates CLR conservent leurs ticks de 100 ns et les entiers typés ne transitent pas par un flottant. Une fonction inconnue reste une erreur explicite.
 
 ## Dates et profils
 
@@ -36,9 +36,9 @@ Exemple de profil personnel :
 
 Le lecteur prend en charge les propriétés XML de colonnes et leurs noms de contrôle, ordre, visibilité, largeur, épinglage à gauche, tris, groupes et intervalles temporels ; filtres actifs, recherche, résumés, règles de format par expression ou valeur. Les quatre layouts officiels de régression sont conservés sous `tests/fixtures/tle-layouts`, avec provenance et empreintes.
 
-Une colonne absente d’une version d’export est signalée. Une expression qui dépend d’un champ absent ou une règle non traduite arrête l’import au lieu de modifier silencieusement les résultats. Les couleurs ARGB sont composées sur un fond clair et cette adaptation est signalée ; gras, italique, souligné et barré des polices de règles sont repris. Les règles à barres, échelles de couleurs et jeux d’icônes ne sont pas traduites. Les options propres à DevExpress ne deviennent pas automatiquement des préférences Qt.
+Une colonne absente d’une version d’export est signalée. Une expression qui dépend d’un champ absent ou une règle non traduite arrête l’import au lieu de modifier silencieusement les résultats. Les couleurs ARGB sont composées sur un fond clair et cette adaptation est signalée ; gras, italique, souligné et barré des polices de règles sont repris. Les règles standards à barres, échelles de deux/trois couleurs et jeux de trois à cinq icônes sont traduites, ainsi que les classements, moyennes, doublons et valeurs uniques. Les seuils, leurs comparaisons strictes et le plancher sont conservés. Les formes prédéfinies sont adaptées et signalées ; les images PNG intégrées sont conservées. Les options propres à DevExpress ne deviennent pas automatiquement des préférences Qt.
 
-Les sessions `.tle_sess` reprennent sources et tags, avec détection de BOM UTF-8/16/32 pour les CSV ; les layouts restent des fichiers séparés à importer sur l’analyse correspondante. Le fichier documenté `Settings/TLE_settings.xml` reprend police (y compris les tailles fractionnaires), copie, onglets, détails en haut/bas, formats de dates et épinglage par défaut. Les thèmes DevExpress sont adaptés aux thèmes clair/sombre de Fireblade ; les préférences inconnues sont signalées. Les plugins binaires ne sont pas désérialisés.
+Les sessions `.tle_sess` reprennent sources et tags, avec détection de BOM UTF-8/16/32 pour les CSV ; les layouts restent des fichiers séparés à importer sur l’analyse correspondante. Le fichier documenté `Settings/TLE_settings.xml` reprend police (y compris les tailles fractionnaires), copie, onglets, détails en haut/bas, formats de dates et épinglage par défaut. Les thèmes DevExpress sont adaptés aux thèmes clair/sombre de Fireblade ; les préférences inconnues sont signalées. Les sessions réimportent les sources avec les lecteurs natifs ; un lecteur DLL particulier se sélectionne séparément. Aucun objet .NET sérialisé n’est désérialisé depuis le XML.
 
 ## Dépliage et ressources
 
@@ -56,4 +56,8 @@ Les comparaisons et calculs de dates de l’éditeur conservent leur clé UTC en
 
 ## Graphiques de cellules
 
-Fireblade propose désormais barres de données, interpolation de deux couleurs et indicateurs rouge/ambre/vert à bornes numériques fixes. La normalisation est purement visuelle et bornée aux cellules chargées ; aucun scan supplémentaire des millions de lignes n’est déclenché. Les configurations sont persistées dans les règles Fireblade. Cela ne constitue pas encore une traduction des variantes de règles graphiques DevExpress dans les layouts TLE.
+Fireblade propose barres positives/négatives, axe zéro, dégradés à deux/trois couleurs, icônes à trois/cinq niveaux, seuils personnalisés et PNG intégrés. Bornes fixes, minimum/maximum automatiques, pourcent de la plage ou percentiles exacts portent sur tous les résultats filtrés. Les bornes sont mises en cache entre les pages ; un filtre, une annotation ou un rafraîchissement les invalide. Le tri des percentiles utilise une table temporaire à une colonne avec débordement disque, supprimée même après annulation. Les caches de bornes sont limités à 128 entrées.
+
+Classement et moyenne utilisent les nombres normalisés du moteur ; les ex æquo au seuil sont tous retenus. Les doublons sont comparés sur la valeur complète, avec choix de la casse et des NULL. Un préfiltre de fréquences de hachage est toujours suivi d’une vérification exacte pour les candidats ; les collisions ne créent pas de faux doublons. Le cache des valeurs compte environ 8 Mio au maximum. Ces modes statistiques nécessitent un premier parcours global ; une condition ordinaire ne rescane pas les événements.
+
+Chaque règle peut apporter le fond, le texte ou la police ; l’ordre donne la priorité pour chaque propriété. « Arrêter après cette règle » bloque les suivantes. Masquer les valeurs est visuel : copie, détail et export conservent les données. Les bibliothèques JSON restent limitées à 2 Mo, images comprises.

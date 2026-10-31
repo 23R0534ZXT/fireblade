@@ -47,6 +47,8 @@ class Case:
         self._outline_key = None
         self._source_index_tried = False
         self._read_only = read_only
+        self._plugin_sessions=[]
+        self._plugin_functions={}
         self.db = duckdb.connect(str(self.path), read_only=read_only)
         self.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
         self.db.execute(f"SET threads={self.settings.threads}")
@@ -54,6 +56,7 @@ class Case:
         self.db.execute("SET TimeZone='UTC'")
         self.db.execute("SET preserve_insertion_order=true")
         self.db.execute("SET temp_directory=?", [str(self.path) + ".tmp"])
+        self._plugin_udf=False
         self.headers: list[str] = []
         if self.db.execute("SELECT count(*) FROM information_schema.tables WHERE table_name='metadata'").fetchone()[0]:
             self.info = json.loads(self.db.execute("SELECT value FROM metadata WHERE key='source'").fetchone()[0])
@@ -65,8 +68,14 @@ class Case:
             self.info = {}
             self.derived = []
 
+    @property
+    def expression_functions(self):
+        return {name:session.types.get(name,"text") for name,session in self._plugin_functions.items()}
+
     def close(self):
         with self.lock:
+            for session in self._plugin_sessions:session.close()
+            self._plugin_sessions.clear();self._plugin_functions.clear()
             self.db.close()
 
     def interrupt(self):
@@ -167,7 +176,7 @@ class Case:
     def import_excel(self, source, sheet, progress=lambda _: None):
         return self._import_table(source, ",", "utf-8", progress, sheet=sheet)
 
-    def _import_table(self, source, delimiter, encoding, progress, sheet=None):
+    def _import_table(self, source, delimiter, encoding, progress, sheet=None, provenance=None):
         source = Path(source).resolve()
         if self.headers:
             raise ValueError("Ce dossier contient déjà un import")
@@ -250,6 +259,7 @@ class Case:
                 info = dict(path=str(source), size=before.st_size, sha256=sha,
                             headers=headers, rows=count, encoding=encoding,
                             delimiter=delimiter or "auto", schema_version=1)
+                if provenance is not None:info.update(provenance)
                 if sheet is not None:
                     info.update(format=source.suffix.lower().lstrip("."), sheet=sheet)
                 self.db.execute("CREATE TABLE metadata (key VARCHAR PRIMARY KEY, value VARCHAR)")
@@ -415,6 +425,10 @@ class Case:
                 collect_columns(rule.condition)
             projections.append("(" + sql + ")")
             args.extend(values)
+        from fireblade.core.statistical_rules import source_column,matches as statistical_matches
+        stat_columns=sorted({source_column(r) for r in rules if r.enabled and r.statistic and r.statistic not in ('unique','duplicate')})
+        required.update(stat_columns)
+        for column in stat_columns:projections.append(self.numeric_expression(self.column(column)))
         columns = sorted(i for i in required if i>=0)
         aliases = ["__row_id"] + [self.column(i) for i in columns]
         record = "(cast(? AS BIGINT)" + ", cast(? AS VARCHAR)" * len(columns) + ")"
@@ -423,7 +437,9 @@ class Case:
             result = self.db.execute(
                 "WITH visible(" + ",".join(aliases) + ") AS (VALUES " + ",".join(record for _ in rows) + ") "
                 "SELECT __row_id, " + ", ".join(projections) + " FROM visible AS events", values + args).fetchall()
-        return {row[0]: tuple(i for i, matched in enumerate(row[1:]) if matched) for row in result}
+        numbers={(row[0],column):row[1+len(rules)+i] for row in result for i,column in enumerate(stat_columns)}
+        stats=statistical_matches(self,view,rules,rows,numbers)
+        return {row[0]:tuple(i for i,matched in enumerate(row[1:1+len(rules)]) if matched and (i not in stats or row[0] in stats[i])) for row in result}
 
     @staticmethod
     def numeric_expression(column):

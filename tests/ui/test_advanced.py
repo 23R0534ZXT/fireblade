@@ -360,7 +360,7 @@ def test_graphical_rule_editor_model_persistence_and_paint(case, mode, tmp_path)
         image=QImage(200,30,QImage.Format_ARGB32);image.fill(Qt.white)
         painter=QPainter(image);option=QStyleOptionViewItem();option.rect=image.rect()
         window.tree.itemDelegate().paint(painter,option,index);painter.end()
-        assert any(image.pixelColor(x,26 if mode=='bar' else 5) != QColor('white') for x in range(180,195))
+        assert any(image.pixelColor(x,y)==graphic[2] for x in range(180,198) for y in range(30))
     finally:
         window.close();dialog.deleteLater()
 
@@ -376,3 +376,31 @@ def test_graphical_scale_contrast_handles_bright_saturated_colors(background, ex
     from fireblade.ui.visual_rules import contrast_color
     from PySide6.QtGui import QColor
     assert contrast_color(QColor(background)).name() == expected
+
+
+def test_combined_rules_and_fractional_font_survive_editor_and_model(case,tmp_path):
+    from dataclasses import replace
+    app=QApplication.instance() or QApplication([])
+    rules=[FormatRule(target=1,background='#ffff00',use_foreground=False,use_font=False,stop_if_true=False),FormatRule(target=1,foreground='#0000ff',use_background=False,font_family='Consolas',font_size=14.5,bold=True)]
+    dialog=RulesDialog(case.headers,rules);dialog.show();app.processEvents();dialog.accept()
+    assert dialog.rules==rules
+    window=Window(rule_path=tmp_path/'rules.json');window.attach(case);window.show()
+    try:
+        window.set_view(View(format_rules=rules));settle(app,window);index=window.model.index(0,2)
+        assert index.data(Qt.BackgroundRole).name()=='#ffff00' and index.data(Qt.ForegroundRole).name()=='#0000ff'
+        assert index.data(Qt.FontRole).pointSizeF()==14.5 and index.data(Qt.FontRole).bold()
+        window.set_view(View(format_rules=[replace(rules[0],stop_if_true=True),rules[1]]));settle(app,window)
+        assert window.model.index(0,2).data(Qt.FontRole) is None
+    finally:window.close();dialog.deleteLater()
+
+
+def test_statistic_editor_controls_remain_on_appearance_tab(case):
+    from PySide6.QtWidgets import QScrollArea
+    app=QApplication.instance() or QApplication([]);dialog=RulesDialog(case.headers,[FormatRule(target=1,statistic='top',stat_rank='2')]);dialog.show();app.processEvents()
+    try:
+        appearance=dialog.format_tabs.widget(0);assert isinstance(appearance,QScrollArea)
+        assert appearance.widget().isAncestorOf(dialog.statistic)
+        appearance.ensureWidgetVisible(dialog.statistic);app.processEvents()
+        assert dialog.statistic.isVisible() and dialog.statistic.currentData()=='top'
+        dialog.accept();assert dialog.result()==1 and dialog.rules[0].statistic=='top'
+    finally:dialog.close();dialog.deleteLater()

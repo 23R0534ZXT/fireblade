@@ -231,7 +231,7 @@ py -3.12 -m venv .venv
 
 Ou double-cliquer sur `scripts/windows/Lancer.cmd`. Ce lanceur prépare l’environnement des sources à la première utilisation. L’installation initiale nécessite Internet ; les lancements suivants peuvent réutiliser les dépendances installées.
 
-Quatre dépendances directes d’exécution : **DuckDB**, **PySide6 Essentials**, **openpyxl** et **xlrd** (ancien XLS). Aucun serveur, navigateur embarqué, chaîne JavaScript ou framework d’injection de dépendances.
+Cinq dépendances directes d’exécution : **DuckDB**, **PySide6 Essentials**, **openpyxl**, **xlrd** (ancien XLS) et **NumPy** (pont des fonctions .NET). Aucun serveur, navigateur embarqué, chaîne JavaScript ou framework d’injection de dépendances.
 
 ## Vérifier le code et compiler soi-même
 
@@ -271,7 +271,7 @@ La construction installe ses dépendances depuis PyPI dans `.venv-build`. Ces d�
 
 ### 3. Construire votre propre fichier
 
-Sur Windows x64, installer [Python 3.12 64 bits depuis python.org](https://www.python.org/downloads/windows/). Ouvrir PowerShell dans le dossier extrait ou cloné, là où se trouve `pyproject.toml`, puis lancer :
+Sur Windows x64, installer [Python 3.12 64 bits depuis python.org](https://www.python.org/downloads/windows/) et le [SDK .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0) pour construire l’hôte de plugins intégré. Ces outils servent à compiler ; le destinataire du `.exe` n’a pas à les installer. Ouvrir PowerShell dans le dossier extrait ou cloné, là où se trouve `pyproject.toml`, puis lancer :
 
 ```powershell
 py -3.12 -m scripts.windows.build
@@ -293,7 +293,7 @@ Pour un fichier téléchargé, remplacer ce chemin par celui du téléchargement
 
 **La construction n’est pas encore reproductible octet pour octet.** Un binaire compilé localement peut donc avoir un SHA-256 différent du binaire publié, même à partir du même commit : versions des outils, métadonnées et environnement de construction peuvent intervenir. Ne pas interpréter cette différence seule comme la preuve d’une modification malveillante.
 
-Le fichier publié n’est pas encore signé avec un certificat de signature de code. Un avertissement Windows sur l’éditeur ou la réputation ne constitue, à lui seul, ni une preuve de malveillance ni une garantie d’innocuité. Les sources, la provenance de construction et les rapports restent consultables pour décider selon votre propre politique.
+Le fichier publié n’est pas signé avec un certificat de signature de code. Un avertissement Windows sur l’éditeur ou la réputation ne constitue, à lui seul, ni une preuve de malveillance ni une garantie d’innocuité. Les sources, la provenance de construction et les rapports restent consultables pour décider selon votre propre politique.
 
 ## Construire le fichier Windows
 
@@ -357,19 +357,19 @@ Les profils forensic reconnus sont appliqués automatiquement lors de l’import
 
 **Déplier tous les groupes (vue paginée)** indexe toute la hiérarchie sur disque, y compris au-delà des premiers groupes. Suivant/Précédent parcourent une fenêtre bornée de lignes. Le repli rétablit l’arbre interactif ; l’indexation est annulable. La première indexation peut prendre du temps et utilise de l’espace temporaire.
 
-L’import des layouts TLE traduit les noms `col…`, les filtres et expressions compatibles, la recherche, les groupes temporels, les résumés et les règles de couleur textuelles/de valeur. Les tests incluent quatre layouts XML officiels et les deux fixtures Plaso de TLEFilePlugins. Une règle non traduite est refusée ; une colonne absente de la version du CSV est signalée. **Fichier → Importer les préférences Timeline Explorer** reprend aussi le fichier documenté `TLE_settings.xml` (police, taille, copie, onglets, format des dates, détails et épinglage par défaut), avec compte rendu des adaptations. Voir [les détails et limites](docs/development/COMPATIBILITE.md).
+L’import des layouts TLE traduit les noms `col…`, les filtres et expressions compatibles, la recherche, les groupes temporels, les résumés et les règles de couleur textuelles/de valeur, statistiques et graphiques standards (barres, dégradés à deux/trois couleurs et icônes). Les tests incluent quatre layouts XML officiels et les deux fixtures Plaso de TLEFilePlugins. Une règle non traduite est refusée ; une colonne absente de la version du CSV est signalée. **Fichier → Importer les préférences Timeline Explorer** reprend aussi le fichier documenté `TLE_settings.xml` (police, taille, copie, onglets, format des dates, détails et épinglage par défaut), avec compte rendu des adaptations. Voir [les détails et limites](docs/development/COMPATIBILITE.md).
 
 ## Limites actuelles
 
 - Prototype en cours de développement, sans revendication de parité complète avec Timeline Explorer.
-- Compatibilité partielle avec les fichiers TLE : sources et tags des sessions, colonnes/groupes/tris de certains layouts ; expressions courantes, règles textuelles et de valeur, résumés, recherche et noms de contrôles ; les règles graphiques DevExpress et les réglages spécifiques non traduits restent signalés.
+- Compatibilité partielle avec les fichiers TLE : sources et tags des sessions, colonnes/groupes/tris de certains layouts ; expressions courantes, règles textuelles et de valeur, résumés, recherche et noms de contrôles ; les variantes et réglages spécifiques non traduits restent signalés. Les formes d’icônes prédéfinies sont adaptées ; les PNG intégrés sont conservés.
 - Le catalogue de schémas n’est pas une qualification de 193 parseurs : voir [profils et plugins](docs/development/PLUGINS.md).
 - Pas de rapports HTML/PDF ni de catégories de tags personnalisées ; ces absences ne sont pas présentées comme des écarts vérifiés de Timeline Explorer.
 - Sessions par référence aux bases, sans empaquetage autonome d’un dossier d’enquête.
 - Pagination et groupes conservés par fenêtres ; pas de plafond global de RAM garanti en octets.
 - Pas de reprise d’un import après une panne au milieu de l’écriture.
-- Les essais automatisés utilisent des runners Windows et des jeux synthétiques. Les gestes réels de l’Explorateur, les partages UNC, les sessions prolongées Windows 10/11 et les vrais exports multi-Go demandent encore une validation.
-- Le binaire n’est pas encore signé avec un certificat de signature de code.
+- Les essais automatisés utilisent des runners Windows et des jeux synthétiques, y compris un partage SMB local et des chemins longs. Les gestes physiques de l’Explorateur, les sessions prolongées Windows 10/11 et chaque vrai export multi-Go restent à qualifier.
+- Le binaire n’est pas signé avec un certificat de signature de code.
 
 Le **[suivi de parité](docs/development/PARITE-TIMELINE-EXPLORER.md)** distingue les fonctions présentes et le travail restant.
 
@@ -401,3 +401,14 @@ Il s’agit de parcours automatisés QtTest, exécutés avec le plugin Windows n
 La [qualification du 31 octobre 2026](docs/validation/QUALIFICATION.md#résultat-du-31-octobre-2026--63fa493) a réussi sur le binaire `63fa493` : 30 contrôles intégrés, huit variantes visuelles et 42 contrôles sur le CSV existant de 3 GiB. Pic mémoire : 455,4 Mio. Une pause maximale de 3,8 s après import reste à améliorer ; les rapports et limites sont conservés dans le dépôt.
 
 Derniers ajouts qualifiés : [mises en forme graphiques, styles de règles et préambules PeScan/Wisp](docs/validation/AJOUTS-TLE.md), avec rapports conservés et limites de compatibilité.
+
+
+## Nouveaux formats et plugins TLE
+
+Les règles proposent maintenant des bornes automatiques, pourcentages et **percentiles exacts calculés sur tous les résultats filtrés**, des dégradés à trois couleurs, barres négatives avec axe zéro et jeux de trois à cinq icônes. Chaque seuil accepte `>` ou `>=` ; couleurs et images PNG sont personnalisables. Les règles peuvent combiner fond, texte et police, puis arrêter les suivantes. Une police et une taille fractionnaire peuvent être propres à une règle. Classements haut/bas, moyenne, doublons et valeurs uniques utilisent également le résultat filtré complet.
+
+**Fichier → Importer avec un plugin TLE (.NET)…** sélectionne explicitement une DLL et son lecteur `ProcessFile`/`DataList`. Le moteur .NET Windows est intégré à l’exécutable et démarre dans un processus séparé. Le chemin d’import CSV natif reste le choix ordinaire pour les gros volumes. Un lecteur tiers peut matérialiser tout son résultat en mémoire ; son coût dépend de son implémentation. Les valeurs converties sont identifiées comme telles ; l’empreinte de la source et celle du plugin sont conservées.
+
+**Analyse → Charger des fonctions .NET…** rend accessibles les fonctions `Name`/`Evaluate(object[])`, par leur nom ou `Custom('Nom', …)`. Les adaptateurs `PluginText/Number/Bool/Date` permettent de préciser le type. Les fonctions doivent être rechargées explicitement après réouverture d’une analyse qui les utilise ; aucune DLL n’est exécutée automatiquement depuis un fichier d’analyse.
+
+Les collections JSON acceptent la syntaxe `[Items][[Amount] > 5].Sum([Amount])`, ainsi que `Count`, `Exists`, `Avg`, `Min`, `Max` et `Single`. Il s’agit de collections JSON stockées dans une cellule, pas d’un ORM DevExpress. Voir [compatibilité](docs/development/COMPATIBILITE.md) et [plugins](docs/development/PLUGINS.md).

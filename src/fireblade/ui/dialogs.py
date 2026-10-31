@@ -12,7 +12,7 @@ from fireblade.runtime.windows_paths import analyses_directory
 class ImportDialog(QDialog):
     """One confirmation for destination and optional CSV decoding settings."""
 
-    def __init__(self, source, parent=None):
+    def __init__(self, source, parent=None, plugin=False):
         super().__init__(parent)
         self.setWindowTitle("Importer les données")
         self.setMinimumWidth(520)
@@ -37,7 +37,7 @@ class ImportDialog(QDialog):
         form.addRow("Enregistrer l’analyse :", destination)
         layout.addLayout(form)
         self.sheet = None
-        excel = source.suffix.lower() in (".xlsx", ".xls")
+        excel = not plugin and source.suffix.lower() in (".xlsx", ".xls")
         if excel:
             from fireblade.core.spreadsheets import sheet_names
             if source.suffix.lower() == ".xls":
@@ -47,7 +47,7 @@ class ImportDialog(QDialog):
             form.addRow("Feuille Excel :", self.sheet)
             layout.addWidget(QLabel("XLSX : formules comme texte. XLS : résultats mémorisés. Styles et macros non importés."))
         options = QCheckBox("Options du CSV")
-        options.setVisible(not excel)
+        options.setVisible(not excel and not plugin)
         layout.addWidget(options)
         advanced = QWidget()
         fields = QFormLayout(advanced)

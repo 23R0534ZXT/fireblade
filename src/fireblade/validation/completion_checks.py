@@ -26,6 +26,13 @@ def check_completion(window, directory, settle, check, expect, captures=None):
     window.attach(case)
     settle()
 
+    def dotnet_plugin():
+        from fireblade.validation.plugin_checks import verify
+        result=verify(resource_path('plugin-host/Fireblade.PluginHost.exe'),resource_path('plugin-host/Fireblade.PluginFixture.dll'))
+        expect(result['status']=='passed','Bundled .NET plugin helper failed')
+    import sys
+    if getattr(sys,'frozen',False):check('bundled_dotnet_reader_and_custom_functions',dotnet_plugin)
+
     def normalize():
         from fireblade.ui.derived_columns import add_columns
 
@@ -221,3 +228,29 @@ def check_completion(window, directory, settle, check, expect, captures=None):
             window.apply_preferences()
 
     check("documented_tle_settings_font_theme_date_format_and_details", settings)
+
+
+    def advanced_rules():
+        from dataclasses import replace
+        from decimal import Decimal
+        from PySide6.QtCore import Qt
+        from fireblade.core.models import FormatRule
+        from fireblade.ui.advanced_dialogs import RulesDialog
+        from fireblade.ui.visual_rules import ICON_ROLE
+        source=directory/'advanced-formats.csv';source.write_text('Value,Name\n-10,a\n0,a\n10,b\n30,c\n100,d\n')
+        sample=Case(directory/'advanced-formats.timeline',settings=window.settings);sample.import_csv(source)
+        window.detach();window.attach(sample);settle()
+        rule=FormatRule(target=0,visual='scale3',bound_mode='auto',middle_mode='percentile',middle_value='50',font_family='Consolas',font_size=12.5)
+        dialog=RulesDialog(sample.headers,[rule],window);dialog.show();settle();dialog.accept()
+        expect(dialog.result()==1 and dialog.rules==[rule],'Advanced editor changed its rule');dialog.deleteLater()
+        window.set_view(View(format_rules=[rule]));settle()
+        resolved=window.model.rules[0]
+        expect(tuple(map(Decimal,(resolved.minimum,resolved.maximum,resolved.middle_value)))==(Decimal(-10),Decimal(100),Decimal(10)),'Whole-column graphical bounds differ')
+        expect(window.model.index(0,1).data(Qt.FontRole).pointSizeF()==12.5,'Rule font not rendered')
+        rule=replace(rule,visual='icon',icon_colors=['#ff0000','#ffaa00','#88aa00','#00aa00'],icon_images=['']*4,icon_thresholds=['0','10','30'],icon_threshold_mode='number',icon_floor='-10',icon_comparisons=['>','>','>='])
+        window.set_view(View(format_rules=[rule]));settle()
+        expect([window.model.index(i,1).data(ICON_ROLE)[2] for i in range(5)]==[0,0,1,3,3],'Four-level icon boundaries differ')
+        window.set_view(View(format_rules=[FormatRule(target=1,statistic='duplicate')]));settle()
+        expect([bool(window.model.node(window.model.index(i,0)).styles) for i in range(5)]==[True,True,False,False,False],'Duplicate formatting population differs')
+        if captures:window.grab().save(str(Path(captures)/'completion-advanced-rules.png'))
+    check('advanced_rule_editor_three_colors_exact_median_icons_fonts_duplicates',advanced_rules)

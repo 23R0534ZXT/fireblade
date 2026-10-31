@@ -25,6 +25,10 @@ def atoms(condition):
 class RuleBook:
     headers: list[str] = field(default_factory=list)
     rules: list = field(default_factory=list)
+    functions: dict = field(default_factory=dict)
+
+    @property
+    def expression_functions(self):return self.functions
 
     def column(self, index):
         if type(index) is int and index in (-1,-2,-3):
@@ -34,6 +38,13 @@ class RuleBook:
         return f'"c{index}"'
 
     def validate(self):
+        if not isinstance(self.functions,dict) or len(self.functions)>4096:raise ValueError('Métadonnées de fonctions invalides')
+        import re
+        if any(not isinstance(n,str) or not re.fullmatch(r'[A-Za-z_]\w{0,127}',n) or k not in ('text','number','date','boolean') for n,k in self.functions.items()):raise ValueError('Métadonnées de fonctions invalides')
+        if len({n.casefold() for n in self.functions})!=len(self.functions):raise ValueError("Noms de fonctions ambigus")
+        self.functions={n.casefold():k for n,k in self.functions.items()}
+        from fireblade.core.expressions import register_function_metadata
+        register_function_metadata(self.functions)
         if (len(self.headers) > 2048 or any(not isinstance(h, str) or not h or len(h) > 4096 for h in self.headers)
                 or len(set(self.headers)) != len(self.headers)):
             raise ValueError("Noms de colonnes globaux invalides ou dupliqués")
@@ -62,7 +73,7 @@ class RuleBook:
 
     def to_bytes(self):
         self.validate()
-        value = dict(format="fireblade-global-rules", version=1, headers=self.headers,
+        value = dict(format="fireblade-global-rules", version=1, headers=self.headers, functions=self.functions,
                      rules=json.loads(View(format_rules=self.rules).to_json())["format_rules"])
         data = json.dumps(value, ensure_ascii=False, indent=2).encode("utf-8")
         if len(data) > MAX_BYTES:
@@ -80,13 +91,13 @@ class RuleBook:
             if not isinstance(value.get("headers"), list) or not isinstance(value.get("rules"), list):
                 raise ValueError("Liste de colonnes ou de règles invalide")
             rules = View.from_json(json.dumps(dict(format_rules=value["rules"]))).format_rules
-            book = cls(value["headers"], rules)
+            book = cls(value["headers"], rules,value.get("functions",{}))
             book.validate()
             return book
         except (KeyError, TypeError, AttributeError, UnicodeError, RecursionError) as exc:
             raise ValueError("Fichier de règles globales invalide") from exc
 
-    def adapt(self, headers):
+    def adapt(self, headers, functions=None):
         """Skip a whole rule when a referenced field or its target is absent."""
         exact = {name: i for i, name in enumerate(headers)}
         folded = {}
@@ -102,6 +113,18 @@ class RuleBook:
         mapping.update({-1:-1,-2:-2,-3:-3})
         adapted, skipped = [], []
         for number, source in enumerate(self.rules, 1):
+            if functions is not None and self.functions:
+                from fireblade.core.expressions import parse
+                needed=set()
+                for atom in atoms(source.condition):
+                    if atom.operator=='expression':
+                        stack=[parse(atom.value,tuple(self.headers))]
+                        while stack:
+                            node=stack.pop();stack.extend(node.children)
+                            if node.kind=='function' and node.value in self.functions:needed.add(node.value)
+                            if node.kind=='function' and node.value in ('plugintext','pluginnumber','pluginbool','plugindate','custom') and node.children and node.children[0].kind=='text':needed.add(str(node.children[0].value).casefold())
+                missing=needed-set(functions)
+                if missing:skipped.append(f'Règle {number} : fonctions non chargées : '+', '.join(sorted(missing)));continue
             required = set()
             for condition in atoms(source.condition):
                 if condition.operator == 'expression':
@@ -111,6 +134,7 @@ class RuleBook:
                     required.add(condition.column)
             if source.target is not None:
                 required.add(source.target)
+            if source.value_column is not None:required.add(source.value_column)
             absent = sorted(required - mapping.keys())
             if absent:
                 skipped.append(f"Règle {number} : " + ", ".join(self.headers[i] for i in absent))
@@ -121,6 +145,7 @@ class RuleBook:
                     condition.column = mapping[condition.column]
             if rule.target is not None:
                 rule.target = mapping[rule.target]
+            if rule.value_column is not None:rule.value_column=mapping[rule.value_column]
             adapted.append(rule)
         return adapted, skipped
 
@@ -131,7 +156,7 @@ class RuleBook:
             if name.casefold() not in known:
                 columns.append(name)
                 known.add(name.casefold())
-        return RuleBook(columns, copy.deepcopy(self.rules))
+        return RuleBook(columns, copy.deepcopy(self.rules),copy.deepcopy(self.functions))
 
 
 def read_book(path):

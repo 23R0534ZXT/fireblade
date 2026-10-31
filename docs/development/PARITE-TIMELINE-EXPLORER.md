@@ -35,6 +35,8 @@ Références : [manuel officiel](https://github.com/EZToolsManuals/EZToolsManual
 | Import des préférences TLE | Ajouté | `TLE_settings.xml` : copie, police et taille fractionnaire, onglets, détails haut/bas, format des dates, épinglage simple ; thèmes adaptés, champs inconnus signalés |
 | Sessions Fireblade | Présent | Références aux bases ; données conservées séparément |
 | Import `.tle_sess` | Ajouté | Sources et tags ; réimporte les sources présentes, BOM UTF-8/16/32 pour CSV ; dispositions séparées |
+| Barres, dégradés, indicateurs | Ajoutés | Colonne numérique, bornes fixes communes à toutes les pages, trois niveaux ; persistance Fireblade. Les variantes XML DevExpress restent à traduire |
+| Préambules PeScan/Wisp | Ajoutés | Quatre lignes retirées de la copie de travail seulement, après vérification de l’en-tête public exact |
 | Règles de couleur locales/globales | Présent | Texte, fond, gras, cellule/ligne, priorité et partage JSON Fireblade |
 | Signets / tags | Étendu | Case à cocher, sélection multiple et filtre des signets |
 | Notes libres | Présent | Ajout/remplacement/retrait en masse ; export annoté |

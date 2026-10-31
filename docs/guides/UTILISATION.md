@@ -190,3 +190,13 @@ L’application d’un profil peut proposer ces colonnes normalisées, les caté
 **Fichier → Importer les préférences Timeline Explorer…** lit `Settings/TLE_settings.xml` : police, taille, copie des en-têtes, copie au clic droit, onglets sur plusieurs rangées, détails en haut/bas, format des dates et liste simple de colonnes épinglées. Le thème TLE est adapté au thème clair/sombre. Les champs inconnus ou structurés non traduits sont signalés dans Messages. Le fichier TLE reste intact. Les mêmes réglages sont modifiables dans les préférences Fireblade ; l’épinglage par défaut utilise un nom par ligne.
 
 Les profils forensic reconnus s’appliquent automatiquement aux nouveaux imports, avant l’affichage de leurs colonnes. Désactiver **Appliquer le profil forensic reconnu à l’import** dans les préférences pour garder une grille générique. L’ajout d’une colonne dérivée conserve l’ordre, les largeurs, le masquage et l’épinglage des colonnes existantes.
+
+## Mises en forme graphiques
+
+Dans **Analyse → Règles de coloration**, ajouter une règle puis choisir une colonne cible, une condition et un mode : barre de données, dégradé ou indicateur à trois niveaux. Indiquer deux bornes numériques finies, minimum strictement inférieur au maximum. Les mêmes bornes s’appliquent à toutes les pages et aux exports de règles ; aucun calcul de minimum/maximum sur le seul écran visible n’est effectué.
+
+Les barres sont dessinées sous le texte de la cellule. Le dégradé interpole la couleur Fond au minimum et la couleur Texte au maximum, avec un texte contrasté. Les indicateurs rouge/ambre/vert divisent l’intervalle en trois parties égales. Les valeurs hors intervalle sont ramenées aux extrémités pour le dessin ; les valeurs absentes, invalides ou infinies restent sans graphique. Les données originales ne sont pas modifiées. CSV/XLSX exportent les données ; ils ne reproduisent pas ces dessins de la grille.
+
+Les règles se conservent dans les vues et bibliothèques globales Fireblade. Les variantes graphiques propriétaires des layouts TLE ne sont pas encore importées automatiquement.
+
+Les exports PeScan/Wisp avec quatre lignes de préambule sont reconnus si leur en-tête correspond au schéma public attendu. Le préambule reste présent dans le fichier source et son SHA-256 est conservé.

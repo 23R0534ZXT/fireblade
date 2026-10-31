@@ -53,3 +53,7 @@ Les profils reconnus sont préparés dans le worker d’import avant l’exposit
 La lecture de pages profondes acquiert uniquement les identifiants demandés. Un index natif de ces identifiants est créé à la demande dans l’analyse si le cache est activé, que l’analyse est modifiable et que le budget atteint 128 Mo. Sous un budget réduit, en lecture seule ou après un échec d’allocation de cet index facultatif, la lecture normale reste disponible. Cet index ne modifie pas le CSV.
 
 Les comparaisons et calculs de dates de l’éditeur conservent leur clé UTC en nanosecondes : conditions imbriquées, `Iif`, coalescence, ajouts de jours/mois/années, ticks et fractions de milliseconde. Les conversions de statut de Sigcheck/SigcheckTroy (`Signed`) et Autoruns (`enabled`) suivent les comparaisons exactes des plugins publics dans une colonne booléenne distincte ; le texte source reste disponible.
+
+## Graphiques de cellules
+
+Fireblade propose désormais barres de données, interpolation de deux couleurs et indicateurs rouge/ambre/vert à bornes numériques fixes. La normalisation est purement visuelle et bornée aux cellules chargées ; aucun scan supplémentaire des millions de lignes n’est déclenché. Les configurations sont persistées dans les règles Fireblade. Cela ne constitue pas encore une traduction des variantes de règles graphiques DevExpress dans les layouts TLE.

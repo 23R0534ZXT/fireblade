@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QStyledItemDelegate
 
 from fireblade.core.models import View
 from fireblade.core.conditions import validate_format_rules
+from fireblade.ui.visual_rules import VISUAL_ROLE, visual_value
 from fireblade.ui.workers import Job
 
 
@@ -22,6 +23,17 @@ class GridDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         super().paint(painter, option, index)
         painter.save()
+        graphic = index.data(VISUAL_ROLE)
+        if graphic:
+            mode, fraction, color = graphic
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(color)
+            painter.setClipRect(option.rect)
+            if mode == 'bar':
+                painter.drawRect(option.rect.left()+2, option.rect.bottom()-4,
+                                 max(0, round((option.rect.width()-4)*fraction)), 3)
+            elif mode == 'icon':
+                painter.drawEllipse(option.rect.right()-10, option.rect.top()+3, 7, 7)
         painter.setPen(QColor("#e5e5e5"))
         painter.drawLine(option.rect.topRight(), option.rect.bottomRight())
         painter.setPen(QColor("#eeeeee"))
@@ -215,10 +227,24 @@ class GridModel(QAbstractItemModel):
             return QColor("#eeeeee" if self.dark else "#202020")
         if role == Qt.BackgroundRole and node.group:
             return QColor("#39434f" if self.dark else "#e9edf2")
-        if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole):
+        if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole, VISUAL_ROLE):
             for rule_index in node.styles:
                 rule = self.rules[rule_index]
                 if rule.target is None or col == rule.target + 1:
+                    if rule.visual != 'none':
+                        graphic = visual_value(rule, node.values[col])
+                        if graphic is None:
+                            continue
+                        if role == VISUAL_ROLE:
+                            return graphic if rule.visual != 'scale' else None
+                        if role == Qt.BackgroundRole:
+                            return graphic[2] if rule.visual == 'scale' else None
+                        if role == Qt.ForegroundRole:
+                            if rule.visual == 'scale':
+                                return QColor('#101010' if graphic[2].lightness() > 140 else '#ffffff')
+                            return None
+                    if role == VISUAL_ROLE:
+                        return None
                     if role == Qt.BackgroundRole:
                         return QColor(rule.background)
                     if role == Qt.ForegroundRole:

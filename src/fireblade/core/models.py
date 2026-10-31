@@ -39,6 +39,9 @@ class FormatRule:
     bold: bool = False
     target: int | None = None
     enabled: bool = True
+    visual: str = "none"
+    minimum: str = "0"
+    maximum: str = "100"
 
 
 @dataclass

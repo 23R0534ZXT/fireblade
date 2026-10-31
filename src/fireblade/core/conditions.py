@@ -63,6 +63,18 @@ def validate_format_rules(rules, column, numeric_expression, limit=32):
     if len(rules) > limit:
         raise ValueError(f"{limit} règles de coloration au maximum")
     for rule in rules:
+        from decimal import Decimal, InvalidOperation
+        if rule.visual not in ('none', 'bar', 'scale', 'icon'):
+            raise ValueError('Mode graphique inconnu')
+        if rule.visual != 'none':
+            if rule.target is None:
+                raise ValueError('Choisissez une colonne pour la règle graphique')
+            try:
+                low, high = Decimal(rule.minimum), Decimal(rule.maximum)
+                if not low.is_finite() or not high.is_finite() or low >= high:
+                    raise ValueError('Les bornes doivent être finies et minimum < maximum')
+            except (InvalidOperation, TypeError):
+                raise ValueError('Bornes numériques invalides') from None
         compile_condition(rule.condition, column, numeric_expression)
         if rule.target is not None:
             column(rule.target)

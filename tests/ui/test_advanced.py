@@ -327,3 +327,43 @@ def test_rules_dialog_click_creation_replaces_visible_editor_and_saves(case, mon
     finally:
         dialog.close()
         dialog.deleteLater()
+
+
+@pytest.mark.parametrize('mode', ['bar', 'scale', 'icon'])
+def test_graphical_rule_editor_model_persistence_and_paint(case, mode, tmp_path):
+    from fireblade.ui.visual_rules import VISUAL_ROLE, visual_value
+    from fireblade.core.rule_store import RuleBook
+    from PySide6.QtGui import QImage, QPainter, QColor
+    from PySide6.QtWidgets import QStyleOptionViewItem
+    app = QApplication.instance() or QApplication([])
+    rule = FormatRule(target=1, visual=mode, minimum='0', maximum='5000', background='#ff0000', foreground='#0000ff')
+    rule.condition = FilterGroup('and', [Filter(1, 'not_empty')])
+    encoded = RuleBook(case.headers, [rule]).to_bytes()
+    assert RuleBook.from_bytes(encoded).rules == [rule]
+    dialog = RulesDialog(case.headers, [rule]);dialog.accept()
+    assert dialog.result() == 1 and dialog.rules == [rule]
+    window = Window(rule_path=tmp_path/'rules.json');window.attach(case);window.show()
+    try:
+        window.set_view(View(format_rules=[rule]));settle(app, window)
+        index = window.model.index(0,2)
+        graphic = visual_value(rule,'4624')
+        assert graphic[1] == pytest.approx(4624/5000)
+        assert visual_value(rule,None) is None and visual_value(rule,'NaN') is None
+        assert visual_value(rule,'999999')[1] == 1
+        assert visual_value(rule,'-1')[1] == 0
+        if mode == 'scale':
+            assert index.data(Qt.BackgroundRole) == graphic[2]
+        else:
+            assert index.data(VISUAL_ROLE) == graphic
+        image=QImage(200,30,QImage.Format_ARGB32);image.fill(Qt.white)
+        painter=QPainter(image);option=QStyleOptionViewItem();option.rect=image.rect()
+        window.tree.itemDelegate().paint(painter,option,index);painter.end()
+        assert any(image.pixelColor(x,26 if mode=='bar' else 5) != QColor('white') for x in range(180,195))
+    finally:
+        window.close();dialog.deleteLater()
+
+
+def test_graphical_rules_reject_ambiguous_or_nonfinite_bounds(case):
+    for rule in [FormatRule(visual='bar'), FormatRule(target=0,visual='scale',minimum='3',maximum='3'), FormatRule(target=0,visual='icon',maximum='NaN')]:
+        with pytest.raises(ValueError):
+            case.validate_view(View(format_rules=[rule]))

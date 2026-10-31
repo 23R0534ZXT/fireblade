@@ -369,3 +369,10 @@ def test_graphical_rules_reject_ambiguous_or_nonfinite_bounds(case):
     for rule in [FormatRule(visual='bar'), FormatRule(target=0,visual='scale',minimum='3',maximum='3'), FormatRule(target=0,visual='icon',maximum='NaN')]:
         with pytest.raises(ValueError):
             case.validate_view(View(format_rules=[rule]))
+
+
+@pytest.mark.parametrize('background,expected',[('#ffff00','#000000'),('#00ff00','#000000'),('#0000ff','#ffffff'),('#222222','#ffffff'),('#ffffff','#000000')])
+def test_graphical_scale_contrast_handles_bright_saturated_colors(background, expected):
+    from fireblade.ui.visual_rules import contrast_color
+    from PySide6.QtGui import QColor
+    assert contrast_color(QColor(background)).name() == expected

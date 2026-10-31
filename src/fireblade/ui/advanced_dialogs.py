@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog,
     QDoubleSpinBox, QFontComboBox, QDialogButtonBox, QHBoxLayout, QLabel, QLineEdit, QListWidget, QMessageBox,
-    QGridLayout, QScrollArea, QTabWidget, QFileDialog, QPushButton, QTableWidget, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
+    QGridLayout, QSizePolicy, QScrollArea, QTabWidget, QFileDialog, QPushButton, QTableWidget, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from fireblade.core.models import Filter, FilterGroup, FormatRule, SortKey, OPERATORS
 
@@ -268,7 +268,9 @@ class RulesDialog(QDialog):
         appearance.layout().addLayout(statistics)
         matching=QHBoxLayout();self.stat_ignore_case=QCheckBox('Doublons sans distinction de casse');self.stat_include_null=QCheckBox('Inclure les valeurs vides')
         matching.addWidget(self.stat_ignore_case);matching.addWidget(self.stat_include_null);appearance.layout().addLayout(matching)
-        self.all_source_rows=QCheckBox('Calculer les statistiques et bornes sur toute la source (ignorer les filtres)');appearance.layout().addWidget(self.all_source_rows)
+        self.all_source_rows=QCheckBox('Statistiques et bornes sur toute la source')
+        self.all_source_rows.setToolTip('Ignorer les filtres actifs pour calculer les statistiques, minimums, maximums et percentiles.')
+        self.all_source_rows.setSizePolicy(QSizePolicy.Maximum,QSizePolicy.Fixed);appearance.layout().addWidget(self.all_source_rows)
         dates=QHBoxLayout();self.relative_date=QComboBox()
         from fireblade.core.date_ranges import RANGES
         for name in RANGES:self.relative_date.addItem(name,name)

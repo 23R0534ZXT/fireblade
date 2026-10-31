@@ -23,3 +23,9 @@ public sealed class FixtureTypes {
  public object Evaluate(params object[] values)=>values[0] is DateTime d && d.Ticks==new DateTime(2026,1,1).Ticks+1 && values[1] is ulong id && id==9007199254740993;
  public Type ResultType(params Type[] values)=>typeof(bool);
 }
+
+public sealed class FixturePause {
+ public string Name=>"FixturePause";
+ public object Evaluate(params object[] values) {Thread.Sleep(10000);return "done";}
+ public Type ResultType(params Type[] values)=>typeof(string);
+}

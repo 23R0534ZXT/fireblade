@@ -270,6 +270,11 @@ class RulesDialog(QDialog):
         self.set_color(self.background, rule.background)
         self.set_color(self.foreground, rule.foreground)
         old = self.editor
+        # A dialog's nested event loop can defer deleteLater() until it closes.
+        # Retire the old controls immediately so they cannot cover or intercept
+        # clicks intended for the replacement editor.
+        old.hide()
+        old.setEnabled(False)
         self.editor = ExpressionEditor(self.headers, rule.condition)
         self.layout().replaceWidget(old, self.editor)
         old.deleteLater()

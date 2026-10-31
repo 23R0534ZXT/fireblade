@@ -293,3 +293,37 @@ def test_format_rule_precedes_bookmark_and_targets_only_one_cell(case):
     pixel = window.tree.viewport().grab().toImage().pixelColor(rectangle.right() - 8, rectangle.bottom() - 4)
     assert pixel.name() == "#ff0000"
     assert window.close()
+
+
+def test_rules_dialog_click_creation_replaces_visible_editor_and_saves(case, monkeypatch):
+    from PySide6.QtGui import QColor
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QColorDialog, QPushButton, QDialogButtonBox, QDialog
+    app = QApplication.instance() or QApplication([])
+    dialog = RulesDialog(case.headers, [])
+    dialog.show()
+    app.processEvents()
+    def click(text):
+        button = next(b for b in dialog.findChildren(QPushButton) if b.text() == text and b.isVisible() and b.isEnabled())
+        QTest.mouseClick(button, Qt.LeftButton)
+        app.processEvents()
+    try:
+        click('Ajouter')
+        # processEvents deliberately does not force DeferredDelete delivery:
+        # these controls must already be retired while a modal loop is active.
+        assert sum(e.isVisible() for e in dialog.findChildren(ExpressionEditor)) == 1
+        item = dialog.editor.root.child(0)
+        tree = dialog.editor.tree
+        tree.itemWidget(item, 1).setCurrentIndex(tree.itemWidget(item, 1).findData('eq'))
+        QTest.keyClicks(tree.itemWidget(item, 2), 'alice')
+        monkeypatch.setattr(QColorDialog, 'getColor', lambda *a, **k: QColor('#ff0000'))
+        click('Fond')
+        QTest.mouseClick(dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Ok), Qt.LeftButton)
+        assert dialog.result() == QDialog.DialogCode.Accepted
+        assert dialog.rules[0].condition == FilterGroup('and', [Filter(0, 'eq', 'alice')])
+        assert dialog.rules[0].background == '#ff0000'
+        view = View(format_rules=dialog.rules)
+        assert case.page_styles(view, case.page(view)) == {1: (0,), 2: (), 3: (0,), 4: ()}
+    finally:
+        dialog.close()
+        dialog.deleteLater()

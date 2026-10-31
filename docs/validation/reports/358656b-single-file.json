@@ -1,0 +1,195 @@
+{
+  "status": "passed",
+  "started_utc": "2026-10-31T12:20:44.855177+00:00",
+  "platform": "win32",
+  "operating_system": "Windows-2025Server-10.0.26100-SP0",
+  "machine": "AMD64",
+  "pointer_bits": 64,
+  "python": "3.12.10",
+  "duckdb": "1.5.6",
+  "qt": "6.12.0",
+  "pyside": "6.12.0",
+  "frozen": true,
+  "packaging": "onefile",
+  "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\Fireblade fichier unique _fwk6l7b\\Application été\\Fireblade.exe",
+  "qt_platform": "windows",
+  "checks": [
+    {
+      "name": "native_window_and_user_data_destination",
+      "status": "passed",
+      "seconds": 0.0189
+    },
+    {
+      "name": "single_file_embedded_guide_defaults_and_licenses",
+      "status": "passed",
+      "seconds": 0.0009
+    },
+    {
+      "name": "readonly_utf8_bom_crlf_unicode_paths_import",
+      "status": "passed",
+      "seconds": 3.1651
+    },
+    {
+      "name": "nested_groups_exact_numeric_sort_and_filter",
+      "status": "passed",
+      "seconds": 0.0429
+    },
+    {
+      "name": "windows_locked_export_and_retry",
+      "status": "passed",
+      "seconds": 0.0054
+    },
+    {
+      "name": "windows_unicode_clipboard",
+      "status": "passed",
+      "seconds": 0.0085
+    },
+    {
+      "name": "released_file_handle_bookmarks_and_saved_view_reopen",
+      "status": "passed",
+      "seconds": 0.1008
+    },
+    {
+      "name": "cancel_import_and_restore_previous_workspace",
+      "status": "passed",
+      "seconds": 0.1288
+    },
+    {
+      "name": "boolean_expression_multisort_and_cell_formatting",
+      "status": "passed",
+      "seconds": 0.0288
+    },
+    {
+      "name": "tabs_release_inactive_connection_and_session_restore",
+      "status": "passed",
+      "seconds": 0.3582
+    },
+    {
+      "name": "xlsx_sheet_import_export_and_literal_formulas",
+      "status": "passed",
+      "seconds": 0.1696
+    },
+    {
+      "name": "shared_rules_column_names_priority_persistence_and_windows_lock",
+      "status": "passed",
+      "seconds": 0.449
+    },
+    {
+      "name": "bulk_selection_notes_and_annotated_export",
+      "status": "passed",
+      "seconds": 0.0567
+    },
+    {
+      "name": "group_summaries_sort_and_exact_large_values",
+      "status": "passed",
+      "seconds": 0.0109
+    },
+    {
+      "name": "date_period_groups_expand_and_release",
+      "status": "passed",
+      "seconds": 0.0229
+    },
+    {
+      "name": "pinned_columns_share_selection_and_survive_horizontal_scroll",
+      "status": "passed",
+      "seconds": 0.047
+    },
+    {
+      "name": "text_filter_syntax_and_visible_order_export",
+      "status": "passed",
+      "seconds": 0.0133
+    },
+    {
+      "name": "search_all_open_analyses_with_sequential_connections",
+      "status": "passed",
+      "seconds": 0.073
+    },
+    {
+      "name": "boolean_cells_bookmark_checkbox_and_timestamp_precision",
+      "status": "passed",
+      "seconds": 0.0504
+    },
+    {
+      "name": "reopen_closed_analysis_retains_view_and_notes",
+      "status": "passed",
+      "seconds": 0.1062
+    },
+    {
+      "name": "bundled_forensic_catalog_and_legacy_excel_dependency",
+      "status": "passed",
+      "seconds": 0.0852
+    },
+    {
+      "name": "timeline_explorer_session_sources_and_tags",
+      "status": "passed",
+      "seconds": 0.0895
+    },
+    {
+      "name": "dark_theme_actual_glyphs_and_wrapped_tabs",
+      "status": "passed",
+      "seconds": 0.1921
+    },
+    {
+      "name": "official_plaso_fixture_date_macb_category_and_gui_schema",
+      "status": "passed",
+      "seconds": 0.1462
+    },
+    {
+      "name": "advanced_nested_expressions_and_virtual_source_fields",
+      "status": "passed",
+      "seconds": 0.0749
+    },
+    {
+      "name": "official_tle_layout_import_and_color_expressions",
+      "status": "passed",
+      "seconds": 0.0745
+    },
+    {
+      "name": "complete_disk_indexed_group_expansion_and_collapse",
+      "status": "passed",
+      "seconds": 0.1935
+    },
+    {
+      "name": "bundled_native_timestamp_precision_and_epoch_boundaries",
+      "status": "passed",
+      "seconds": 0.0211
+    },
+    {
+      "name": "derived_export_and_immutable_source_provenance",
+      "status": "passed",
+      "seconds": 0.0475
+    },
+    {
+      "name": "documented_tle_settings_font_theme_date_format_and_details",
+      "status": "passed",
+      "seconds": 0.1237
+    }
+  ],
+  "not_covered": [
+    "Explorateur Windows : glisser-déposer réel",
+    "Sélection manuelle dans les dialogues natifs",
+    "CSV forensic réels de plusieurs Go",
+    "Partages UNC",
+    "Essais prolongés Windows 10/11"
+  ],
+  "memory": {
+    "peak_working_set_mib": 167.4,
+    "working_set_mib": 165.7
+  },
+  "finished_utc": "2026-10-31T12:20:51.269032+00:00",
+  "bundle_verification": {
+    "status": "passed",
+    "exit_code": 0,
+    "executable_sha256": "1d25b92bb5e142d994f746f9ce25137aeb1315bafb151c9d45aa98be1f86d27f",
+    "single_file_distribution": true,
+    "adjacent_files": [
+      "Fireblade.exe"
+    ],
+    "extraction_cleaned": true,
+    "relocated_unicode_path": true,
+    "host_python_paths_removed": true
+  },
+  "source_commit": "358656b90eda57827116ae538488a010d31b86ed",
+  "workflow_run": "https://github.com/23R0534ZXT/fireblade/actions/runs/41200337136",
+  "executable_sha256": "1d25b92bb5e142d994f746f9ce25137aeb1315bafb151c9d45aa98be1f86d27f"
+}

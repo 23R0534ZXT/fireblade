@@ -65,7 +65,7 @@ Les ajouts de présentation restent dans les menus : le démarrage conserve une 
 | Onglets | Recherche par nom, plusieurs rangées, réouverture du dernier fermé ; une seule base active |
 | Sessions | Vues, analyses et dispositions ; import des sources et tags des sessions `.tle_sess` |
 | Signets et notes | Ligne individuelle ou sélection multiple : marquer, ajouter, remplacer, retirer |
-| Présentation | Colonnes épinglées, clair/sombre, police et formats de dates ; règles locales/globales, couleurs et gras |
+| Présentation | Colonnes épinglées, clair/sombre, police et formats de dates ; règles locales/globales, couleurs, styles de texte, barres, dégradés et indicateurs |
 | Règles partagées | Correspondance par noms de colonnes, import/export JSON, rechargement et désactivation par vue |
 | Détails | Valeurs complètes, notes, JSON/XML formaté, panneau à droite/en bas et filtrage depuis les détails |
 | Profils forensic | Catalogue de 222 signatures / 193 noms de formats ; types et présentation ; profils personnels JSON |
@@ -399,3 +399,5 @@ La qualification en charge réutilise le CSV publié de **3 GiB** (plus de 3 Go 
 Il s’agit de parcours automatisés QtTest, exécutés avec le plugin Windows natif : ils ne sont pas présentés comme une manipulation physique humaine ni comme des essais sur tous les exports d’enquête existants. Les données restent synthétiques et le cache disque n’est pas purgé. Voir les artefacts `Windows-visual-captures` et `Windows-3GiB-report-and-captures` de l’exécution concernée et [la procédure](docs/validation/QUALIFICATION.md).
 
 La [qualification du 31 octobre 2026](docs/validation/QUALIFICATION.md#résultat-du-31-octobre-2026--63fa493) a réussi sur le binaire `63fa493` : 30 contrôles intégrés, huit variantes visuelles et 42 contrôles sur le CSV existant de 3 GiB. Pic mémoire : 455,4 Mio. Une pause maximale de 3,8 s après import reste à améliorer ; les rapports et limites sont conservés dans le dépôt.
+
+Derniers ajouts qualifiés : [mises en forme graphiques, styles de règles et préambules PeScan/Wisp](docs/validation/AJOUTS-TLE.md), avec rapports conservés et limites de compatibilité.

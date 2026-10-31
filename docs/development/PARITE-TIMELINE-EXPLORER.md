@@ -37,7 +37,7 @@ Références : [manuel officiel](https://github.com/EZToolsManuals/EZToolsManual
 | Import `.tle_sess` | Ajouté | Sources et tags ; réimporte les sources présentes, BOM UTF-8/16/32 pour CSV ; dispositions séparées |
 | Barres, dégradés, indicateurs | Ajoutés | Colonne numérique, bornes fixes communes à toutes les pages, trois niveaux ; persistance Fireblade. Les variantes XML DevExpress restent à traduire |
 | Préambules PeScan/Wisp | Ajoutés | Quatre lignes retirées de la copie de travail seulement, après vérification de l’en-tête public exact |
-| Règles de couleur locales/globales | Présent | Texte, fond, gras, cellule/ligne, priorité et partage JSON Fireblade |
+| Règles de couleur locales/globales | Présent | Texte, fond, gras/italique/souligné/barré, cellule/ligne, priorité et partage JSON Fireblade |
 | Signets / tags | Étendu | Case à cocher, sélection multiple et filtre des signets |
 | Notes libres | Présent | Ajout/remplacement/retrait en masse ; export annoté |
 | Booléens sous forme de cases | Ajoutés | Champs reconnus ou bascule depuis l’en-tête ; aucune mutation de la source |
@@ -62,4 +62,4 @@ La grille DevExpress de Timeline Explorer contient des possibilités qui ne sont
 
 Le dépliage complet conserve la hiérarchie sur disque et charge seulement une fenêtre de lignes ; la première indexation prend du temps et requiert du disque temporaire. Les sessions sont limitées à 1000 références et les historiques de fermeture à 20 snapshots.
 
-La qualification Windows du binaire `63fa493` a réussi : 30 contrôles intégrés, huit variantes visuelles et 42 contrôles sur le CSV existant de 3 GiB ; voir [les mesures et limites](../validation/QUALIFICATION.md). Une pause maximale de 3,8 s reste mesurée après import. Les mesures d’une ancienne préversion ne sont pas automatiquement attribuées à ce code. Une comparaison de vitesse/RAM avec la version courante de Timeline Explorer, sur le même poste et les mêmes exports, reste à réaliser.
+La qualification du binaire `358656b` a réussi : 279 tests des sources par version Python sous Windows, 30 contrôles intégrés, huit variantes visuelles et 42 contrôles sur le CSV existant de 3 GiB. Voir [les ajouts, résultats et limites](../validation/AJOUTS-TLE.md). La pause maximale de timer mesurée est de 2,875 s dans cette exécution, contre 14,953 s dans la précédente : la fluidité complète n’est pas établie. Une comparaison instrumentée avec Timeline Explorer sur le même poste reste à réaliser.

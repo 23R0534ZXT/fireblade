@@ -9,6 +9,7 @@
 | Voir le périmètre des tests du fichier Windows | [Validation Windows](validation/WINDOWS.md) |
 | Lire les mesures, rapports et limites du CSV de 3 GiB | [Qualification en charge](validation/QUALIFICATION.md) |
 | Suivre les fonctions présentes et restantes | [Parité fonctionnelle](development/PARITE-TIMELINE-EXPLORER.md) |
+| Consulter les derniers ajouts et leurs contrôles | [Ajouts TLE](validation/AJOUTS-TLE.md) |
 | Lire les anciens essais et captures | [Archives](archive/README.md) |
 
 Le guide utilisateur et les notices sont intégrés au programme. Le reste de ce dossier est destiné au développement et n’est pas nécessaire à côté du `.exe`.

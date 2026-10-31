@@ -867,7 +867,10 @@ class Compiler:
             def column(index):
                 if index<0:raise ValueError('Champs virtuels indisponibles dans une collection')
                 path='$.'+json.dumps(fields[index],ensure_ascii=False)
-                return "json_extract_string(__fb_item,'"+path.replace("'","''")+"')"
+                direct="json_extract_string(__fb_item,'"+path.replace("'","''")+"')"
+                if '.' not in fields[index]:return direct
+                nested_path='$.'+'.'.join(json.dumps(part,ensure_ascii=False) for part in fields[index].split('.'))
+                return "coalesce("+direct+",json_extract_string(__fb_item,'"+nested_path.replace("'","''")+"'))"
             nested=Compiler(column,self.numeric,self.collection_depth+1)
             child=nested.emit(parse(expression,tuple(fields)))
             array=f'try_cast(try_cast({args[0].sql} AS JSON) AS JSON[])'

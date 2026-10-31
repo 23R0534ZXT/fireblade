@@ -95,7 +95,7 @@ def restore_functions(case):
     import re
     for item in items:
         if not isinstance(item,dict) or not isinstance(item.get('sha256'),str) or len(item['sha256'])!=64 or not isinstance(item.get('types'),dict) or len(item['types'])>4096:raise ValueError('Référence de fonctions invalide')
-        if any(not isinstance(n,str) or not re.fullmatch(r'[A-Za-z_]\w{0,127}',n) or k not in ('text','number','date','boolean') for n,k in item['types'].items()):raise ValueError('Types de fonctions invalides')
+        if any(not isinstance(n,str) or not 1<=len(n)<=128 or '\x00' in n or k not in ('text','number','date','boolean') for n,k in item['types'].items()):raise ValueError('Types de fonctions invalides')
         case._saved_function_types.update(item['types']);register_function_metadata(item['types'])
     ensure_udf(case)
     for item in items:

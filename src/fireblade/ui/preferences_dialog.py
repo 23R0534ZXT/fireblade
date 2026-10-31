@@ -2,6 +2,8 @@ import copy
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QCheckBox,
+    QPushButton,
+    QColorDialog,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -18,6 +20,7 @@ class PreferencesDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Préférences")
         self.preferences = copy.deepcopy(preferences)
+        self.palette=dict(preferences.theme_palette)
         form = QFormLayout(self)
         self.theme = QComboBox()
         self.theme.addItem("Clair", "light")
@@ -57,6 +60,7 @@ class PreferencesDialog(QDialog):
             self.details.findData(preferences.details_position)
         )
         form.addRow("Thème", self.theme)
+        colors=QPushButton("Personnaliser les couleurs…");colors.clicked.connect(self.edit_palette);form.addRow(colors)
         form.addRow("Police", self.font)
         form.addRow("Taille en points", self.size)
         form.addRow("Dates reconnues", self.dates)
@@ -74,8 +78,27 @@ class PreferencesDialog(QDialog):
         buttons.rejected.connect(self.reject)
         form.addRow(buttons)
 
+    def edit_palette(self):
+        from PySide6.QtGui import QColor
+        from PySide6.QtWidgets import QApplication
+        from PySide6.QtGui import QPalette
+        values=dict(self.palette);dialog=QDialog(self);dialog.setWindowTitle('Couleurs du thème');form=QFormLayout(dialog)
+        for label,key,role in [('Fenêtres','window',QPalette.Window),('Texte','text',QPalette.Text),('Grille et champs','base',QPalette.Base),('Lignes alternées','alternate',QPalette.AlternateBase),('Sélection','highlight',QPalette.Highlight),('Texte sélectionné','selection_text',QPalette.HighlightedText)]:
+            button=QPushButton(values.get(key,QApplication.palette().color(role).name()))
+            def choose(_=False,key=key,button=button):
+                color=QColorDialog.getColor(QColor(button.text()),dialog)
+                if color.isValid():values[key]=color.name();button.setText(color.name())
+            button.clicked.connect(choose);form.addRow(label,button)
+        reset=QPushButton('Rétablir les couleurs du thème')
+        def clear():values.clear();dialog.accept()
+        reset.clicked.connect(clear);form.addRow(reset)
+        box=QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Cancel);box.accepted.connect(dialog.accept);box.rejected.connect(dialog.reject);form.addRow(box)
+        if dialog.exec():self.palette=values
+        dialog.deleteLater()
+
     def accept(self):
         p = self.preferences
+        p.theme_palette=dict(self.palette)
         p.theme, p.font_family, p.font_size = (
             self.theme.currentData(),
             self.font.currentFont().family(),

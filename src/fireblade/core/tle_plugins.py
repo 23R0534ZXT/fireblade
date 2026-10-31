@@ -19,6 +19,22 @@ def host_command():
     return [os.environ.get('FIREBLADE_DOTNET','dotnet'),str(path)] if path.suffix.lower()=='.dll' else [str(path)]
 
 
+def command_for_plugin(path):
+    """Read target-framework metadata without instantiating the selected DLL."""
+    modern=host_command()
+    if os.name!='nt':return modern
+    inspected=subprocess.run(modern+['framework',str(Path(path).resolve())],capture_output=True,text=True,encoding='utf-8',timeout=30,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+    if inspected.returncode:raise ValueError('Métadonnées de DLL illisibles : '+inspected.stderr[-3000:])
+    target=json.loads(inspected.stdout.strip())['framework']
+    if target.startswith('.NETFramework,'):
+        override=os.environ.get('FIREBLADE_LEGACY_PLUGIN_HOST')
+        legacy=Path(override) if override else resource_path('plugin-host/legacy/Fireblade.LegacyHost.exe')
+        if not legacy.is_file():legacy=Path(__file__).resolve().parents[3]/'build/windows/plugin-host/legacy/Fireblade.LegacyHost.exe'
+        if not legacy.is_file():raise ValueError('Hôte .NET Framework intégré absent ; reconstruire le programme')
+        return [str(legacy)]
+    return modern
+
+
 def terminate(process):
     if process.poll() is not None:return
     if os.name=='nt':
@@ -33,7 +49,7 @@ def run_host(arguments,check_cancelled=lambda:None,timeout=3600):
     with tempfile.TemporaryDirectory(prefix='fireblade-plugin-') as folder:
         stdout=Path(folder)/'stdout.log';stderr=Path(folder)/'stderr.log'
         with stdout.open('wb') as out,stderr.open('wb') as err:
-            process=subprocess.Popen(host_command()+list(map(str,arguments)),stdout=out,stderr=err,
+            process=subprocess.Popen(command_for_plugin(arguments[1])+list(map(str,arguments)),stdout=out,stderr=err,
                 creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
             start=time.monotonic()
             try:
@@ -89,7 +105,7 @@ class FunctionSession:
         import queue,threading
         self.check=check_cancelled;self.responses=queue.Queue();self.lock=threading.Lock()
         self.logs=tempfile.TemporaryFile('w+b')
-        self.process=subprocess.Popen(host_command()+['serve',str(Path(path).resolve())],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=self.logs,text=True,encoding='utf-8',bufsize=1,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        self.process=subprocess.Popen(command_for_plugin(path)+['serve',str(Path(path).resolve())],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=self.logs,text=True,encoding='utf-8',bufsize=1,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         def read():
             try:
                 for line in self.process.stdout:

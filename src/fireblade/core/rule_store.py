@@ -40,7 +40,7 @@ class RuleBook:
     def validate(self):
         if not isinstance(self.functions,dict) or len(self.functions)>4096:raise ValueError('Métadonnées de fonctions invalides')
         import re
-        if any(not isinstance(n,str) or not re.fullmatch(r'[A-Za-z_]\w{0,127}',n) or k not in ('text','number','date','boolean') for n,k in self.functions.items()):raise ValueError('Métadonnées de fonctions invalides')
+        if any(not isinstance(n,str) or not 1<=len(n)<=128 or '\x00' in n or k not in ('text','number','date','boolean') for n,k in self.functions.items()):raise ValueError('Métadonnées de fonctions invalides')
         if len({n.casefold() for n in self.functions})!=len(self.functions):raise ValueError("Noms de fonctions ambigus")
         self.functions={n.casefold():k for n,k in self.functions.items()}
         from fireblade.core.expressions import register_function_metadata

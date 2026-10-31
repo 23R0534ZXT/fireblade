@@ -57,7 +57,7 @@ def read_graphic(item,node,kind,text,properties,color,resolve,aliases,warnings):
         if not 3<=len(entries)<=5:raise ValueError('Le jeu doit contenir 3 à 5 icônes')
         entries=sorted(entries,key=lambda e:Decimal(text(e,'Value','0')))
         label=(text(icon_set,'Name')+' '+text(entries[0],'PredefinedName')).lower()
-        rule.icon_set='arrows' if any(x in label for x in ('arrow','direction','triangle')) else 'signs' if 'sign' in label else 'circles'
+        rule.icon_set=next((shape for words,shape in [(('arrow','direction'),'arrows'),(('triangle',),'triangles'),(('square',),'squares'),(('diamond',),'diamonds'),(('star',),'stars'),(('rating','bar'),'ratings'),(('flag',),'flags'),(('sign',),'signs')] if any(w in label for w in words)),'circles')
         palette={3:['#c62828','#c58b00','#218739'],4:['#c62828','#e39900','#88aa33','#218739'],5:['#c62828','#f57c00','#c58b00','#88aa33','#218739']}
         default_type=mode(text(icon_set,'ValueType','Percent'))
         threshold_modes=[];thresholds=[];images=[];colors=[]

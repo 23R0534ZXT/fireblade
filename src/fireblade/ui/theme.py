@@ -20,7 +20,7 @@ QHeaderView::section { background: #eeeeee; color: #202020; padding: 3px 5px; bo
 """
 
 
-def apply_theme(app, theme="light"):
+def apply_theme(app, theme="light", overrides=None):
     # Native Windows 11 styles can keep dark foregrounds while custom backgrounds
     # are light. Fusion renders every control from the same explicit palette.
     app.styleHints().setColorScheme(Qt.ColorScheme.Dark if theme == "dark" else Qt.ColorScheme.Light)
@@ -46,6 +46,11 @@ def apply_theme(app, theme="light"):
                         "#f6f6f6": "#2b2b2b", "#cce8ff": "#315b7d", "#101010": "#ffffff",
                         "#ffffe1": "#35352b", "#686868": "#b0b0b0", "#0645ad": "#80bfff", "#663399": "#c6a2ee"}
         roles = {role: replacements.get(color, color) for role, color in roles.items()}
+    custom={};overrides=overrides or {}
+    for key,role in [('window',QPalette.Window),('text',QPalette.Text),('base',QPalette.Base),('alternate',QPalette.AlternateBase),('highlight',QPalette.Highlight),('selection_text',QPalette.HighlightedText)]:
+        if key in overrides:custom[roles[role].lower()]=overrides[key]
+    if 'base' in overrides and theme!='dark':custom['white']=overrides['base']
+    roles={r:custom.get(c.lower(),c) for r,c in roles.items()}
     for group in (QPalette.Active, QPalette.Inactive, QPalette.Disabled):
         for role, color in roles.items():
             palette.setColor(group, role, QColor(color))
@@ -57,4 +62,7 @@ def apply_theme(app, theme="light"):
         import re
         colors = {**replacements, "#eeeeee": "#383838", "#bcbcbc": "#555555", "#b5b5b5": "#606060", "#c5c5c5": "#555555"}
         stylesheet = re.sub(r'#[0-9a-fA-F]{6}|\bwhite\b', lambda m: colors.get(m.group(0), "#242424" if m.group(0) == "white" else m.group(0)), STYLE)
+    if custom:
+        import re
+        stylesheet=re.sub(r'#[0-9a-fA-F]{6}|\bwhite\b',lambda m:custom.get(m.group(0).lower(),m.group(0)),stylesheet)
     app.setStyleSheet(stylesheet)

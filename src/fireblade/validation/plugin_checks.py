@@ -21,7 +21,7 @@ def verify(host,fixture):
                 assert case.info['sha256']==digest and case.info['path']==str(source.resolve())
                 assert hashlib.sha256(source.read_bytes()).hexdigest()==digest
                 register_functions(case,fixture)
-                for expression in ("PluginNumber('FixtureDouble', 21) = 42", "PluginText('FixtureEcho', 'évidence') = 'évidence'", "PluginText('FixtureEcho', Null) Is Null", "FixtureTypes([Time],[LargeId]) = True"):
+                for expression in ("PluginNumber('FixtureDouble', 21) = 42", "PluginText('FixtureEcho', 'évidence') = 'évidence'", "PluginText('FixtureEcho', Null) Is Null", "FixtureTypes([Time],[LargeId]) = True", "[Details.Name] = 'évidence' And [Details.Children].Sum([Amount]) = 10"):
                     view=View(expression=FilterGroup('and',[Filter(0,'expression',expression)]));assert case.count(view)==1
                 import threading
                 from fireblade.core.errors import OperationCancelled

@@ -404,3 +404,16 @@ def test_statistic_editor_controls_remain_on_appearance_tab(case):
         assert dialog.statistic.isVisible() and dialog.statistic.currentData()=='top'
         dialog.accept();assert dialog.result()==1 and dialog.rules[0].statistic=='top'
     finally:dialog.close();dialog.deleteLater()
+
+
+@pytest.mark.parametrize('shape',['triangles','squares','diamonds','stars','ratings','flags'])
+def test_additional_icon_presets_roundtrip_and_render(case,shape):
+    from fireblade.core.rule_store import RuleBook
+    from fireblade.ui.icon_shapes import paint_shape
+    from PySide6.QtGui import QImage,QPainter,QColor
+    from PySide6.QtCore import QRect
+    rule=FormatRule(target=1,visual='icon',icon_set=shape)
+    assert RuleBook.from_bytes(RuleBook(case.headers,[rule]).to_bytes()).rules[0]==rule
+    image=QImage(32,32,QImage.Format_ARGB32);image.fill(Qt.white);p=QPainter(image)
+    paint_shape(p,QRect(0,0,32,32),shape,2,3,QColor('#123456'));p.end()
+    assert any(image.pixelColor(x,y).name()=='#123456' for x in range(32) for y in range(32))

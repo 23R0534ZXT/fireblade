@@ -12,6 +12,7 @@ from fireblade.runtime.windows_paths import user_directory
 @dataclass
 class Preferences:
     theme: str = "light"
+    theme_palette: dict[str,str] = field(default_factory=dict)
     font_family: str = ""
     font_size: int = 10
     copy_headers: bool = True
@@ -31,6 +32,8 @@ class Preferences:
             "custom",
         ):
             raise ValueError("Thème ou format de date invalide")
+        import re
+        if not isinstance(self.theme_palette,dict) or set(self.theme_palette)-{'window','text','base','alternate','highlight','selection_text'} or any(not isinstance(c,str) or not re.fullmatch(r'#[0-9a-fA-F]{6}',c) for c in self.theme_palette.values()):raise ValueError('Palette de thème invalide')
         if self.details_position not in ("bottom", "right", "top"):
             raise ValueError("Position du panneau invalide")
         if not isinstance(self.font_family, str) or len(self.font_family) > 200:

@@ -1,6 +1,33 @@
 # Qualification visuelle et CSV 3 GiB
 
-Cette suite complète les tests unitaires et les treize contrôles rapides du fichier autonome. Elle vise les problèmes de rendu et les opérations longues qui ne sont pas démontrés par quelques enregistrements de test. Une Release du programme ne peut être publiée que si cette suite réussit aussi.
+Cette suite complète les tests unitaires et les trente contrôles rapides du fichier autonome. Elle vise les problèmes de rendu et les opérations longues qui ne sont pas démontrés par quelques enregistrements de test. Une Release du programme ne peut être publiée que si cette suite réussit aussi.
+
+## Résultat du 31 octobre 2026 — `63fa493`
+
+[Exécution Windows réussie](https://github.com/23R0534ZXT/fireblade/actions/runs/41194654299) · [Préversion et EXE](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-63fa493a3ad205dfb2763875250f07f04b6e03d7).
+
+- Sources : trois versions de Python sous Windows ; 267 réussites et un test SMB réservé au job séparé sur Python 3.12.
+- Stockage natif : trois tests réussis, dont un vrai partage SMB local et des chemins Unicode longs.
+- Fichier unique : [30 contrôles réussis](reports/63fa493-single-file.json), EXE de 56 343 337 octets, dossier adjacent vide de dépendances et extraction temporaire nettoyée.
+- Rendu : [huit variantes réussies](reports/63fa493-visual.json), préférences Windows clair/sombre et échelles 100/125/150/200 %. Des captures ont également été examinées visuellement.
+- Charge : [42 contrôles réussis](reports/63fa493-3gib.json) dans le véritable EXE sur le CSV existant de 3 222 648 632 octets, sans régénération.
+
+| Mesure | Résultat de cette exécution |
+|---|---|
+| Enregistrements | 2 441 216 |
+| Import complet | 154,344 s |
+| Dépliage de trois niveaux, audit de tous les identifiants et page profonde | 4,623 s ; 84 632 groupes |
+| Douze groupes ouverts manuellement | Maximum 1 000 nœuds conservés |
+| Contrôle UTC, filtre et tri de tous les enregistrements | 27,306 s ; 4 563 dates absentes/invalides conformes à la référence |
+| Export intégral et relecture indépendante | 125,680 s ; contenu et SHA-256 identiques à la source |
+| Pic de working set du processus | 455,4 Mio |
+| Timer d’interface à 50 ms | Intervalle P95 : 78 ms ; maximum : 3 812 ms |
+
+**Une pause de 3,8 s reste mesurée pendant le premier affichage après import.** La disparition de toutes les pauses n’est pas établie. Les intervalles maximaux pendant le dépliage complet et le contrôle UTC étaient respectivement de 110 et 156 ms. Le timer ne mesure pas directement chaque latence d’interaction utilisateur.
+
+Machine : Windows Server 2025, x64, quatre CPU logiques, Python 3.12.10, DuckDB 1.5.6, Qt 6.12.0, Segoe UI 10 points. Cache du système de fichiers non purgé ; données synthétiques. Ce n’est ni un benchmark contre Timeline Explorer ni une validation physique sur Windows 10/11.
+
+SHA-256 de l’EXE publié, téléchargé puis comparé au binaire testé : `ec005513c6bb18fd08c11ec7e379a0726fee905a75649de724bab1b53cfa4be6`.
 
 ## Ce qui est exécuté
 
@@ -54,7 +81,7 @@ python -m scripts.windows.qualify prepare --directory C:\Temp\fireblade-data --o
 python -m scripts.windows.qualify run --directory C:\Temp\fireblade-data --out artifacts/large-data --exe dist/Fireblade.exe
 ```
 
-Réutiliser le même dossier de données et prévoir au moins 12 GiB libres pour la qualification. Si le CSV est absent, installer GitHub CLI (`gh`) et s’authentifier pour accéder à la Release privée, ou extraire manuellement le ZIP publié dans ce dossier. La commande `prepare` contrôle le SHA-256 ; elle ne crée pas de nouveau CSV. L’ancienne commande `generate` est conservée comme alias de `prepare` et ne régénère plus le fichier. Les sorties sont destinées aux développeurs ; l’utilisateur final conserve uniquement le .exe.
+Réutiliser le même dossier de données et prévoir au moins 12 GiB libres pour la qualification. Si le CSV est absent, installer GitHub CLI (`gh`) et télécharger la Release publique, ou extraire manuellement le ZIP publié dans ce dossier. La commande `prepare` contrôle le SHA-256 ; elle ne crée pas de nouveau CSV. L’ancienne commande `generate` est conservée comme alias de `prepare` et ne régénère plus le fichier. Les sorties sont destinées aux développeurs ; l’utilisateur final conserve uniquement le .exe.
 
 ## Limites
 

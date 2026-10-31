@@ -60,4 +60,4 @@ La grille DevExpress de Timeline Explorer contient des possibilités qui ne sont
 
 Le dépliage complet conserve la hiérarchie sur disque et charge seulement une fenêtre de lignes ; la première indexation prend du temps et requiert du disque temporaire. Les sessions sont limitées à 1000 références et les historiques de fermeture à 20 snapshots.
 
-La nouvelle qualification doit repasser sur le véritable EXE. Les mesures d’une ancienne préversion ne sont pas automatiquement attribuées à ce code. Une comparaison de vitesse/RAM avec la version courante de Timeline Explorer, sur le même poste et les mêmes exports, reste à réaliser.
+La qualification Windows du binaire `63fa493` a réussi : 30 contrôles intégrés, huit variantes visuelles et 42 contrôles sur le CSV existant de 3 GiB ; voir [les mesures et limites](../validation/QUALIFICATION.md). Une pause maximale de 3,8 s reste mesurée après import. Les mesures d’une ancienne préversion ne sont pas automatiquement attribuées à ce code. Une comparaison de vitesse/RAM avec la version courante de Timeline Explorer, sur le même poste et les mêmes exports, reste à réaliser.

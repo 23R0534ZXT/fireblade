@@ -7,6 +7,7 @@
 | Comprendre le code et choisir où modifier | [Architecture](development/ARCHITECTURE.md) |
 | Installer les sources, tester et reconstruire | [Contribuer](development/CONTRIBUER.md) |
 | Voir le périmètre des tests du fichier Windows | [Validation Windows](validation/WINDOWS.md) |
+| Lire les mesures, rapports et limites du CSV de 3 GiB | [Qualification en charge](validation/QUALIFICATION.md) |
 | Suivre les fonctions présentes et restantes | [Parité fonctionnelle](development/PARITE-TIMELINE-EXPLORER.md) |
 | Lire les anciens essais et captures | [Archives](archive/README.md) |
 

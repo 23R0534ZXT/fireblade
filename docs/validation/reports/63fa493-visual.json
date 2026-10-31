@@ -1,0 +1,42 @@
+[
+  {
+    "variant": "dark-1",
+    "status": "passed",
+    "checks": 6
+  },
+  {
+    "variant": "dark-1.25",
+    "status": "passed",
+    "checks": 6
+  },
+  {
+    "variant": "dark-1.5",
+    "status": "passed",
+    "checks": 6
+  },
+  {
+    "variant": "dark-2",
+    "status": "passed",
+    "checks": 6
+  },
+  {
+    "variant": "light-1",
+    "status": "passed",
+    "checks": 6
+  },
+  {
+    "variant": "light-1.25",
+    "status": "passed",
+    "checks": 6
+  },
+  {
+    "variant": "light-1.5",
+    "status": "passed",
+    "checks": 6
+  },
+  {
+    "variant": "light-2",
+    "status": "passed",
+    "checks": 6
+  }
+]

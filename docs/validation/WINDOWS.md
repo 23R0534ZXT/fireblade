@@ -19,7 +19,7 @@ Après les tests des sources, `scripts/windows/build.py` construit un exécutabl
 5. Vérifie qu’il n’existe toujours que le `.exe` à côté du programme et que son dossier d’extraction temporaire est nettoyé.
 6. Enregistre le rapport et le SHA-256 du binaire effectivement exécuté.
 
-Les treize contrôles couvrent notamment le démarrage natif, les ressources intégrées, CSV en lecture seule et Unicode, groupes et précision numérique, export verrouillé puis repris, presse-papiers, réouverture, annulation d’import, couleurs, onglets/sessions, XLSX, règles globales et annotations collectives.
+Les trente contrôles couvrent notamment le démarrage natif, les ressources intégrées, CSV en lecture seule et Unicode, groupes et précision numérique, export verrouillé puis repris, presse-papiers, réouverture, annulation d’import, couleurs, onglets/sessions, XLS/XLSX, règles globales et annotations collectives. Ils vérifient aussi les fixtures Plaso et layouts officiels, les colonnes dérivées, fuseaux, nanosecondes et le dépliage complet.
 
 La construction ne copie le fichier dans `dist/Fireblade.exe` qu’après succès. Le rapport reste dans `artifacts/windows-single-file.json`, destiné aux développeurs. Il n’est pas requis à côté du programme.
 
@@ -40,6 +40,8 @@ Le chemin du rapport doit être nouveau. Pour exécuter directement les contrôl
 
 ## Limites
 
-Les runners GitHub utilisent leur propre version de Windows, actuellement Windows Server pour les exécutions déjà réalisées. Les contrôles automatisés ne remplacent pas les gestes physiques dans l’Explorateur, tous les dialogues natifs, les partages UNC, les politiques de sécurité d’un parc, les sessions prolongées sur Windows 10/11 ou les mesures sur de vrais CSV forensic de plusieurs Go.
+Les runners GitHub utilisent leur propre version de Windows, actuellement Windows Server pour les exécutions déjà réalisées. Un job séparé vérifie un partage UNC/SMB temporaire sur le runner et les chemins Unicode de plus de 260 caractères ; il bloque aussi la publication. Le parcours de charge utilise le CSV synthétique de 3 GiB déjà publié, contrôlé par SHA-256, sans régénération.
+
+Ces contrôles automatisés ne remplacent pas les gestes physiques dans l’Explorateur, tous les dialogues natifs, les partages d’entreprise et leurs politiques d’authentification, les sessions prolongées sur Windows 10/11 ou les mesures sur de vrais CSV forensic de plusieurs Go.
 
 Les performances historiques du moteur sont archivées séparément. Aucune comparaison instrumentée avec Timeline Explorer n’a encore établi un gain sur une charge Windows représentative.

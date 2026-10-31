@@ -1,0 +1,827 @@
+{
+  "status": "passed",
+  "kind": "3-GiB GUI workload",
+  "started_utc": "2026-10-31T11:00:23.572010+00:00",
+  "platform": "win32",
+  "frozen": true,
+  "qt_platform": "windows",
+  "operating_system": "Windows-2025Server-10.0.26100-SP0",
+  "machine": "AMD64",
+  "cpu_count": 4,
+  "python": "3.12.10",
+  "duckdb": "1.5.6",
+  "qt": "6.12.0",
+  "automation": "QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+  "checks": [
+    {
+      "name": "full_import_of_3_GiB_from_readonly_CSV",
+      "status": "passed",
+      "seconds": 154.344,
+      "max_timer_gap_ms": 3812.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 340.0
+      }
+    },
+    {
+      "name": "independent_row_count_hash_unicode_multiline_and_ID_oracle",
+      "status": "passed",
+      "seconds": 0.52,
+      "max_timer_gap_ms": 125.0,
+      "details": {
+        "source_bytes": 3222648632,
+        "records": 2441216,
+        "database_bytes": 1504456704
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 355.8
+      }
+    },
+    {
+      "name": "group_by_0_[1]",
+      "status": "passed",
+      "seconds": 0.206,
+      "max_timer_gap_ms": 141.0,
+      "details": {
+        "columns": [
+          1
+        ],
+        "levels": 1
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 354.9
+      }
+    },
+    {
+      "name": "group_by_1_[3]",
+      "status": "passed",
+      "seconds": 0.389,
+      "max_timer_gap_ms": 78.0,
+      "details": {
+        "columns": [
+          3
+        ],
+        "levels": 1
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 356.9
+      }
+    },
+    {
+      "name": "group_by_2_[4]",
+      "status": "passed",
+      "seconds": 0.265,
+      "max_timer_gap_ms": 125.0,
+      "details": {
+        "columns": [
+          4
+        ],
+        "levels": 1
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 358.0
+      }
+    },
+    {
+      "name": "group_by_3_[2]",
+      "status": "passed",
+      "seconds": 0.247,
+      "max_timer_gap_ms": 141.0,
+      "details": {
+        "columns": [
+          2
+        ],
+        "levels": 1
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 358.6
+      }
+    },
+    {
+      "name": "group_by_4_[9]",
+      "status": "passed",
+      "seconds": 0.198,
+      "max_timer_gap_ms": 140.0,
+      "details": {
+        "columns": [
+          9
+        ],
+        "levels": 1
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 361.0
+      }
+    },
+    {
+      "name": "group_by_5_[1, 3]",
+      "status": "passed",
+      "seconds": 0.657,
+      "max_timer_gap_ms": 94.0,
+      "details": {
+        "columns": [
+          1,
+          3
+        ],
+        "levels": 2
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 361.2
+      }
+    },
+    {
+      "name": "group_by_6_[4, 2]",
+      "status": "passed",
+      "seconds": 0.503,
+      "max_timer_gap_ms": 140.0,
+      "details": {
+        "columns": [
+          4,
+          2
+        ],
+        "levels": 2
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 361.5
+      }
+    },
+    {
+      "name": "group_by_7_[2, 3]",
+      "status": "passed",
+      "seconds": 0.568,
+      "max_timer_gap_ms": 125.0,
+      "details": {
+        "columns": [
+          2,
+          3
+        ],
+        "levels": 2
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 361.5
+      }
+    },
+    {
+      "name": "group_by_8_[9, 10]",
+      "status": "passed",
+      "seconds": 0.446,
+      "max_timer_gap_ms": 125.0,
+      "details": {
+        "columns": [
+          9,
+          10
+        ],
+        "levels": 2
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 365.7
+      }
+    },
+    {
+      "name": "group_by_9_[3, 1]",
+      "status": "passed",
+      "seconds": 0.714,
+      "max_timer_gap_ms": 94.0,
+      "details": {
+        "columns": [
+          3,
+          1
+        ],
+        "levels": 2
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 365.9
+      }
+    },
+    {
+      "name": "group_by_10_[1, 3, 4]",
+      "status": "passed",
+      "seconds": 0.811,
+      "max_timer_gap_ms": 93.0,
+      "details": {
+        "columns": [
+          1,
+          3,
+          4
+        ],
+        "levels": 3
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 366.3
+      }
+    },
+    {
+      "name": "group_by_11_[6]",
+      "status": "passed",
+      "seconds": 0.645,
+      "max_timer_gap_ms": 94.0,
+      "details": {
+        "columns": [
+          6
+        ],
+        "levels": 1
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 167.7
+      }
+    },
+    {
+      "name": "group_by_two_columns_under_active_filter",
+      "status": "passed",
+      "seconds": 0.887,
+      "max_timer_gap_ms": 140.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 340.6
+      }
+    },
+    {
+      "name": "40_cycles_three_level_expand_collapse_and_memory",
+      "status": "passed",
+      "seconds": 26.916,
+      "max_timer_gap_ms": 140.0,
+      "details": {
+        "cycles": 40,
+        "working_set_mib": [
+          409.5,
+          415.5,
+          386.6,
+          403.9
+        ]
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 403.9
+      }
+    },
+    {
+      "name": "global_search_keyboard_and_reset",
+      "status": "passed",
+      "seconds": 18.824,
+      "max_timer_gap_ms": 125.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 394.6
+      }
+    },
+    {
+      "name": "Boolean_OR_editor_mouse_keyboard_against_Python_oracle",
+      "status": "passed",
+      "seconds": 1.417,
+      "max_timer_gap_ms": 171.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 405.0
+      }
+    },
+    {
+      "name": "filter_exact_user",
+      "status": "passed",
+      "seconds": 0.52,
+      "max_timer_gap_ms": 109.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 405.2
+      }
+    },
+    {
+      "name": "filter_user_and_artifact",
+      "status": "passed",
+      "seconds": 1.206,
+      "max_timer_gap_ms": 125.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 387.3
+      }
+    },
+    {
+      "name": "filter_RE2_regex",
+      "status": "passed",
+      "seconds": 0.639,
+      "max_timer_gap_ms": 140.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 397.3
+      }
+    },
+    {
+      "name": "filter_NULL_user",
+      "status": "passed",
+      "seconds": 0.524,
+      "max_timer_gap_ms": 125.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 375.3
+      }
+    },
+    {
+      "name": "filter_ISO_date_range",
+      "status": "passed",
+      "seconds": 2.469,
+      "max_timer_gap_ms": 156.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 392.9
+      }
+    },
+    {
+      "name": "invalid_regex_and_connection_recovery",
+      "status": "passed",
+      "seconds": 0.532,
+      "max_timer_gap_ms": 125.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 395.4
+      }
+    },
+    {
+      "name": "exact_large_integer_sort_both_directions_via_editor",
+      "status": "passed",
+      "seconds": 6.048,
+      "max_timer_gap_ms": 125.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 395.2
+      }
+    },
+    {
+      "name": "multi_column_sort_deep_pagination_cache_and_back",
+      "status": "passed",
+      "seconds": 13.922,
+      "max_timer_gap_ms": 203.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 396.7
+      }
+    },
+    {
+      "name": "ISO_timestamp_sort_both_directions",
+      "status": "passed",
+      "seconds": 4.755,
+      "max_timer_gap_ms": 141.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 382.5
+      }
+    },
+    {
+      "name": "global_and_local_cell_rules_on_large_filtered_data",
+      "status": "passed",
+      "seconds": 2.939,
+      "max_timer_gap_ms": 125.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 404.2
+      }
+    },
+    {
+      "name": "mouse_selection_bulk_notes_and_bookmarks_checkbox",
+      "status": "passed",
+      "seconds": 1.909,
+      "max_timer_gap_ms": 125.0,
+      "details": {
+        "source_record_ids": [
+          43,
+          300
+        ]
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 409.9
+      }
+    },
+    {
+      "name": "save_view_switch_tabs_release_database_and_reopen_session",
+      "status": "passed",
+      "seconds": 2.41,
+      "max_timer_gap_ms": 203.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 335.6
+      }
+    },
+    {
+      "name": "CSV_XLSX_annotations_and_group_export_full_filtered_results",
+      "status": "passed",
+      "seconds": 16.016,
+      "max_timer_gap_ms": 172.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 378.8
+      }
+    },
+    {
+      "name": "replace_remove_selected_notes_and_empty_result_recovery",
+      "status": "passed",
+      "seconds": 3.905,
+      "max_timer_gap_ms": 188.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 421.3
+      }
+    },
+    {
+      "name": "successful_full_multi_GiB_CSV_export_and_independent_readback",
+      "status": "passed",
+      "seconds": 125.68,
+      "max_timer_gap_ms": 203.0,
+      "details": {
+        "exported_records": 2441216,
+        "exported_bytes": 3222648632
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 99.3
+      }
+    },
+    {
+      "name": "cancel_multi_GiB_export_preserve_target_and_reuse_connection",
+      "status": "passed",
+      "seconds": 7.545,
+      "max_timer_gap_ms": 391.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 72.4
+      }
+    },
+    {
+      "name": "cancel_partial_3_GiB_import_rollback_and_restore_prior_workspace",
+      "status": "passed",
+      "seconds": 4.136,
+      "max_timer_gap_ms": 125.0,
+      "details": {
+        "write_started": 898.671,
+        "written_records": 12823,
+        "cancel_exception_cause": "NoneType",
+        "tables_after_rollback": []
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 94.9
+      }
+    },
+    {
+      "name": "advanced_summaries_temporal_groups_and_pinned_3_GiB_grid",
+      "status": "passed",
+      "seconds": 1.052,
+      "max_timer_gap_ms": 63.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 125.6
+      }
+    },
+    {
+      "name": "text_expression_and_visible_column_export_on_3_GiB",
+      "status": "passed",
+      "seconds": 0.163,
+      "max_timer_gap_ms": 94.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 145.5
+      }
+    },
+    {
+      "name": "cross_file_search_in_full_3_GiB_and_second_analysis",
+      "status": "passed",
+      "seconds": 3.492,
+      "max_timer_gap_ms": 78.0,
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 356.3
+      }
+    },
+    {
+      "name": "manual_group_expansion_bounded_cache_on_existing_3_GiB",
+      "status": "passed",
+      "seconds": 5.583,
+      "max_timer_gap_ms": 203.0,
+      "details": {
+        "opened_groups": 12,
+        "maximum_cached_nodes": 1000,
+        "source_records": 2441216
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 331.3
+      }
+    },
+    {
+      "name": "complete_three_level_expansion_all_3_GiB_records_and_deep_page",
+      "status": "passed",
+      "seconds": 4.623,
+      "max_timer_gap_ms": 110.0,
+      "details": {
+        "indexed_records": 2441216,
+        "indexed_groups": 84632,
+        "deep_page_offset": 1220608
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 351.2
+      }
+    },
+    {
+      "name": "derived_utc_conversion_quality_filter_sort_on_all_existing_3_GiB_records",
+      "status": "passed",
+      "seconds": 27.306,
+      "max_timer_gap_ms": 156.0,
+      "details": {
+        "derived_quality": {
+          "ValidationUTC": [
+            4563,
+            2441216
+          ]
+        },
+        "filtered_count": 1207339
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 333.1
+      }
+    },
+    {
+      "name": "final_source_integrity_case_reuse_and_memory",
+      "status": "passed",
+      "seconds": 2.722,
+      "max_timer_gap_ms": 140.0,
+      "details": {
+        "source_unchanged": true,
+        "final_rows": 2441216,
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 333.4
+      },
+      "memory": {
+        "peak_working_set_mib": 455.4,
+        "working_set_mib": 333.4
+      }
+    }
+  ],
+  "screenshots": [
+    "01-import-complete.png",
+    "group-00.png",
+    "group-01.png",
+    "group-02.png",
+    "group-03.png",
+    "group-04.png",
+    "group-05.png",
+    "group-06.png",
+    "group-07.png",
+    "group-08.png",
+    "group-09.png",
+    "group-10.png",
+    "group-11.png",
+    "filtered-groups.png",
+    "02-search.png",
+    "03-filter-editor.png",
+    "04-exact-sort.png",
+    "05-deep-pagination.png",
+    "06-rules.png",
+    "07-notes.png",
+    "08-session.png",
+    "10-advanced-groups-pinned.png",
+    "12-bounded-manual-groups.png",
+    "11-complete-expanded-hierarchy.png",
+    "13-derived-utc-large-data.png",
+    "09-final-state.png"
+  ],
+  "style": "Fusion light",
+  "font": {
+    "family": "Segoe UI",
+    "point_size": 10.0
+  },
+  "dataset": {
+    "bytes": 3222648632,
+    "rows": 2441216,
+    "sha256": "2382777d3917a973a1e5104b3bc404d02d3901aeff8104d34fc30e4264776cf0",
+    "seed": "0xF1B1ADE",
+    "description": "Synthetic varied UTF-8 BOM/CRLF, unique random payloads, multiline quotes, Unicode, NULLs and exact large IDs. Filesystem cache not purged."
+  },
+  "not_covered": [
+    "Human-operated physical Explorer gestures",
+    "UNC shares",
+    "Actual investigator data",
+    "Long-term Windows 10/11 desktop use"
+  ],
+  "current_check": "final_source_integrity_case_reuse_and_memory",
+  "ui_errors": [],
+  "responsiveness_diagnostics": {
+    "main_thread_native_calls": [],
+    "sampler_gaps": [
+      {
+        "seconds": 3.532,
+        "before": [
+          {
+            "file": "entrypoint.py",
+            "line": 5,
+            "function": "<module>"
+          },
+          {
+            "file": "bootstrap.py",
+            "line": 82,
+            "function": "main"
+          },
+          {
+            "file": "app.py",
+            "line": 1188,
+            "function": "main"
+          },
+          {
+            "file": "stress.py",
+            "line": 85,
+            "function": "run_stress"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 94,
+            "function": "check"
+          },
+          {
+            "file": "stress.py",
+            "line": 85,
+            "function": "<lambda>"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 157,
+            "function": "import_csv"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 85,
+            "function": "settle"
+          }
+        ],
+        "after": [
+          {
+            "file": "entrypoint.py",
+            "line": 5,
+            "function": "<module>"
+          },
+          {
+            "file": "bootstrap.py",
+            "line": 82,
+            "function": "main"
+          },
+          {
+            "file": "app.py",
+            "line": 1188,
+            "function": "main"
+          },
+          {
+            "file": "stress.py",
+            "line": 85,
+            "function": "run_stress"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 94,
+            "function": "check"
+          },
+          {
+            "file": "stress.py",
+            "line": 85,
+            "function": "<lambda>"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 157,
+            "function": "import_csv"
+          },
+          {
+            "file": "gui_driver.py",
+            "line": 80,
+            "function": "settle"
+          },
+          {
+            "file": "grid.py",
+            "line": 18,
+            "function": "sizeHint"
+          },
+          {
+            "file": "responsiveness.py",
+            "line": 37,
+            "function": "profile"
+          }
+        ]
+      }
+    ],
+    "interpretation": "Sampler gaps can reflect GIL contention or host scheduling; native call timings identify work executed synchronously by the UI thread."
+  },
+  "responsiveness_stalls": [
+    {
+      "gap_ms": 3812.0,
+      "phase": "full_import_of_3_GiB_from_readonly_CSV",
+      "status": "250 éléments chargés dans ce niveau",
+      "stack": [
+        {
+          "file": "entrypoint.py",
+          "line": 5,
+          "function": "<module>"
+        },
+        {
+          "file": "bootstrap.py",
+          "line": 82,
+          "function": "main"
+        },
+        {
+          "file": "app.py",
+          "line": 1188,
+          "function": "main"
+        },
+        {
+          "file": "stress.py",
+          "line": 85,
+          "function": "run_stress"
+        },
+        {
+          "file": "gui_driver.py",
+          "line": 94,
+          "function": "check"
+        },
+        {
+          "file": "stress.py",
+          "line": 85,
+          "function": "<lambda>"
+        },
+        {
+          "file": "gui_driver.py",
+          "line": 157,
+          "function": "import_csv"
+        },
+        {
+          "file": "gui_driver.py",
+          "line": 80,
+          "function": "settle"
+        }
+      ]
+    },
+    {
+      "gap_ms": 391.0,
+      "phase": "cancel_multi_GiB_export_preserve_target_and_reuse_connection",
+      "status": "250 éléments chargés dans ce niveau",
+      "stack": [
+        {
+          "file": "entrypoint.py",
+          "line": 5,
+          "function": "<module>"
+        },
+        {
+          "file": "bootstrap.py",
+          "line": 82,
+          "function": "main"
+        },
+        {
+          "file": "app.py",
+          "line": 1188,
+          "function": "main"
+        },
+        {
+          "file": "stress.py",
+          "line": 364,
+          "function": "run_stress"
+        },
+        {
+          "file": "gui_driver.py",
+          "line": 94,
+          "function": "check"
+        },
+        {
+          "file": "stress.py",
+          "line": 360,
+          "function": "cancelled_export"
+        },
+        {
+          "file": "gui_driver.py",
+          "line": 75,
+          "function": "settle"
+        }
+      ]
+    }
+  ],
+  "ui_heartbeat": {
+    "interval_ms": 50,
+    "max_gap_ms": 3812.0,
+    "p95_gap_ms": 78.0,
+    "samples": 7003
+  },
+  "memory": {
+    "peak_working_set_mib": 455.4,
+    "working_set_mib": 333.6
+  },
+  "finished_utc": "2026-10-31T11:07:52.829910+00:00",
+  "source_commit": "63fa493a3ad205dfb2763875250f07f04b6e03d7",
+  "workflow_run": "https://github.com/23R0534ZXT/fireblade/actions/runs/41194654299",
+  "executable_sha256": "ec005513c6bb18fd08c11ec7e379a0726fee905a75649de724bab1b53cfa4be6"
+}

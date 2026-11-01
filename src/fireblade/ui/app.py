@@ -86,6 +86,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(file_menu, "Importer une session Timeline Explorer…", lambda: self.import_tle_session(), requires_file=False)
         action(file_menu, "Ouvrir une session…", lambda: self.load_session(), requires_file=False)
         action(file_menu, "Enregistrer la session…", lambda: self.save_session(), "Ctrl+Shift+S")
+        action(file_menu, "Exporter une session TLE (sources et signets)…", lambda: self.export_tle_session())
         action(file_menu, "Fermer l’onglet", lambda: self.close_document(self.active_document), "Ctrl+W")
         action(file_menu, "Vider la file d’ouverture", self.clear_open_queue, requires_file=False)
         action(file_menu, "Rouvrir le dernier onglet fermé", self.reopen_closed, "Ctrl+Shift+T", False)

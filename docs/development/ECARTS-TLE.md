@@ -4,7 +4,7 @@ Référence de travail : Fireblade 0.4 et les usages documentés de Timeline Exp
 
 Une ligne est terminée lorsque le comportement est implémenté et vérifié par un cas observable. Une vérification locale Qt sans écran ne constitue pas une qualification native Windows ni un essai humain. L'exécution Actions du commit doit être consultée avant d'annoncer une nouvelle qualification du fichier unique.
 
-## Correctifs implémentés dans ce lot
+## Correctifs implémentés
 
 | ID | Comportement | Preuve ajoutée |
 |---|---|---|
@@ -12,8 +12,10 @@ Une ligne est terminée lorsque le comportement est implémenté et vérifié pa
 | R01 | Unités indépendantes des seuils d'icônes et du plancher | Import XML, filtrage, percentile exact, cache par modes, priorité en cas de croisement, édition, règles globales, pixels épinglés ; contrôle intégré au fichier unique |
 | U01 | Raccourcis TLE pour effacer les filtres, filtrer une cellule et déplier/replier | Envoi des touches Qt, valeur source `001`, NULL, absence de marquage involontaire |
 | U02 | Accès aux groupements trimestre/semaine/minute/seconde | Menu d'en-tête et déclenchement d'un regroupement ; ces intervalles existaient dans le moteur |
+| L08 | Alpha des couleurs conservé jusqu’au dessin et dans les vues/règles | Pixels clair/sombre, alternance, épinglage, sélection, en-têtes et panneaux ; interpolation alpha et contrôle du fichier unique |
+| F02 | Export du contrat `.tle_sess`, sources et signets de tous les onglets | Retour JSON documenté/export/import, correspondance des lecteurs, intégrité, annulation et remplacement atomique ; ouverture dans TLE encore à qualifier (Q07) |
 
-Les contrôles intégrés ajoutés sont `mixed_icon_threshold_units_and_pinned_rendering` et `high_priority_layout_and_selection_rendering`. Les nouveaux exemples XML sont synthétiques. Ils complètent les quatre layouts amont conservés dans `tests/fixtures/tle-layouts` ; ils ne prouvent pas à eux seuls une identité de toutes les variantes TLE.
+Les contrôles intégrés ajoutés sont `mixed_icon_threshold_units_and_pinned_rendering`, `high_priority_layout_and_selection_rendering` et `argb_layout_pixels_light_dark_and_selection`. Le contrôle existant de sessions vérifie aussi le retour export/import. Les nouveaux exemples XML sont synthétiques. Ils complètent les quatre layouts amont conservés dans `tests/fixtures/tle-layouts` ; ils ne prouvent pas à eux seuls une identité de toutes les variantes TLE.
 
 ## Différences encore connues
 
@@ -25,12 +27,10 @@ Les contrôles intégrés ajoutés sont `mixed_icon_threshold_units_and_pinned_r
 | L05 | Propriétés/rôles/variantes XML hors des traductions explicites | Inventorier des layouts TLE réellement produits, associer chaque propriété active à un résultat attendu et à un test |
 | L06 | Styles nommés sans définition embarquée | Importer une définition exportable lorsqu'elle existe ; signaler les définitions externes absentes sans inventer leur contenu |
 | L07 | Images raster bornées, enveloppes bitmap partielles, chemins externes refusés | Identifier les formats effectivement produits par TLE ; ajouter des décodeurs de données vérifiables si nécessaires, sans désérialisation exécutable |
-| L08 | Transparence ARGB composée sur fond clair | Préserver et vérifier le compositing sur thèmes clair/sombre et sélection, y compris règles et panneaux |
 | R02 | Pictogrammes et palettes prédéfinis adaptés ; variantes hors du lecteur refusées | Comparer les jeux et options réellement disponibles dans TLE, avec seuils limites, ordre et rendu |
 | P01 | `FirstPinnedColumns` structuré non traduit | Obtenir un exemple TLE réel et vérifier son import et l'application par format |
 | P02 | Champs supplémentaires des préférences non traduits | Comparer les préférences exportées par la version cible de TLE et tester chaque champ actif |
 | F01 | Pas d'export XML DevExpress des dispositions Fireblade | Produire un XML accepté par TLE et vérifier le parcours Fireblade → TLE → Fireblade, sans prétendre exporter les options propres à Fireblade |
-| F02 | Pas d'export `.tle_sess` | Exporter sources et numéros de tags avec correspondance des lecteurs ; vérifier l'ouverture et les tags dans TLE |
 | E01 | Conventions UTC/calendaires/culturelles différentes | Jeux comparatifs TLE/Fireblade pour périodes relatives, cultures, fuseaux et transitions heure d'été/hiver |
 | E02 | Expressions dépendant d'un fournisseur externe | Confirmer d'abord leur utilisation réelle dans TLE ; fournir le contexte requis ou conserver une erreur explicite |
 | D01 | Catalogue de reconnaissance différent d'une qualification complète des lecteurs | Jeux d'entrée/sortie de référence par lecteur et version, comparés à TLE |
@@ -52,5 +52,6 @@ Les plafonds de Fireblade (règles, résumés, sessions, tags, tailles de fichie
 | Q04 | Benchmark comparatif mémoire, import, filtres, tris, regroupements et réactivité |
 | Q05 | Sessions prolongées sur vrais exports, gestes de l'Explorateur, dialogues natifs et diversité des partages Windows |
 | Q06 | Correspondance complète des priorités d'apparence avec des layouts exportés par TLE, au-delà des cas synthétiques |
+| Q07 | Ouverture dans TLE de sessions exportées, avec lecteurs réels et tags ; les tests actuels valident le contrat documenté et le retour dans Fireblade |
 
 La signature de code reste écartée conformément à la demande de l'utilisateur. PDF/HTML, tags catégorisés, reprise d'import après panne et paquet autonome d'enquête ne sont pas listés comme manques face à TLE tant que leur présence dans TLE n'est pas établie.

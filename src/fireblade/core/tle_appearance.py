@@ -28,7 +28,7 @@ def validate_styles(styles,columns):
             if key=='image_align' and value not in ('TopLeft','TopCenter','TopRight','MiddleLeft','MiddleCenter','MiddleRight','BottomLeft','BottomCenter','BottomRight'):raise ValueError('Alignement image invalide')
             if key=='border_width' and (type(value) is not int or not 1<=value<=8):raise ValueError('Largeur de bordure invalide')
             if key=='border_style' and value not in ('Solid','Dash','Dot'):raise ValueError('Style de bordure invalide')
-            if key in COLORS and (not isinstance(value,str) or not re.fullmatch('#[a-fA-F0-9]{6}',value)):raise ValueError('Couleur de style invalide')
+            if key in COLORS and (not isinstance(value,str) or not re.fullmatch('#(?:[a-fA-F0-9]{6}|[a-fA-F0-9]{8})',value)):raise ValueError('Couleur de style invalide')
             if key in FONT_FLAGS and type(value) is not bool:raise ValueError('Police de style invalide')
             if key=='font_family' and (not isinstance(value,str) or len(value)>128):raise ValueError('Nom de police invalide')
             if key=='font_size' and (type(value) not in (int,float) or not math.isfinite(value) or not 4<=value<=96):raise ValueError('Taille de police invalide')

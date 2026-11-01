@@ -39,13 +39,11 @@ def color(value, default, warnings):
     if len(numbers) in (3, 4) and all(
         x.isdigit() and 0 <= int(x) <= 255 for x in numbers
     ):
-        rgb = list(map(int, numbers[-3:]))
-        if len(numbers) == 4 and int(numbers[0]) != 255:
-            alpha = int(numbers[0]) / 255
-            rgb = [round(x * alpha + 255 * (1 - alpha)) for x in rgb]
-            warnings.append("Couleur ARGB composée sur fond clair")
-        return "#" + "".join(f"{x:02x}" for x in rgb)
-    if re.fullmatch(r"#[0-9a-fA-F]{6}", value):
+        channels = list(map(int, numbers))
+        if len(channels) == 4 and channels[0] == 255:
+            channels = channels[1:]
+        return "#" + "".join(f"{x:02x}" for x in channels)
+    if re.fullmatch(r"#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})", value):
         return value
     # QColor accepts the named HTML/.NET colors used by public TLE layouts and
     # does not require a QApplication, a display or a platform plugin.
@@ -54,7 +52,7 @@ def color(value, default, warnings):
     parsed = QColor(value)
     if not parsed.isValid():
         raise ValueError(f"Couleur de layout inconnue : {value}")
-    return parsed.name()
+    return parsed.name(QColor.HexArgb) if parsed.alpha()!=255 else parsed.name()
 
 
 def read_tle_layout(path, headers):

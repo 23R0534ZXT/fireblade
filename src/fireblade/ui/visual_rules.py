@@ -25,7 +25,7 @@ def visual_value(rule, value):
             else:start=QColor(rule.middle_color);weight=float(max(Decimal(0),min(Decimal(1),(number-middle)/(high-middle))))
         elif middle<=low:start=QColor(rule.middle_color)
         else:end=QColor(rule.middle_color)
-    color = QColor(*(round(a+(b-a)*weight) for a,b in zip(start.getRgb()[:3],end.getRgb()[:3])))
+    color = QColor(*(round(a+(b-a)*weight) for a,b in zip(start.getRgb(),end.getRgb())))
     if rule.visual=='bar' and number<0:color=QColor(rule.negative_color)
     if rule.visual == 'icon':
         level=icon_level(rule,value,fraction)
@@ -34,9 +34,17 @@ def visual_value(rule, value):
     return rule.visual, fraction, color
 
 
-def contrast_color(background):
+def contrast_color(background, base=None):
     """Choose the higher-contrast black/white text using relative luminance."""
-    channels = [value/255 for value in background.getRgb()[:3]]
+    if background.alpha()!=255:
+        if base is None:
+            from PySide6.QtWidgets import QApplication
+            from PySide6.QtGui import QPalette
+            app=QApplication.instance()
+            base=app.palette().color(QPalette.Base) if app else QColor('#ffffff')
+        alpha=background.alphaF()
+        channels=[(a*alpha+b*(1-alpha))/255 for a,b in zip(background.getRgb()[:3],base.getRgb()[:3])]
+    else:channels = [value/255 for value in background.getRgb()[:3]]
     linear = [value/12.92 if value <= .04045 else ((value+.055)/1.055)**2.4 for value in channels]
     luminance = sum(weight*value for weight,value in zip((.2126,.7152,.0722),linear))
     black_ratio = (luminance+.05)/.05

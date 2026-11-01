@@ -354,9 +354,9 @@ class RulesDialog(QDialog):
         button.setToolTip('Image intégrée dans la règle, sans dépendance au fichier original')
 
     def pick_color(self, button):
-        color = QColorDialog.getColor(QColor(button.property("color") or "#ffffff"), self)
+        color = QColorDialog.getColor(QColor(button.property("color") or "#ffffff"), self, options=QColorDialog.ShowAlphaChannel)
         if color.isValid():
-            self.set_color(button, color.name())
+            self.set_color(button, color.name(QColor.HexArgb) if color.alpha()!=255 else color.name())
 
     @staticmethod
     def set_color(button, color):

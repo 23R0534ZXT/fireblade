@@ -329,24 +329,62 @@ class ExplorationMixin:
             if Path(source).suffix.lower() in (".layout", ".local"):
                 from fireblade.core.tle_layout import read_tle_layout
                 layout = read_tle_layout(source, self.case.headers)
-                columns, view = layout.columns, layout.view
-                self.case.validate_view(view)
-                self.tree.set_pins([])
-                self.set_view(view)
-                header = self.tree.header()
-                for position, c in enumerate(sorted(columns, key=lambda c:c['position']),1):
-                    section=c['column']+1
-                    header.moveSection(header.visualIndex(section), min(position,header.count()-1))
-                    self.tree.setColumnWidth(section,c['width'])
-                    if c['column'] not in view.pinned_columns + view.right_pinned_columns:
-                        self.tree.setColumnHidden(section,c['position']<0)
-                    else:
-                        self.tree.frozen_for(section).setColumnWidth(section,c['width'])
+                self.apply_tle_layout(layout)
+                self._layout_save_enabled=True
+                self.save_format_layout()
                 self.statusBar().showMessage('Layout TLE importé : colonnes, filtres, recherche, groupes, résumés et règles. '+ '; '.join(layout.warnings))
             else:
-                self.set_view(read_layout(source, self.case.headers))
+                view=read_layout(source,self.case.headers)
+                self.case.validate_view(view)
+                self.set_view(view)
+                self._layout_save_enabled=True
+                self.save_format_layout()
         except (OSError, ValueError, TypeError, KeyError, ParseError) as exc:
             self.error(exc)
+
+    def apply_tle_layout(self, layout):
+        view=layout.view
+        self.case.validate_view(view)
+        self.tree.set_pins([])
+        self.set_view(view)
+        header=self.tree.header()
+        for position,c in enumerate(sorted(layout.columns,key=lambda c:c['position']),1):
+            section=c['column']+1
+            header.moveSection(header.visualIndex(section),min(position,header.count()-1))
+            self.tree.setColumnWidth(section,c['width'])
+            if c['column'] not in view.pinned_columns + view.right_pinned_columns:
+                self.tree.setColumnHidden(section,c['position']<0)
+            else:
+                self.tree.frozen_for(section).setColumnWidth(section,c['width'])
+        self.capture_pin_widths()
+
+    def restore_format_layout(self):
+        from fireblade.core.auto_layout import load_auto_layout
+        try:
+            layout,path=load_auto_layout(self.case.headers,self.case.info)
+            if layout is None:
+                return False
+            self.apply_tle_layout(layout)
+            self.statusBar().showMessage('Disposition automatique : '+str(path)+' ; '+'; '.join(layout.warnings))
+        except Exception as exc:
+            # Keep the invalid file for repair instead of overwriting it on close.
+            self._layout_save_enabled=False
+            self.statusBar().showMessage('Disposition automatique ignorée : '+str(exc))
+        return True
+
+    def save_format_layout(self):
+        if not self.case or not self.model or not getattr(self,'_layout_save_enabled',False):
+            return
+        from fireblade.core.auto_layout import save_auto_layout
+        import base64
+        try:
+            self.capture_pin_widths()
+            view=copy.deepcopy(self.view)
+            view.header_state=base64.b64encode(self.tree.header().saveState()).decode('ascii')
+            self.case.validate_view(view)
+            save_auto_layout(self.case.headers,self.case.info,view)
+        except (OSError,ValueError,TypeError) as exc:
+            self.statusBar().showMessage('Disposition locale non enregistrée : '+str(exc))
 
     def edit_filter_text(self):
         if not self.case or self.busy:
@@ -461,7 +499,7 @@ class ExplorationMixin:
             self.documents, self.active_document = snapshots, -1
             self.sync_tabs()
             self.switch_document(0)
-            self.statusBar().showMessage("Session TLE importée : sources et tags ; mises en page à importer séparément")
+            self.statusBar().showMessage("Session TLE importée : sources et tags ; dispositions locales chargées à l’ouverture des onglets")
         self.run(task.run, done, exclusive=True, on_cancel=failed, on_error=failed)
         self.cancel_action.setEnabled(True)
 

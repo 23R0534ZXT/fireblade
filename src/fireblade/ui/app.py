@@ -515,10 +515,12 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             if view is not None:
                 wanted={n.casefold() for n in self.preferences.first_pinned_columns}
                 view.pinned_columns=[i for i,h in enumerate(candidate.headers) if h.casefold() in wanted]
-            self.attach(candidate,view)
+            self.attach(candidate,view,auto_layout=False)
             if order:
                 header=self.tree.header()
                 for position,column in enumerate(order,1):header.moveSection(header.visualIndex(column+1),position)
+            if self.restore_format_layout():
+                return
             if tle_plugin is not None:self.statusBar().showMessage('Plugin TLE exécuté ; source originale conservée et transformations tracées')
             elif name:self.statusBar().showMessage(f'Profil {name} détecté et appliqué ; valeurs sources intactes')
         sheet = dialog.sheet.currentText() if dialog.sheet is not None else None
@@ -601,6 +603,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         QTimer.singleShot(0, lambda: self.queue_files(paths))
 
     def detach(self):
+        self.save_format_layout()
         self.remember_active()
         # Never close a connection while a queued page request still refers to it.
         self.count_generation += 1
@@ -653,7 +656,9 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.detach()
         self.attach(candidate)
 
-    def attach(self, case, initial_view=None, header_state=None):
+    def attach(self, case, initial_view=None, header_state=None, auto_layout=None):
+        use_auto_layout=(initial_view is None or header_state == b'') if auto_layout is None else auto_layout
+        self._layout_save_enabled=True
         self.case = case
         self.content_stack.setCurrentIndex(1)
         self.set_file_actions(True)
@@ -691,6 +696,8 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         if header_state is not None:
             self.tree.header().restoreState(header_state)
         self.restore_pins()
+        if use_auto_layout:
+            self.restore_format_layout()
         self.track_case()
 
     def apply(self, *_):

@@ -225,3 +225,9 @@ Vos XML TLE peuvent être placés dans `%LOCALAPPDATA%\Fireblade\Layouts\Default
 L’import XML reprend le tri par résumé de chaque niveau de groupe, y compris plusieurs critères, directions différentes et références par tag. La grille, le dépliage et l’export groupé gardent le même ordre. Dans **Résumés et tri des groupes**, changer le tri global ou les résumés remplace ces critères avancés ; accepter sans changement les conserve.
 
 Les couleurs et polices de lignes, groupes, cellules et en-têtes sont conservées, ainsi que les alternances paires/impaires activées, la sélection, le focus, les alignements et dégradés. Les colonnes épinglées sont concernées. Les options conditionnelles explicites surchargent le style prédéfini au lieu de l’effacer entièrement. Les paramètres propres à DevExpress qui ne sont pas repris apparaissent dans les messages de migration.
+
+### Fonctions .NET et objets complexes
+
+Après import avec un lecteur DLL et chargement des fonctions, une expression comme `MaFonction([Details])` reçoit l’objet CLR réel, avec ses méthodes et son type d’origine. Les collections (`[Details.Children]`), membres imbriqués et retours d’autres fonctions sont aussi transmis par référence. Le JSON affiché dans la grille reste un aperçu, pas l’objet donné à la fonction.
+
+Conservez la source et la DLL du lecteur : au premier appel après ouverture, Fireblade les vérifie puis relance le lecteur pour retrouver ses objets. Le contexte reste en mémoire jusqu’à la fermeture de l’analyse ; son volume dépend du lecteur tiers. Sans appel utilisant ces objets, le contexte n’est pas chargé. Une annulation le termine et l’appel suivant peut le reconstruire.

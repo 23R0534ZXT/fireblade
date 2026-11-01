@@ -95,17 +95,19 @@ def import_plugin(case,source,plugin,type_name,progress=lambda _:None):
         info=case._import_table(target,',','utf-8',progress,provenance=provenance)
         if info['rows']!=result['rows']:raise ValueError('Comptage du plugin incohérent')
         from fireblade.core.plugin_registry import approve
-        approve(plugin,source=source,reader=type_name)
+        approve(plugin,analysis=case.path,source=source,reader=type_name)
         return info
 
 
 class FunctionSession:
     """One persistent host per selected DLL; pipe waits remain cancellable."""
-    def __init__(self,path,check_cancelled):
+    def __init__(self,path,check_cancelled,host_plugin=None):
         import queue,threading
         self.check=check_cancelled;self.responses=queue.Queue();self.lock=threading.Lock()
+        from fireblade.core.plugin_registry import digest
+        self.path=Path(path).resolve();self.sha256=digest(self.path)
         self.logs=tempfile.TemporaryFile('w+b')
-        self.process=subprocess.Popen(command_for_plugin(path)+['serve',str(Path(path).resolve())],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=self.logs,text=True,encoding='utf-8',bufsize=1,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        self.process=subprocess.Popen(command_for_plugin(host_plugin or path)+['serve',str(self.path)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=self.logs,text=True,encoding='utf-8',bufsize=1,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         def read():
             try:
                 for line in self.process.stdout:
@@ -118,6 +120,7 @@ class FunctionSession:
             if not ready.get('ready'):raise ValueError('Hôte de fonctions invalide')
             self.names=ready['functions']
             self.types={name.casefold():kind for name,kind in ready.get('types',{}).items()}
+            if digest(self.path)!=self.sha256:raise ValueError('DLL modifiée pendant son chargement : '+str(self.path))
         except BaseException:self.close();raise
     def wait(self,timeout):
         import queue
@@ -130,12 +133,14 @@ class FunctionSession:
                 return result
             except queue.Empty:continue
         raise TimeoutError('Délai dépassé dans une fonction du plugin')
-    def evaluate(self,name,arguments):
+    def request(self,payload,timeout=60):
         with self.lock:
             try:
-                self.check();self.process.stdin.write(json.dumps(dict(name=name,arguments=arguments),ensure_ascii=False)+'\n');self.process.stdin.flush()
-                return self.wait(60)['value']
+                self.check();self.process.stdin.write(json.dumps(payload,ensure_ascii=False)+'\n');self.process.stdin.flush()
+                return self.wait(timeout)
             except BaseException:self.close();raise
+    def evaluate(self,name,arguments):
+        return self.request(dict(name=name,arguments=arguments))['value']
     def close(self):
         terminate(self.process)
         if self.reader is not __import__('threading').current_thread():self.reader.join(timeout=2)
@@ -147,10 +152,13 @@ class FunctionSession:
 def ensure_udf(case):
     if not case._plugin_udf:
         def plugin_scalar(name,payload):
-            session=case._plugin_functions.get(name.casefold())
-            if session is None:raise ValueError('Fonction .NET non chargée : '+name)
-            return session.evaluate(name,json.loads(payload))
+            from fireblade.core.clr_objects import evaluate
+            return evaluate(case,name,json.loads(payload))
+        def plugin_reference(name,payload):
+            from fireblade.core.clr_objects import evaluate
+            return evaluate(case,name,json.loads(payload),reference=True)
         case.db.create_function('__fireblade_plugin_eval',plugin_scalar,['VARCHAR','VARCHAR'],'VARCHAR',null_handling='special',side_effects=True)
+        case.db.create_function('__fireblade_plugin_ref_eval',plugin_reference,['VARCHAR','VARCHAR'],'VARCHAR',null_handling='special',side_effects=True)
         case._plugin_udf=True
 
 

@@ -71,7 +71,7 @@ internal static class Program
         string text => text,
         DateTime d => d.ToString("O",CultureInfo.InvariantCulture),
         DateTimeOffset d => d.ToString("O",CultureInfo.InvariantCulture),
-        IEnumerable list when value is not string => JsonSerializer.Serialize(value,Json),
+        IEnumerable list when value is not string => ObjectCell(value),
         IFormattable f => f.ToString(null,CultureInfo.InvariantCulture) ?? "",
         _ => ObjectCell(value)
     };
@@ -79,7 +79,7 @@ internal static class Program
     {
         output.WriteLine(string.Join(",",cells.Select(value=>"\""+value.Replace("\"","\"\"")+"\"")));
     }
-    static object ConvertFile(Assembly assembly,string typeName,string source,string target)
+    static (object reader,IEnumerable data,Type contract) ReadObjects(Assembly assembly,string typeName,string source)
     {
         var type=assembly.GetType(typeName,true)!;
         if(!IsReader(type))throw new InvalidOperationException("Type de lecteur TLE invalide");
@@ -89,6 +89,17 @@ internal static class Program
         if(tags?.CanWrite==true && tags.PropertyType.IsAssignableFrom(typeof(List<int>)))tags.SetValue(reader,new List<int>());
         contract.GetMethod("ProcessFile",[typeof(string)])!.Invoke(reader,[Path.GetFullPath(source)]);
         var data=contract.GetProperty("DataList")!.GetValue(reader) as IEnumerable ?? throw new InvalidOperationException("DataList du plugin n’est pas une collection");
+        return (reader,data,contract);
+    }
+    static bool ComplexType(Type type) {
+        type=Nullable.GetUnderlyingType(type) ?? type;
+        return !(type.IsPrimitive || type==typeof(string) || type==typeof(decimal) || type==typeof(DateTime) || type==typeof(DateTimeOffset));
+    }
+    static object ConvertFile(Assembly assembly,string typeName,string source,string target)
+    {
+        var type=assembly.GetType(typeName,true)!;
+        if(!IsReader(type))throw new InvalidOperationException("Type de lecteur TLE invalide");
+        var (reader,data,contract)=ReadObjects(assembly,typeName,source);
         PropertyDescriptorCollection? columns=null;
         var listType=contract.GetProperty("DataList")!.PropertyType;
         var typed=contract.GetProperty("DataList")!.GetValue(reader) as ITypedList;
@@ -101,19 +112,20 @@ internal static class Program
         long count=0;
         using var file=new FileStream(target,FileMode.CreateNew,FileAccess.Write,FileShare.None);
         using var output=new StreamWriter(file,new UTF8Encoding(true));
-        string[]? names=null;string[]? types=null;
+        string[]? names=null;string[]? types=null;bool[]? complex=null;
         foreach(var row in data)
         {
             if(row==null)throw new InvalidOperationException("Enregistrement null dans le plugin");
             var dictionary=row as IDictionary<string,object>;
             if(names==null)
             {
-                if(dictionary!=null) {names=dictionary.Keys.ToArray();types=names.Select(n=>dictionary[n]?.GetType().FullName ?? "System.String").ToArray();}
+                if(dictionary!=null) {names=dictionary.Keys.ToArray();types=names.Select(n=>dictionary[n]?.GetType().FullName ?? "System.Object").ToArray();}
                 else {
                     if(columns==null || columns.Count==0)columns=TypeDescriptor.GetProperties(row);
                     names=columns.Cast<PropertyDescriptor>().Select(p=>p.Name).ToArray();
                     types=columns.Cast<PropertyDescriptor>().Select(p=>p.PropertyType.FullName ?? "System.String").ToArray();
                 }
+                complex=names.Select((n,i)=>dictionary!=null ? dictionary[n]==null || ComplexType(dictionary[n]!.GetType()) : ComplexType(columns![n]!.PropertyType)).ToArray();
                 if(names.Length==0)throw new InvalidOperationException("Schéma du plugin vide");
                 // The native grid owns editable tags. Preserve plugin line IDs as evidence.
                 var visible=names.Select(n=>n=="Line"?"TLE_SourceLine":n).Where(n=>n!="Tag");
@@ -137,7 +149,7 @@ internal static class Program
             Record(output,names.Where(n=>n!="Tag").Select(n=>n=="Line"?"TLE_SourceLine":n));
         }
         output.Flush();
-        return new { rows=count, columns=names.Select((n,i)=>new {name=n=="Line"?"TLE_SourceLine":n,type=types![i],source_name=n}).Where(c=>c.name!="Tag").ToArray() };
+        return new { rows=count, columns=names.Select((n,i)=>new {name=n=="Line"?"TLE_SourceLine":n,type=types![i],source_name=n,complex=complex!=null && complex[i]}).Where(c=>c.name!="Tag").ToArray() };
     }
     static Dictionary<string,(object instance,MethodInfo method)> Functions(Assembly assembly)
     {
@@ -148,7 +160,7 @@ internal static class Program
             if(contract==null)continue;
             var instance=Activator.CreateInstance(type)!;
             var name=contract.GetProperty("Name")!.GetValue(instance)?.ToString();
-            if(string.IsNullOrWhiteSpace(name))continue;
+            if(name is null || string.IsNullOrWhiteSpace(name))continue;
             if(result.ContainsKey(name))throw new InvalidOperationException("Nom de fonction dupliqué : "+name);
             result.Add(name,(instance,contract.GetMethod("Evaluate",[typeof(object[])])!));
         }
@@ -166,6 +178,77 @@ internal static class Program
             if(type!=null && new[]{typeof(byte),typeof(short),typeof(int),typeof(long),typeof(ushort),typeof(uint),typeof(ulong),typeof(float),typeof(double),typeof(decimal)}.Contains(type))return "number";
         }catch { }
         return "text";
+    }
+    sealed class ObjectState {
+        public IList? Rows;
+        public object? Reader;
+        public readonly Dictionary<string,object?> Handles=new();
+        public object? Resolve(JsonElement value,HashSet<string> used,int depth=0) {
+            if(depth>32)throw new InvalidOperationException("Référence CLR trop profonde");
+            if(value.ValueKind!=JsonValueKind.Object || !value.TryGetProperty("$fb_type",out var tag))return Operand(value);
+            if(tag.GetString()=="clr_handle") {
+                var key=value.GetProperty("value").GetString()!;
+                if(!Handles.TryGetValue(key,out var target))throw new InvalidOperationException("Référence CLR expirée ou étrangère");
+                used.Add(key);return target;
+            }
+            if(tag.GetString()=="clr_column") {
+                if(Rows==null)throw new InvalidOperationException("Lecteur CLR non chargé");
+                var row=value.GetProperty("row").GetInt64();
+                if(row<1 || row>Rows.Count)throw new InvalidOperationException("Enregistrement CLR absent");
+                return Member(Rows[(int)row-1],value.GetProperty("column").GetString()!);
+            }
+            if(tag.GetString()=="clr_single") {
+                var target=Resolve(value.GetProperty("parent"),used,depth+1);
+                if(target==null)return null;
+                if(target is not IEnumerable collection)throw new InvalidOperationException("Single : collection CLR requise");
+                var enumerator=collection.GetEnumerator();
+                try {if(!enumerator.MoveNext())return null;var item=enumerator.Current;if(enumerator.MoveNext())throw new InvalidOperationException("Single : plusieurs objets correspondent");return item;}
+                finally {(enumerator as IDisposable)?.Dispose();}
+            }
+            if(tag.GetString()=="clr_path") {
+                var target=Resolve(value.GetProperty("parent"),used,depth+1);
+                var path=value.GetProperty("path").GetString()!;
+                int at=path.StartsWith("$") ? 1 : 0;
+                while(at<path.Length) {
+                    string member;
+                    if(path[at]=='.') {
+                        at++;
+                        if(at<path.Length && path[at]=='"') {
+                            var start=at++;bool escaped=false;
+                            while(at<path.Length) {var c=path[at++];if(c=='"' && !escaped)break;escaped=c=='\\' && !escaped;}
+                            member=JsonSerializer.Deserialize<string>(path.Substring(start,at-start))!;
+                        } else {var start=at;while(at<path.Length && path[at]!='.' && path[at]!='[')at++;member=path.Substring(start,at-start);}
+                    } else if(path[at]=='[') {
+                        var end=path.IndexOf(']',at);if(end<0)throw new InvalidOperationException("Chemin CLR invalide");
+                        member=path.Substring(at+1,end-at-1);at=end+1;
+                    } else throw new InvalidOperationException("Chemin CLR non pris en charge");
+                    target=Member(target,member);
+                }
+                return target;
+            }
+            return Operand(value);
+        }
+        static object? Member(object? target,string name) {
+            if(target==null)return null;
+            if(target is IDictionary<string,object> generic && generic.TryGetValue(name,out var member))return member;
+            if(target is IDictionary dictionary && dictionary.Contains(name))return dictionary[name];
+            if(target is IList list && int.TryParse(name,out var index))return index>=0 && index<list.Count ? list[index] : throw new InvalidOperationException("Indice CLR absent");
+            var property=TypeDescriptor.GetProperties(target).Find(name,false);
+            if(property!=null)return property.GetValue(target);
+            var field=target.GetType().GetField(name,BindingFlags.Instance|BindingFlags.Public);
+            if(field!=null)return field.GetValue(target);
+            throw new InvalidOperationException("Membre CLR absent : "+name);
+        }
+        public object Reference(object? target) {
+            if(Handles.Count>=65536)throw new InvalidOperationException("Trop de résultats CLR simultanés (65536 maximum)");
+            var key=Guid.NewGuid().ToString("N");Handles.Add(key,target);
+            return new Dictionary<string,object?>{{"$fb_type","clr_handle"},{"value",key}};
+        }
+    }
+    static void VerifyFile(string path,string expected) {
+        using var stream=File.OpenRead(path);using var hash=SHA256.Create();
+        var actual=BitConverter.ToString(hash.ComputeHash(stream)).Replace("-","").ToLowerInvariant();
+        if(actual!=expected)throw new InvalidOperationException("Source ou DLL CLR absente/modifiée : "+path);
     }
     static object? Operand(JsonElement value)
     {
@@ -201,19 +284,44 @@ internal static class Program
     }
     static int Serve(Assembly assembly,TextWriter output)
     {
-        var functions=Functions(assembly);
+        var functions=Functions(assembly);var state=new ObjectState();
         output.WriteLine(JsonSerializer.Serialize(new {ready=true,functions=functions.Keys.ToArray(),types=functions.ToDictionary(p=>p.Key,p=>FunctionKind(p.Value))},Json));output.Flush();
         string? line;
         while((line=Console.ReadLine())!=null)
         {
+            var used=new HashSet<string>();
             try {
                 using var request=JsonDocument.Parse(line);var root=request.RootElement;
-                var name=root.GetProperty("name").GetString()!;
-                if(!functions.TryGetValue(name,out var function))throw new InvalidOperationException("Fonction non chargée : "+name);
-                var args=root.GetProperty("arguments").EnumerateArray().Select(Operand).ToArray();
-                var value=function.method.Invoke(function.instance,[args]);
-                output.WriteLine(JsonSerializer.Serialize(new {value=value is null ? null : value is IEnumerable && value is not string ? JsonSerializer.Serialize(value,Json) : Cell(value)},Json));
+                var op=root.TryGetProperty("op",out var command) ? command.GetString() : "evaluate";
+                if(op=="load_reader") {
+                    if(state.Rows!=null)throw new InvalidOperationException("Un lecteur CLR est déjà chargé");
+                    var path=root.GetProperty("path").GetString()!;var source=root.GetProperty("source").GetString()!;
+                    VerifyFile(path,root.GetProperty("sha256").GetString()!);VerifyFile(source,root.GetProperty("source_sha256").GetString()!);
+                    var readerAssembly=Load(path);VerifyFile(readerAssembly.Location,root.GetProperty("sha256").GetString()!);
+                    var (reader,data,contract)=ReadObjects(readerAssembly,root.GetProperty("type").GetString()!,source);
+                    VerifyFile(path,root.GetProperty("sha256").GetString()!);VerifyFile(source,root.GetProperty("source_sha256").GetString()!);
+                    var rows=data as IList ?? data.Cast<object>().ToList();
+                    if(rows.Count!=root.GetProperty("rows").GetInt64())throw new InvalidOperationException("Comptage du lecteur CLR différent de l’import");
+                    state.Reader=reader;state.Rows=rows;
+                    output.WriteLine("{\"loaded\":true}");
+                } else if(op=="load_functions") {
+                    var path=root.GetProperty("path").GetString()!;VerifyFile(path,root.GetProperty("sha256").GetString()!);
+                    var functionAssembly=Load(path);VerifyFile(functionAssembly.Location,root.GetProperty("sha256").GetString()!);
+                    var loaded=Functions(functionAssembly);
+                    foreach(var name in loaded.Keys)if(functions.ContainsKey(name))throw new InvalidOperationException("Fonction CLR dupliquée : "+name);
+                    foreach(var item in loaded)functions.Add(item.Key,item.Value);
+                    output.WriteLine("{\"loaded\":true}");
+                } else if(op=="clear_handles") {state.Handles.Clear();output.WriteLine("{\"cleared\":true}");}
+                else {
+                    var name=root.GetProperty("name").GetString()!;
+                    if(!functions.TryGetValue(name,out var function))throw new InvalidOperationException("Fonction non chargée : "+name);
+                    var args=root.GetProperty("arguments").EnumerateArray().Select(v=>state.Resolve(v,used)).ToArray();
+                    var value=function.method.Invoke(function.instance,[args]);
+                    if(root.TryGetProperty("reference",out var reference) && reference.GetBoolean())output.WriteLine(JsonSerializer.Serialize(new {operand=state.Reference(value)},Json));
+                    else output.WriteLine(JsonSerializer.Serialize(new {value=value is null ? null : Cell(value)},Json));
+                }
             } catch(Exception e) {output.WriteLine(JsonSerializer.Serialize(new {error=(e.InnerException ?? e).Message},Json));}
+            finally {foreach(var key in used)state.Handles.Remove(key);}
             output.Flush();
         }
         return 0;

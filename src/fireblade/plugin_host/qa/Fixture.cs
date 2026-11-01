@@ -29,5 +29,42 @@ public sealed class FixturePause {
  public object Evaluate(params object[] values) {Thread.Sleep(10000);return "done";}
  public Type ResultType(params Type[] values)=>typeof(string);
 }
-public sealed class FixtureDetails {public string Name{get;set;}="évidence";public List<FixtureAmount> Children{get;set;}=[new(){Amount=3},new(){Amount=7}];}
+public sealed class FixtureDetails {private int secret=37;public int ReadSecret()=>secret;public void SetSecret(int value)=>secret=value;[System.Text.Json.Serialization.JsonIgnore] public FixtureDetails Self=>this;public string Name{get;set;}="évidence";public FixtureDetails? Missing=>null;public List<FixtureAmount> SingleChild=>[Children[0]];public List<FixtureAmount> Children{get;set;}=[new(){Amount=3},new(){Amount=7}];}
 public sealed class FixtureAmount {public int Amount{get;set;}}
+
+public sealed class FixtureSameObject {
+ public string Name=>"FixtureSameObject";
+ public object Evaluate(params object[] values)=>ReferenceEquals(values[0],values[1]) && values[0] is FixtureDetails d && ReferenceEquals(d,d.Self);
+ public Type ResultType(params Type[] values)=>typeof(bool);
+}
+public sealed class FixtureChildren {
+ public string Name=>"FixtureChildren";
+ public object Evaluate(params object[] values)=>values[0] is List<FixtureAmount> rows && rows.Sum(r=>r.Amount)==10;
+ public Type ResultType(params Type[] values)=>typeof(bool);
+}
+public sealed class FixtureMake {
+ public string Name=>"FixtureMake";
+ public object Evaluate(params object[] values) {var d=new FixtureDetails();d.SetSecret(73);return d;}
+ public Type ResultType(params Type[] values)=>typeof(FixtureDetails);
+}
+public sealed class FixtureSecret {
+ public string Name=>"FixtureSecret";
+ public object Evaluate(params object[] values)=>values[0] is FixtureDetails d ? d.ReadSecret() : throw new InvalidOperationException("Original FixtureDetails CLR instance required");
+ public Type ResultType(params Type[] values)=>typeof(int);
+}
+public sealed class FixturePass {
+ public string Name=>"FixturePass";
+ public object? Evaluate(params object[] values)=>values[0];
+ public Type ResultType(params Type[] values)=>typeof(object);
+}
+public sealed class FixturePauseObject {
+ public string Name=>"FixturePauseObject";
+ public object Evaluate(params object[] values) {if(values[0] is not FixtureDetails)throw new Exception("CLR instance required");Thread.Sleep(10000);return true;}
+ public Type ResultType(params Type[] values)=>typeof(bool);
+}
+
+public sealed class FixtureChildAmount {
+ public string Name=>"FixtureChildAmount";
+ public object Evaluate(params object[] values)=>values[0] is FixtureAmount child ? child.Amount : throw new InvalidOperationException("Original CLR child required");
+ public Type ResultType(params Type[] values)=>typeof(int);
+}

@@ -77,6 +77,7 @@ class FormatRule:
     icon_set: str = "circles"
     icon_colors: list[str] = field(default_factory=lambda:["#c62828","#c58b00","#218739"])
     icon_images: list[str] = field(default_factory=lambda:["","",""])
+    appearance: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -91,6 +92,14 @@ class Summary:
     column: int
     operation: str = "count"
     kind: str = "number"
+
+
+@dataclass
+class GroupSort:
+    column: int
+    kind: str = "value"
+    summary: int = 0
+    descending: bool = False
 
 
 @dataclass
@@ -119,6 +128,8 @@ class View:
     boolean_columns: list[int] = field(default_factory=list)
     timestamp_columns: list[int] = field(default_factory=list)
     right_pinned_columns: list[int] = field(default_factory=list)
+    group_sorts: list[GroupSort] = field(default_factory=list)
+    layout_styles: dict = field(default_factory=dict)
 
     def to_json(self):
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -135,6 +146,7 @@ class View:
         data["format_rules"] = [FormatRule(**{**r, "condition": condition_from_dict(r["condition"])}) for r in rules]
         data["sorts"] = [SortKey(**key) for key in data.get("sorts", [])]
         data["summaries"] = [Summary(**item) for item in data.get("summaries", [])]
+        data["group_sorts"] = [GroupSort(**item) for item in data.get("group_sorts", [])]
         return cls(**data)
 
 

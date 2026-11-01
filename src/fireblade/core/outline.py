@@ -9,7 +9,7 @@ import json
 import uuid
 import duckdb
 from dataclasses import replace
-from fireblade.core.summaries import group_expression, summary_expressions
+from fireblade.core.summaries import group_expression, summary_expressions, group_sort_terms
 
 
 def build_outline(case, view, progress=lambda _: None):
@@ -59,18 +59,11 @@ def build_outline(case, view, progress=lambda _: None):
                     f"SELECT {fields}, count(*) AS n{aggregates} FROM events{where} GROUP BY "
                     + ", ".join(groupcols[:depth])
                 )
-                primary = (
-                    "n"
-                    if view.group_order == "count"
-                    else f"g{depth - 1}"
-                    if view.group_order == "value"
-                    else f"s{view.group_summary}"
-                )
-                order = (
-                    primary
-                    + (" DESC" if view.group_descending else " ASC")
-                    + f" NULLS LAST, g{depth - 1} ASC NULLS LAST"
-                )
+                parts=[]
+                for kind,summary,descending in group_sort_terms(view,view.groups[depth-1]):
+                    primary='n' if kind=='count' else f'g{depth-1}' if kind=='value' else f's{summary}'
+                    parts.append(primary+(' DESC' if descending else ' ASC')+' NULLS LAST')
+                order=', '.join(parts+[f'g{depth-1} ASC NULLS LAST'])
                 partition = (
                     "PARTITION BY " + ",".join(f"g{i}" for i in range(depth - 1)) + " "
                     if depth > 1

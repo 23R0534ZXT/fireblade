@@ -389,6 +389,12 @@ class Case:
             raise ValueError("Une colonne ne peut apparaître deux fois dans les groupes")
         for column in view.groups:
             self.column(column)
+        from fireblade.core.summaries import group_sort_terms
+        group_sort_terms(view)
+        for key in view.group_sorts:
+            self.column(key.column)
+        from fireblade.core.tle_appearance import validate_styles
+        validate_styles(view.layout_styles,len(self.headers))
         if type(view.global_rules_enabled) is not bool:
             raise ValueError("L’activation des règles globales doit être un booléen")
         validate_format_rules(view.format_rules, self.expression_column, self.numeric_expression)
@@ -489,7 +495,7 @@ class Case:
                 col = group_expression(self, view, view.groups[len(path)])
                 summaries = summary_expressions(self, view)
                 extra = ", " + ", ".join(summaries) if summaries else ""
-                sql = f"SELECT {col}, count(*){extra} FROM events{where} GROUP BY {col} ORDER BY {group_order(self, view, col)} LIMIT ? OFFSET ?"
+                sql = f"SELECT {col}, count(*){extra} FROM events{where} GROUP BY {col} ORDER BY {group_order(self, view, col, group_column=view.groups[len(path)])} LIMIT ? OFFSET ?"
             else:
                 order = self.order(view)
                 key = (where, tuple(args), order, self._bookmark_revision)
@@ -636,6 +642,9 @@ class Case:
                 extra = ", " + ", ".join(summaries) if summaries else ""
                 primary = group_order(self, view, expressions[0], include_tie=False)
                 sql = f"SELECT {cols}, count(*){extra} FROM events{where} GROUP BY {cols} ORDER BY {primary}, {ties}"
+                if view.group_sorts:
+                    from fireblade.core.summaries import grouped_export_query
+                    sql,args=grouped_export_query(self,view,where,args)
                 headers = [self.headers[i] for i in view.groups] + ["Count"] + [f"{s.operation}({self.headers[s.column]})" for s in view.summaries]
             else:
                 if include_annotations:

@@ -27,38 +27,47 @@ Les développements suivants complètent ce suivi :
 
 Les onglets multilignes sont limités à trois rangées visibles, avec défilement vertical vers toutes les analyses et maintien de l’onglet actif dans la zone visible. Un test couvre aussi un clic pendant une reconstruction différée et une boucle d’événements imbriquée : le widget cliqué reste vivant jusqu’à la fin du geste.
 
-## Différences encore connues
+## Lot de correction consolidé
 
-| ID | Écart | Condition de clôture |
+| ID | Correction et preuve disponible | Limite de la preuve |
 |---|---|---|
-| L04 | Skins, métriques et dessins adaptés à Qt | Comparaison visuelle Windows des réglages exposés dans TLE ; distinguer équivalence d'usage et identité graphique |
-| L05 | Propriétés/rôles/variantes XML hors des traductions explicites | Inventorier des layouts TLE réellement produits, associer chaque propriété active à un résultat attendu et à un test |
-| L06 | Styles nommés sans définition embarquée | Importer une définition exportable lorsqu'elle existe ; signaler les définitions externes absentes sans inventer leur contenu |
-| L07 | Images raster bornées, enveloppes bitmap partielles, chemins externes refusés | Identifier les formats effectivement produits par TLE ; ajouter des décodeurs de données vérifiables si nécessaires, sans désérialisation exécutable |
-| R02 | Pictogrammes et palettes prédéfinis adaptés ; variantes hors du lecteur refusées | Comparer les jeux et options réellement disponibles dans TLE, avec seuils limites, ordre et rendu |
-| P01 | `FirstPinnedColumns` structuré non traduit | Obtenir un exemple TLE réel et vérifier son import et l'application par format |
-| P02 | Champs supplémentaires des préférences non traduits | Comparer les préférences exportées par la version cible de TLE et tester chaque champ actif |
-| F01 | Pas d'export XML DevExpress des dispositions Fireblade | Produire un XML accepté par TLE et vérifier le parcours Fireblade → TLE → Fireblade, sans prétendre exporter les options propres à Fireblade |
-| E01 | Conventions UTC/calendaires/culturelles différentes | Jeux comparatifs TLE/Fireblade pour périodes relatives, cultures, fuseaux et transitions heure d'été/hiver |
-| E02 | Expressions dépendant d'un fournisseur externe | Confirmer d'abord leur utilisation réelle dans TLE ; fournir le contexte requis ou conserver une erreur explicite |
-| D01 | Catalogue de reconnaissance différent d'une qualification complète des lecteurs | Jeux d'entrée/sortie de référence par lecteur et version, comparés à TLE |
-| D02 | Variantes de supertimelines non toutes qualifiées | Comparer dates, MACB, catégories, couleurs et champs dérivés pour chaque variante ciblée |
-| D03 | DLL/dépendances/contrats tiers non tous qualifiés | Matrice de lecteurs et fonctions réels, sur CLR4 et CLR moderne compatibles |
-| D04 | Objets CLR reconstruits depuis source et lecteur déterministe | Définir les garanties de persistance et comparer les cas source absente/modifiée et lecteurs non déterministes |
-| N01 | Navigation par fenêtres et indexation initiale du dépliage | Comparer les gestes, accès profonds, sélection et réactivité avec TLE sur les mêmes données |
+| F01 | Export XML `XtraSerializer` depuis le menu, colonnes/épinglage/filtres/groupes/résumés/apparences/règles, écriture atomique et protection des sources | Retour Fireblade et contrat XML vérifiés ; acceptation par une application TLE identifiée encore en Q08 |
+| L05 | Corpus des 190 layouts publics épinglés, import et retour XML ; correction des cinq layouts rejetés pour largeur supérieure à 10 000 px | Schémas déduits des XML : aucune prétention à qualifier tous les lecteurs ou toutes les variantes DevExpress |
+| P01 | Dictionnaires `Key`/`Value` de noms de colonnes par lecteur, priorité et persistance, structure inconnue conservée avec avertissement | Exemples de dictionnaires synthétiques ; l’exemple public TLE est vide |
+| L07 | Enveloppes raster PNG/JPEG/BMP/GIF normalisées sans désérialisation d’objet ni lecture de chemin | Formats disponibles du décodeur Qt et limites d’images documentées ; variantes non observées non revendiquées |
+| D04 | Empreinte de la projection publique convertie ; reconstruction refusée si les valeurs changent à source/DLL/comptage identiques | Ne sérialise pas un état privé arbitraire ; les anciens imports sans cette empreinte gardent les vérifications précédentes |
+| N01 | Pages profondes non triées servies par un ordre d’identifiants sur disque et des acquisitions bornées ; filtres et invalidation vérifiés | Comparaison des gestes/réactivité avec TLE toujours en Q01/Q04 |
+| D01/D03 | Matrice amont : 227 tests réussis, puis 207 variantes synthétiques et 178 lecteurs importés par le helper .NET sous Linux | Qualification native Windows distincte dans la CI ; les entrées synthétiques ne remplacent pas des exports réels ni des DLL propriétaires |
+| Q02 | Parcours de 320 analyses : imports, clics premier/milieu/dernier, recherche globale, sauvegarde et restauration ; réussi sous Qt hors écran | Le même parcours du véritable EXE Windows est désormais obligatoire avant publication |
 
-Les plafonds de Fireblade (règles, résumés, sessions, tags, tailles de fichiers de configuration) sont documentés mais leur caractère plus restrictif que TLE n'est pas établi pour chaque cas. Ils demandent une comparaison avant d'être tous traités comme des fonctions manquantes.
+## Équivalences restant à démontrer
 
-## Qualifications encore à réaliser
+Ces lignes décrivent des limites ou des preuves absentes ; elles ne signifient pas qu’une fonction entière manque encore.
 
-| ID | Preuve manquante |
+| ID | Point restant | Preuve nécessaire |
+|---|---|---|
+| L04/R02 | Apparence Qt, skins, métriques et pictogrammes adaptés | Comparaison visuelle sur la même machine avec une version TLE identifiée |
+| L05/L07/P01/P02 | Variantes supplémentaires de layouts, images et préférences | Un export TLE réel montrant la propriété active et son résultat attendu ; tous les champs du fichier de préférences public documenté sont déjà traités |
+| L06 | Nom de style sans définition embarquée | Sa définition exportable ; Fireblade accepte les bibliothèques de styles et refuse de deviner une définition absente |
+| E01 | Calendriers, cultures, UTC et périodes relatives | Tests comparatifs de culture/fuseau/heure d’été avec TLE ; Fireblade conserve pour l’instant ses conventions UTC et semaine du lundi |
+| E02 | Expressions dépendant d’un fournisseur externe | Fournisseur et cas réel nécessaires ; les fonctions .NET approuvées sont prises en charge, les fonctions absentes sont signalées |
+| D01/D02/D03 | Variantes réelles de lecteurs et supertimelines, dépendances propriétaires/CLR4 | Entrées/sorties de référence par lecteur et version ; la matrice synthétique n’est pas une qualification de tous les exports possibles |
+| D04 | Persistance d’état CLR privé ou lecteur non déterministe | Contrat de persistance du lecteur ; les valeurs déjà importées ne sont pas remplacées par une reconstruction différente |
+
+Les plafonds documentés de Fireblade ne sont pas automatiquement des écarts avec TLE : il faut d’abord établir qu’ils y sont plus restrictifs.
+
+## Qualifications externes
+
+| ID | Contrôle restant |
 |---|---|
-| Q01 | Comparaison fonctionnelle et visuelle avec TLE sur un même poste Windows et une version identifiée |
-| Q02 | Test automatisé de 320 CSV et analyses distinctes réussi sous Qt hors écran : navigation premier/milieu/dernier, recherche sur les 320 et références de session. Vérification Windows des sources dans la CI ; parcours du véritable EXE avec 320 fichiers et usage humain prolongé encore à qualifier |
-| Q03 | Fichier de plus de 14 Go, valeur mentionnée par le manuel TLE ; réutiliser des données existantes, ne jamais régénérer le CSV de 3 GiB |
-| Q04 | Benchmark comparatif mémoire, import, filtres, tris, regroupements et réactivité |
-| Q05 | Sessions prolongées sur vrais exports, gestes de l'Explorateur, dialogues natifs et diversité des partages Windows |
-| Q06 | Correspondance complète des priorités d'apparence avec des layouts exportés par TLE, au-delà des cas synthétiques |
-| Q07 | Ouverture dans TLE de sessions exportées, avec lecteurs réels et tags ; les tests actuels valident le contrat documenté et le retour dans Fireblade |
+| Q01 | Comparaison fonctionnelle et visuelle avec TLE sur le même poste Windows |
+| Q03 | Parcours moteur Linux réussi sur 16 113 242 560 octets (15,006 GiB), 12 206 080 lignes, limite DuckDB 256 Mio : import, pages première/dernière, filtre, groupes et réouverture. Source obtenue par répétition des enregistrements du CSV publié existant, sans régénération du CSV de 3 GiB ; parcours EXE Windows de cette taille encore distinct |
+| Q04 | Benchmark comparatif mémoire/import/filtres/tris/groupes/réactivité sur le même poste ; aucun gain face à TLE n’est revendiqué |
+| Q05 | Essais humains prolongés, gestes Explorateur, dialogues natifs et diversité des partages Windows |
+| Q06 | Apparences avec des layouts réellement exportés par l’application TLE cible |
+| Q07 | Ouverture dans TLE des sessions exportées, avec lecteurs et tags réels |
+| Q08 | Ouverture dans TLE des dispositions XML exportées, y compris filtres typés et règles graphiques |
 
-La signature de code reste écartée conformément à la demande de l'utilisateur. PDF/HTML, tags catégorisés, reprise d'import après panne et paquet autonome d'enquête ne sont pas listés comme manques face à TLE tant que leur présence dans TLE n'est pas établie.
+Le runtime cloud reste sans contrôle du PC utilisateur ni application TLE de référence. Ses accès HTTP aux domaines officiels de téléchargement TLE et à la documentation DevExpress ne sont pas autorisés dans la configuration active ; les ajouts du brouillon d’environnement ne sont pas publiés. Ce blocage ne doit pas être confondu avec un test réussi.
+
+La signature de code reste écartée à la demande de l’utilisateur. PDF/HTML, tags catégorisés, reprise d’import après panne et paquet autonome d’enquête ne sont pas ajoutés comme manques face à TLE sans preuve de leur présence dans TLE.

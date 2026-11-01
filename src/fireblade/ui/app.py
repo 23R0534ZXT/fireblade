@@ -695,7 +695,8 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.setWindowTitle(f"{name} - Fireblade")
         self.source.setText(f"{name}  |  {len(case.headers)} colonnes")
         if initial_view is None:
-            initial_view=View(pinned_columns=[i for i,h in enumerate(case.headers) if h.casefold() in {name.casefold() for name in self.preferences.first_pinned_columns}])
+            from fireblade.core.preferences import default_pinned_columns
+            initial_view=View(pinned_columns=default_pinned_columns(self.preferences,case.headers,case.info))
         self.set_view(initial_view)
         if header_state is not None:
             self.tree.header().restoreState(header_state)
@@ -1249,6 +1250,7 @@ def main():
     parser.add_argument("file", nargs="?", type=Path, help="CSV ou analyse à ouvrir")
     parser.add_argument("--self-test-report", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--appearance-report", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--workspace-report", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--stress-spec", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--stress-report", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
@@ -1260,6 +1262,9 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Fireblade")
     apply_theme(app)
+    if args.workspace_report is not None:
+        from fireblade.validation.workspace import run_workspace
+        raise SystemExit(run_workspace(app,args.workspace_report))
     if args.appearance_report is not None:
         from fireblade.validation.appearance import run_appearance
         raise SystemExit(run_appearance(app,args.appearance_report))

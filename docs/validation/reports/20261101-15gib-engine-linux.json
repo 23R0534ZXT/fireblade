@@ -1,0 +1,86 @@
+{
+  "status": "passed",
+  "kind": "large-replayed-csv-engine",
+  "platform": "linux",
+  "operating_system": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "frozen": false,
+  "native_windows_gui": false,
+  "comparison_with_tle": false,
+  "checks": [
+    {
+      "name": "replay_verified_existing_records_above_14_gib",
+      "status": "passed",
+      "seconds": 35.221,
+      "details": {
+        "bytes": 16113242560,
+        "sha256": "8c96dd54b2888762776b16b778c95dc4385b719e19c4da3b06b64688f31e1ecd",
+        "repeats": 5,
+        "header_bytes": 150,
+        "construction": "one original header plus repeated original record bytes; no regenerated base CSV"
+      }
+    },
+    {
+      "name": "import_all_records_under_256_mib_duckdb_limit",
+      "status": "passed",
+      "seconds": 519.58,
+      "details": {
+        "rows": 12206080,
+        "sha256": "8c96dd54b2888762776b16b778c95dc4385b719e19c4da3b06b64688f31e1ecd"
+      }
+    },
+    {
+      "name": "first_and_deep_last_source_records",
+      "status": "passed",
+      "seconds": 3.717,
+      "details": {
+        "first_row": 1,
+        "last_row": 12206080,
+        "source_precision_and_unicode": true
+      }
+    },
+    {
+      "name": "exact_filter_over_all_replayed_records",
+      "status": "passed",
+      "seconds": 0.179,
+      "details": {
+        "matches": 47025,
+        "loaded_page_limit": 250
+      }
+    },
+    {
+      "name": "group_counts_over_all_replayed_records",
+      "status": "passed",
+      "seconds": 0.023,
+      "details": {
+        "groups": 8,
+        "source_rows": 12206080
+      }
+    },
+    {
+      "name": "close_and_reopen_persisted_analysis",
+      "status": "passed",
+      "seconds": 0.076,
+      "details": {
+        "rows": 12206080
+      }
+    }
+  ],
+  "base": {
+    "bytes": 3222648632,
+    "rows": 2441216,
+    "sha256": "2382777d3917a973a1e5104b3bc404d02d3901aeff8104d34fc30e4264776cf0",
+    "regenerated": false
+  },
+  "dataset": {
+    "bytes": 16113242560,
+    "sha256": "8c96dd54b2888762776b16b778c95dc4385b719e19c4da3b06b64688f31e1ecd",
+    "repeats": 5,
+    "header_bytes": 150,
+    "construction": "one original header plus repeated original record bytes; no regenerated base CSV"
+  },
+  "settings": {
+    "memory_mb": 256,
+    "threads": 2,
+    "max_loaded_rows": 1000
+  }
+}

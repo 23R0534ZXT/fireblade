@@ -26,13 +26,23 @@ def normalize_image(raw):
     try:data=base64.b64decode(raw,validate=True)
     except (ValueError,TypeError):raise ValueError('Image de disposition : base64 invalide') from None
     if data.startswith(b'\x00\x01\x00\x00\x00\xff\xff\xff\xff'):
-        start=data.find(b'\x89PNG\r\n\x1a\n')
-        if start>=0:
-            end=data.find(b'IEND',start)
-            if end>=0:data=data[start:end+8]
-        else:
-            start=data.find(b'\xff\xd8\xff');end=data.rfind(b'\xff\xd9')
-            if start>=0 and end>start:data=data[start:end+2]
-        raw=base64.b64encode(data).decode('ascii')
+        # Locate bounded raster payloads and decode only the image bytes. A .NET
+        # envelope is never passed to an object deserializer or followed as a path.
+        signatures=(b'\x89PNG\r\n\x1a\n',b'\xff\xd8\xff',b'BM',b'GIF87a',b'GIF89a')
+        candidates=sorted({at for magic in signatures for at in [data.find(magic)] if at>=0})
+        for start in candidates:
+            candidate=data[start:]
+            buffer=QBuffer();buffer.setData(QByteArray(candidate));buffer.open(QIODevice.ReadOnly)
+            reader=QImageReader(buffer);size=reader.size()
+            if not size.isValid() or size.width()>1024 or size.height()>1024:continue
+            decoded=reader.read()
+            if decoded.isNull():continue
+            # Canonical PNG strips the envelope, trailers and animation metadata.
+            encoded=QByteArray();output=QBuffer(encoded);output.open(QIODevice.WriteOnly)
+            if not decoded.save(output,'PNG'):continue
+            normalized=base64.b64encode(bytes(encoded)).decode('ascii')
+            image_bytes(normalized)
+            return normalized
+        raise ValueError('Enveloppe .NET sans image raster reconnue et bornée')
     image_bytes(raw)
     return raw

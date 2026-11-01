@@ -180,3 +180,19 @@ def test_dateonly_timeonly_reader_fields_keep_precision_in_criteria(tmp_path):
         assert count(case,'[Day]=#!2026-01-02!# And [Clock]=#!12:34:56.1234567!#')==1
         assert count(case,'GetHour([Clock])=12 And GetTimeOfDay([Clock])=452961234567')==1
     finally:case.close()
+
+
+def test_nondeterministic_reader_cannot_supply_a_different_graph_for_saved_rows(tmp_path):
+    source=tmp_path/'source.txt';source.write_text('unchanged evidence')
+    case=Case(tmp_path/'volatile.timeline')
+    try:
+        import_plugin(case,source,FIXTURE,'FixtureVolatileReader')
+        assert len(case.info['plugin']['converted_sha256'])==64
+        register_functions(case,FIXTURE)
+        original=case.page(View())[0]
+        with pytest.raises(Exception,match='déterministe|reproduit'):
+            count(case,'FixtureSecret([Details])=37')
+        assert case._plugin_object_session is None
+        # Persisted scalar evidence remains usable after rejecting reconstruction.
+        assert case.page(View())[0]==original
+    finally:case.close()

@@ -125,3 +125,26 @@ def test_order_cache_can_be_disabled(tmp_path):
         assert not case.db.execute("SELECT count(*) FROM information_schema.tables WHERE table_name='__timeline_order'").fetchone()[0]
     finally:
         case.close()
+
+
+def test_deep_source_order_and_filtered_order_cache_only_identifiers(tmp_path):
+    from fireblade.core.models import Filter
+    from fireblade.core.settings import Settings
+    source=tmp_path/'wide.csv'
+    with source.open('w',encoding='utf-8') as stream:
+        stream.write('Group,Payload\n')
+        for index in range(1500):stream.write(f'{index%3},record-{index:04}-'+('x'*2048)+'\n')
+    case=Case(tmp_path/'source-order.timeline',settings=Settings(memory_mb=64,threads=1,page_size=25,max_loaded_rows=100))
+    try:
+        case.import_csv(source)
+        rows=case.page(View(),offset=1475)
+        assert [row[0] for row in rows]==list(range(1476,1501))
+        assert rows[-1][2].startswith('record-1499-')
+        columns=[row[0] for row in case.db.execute('DESCRIBE __timeline_order').fetchall()]
+        assert columns==['position','__row_id']
+        view=View(filters=[Filter(0,'eq','1')])
+        filtered=case.page(view,offset=475)
+        assert [row[0] for row in filtered]==[index+1 for index in range(1500) if index%3==1][475:500]
+        assert case.db.execute('SELECT count(*) FROM __timeline_order').fetchone()[0]==500
+        assert case.page(View(),offset=0)[0][0]==1
+    finally:case.close()

@@ -132,6 +132,8 @@ class View:
     right_pinned_columns: list[int] = field(default_factory=list)
     group_sorts: list[GroupSort] = field(default_factory=list)
     layout_styles: dict = field(default_factory=dict)
+    tle_fields: dict[str,dict[str,str]] = field(default_factory=dict)
+    tle_expressions: dict[str,str] = field(default_factory=dict)
     group_footer_mode: str = "hidden"
     total_summaries: list[Summary] = field(default_factory=list)
     show_total_footer: bool = True

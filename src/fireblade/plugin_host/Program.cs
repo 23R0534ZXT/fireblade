@@ -104,6 +104,11 @@ internal static class Program
         var type=assembly.GetType(typeName,true)!;
         if(!IsReader(type))throw new InvalidOperationException("Type de lecteur TLE invalide");
         var (reader,data,contract)=ReadObjects(assembly,typeName,source);
+        using var file=new FileStream(target,FileMode.CreateNew,FileAccess.Write,FileShare.None);
+        return WriteConverted(type,reader,data,contract,source,file);
+    }
+    static object WriteConverted(Type type,object reader,IEnumerable data,Type contract,string source,Stream file)
+    {
         PropertyDescriptorCollection? columns=null;
         var listType=contract.GetProperty("DataList")!.PropertyType;
         var typed=contract.GetProperty("DataList")!.GetValue(reader) as ITypedList;
@@ -114,8 +119,7 @@ internal static class Program
             if(generic!=null)columns=TypeDescriptor.GetProperties(generic.GetGenericArguments()[0]);
         }
         long count=0;
-        using var file=new FileStream(target,FileMode.CreateNew,FileAccess.Write,FileShare.None);
-        using var output=new StreamWriter(file,new UTF8Encoding(true));
+        using var output=new StreamWriter(file,new UTF8Encoding(true),4096,leaveOpen:true);
         string[]? names=null;string[]? types=null;bool[]? complex=null;
         foreach(var row in data)
         {
@@ -314,6 +318,14 @@ internal static class Program
                     VerifyFile(path,root.GetProperty("sha256").GetString()!);VerifyFile(source,root.GetProperty("source_sha256").GetString()!);
                     var rows=data as IList ?? data.Cast<object>().ToList();
                     if(rows.Count!=root.GetProperty("rows").GetInt64())throw new InvalidOperationException("Comptage du lecteur CLR différent de l’import");
+                    if(root.TryGetProperty("converted_sha256",out var expectedProjection) && expectedProjection.ValueKind==JsonValueKind.String) {
+                        using var hash=SHA256.Create();
+                        using var hashing=new CryptoStream(Stream.Null,hash,CryptoStreamMode.Write);
+                        WriteConverted(reader.GetType(),reader,rows,contract,source,hashing);
+                        hashing.FlushFinalBlock();
+                        var actual=BitConverter.ToString(hash.Hash!).Replace("-","").ToLowerInvariant();
+                        if(actual!=expectedProjection.GetString())throw new InvalidOperationException("Le lecteur CLR ne reproduit pas les valeurs importées ; lecteur non déterministe ou données dérivées modifiées");
+                    }
                     state.Reader=reader;state.Rows=rows;
                     output.WriteLine("{\"loaded\":true}");
                 } else if(op=="load_functions") {

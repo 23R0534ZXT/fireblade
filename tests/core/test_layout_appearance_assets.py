@@ -74,3 +74,18 @@ def test_high_priority_is_imported_and_persisted_for_rows_and_rules(tmp_path,opt
         path.write_text(f'<XtraSerializer><property name="Appearance"><property name="Row"><property name="Options.HighPriority">{invalid}</property></property></property></XtraSerializer>')
         with pytest.raises(ValueError):read_tle_layout(path,['Value'])
     with pytest.raises(ValueError):validate_styles({'row':{'high_priority':1}},0)
+
+
+@pytest.mark.parametrize('format',['PNG','JPEG','BMP','GIF'])
+def test_raster_wrappers_are_canonicalized_without_following_metadata(format):
+    from PySide6.QtCore import QByteArray,QBuffer,QIODevice
+    from PySide6.QtGui import QImage,QColor,QImageWriter
+    if format.encode().lower() not in [bytes(x).lower() for x in QImageWriter.supportedImageFormats()]:
+        pytest.skip('Image encoder unavailable; decoding remains guarded by Qt')
+    image=QImage(5,7,QImage.Format_RGB32);image.fill(QColor('blue'))
+    data=QByteArray();stream=QBuffer(data);stream.open(QIODevice.WriteOnly);assert image.save(stream,format)
+    envelope=b'\x00\x01\x00\x00\x00\xff\xff\xff\xff'+b'System.Drawing.Bitmap'+bytes(data)+b'C:/never-follow-this-file'
+    normalized=normalize_image(base64.b64encode(envelope).decode())
+    decoded=QImage.fromData(image_bytes(normalized))
+    assert decoded.size()==image.size() and decoded.pixelColor(2,2).blue()>200
+    assert image_bytes(normalized).startswith(b'\x89PNG')

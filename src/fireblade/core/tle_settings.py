@@ -68,13 +68,29 @@ def read_tle_settings(path, current=None):
             )
         elif name == "FirstPinnedColumns":
             if all(local(c.tag) == "string" for c in child):
+                preferences.pinned_columns_by_format={}
                 preferences.first_pinned_columns = [
                     (c.text or "").strip() for c in child
                 ]
             else:
-                warnings.append(
-                    "FirstPinnedColumns structuré non traduit : épinglage actuel conservé"
-                )
+                # DataContract dictionary entries: Key + Value/ArrayOfstring.
+                # Unknown structures preserve existing choices atomically.
+                mapping={}
+                valid=True
+                for entry in child:
+                    parts={local(c.tag):c for c in entry}
+                    if set(parts)!={'Key','Value'} or len(entry)!=2 or list(parts['Key']):
+                        valid=False;break
+                    key=(parts['Key'].text or '').strip()
+                    value=parts['Value']
+                    if not key or key.casefold() in {k.casefold() for k in mapping} or any(local(c.tag)!='string' or list(c) for c in value) or (value.text or '').strip():
+                        valid=False;break
+                    mapping[key]=[(c.text or '').strip() for c in value]
+                if valid:
+                    preferences.pinned_columns_by_format=mapping
+                    warnings.append('Épinglage structuré Key/Value importé ; comparaison avec un export TLE réel encore à qualifier')
+                else:
+                    warnings.append('FirstPinnedColumns structuré inconnu ou ambigu : épinglage actuel conservé')
         else:
             warnings.append("Préférence TLE non traduite : " + name)
     return TleSettings(preferences.validate(), warnings)

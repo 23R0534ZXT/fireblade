@@ -58,7 +58,18 @@ def verify(host,fixture):
                 assert reopened._plugin_object_session is None
                 assert reopened.count(View(expression=FilterGroup('and',[Filter(0,'expression',"FixtureSecret([Details])=37")])))==1
             finally:reopened.close()
-        return dict(status='passed',checks=['automatic header detection without source binding','cached reader detection for a second source','plugin inspection','typed import','source provenance','exact numeric UDF','Unicode UDF','NULL UDF','UDF cancellation','explicit reload after cancellation','automatic restore on reopen','native CLR identity and typed collections','private state through nested function calls','typed instances across DLLs'])
+            volatile=Case(root/'volatile.timeline')
+            try:
+                import_plugin(volatile,source,fixture,'FixtureVolatileReader')
+                assert len(volatile.info['plugin']['converted_sha256'])==64
+                register_functions(volatile,fixture)
+                try:volatile.count(View(expression=FilterGroup('and',[Filter(0,'expression',"FixtureSecret([Details])=37")])))
+                except Exception as error:
+                    if 'déterministe' not in str(error) and 'reproduit' not in str(error):raise
+                else:raise AssertionError('Nondeterministic reader graph was accepted')
+                assert volatile._plugin_object_session is None and volatile.count(View())==1
+            finally:volatile.close()
+        return dict(status='passed',checks=['automatic header detection without source binding','cached reader detection for a second source','plugin inspection','typed import','source provenance','exact numeric UDF','Unicode UDF','NULL UDF','UDF cancellation','explicit reload after cancellation','automatic restore on reopen','native CLR identity and typed collections','private state through nested function calls','typed instances across DLLs','nondeterministic reader projection rejected'])
     finally:
         if previous_storage is None:os.environ.pop('LOCALAPPDATA',None)
         else:os.environ['LOCALAPPDATA']=previous_storage

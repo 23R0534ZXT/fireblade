@@ -102,6 +102,8 @@ def check_features(window, directory, settle, check, expect, captures=None):
         view=View(expression=parse_filter("[Type] = 'A' And [ID] >= 1",case.headers),sort_column=2,sort_type='number')
         window.set_view(view);settle()
         expect(case.count(view)==2,'Text expression filter incorrect')
+        advanced=View(expression=parse_filter("@Type='A' And InRange(ToInt(ID),1m,9007199254740994m) And IsJanuary(Date)",case.headers))
+        expect(case.count(advanced)==2,'Advanced criteria syntax changed filtering')
         target=directory/'projection.csv'
         case.export(target,view,columns=[4,2])
         with target.open(encoding='utf-8-sig',newline='') as incoming:

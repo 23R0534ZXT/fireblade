@@ -71,6 +71,7 @@ class Parser:
         if kind == 1:
             return token[1:-1].replace("''", "'"), 'text'
         if kind == 2:
+            if token.startswith('#!'):raise ValueError('Constante DateOnly/TimeOnly typée')
             return token[1:-1], 'date'
         if kind == 3:
             return token, 'number'
@@ -167,7 +168,9 @@ def _parse_simple_filter(text, headers):
     return result if isinstance(result, FilterGroup) else FilterGroup('and', [result])
 
 
-def parse_filter(text, headers):
+def parse_filter(text, headers, parameters=None):
+    from fireblade.core.criteria_literals import bind
+    text=bind(text,parameters)
     try:
         return _parse_simple_filter(text, headers)
     except ValueError:

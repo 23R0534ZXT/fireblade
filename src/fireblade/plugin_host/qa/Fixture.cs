@@ -68,3 +68,18 @@ public sealed class FixtureChildAmount {
  public object Evaluate(params object[] values)=>values[0] is FixtureAmount child ? child.Amount : throw new InvalidOperationException("Original CLR child required");
  public Type ResultType(params Type[] values)=>typeof(int);
 }
+
+public sealed class FixtureLiteralTypes {
+ public string Name=>"FixtureLiteralTypes";
+ public object Evaluate(params object[] v)=>v[0] is char ch && ch=='z' && v[1] is Guid && v[2] is short && v[3] is byte && v[4] is decimal && v[5] is float && v[6] is double && v[7] is DateOnly && v[8] is TimeOnly;
+ public Type ResultType(params Type[] v)=>typeof(bool);
+}
+
+public sealed class FixtureTemporalReader {
+ public List<FixtureTemporalRow> DataList {get;}=[];
+ public void ProcessFile(string path)=>DataList.Add(new FixtureTemporalRow());
+}
+public sealed class FixtureTemporalRow {
+ public DateOnly Day{get;}=new DateOnly(2026,1,2);
+ public TimeOnly Clock{get;}=new TimeOnly(12,34,56).Add(TimeSpan.FromTicks(1234567));
+}

@@ -129,7 +129,7 @@ class RuleBook:
             for condition in atoms(source.condition):
                 if condition.operator == 'expression':
                     from fireblade.core.expressions import referenced_columns
-                    required.update(referenced_columns(condition.value,self.headers))
+                    required.update(referenced_columns(condition.value,self.headers,self.functions))
                 else:
                     required.add(condition.column)
             if source.target is not None:

@@ -231,3 +231,21 @@ Les couleurs et polices de lignes, groupes, cellules et en-têtes sont conservé
 Après import avec un lecteur DLL et chargement des fonctions, une expression comme `MaFonction([Details])` reçoit l’objet CLR réel, avec ses méthodes et son type d’origine. Les collections (`[Details.Children]`), membres imbriqués et retours d’autres fonctions sont aussi transmis par référence. Le JSON affiché dans la grille reste un aperçu, pas l’objet donné à la fonction.
 
 Conservez la source et la DLL du lecteur : au premier appel après ouverture, Fireblade les vérifie puis relance le lecteur pour retrouver ses objets. Le contexte reste en mémoire jusqu’à la fermeture de l’analyse ; son volume dépend du lecteur tiers. Sans appel utilisant ces objets, le contexte n’est pas chargé. Une annulation le termine et l’appel suivant peut le reconstruire.
+
+### Critères avancés
+
+Exemples utilisables dans les filtres et règles de couleur :
+
+```text
+EventID=4624 And InRange(PID,1m,10000m)
+[Items][[Amount]>[^.Limit]].Count()>0
+[Groups].Sum([Children][[Amount]>[^.^.Limit]].Sum([Amount]))>100m
+[Items][]
+IsJanuary([Time]) And IsSameDay([Time],#!2026-01-02!#)
+CharIndex('error',[Message],10)>=0
+[Identifier]={513724e5-17b7-4ec6-abc4-0eae12c72c1f}
+```
+
+`^` remonte d’un contexte de collection ; on peut le répéter pour les collections imbriquées. Une restriction `[Items][condition]` est vraie dès qu’un élément convient. `[Items][]` teste si la collection est non vide. Les noms simples peuvent être écrits sans crochets ; `@Or` permet de viser une colonne portant un mot réservé. Les noms contenant des espaces restent entre crochets.
+
+Les fonctions de calendrier suivent la convention UTC et les semaines commencent le lundi. `GetTimeOfDay` renvoie des ticks de 100 ns ; `AddTimeSpan` accepte des ticks ou une durée `[-][jours.]hh:mm:ss[.fffffff]`. La forme à trois arguments de `InDateRange` inclut la journée de fin ; `InRange` exclut sa borne supérieure. Les types de date seule et d’heure seule utilisent `#!…!#`.

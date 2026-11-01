@@ -37,7 +37,7 @@ def verify(host,fixture):
                 if not other.is_file():raise AssertionError('Cross-DLL QA fixture missing')
                 register_functions(case,other)
                 assert case._plugin_object_session is None
-                for expression in ("PluginNumber('FixtureDouble', 21) = 42", "PluginText('FixtureEcho', 'évidence') = 'évidence'", "PluginText('FixtureEcho', Null) Is Null", "FixtureTypes([Time],[LargeId]) = True", "[Details.Name] = 'évidence' And [Details.Children].Sum([Amount]) = 10", "FixtureSameObject([Details],[Details])=True", "FixtureChildren([Details.Children])=True", "FixtureSecret(FixtureMake())=73", "FixtureOtherSecret([Details])=37", "FixtureOtherSecret(FixtureMake())=73"):
+                for expression in ("PluginNumber('FixtureDouble', 21) = 42", "PluginText('FixtureEcho', 'évidence') = 'évidence'", "PluginText('FixtureEcho', Null) Is Null", "FixtureTypes([Time],[LargeId]) = True", "[Details.Name] = 'évidence' And [Details.Children].Sum([Amount]) = 10", "FixtureSameObject([Details],[Details])=True", "FixtureChildren([Details.Children])=True", "FixtureSecret(FixtureMake())=73", "FixtureOtherSecret([Details])=37", "FixtureOtherSecret(FixtureMake())=73", "FixtureLiteralTypes('z'c,{513724e5-17b7-4ec6-abc4-0eae12c72c1f},1s,2b,3m,4f,5d,#!2026-01-01!#,#!12:34:56.1234567!#)=True"):
                     view=View(expression=FilterGroup('and',[Filter(0,'expression',expression)]));assert case.count(view)==1
                 import threading
                 from fireblade.core.errors import OperationCancelled

@@ -29,6 +29,24 @@ from fireblade.runtime.windows_paths import analyses_directory
 from fireblade.runtime.resources import build_info, default_config, resource_path
 
 
+def accept_import_when_ready(app,target,errors,sheet=None,timeout=30):
+    """Metadata probing runs a nested Qt loop before the import dialog exists."""
+    deadline=time.monotonic()+timeout
+    def attempt():
+        dialog=app.activeModalWidget()
+        if not isinstance(dialog,ImportDialog):
+            if not isinstance(dialog,QDialog) and time.monotonic()<deadline:
+                QTimer.singleShot(10,attempt)
+                return
+            errors.append('La fenêtre de confirmation d’import ne s’est pas ouverte.')
+            if isinstance(dialog,QDialog):dialog.reject()
+            return
+        dialog.target.setText(str(target))
+        if sheet is not None:dialog.sheet.setCurrentText(sheet)
+        dialog.accept()
+    QTimer.singleShot(0,attempt)
+
+
 def windows_memory():
     import ctypes
     from ctypes import wintypes
@@ -81,7 +99,14 @@ def run_check(app, report_path):
             time.sleep(.005)
         raise TimeoutError("L’interface n’a pas terminé ses opérations en arrière-plan.")
 
+    def flush_report():
+        from fireblade.core.layout import write_json
+        report_path.parent.mkdir(parents=True,exist_ok=True)
+        write_json(report_path,report)
+
     def check(name, operation):
+        report['current_check']=name
+        flush_report()
         started = time.perf_counter()
         try:
             operation()
@@ -90,20 +115,10 @@ def run_check(app, report_path):
         except Exception as exc:
             report["checks"].append(dict(name=name, status="failed", error=str(exc)))
             raise
+        finally:flush_report()
 
     def import_with_dialog(source, target, sheet=None):
-        def accept_dialog():
-            dialog = app.activeModalWidget()
-            if not isinstance(dialog, ImportDialog):
-                errors.append("La fenêtre de confirmation d’import ne s’est pas ouverte.")
-                if isinstance(dialog, QDialog):
-                    dialog.reject()
-                return
-            dialog.target.setText(str(target))
-            if sheet is not None:
-                dialog.sheet.setCurrentText(sheet)
-            dialog.accept()
-        QTimer.singleShot(0, accept_dialog)
+        accept_import_when_ready(app,target,errors,sheet)
         window.open_path(source)
 
     try:
@@ -405,6 +420,5 @@ def run_check(app, report_path):
                 report["cleanup_error"] = str(exc)
     report["finished_utc"] = datetime.now(timezone.utc).isoformat()
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    with report_path.open("x", encoding="utf-8") as output:
-        json.dump(report, output, indent=2, ensure_ascii=False)
+    flush_report()
     return 0 if report["status"] == "passed" else 1

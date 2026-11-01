@@ -389,7 +389,7 @@ class ExplorationMixin:
     def edit_filter_text(self):
         if not self.case or self.busy:
             return
-        text, accepted = QInputDialog.getMultiLineText(self, "Expression de filtre", "Syntaxe : Contains([Colonne], 'texte') And [ID] >= 10\nFonctions : Contains, Upper, Substring, Iif, IsNull, ToInt, Round, GetYear, AddDays, DateDiffDay… ; calculs, In, Between, Like, And, Or, Not.")
+        text, accepted = QInputDialog.getMultiLineText(self, "Expression de filtre", "Syntaxe : Contains([Colonne], 'texte') And [ID] >= 10\nFonctions : Contains, Iif, InRange, DateTimeFromParts, AddTimeSpan, GetYear… ; constantes 12m, GUID, #!date!#.\nCollections : [Items][[Amount] > [^.Limit]].Exists() ; ^ remonte au parent.")
         if not accepted:
             return
         from fireblade.core.filter_text import parse_filter

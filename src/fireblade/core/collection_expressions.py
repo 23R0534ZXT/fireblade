@@ -3,7 +3,7 @@ import re
 
 
 def translate(text,headers):
-    if not re.search(r"\]\s*(?:\[|\.)|\[[^\]]*\.",text):return text
+    if "[" not in text and not re.search(r"\w+\s*\.",text):return text
     tokens=sorted(('['+h.replace(']',']]')+']' for h in headers),key=len,reverse=True)
     def end_group(start,left,right):
         depth=0;quote=None;i=start
@@ -32,6 +32,14 @@ def translate(text,headers):
                 string=None
             i+=1;continue
         if ch in ("'",'"'):string=ch;result.append(ch);i+=1;continue
+        if ch.isalpha() or ch=='@':
+            bare=re.match(r'@?[A-Za-z_]\w*',text[i:])
+            if bare:
+                name=bare.group().lstrip('@');header=next((h for h in headers if h.casefold()==name.casefold()),None)
+                end=i+bare.end()
+                if header and re.match(r'\s*(?:\[|\.)',text[end:]):
+                    token='['+header.replace(']',']]')+']'
+                    text=text[:i]+token+text[end:];ch='['
         match_field=field_pattern.match(text,i) if ch=='[' and field_pattern else None
         token=match_field.group(0) if match_field else None
         parts=[]
@@ -58,7 +66,7 @@ def translate(text,headers):
             match=re.match(r'\s*\.\s*(Count|Exists|Sum|Avg|Average|Min|Max|Single)\s*\(',text[stop:],re.I)
             if match:
                 start=stop+match.end()-1;close=end_group(start,'(',')');argument=text[start+1:close].strip();name=match.group(1).lower()
-                if predicate is not None:collection=f'JsonFilter({collection},{quote(predicate)})'
+                if predicate is not None:collection=f'JsonFilter({collection},{quote(predicate or "True")})'
                 if name=='count':replacement=f'JsonCount({collection})' if not argument else f'JsonCount(JsonFilter({collection},{quote(argument)}))'
                 elif name=='exists':replacement=f'JsonAny({collection},{quote(argument or "True")})'
                 elif name=='single':replacement=f'JsonSingle({collection}'+(','+quote(argument) if argument else '')+')'
@@ -67,6 +75,8 @@ def translate(text,headers):
                     name='avg' if name=='average' else name
                     replacement=f'Json{name.title()}Expr({collection},{quote(argument)})'
                 result.append(replacement);i=close+1;continue
+            if predicate is not None:
+                result.append(f'JsonAny({collection},{quote(predicate or "True")})');i=stop;continue
             if parts:
                 result.append(collection);i=stop;continue
         result.append(ch);i+=1

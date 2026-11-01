@@ -35,12 +35,16 @@ def verify(executable, report_path, timeout=180):
         extraction.mkdir()
         environment["TEMP"] = environment["TMP"] = str(extraction)
         environment["LOCALAPPDATA"] = str(temporary / "Profil utilisateur")
+        process=subprocess.Popen([str(target), "--self-test-report", str(report_path)],env=environment,cwd=temporary)
         try:
-            completed = subprocess.run([str(target), "--self-test-report", str(report_path)],
-                                       env=environment, cwd=temporary, timeout=timeout, check=False)
-            code = completed.returncode
+            code=process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
-            code = -1
+            # A onefile launcher owns another process. Killing only its parent
+            # leaves the real application alive and locks the relocated EXE.
+            subprocess.run(['taskkill','/PID',str(process.pid),'/T','/F'],capture_output=True,timeout=10,check=False)
+            if process.poll() is None:process.kill()
+            process.wait(timeout=10)
+            code=-1
         if report_path.is_file():
             raw = report_path.read_text(encoding="utf-8")
             try:

@@ -16,7 +16,7 @@ def register_function_metadata(mapping):
             CUSTOM_FUNCTIONS[name.casefold()]=kind
 
 TOKEN = re.compile(
-    r"""\s*(?:(\[(?:[^\]]|\]\])*\])|('(?:[^']|'')*'|"(?:[^"]|"")*")|(#(?:[^#]+)#)|(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?)|([A-Za-z_]\w*)|(>=|<=|<>|!=|==|&&|\|\||[=<>(),+*/%&|^!~-]))"""
+    r"""\s*(?:(\[(?:[^\]]|\]\])*\])|('(?:[^']|'')*'|"(?:[^"]|"")*")|(#(?:[^#]+)#)|(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?(?:[sSbBfFmMdD]|[uU]?[lL])?|\.\d+(?:[eE][+-]?\d+)?(?:[fFmMdD])?)|(@?[A-Za-z_]\w*)|(>=|<=|<>|!=|==|&&|\|\||[=<>(),+*/%&|^!~-])|(\{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\}))"""
 )
 
 
@@ -99,6 +99,8 @@ class Parser:
                 left = Node("column", matches[0])
             else:
                 raise ValueError(f"Colonne absente ou ambiguë : {name}")
+        elif kind == 6:
+            left=Node('guid',text[1:-1].lower())
         elif kind in (1, 2, 3):
             value = (
                 text[1:-1].replace(text[0] * 2, text[0])
@@ -108,8 +110,22 @@ class Parser:
                 else text
             )
             left = Node({1: "text", 2: "date", 3: "number"}[kind], value)
+            if kind==1 and self.peek('c'):
+                self.take()
+                if len(value)!=1:raise ValueError('Constante Char : un caractère requis')
+                left=Node('char',value)
+            elif kind==2 and value.startswith('!') and value.endswith('!'):
+                value=value[1:-1];left=Node('time' if ':' in value and '-' not in value else 'dateonly',value)
+            elif kind==3:
+                match=re.fullmatch(r'(.+?)(s|b|f|m|d|ul|l)',value,re.I)
+                if match:left=Node('typed_number',(match.group(1),{'s':'i16','b':'u8','f':'single','m':'decimal','d':'double','l':'i64','ul':'u64'}[match.group(2).lower()]))
+
         elif word in ("true", "false", "null"):
             left = Node("null") if word == "null" else Node("boolean", word == "true")
+        elif kind==4 and (text.startswith('@') or not self.peek('(')) and any(h.casefold()==text.lstrip('@').casefold() for h in self.headers):
+            name=text.lstrip('@');matches=[i for i,h in enumerate(self.headers) if h.casefold()==name.casefold()]
+            if len(matches)!=1:raise ValueError('Champ ambigu : '+name)
+            left=Node('column',matches[0])
         elif kind == 4:
             self.take("(")
             args = []
@@ -206,7 +222,8 @@ class Parser:
 @lru_cache(maxsize=256)
 def parse(text, headers):
     from fireblade.core.collection_expressions import translate
-    text=translate(text,headers)
+    from fireblade.core.criteria_literals import bind
+    text=translate(bind(text),headers)
     parser = Parser(text, headers)
     if not parser.tokens:
         return Node("boolean", True)
@@ -216,15 +233,19 @@ def parse(text, headers):
     return result
 
 
-def referenced_columns(text, headers):
-    result = set()
-    pending = [parse(text, tuple(headers))]
-    while pending:
-        node = pending.pop()
-        if node.kind == "column":
-            result.add(node.value)
-        pending.extend(node.children)
-    return result
+def referenced_columns(text, headers, functions=None):
+    mapping=CUSTOM_FUNCTIONS if functions is None else functions
+    return set(_referenced_columns(text,tuple(headers),tuple(sorted(mapping.items()))))
+
+
+@lru_cache(maxsize=256)
+def _referenced_columns(text,headers,functions):
+    from types import SimpleNamespace
+    required=set()
+    def column(index):required.add(index);return f'"c{index}"'
+    column.case=SimpleNamespace(info={},headers=headers,expression_functions=dict(functions))
+    Compiler(column,lambda sql:f'try_cast({sql} AS DECIMAL(38,10))',headers=headers).emit(parse(text,headers))
+    return frozenset(required)
 
 
 @dataclass
@@ -234,6 +255,8 @@ class Value:
     parameters: list
     date_ns: "Value | None" = None
     clr_ref: "Value | None" = None
+    native_tag: str | None = None
+    json_type: "Value | None" = None
 
     def __post_init__(self):
         if len(self.sql) > 1024 * 1024 or len(self.parameters) > 4096:
@@ -241,9 +264,10 @@ class Value:
 
 
 class Compiler:
-    def __init__(self, column, numeric, collection_depth=0):
+    def __init__(self, column, numeric, collection_depth=0, headers=(), ancestors=(), context=None):
         self.column, self.numeric = column, numeric
         self.collection_depth=collection_depth
+        self.headers=tuple(headers);self.ancestors=ancestors;self.context=context
         self.nodes = 0
 
     def nanoseconds(self, value):
@@ -251,6 +275,7 @@ class Compiler:
             return value.date_ns
         if value.kind == "null":
             return Value("NULL::HUGEINT", "number", [])
+        if value.kind=='time':return Value('epoch_ns('+value.sql+')','number',value.parameters)
         from fireblade.core.timestamps import timestamp_key
 
         return Value(
@@ -270,6 +295,8 @@ class Compiler:
         )
 
     def cast(self, value, kind):
+        if kind == 'date' and value.kind=='time':
+            return self.date_value(self.nanoseconds(value))
         if kind == "date":
             return Value(
                 f"try_cast({value.sql} AS TIMESTAMPTZ)",
@@ -290,6 +317,10 @@ class Compiler:
         if value.kind == kind:
             return value
         if kind == "number":
+            if value.kind=='column':
+                marker='__fireblade_numeric_operand__'
+                template=self.numeric(marker)
+                return Value(template.replace(marker,value.sql),'number',value.parameters*template.count(marker))
             sql = f"try_cast({value.sql} AS DECIMAL(38,10))"
         elif kind == "date":
             sql = f"try_cast({value.sql} AS TIMESTAMPTZ)"
@@ -304,16 +335,42 @@ class Compiler:
         if self.nodes > 1024 or depth > 24:
             raise ValueError("Expression limitée à 1024 nœuds et 24 niveaux")
         if node.kind == "column":
-            value=Value(self.column(node.value),"column",[])
+            raw=self.column(node.value)
+            if isinstance(raw,Value):return raw
+            value=Value(raw,"column",[])
             owner=getattr(self.column,'__self__',getattr(self.column,'case',None))
             columns=getattr(owner,'info',{}).get('plugin',{}).get('columns',[])
             from fireblade.core.clr_objects import complex_column
             if 0<=node.value<len(columns) and complex_column(columns[node.value]):
                 name=columns[node.value].get('source_name',columns[node.value]['name'])
                 value.clr_ref=Value("json_object('$fb_type','clr_column','row',events.__row_id,'column',?)",'text',[name])
+            if 0<=node.value<len(columns):
+                clr=columns[node.value].get('type','') or ''
+                if 'System.TimeOnly' in clr:
+                    value.kind='time';value.sql='try_cast('+value.sql+' AS TIME_NS)';value.native_tag='timeonly'
+                elif 'System.DateOnly' in clr:value.kind='date';value.native_tag='dateonly'
             return value
         if node.kind == "null":
             return Value("NULL", "null", [])
+        if node.kind in ('char','guid'):
+            return Value('?','text',[node.value],native_tag=node.kind)
+        if node.kind=='dateonly':
+            return Value('cast(? AS TIMESTAMPTZ)','date',[node.value],native_tag='dateonly')
+        if node.kind=='time':
+            sql='try_cast(? AS TIME_NS)'
+            return Value(sql,'time',[node.value],date_ns=Value('epoch_ns('+sql+')','number',[node.value]),native_tag='timeonly')
+        if node.kind=='typed_number':
+            from decimal import Decimal
+            raw,tag=node.value;number=Decimal(raw)
+            bounds={'u8':(0,255),'i16':(-32768,32767),'i64':(-(2**63),2**63-1),'u64':(0,2**64-1)}
+            if tag in bounds and (number!=number.to_integral_value() or not bounds[tag][0]<=number<=bounds[tag][1]):raise ValueError('Constante numérique hors plage')
+            if tag in ('single','double'):
+                import math
+                floating=float(raw)
+                if not math.isfinite(floating) or tag=='single' and abs(floating)>3.4028234663852886e38:raise ValueError('Constante flottante hors plage')
+                return Value('cast(? AS '+('FLOAT' if tag=='single' else 'DOUBLE')+')','number',[raw],native_tag=tag)
+            return Value('cast(? AS DECIMAL(38,10))','number',[raw],native_tag=tag)
+
         if node.kind in ("text", "number", "date", "boolean"):
             sql = {
                 "text": "?",
@@ -331,6 +388,7 @@ class Compiler:
             if node.value in ("not", "!"):
                 value = self.cast(value, "boolean")
                 return Value(f"NOT ({value.sql})", "boolean", value.parameters)
+            if node.value=='-' and value.native_tag=='u64':raise ValueError('Une constante UInt64 ne peut être négative')
             value = self.cast(value, "number")
             sql = (
                 f"~cast({value.sql} AS HUGEINT)"
@@ -382,9 +440,22 @@ class Compiler:
             left, right = self.cast(left, "text"), self.cast(right, "text")
             operator = "ILIKE"
         elif op in ("=", "==", "!=", "<>", ">", ">=", "<", "<="):
+            if left.native_tag=='guid' or right.native_tag=='guid':
+                if op not in ('=','==','!=','<>'):raise ValueError('Un GUID se compare par égalité ou différence')
+                operator={'==':'=','!=':'<>'}.get(op,op)
+                return Value(f'try_cast({left.sql} AS UUID) {operator} try_cast({right.sql} AS UUID)','boolean',left.parameters+right.parameters)
+            if (left.json_type is not None or right.json_type is not None) and left.kind in ('column','text') and right.kind in ('column','text'):
+                checks=[value.json_type for value in (left,right) if value.json_type is not None]
+                condition=' OR '.join("("+value.sql+") IN ('BIGINT','UBIGINT','DOUBLE','INTEGER','DECIMAL')" for value in checks)
+                a,b=self.cast(left,'number'),self.cast(right,'number');x,y=self.cast(left,'text'),self.cast(right,'text')
+                operator={'==':'=','!=':'<>'}.get(op,op)
+                return Value(f'CASE WHEN {condition} THEN {a.sql} {operator} {b.sql} ELSE {x.sql} {operator} {y.sql} END','boolean',[p for value in checks+[a,b,x,y] for p in value.parameters])
+            if left.kind=='time' or right.kind=='time':
+                operator={'==':'=','!=':'<>'}.get(op,op)
+                return Value(f'try_cast({left.sql} AS TIME_NS) {operator} try_cast({right.sql} AS TIME_NS)','boolean',left.parameters+right.parameters)
             if left.kind == "null" or right.kind == "null":
                 if op not in ("=", "==", "!=", "<>"):
-                    raise ValueError("NULL doit être comparé par égalité")
+                    return Value(f'({left.sql}) {op} ({right.sql})','boolean',left.parameters+right.parameters)
                 value = right if left.kind == "null" else left
                 return Value(
                     f"{value.sql} IS {'NOT ' if op in ('!=', '<>') else ''}NULL",
@@ -434,6 +505,20 @@ class Compiler:
             left.parameters + right.parameters,
         )
 
+    def resolve_field(self,name):
+        if self.context is not None:return self.context(name)
+        virtual={'line':-1,'tag':-2,'note':-3}
+        if name.casefold() in virtual and not any(h.casefold()==name.casefold() for h in self.headers):return self.emit(Node('column',virtual[name.casefold()]))
+        matches=[i for i,h in enumerate(self.headers) if h.casefold()==name.casefold()]
+        if len(matches)==1:
+            return self.emit(Node('column',matches[0]))
+        parent=next((h for h in sorted(self.headers,key=len,reverse=True) if name.casefold().startswith(h.casefold()+'.')),None)
+        if parent:
+            import json
+            base=self.resolve_field(parent);path='$.'+'.'.join(json.dumps(part,ensure_ascii=False) for part in name[len(parent)+1:].split('.'))
+            return self.function('jsonvalue',[base,Value('?','text',[path])])
+        raise ValueError('Champ parent absent ou ambigu : '+name)
+
     def plugin_arguments(self,args):
         owner=getattr(self.column,'__self__',getattr(self.column,'case',None))
         columns=getattr(owner,'info',{}).get('plugin',{}).get('columns',[])
@@ -442,15 +527,15 @@ class Compiler:
             if value.clr_ref is not None:
                 output.append('cast('+value.clr_ref.sql+' AS JSON)');parameters+=value.clr_ref.parameters
                 continue
-            tag=None;expression=value.sql;params=value.parameters
+            tag=value.native_tag;expression=value.sql;params=value.parameters
             column=re.fullmatch(r'"c(\d+)"',value.sql)
             if column and int(column.group(1))<len(columns):
                 clr=columns[int(column.group(1))].get('type','') or ''
                 for source,target in [('DateTimeOffset','dateoffset'),('DateTime','date'),('UInt64','u64'),('Int64','i64'),('UInt32','u32'),('Int32','i32'),('UInt16','u16'),('Int16','i16'),('Byte','u8'),('Decimal','decimal'),('Double','double'),('Single','single'),('Boolean','bool')]:
                     if 'System.'+source in clr:tag=target;break
-            if value.kind=='date':
+            if value.kind=='date' and tag is None:
                 tag='date';canonical=self.date_value(self.nanoseconds(value));expression=canonical.sql;params=canonical.parameters
-            elif value.kind=='number':
+            elif value.kind=='number' and tag is None:
                 tag='decimal'
                 if len(value.parameters)==1 and value.sql.startswith('cast(? AS DECIMAL'):
                     literal=str(value.parameters[0])
@@ -502,6 +587,9 @@ class Compiler:
             "addticks": "addtick",
         }
         name = names.get(name, name)
+        from fireblade.core.advanced_criteria import function as advanced_function
+        advanced=advanced_function(self,name,args)
+        if advanced is not None:return advanced
         if name in ("contains", "startswith", "endswith", "matches", "like"):
             arity(2)
             args = typed("text")
@@ -766,7 +854,7 @@ class Compiler:
         }
         if name in parts:
             arity(1)
-            args = typed("date")
+            args = [args[0]] if args[0].kind=='time' and name in ('gethour','getminute','getsecond','getmillisecond') else typed("date")
             sql = f"date_part('{parts[name]}',{args[0].sql})"
             if name == "getmillisecond":
                 sql = "(" + sql + " % 1000)"
@@ -824,11 +912,9 @@ class Compiler:
                 if unit in ("tick", "microsecond", "nanosecond"):
                     left, right = self.nanoseconds(args[0]), self.nanoseconds(args[1])
                     scale = {"tick": 100, "microsecond": 1000, "nanosecond": 1}[unit]
-                    return Value(
-                        f"TRY((({right.sql})-({left.sql}))//{scale})",
-                        "number",
-                        right.parameters + left.parameters,
-                    )
+                    if scale==1:return Value(f'TRY(({right.sql})-({left.sql}))','number',right.parameters+left.parameters)
+                    def boundary(value):return f"(({value.sql})-((({value.sql})%{scale}+{scale})%{scale}))//{scale}"
+                    return Value('TRY(('+boundary(right)+')-('+boundary(left)+'))','number',right.parameters*2+left.parameters*2)
                 args = typed("date")
                 return result(
                     f"date_diff('{unit}',{args[0].sql},{args[1].sql})", "number"
@@ -880,33 +966,59 @@ class Compiler:
             predicate=args[1]
             if predicate.sql!='?' or len(predicate.parameters)!=1 or not isinstance(predicate.parameters[0],str):raise ValueError('L’expression de collection doit être un texte constant')
             expression=predicate.parameters[0]
-            fields=list(dict.fromkeys(re.findall(r'\[((?:[^\]]|\]\])+)\]',expression)))
-            fields=[f.replace(']]',']') for f in fields]
+            from fireblade.core.collection_expressions import translate
+            # Translate inner restrictions first, then ignore quoted predicate
+            # strings when discovering fields in this collection's own scope.
+            candidates=list(dict.fromkeys(re.findall(r'\[([^\[\]]+)\]',expression)))
+            expression=translate(expression,candidates)
+            fields=[];offset=0
+            while offset<len(expression):
+                token=TOKEN.match(expression,offset)
+                if not token:
+                    if expression[offset:].strip():raise ValueError('Syntaxe de collection inconnue')
+                    break
+                if token.group(1):
+                    field=token.group(1)[1:-1].replace(']]',']')
+                    if field not in fields:fields.append(field)
+                elif token.group(5):
+                    field=token.group(5).lstrip('@')
+                    following=expression[token.end():].lstrip()
+                    if field.casefold() not in ('true','false','null','and','or','not','in','between','like','is','xor') and not following.startswith('(') and field not in fields:fields.append(field)
+                offset=token.end()
+            alias='__fb_item_'+str(self.collection_depth)
             import json
             def column(index):
                 if index<0:raise ValueError('Champs virtuels indisponibles dans une collection')
-                path='$.'+json.dumps(fields[index],ensure_ascii=False)
-                direct="json_extract_string(__fb_item,'"+path.replace("'","''")+"')"
-                if '.' not in fields[index]:return direct
-                nested_path='$.'+'.'.join(json.dumps(part,ensure_ascii=False) for part in fields[index].split('.'))
-                return "coalesce("+direct+",json_extract_string(__fb_item,'"+nested_path.replace("'","''")+"'))"
-            nested=Compiler(column,self.numeric,self.collection_depth+1)
+                field=fields[index];parent=re.match(r'^(\^(?:\.\^)*|\^+)\.(.+)$',field)
+                if parent:
+                    levels=parent.group(1).count('^');ancestors=(self.resolve_field,)+self.ancestors
+                    if levels>len(ancestors):raise ValueError('Référence parent hors du contexte de collection')
+                    return ancestors[levels-1](parent.group(2))
+                direct_path='$.'+json.dumps(field,ensure_ascii=False)
+                direct=f'json_extract_string({alias},?)'
+                if '.' not in field:return Value(direct,'column',[direct_path],json_type=Value(f'json_type(json_extract({alias},?))','text',[direct_path]))
+                nested_path='$.'+'.'.join(json.dumps(part,ensure_ascii=False) for part in field.split('.'))
+                return Value(f'coalesce({direct},json_extract_string({alias},?))','column',[direct_path,nested_path],json_type=Value(f'json_type(coalesce(json_extract({alias},?),json_extract({alias},?)))','text',[direct_path,nested_path]))
+            def context(field):
+                if field not in fields:fields.append(field)
+                return column(fields.index(field))
+            nested=Compiler(column,self.numeric,self.collection_depth+1,fields,(self.resolve_field,)+self.ancestors,context)
             child=nested.emit(parse(expression,tuple(fields)))
             array=f'try_cast(try_cast({args[0].sql} AS JSON) AS JSON[])'
             parameters=args[0].parameters+child.parameters
             if name in ('jsonfilter','jsonany','jsonall'):
                 child=nested.cast(child,'boolean');parameters=args[0].parameters+child.parameters
-                filtered=f'list_filter({array},__fb_item -> ({child.sql}))'
+                filtered=f'list_filter({array},{alias} -> ({child.sql}))'
                 if name=='jsonfilter':return Value(f'cast(to_json({filtered}) AS VARCHAR)','text',parameters)
                 sql=f'array_length({filtered})>0' if name=='jsonany' else f'array_length({filtered})=array_length({array})'
                 if name=='jsonall':parameters+=args[0].parameters
                 return Value(f'coalesce(({sql}),FALSE)','boolean',parameters)
             if name=='jsonsingle':
-                values=f'list_transform({array},__fb_item -> ({child.sql}))'
+                values=f'list_transform({array},{alias} -> ({child.sql}))'
                 return Value(f"CASE WHEN array_length({array})>1 THEN error('Single : plusieurs objets correspondent') ELSE list_extract({values},1) END",child.kind,args[0].parameters+parameters)
             child=nested.cast(child,'number');parameters=args[0].parameters+child.parameters
             operation={'jsonsumexpr':'sum','jsonavgexpr':'avg','jsonminexpr':'min','jsonmaxexpr':'max'}[name]
-            return Value(f'list_{operation}(list_transform({array},__fb_item -> ({child.sql})))','number',parameters)
+            return Value(f'list_{operation}(list_transform({array},{alias} -> ({child.sql})))','number',parameters)
         if name=='custom':
             arity(1,32)
             if args[0].sql!='?' or len(args[0].parameters)!=1:raise ValueError('Nom de fonction Custom constant requis')
@@ -936,7 +1048,7 @@ class Compiler:
 
 
 def compile_scalar(text, headers, column, numeric):
-    compiler = Compiler(column, numeric)
+    compiler = Compiler(column, numeric, headers=headers)
     value = compiler.emit(parse(text, tuple(headers)))
     return (
         compiler.date_value(compiler.nanoseconds(value))
@@ -946,6 +1058,6 @@ def compile_scalar(text, headers, column, numeric):
 
 
 def compile_expression(text, headers, column, numeric):
-    compiler = Compiler(column, numeric)
+    compiler = Compiler(column, numeric, headers=headers)
     value = compiler.cast(compiler.emit(parse(text, tuple(headers))), "boolean")
     return value.sql, value.parameters

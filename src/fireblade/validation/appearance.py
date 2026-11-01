@@ -133,5 +133,7 @@ def run_appearance(app,report_path):
             run.window.apply_preferences()
             return result
         run.check('application_dark_theme_and_pinned_grid',app_dark)
+        from fireblade.validation.theme_gallery import check_theme_gallery
+        run.check('gallery_themes_and_isolated_preview',lambda:check_theme_gallery(run.window,run.out))
     except Exception as exc:error=exc
     return run.finish(error)

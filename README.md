@@ -490,3 +490,6 @@ Reprise automatique des fonctions approuvées, lecteurs de session mémorisés, 
 
 
 Les résumés de groupes et les totaux globaux disposent maintenant de listes et d’apparences séparées. Les pieds de groupes peuvent être affichés après dépliage ou même lorsque le groupe est replié ; leurs valeurs suivent les filtres et ne deviennent pas des événements exportés. Les propriétés de hauteur des layouts, dont `RowAutoHeight`, sont reprises. Le menu **Affichage → Hauteur des lignes** active une hauteur variable partagée avec les colonnes épinglées, sans mesurer le fichier entier. [Détails et limites](docs/guides/LAYOUTS-TLE.md#pieds-de-groupes-et-pied-global).
+
+
+**Galerie de thèmes** : Affichage → Préférences propose douze thèmes Qt, un aperçu isolé et des couleurs personnalisables. Le choix est sauvegardé ; Annuler conserve l’apparence actuelle. Les familles Office/Studio et les modes à contraste élevé sont des adaptations Fireblade ; aucun skin DevExpress propriétaire n’est intégré.

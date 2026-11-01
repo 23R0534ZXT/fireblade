@@ -44,7 +44,8 @@ class ExplorationMixin:
 
     def apply_preferences(self):
         p = self.preferences
-        apply_theme(QApplication.instance(), p.theme, p.theme_palette)
+        from fireblade.core.themes import effective_palette
+        apply_theme(QApplication.instance(), p.theme, effective_palette(p))
         font = QFont(p.font_family) if p.font_family else QApplication.font()
         font.setPointSizeF(p.font_size)
         QApplication.instance().setFont(font)

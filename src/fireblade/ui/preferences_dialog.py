@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QLineEdit,
     QPlainTextEdit,
+    QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QLabel, QTableWidget, QTableWidgetItem, QApplication,
 )
 
 
@@ -21,7 +22,10 @@ class PreferencesDialog(QDialog):
         self.setWindowTitle("Préférences")
         self.preferences = copy.deepcopy(preferences)
         self.palette=dict(preferences.theme_palette)
-        form = QFormLayout(self)
+        root=QVBoxLayout(self)
+        self.scroll=QScrollArea();self.scroll.setWidgetResizable(True)
+        content=QWidget();form=QFormLayout(content)
+        self.scroll.setWidget(content);root.addWidget(self.scroll,1)
         self.theme = QComboBox()
         self.theme.addItem("Clair", "light")
         self.theme.addItem("Sombre", "dark")
@@ -59,7 +63,34 @@ class PreferencesDialog(QDialog):
         self.details.setCurrentIndex(
             self.details.findData(preferences.details_position)
         )
-        form.addRow("Thème", self.theme)
+        from fireblade.core.themes import THEMES
+        self.skin=QComboBox()
+        self.skin.addItem('Standard / personnalisé','')
+        for key,preset in THEMES.items():self.skin.addItem(preset.name,key)
+        self.skin.setCurrentIndex(self.skin.findData(preferences.theme_preset))
+        form.addRow("Galerie de thèmes",self.skin)
+        form.addRow("Mode", self.theme)
+        note=QLabel('Thèmes Fireblade adaptés à Qt ; les skins DevExpress ne sont pas intégrés.')
+        note.setWordWrap(True);form.addRow(note)
+        self.preview=QWidget();preview_layout=QVBoxLayout(self.preview)
+        preview_layout.setContentsMargins(5,5,5,5)
+        self.preview_table=QTableWidget(2,2)
+        self.preview_table.setHorizontalHeaderLabels(['Événement','Utilisateur'])
+        self.preview_table.setItem(0,0,QTableWidgetItem('Ouverture'))
+        self.preview_table.setItem(0,1,QTableWidgetItem('alice'))
+        self.preview_table.setItem(1,0,QTableWidgetItem('Modification'))
+        self.preview_table.setItem(1,1,QTableWidgetItem('bob'))
+        self.preview_table.setAlternatingRowColors(True)
+        self.preview_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.preview_table.selectRow(0)
+        self.preview_table.setFixedHeight(100)
+        preview_layout.addWidget(self.preview_table)
+        controls=QHBoxLayout();controls.addWidget(QLineEdit('Rechercher un événement'))
+        controls.addWidget(QPushButton('Ouvrir'));preview_layout.addLayout(controls)
+        form.addRow('Aperçu',self.preview)
+        self.skin.currentIndexChanged.connect(self.choose_skin)
+        self.theme.currentIndexChanged.connect(self.change_mode)
+        self.refresh_preview()
         colors=QPushButton("Personnaliser les couleurs…");colors.clicked.connect(self.edit_palette);form.addRow(colors)
         form.addRow("Police", self.font)
         form.addRow("Taille en points", self.size)
@@ -76,15 +107,46 @@ class PreferencesDialog(QDialog):
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-        form.addRow(buttons)
+        root.addWidget(buttons)
+        screen=QApplication.primaryScreen()
+        if screen:
+            area=screen.availableGeometry();self.resize(min(620,int(area.width()*.9)),min(780,int(area.height()*.85)))
+
+    def choose_skin(self):
+        from fireblade.core.themes import THEMES
+        preset=THEMES.get(self.skin.currentData())
+        if preset:
+            self.palette={}
+            self.theme.setCurrentIndex(self.theme.findData(preset.mode))
+        self.refresh_preview()
+
+    def change_mode(self):
+        from fireblade.core.themes import THEMES
+        preset=THEMES.get(self.skin.currentData())
+        if preset and preset.mode!=self.theme.currentData():
+            self.skin.setCurrentIndex(0)
+        self.refresh_preview()
+
+    def refresh_preview(self):
+        from fireblade.core.themes import THEMES
+        from fireblade.ui.theme import theme_palette
+        preset=THEMES.get(self.skin.currentData())
+        colors=(preset.palette() if preset and preset.mode==self.theme.currentData() else {})|self.palette
+        palette,stylesheet=theme_palette(self.theme.currentData(),colors)
+        self.preview.setPalette(palette);self.preview.setAutoFillBackground(True)
+        self.preview.setStyleSheet(stylesheet)
+        for widget in self.preview.findChildren(QWidget):widget.setPalette(palette)
 
     def edit_palette(self):
         from PySide6.QtGui import QColor
         from PySide6.QtWidgets import QApplication
         from PySide6.QtGui import QPalette
+        from fireblade.core.themes import THEMES
+        preset=THEMES.get(self.skin.currentData())
+        effective=(preset.palette() if preset else {})|self.palette
         values=dict(self.palette);dialog=QDialog(self);dialog.setWindowTitle('Couleurs du thème');form=QFormLayout(dialog)
         for label,key,role in [('Fenêtres','window',QPalette.Window),('Texte','text',QPalette.Text),('Grille et champs','base',QPalette.Base),('Lignes alternées','alternate',QPalette.AlternateBase),('Sélection','highlight',QPalette.Highlight),('Texte sélectionné','selection_text',QPalette.HighlightedText)]:
-            button=QPushButton(values.get(key,QApplication.palette().color(role).name()))
+            button=QPushButton(effective.get(key,QApplication.palette().color(role).name()))
             def choose(_=False,key=key,button=button):
                 color=QColorDialog.getColor(QColor(button.text()),dialog)
                 if color.isValid():values[key]=color.name();button.setText(color.name())
@@ -93,12 +155,13 @@ class PreferencesDialog(QDialog):
         def clear():values.clear();dialog.accept()
         reset.clicked.connect(clear);form.addRow(reset)
         box=QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Cancel);box.accepted.connect(dialog.accept);box.rejected.connect(dialog.reject);form.addRow(box)
-        if dialog.exec():self.palette=values
+        if dialog.exec():self.palette=values;self.refresh_preview()
         dialog.deleteLater()
 
     def accept(self):
         p = self.preferences
         p.theme_palette=dict(self.palette)
+        p.theme_preset=self.skin.currentData()
         p.theme, p.font_family, p.font_size = (
             self.theme.currentData(),
             self.font.currentFont().family(),

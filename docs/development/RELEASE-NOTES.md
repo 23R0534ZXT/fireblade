@@ -49,3 +49,8 @@ Deux qualifications Windows supplémentaires conditionnent la publication : le v
 
 
 Validation locale de ce lot : 765 tests réussis, six ignorés (environnements indisponibles), helper .NET moderne testé et helper CLR4 compilé. Le moteur Linux a importé un CSV de 16 113 242 560 octets / 12 206 080 lignes sous limite DuckDB de 256 Mio, puis vérifié les pages première/dernière, filtre, groupes et réouverture. Ce jeu répète cinq fois les enregistrements du CSV publié et vérifié de 3 GiB, qui n’a pas été régénéré. Il ne constitue ni une mesure Windows du véritable EXE, ni un benchmark face à TLE. Rapports : `docs/validation/reports/20261101-*`.
+
+
+Galerie de 12 thèmes : familles Office et Studio claires/sombres, bleu, argent, graphite, sable, forêt et contraste élevé. Aperçu isolé, annulation sans changement global, choix et couleurs personnalisées persistants, préférences défilables à fort zoom. L’import du nom de thème TLE choisit une adaptation de famille disponible ; aucun skin DevExpress propriétaire n’est intégré. Les contrôles du véritable EXE et de la matrice visuelle vérifient chaque palette et les boutons actifs/désactivés, avec captures.
+
+Validation locale de la galerie : 784 tests réussis, six ignorés, dont les douze palettes et leurs boutons actifs/désactivés, l’annulation, la sauvegarde et l’accès aux commandes avec une fenêtre réduite. Le parcours Windows du commit doit réussir avant publication de son EXE.

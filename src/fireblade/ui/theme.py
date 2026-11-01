@@ -20,16 +20,8 @@ QHeaderView::section { background: #eeeeee; color: #202020; padding: 3px 5px; bo
 """
 
 
-def apply_theme(app, theme="light", overrides=None):
-    # Native Windows 11 styles can keep dark foregrounds while custom backgrounds
-    # are light. Fusion renders every control from the same explicit palette.
-    app.styleHints().setColorScheme(Qt.ColorScheme.Dark if theme == "dark" else Qt.ColorScheme.Light)
-    app.setStyle("Fusion")
-    app.setProperty("fireblade_style", "Fusion " + theme)
-    font = QFontDatabase.systemFont(QFontDatabase.GeneralFont)
-    if font.pointSizeF() < 9:
-        font.setPointSizeF(9)
-    app.setFont(font)
+def theme_palette(theme="light", overrides=None):
+    """Build colors/styles without modifying QApplication or any open window."""
     palette = QPalette()
     roles = {
         QPalette.Window: "#f0f0f0", QPalette.WindowText: "#202020",
@@ -55,8 +47,7 @@ def apply_theme(app, theme="light", overrides=None):
         for role, color in roles.items():
             palette.setColor(group, role, QColor(color))
     for role in (QPalette.WindowText, QPalette.Text, QPalette.ButtonText):
-        palette.setColor(QPalette.Disabled, role, QColor("#b0b0b0" if theme == "dark" else "#686868"))
-    app.setPalette(palette)
+        palette.setColor(QPalette.Disabled, role, QColor(("#d0d0d0" if overrides else "#b0b0b0") if theme == "dark" else "#686868"))
     stylesheet = STYLE
     if theme == "dark":
         import re
@@ -65,4 +56,25 @@ def apply_theme(app, theme="light", overrides=None):
     if custom:
         import re
         stylesheet=re.sub(r'#[0-9a-fA-F]{6}|\bwhite\b',lambda m:custom.get(m.group(0).lower(),m.group(0)),stylesheet)
+    if overrides:
+        from PySide6.QtGui import QPalette as P
+        window=roles[P.Window];base=roles[P.Base];text=roles[P.Text]
+        disabled=QColor(base).lighter(160).name() if theme=='dark' else '#eeeeee'
+        muted='#d0d0d0' if theme=='dark' else '#686868'
+        stylesheet+=f"\nQPushButton:disabled, QToolButton:disabled, QCheckBox:disabled, QLabel:disabled, QMenuBar::item:disabled, QMenu::item:disabled {{ color: {muted}; }}\nQHeaderView::section {{ background: {window}; color: {text}; }}\nQLineEdit:disabled, QComboBox:disabled {{ background: {disabled}; color: {muted}; }}\nQToolTip {{ background: {base}; color: {text}; }}"
+    return palette, stylesheet
+
+
+def apply_theme(app, theme="light", overrides=None):
+    # Native Windows 11 styles can keep dark foregrounds while custom backgrounds
+    # are light. Fusion renders every control from the same explicit palette.
+    app.styleHints().setColorScheme(Qt.ColorScheme.Dark if theme == "dark" else Qt.ColorScheme.Light)
+    app.setStyle("Fusion")
+    app.setProperty("fireblade_style", "Fusion " + theme)
+    font = QFontDatabase.systemFont(QFontDatabase.GeneralFont)
+    if font.pointSizeF() < 9:
+        font.setPointSizeF(9)
+    app.setFont(font)
+    palette,stylesheet=theme_palette(theme,overrides)
+    app.setPalette(palette)
     app.setStyleSheet(stylesheet)

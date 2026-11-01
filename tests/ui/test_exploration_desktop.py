@@ -163,7 +163,7 @@ def test_extended_acceptance_runs_real_desktop_paths(qt_application,window,tmp_p
         operation()
         completed.append(name)
     check_features(window,tmp_path,lambda:settle(qt_application,window),check,expect,tmp_path)
-    assert len(completed)==17
+    assert len(completed)==18
     assert {'mixed_icon_threshold_units_and_pinned_rendering','high_priority_layout_and_selection_rendering','argb_layout_pixels_light_dark_and_selection','separate_group_global_footers_and_source_export','automatic_multiline_row_heights_and_pinned_scrolling','progressive_complete_header_probe_utf8_utf16_utf32','tle_xml_layout_export_and_scoped_default_pins'} <= set(completed)
     assert (tmp_path/'extended-pinned.png').is_file()
     assert (tmp_path/'extended-dark.png').is_file()

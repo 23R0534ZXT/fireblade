@@ -56,16 +56,12 @@ def read_tle_settings(path, current=None):
             preferences.date_format = "custom"
             preferences.custom_date_format = value
         elif name == "Theme":
-            preferences.theme = (
-                "dark"
-                if any(
-                    t in value.casefold() for t in ("black", "dark", "noir", "sombre")
-                )
-                else "light"
-            )
-            warnings.append(
-                f"Thème {value} adapté au thème {preferences.theme} de Fireblade"
-            )
+            from fireblade.core.themes import THEMES,tle_theme
+            preferences.theme_preset=tle_theme(value)
+            preferences.theme = THEMES[preferences.theme_preset].mode if preferences.theme_preset else (
+                'dark' if any(t in value.casefold() for t in ('black','dark','noir','sombre')) else 'light')
+            preferences.theme_palette={}
+            warnings.append(f'Thème {value} adapté à '+(THEMES[preferences.theme_preset].name if preferences.theme_preset else preferences.theme)+' de Fireblade (rendu Qt)')
         elif name == "FirstPinnedColumns":
             if all(local(c.tag) == "string" for c in child):
                 preferences.pinned_columns_by_format={}

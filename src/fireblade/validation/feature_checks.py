@@ -205,9 +205,10 @@ def check_features(window, directory, settle, check, expect, captures=None):
             bar,local=window.tabs.tab_widget(0)
             rect=bar.tabRect(local).intersected(bar.rect())
             expect(rect.isValid(),'First wrapped tab has no visible click target')
+            bar_geometry=bar.geometry().getRect()
             QTest.mouseClick(bar,Qt.LeftButton,pos=rect.center());settle()
             expect(str(window.case.path)==window.documents[0].path,
-                   f'Wrapped tab did not switch: active={window.active_document}, rect={rect.getRect()}, bar={bar.geometry().getRect()}')
+                   f'Wrapped tab did not switch: active={window.active_document}, rect={rect.getRect()}, bar={bar_geometry}')
             bar,local=window.tabs.tab_widget(before)
             rect=bar.tabRect(local).intersected(bar.rect())
             expect(rect.isValid(),'Return tab has no visible click target')

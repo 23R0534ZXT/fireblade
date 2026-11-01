@@ -162,7 +162,7 @@ export_batch_rows = 2048
 cache_sorted_pages = true
 ```
 
-`memory_mb` règle le buffer DuckDB et ne plafonne pas la mémoire totale de Fireblade. `max_loaded_rows` doit être un multiple de `page_size`. Les valeurs sont contrôlées au démarrage ; un réglage invalide apparaît dans le journal et Fireblade revient aux paramètres par défaut.
+`memory_mb` règle le buffer DuckDB et ne plafonne pas la mémoire totale de Fireblade. `max_loaded_rows` doit être un multiple de `page_size`. Les valeurs sont contrôlées au démarrage ; un réglage invalide empêche le lancement et le message est écrit dans le journal de démarrage.
 
 ## Raccourcis
 
@@ -210,7 +210,7 @@ Le menu d’un en-tête propose le groupement des dates par année, trimestre, m
 
 ## Colonnes épinglées, copie et export
 
-Le menu d’un en-tête permet d’épingler une colonne à gauche, ou de la désépingler. La zone épinglée partage le même modèle et la même sélection ; elle ne charge pas une autre copie des données. Les colonnes épinglées apparaissent en premier dans les copies et exports, puis les autres colonnes visibles dans leur ordre. Masquer une colonne épinglée la retire également de la zone épinglée. **Ctrl+R** réinitialise les largeurs.
+Le menu d’un en-tête permet d’épingler une colonne à gauche ou à droite, de la déplacer de côté ou de la désépingler. Les deux volets partagent le même modèle et la même sélection ; ils ne chargent pas une autre copie des données. Les copies et exports ordonnent les colonnes épinglées à gauche, les colonnes centrales visibles, puis les colonnes épinglées à droite. Masquer une colonne épinglée la retire également de son volet. **Ctrl+R** réinitialise les largeurs.
 
 La case à cocher de la colonne Ligne/groupe marque une ligne sans demander de note ; les notes restent accessibles par double-clic et par le menu Édition. Une colonne source reconnue comme booléenne peut s’afficher en cases sans devenir éditable. Le menu de l’en-tête permet aussi de basculer cet affichage.
 
@@ -220,7 +220,7 @@ La case à cocher de la colonne Ligne/groupe marque une ligne sans demander de n
 
 Le détail et l’export conservent le texte source, même si la grille présente une date ou un booléen. Le format à sept décimales ne retire pas les décimales supplémentaires présentes dans la source. Le clic droit d’un champ du panneau Détails permet de copier sa valeur complète, la filtrer ou l’exclure. La fenêtre de cellule peut formater du JSON ou XML jusqu’à 2 Mo ; les DTD et entités XML sont refusées.
 
-Le menu d’une cellule propose **Ouvrir avec** (programme choisi explicitement) et l’Explorateur pour les chemins existants sur ce poste. Il ne suit pas automatiquement les chemins des preuves vers un autre système.
+Le menu d’une cellule propose **Ouvrir avec** (programme choisi explicitement), afficher le chemin dans l’Explorateur ou ouvrir son dossier parent, lorsque la valeur désigne un chemin présent sur ce poste. Fireblade ne réinterprète pas automatiquement les chemins de preuve pour un autre système.
 
 ## Profils, supertimelines et compatibilité TLE
 
@@ -249,6 +249,8 @@ L’application d’un profil peut proposer ces colonnes normalisées, les caté
 **Fichier → Importer les préférences Timeline Explorer…** lit `Settings/TLE_settings.xml` : police, taille, copie des en-têtes, copie au clic droit, onglets sur plusieurs rangées, détails en haut/bas, format des dates et liste simple de colonnes épinglées. Les familles Office, Visual Studio, bleu, argent et contraste élevé sont associées aux thèmes Fireblade correspondants ; cette association adapte les couleurs et ne charge pas les skins DevExpress. Les champs inconnus ou structurés non traduits sont signalés dans Messages. Le fichier TLE reste intact. Les mêmes réglages sont modifiables dans les préférences Fireblade ; l’épinglage par défaut utilise un nom par ligne.
 
 Les profils forensic reconnus s’appliquent automatiquement aux nouveaux imports, avant l’affichage de leurs colonnes. Désactiver **Appliquer le profil forensic reconnu à l’import** dans les préférences pour garder une grille générique. L’ajout d’une colonne dérivée conserve l’ordre, les largeurs, le masquage et l’épinglage des colonnes existantes.
+
+Si `TLE_settings.xml` contient un dictionnaire de colonnes épinglées par lecteur ou profil, Fireblade reprend les correspondances connues et les sauvegarde dans ses préférences. Une structure inconnue est signalée et conservée au lieu d’être devinée.
 
 ## Mises en forme graphiques et statistiques
 
@@ -309,6 +311,8 @@ CharIndex('error',[Message],10)>=0
 
 Les fonctions de calendrier suivent la convention UTC et les semaines commencent le lundi. `GetTimeOfDay` renvoie des ticks de 100 ns ; `AddTimeSpan` accepte des ticks ou une durée `[-][jours.]hh:mm:ss[.fffffff]`. La forme à trois arguments de `InDateRange` inclut la journée de fin ; `InRange` exclut sa borne supérieure. Les types de date seule et d’heure seule utilisent `#!…!#`.
 
+Le registre natif inclut aussi les fonctions texte `Like`, `Upper`, `Lower`, `Trim`, `Len`, `Substring`, `Replace`, `Insert`, `Remove`, `Concat`, `PadLeft/Right`, `CharIndex`, les tests `IsNull`, `IsNullOrEmpty`, `IsNullOrWhiteSpace`, `Coalesce`, `Iif`, les conversions et calculs numériques, ainsi que `GetYear/Month/Day/Hour/Minute/Second`, `AddDays/Months/Years` et `DateDiffDay`. Les fonctions supplémentaires comprennent `Atn`, `Atn2`, `Sqr`, `Cosh`, `Sinh`, `Tanh`, `Trunc`, `Pi`, `Rnd`, les constructeurs `DateTimeFromParts`, `DateOnlyFromParts`, `TimeOnlyFromParts`, les opérations de durée, les comparaisons de périodes, dates relatives et `InDateRange`. `Regex` utilise RE2. Les agrégats des collections JSON sont `Count`, `Exists`, `Sum`, `Avg/Average`, `Min`, `Max` et `Single`. Les détails de types, paramètres positionnels et conventions sont dans la [référence complète des expressions](../development/COMPATIBILITE.md#expressions).
+
 
 ## Pieds de groupes et hauteur des lignes
 
@@ -343,6 +347,7 @@ Cette liste sert d’index fonctionnel par menu. Les sections précédentes expl
 | Fermer l’onglet / Rouvrir le dernier onglet fermé | Fermer une analyse active ou restaurer son snapshot récent. |
 | Vider la file d’ouverture | Retirer les imports en attente sans interrompre l’import en cours. |
 | Exporter / Exporter les signets et notes | Exporter les lignes filtrées visibles ou les lignes annotées, avec CSV/XLSX et colonnes source d’annotation. |
+| Quitter | Fermer Fireblade. Une opération en cours doit être terminée ou interrompue avant la fermeture. |
 
 ### Édition
 
@@ -366,6 +371,8 @@ Copier les lignes sélectionnées ; ouvrir ou modifier le signet et la note d’
 | Profils et plugins | Consulter le catalogue, installer des profils JSON et gérer les plugins approuvés. |
 | Légende des supertimelines | Afficher les premières catégories/couleurs des profils de supertimeline reconnus. |
 | Tri sur plusieurs colonnes | Construire un ordre avec plusieurs clés, type et direction. |
+
+Le sélecteur **Affichage → Analyses ouvertes** est aussi accessible par **Ctrl+Maj+P**.
 
 ### Filtres
 
@@ -412,7 +419,7 @@ Les transformations de profils peuvent créer des colonnes UTC, normaliser des c
 
 Les lecteurs DLL TLE peuvent être installés dans `%LOCALAPPDATA%\\Fireblade\\Readers` ou le dossier `Readers` voisin de l’EXE. Fireblade détecte ceux qui publient un `ExpectedHeaders` correspondant. Si plusieurs lecteurs conviennent, il le signale ; l’import manuel permet de choisir. Une DLL présente seulement près du CSV n’est pas chargée automatiquement. Les lecteurs explicitement sélectionnés sont associés à l’analyse.
 
-Les fonctions .NET exposées par `Name`/`Evaluate(object[])` s’utilisent dans les expressions par leur nom ou via `Custom`. Les adaptateurs `PluginText`, `PluginNumber`, `PluginBool` et `PluginDate` précisent le type de résultat. Les objets CLR complexes produits par le lecteur peuvent être transmis à des fonctions par référence, avec leurs types, méthodes et collections. Pour reconstruire le graphe à la réouverture, la source et la DLL doivent rester accessibles et identiques ; Fireblade contrôle les empreintes, le compte et la projection publique des valeurs. Une reconstruction qui ne redonne pas les valeurs importées est refusée. Les états privés arbitraires d’un lecteur ne sont pas sérialisés.
+Les fonctions .NET exposées par `Name`/`Evaluate(object[])` s’utilisent dans les expressions par leur nom ou via `Custom`. Les adaptateurs `PluginText`, `PluginNumber`, `PluginBool` et `PluginDate` précisent le type de résultat. Les objets CLR complexes produits par le lecteur peuvent être transmis à des fonctions par référence, avec leurs types, méthodes et collections. Le fichier unique embarque un helper CLR4 pour les plugins .NET Framework compatibles et un helper moderne pour les plugins .NET récents ; aucun runtime .NET n’est requis pour les fonctions intégrées. Les objets d’un CLR ne traversent pas automatiquement vers l’autre. Pour reconstruire le graphe à la réouverture, la source et la DLL doivent rester accessibles et identiques ; Fireblade contrôle les empreintes, le compte et la projection publique des valeurs. Une reconstruction qui ne redonne pas les valeurs importées est refusée. Les états privés arbitraires d’un lecteur ne sont pas sérialisés.
 
 Le plugin s’exécute avec les droits de l’utilisateur dans un processus helper séparé ; ce processus n’est pas un bac à sable. Un lecteur tiers peut charger sa liste entière en mémoire. Utilisez l’import natif pour de grands CSV si le plugin n’est pas nécessaire. Voir [le guide des plugins](../development/PLUGINS.md).
 
@@ -420,7 +427,7 @@ Le plugin s’exécute avec les droits de l’utilisateur dans un processus help
 
 Les layouts `.layout.local` Fireblade mémorisent automatiquement colonnes, ordre, largeur, masquage, épinglage, groupes, tris, filtres, recherche, résumés et règles par profil et schéma. Une analyse Fireblade garde aussi ses vues. Les XML locaux/default peuvent être déposés dans les dossiers `Layouts/Local` et `Layouts/Default` du profil utilisateur ou dans les dossiers correspondants près de l’EXE. Une disposition Fireblade mémorisée est prioritaire ; une erreur de migration est affichée dans **Affichage → Messages** et le fichier reste intact.
 
-L’import de XML TLE traduit les noms de champs connus, colonnes, filtres compatibles, recherche, groupements temporels, tris simples/multicritères, résumés, pieds, hauteurs, apparences et règles standards. Les images raster incluses sont décodées en image, sans interpréter de contenu sérialisé arbitraire ni suivre un chemin externe. Les styles personnalisés nommés doivent être disponibles dans une bibliothèque ; un nom sans définition n’est pas deviné.
+L’import de XML TLE traduit les noms de champs connus, colonnes, filtres compatibles, recherche, groupements temporels, tris simples/multicritères, résumés, pieds, hauteurs, apparences et règles standards. Les images raster PNG, JPEG, BMP et GIF incluses sont décodées en image, sans interpréter de contenu sérialisé arbitraire ni suivre un chemin externe. Les styles personnalisés nommés doivent être disponibles dans une bibliothèque ; un nom sans définition n’est pas deviné.
 
 **Analyse → Exporter une disposition** produit une disposition XML déclarative `XtraSerializer`. Elle peut contenir colonnes, filtres/groupes/tris/résumés, épinglage, apparences et règles représentables. Les fonctions propres à Fireblade sans traduction, populations statistiques non représentables et options nécessitant des données externes sont refusées ou signalées. Cette génération ne garantit pas que chaque export sera accepté par toute version TLE ; l’ouverture dans TLE reste une vérification distincte. Consultez [les formats et limites](LAYOUTS-TLE.md) et [le suivi de compatibilité](../development/PARITE-TIMELINE-EXPLORER.md).
 
@@ -430,7 +437,7 @@ Un `.tle_sess` importé vérifie les sources puis les copie dans de nouvelles ba
 
 Les onglets peuvent s’afficher sur plusieurs rangées ; les préférences permettent de choisir cette présentation. La barre garde au plus trois rangées visibles et défile pour atteindre les autres. **Affichage → Analyses ouvertes** filtre et active une analyse ; **Ctrl+F** cherche dans toutes les analyses ouvertes. Chaque document inactif conserve un snapshot léger ; Fireblade garde une seule connexion de base active et recharge les pages à la réactivation.
 
-Le parcours de qualification automatisé couvre 320 analyses distinctes, la recherche globale, les clics aux positions initiale, centrale et finale, ainsi que la sauvegarde/restauration de session. Cela documente la capacité du scénario ; les données de travail restent dans leurs bases séparées. Pour une session à reprendre, enregistrez-la et conservez à côté toutes les bases référencées.
+Le scénario automatisé Qt hors écran couvre 320 analyses distinctes, la recherche globale, les clics aux positions initiale, centrale et finale, ainsi que la sauvegarde/restauration de session. Un parcours du véritable EXE Windows est exigé par le workflow de publication ; vérifiez la qualification Actions du commit concerné pour savoir s’il a réussi. Les bases de travail restent séparées. Pour reprendre une session, enregistrez-la et conservez toutes les bases référencées.
 
 ## Fidélité, stockage et limites
 
@@ -458,9 +465,11 @@ Les différences connues de compatibilité et les preuves manquantes sont suivie
 | Déplier / replier les groupes | Ctrl+M / Ctrl+K |
 | Marquer / retirer la sélection | Ctrl+Alt+B / Ctrl+Maj+M |
 | Chercher dans les analyses ouvertes | Ctrl+F |
+| Choisir une analyse ouverte | Ctrl+Maj+P |
 | Analyse ouverte suivante / précédente | Ctrl+Tab / Ctrl+Maj+Tab |
 | Fermer / rouvrir le dernier onglet | Ctrl+W / Ctrl+Maj+T |
 | Copier les lignes sélectionnées | Ctrl+C |
 | Guide d’utilisation | F1 |
+| Quitter Fireblade | Alt+F4 |
 
 Les raccourcis sont aussi disponibles depuis les menus ; les actions dépendant d’une analyse ne sont actives qu’après ouverture d’un fichier.

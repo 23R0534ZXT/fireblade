@@ -4,16 +4,17 @@ from pathlib import Path
 import subprocess
 import sys
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtWidgets import QApplication, QTextBrowser
 
 from fireblade.core.settings import load_settings
 from fireblade.runtime import resources
-from fireblade.ui.help_dialogs import show_guide, show_licenses
+from fireblade.ui.help_dialogs import show_guide, show_licenses, show_tutorial
 
 
 def test_source_resources_and_user_configuration_priority(tmp_path):
     assert resources.resource_path("docs/guides/UTILISATION.md").is_file()
+    assert resources.resource_path("docs/guides/TUTORIEL-COMPLET.md").is_file()
     assert load_settings(resources.default_config()).memory_mb == 256
     from fireblade.runtime.windows_paths import user_directory
     custom = user_directory() / "fireblade.toml"
@@ -47,17 +48,39 @@ def test_frozen_resources_work_without_adjacent_files(tmp_path, monkeypatch):
 
 
 def test_help_and_license_texts_are_available_without_a_source_browser(qt_application):
-    collected = []
+    collected, anchors = [], []
     def close_dialog():
         dialog = QApplication.activeModalWidget()
         collected.append(dialog.findChild(QTextBrowser).toPlainText())
         dialog.reject()
     QTimer.singleShot(0, close_dialog)
     show_guide(None)
+    def inspect_tutorial():
+        dialog = QApplication.activeModalWidget()
+        browser = dialog.findChild(QTextBrowser)
+        collected.append(browser.toPlainText())
+        browser.anchorClicked.emit(QUrl("#parcours-guidé"))
+        anchors.append(browser.textCursor().block().text())
+        dialog.reject()
+    QTimer.singleShot(0, inspect_tutorial)
+    show_tutorial(None)
     QTimer.singleShot(0, close_dialog)
     show_licenses(None)
     assert "Regrouper" in collected[0] and "Fireblade.exe" in collected[0]
-    assert "MIT License" in collected[1] and "GNU LESSER GENERAL PUBLIC LICENSE" in collected[1]
+    assert "Référence de toutes les commandes" in collected[1]
+    assert anchors == ["Parcours guidé"]
+    assert "MIT License" in collected[2] and "GNU LESSER GENERAL PUBLIC LICENSE" in collected[2]
+
+
+def test_complete_tutorial_is_available_from_the_help_menu(qt_application):
+    from fireblade.ui.app import Window
+
+    window = Window()
+    help_menu = next(action.menu() for action in window.menuBar().actions()
+                     if action.text().replace("&", "") == "Aide")
+    assert any(action.text() == "Tutoriel complet — toutes les fonctionnalités"
+               for action in help_menu.actions())
+    window.close()
 
 
 def test_core_import_does_not_load_qt():

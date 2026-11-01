@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QFileDialog
 
 from fireblade.ui.advanced_dialogs import RulesDialog
 from fireblade.core.rule_store import RuleBook, RuleStore, atomic_write, read_book
+from fireblade.core.paths import protected_destination
 from fireblade.runtime.windows_paths import user_directory
 
 
@@ -110,7 +111,7 @@ class SharedRulesMixin:
             target = Path(path).resolve()
             protected = {Path(s.path).resolve() for s in self.documents} | {Path(s.source_info["path"]).resolve() for s in self.documents}
             protected.add(self.rule_store.path.resolve())
-            if target in protected:
+            if protected_destination(target, protected):
                 raise ValueError("Choisissez un fichier distinct de la configuration, des sources et des analyses")
             atomic_write(target, self.rule_book.to_bytes())
         except Exception as exc:

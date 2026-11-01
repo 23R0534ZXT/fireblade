@@ -34,7 +34,7 @@ Références : [manuel officiel](https://github.com/EZToolsManuals/EZToolsManual
 | Import des layouts TLE | Partiel | Colonnes et noms de contrôles, filtres compatibles, recherche, groupes temporels, tris, résumés, règles expression/valeur, statistiques et graphiques standards ; variantes non traduites refusées |
 | Import des préférences TLE | Ajouté | `TLE_settings.xml` : copie, police et taille fractionnaire, onglets, détails haut/bas, format des dates, épinglage simple ; thèmes adaptés, champs inconnus signalés |
 | Sessions Fireblade | Présent | Références aux bases ; données conservées séparément |
-| Import `.tle_sess` | Ajouté | Sources et tags ; réimporte les sources présentes, BOM UTF-8/16/32 pour CSV ; dispositions séparées |
+| Import/export `.tle_sess` | Ajouté | Sources et tags ; import avec BOM UTF-8/16/32 pour CSV, export annulable avec contrôle des sources et correspondance des lignes de lecteurs ; notes et dispositions séparées |
 | Barres, dégradés, indicateurs | Ajoutés | Bornes fixes/auto/percent/percentile exact sur tout le filtre, deux/trois couleurs, barres négatives et axe, trois/cinq icônes avec seuils et PNG ; migration XML standard |
 | Préambules PeScan/Wisp | Ajoutés | Quatre lignes retirées de la copie de travail seulement, après vérification de l’en-tête public exact |
 | Règles de couleur locales/globales | Présent | Texte, fond, police/taille par règle, styles, cellule/ligne, combinaison par propriété et arrêt ; top/bottom, moyenne, uniques/doublons ; partage JSON |
@@ -87,3 +87,8 @@ Apparences, complément : images raster intégrées et enveloppes bitmap extract
 Ces correctifs ajoutent des contrôles au parcours du fichier unique. Leur présence ne constitue pas une preuve de qualification native Windows réussie : consulter l’exécution Actions du commit concerné. Les quatre XML de régression amont restent distincts des nouveaux cas synthétiques. Aucun jeu de 3 GiB n’est régénéré.
 
 Les écarts restants et les preuves à obtenir sont suivis dans [l’inventaire de travail](ECARTS-TLE.md).
+
+
+Complément de reprise : transparence ARGB conservée jusqu’au rendu, contraste automatique sur le fond composé, persistance dans les règles et vues ; export du contrat `.tle_sess` depuis tous les onglets avec vérification des sources et des numéros de signets. Les tests de pixels et le retour export/import sont intégrés au parcours du fichier unique. L’ouverture native dans TLE reste à qualifier.
+
+Le lot `ff8d241` a terminé sa qualification Windows avec succès : [exécution 41323179854](https://github.com/23R0534ZXT/fireblade/actions/runs/41323179854). Ce résultat concerne les priorités d’apparence, seuils mixtes, raccourcis et regroupements ; il ne qualifie pas les changements ultérieurs tant que leur propre workflow n’a pas terminé.

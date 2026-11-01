@@ -163,8 +163,8 @@ def test_extended_acceptance_runs_real_desktop_paths(qt_application,window,tmp_p
         operation()
         completed.append(name)
     check_features(window,tmp_path,lambda:settle(qt_application,window),check,expect,tmp_path)
-    assert len(completed)==12
-    assert {'mixed_icon_threshold_units_and_pinned_rendering','high_priority_layout_and_selection_rendering'} <= set(completed)
+    assert len(completed)==13
+    assert {'mixed_icon_threshold_units_and_pinned_rendering','high_priority_layout_and_selection_rendering','argb_layout_pixels_light_dark_and_selection'} <= set(completed)
     assert (tmp_path/'extended-pinned.png').is_file()
     assert (tmp_path/'extended-dark.png').is_file()
 
@@ -499,3 +499,22 @@ def test_ordinary_open_detects_real_installed_reader(qt_application,tmp_path,mon
         assert source.read_bytes()==before
     finally:
         settle(qt_application,w);w.close()
+
+
+def test_export_tle_session_from_multiple_tabs_uses_sources_and_all_tags(qt_application,window,tmp_path):
+    import json
+    from fireblade.core.tle_compat import read_tle_session
+    first=window.case
+    first.bookmark_many([1],'retained note','replace')
+    first_source=Path(first.info['path'])
+    second_source=tmp_path/'échange.csv';second_source.write_text('Value\none\ntwo\n')
+    second=Case(tmp_path/'échange.timeline');second.import_csv(second_source);second.bookmark_many([2],'second note','replace')
+    window.detach();window.attach(second);settle(qt_application,window)
+    window.view.filters=[Filter(0,'eq','one')];window.apply();settle(qt_application,window)
+    target=tmp_path/'session.tle_sess';window.export_tle_session(target);settle(qt_application,window)
+    assert read_tle_session(target)==[(first_source,[1]),(second_source,[2])]
+    assert json.loads(target.read_text())['SessionFiles'][str(second_source)]==[2]
+    assert window.case is second and second.bookmarks()=={2:'second note'}
+    assert window.view.filters==[Filter(0,'eq','one')]
+    assert window.workspace_search is None and not window.busy
+    assert 'notes, vues et filtres' in window.statusBar().currentMessage()

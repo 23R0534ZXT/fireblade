@@ -123,3 +123,47 @@ def check_priority_layout(window,directory,settle,expect):
     window.set_view(View());settle()
     window.set_view(saved);settle()
     expect(window.model.index(0,column).data(Qt.BackgroundRole).name()=='#aabbcc','Restored view lost appearance priority')
+
+
+def check_alpha_layout(window,directory,settle,expect,captures=None):
+    """Compare actual ARGB pixels with raster compositing on both themes."""
+    from PySide6.QtGui import QPainter,QPalette
+    from PySide6.QtWidgets import QStyle,QStyleOptionViewItem
+    path=Path(directory)/'alpha.layout'
+    path.write_text('''<XtraSerializer><property name="Columns"><property name="Item1"><property name="FieldName">ID</property><property name="Fixed">Right</property></property></property>
+      <property name="Appearance"><property name="Row"><property name="BackColor">128, 255, 0, 0</property></property><property name="HeaderPanel"><property name="BackColor">128, 0, 255, 0</property></property><property name="SelectedRow"><property name="BackColor">128, 0, 255, 0</property></property></property>
+      <property name="FormatRules"><property name="Item1"><property name="RuleType">#FormatConditionRuleExpression</property><property name="Rule"><property name="Expression">[ID]=1</property><property name="Appearance"><property name="BackColor">128, 0, 0, 255</property></property></property></property></property></XtraSerializer>''',encoding='utf-8')
+    layout=read_tle_layout(path,window.case.headers)
+    expect(not layout.warnings,'ARGB colors are still flattened during import')
+    original_theme=window.preferences.theme
+    def composite(color,base):
+        image=QImage(1,1,QImage.Format_ARGB32);image.fill(base)
+        painter=QPainter(image);painter.fillRect(image.rect(),color);painter.end()
+        return image.pixelColor(0,0)
+    try:
+        for theme in ('light','dark'):
+            window.preferences.theme=theme;window.apply_preferences()
+            window.set_view(layout.view);settle()
+            window.tree.clearSelection();window.tree.clearFocus()
+            from PySide6.QtWidgets import QApplication
+            QApplication.processEvents()
+            column=window.case.headers.index('ID')+1
+            for row in range(window.model.rowCount()):
+                index=window.model.index(row,column);raw=index.data(Qt.BackgroundRole)
+                expect(raw.alpha()==128,'ARGB alpha was lost in the model')
+                tree=window.tree.right_frozen;rect=tree.visualRect(index);image=tree.viewport().grab().toImage();ratio=image.devicePixelRatio()
+                actual=image.pixelColor(round((rect.right()-6)*ratio),round((rect.top()+2)*ratio))
+                base=tree.palette().color(QPalette.AlternateBase if row%2 else QPalette.Base)
+                expect(actual==composite(raw,base),'Pinned-cell ARGB pixels do not match the current theme')
+            image=QImage(220,32,QImage.Format_ARGB32);base=window.palette().color(QPalette.Base);image.fill(base)
+            option=QStyleOptionViewItem();option.rect=image.rect();option.state|=QStyle.State_Selected
+            painter=QPainter(image)
+            try:window.tree.itemDelegate().paint(painter,option,window.model.index(0,column))
+            finally:painter.end()
+            expect(image.pixelColor(180,2)==composite(QColor('#8000ff00'),base),'Selected-cell ARGB was flattened')
+            if captures:window.grab().save(str(Path(captures)/f'layout-alpha-{theme}.png'))
+        saved=View.from_json(window.view.to_json())
+        expect(saved.layout_styles['row']['background']=='#80ff0000','ARGB was lost in view serialization')
+    finally:
+        window.preferences.theme=original_theme;window.apply_preferences()
+        window.set_view(View());settle()

@@ -130,5 +130,5 @@ def validate_format_rules(rules, column, numeric_expression, limit=32):
             column(rule.target)
         if any(type(v) is not bool for v in (rule.enabled, rule.bold, rule.italic, rule.underline, rule.strikeout,rule.stop_if_true,rule.use_background,rule.use_foreground,rule.use_font,rule.show_values,rule.zero_based,rule.draw_axis,rule.stat_percent,rule.stat_ignore_case,rule.stat_include_null,rule.all_source_rows)):
             raise ValueError("Activation et gras doivent être des booléens")
-        if not all(isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color) for color in (rule.background, rule.foreground,rule.middle_color,rule.negative_color,rule.axis_color,*rule.icon_colors)):
-            raise ValueError("Couleur invalide ; utilisez #RRGGBB")
+        if not all(isinstance(color, str) and re.fullmatch(r"#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})", color) for color in (rule.background, rule.foreground,rule.middle_color,rule.negative_color,rule.axis_color,*rule.icon_colors)):
+            raise ValueError("Couleur invalide ; utilisez #RRGGBB ou #AARRGGBB")

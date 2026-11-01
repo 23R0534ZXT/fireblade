@@ -57,6 +57,11 @@ def check_features(window, directory, settle, check, expect, captures=None):
         check_priority_layout(window,directory,settle,expect)
     check('high_priority_layout_and_selection_rendering',priority_appearance)
 
+    def alpha_appearance():
+        from fireblade.validation.layout_appearance import check_alpha_layout
+        check_alpha_layout(window,directory,settle,expect,captures)
+    check('argb_layout_pixels_light_dark_and_selection',alpha_appearance)
+
     def periods():
         view=View(groups=[0],group_intervals={'0':'month'},group_order='value',group_descending=False)
         window.set_view(view);settle()
@@ -173,6 +178,14 @@ def check_features(window, directory, settle, check, expect, captures=None):
         converted=Case(snapshots[0].path,settings=window.settings)
         try:expect(converted.bookmarks()=={2:''},'Imported TLE tags are incorrect')
         finally:converted.close()
+        from fireblade.core.tle_session_export import TleSessionExport
+        exported=directory/'exported-session.tle_sess'
+        expect(TleSessionExport(snapshots,window.settings).run(exported)==1,'TLE session export did not include the source')
+        expect(read_tle_session(exported)==[(source.resolve(),[2])],'Exported TLE source/tag contract changed')
+        reimported=TleSessionImport(read_tle_session(exported),directory/'roundtrip',window.settings).run()
+        reopened=Case(reimported[0].path,settings=window.settings,read_only=True)
+        try:expect(reopened.bookmarks()=={2:''},'TLE export/import lost source tag identity')
+        finally:reopened.close()
     check('timeline_explorer_session_sources_and_tags',legacy_session)
 
     def preferences():

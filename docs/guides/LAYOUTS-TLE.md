@@ -62,7 +62,7 @@ La bibliothèque associée remplace les définitions communes de même nom. Une 
 }
 ```
 
-Les clés de présentation supplémentaires sont `background2`, `gradient` (`Horizontal`, `Vertical`, `ForwardDiagonal`, `BackwardDiagonal`), `italic`, `underline`, `strikeout`, `font_family`, `font_size`, `horizontal` (`Near`, `Center`, `Far`, `Default`), `vertical` (`Top`, `Center`, `Bottom`, `Default`), `hotkey`, `image` (base64 raster) et `image_align`. Les couleurs utilisent `#RRGGBB`. Une bibliothèque est limitée à 1 Mio et 128 noms ; les propriétés inconnues sont refusées.
+Les clés de présentation supplémentaires sont `background2`, `gradient` (`Horizontal`, `Vertical`, `ForwardDiagonal`, `BackwardDiagonal`), `italic`, `underline`, `strikeout`, `font_family`, `font_size`, `horizontal` (`Near`, `Center`, `Far`, `Default`), `vertical` (`Top`, `Center`, `Bottom`, `Default`), `hotkey`, `image` (base64 raster) et `image_align`. Les couleurs utilisent `#RRGGBB` ou `#AARRGGBB` pour conserver une transparence. Une bibliothèque est limitée à 1 Mio et 128 noms ; les propriétés inconnues sont refusées.
 
 Après import et sauvegarde d’une vue Fireblade, les propriétés résolues sont intégrées au fichier : la bibliothèque n’est plus nécessaire pour rouvrir cette vue. Pour réimporter le XML d’origine avec son nom personnalisé, conservez la bibliothèque. Un style sans définition produit une erreur explicite.
 
@@ -86,3 +86,10 @@ Les tests vérifient les conflits ligne/colonne/règle/sélection, les pixels de
 Une règle peut combiner des seuils numériques, en pourcentage de la plage et en percentile. Chaque seuil et le plancher gardent leur propre type. Le menu des règles propose un type commun et une dérogation pour chaque seuil. L’import conserve l’ordre de priorité des icônes XML ; il ne trie pas ensemble des nombres exprimés dans des unités différentes.
 
 Les pourcentages et percentiles sont calculés sur l’ensemble des résultats filtrés, ou sur toute la source lorsque cette option est activée. Si des seuils de types différents se croisent après filtrage, l’icône de priorité la plus élevée dont le seuil est satisfait est retenue. Les comparaisons `>`/`>=` et les types du plancher restent conservés. Les anciens fichiers avec un type commun restent lisibles.
+
+
+## Transparence des couleurs
+
+Les couleurs XML `A, R, G, B` et les couleurs `#AARRGGBB` conservent leur alpha dans les cellules, règles, dégradés, bordures, en-têtes et panneaux. Elles sont composées au dessin sur le fond effectif, y compris les lignes alternées du thème sombre. Les échelles de couleurs interpolent aussi l’alpha. Le choix de couleur des règles propose un canal alpha et l’édition/sauvegarde conserve les valeurs importées.
+
+Le texte automatique tient compte du fond composé lorsqu’aucune couleur de texte explicite n’est imposée. Les tests vérifient les pixels des thèmes clair/sombre, les colonnes épinglées, la sélection et les panneaux ; un parcours équivalent est ajouté à la qualification du fichier unique. Cela ne constitue pas une comparaison visuelle exhaustive avec chaque skin TLE.

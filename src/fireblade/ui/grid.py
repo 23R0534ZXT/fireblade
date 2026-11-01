@@ -20,8 +20,9 @@ class GridDelegate(QStyledItemDelegate):
         selected=bool(option.state & QStyle.State_Selected)
         from fireblade.ui.layout_styles import merge_styles
         states=self.state_layers(index,option)
+        layers=self.appearance_layers(index,option)
         appearance=merge_styles(*states)
-        appearance.update(merge_styles(*self.appearance_layers(index,option),priority_only=True))
+        appearance.update(merge_styles(*layers,priority_only=True))
         if appearance:
             from fireblade.ui.layout_styles import role_value,font_for
             background=role_value(appearance,Qt.BackgroundRole)
@@ -35,6 +36,16 @@ class GridDelegate(QStyledItemDelegate):
                 if background is None:option.backgroundBrush=option.palette.brush(QPalette.Highlight)
                 if foreground is None:option.palette.setBrush(QPalette.Text,option.palette.brush(QPalette.HighlightedText))
                 option.state &= ~QStyle.State_Selected
+        # Transparent fills are drawn over the actual alternating row base.
+        # Compute automatic text contrast there, rather than against white or
+        # the RGB channels of the translucent color alone.
+        if not option.state & QStyle.State_Selected and 'foreground' not in merge_styles(*layers):
+            from PySide6.QtWidgets import QStyleOptionViewItem
+            brush=option.backgroundBrush
+            if brush.style()!=Qt.NoBrush:
+                background=brush.gradient().stops()[0][1] if brush.gradient() else brush.color()
+                base=option.palette.color(QPalette.AlternateBase if option.features & QStyleOptionViewItem.Alternate else QPalette.Base)
+                option.palette.setColor(QPalette.Text,contrast_color(background,base))
 
     def state_layers(self,index,option):
         styles=index.model().view.layout_styles

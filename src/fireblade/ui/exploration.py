@@ -472,6 +472,25 @@ class ExplorationMixin:
         dialog.exec()
         dialog.deleteLater()
 
+    def export_tle_session(self,path=None):
+        if not self.documents or not self.case or not self.can_open_file():
+            return
+        if not path:
+            path,_=QFileDialog.getSaveFileName(self,'Exporter une session TLE · sources et signets uniquement','','Session Timeline Explorer (*.tle_sess)')
+        if not path:return
+        self.remember_active()
+        from fireblade.core.tle_session_export import TleSessionExport
+        task=TleSessionExport(self.documents,self.settings,self.case)
+        self.workspace_search=task
+        def clear():self.workspace_search=None
+        def done(count):
+            clear()
+            self.statusBar().showMessage(f'Session TLE exportée : {count} sources et leurs signets ; notes, vues et filtres restent dans les analyses Fireblade')
+        def failed(message):
+            clear();self.error(message)
+        self.statusBar().showMessage('Export de session TLE · vérification des sources et des signets…')
+        self.run(lambda:task.run(path),done,exclusive=True,on_cancel=clear,on_error=failed)
+
     def import_tle_session(self, path=None):
         if not self.can_open_file():
             return

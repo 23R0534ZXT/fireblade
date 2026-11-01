@@ -91,7 +91,7 @@ def import_plugin(case,source,plugin,type_name,progress=lambda _:None):
         if digest(source)!=original or stat.st_size!=source.stat().st_size:
             raise ValueError('La source a changé pendant son traitement par le plugin')
         provenance=dict(path=str(source),size=stat.st_size,sha256=original,format='tle-plugin',
-            plugin=dict(path=str(plugin),sha256=plugin_hash,type=type_name,columns=result['columns'],transformed=True))
+            plugin=dict(path=str(plugin),sha256=plugin_hash,type=type_name,columns=result['columns'],transformed=True,converted_sha256=digest(target)))
         info=case._import_table(target,',','utf-8',progress,provenance=provenance)
         if info['rows']!=result['rows']:raise ValueError('Comptage du plugin incohérent')
         from fireblade.core.plugin_registry import approve

@@ -1,0 +1,1894 @@
+{
+  "status": "passed",
+  "revision": "7199c81ba45a97be74b4e05da43cbaabecccf5ca",
+  "archive_sha256": "4ef5612909efd622175e0d63e72018918a4712bf25ec11890646ff47b0676aa1",
+  "coverage": "upstream synthetic typed inputs and supplied regression files; not all real exports",
+  "cases": [
+    {
+      "reader": "TLEFileEZTools.ActivityOperation",
+      "fixture": "TLEFileEZTools.ActivityOperation_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "1b6fed50d4e1c6cc0559796bca758c0516826fdd7c2fc0287901188146bebf64"
+    },
+    {
+      "reader": "TLEFileEZTools.ActivityOperation",
+      "fixture": "TLEFileEZTools.ActivityOperation_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "b848faf9f462cfc0c948c84de4e73bddf91da6ac1907e8fce1e3022070456357"
+    },
+    {
+      "reader": "TLEFileEZTools.ActivityPackage",
+      "fixture": "TLEFileEZTools.ActivityPackage_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "34e3ff0160b05cd6dedfe30c4ea9d0a6313e02cefee3a88a40523550399309be"
+    },
+    {
+      "reader": "TLEFileEZTools.Activity",
+      "fixture": "TLEFileEZTools.Activity_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 25,
+      "source_sha256": "94b5b7ab8c2aa64cebc30509b3052cceaa1f3e7ccd32d61c67468f036ddb8024"
+    },
+    {
+      "reader": "TLEFileEZTools.Activity",
+      "fixture": "TLEFileEZTools.Activity_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 25,
+      "source_sha256": "e1a821f84bc51caf288487ffa4eb6f08a41faefed68b8e549c5e52afc328de77"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserDeviceCensus",
+      "fixture": "TLEFileEZTools.AmcacheParserDeviceCensus_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "a16243ab32d90f87d3b1b3fc7f8dc0af251934a5dd7da33b3e585eb139a0e1dc"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserDeviceContainer",
+      "fixture": "TLEFileEZTools.AmcacheParserDeviceContainer_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 18,
+      "source_sha256": "ed50d6c73def14a0c21533caca8caf3023b864e67c130e713518608ea2620419"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserDriverBinary",
+      "fixture": "TLEFileEZTools.AmcacheParserDriverBinary_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 21,
+      "source_sha256": "d0eda50efce2b6c522dd03122803860a321f045409f6a7448e868dbb4974c0fc"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserDriverPackage",
+      "fixture": "TLEFileEZTools.AmcacheParserDriverPackage_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 18,
+      "source_sha256": "7fe00f89124af4ddfc2e451e954b1b45c6c5f1871136d71f4c79e973c8e9aead"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserDriverPackage",
+      "fixture": "TLEFileEZTools.AmcacheParserDriverPackage_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 18,
+      "source_sha256": "e95cb56c6bcee587b939729914e491247f531382020b3a1a0ed0e37e99b8c6b2"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserFiles",
+      "fixture": "TLEFileEZTools.AmcacheParserFiles_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "e121df9f4259b45ad448d22e5a30ef1eb5e462403da54fcf2adf0ae167e8ff15"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserFiles",
+      "fixture": "TLEFileEZTools.AmcacheParserFiles_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "1ce65ef6c1edde2c0de1ad6c1d06390e15d8c206b9c3fca48d643d73104361b7"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryAcpiPhatHealthRecord",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryAcpiPhatHealthRecord_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "49c5dac92d571b1b2d2dc04f0cc5d4b2a23779d14f8700bf7ef7619fb8008586"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryAcpiPhatVersionElement",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryAcpiPhatVersionElement_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "86421306f47f724ed58ce72b927fda5334f05e8f3ea02c025f3f02c83e8a42ad"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryApplicationAppV",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryApplicationAppV_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "a775166aa70d7ff8906d3bc9eb3dabe126d2d93f09165e78e657af44c35a55fe"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryApplicationFramework",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryApplicationFramework_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "6d1d09e92267591a8c9a4a9325c0536afd437d5e1372d7734d144d62be55c5a9"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryDeviceInterface",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryDeviceInterface_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 24,
+      "source_sha256": "83d259c2bc496306a0ec322f245e338fec5374b433e9ece0d575b278ab4f6d8b"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryDeviceMediaClass",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryDeviceMediaClass_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "73732e00ee05511cbcdcecba2b001b9c016f781b1b3763e64a25f3d1b0b6420a"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryDevicePci",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryDevicePci_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "66f31879855d9602133702d3cf0440c2da6d9917da53ec8d1de15ad99f3e8a70"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryDeviceSensor",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryDeviceSensor_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "0d263b0a653b5d0201162dd747a75af32bc7486100e68eba405391ce516ffdf0"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryDeviceUsbHubClass",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryDeviceUsbHubClass_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "abdba8a8995f2c38bb1fd9968723ad1372dff66d03cd6b9c183234a6265d0bf8"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryInstallerApplicationFile",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryInstallerApplicationFile_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "ad4cec4b7a5aa4b8435d6ba0db677555bbf169134283c01ae9c8cbc276d167ae"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryInstallerApplication",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryInstallerApplication_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "453ce311e785d6c14e25a5c7931a62ba29d7531d06c44083957ce10319680084"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryInstaller",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryInstaller_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "0940e8506fe14197771e3cc60ee7fbe175cf3d613a707f8fe0f7582131f619e2"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryMiscellaneousMemorySlotArrayInfo",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryMiscellaneousMemorySlotArrayInfo_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 13,
+      "source_sha256": "8210efc2c5dd4fa73ecb6cd218315d133241e2260119bc2afd5902a27091d0a3"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryMiscellaneousUUPInfo",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryMiscellaneousUUPInfo_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "d5e5dbd708a38ee00b599a36fcf642044aa13c42b215a25c7ef9609e76cfbebb"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryMiscellaneousUser",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryMiscellaneousUser_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "de468a156f6ebf2bf6fc3f971989627420aedbb01d3ce875829c5c1d4466a672"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserInventoryMiscellaneous",
+      "fixture": "TLEFileEZTools.AmcacheParserInventoryMiscellaneous_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "9160871db53d0b9a429e336dd58c3166631a7690c0c89fdec77ed25d9c5ef4f3"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserMareBackupApps",
+      "fixture": "TLEFileEZTools.AmcacheParserMareBackupApps_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "5febc9b1ddab0fc826c58c1afe04a787367427ee6b45500cead6595c0dac81c8"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserMare",
+      "fixture": "TLEFileEZTools.AmcacheParserMare_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "5239205ee4571bdc145d0315784aad8aefc1a9cfe74db407e096ed44ea1207fa"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserMetadata",
+      "fixture": "TLEFileEZTools.AmcacheParserMetadata_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "086c9cfb987b4795ededcc4fa3eced12f4fc053e53f55a31511ad6c6296221ca"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserNewDevicePnP",
+      "fixture": "TLEFileEZTools.AmcacheParserNewDevicePnP_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 36,
+      "source_sha256": "b009afc1c7238b91f77b59ff2d791e2130f6b2fd389ebe240d96ca8ddfbdab38"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserNewDevicePnP",
+      "fixture": "TLEFileEZTools.AmcacheParserNewDevicePnP_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 36,
+      "source_sha256": "7671216e2090c9049adfb505b17f73eefaf3f1a5618e8035011d0f75ccad2122"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserNewFiles",
+      "fixture": "TLEFileEZTools.AmcacheParserNewFiles_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 27,
+      "source_sha256": "c5bd2fea7d11a1730ee930f991899d2acaa08bf198fb3a57b60431692a0995db"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserNewFiles",
+      "fixture": "TLEFileEZTools.AmcacheParserNewFiles_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 27,
+      "source_sha256": "520f48049bc0f2e90d2be3082befe0dc2dc42e45fd2082c066911b2f0abd8c0d"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserNewFiles",
+      "fixture": "TLEFileEZTools.AmcacheParserNewFiles_2.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 27,
+      "source_sha256": "375990564dd4b051af127940155d0b9d0e82dc98ffca6c3b1bbeb94b75d2d59b"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserNewProgram",
+      "fixture": "TLEFileEZTools.AmcacheParserNewProgram_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 30,
+      "source_sha256": "c82e2d5c8444039aefa92fc611c8e2d487edf050a4f8ed98e26351147291f6cc"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserNewProgram",
+      "fixture": "TLEFileEZTools.AmcacheParserNewProgram_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 30,
+      "source_sha256": "da745f1de2c6f0e6f242891e4bc49437c1bea6181e99dbb42de751b67d9f545f"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserNewShortcut",
+      "fixture": "TLEFileEZTools.AmcacheParserNewShortcut_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "ed114c3463bf9be1369a29dcbb924eb203eef03d69e7fa0c04e08aaaefd047aa"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserNewShortcut",
+      "fixture": "TLEFileEZTools.AmcacheParserNewShortcut_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "1dc12ad785331a3dd04191e32b4e24f8c656d2aee2b55f3d32fbd58cdf37bd2b"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserPrograms",
+      "fixture": "TLEFileEZTools.AmcacheParserPrograms_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "eb813c8bcb5b9468d4280faf4be10b2bca51cbbf2e97530624ba92e795435319"
+    },
+    {
+      "reader": "TLEFileEZTools.AmcacheParserPrograms",
+      "fixture": "TLEFileEZTools.AmcacheParserPrograms_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "a0082c7cf969520e9378e4a72a49668dea54704eab9d9c6bce3b58289a623d53"
+    },
+    {
+      "reader": "TLEFileEZTools.AppCompatCache",
+      "fixture": "TLEFileEZTools.AppCompatCache_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "bdab7643e6ce215a19c1ed078239b7e64592da0b969b449dda3a236ca5ba476a"
+    },
+    {
+      "reader": "TLEFileEZTools.AppCompatCache",
+      "fixture": "TLEFileEZTools.AppCompatCache_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "6e472792537841fc6247833c476a29116dfc122bdb0b7f4c15c6489035248240"
+    },
+    {
+      "reader": "TLEFileEZTools.AppResourceUseInfo",
+      "fixture": "TLEFileEZTools.AppResourceUseInfo_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "81dcd66512894a6dbfdbeb2040d41c80977a7ebdaf721624394beed2bb6d68a0"
+    },
+    {
+      "reader": "TLEFileEZTools.Boot",
+      "fixture": "TLEFileEZTools.Boot_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 18,
+      "source_sha256": "6368ad2c9193a4c4216006097d8cffab8b09a5d1a7058ff907647dcc83b667a7"
+    },
+    {
+      "reader": "TLEFileEZTools.EnergyUsage",
+      "fixture": "TLEFileEZTools.EnergyUsage_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 27,
+      "source_sha256": "35ed7a8f1142e587ae7057ee4a63a975bf8e7e3e5a211e7a64871c2566358192"
+    },
+    {
+      "reader": "TLEFileEZTools.EvtxECmd",
+      "fixture": "TLEFileEZTools.EvtxECmd_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 27,
+      "source_sha256": "635967f948088beac1638e8cb00322260544570cc4d624adb1fa95a386894354"
+    },
+    {
+      "reader": "TLEFileEZTools.EvtxECmd",
+      "fixture": "TLEFileEZTools.EvtxECmd_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 27,
+      "source_sha256": "cc3479a57a19c318cd0f5feae35a1d7ca4b8a5f70b2bb7bcb4a88373a2fba7ea"
+    },
+    {
+      "reader": "TLEFileEZTools.I30",
+      "fixture": "TLEFileEZTools.I30_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 17,
+      "source_sha256": "a92d97373c6571beebfd57f4197d6d3eab32c5e7d2c9227b1cdf518294c5b538"
+    },
+    {
+      "reader": "TLEFileEZTools.IisGeolocate",
+      "fixture": "TLEFileEZTools.IisGeolocate_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "47134cc39dd214de927757f7ba024c0f38c9d55f3c2b01221e5c499dd1d8470c"
+    },
+    {
+      "reader": "TLEFileEZTools.IisGeolocate",
+      "fixture": "TLEFileEZTools.IisGeolocate_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "7690c9fd930081852dbad6385987ffaf5612274b0af4b1e5cb2c1756937d1a9b"
+    },
+    {
+      "reader": "TLEFileEZTools.IisGeolocate",
+      "fixture": "TLEFileEZTools.IisGeolocate_2.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "4fcc4483a86c73b2b3f7b8a1e304f141e4bee1f0e6e95ba43ea785d37b35f993"
+    },
+    {
+      "reader": "TLEFileEZTools.IisGeolocate",
+      "fixture": "TLEFileEZTools.IisGeolocate_3.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "64952b4ab3db05328e15bba8650d877ac007ca7069621e3c4d13b910f708ef5d"
+    },
+    {
+      "reader": "TLEFileEZTools.IisGeolocate",
+      "fixture": "TLEFileEZTools.IisGeolocate_4.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "9606ac4c68634618f43acef10dbfdee1f080abc17d37d59dfa71a4c374ad3450"
+    },
+    {
+      "reader": "TLEFileEZTools.IisGeolocate",
+      "fixture": "TLEFileEZTools.IisGeolocate_5.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "22ea326c04ca3847e8c527ea053d5dba8727d110934fc0aa61bc6bdb7060d97c"
+    },
+    {
+      "reader": "TLEFileEZTools.IisGeolocate",
+      "fixture": "TLEFileEZTools.IisGeolocate_6.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 26,
+      "source_sha256": "78351af533332779e08a3068e9bfbc2607cbbec1212c0ebb0d835f449dadffb8"
+    },
+    {
+      "reader": "TLEFileEZTools.JLECmdAuto",
+      "fixture": "TLEFileEZTools.JLECmdAuto_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 46,
+      "source_sha256": "cf62eeeeeea3ba7a807f0b2a27ff37b216413e53cdb97d8c133b492021ca60c6"
+    },
+    {
+      "reader": "TLEFileEZTools.JLECmdAuto",
+      "fixture": "TLEFileEZTools.JLECmdAuto_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 46,
+      "source_sha256": "4de7ad3ca2167c40231aeac7fe15a1741fbf6e7196f124aeee0963df6895641e"
+    },
+    {
+      "reader": "TLEFileEZTools.JLECmdCustom",
+      "fixture": "TLEFileEZTools.JLECmdCustom_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 30,
+      "source_sha256": "49f8d06a03b9eea0ec6c103e45e587557e012f2f38bc36bb2a190de9252d3262"
+    },
+    {
+      "reader": "TLEFileEZTools.JLECmdCustom",
+      "fixture": "TLEFileEZTools.JLECmdCustom_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 30,
+      "source_sha256": "d41382b027198f7ce9a035f21ad8a5fd5d5571ecd0a3aaee4d757c5b6f61775d"
+    },
+    {
+      "reader": "TLEFileEZTools.J",
+      "fixture": "TLEFileEZTools.J_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "8e5c572465a8e57e149cb7dcb07675a502bd3b3e225a0c690292e9b8fc7dedf3"
+    },
+    {
+      "reader": "TLEFileEZTools.LECmd",
+      "fixture": "TLEFileEZTools.LECmd_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 37,
+      "source_sha256": "bd41d1714efc38ff737b8747fa44ad41cadcff0a426d01c0c0fc7f4c012ce7e5"
+    },
+    {
+      "reader": "TLEFileEZTools.LECmd",
+      "fixture": "TLEFileEZTools.LECmd_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 37,
+      "source_sha256": "5d35edb2c4d469064c98002234802407d0bfe8501820eec729dfd3201a6f8423"
+    },
+    {
+      "reader": "TLEFileEZTools.LogFile",
+      "fixture": "TLEFileEZTools.LogFile_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 40,
+      "source_sha256": "a350bfeb51652679de213d8070aeaf389a0c76a8d38765607815c33fcd6aec94"
+    },
+    {
+      "reader": "TLEFileEZTools.MFTFileListing",
+      "fixture": "TLEFileEZTools.MFTFileListing_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "f60fec561416ba00dff5478aafd3d743d2f1fd5056476147a4f815ada2650e6e"
+    },
+    {
+      "reader": "TLEFileEZTools.MFTSourceFileResident",
+      "fixture": "TLEFileEZTools.MFTSourceFileResident_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 39,
+      "source_sha256": "6d41ca4999358bd8b1e885d8a43c776ffcbfe49514bd9cea43de027bf4c34bde"
+    },
+    {
+      "reader": "TLEFileEZTools.MFTSourceFileResident",
+      "fixture": "TLEFileEZTools.MFTSourceFileResident_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 39,
+      "source_sha256": "ff296a38ef7ba34475d91453ff250b2d2938d7bf17cdadb5e2aaaf8678f7a5de"
+    },
+    {
+      "reader": "TLEFileEZTools.MFTSourceFile",
+      "fixture": "TLEFileEZTools.MFTSourceFile_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 36,
+      "source_sha256": "0a2c600914bb3081c4c7b1485fff1a5411a4e627c34183d8068f53bfa1f2cc71"
+    },
+    {
+      "reader": "TLEFileEZTools.MFTSourceFile",
+      "fixture": "TLEFileEZTools.MFTSourceFile_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 36,
+      "source_sha256": "fb1adb02fc0b272bded1ebea29ed28cc49ae0b13a8f5eb214054b2330651fec5"
+    },
+    {
+      "reader": "TLEFileEZTools.MFT",
+      "fixture": "TLEFileEZTools.MFT_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 34,
+      "source_sha256": "a4df8cf003f79547628946d7ab7584a9765b13cb7b82e5fd39d969f4eab21273"
+    },
+    {
+      "reader": "TLEFileEZTools.NetworkConnection",
+      "fixture": "TLEFileEZTools.NetworkConnection_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 18,
+      "source_sha256": "e286fc36243d7dd437f2bcf137640fbbc0c4515d3efce966c33162799dfc647d"
+    },
+    {
+      "reader": "TLEFileEZTools.NetworkUsage",
+      "fixture": "TLEFileEZTools.NetworkUsage_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 18,
+      "source_sha256": "92c17a986c43db0e8ab68754abb344d4c8d04732bd1b8bea51f04286bd67117d"
+    },
+    {
+      "reader": "TLEFileEZTools.PECmdTimeline",
+      "fixture": "TLEFileEZTools.PECmdTimeline_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "d5e599136146f8afc1d9ab5201f1f8c6e0bd1c17a2bca3ba43246ce4d644959e"
+    },
+    {
+      "reader": "TLEFileEZTools.PECmdTimeline",
+      "fixture": "TLEFileEZTools.PECmdTimeline_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "8b767a160850fb14f09f7f7f3d0aaf47e27bc3014d91c6090a5e2935b29e0a43"
+    },
+    {
+      "reader": "TLEFileEZTools.PECmd",
+      "fixture": "TLEFileEZTools.PECmd_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 30,
+      "source_sha256": "c2d98fd1f272e91004efe3e3ea0c5d3d7a9717c2bd6e1cef0af8835940d6339a"
+    },
+    {
+      "reader": "TLEFileEZTools.PECmd",
+      "fixture": "TLEFileEZTools.PECmd_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 30,
+      "source_sha256": "c3f688c71550abdfb5854e69cd76eb532547c1c931ec72a3028ae2cc1a87ca3f"
+    },
+    {
+      "reader": "TLEFileEZTools.PushNotification",
+      "fixture": "TLEFileEZTools.PushNotification_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "7841fc25356c3526ebf775314eb685fb303351065e8c2b4972fd136c432f4bb8"
+    },
+    {
+      "reader": "TLEFileEZTools.RBCmd",
+      "fixture": "TLEFileEZTools.RBCmd_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "cb3dd9acd59eb84e4cd33b250e668a277cff9d8b96f410e4633dd16dbd6f92f0"
+    },
+    {
+      "reader": "TLEFileEZTools.RBCmd",
+      "fixture": "TLEFileEZTools.RBCmd_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "d97a403269d365c9abcfb685b3efb19ef61ff4f1454379d18a7cdc0242eff356"
+    },
+    {
+      "reader": "TLEFileEZTools.RecentFileCache",
+      "fixture": "TLEFileEZTools.RecentFileCache_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "9ce8b4b36acc432965c6953a11deb25ef680dfe662621fd046f1fc8574ac11b5"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdAdobeTrustManager",
+      "fixture": "TLEFileEZTools.RecmdAdobeTrustManager_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "15bcd033fec05d29451cfb327bf3cf6842c90010161005969e19bd6dcb3ebba2"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdAdobe",
+      "fixture": "TLEFileEZTools.RecmdAdobe_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 11,
+      "source_sha256": "731de4004ca80008e20de682ab9060bdddb8377f944bbfc857da74277157b120"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdAppCompatFlags2WinRAR",
+      "fixture": "TLEFileEZTools.RecmdAppCompatFlags2WinRAR_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "d516f995b1743b8fbd558b9d6550ccb953a1c16ee2fb738e9173a3d5591d75ad"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdAppCompatFlags",
+      "fixture": "TLEFileEZTools.RecmdAppCompatFlags_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "c666035011d56ac4f211a13437a04810a3613a22088e3ae655b3febb56d3def1"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdAppCompat",
+      "fixture": "TLEFileEZTools.RecmdAppCompat_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "9401e4b550b5f06d05301be7223bc7735a59a4b3b12ce20452d64f06bd7e552d"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdAppPaths",
+      "fixture": "TLEFileEZTools.RecmdAppPaths_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "e63d1a98a6fa54ea8c6d6a21557fbc4b1b2413e3235b4cb2336200a325f86870"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdApplicationSettingsContainer",
+      "fixture": "TLEFileEZTools.RecmdApplicationSettingsContainer_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "cb0c908c43c57dc38fd393a4b1fb58f935e6eb68f41b3a147bb7fbd006036120"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdAres",
+      "fixture": "TLEFileEZTools.RecmdAres_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "a3bf52451ad708c0b7883178de1b558450667f06b5e9dcb1e939fe04fb2f662e"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdBamDam",
+      "fixture": "TLEFileEZTools.RecmdBamDam_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "9a0394404fd6682ffe369e6fa91d97f4daab66b0979e01b6239414430c9edd0a"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdBatch",
+      "fixture": "TLEFileEZTools.RecmdBatch_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 16,
+      "source_sha256": "7bc09378e61faf48df19098afc6684e33efcf71b038102bf8bf2a42c7dc686ec"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdBluetoothBthPort",
+      "fixture": "TLEFileEZTools.RecmdBluetoothBthPort_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "293aa76d7275048b7fc679b525aee2b1f50903ff8699bf78f3830bbe39ce2679"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdCIDSizeMRU",
+      "fixture": "TLEFileEZTools.RecmdCIDSizeMRU_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "246a587c2e82c1472d034e75b92f8c2ebbc46592fd89953bb4efee21e16b64a9"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdDHCPNetworkHint",
+      "fixture": "TLEFileEZTools.RecmdDHCPNetworkHint_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "0c045d0367e006cd62b9e6d2288d44241b8f4d76d34fd46796ced4a2334a5f82"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdDeviceClasses",
+      "fixture": "TLEFileEZTools.RecmdDeviceClasses_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "e45b31b5c306870ff31bc0ba7af960be9c41f967f3071d2c47464f5afe16cea1"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdDsrmAdminLogonBehaviour",
+      "fixture": "TLEFileEZTools.RecmdDsrmAdminLogonBehaviour_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "a6c9ae5c0197d665238c77bc605ada81f0b74f43e0d881866fc0a050ef321002"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdETW",
+      "fixture": "TLEFileEZTools.RecmdETW_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "3985f1919d8a9d0aad0810759991dfa87b2afbd14bde3770b8056ca2d44492dc"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdFeatureUsage",
+      "fixture": "TLEFileEZTools.RecmdFeatureUsage_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "bc30b75305d082a00ff57c3337d7a58e619b8fe8554aa11333081e40869c39f1"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdFileExts",
+      "fixture": "TLEFileEZTools.RecmdFileExts_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "1f16394cd0bac15d82ceb02f545c29c6abe2d266cb2cbbd12ed508b8bec771b3"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdFirewallRules",
+      "fixture": "TLEFileEZTools.RecmdFirewallRules_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "cf96db3edd07de2177d882c4cad844a2ad2e0c815a88c83cb3361635e127f463"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdFirstFolder",
+      "fixture": "TLEFileEZTools.RecmdFirstFolder_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "7e8561f83f6e3290e8df5a9c84cf09c21d251b89f8989cc476981e5aa065d2a8"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdIconLayouts",
+      "fixture": "TLEFileEZTools.RecmdIconLayouts_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "875b65e9ae33901dc87686947bdd5f1049d3de5621792acbec6ba1a8271335f0"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdInventoryApplicationFile",
+      "fixture": "TLEFileEZTools.RecmdInventoryApplicationFile_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "af1e65fec716c1034d461d799588b10c0e256d29a5a28aab9449e4bf842a857d"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdInventoryApplicationShortcut",
+      "fixture": "TLEFileEZTools.RecmdInventoryApplicationShortcut_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "c1bb9960c29f72c8e9063a42f8a8519f268a126bc19a91ebc06e6d98caa2308e"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdInventoryApplication",
+      "fixture": "TLEFileEZTools.RecmdInventoryApplication_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "0bc2cf7b0efe6cc2926b0a36407ff7d4d9a42dc7fba7ea1698be62fd4e9bf709"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdInventoryDeviceContainer",
+      "fixture": "TLEFileEZTools.RecmdInventoryDeviceContainer_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "853930ea0395d31a49d55653ef331cb51ed43c263332f5ee2a44fa6e6cd13256"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdInventoryDevicePnp",
+      "fixture": "TLEFileEZTools.RecmdInventoryDevicePnp_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "50eefed46e7d84eda0633884e70aee26f3cd75537f1d4c8145244f89c6a5c1d1"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdInventoryDriverBinary",
+      "fixture": "TLEFileEZTools.RecmdInventoryDriverBinary_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "89a3172d3d66d633038881537c655c7484809a9e565369ad17b486dcdd0126be"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdJumplistData",
+      "fixture": "TLEFileEZTools.RecmdJumplistData_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "d9a6223ea384557c78faf8eb4d7c628b9594da6c8776a770776f1c69983a1ef9"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdKnownNetworks",
+      "fixture": "TLEFileEZTools.RecmdKnownNetworks_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "575e1e16ecb7e5c94a4bf3de99842d0611047065380891f64cef0b8796b5dca0"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdLastVisitedMRU",
+      "fixture": "TLEFileEZTools.RecmdLastVisitedMRU_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "b5748284164533b16ada8ebf4b32ceeccfa2c993e33dadf55038e82f883512dd"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdLastVisitedPidlMRU",
+      "fixture": "TLEFileEZTools.RecmdLastVisitedPidlMRU_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "d08ce978487da0d52d863a937fbbfb2d2765ecef9cfeeb34b76f10331ca9654d"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdMare",
+      "fixture": "TLEFileEZTools.RecmdMare_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "8c7239a3a6fa756549f1f84118a06832da6c15dadb16a29bae1ac582981b969d"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdMountedDevices",
+      "fixture": "TLEFileEZTools.RecmdMountedDevices_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "947a2221e2cb70092cd4fbd440dad0ac21977057fe74430c9aae3cc060b99e77"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdNetworkAdapters",
+      "fixture": "TLEFileEZTools.RecmdNetworkAdapters_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "1b776add93c0977a83073b2d6375f3bbb9e811fee0142bd1f10eb6fb76612db5"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdNetworkSettings",
+      "fixture": "TLEFileEZTools.RecmdNetworkSettings_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 13,
+      "source_sha256": "01829911a05b21582db8fccc03b956abe17057df6f2fd06884b0b702bd6a6943"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdNetworkSetup2",
+      "fixture": "TLEFileEZTools.RecmdNetworkSetup2_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "f2a2d9b7c12d9df12afa9e1b15b54dcb17dc752393522cc7b783896e8dedf1fc"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdOfficeMRU",
+      "fixture": "TLEFileEZTools.RecmdOfficeMRU_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "f0efb5d30c30674d5bdea0b7307ba02da577fb02bc3276d72943ccb216e997ac"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdOpenSaveMRU",
+      "fixture": "TLEFileEZTools.RecmdOpenSaveMRU_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "7d63405ff5c39643e0b942923c47d21068d2e6992256789799fac5d94ff4ad4a"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdOpenSavePidlMRU",
+      "fixture": "TLEFileEZTools.RecmdOpenSavePidlMRU_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "d06090a73a773864258cd89f775c29ad6d312ba2bc1a4bee0741c94d54ac72fc"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdProducts",
+      "fixture": "TLEFileEZTools.RecmdProducts_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "d6ea28bde5237341f8b4cf8e1c469cf3b3f009d48913822ce8970c8b75902e72"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdProfileList",
+      "fixture": "TLEFileEZTools.RecmdProfileList_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "cf8ffd234614ac7d50dfb1e4ede21177830019eebc408e5128dc9da6ef8f7bcc"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdRADAR",
+      "fixture": "TLEFileEZTools.RecmdRADAR_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "509c9718fb55d5774bfb990a8c6adabdb64389e089c437d43fc0a77903b9b183"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdRecentApps",
+      "fixture": "TLEFileEZTools.RecmdRecentApps_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "cb96a6b5296eba6fb9eff94cd6ef16f258fcb96fa99646701827043c069747af"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdRecentDocs",
+      "fixture": "TLEFileEZTools.RecmdRecentDocs_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "3b7a579cf0057cc3dd0c2fc4d376b64a927c948852abc0e16adad20d00fb7aef"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdRunMRU",
+      "fixture": "TLEFileEZTools.RecmdRunMRU_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "15148d1901eebe48f9856ee7f4b8db9c433d6bba19991bc5921fea50119e850a"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdSAMBuiltin",
+      "fixture": "TLEFileEZTools.RecmdSAMBuiltin_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "d4157884855ccfb2b6c2d429a0449c56ae6862a72f0e5e897b5a22c1656eb6f9"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdSCSI",
+      "fixture": "TLEFileEZTools.RecmdSCSI_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "a20fa8f77447c9bbbbaf9a139c68fafb8f8b82ec30eb51f9fb0177d6265c8dc5"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdSWD",
+      "fixture": "TLEFileEZTools.RecmdSWD_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "aa9a7d1ed95a3cbfd079d87bcfd00c3c733b4b5f06505722bc3f97e6be8e74ac"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdServices",
+      "fixture": "TLEFileEZTools.RecmdServices_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "d3c57c70be2d0a67774a2aadfabecddb0658c725b2620b34fba1f9fd83cc1b2f"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdSevenZipCopyHistory",
+      "fixture": "TLEFileEZTools.RecmdSevenZipCopyHistory_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "3612c1e171d415698d6d8528e1a2ed1e8068c285e769d5ab73e120abe5f5cb0e"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdSevenZipFolderHistory",
+      "fixture": "TLEFileEZTools.RecmdSevenZipFolderHistory_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "a1497f14ade3e8333f736a23ddcc3bbf5208c4e6a970088d4688ff46701b06d3"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdSevenZipPathHistory",
+      "fixture": "TLEFileEZTools.RecmdSevenZipPathHistory_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "b381446d5f3ffeabbe64a21cf000fbddf54dc03f4edf3782c8bb6eb57c6090eb"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdSevenZip",
+      "fixture": "TLEFileEZTools.RecmdSevenZip_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "995e77503010958784972b8141bdd7e81485c94bace05f43e63efc9398e13060"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdSyscacheObjectTable",
+      "fixture": "TLEFileEZTools.RecmdSyscacheObjectTable_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 13,
+      "source_sha256": "5f9e735017ab5bfb64da3fbd5104bb58988972b73716fcdc2397edd4b12f3ec8"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdTaskCache",
+      "fixture": "TLEFileEZTools.RecmdTaskCache_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 17,
+      "source_sha256": "89462b6bbcebd50f91e10fe55f847ba5fe5f7f993185fcf6da655ce630e9a74f"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdTaskFlowShellActivities",
+      "fixture": "TLEFileEZTools.RecmdTaskFlowShellActivities_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "74ad07a262521f3bbd770efe8067f3c7bef94127d308ecc025ea72667bf21c23"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdTaskband",
+      "fixture": "TLEFileEZTools.RecmdTaskband_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "4b4a7daa174f3a75aa7e39aea3bcfab04b2a8ab6615159ea733f1479e3f53b68"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdTerminalServerClient",
+      "fixture": "TLEFileEZTools.RecmdTerminalServerClient_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "9081df111ff3e58a455079bb04638ce3d874d89f40611bbe26e83f0d088b7698"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdTimeZoneInfo",
+      "fixture": "TLEFileEZTools.RecmdTimeZoneInfo_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "05ef1a1d09e5b18ff35545f81ccf07bf1a732cf958ae606b63ffafb83143e907"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdTrustedDocuments",
+      "fixture": "TLEFileEZTools.RecmdTrustedDocuments_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "d573181a9cc93be8e930ee6d03468873b5ac1bf75449ff97e21fcadcc24e0fd4"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdTypedURLs",
+      "fixture": "TLEFileEZTools.RecmdTypedURLs_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "653015af1654c0d6388becd234f2635937ff7bb575191962b33bfd267b7574ca"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdUSBSTOR",
+      "fixture": "TLEFileEZTools.RecmdUSBSTOR_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "2b3669158be40d9a3304ba7dc8df2274f000b2d143e08322543a67c4494bfcac"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdUSB",
+      "fixture": "TLEFileEZTools.RecmdUSB_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 15,
+      "source_sha256": "e37bed1ef6030c113f5100fae35ccb747f76eac8949f0bdba7fceaf7ee5ed1c7"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdUnInstall",
+      "fixture": "TLEFileEZTools.RecmdUnInstall_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "53246d7a0330d6c5924d9f5b81e567346fc3e87e1e8bbdf87738062b570733ff"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdUserAccounts",
+      "fixture": "TLEFileEZTools.RecmdUserAccounts_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 32,
+      "source_sha256": "315cd0d862ef316a8f8fe0a01207d8f0d442d5bfe0595aeccb5f84669b09d530"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdUserAssist",
+      "fixture": "TLEFileEZTools.RecmdUserAssist_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "aa2dd392969c9ed06ea683cb37a5565752936af501485caf01de0e32dbd50c6f"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdVolumeInfoCache",
+      "fixture": "TLEFileEZTools.RecmdVolumeInfoCache_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "22e80a4d9bd809c50cb6ce679c0cb99f40a03f288c867e925cd6705c713c9cc4"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdWindowsApp",
+      "fixture": "TLEFileEZTools.RecmdWindowsApp_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "50cad254d88d2b80df613c4086131dfa2d82519df66c3060c76e3c849a228a72"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdWindowsPortableDevices",
+      "fixture": "TLEFileEZTools.RecmdWindowsPortableDevices_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "cef427a6714f90e82dc08114863406e8874ef43d483dd9ed0471ac9f5b70514b"
+    },
+    {
+      "reader": "TLEFileEZTools.RecmdWordWheelQuery",
+      "fixture": "TLEFileEZTools.RecmdWordWheelQuery_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "085dabe38d4e3ca444f9b853df0ba38c137dcf52a99d95520369c320990d065e"
+    },
+    {
+      "reader": "TLEFileEZTools.SBECmd",
+      "fixture": "TLEFileEZTools.SBECmd_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 20,
+      "source_sha256": "a62d252595f637d69ffb2d6d19b629a0c0da103a70e9877060a549f70c2a8e75"
+    },
+    {
+      "reader": "TLEFileEZTools.Sds",
+      "fixture": "TLEFileEZTools.Sds_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "29d4f5cbb623c2fda68232113c7cd70df70544b65aa100d17f8ea5624a794770"
+    },
+    {
+      "reader": "TLEFileEZTools.Sds",
+      "fixture": "TLEFileEZTools.Sds_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "d9c706c9a1ce92b5cf13c2f598dae3692d3383e47a3307fa4d61bc471efa9df9"
+    },
+    {
+      "reader": "TLEFileEZTools.SqleActivitiesCache",
+      "fixture": "TLEFileEZTools.SqleActivitiesCache_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 16,
+      "source_sha256": "a5fcf5802e6559dac938f40c5a1c17306d7ffd93d094a529476941372ac4d188"
+    },
+    {
+      "reader": "TLEFileEZTools.SqleActivityOperation",
+      "fixture": "TLEFileEZTools.SqleActivityOperation_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 11,
+      "source_sha256": "665055efee93f5fa16f9e7031d0048775a4f21bded75fb72711f1e8a4feac0bb"
+    },
+    {
+      "reader": "TLEFileEZTools.SqleActivityPackageId",
+      "fixture": "TLEFileEZTools.SqleActivityPackageId_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "a3a0b750e51c46667bac6a41e8dafe437218f941af4a6d1b79c1915c4e919d57"
+    },
+    {
+      "reader": "TLEFileEZTools.SrumNetworkBytes",
+      "fixture": "TLEFileEZTools.SrumNetworkBytes_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "47678b46e5059f14b3dfe02ded46bc22cb3f0354bf3992a35b6a7ad8d1d9a60d"
+    },
+    {
+      "reader": "TLEFileEZTools.SrumProcessorTime",
+      "fixture": "TLEFileEZTools.SrumProcessorTime_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "1eb17640b26cc490d0232caf5cf569f743ba34f69d2f1f5524b5772ecec74b34"
+    },
+    {
+      "reader": "TLEFileEZTools.SrumSizeInBytes",
+      "fixture": "TLEFileEZTools.SrumSizeInBytes_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "67ebc3298da3b964b1713c050e9c2e6d7d7a0e6e1d1733db24c6c21d0298334a"
+    },
+    {
+      "reader": "TLEFileEZTools.SrumTotalUsed",
+      "fixture": "TLEFileEZTools.SrumTotalUsed_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 13,
+      "source_sha256": "1b39c3328e96e0d466c7ccaee552145a5661a13602266b921c2616472a9ff64e"
+    },
+    {
+      "reader": "TLEFileEZTools.SumChainedDb",
+      "fixture": "TLEFileEZTools.SumChainedDb_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 3,
+      "source_sha256": "4b63a4dbf9a21d662166e25d848c5be9ffa8fae667bebcbdf8e3fb3f3bb9fca8"
+    },
+    {
+      "reader": "TLEFileEZTools.SumClientDetailed",
+      "fixture": "TLEFileEZTools.SumClientDetailed_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "4f5247bed96e489ee1d70753aa2b777db24221ec7778b6b3ed23c0b9dc721108"
+    },
+    {
+      "reader": "TLEFileEZTools.SumClient",
+      "fixture": "TLEFileEZTools.SumClient_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 11,
+      "source_sha256": "00fb05206d8ef836debc5d12ed66b765d2d45f46e89f943b9d19b3f8f9126eed"
+    },
+    {
+      "reader": "TLEFileEZTools.SumDnsInfo",
+      "fixture": "TLEFileEZTools.SumDnsInfo_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 5,
+      "source_sha256": "da4123dc85d730bd6ad0bb3ac2bfae286c5e22f5d68d304a69b5842908b1af47"
+    },
+    {
+      "reader": "TLEFileEZTools.SumRoleAccess",
+      "fixture": "TLEFileEZTools.SumRoleAccess_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 6,
+      "source_sha256": "0a492ebdb85b6b95c759f87e6f9ac9fc22dea8f4b8f1ecf5888031d449e2a10a"
+    },
+    {
+      "reader": "TLEFileEZTools.SumRoleInfo",
+      "fixture": "TLEFileEZTools.SumRoleInfo_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "868dc447609cb5634cf35c6fdea07f8dcbb974bea41a0e074079bbe417affb71"
+    },
+    {
+      "reader": "TLEFileEZTools.SumSystemIdentInfo",
+      "fixture": "TLEFileEZTools.SumSystemIdentInfo_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 25,
+      "source_sha256": "50b76d3759632099c50841e94667d52ae0e3316ab6f1542138d2c1d5071730ff"
+    },
+    {
+      "reader": "TLEFileEZTools.SumSystemIdentInfo",
+      "fixture": "TLEFileEZTools.SumSystemIdentInfo_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 25,
+      "source_sha256": "f2d5dc814cddc91b99a24f892e105afcaaae8fc831c1a3318c90080f29da12c6"
+    },
+    {
+      "reader": "TLEFileEZTools.SumVmInfo",
+      "fixture": "TLEFileEZTools.SumVmInfo_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "c1e757b13295806f117dea6ff6e66d4a1dba3e1628d861441177330d53dcb16f"
+    },
+    {
+      "reader": "TLEFileEZTools.Unknown312",
+      "fixture": "TLEFileEZTools.Unknown312_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 21,
+      "source_sha256": "6b87925df56aeaecf114cc7194ca13d3c31c003583865b1cc64a67a7c6e83c3c"
+    },
+    {
+      "reader": "TLEFileEZTools.Unknown312",
+      "fixture": "TLEFileEZTools.Unknown312_1.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 21,
+      "source_sha256": "5099da27c44757132d99f61bb9b138e5e8f105887a3a5079b5a00c1007620e4e"
+    },
+    {
+      "reader": "TLEFileEZTools.UnknownD8F",
+      "fixture": "TLEFileEZTools.UnknownD8F_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 15,
+      "source_sha256": "4109a65a4691c9070b2c94d88810275b9ec39389f1e548d8aabf1433fbf171f0"
+    },
+    {
+      "reader": "TLEFileKAPE.KapeCopyLog",
+      "fixture": "TLEFileKAPE.KapeCopyLog_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 11,
+      "source_sha256": "7302e31ce4534879b7366ccd641004ec042b936a893ab1bcd26d0ac26b99bdf9"
+    },
+    {
+      "reader": "TLEFileKAPE.KapeSkipLog",
+      "fixture": "TLEFileKAPE.KapeSkipLog_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 4,
+      "source_sha256": "ba0ed5171a06fa29c0d0196a25bae39b46906e9f25f852b6b6ac9bf9596d2bf7"
+    },
+    {
+      "reader": "TLEFileKAPE.KapeTriage",
+      "fixture": "TLEFileKAPE.KapeTriage_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 15,
+      "source_sha256": "c4326568d24602bd263f2aaa9ace919f352b98db946c03e29c082f53b5643278"
+    },
+    {
+      "reader": "TLEFileMicrosoft.MsftMft",
+      "fixture": "TLEFileMicrosoft.MsftMft_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 41,
+      "source_sha256": "3d81e8eaeaccc9e02190ed56c701cfeb7cc087850e7fda03e7c79ee0ceefd202"
+    },
+    {
+      "reader": "TLEFileMisc.BrowsingHistoryView250AndOlder",
+      "fixture": "TLEFileMisc.BrowsingHistoryView250AndOlder_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "19dabbc763d20f578ce30feca519462eb594ef631bb9bb7ad401438bf8110915"
+    },
+    {
+      "reader": "TLEFileMisc.BrowsingHistoryView251AndNewer",
+      "fixture": "TLEFileMisc.BrowsingHistoryView251AndNewer_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 15,
+      "source_sha256": "414990565978d77fd10188a1d9291c999f9df0c340cdd4ff2590c996b5de47ab"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawAccountTampering",
+      "fixture": "TLEFileMisc.ChainsawAccountTampering_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "764511d007725b33bd6c5370c0fe9d51cb8a73feb8233150d953f5e2698d4a10"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawAntivirus",
+      "fixture": "TLEFileMisc.ChainsawAntivirus_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "c9031df2fc05b8ea1a563ffbcc89279ce43c275892175956a83a148c39bac7cf"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawAppLocker",
+      "fixture": "TLEFileMisc.ChainsawAppLocker_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "4b28e066d7b2a31f120ad3cce05775e05ca0d0ed5f8661693eaa7f36eaa38e71"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawCredentialAccess",
+      "fixture": "TLEFileMisc.ChainsawCredentialAccess_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "e49bc19e6ab99a09f7f240f9ee8ce0f3dbcd36d5ef2fc0e74b2cf2634f8483cd"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawDefenseEvasion",
+      "fixture": "TLEFileMisc.ChainsawDefenseEvasion_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "d08ee5cde3a3359e5b5e4a41ff9273f99ae430ba48a2dae428b2c6a20c5b768c"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawIndicatorRemoval",
+      "fixture": "TLEFileMisc.ChainsawIndicatorRemoval_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "3735cc8f5e647840e33a1732479978d59ddfc9dcdceea12729953e9c6bd26a4f"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawLateralMovementOld",
+      "fixture": "TLEFileMisc.ChainsawLateralMovementOld_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "d68d920da6df1fe6807923586a472d13652fdb2febd52e3b136c3bb570bdd322"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawLateralMovement",
+      "fixture": "TLEFileMisc.ChainsawLateralMovement_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 17,
+      "source_sha256": "e89f41a7b5d9940084cfb58a18b9d186ede3c1b1062654a318c1127066a277ae"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawLogTampering",
+      "fixture": "TLEFileMisc.ChainsawLogTampering_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "53914122a3200ae0deb4f27b216bd646cefbb61ac83e01c0642b8663a555b99b"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawLoginAttacks",
+      "fixture": "TLEFileMisc.ChainsawLoginAttacks_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 7,
+      "source_sha256": "765af4084d9b653e679a81caf3f867081b68c106d9e6bef8aa336387df9c79b0"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawMFTDataStreams",
+      "fixture": "TLEFileMisc.ChainsawMFTDataStreams_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 15,
+      "source_sha256": "f56293420b0f4ebb8ff28155228c530467b24be05d3cf2423a1687293c5a828d"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawMFT",
+      "fixture": "TLEFileMisc.ChainsawMFT_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 14,
+      "source_sha256": "25e6361f06c84986addc1231a87fe26a155633d618d72cff07725c7ba330d854"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawPersistence",
+      "fixture": "TLEFileMisc.ChainsawPersistence_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 15,
+      "source_sha256": "fa4e9de2bc196c0c0a09331841be942536091aaf4ca2525052cf0814bc2dc076"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawPowerShellEngineState",
+      "fixture": "TLEFileMisc.ChainsawPowerShellEngineState_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 16,
+      "source_sha256": "240e40036fa4022c25f8d2ccca6bfef3821d4ca0551f0f9f5b4e51f453fe4f7e"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawRDPAttacks",
+      "fixture": "TLEFileMisc.ChainsawRDPAttacks_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "3b92f5828210002f5eb7d75d93fbb780427efb278f0b6101b14d1999ae922e73"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawRDSPowerShellScript",
+      "fixture": "TLEFileMisc.ChainsawRDSPowerShellScript_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 8,
+      "source_sha256": "738d23b09c5c0973ae2cc44f9a70f6c5717ebe1d26cce08e99fde97f4f10afa7"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawRDSWebAccess",
+      "fixture": "TLEFileMisc.ChainsawRDSWebAccess_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 11,
+      "source_sha256": "5f9d5a8daa5389e865b6fb5c811a75796b256a38ed25341235b979ddccf17ea1"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawRasVPN",
+      "fixture": "TLEFileMisc.ChainsawRasVPN_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "3651cfab0e3c3611f3cfbca1ba49895dcf37d0a8664fb1eba396e0ac716772d2"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawServiceInstallation",
+      "fixture": "TLEFileMisc.ChainsawServiceInstallation_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "bb1fe6a0dfae169e34455286a78c5dea19e1b0548e7e137b8c82182209f8a8c1"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawServiceTampering",
+      "fixture": "TLEFileMisc.ChainsawServiceTampering_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 17,
+      "source_sha256": "06817fe8d908016205492547376de42dfc78a65c666cb25db7ba6fee5ddaaa88"
+    },
+    {
+      "reader": "TLEFileMisc.ChainsawSigma",
+      "fixture": "TLEFileMisc.ChainsawSigma_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "5965bde70653e625bcc37547ec1b0aa102a59d5eedbb8fc036227a82f4f84421"
+    },
+    {
+      "reader": "TLEFileMisc.CrowdStrikeEvent",
+      "fixture": "TLEFileMisc.CrowdStrikeEvent_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 15,
+      "source_sha256": "d47e744c78de999566de5ba119a8f28b3b157b6c63fe90b825a3c2bd4bbe3925"
+    },
+    {
+      "reader": "TLEFileMisc.EVTXETWResources",
+      "fixture": "TLEFileMisc.EVTXETWResources_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 15,
+      "source_sha256": "a4be3ec907648feb8dae7aa515e5081a49d0b2fe1185a3304e99d29b33147a65"
+    },
+    {
+      "reader": "TLEFileMisc.HayabusaMinimal",
+      "fixture": "TLEFileMisc.HayabusaMinimal_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 9,
+      "source_sha256": "52734bc1d5e7cbae7b012d8f7ce2667bcfa1e6dc59c0ca6f479b7bafd93429c5"
+    },
+    {
+      "reader": "TLEFileMisc.HayabusaStandard",
+      "fixture": "TLEFileMisc.HayabusaStandard_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 10,
+      "source_sha256": "7df2bead63a42e29630d7f2a827f08580bb7da0c9d8580f933a4f0e22d1ca044"
+    },
+    {
+      "reader": "TLEFileMisc.HayabusaSuperVerbose",
+      "fixture": "TLEFileMisc.HayabusaSuperVerbose_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 20,
+      "source_sha256": "6b5b757fef7dc7d737fe29e35cb5ac0c784f4b5729793fa4fb4547c748589303"
+    },
+    {
+      "reader": "TLEFileMisc.HayabusaVerbose",
+      "fixture": "TLEFileMisc.HayabusaVerbose_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 15,
+      "source_sha256": "c584b6cf6124b75bb04e204281fff4522ebf7fb43b548fec645fe03b2aaa0954"
+    },
+    {
+      "reader": "TLEFileMisc.VanillaWindowsReference",
+      "fixture": "TLEFileMisc.VanillaWindowsReference_0.csv",
+      "fixture_kind": "upstream synthetic typed rows",
+      "status": "passed",
+      "rows": 3,
+      "columns": 12,
+      "source_sha256": "c5fc7956e13c8ba9eeafbf66abfc9cfaa7461df03e847d3d53c41357fbb04357"
+    }
+  ],
+  "upstream_tests": {
+    "total": "228",
+    "executed": "227",
+    "passed": "227",
+    "failed": "0",
+    "error": "0",
+    "timeout": "0",
+    "aborted": "0",
+    "inconclusive": "0",
+    "passedButRunAborted": "0",
+    "notRunnable": "0",
+    "notExecuted": "0",
+    "disconnected": "0",
+    "warning": "0",
+    "completed": "0",
+    "inProgress": "0",
+    "pending": "0"
+  },
+  "variants": 207,
+  "readers": 178,
+  "platform": "linux",
+  "frozen": false,
+  "qualification": "local .NET helper; native Windows result remains a separate CI job"
+}

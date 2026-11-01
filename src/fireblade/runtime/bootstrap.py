@@ -15,7 +15,7 @@ from fireblade.runtime.windows_paths import logs_directory
 
 
 def report_argument(arguments):
-    flags = ("--self-test-report", "--appearance-report", "--stress-report")
+    flags = ("--self-test-report", "--appearance-report", "--stress-report", "--workspace-report")
     for index, argument in enumerate(arguments):
         if argument in flags and index + 1 < len(arguments):
             return Path(arguments[index + 1])

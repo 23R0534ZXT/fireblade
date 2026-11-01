@@ -404,6 +404,14 @@ class Case:
     def validate_view(self, view):
         self.where(view)
         self.order(view)
+        if not isinstance(view.tle_fields,dict) or len(view.tle_fields)>len(self.headers):
+            raise ValueError('Correspondances TLE invalides')
+        for key,value in view.tle_fields.items():
+            if not isinstance(key,str) or not key.isdecimal() or not 0<=int(key)<len(self.headers) or not isinstance(value,dict) or set(value)!={'name','field'} or any(not isinstance(v,str) or not 1<=len(v)<=1000 for v in value.values()):
+                raise ValueError('Correspondance de colonne TLE invalide')
+        import re
+        if not isinstance(view.tle_expressions,dict) or len(view.tle_expressions)>64 or any(not isinstance(key,str) or not re.fullmatch(r'[0-9a-f]{64}',key) or not isinstance(value,str) or len(value)>65536 for key,value in view.tle_expressions.items()):
+            raise ValueError('Expressions TLE d’origine invalides')
         if type(view.auto_row_height) is not bool or any(type(value) is not int or not 0<=value<=10000 for value in (view.row_height,view.group_row_height,view.header_height)):
             raise ValueError('Hauteur de ligne ou d’en-tête invalide')
         if view.group_footer_mode not in ("hidden","expanded","always") or type(view.show_total_footer) is not bool:
@@ -434,7 +442,7 @@ class Case:
         if set(view.pinned_columns) & set(view.right_pinned_columns):
             raise ValueError("Une colonne ne peut être épinglée des deux côtés")
         if not isinstance(view.pinned_widths, dict) or any(not isinstance(key, str) or not key.isdecimal()
-                or not 0 <= int(key) <= len(self.headers) or type(width) is not int or not 20 <= width <= 10000
+                or not 0 <= int(key) <= len(self.headers) or type(width) is not int or not 1 <= width <= 1048575
                 for key, width in view.pinned_widths.items()):
             raise ValueError("Largeurs de colonnes épinglées invalides")
         for column in view.group_intervals:
@@ -525,7 +533,7 @@ class Case:
             else:
                 order = self.order(view)
                 key = (where, tuple(args), order, self._bookmark_revision)
-                if (self.settings.cache_sorted_pages and (view.sort_column is not None or view.sorts)
+                if (self.settings.cache_sorted_pages
                         and (offset >= self.settings.max_loaded_rows or self._page_cache_key == key)):
                     return self.sorted_page(where, args, order, key, offset, limit)
                 sql = f"SELECT * FROM events{where}{order} LIMIT ? OFFSET ?"

@@ -50,7 +50,7 @@ jobs:
 
   publish:
     name: Publish standalone prototype
-    needs: [qualification, native_storage]
+    needs: [qualification, native_storage, many_documents, native_readers]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: windows-latest
     permissions:
@@ -133,6 +133,58 @@ jobs:
           name: Fireblade-exe
           path: dist/Fireblade.exe
           if-no-files-found: error
+          retention-days: 14
+
+  native_readers:
+    name: Native upstream reader matrix
+    needs: tests
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      PYTHONUTF8: '1'
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: python -m pip install --only-binary=:all: -r requirements/runtime.txt
+      - run: dotnet publish src/fireblade/plugin_host/Fireblade.PluginHost.csproj -c Release -r win-x64 --self-contained true -o build/reader-host
+      - run: python -m scripts.windows.reader_matrix --host build/reader-host/Fireblade.PluginHost.exe --out artifacts/readers
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-upstream-reader-matrix
+          path: artifacts/readers/
+          retention-days: 14
+
+  many_documents:
+    name: Native EXE with 320 analyses
+    needs: portable
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: Fireblade-exe
+          path: dist
+      - run: python -m scripts.windows.workspace --exe dist/Fireblade.exe --out artifacts/workspace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-320-analysis-report-and-captures
+          path: |
+            artifacts/workspace/*.json
+            artifacts/workspace/*.png
           retention-days: 14
 
   qualification:

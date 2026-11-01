@@ -1,0 +1,768 @@
+{
+  "repository": "https://github.com/EricZimmerman/TLEFilePlugins",
+  "commit": "7199c81ba45a97be74b4e05da43cbaabecccf5ca",
+  "license": "MIT; licenses/TLEFilePlugins-MIT.txt",
+  "kind": "Public default XML layouts; inferred schemas test layout grammar, not reader output or TLE rendering",
+  "files": [
+    {
+      "file": "TLEFileEZTools.Activity.layout",
+      "sha256": "a1c2356b2590aacfee68392e6055a98076a1e5b2e4b66fd5586a8f1a9182a7b0"
+    },
+    {
+      "file": "TLEFileEZTools.ActivityOperation.layout",
+      "sha256": "df586114be130db4bb29f013d08f42b34d267ed7630cbe49b52a22804e4457a0"
+    },
+    {
+      "file": "TLEFileEZTools.ActivityPackage.layout",
+      "sha256": "9b1be3745ea893e7e1a1e02fc6b0b06b432129e85cbc775a20564ce9591dbae2"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserDeviceCensus.layout",
+      "sha256": "e47d3222be839f8d614ff4ab72f5b13581ac821d4cce97645385194c24f0bfae"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserDeviceContainer.layout",
+      "sha256": "4fbb5e5bd1ac0aec895ab519a3c15832fa9379595c87d720fcda2bbcab6c514a"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserDriverBinary.layout",
+      "sha256": "0046f0d4541a2f92821b37bf290078c04ea59e2108cd0c0f6991364bf007652c"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserDriverPackage.layout",
+      "sha256": "b2182a0866472a05ffcc384d5dd1e6d83c0a41cdac76a14a54bd12a7c975b8c1"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserFiles.layout",
+      "sha256": "843822429d5dfeec04b6dfae4fad54da5cbb242cb681c54ec84570b93d674119"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryAcpiPhatHealthRecord.layout",
+      "sha256": "7ce85272b93e25905df1082981be1eb9a1e3e95ed415bfb424b98b3096fd1b8c"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryAcpiPhatVersionElement.layout",
+      "sha256": "1b632d9fd6bda4a60a58310fc95b23a925329ca5f3d44f5531b23d724b87581c"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryApplicationAppV.layout",
+      "sha256": "44428c8aeb0eb71090eec89f521be21086a3d8d96e6a7ab3a8620bb18a699ca0"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryApplicationFramework.layout",
+      "sha256": "4f2ee999cfb7c3a116f35f4f3f9f888b150efd0aa11d342f1f029d2c431d1aab"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryDeviceInterface.layout",
+      "sha256": "66d25257b1a8f5c7e9a4d524e750dc1e7b41d5b07dc0aa50d4378dcba357b4f6"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryDeviceMediaClass.layout",
+      "sha256": "c8d5ea98c0d21143bca3e0d6d7b70e3fbea4eed11f0b21f7edc274edbc504add"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryDevicePci.layout",
+      "sha256": "9948643126ec3d92cc5464bec6b669f02be0be559228867b432625c8f289e351"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryDeviceSensor.layout",
+      "sha256": "d5b3259ff0f8686b346e05443711b4cbd9aac96447e2391b0e7919cf0da03c97"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryDeviceUsbHubClass.layout",
+      "sha256": "2162ea2c380d909953cba23495dfc1fb67e6099f6b24d02c5d6370125547a648"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryInstaller.layout",
+      "sha256": "d4f5f58f0c0c6b8f44ed4d6c091663472f4040d28cb9cff61892d751ddc2e45b"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryInstallerApplication.layout",
+      "sha256": "3dede6c1b445d193ca5e1bd22baf7be8071207ae95145272c2731925c82d4577"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryInstallerApplicationFile.layout",
+      "sha256": "7435810b3bf9555900eac74632406c368b3bd1d1b350b9aac24a0b20b689d134"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryMiscellaneous.layout",
+      "sha256": "8854e9bb2947ab7a716d8ebde99e23bff125624c82de6743b8ec930e0886bd1a"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryMiscellaneousMemorySlotArrayInfo.layout",
+      "sha256": "89cfbe955ec7fcf00a2fe5fedcf655fa3b830906dc56802e9796dd74bf2c8ab7"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryMiscellaneousUUPInfo.layout",
+      "sha256": "28b129712a4981f3684ee3da2c7e53e53391410109c2aa45868ee38112f39085"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserInventoryMiscellaneousUser.layout",
+      "sha256": "6458a35483ccb1623914dbc63c3c1c3379cd378f857b997abe604e924a547e27"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserMare.layout",
+      "sha256": "2fc309c0d3105cf0afabb47639d5e09273ab2c36c657a591e02915817b82160a"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserMareBackupApps.layout",
+      "sha256": "057febe27c656f1a8d4b6b1f5866889054aa6bea7d261f3dfdf0a82fd98ecabd"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserMetadata.layout",
+      "sha256": "2d592c17ed3a529aed463ebb312364455260b7c266332fd58af073ae8b6d41f8"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserNewDevicePnP.layout",
+      "sha256": "6fa341597b484d2048f6ab56d2d604779fadd9a8360e49725102b7fdaceb264c"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserNewFiles.layout",
+      "sha256": "9d187bdc3e471431e5a0d14be7519ad0e877f4b2f1fbcbbd19b0eea1c2b58211"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserNewProgram.layout",
+      "sha256": "a372f937686f9113f0cf985c9f77e6e3cf86af1b6f3bed11635cec72b9e16bc2"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserNewShortcut.layout",
+      "sha256": "a0d1128d33f52d763db1c6c8f6f7b62c64968422aa4c9347233f39cd88cf0848"
+    },
+    {
+      "file": "TLEFileEZTools.AmcacheParserPrograms.layout",
+      "sha256": "5b4f02381aaee822fbb62e409e2fa6ab09ed616fd05cd4194af2c3fc7e99363a"
+    },
+    {
+      "file": "TLEFileEZTools.AppCompatCache.layout",
+      "sha256": "783ecfd3c82cdbf50ca61e0238a9242928cba9f12c26d849f10bd23e8ff12012"
+    },
+    {
+      "file": "TLEFileEZTools.AppResourceUseInfo.layout",
+      "sha256": "5b4fb3a1a197f86f7ecf688665c03a6ec37f0d43556a7c478c1b739472cbdd38"
+    },
+    {
+      "file": "TLEFileEZTools.Boot.layout",
+      "sha256": "1b26bd177f31a275324359c8f794f159ddaeec15cbf662464935650c2dcd639d"
+    },
+    {
+      "file": "TLEFileEZTools.EnergyUsage.layout",
+      "sha256": "38175bc5d3405d0ed0c051cde410fea1c94d7cdd14a0a14e689a72d21ee4b93e"
+    },
+    {
+      "file": "TLEFileEZTools.EvtxECmd.layout",
+      "sha256": "a89e464a74e0df4ded84e585651486ae86a14413113fb208520d7c7cb1cb0d45"
+    },
+    {
+      "file": "TLEFileEZTools.I30.layout",
+      "sha256": "bb6e8215a423a6c381c5861a2a556b6625512c737d9e4bcf218160310df2b539"
+    },
+    {
+      "file": "TLEFileEZTools.IisGeolocate.layout",
+      "sha256": "9a0047fb89a2ec0867341a9b014f61c475240da03d301a0814529016b47ae0c6"
+    },
+    {
+      "file": "TLEFileEZTools.J.layout",
+      "sha256": "c1e7921131d3eb78e37cd0279606f2e3c6992e519c3116bd9a53526e246160e8"
+    },
+    {
+      "file": "TLEFileEZTools.JLECmdAuto.layout",
+      "sha256": "237389b6ca85edff45495b9b816c7a920ccb06a4a7c51b1af417006f744270c4"
+    },
+    {
+      "file": "TLEFileEZTools.JLECmdCustom.layout",
+      "sha256": "590a20c75b515bdab16edeece007804b6b6fb0f33cd97d8df51c9c70772995b9"
+    },
+    {
+      "file": "TLEFileEZTools.LECmd.layout",
+      "sha256": "2a465267101a3a079468283766897c52b7d4dc1db1f35a845f0547e10b8b9fd9"
+    },
+    {
+      "file": "TLEFileEZTools.LogFile.layout",
+      "sha256": "f0dbf24b39aa27ccfedcd0939257058caa2b285e3ae4ac8f604c32e07f528f2c"
+    },
+    {
+      "file": "TLEFileEZTools.MFT.layout",
+      "sha256": "26160aa6b0fedf606c6271ac47f1d23b1d53a35ec822d240f2de201895579927"
+    },
+    {
+      "file": "TLEFileEZTools.MFTFileListing.layout",
+      "sha256": "39bfb4583c8ad2f6365ee776b3c77ec6632d365d03646f9acafc4611f1fe2cf8"
+    },
+    {
+      "file": "TLEFileEZTools.MFTSourceFile.layout",
+      "sha256": "75aa2d472ad9b5c9d8d6b5810751347a7a5bdc8c4f9c2824d5aecdbe0e4f1242"
+    },
+    {
+      "file": "TLEFileEZTools.MFTSourceFileResident.layout",
+      "sha256": "2e7f33621e3ecc1c1bf51ba859e398c961f43f073c7bb9d43b476becbd8d1dc5"
+    },
+    {
+      "file": "TLEFileEZTools.NetworkConnection.layout",
+      "sha256": "265c9a476e6b2879375b4e87bb7db3a87993b9353f9d71934888b8a4a3108beb"
+    },
+    {
+      "file": "TLEFileEZTools.NetworkUsage.layout",
+      "sha256": "a666370db1c92a13942b0fd4bbb66a53ea5957e3ebdff377663a77f40d2e8cfc"
+    },
+    {
+      "file": "TLEFileEZTools.PECmd.layout",
+      "sha256": "ae04705e1748bc45c271f07612663401133f9ffbe878f3f0db247ba3fd08eacd"
+    },
+    {
+      "file": "TLEFileEZTools.PECmdTimeline.layout",
+      "sha256": "8d1db747b6561a8eb3edb3921ea1072621d0e4f686b07b6ad2b324d8c59aae52"
+    },
+    {
+      "file": "TLEFileEZTools.PushNotification.layout",
+      "sha256": "8d33c5461e6de9d6f20bec236613550697048d24b0b3b3aa4aa3e83dae9fec45"
+    },
+    {
+      "file": "TLEFileEZTools.RBCmd.layout",
+      "sha256": "9874de0fc5720b22ff0f9ba7864c546aebcb6dbb72d88bec439f89969dd72435"
+    },
+    {
+      "file": "TLEFileEZTools.RecentFileCache.layout",
+      "sha256": "1774c5ba8e535fdab8ab686abb49aa8d1ea658c58ea3b7448774badcb2632f11"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdAdobe.layout",
+      "sha256": "e4876d2a39aa67b8f17e6e9812053762040296ae564d9f5f5287ccb85b7ed6bc"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdAdobeTrustManager.layout",
+      "sha256": "864cccb8926f12b58752f7556cc427978d13213125e369c4d3036515f46980dd"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdAppCompat.layout",
+      "sha256": "744de9bfe90d7ef5788969fc8e5bae63272c7709759b5fb1575421ee5053d962"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdAppCompatFlags.layout",
+      "sha256": "334fc133bd2dead741f466d23bd7af58a2d701d63d57fcdee2afa92a578a7047"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdAppCompatFlags2WinRAR.layout",
+      "sha256": "788be7d83612dad3eb0998022b2b21f1d9e0d221878ab8e4b1f4acea9d910359"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdAppPaths.layout",
+      "sha256": "5e97175efae029f6f3bb400f8f7972aed95a8ad193900804ae9e39241d5d18b2"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdApplicationSettingsContainer.layout",
+      "sha256": "450c70b5e72f6a8f07bf11cb074621066bee28e4c3731f1853f2908f363db248"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdAres.layout",
+      "sha256": "8d7d738f054763f4477ff7fbe453c28633787c7a186b51dcaf4d3994dac8429b"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdBamDam.layout",
+      "sha256": "9ce168d2196ed2c93bf8a24d3f8a9ea18d1588c22f57e718011f2f19e17cb7ab"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdBatch.layout",
+      "sha256": "6a6a93cd4822e1186efee28e8a4685ed206426daa8d8f090b6cc2a4a3b3a0ba6"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdBluetoothBthPort.layout",
+      "sha256": "fb21cdd17e50da8b7ac1389418c994ac6ebe940fcfc8030ccc03869493177407"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdCIDSizeMRU.layout",
+      "sha256": "798ac970833aee352da553632cecf1b606da7f3b0fa9a6bb447be227b7588f3a"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdDHCPNetworkHint.layout",
+      "sha256": "31a1924d8599bcdb6e1cd8b7189bdd18a18550adf1dcd9436f65960fcb678f15"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdDeviceClasses.layout",
+      "sha256": "38c775a268f95033953e9a30efa6a6e564208ff5d469b5042425e7df594019a6"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdDsrmAdminLogonBehaviour.layout",
+      "sha256": "ddfa910660ce1ffd7f6f6d41cf8b63520f0dfc285673ec8f187755313535c279"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdETW.layout",
+      "sha256": "8ff2511b329997409b8610e418b7bd160bf220a1f23769a09bc9217235efdace"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdFeatureUsage.layout",
+      "sha256": "b3460f6d2436f77df75577cba9e54462087ad782da4a7d9d9f62ab931db282ff"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdFileExts.layout",
+      "sha256": "472c63c868a5c39d187e34c534cebf4851dc93fbe84457933292bb3f8c7140bf"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdFirewallRules.layout",
+      "sha256": "2af59f0a22128ea2fbfab471593e899e1270890bb5536f9e6b55550b48383213"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdFirstFolder.layout",
+      "sha256": "b1e6d6c1dccab8ad654a7b78ba781863deade459a5470631cb1f2218dd5127dd"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdIconLayouts.layout",
+      "sha256": "93e4e1829b38a619c00a098d22cd5808dfc598931753398385e9b79936c4b71f"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdInventoryApplication.layout",
+      "sha256": "73811b63aa55c253a89c15362ddb805c066cb20b2a6bb1b54c53fb81b6460ba9"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdInventoryApplicationFile.layout",
+      "sha256": "7faf1e3a5fac8bd99e6187f32224dfdd04f5e8844a6ae2edfbdbddf48f9ff367"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdInventoryApplicationShortcut.layout",
+      "sha256": "c822b65fdb680d66f5e9df7f6823c94f87adf3f8d230a5f99fa9914f40c70ef6"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdInventoryDeviceContainer.layout",
+      "sha256": "48c00b688c30dfb0f5c269b01f9fe838db9c1b1cd1ae984110cc76d34b95f79c"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdInventoryDevicePnp.layout",
+      "sha256": "35f3c30b0f7d5ee1f92c2a22a641a7eb89d66138c6656a710eb9e55651621dd0"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdInventoryDriverBinary.layout",
+      "sha256": "ba31cdc793eea00052ae25916ef4aa1d680f3f60ee63dbceda4df6b35d6872fc"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdJumplistData.layout",
+      "sha256": "2422087e91c29ff48978c2c8555707b07b94b93fb4b7c9c382bd0bb05e3b5d31"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdKnownNetworks.layout",
+      "sha256": "ab063ec0ff2ea77cde41110d4a7a3fefd71aab781c078acdae45a02aa8377c4f"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdLastVisitedMRU.layout",
+      "sha256": "d66b0934b5c1997333a694d026887fe969a07abdb951f2c431da05c23798dd2c"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdLastVisitedPidlMRU.layout",
+      "sha256": "80125f7a1696e3235df4138ebbc9df679781418009347968b5ccfd1c65b560d7"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdMare.layout",
+      "sha256": "e3bc793eecf30095efc22d18c0098956014df8a91bce1d3956ace8a401cc35d4"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdMountedDevices.layout",
+      "sha256": "cf44cab1e96a988090ab308f3858b2799a1d3775ced111428e8737f678fa848f"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdNetworkAdapters.layout",
+      "sha256": "5db287cda06cbc283b8725f9457044659a75f5803b9b3fb5fa3afdbee9e60fad"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdNetworkSettings.layout",
+      "sha256": "e802b283b353454a8c103660598e082481fd4576374c1feeca00e8c5132b57e5"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdNetworkSetup2.layout",
+      "sha256": "b8b73b3925d5395f2e3bdd9b6f593b64374b68c6c27f4801c6037a3edf542d23"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdOfficeMRU.layout",
+      "sha256": "f7fe64de5828d1057b7a437460b424fea3f663bebfcffc1038603ed652ef027b"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdOpenSaveMRU.layout",
+      "sha256": "804e6e20b07eb07e9f24d446732258065673cc23bb6828aa6c7665e9904d5103"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdOpenSavePidlMRU.layout",
+      "sha256": "9f1081ae5769607adb7c166251c441084222ec92d954749d76511bbbb573cfff"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdProducts.layout",
+      "sha256": "e48d53f105abd634413c697a2ee828e0ee9ac0f3bd5e7cc493dbde020af9dcbb"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdProfileList.layout",
+      "sha256": "5296c9a60134671db0ea09952711ad07778cae4de7887da9518714a34ae5c99b"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdRADAR.layout",
+      "sha256": "23c1dd71054550bc1eb07abec2227d5caf65d336093aed8c7710c7f69f2ccbe7"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdRecentApps.layout",
+      "sha256": "7965ce1f8ff46cf92c36cd32b9f535de4b18037b43153120bff9860946c457bd"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdRecentDocs.layout",
+      "sha256": "d1b54ab9ffe03b019555bb3157bb2869c1153c8020d9e0ed6801b26a508faabe"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdRunMRU.layout",
+      "sha256": "cfcfad8a0b679d9d2c3a620e8d8ad09c9430000679af971eb9c8d49fa09eb4db"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdSAMBuiltin.layout",
+      "sha256": "50051ce82af9ffc33edd523b8c54016250253c3623996c113f2f504a01da4654"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdSCSI.layout",
+      "sha256": "06a14d9e4f186e7376c718b1eba598c40f41869bcc1c840a428e5628fbd44b53"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdSWD.layout",
+      "sha256": "ebf1a1c87e31f8b64b008528a7f8c218daa19ec4b3719b4cce1db9ad8859989e"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdServices.layout",
+      "sha256": "15be7249d85edddb682b6bebfa112f04eb9e2f1047eb6648ac86e034e75edf55"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdSevenZip.layout",
+      "sha256": "d94fb2d9a2b9fb62d47a993c4d6bf0591f049e5a5cd0af4dd9d76c4b11249fe1"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdSevenZipCopyHistory.layout",
+      "sha256": "531ee68b70541cb548525a1f21012268ad9196a280741dd5cebbec655e742fc1"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdSevenZipFolderHistory.layout",
+      "sha256": "9e227baf236c7ae8ed267646d096e0fffc7834cd10f4ba119cde87f14e219204"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdSevenZipPathHistory.layout",
+      "sha256": "86328268a14bb1c79f07cb9d262739c976c9bc397d0a56fa232a03721d94b917"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdSyscacheObjectTable.layout",
+      "sha256": "7e0021b99529dd188f1fc6bf8d9aa4a29c9dbaacfa4332b36e0263a3fe748c4e"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdTaskCache.layout",
+      "sha256": "2907a1a4b8328f9f2d50848d9aa9f4bad47d5e698775807d0d74dc666f56634e"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdTaskFlowShellActivities.layout",
+      "sha256": "ac06366675a3df59549bf6c0a25dc394d893076bd40d8cd0048f096d7f6d2781"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdTaskband.layout",
+      "sha256": "8f8997c567a6c6bee609cf1968f3000d52fe979e53545520ed37725eb6b109fb"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdTerminalServerClient.layout",
+      "sha256": "d4fc0075e37130f6d080c3531665a33bcf144bc7a7884062b3beaa09b515bf87"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdTimeZoneInfo.layout",
+      "sha256": "f7104ad4279bc7c67e0728a54af8ae147f8513de1a0ce327a283bc760b5e2999"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdTrustedDocuments.layout",
+      "sha256": "d6300e446e98e787b10aea364d1b4727f4631c33df30f82bbf5a9f25786c077a"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdTypedURLs.layout",
+      "sha256": "2c827cc79c227603e576a6e39b344fe52e983cdb251c1c01bccaab7024b84cba"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdUSB.layout",
+      "sha256": "8ebb729a96e44af1c98c245b96136eedef646ba50b24aa36c429ab4f5765bc52"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdUSBSTOR.layout",
+      "sha256": "1223246a9d97db3fbfc95932da3fafe16a612e230383dce439e08360419131ff"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdUnInstall.layout",
+      "sha256": "cff825c2439c1a008df2c60e26a05c0c5bcf0cb0752f64a7800768e12767266f"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdUserAccounts.layout",
+      "sha256": "f1067e88cc4f2890414ebdcf8f5670bc1f1ad5f7f5ffdc221a36ea9fde27a254"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdUserAssist.layout",
+      "sha256": "5d74fe81d490a4e90875b5852434d0217b11e832297d7afd098361d9196dcbb5"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdVolumeInfoCache.layout",
+      "sha256": "0bc3c0f88bc61f5b2d9e7ee412d93dfbe140fd370af9db3abd019a957369bc78"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdWindowsApp.layout",
+      "sha256": "9d48bffd4753e488062e4ee2648f06ed3f7d61ddd520e9fbdec25c995d11ca1d"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdWindowsPortableDevices.layout",
+      "sha256": "8f62a133013c6e6069e94e6d6ca898152191073cff98734d9393a5bf01226e46"
+    },
+    {
+      "file": "TLEFileEZTools.RecmdWordWheelQuery.layout",
+      "sha256": "0b99479d0435b3d548f3971aa8a7c2f020e1766b16bfba8fe4577667c67d54f8"
+    },
+    {
+      "file": "TLEFileEZTools.SBECmd.layout",
+      "sha256": "68834bf9ec73b74e393040175f0de679163b5dae23fabb2cf7e37c07c792fb27"
+    },
+    {
+      "file": "TLEFileEZTools.Sds.layout",
+      "sha256": "cee47f0ef775282e7b3ee1af5c0da0a50f10e823e86183c6f1bbe195723b9eef"
+    },
+    {
+      "file": "TLEFileEZTools.SqleActivitiesCache.layout",
+      "sha256": "de83081299c1cb184b3fe86a948836f6ab72e36d9250b5135053047e62fb1729"
+    },
+    {
+      "file": "TLEFileEZTools.SqleActivityOperation.layout",
+      "sha256": "cfe8a946a9b2164227b5bc80bdc00fc031ed61f8e01f8342b4f5d22b338f97c2"
+    },
+    {
+      "file": "TLEFileEZTools.SqleActivityPackageId.layout",
+      "sha256": "00a66bf015e54607fba49403004863797c9df48c1817fbd59392b1abe52f1cca"
+    },
+    {
+      "file": "TLEFileEZTools.SrumNetworkBytes.layout",
+      "sha256": "55b2b363b7d8f2243d3bb686f126614fe9482264eaf09c7fb22117629208e52d"
+    },
+    {
+      "file": "TLEFileEZTools.SrumProcessorTime.layout",
+      "sha256": "570d4b27624124e882702e3eff47768b0e285c2e4614e07377958d08142071a5"
+    },
+    {
+      "file": "TLEFileEZTools.SrumSizeInBytes.layout",
+      "sha256": "838d1408284a4f7bdf47d7f6723f9924f6a32aa395c3a02a57c53c3f5b9936b1"
+    },
+    {
+      "file": "TLEFileEZTools.SrumTotalUsed.layout",
+      "sha256": "ef22880333316e8721f05989f07576a504bff85539ee2a3378e4a0e09dbac5d1"
+    },
+    {
+      "file": "TLEFileEZTools.SumChainedDb.layout",
+      "sha256": "760c94510b49908951be435882ee8e879e8df6add1b4989d224c21a25908550b"
+    },
+    {
+      "file": "TLEFileEZTools.SumClient.layout",
+      "sha256": "e0c9abbf1cfd5b8638ac55b5820f9cd0f8993ee0b595d2c0eefb4e6c88db0bfa"
+    },
+    {
+      "file": "TLEFileEZTools.SumClientDetailed.layout",
+      "sha256": "6f3e71c5134c00fa5183611e20064c9dcba15055006272e38b16c4b65311c4e7"
+    },
+    {
+      "file": "TLEFileEZTools.SumDnsInfo.layout",
+      "sha256": "353de8e9fd3d3351c0d597acc1b5ae83f63fc606399ecd525962e094a097ade3"
+    },
+    {
+      "file": "TLEFileEZTools.SumRoleAccess.layout",
+      "sha256": "ddc8b0c80beebe6b4a559b49aa51b994a0a664b1af18b0bbfe7299b77ca53de5"
+    },
+    {
+      "file": "TLEFileEZTools.SumRoleInfo.layout",
+      "sha256": "495a54bda5c0f98544ed1bbbefa48b57c171d3aa55c79e799305461adbe96722"
+    },
+    {
+      "file": "TLEFileEZTools.SumSystemIdentInfo.layout",
+      "sha256": "ac17262b5ada0f8f158bed62a22e66bf89303699a5c17737ff0246d193b1074d"
+    },
+    {
+      "file": "TLEFileEZTools.SumVmInfo.layout",
+      "sha256": "f34191b67835b800b6e252d2ead709a13688630bdc24ad9a8458ec36d9410262"
+    },
+    {
+      "file": "TLEFileEZTools.Unknown312.layout",
+      "sha256": "4b77ee6a7297115723c6d1b5911029525f60001c8ede6ccaafa761878e7a28c2"
+    },
+    {
+      "file": "TLEFileEZTools.UnknownD8F.layout",
+      "sha256": "c060bc130209ac7a1f4633717a7f09cbc7e2023fc6dfd262cbdf7dac470d29db"
+    },
+    {
+      "file": "TLEFileKAPE.KapeCopyLog.layout",
+      "sha256": "aff661f1627a89fd009e37b5e6784e24df4907e711733fb35dcfefb150bd7416"
+    },
+    {
+      "file": "TLEFileKAPE.KapeSkipLog.layout",
+      "sha256": "d3d38c51a4ad863071879b3519c48e10724e53299fa735dea6ea7f62af8fc171"
+    },
+    {
+      "file": "TLEFileKAPE.KapeTriage.layout",
+      "sha256": "7fe1c35c359d2f7fbe04159b82616216fc59d4b9eabbed213cc7c4dc896b477b"
+    },
+    {
+      "file": "TLEFileMicrosoft.Autoruns.layout",
+      "sha256": "61bff9a0d5103940a36271d77b983a4583895eb4d249b707824ca62ec163b979"
+    },
+    {
+      "file": "TLEFileMicrosoft.MsftMft.layout",
+      "sha256": "17e5f6a457674e5c59cb57ff5d9efc5f202dc2b5ee16262b9f1f8d5f7141ef5f"
+    },
+    {
+      "file": "TLEFileMicrosoft.Sigcheck.layout",
+      "sha256": "e4a10526b111537be3572886300b2cf8718780a3379a57bc8c3d5a8804425d21"
+    },
+    {
+      "file": "TLEFileMicrosoft.SigcheckTroy.layout",
+      "sha256": "3e4c97ed87613d84a229fd3340f5885628a2788535b8d88bea95c9bf0e1e7258"
+    },
+    {
+      "file": "TLEFileMisc.AnalyzeMft.layout",
+      "sha256": "b7e3ac0245ca41d23629fd8fbf5ec941e629f29653ea0c8959554202a2aadd13"
+    },
+    {
+      "file": "TLEFileMisc.BrowsingHistoryView250AndOlder.layout",
+      "sha256": "497414690d9b804c0c904e32decfcbf1e72b0e5581c2cdd73f04f8a6d5b79eba"
+    },
+    {
+      "file": "TLEFileMisc.BrowsingHistoryView251AndNewer.layout",
+      "sha256": "e63fcc40e4bc836a48279c96ab967052de6797e5e68089a62ed354ed99032070"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawAccountTampering.layout",
+      "sha256": "d6cd283697ad73ca49f10d78da95965a220b54d8879e6267f51c1c47ed4c5186"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawAntivirus.layout",
+      "sha256": "c60fc521683a0d8e35c2e8a55a84661ec93955345c2eafaa480f0c6ae480e3cb"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawAppLocker.layout",
+      "sha256": "03a72bb87d5228d814cedf004ce8cb9111d394d083d91d2640b2ccaca7536652"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawCredentialAccess.layout",
+      "sha256": "1a2c75d86a15bc1642c02f7c6f6d8d5ca2c4885aa958b95d8fb6462c2af849b8"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawDefenseEvasion.layout",
+      "sha256": "a1349a9b23ae14d20752bb95e5e6c0fbf14e0b81d445d6aeb1b0a3dcfcc00aa1"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawIndicatorRemoval.layout",
+      "sha256": "cc1e54e018b17fb063ce42fe77cb0cfd8357f24834f16f6566838c027456912c"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawLateralMovement.layout",
+      "sha256": "1c5dadf0fe57cac9be7a48596066b2e83f5d1e3054e4038194a0266d279182a1"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawLateralMovementOld.layout",
+      "sha256": "1ad88c257d45881f416d22bb6b7265fdc22025f008c91f1bbcc001326da9f4b2"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawLogTampering.layout",
+      "sha256": "8e853615567ad392399591f1f9e95d5cdf7a3a7116eaa360e4e2fed67429e9b5"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawLoginAttacks.layout",
+      "sha256": "628f97b690e86ab8a4914ebd37f9ac65c9e0de9a75e58f34efd8c29e82160e09"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawMFT.layout",
+      "sha256": "8e413d6fec8060ada542ac185ba4a1add93fd57a675cbd7b3332c92041186d63"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawMFTDataStreams.layout",
+      "sha256": "dba06b3039f51aa5acb5acc0068c800b2d6fa89f3fdd0400b54425504c894890"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawPersistence.layout",
+      "sha256": "216fea1810bc4d404c3074f9e92dee1feb790554dde5b83dbd5c289338709781"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawPowerShellEngineState.layout",
+      "sha256": "f70836a24c682b6580e9f73760312a3787f20f526ccc10fa5f01fbdf815f3038"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawRDPAttacks.layout",
+      "sha256": "e6454ffdbd3f481a2f5113fad41bef8948bf56a9761e5186013034eeee343e7b"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawRDSPowerShellScript.layout",
+      "sha256": "3c0c40a6375daf62910576ccb539d7c06d17d23746684345e2912a56aece020d"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawRDSWebAccess.layout",
+      "sha256": "db2352c56f622635ab5bd6614a5b36ececf02c3949e4ce545168f07c929d0851"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawRasVPN.layout",
+      "sha256": "6a1b93ce95c4a41c229e19ceee012a776fa9a28b6bdb34f7d98b78d71515829c"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawServiceInstallation.layout",
+      "sha256": "c06e6a7a7033479e8646aaf4c89e159c3767197eaae675a8dae744efb82e6e1e"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawServiceTampering.layout",
+      "sha256": "7b1cff484826fc2d5b9c80676f0786e4d6efd039bc1d63af499ca914790e5e3b"
+    },
+    {
+      "file": "TLEFileMisc.ChainsawSigma.layout",
+      "sha256": "71a74d6ea2ff742ee2d4eadabf6b0e83a1062f12ffd60a52282c47dd3e12b431"
+    },
+    {
+      "file": "TLEFileMisc.CrowdStrikeEvent.layout",
+      "sha256": "12e6a1b32857689a6ce2e99f37c4b16509edf27d59fd8839ef0f3fe38ab947fd"
+    },
+    {
+      "file": "TLEFileMisc.DensityScout.layout",
+      "sha256": "e4566eb8bfd24ce218e4b6c283ce8cfbf871bfbfa04c598003e47876ae736f02"
+    },
+    {
+      "file": "TLEFileMisc.HayabusaMinimal.layout",
+      "sha256": "91f157e41fc18497c363260161ee8d64e0e9e5ccd997a5a00e88c1062c661d83"
+    },
+    {
+      "file": "TLEFileMisc.HayabusaStandard.layout",
+      "sha256": "66152492f929722a21be365c9b5eba058e827bb0abf4a9ae51df6e6cd86c9f47"
+    },
+    {
+      "file": "TLEFileMisc.HayabusaSuperVerbose.layout",
+      "sha256": "b6b3fae73d330882e4c213fe5f4f02fc41a94669a93b90e0f2269c921f1e0b0e"
+    },
+    {
+      "file": "TLEFileMisc.HayabusaVerbose.layout",
+      "sha256": "e6d8ac8061badff0f7b1811533260041aac7b8869e74a7e0ab263484d54f5569"
+    },
+    {
+      "file": "TLEFileMisc.ShimcacheParser.layout",
+      "sha256": "f954a397fd7ac7917f197c578a7df8974f66d336a24643d98a254effb2184640"
+    },
+    {
+      "file": "TLEFileMisc.ShimcacheVolatility.layout",
+      "sha256": "55881dd6be5fa80331d34ce6014d4447148264b773755f7dd0565c4ee16784e1"
+    },
+    {
+      "file": "TLEFileTimelines.ForensicTimeline.layout",
+      "sha256": "60b0da082d872e99cdd9d8c71a9bc5fe641ecdfaf07ac9edfeb0b784ffb97956"
+    },
+    {
+      "file": "TLEFileTimelines.KapeMiniTimeline.layout",
+      "sha256": "5a0056300abaf2769413824073b0bc30aa3362ed2343a4e463129736766472d0"
+    },
+    {
+      "file": "TLEFileTimelines.MacTime.layout",
+      "sha256": "e1ad4f5e3cdd44bf7fe1a39e12128a8e6389f0289d81db447dfade0b0c143b16"
+    },
+    {
+      "file": "TLEFileTimelines.PsortTimeline.layout",
+      "sha256": "b85df8c1ec2bf816be1845397379f689d3733165efaf5faf9dbb65703cf78595"
+    },
+    {
+      "file": "TLEFileTimelines.SuperTimeline.layout",
+      "sha256": "c5bc303e9266b4903f71b8cf1909cd3b9d8397a1182cace005aef851c2ff0ec5"
+    },
+    {
+      "file": "TLEFileTzWorks.PeScan.layout",
+      "sha256": "2eb4523c9a14b496d443705dd5a403e6e3494eae1927b4adae6e7e7616656123"
+    },
+    {
+      "file": "TLEFileTzWorks.Wisp.layout",
+      "sha256": "a569fd33c4dc732051fdf2a01181154239d3da6eb884d8a58e7993ef04cdac1f"
+    }
+  ]
+}

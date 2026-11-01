@@ -312,7 +312,7 @@ class ExplorationMixin:
     def export_layout(self):
         if not self.case:
             return
-        target, _ = QFileDialog.getSaveFileName(self, "Exporter la disposition", "disposition.fireblade-view", "Vue Fireblade (*.fireblade-view)")
+        target, selected_format = QFileDialog.getSaveFileName(self, "Exporter la disposition", "disposition", "Vue Fireblade (*.fireblade-view);;Disposition Timeline Explorer (*.layout)")
         if not target or not self.export_destination_is_safe(target):
             return
         import base64
@@ -322,7 +322,30 @@ class ExplorationMixin:
         payload = dict(format="fireblade-view", version=1, headers=self.case.headers, view=json.loads(view.to_json()))
         from fireblade.core.layout import write_json
         try:
-            write_json(target, payload)
+            if Path(target).suffix.lower() in ('.layout', '.local') or '(*.layout)' in selected_format:
+                from fireblade.core.tle_layout_export import write_tle_layout
+                header=self.tree.header()
+                columns=[]
+                for index in range(len(self.case.headers)):
+                    section=index+1
+                    pinned=index in view.pinned_columns+view.right_pinned_columns
+                    panel=self.tree.frozen_for(section) if pinned else self.tree
+                    hidden=not pinned and self.tree.isColumnHidden(section)
+                    # Qt reports zero width for a hidden section. Expose it only
+                    # synchronously, with signals blocked, to read its saved size.
+                    panel_header=panel.header()
+                    blocked=panel_header.blockSignals(True)
+                    try:
+                        if hidden:panel_header.showSection(section)
+                        width=panel_header.sectionSize(section)
+                    finally:
+                        if hidden:panel_header.hideSection(section)
+                        panel_header.blockSignals(blocked)
+                    columns.append(dict(column=index, position=header.visualIndex(section) if not hidden else -1, width=width))
+                warnings=write_tle_layout(target,self.case.headers,view,columns)
+                self.statusBar().showMessage('Disposition XML exportée. '+' ; '.join(warnings))
+            else:
+                write_json(target, payload)
         except (OSError, ValueError) as exc:
             self.error(exc)
 

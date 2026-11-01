@@ -163,8 +163,8 @@ def test_extended_acceptance_runs_real_desktop_paths(qt_application,window,tmp_p
         operation()
         completed.append(name)
     check_features(window,tmp_path,lambda:settle(qt_application,window),check,expect,tmp_path)
-    assert len(completed)==16
-    assert {'mixed_icon_threshold_units_and_pinned_rendering','high_priority_layout_and_selection_rendering','argb_layout_pixels_light_dark_and_selection','separate_group_global_footers_and_source_export','automatic_multiline_row_heights_and_pinned_scrolling','progressive_complete_header_probe_utf8_utf16_utf32'} <= set(completed)
+    assert len(completed)==17
+    assert {'mixed_icon_threshold_units_and_pinned_rendering','high_priority_layout_and_selection_rendering','argb_layout_pixels_light_dark_and_selection','separate_group_global_footers_and_source_export','automatic_multiline_row_heights_and_pinned_scrolling','progressive_complete_header_probe_utf8_utf16_utf32','tle_xml_layout_export_and_scoped_default_pins'} <= set(completed)
     assert (tmp_path/'extended-pinned.png').is_file()
     assert (tmp_path/'extended-dark.png').is_file()
 
@@ -518,3 +518,39 @@ def test_export_tle_session_from_multiple_tabs_uses_sources_and_all_tags(qt_appl
     assert window.view.filters==[Filter(0,'eq','one')]
     assert window.workspace_search is None and not window.busy
     assert 'notes, vues et filtres' in window.statusBar().currentMessage()
+
+
+def test_xml_layout_export_uses_real_header_geometry_and_protects_evidence(qt_application,window,tmp_path,monkeypatch):
+    from PySide6.QtWidgets import QFileDialog
+    from fireblade.core.tle_layout import read_tle_layout
+    target=tmp_path/'portable.layout'
+    monkeypatch.setattr(QFileDialog,'getSaveFileName',lambda *args:(str(target),'Disposition Timeline Explorer (*.layout)'))
+    window.pin_column(1)
+    window.tree.frozen.setColumnWidth(2,243)
+    window.tree.setColumnWidth(3,347)
+    window.tree.setColumnHidden(3,True)
+    window.export_layout()
+    assert target.is_file()
+    restored=read_tle_layout(target,window.case.headers)
+    assert restored.view.pinned_columns==[1]
+    assert next(c for c in restored.columns if c['column']==1)['width']==243
+    assert next(c for c in restored.columns if c['column']==2)['position']==-1
+    assert next(c for c in restored.columns if c['column']==2)['width']==347
+    assert window.tree.isColumnHidden(3)
+    # The same common destination check runs before either file format writes.
+    monkeypatch.setattr(window,'export_destination_is_safe',lambda path:False)
+    target.write_text('existing')
+    window.export_layout()
+    assert target.read_text()=='existing'
+
+
+def test_scoped_default_pins_apply_only_to_the_matching_reader(qt_application,tmp_path):
+    source=tmp_path/'generic.csv';source.write_text('User,Message\nalice,hello\n')
+    case=Case(tmp_path/'generic.timeline');case.import_csv(source)
+    w=Window();w.preferences.pinned_columns_by_format={'GenericCsv':['Message'],'OtherReader':['User']}
+    errors=[];w.error=errors.append
+    try:
+        w.attach(case,auto_layout=False);w.show();settle(qt_application,w)
+        assert w.view.pinned_columns==[1] and w.tree.pinned==[0,2]
+        assert not errors
+    finally:w.close()

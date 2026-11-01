@@ -1,0 +1,83 @@
+{
+  "status": "passed",
+  "kind": "many-document-workspace",
+  "started_utc": "2026-11-01T19:03:16.803595+00:00",
+  "platform": "linux",
+  "frozen": false,
+  "qt_platform": "offscreen",
+  "operating_system": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "machine": "x86_64",
+  "cpu_count": 5,
+  "python": "3.12.14",
+  "duckdb": "1.5.6",
+  "qt": "6.12.0",
+  "automation": "QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+  "checks": [
+    {
+      "name": "import_320_distinct_csv_databases",
+      "status": "passed",
+      "seconds": 52.929,
+      "max_timer_gap_ms": 177.3,
+      "details": {
+        "documents": 320,
+        "rows_per_file": 1,
+        "scroll_maximum": 1376
+      }
+    },
+    {
+      "name": "click_first_middle_last_analysis",
+      "status": "passed",
+      "seconds": 0.339,
+      "max_timer_gap_ms": 70.2,
+      "details": {
+        "visited": [
+          0,
+          159,
+          319
+        ]
+      }
+    },
+    {
+      "name": "search_all_320_analyses",
+      "status": "passed",
+      "seconds": 5.85,
+      "max_timer_gap_ms": 102.0,
+      "details": {
+        "analyses": 320,
+        "matching_rows": 320,
+        "errors": 0
+      }
+    },
+    {
+      "name": "save_and_restore_320_analysis_session",
+      "status": "passed",
+      "seconds": 13.021,
+      "max_timer_gap_ms": 462.9,
+      "details": {
+        "saved": 320,
+        "restored": 320,
+        "active": 319
+      }
+    }
+  ],
+  "screenshots": [
+    "320-open-analyses.png",
+    "last-analysis-selected.png",
+    "restored-320-analysis-session.png"
+  ],
+  "style": "Fusion light",
+  "font": {
+    "family": "Sans Serif",
+    "point_size": 10.0
+  },
+  "current_check": "save_and_restore_320_analysis_session",
+  "imported_documents": 320,
+  "ui_errors": [],
+  "ui_heartbeat": {
+    "interval_ms": 50,
+    "max_gap_ms": 462.9,
+    "p95_gap_ms": 128.2,
+    "samples": 1160
+  },
+  "finished_utc": "2026-11-01T19:04:29.095347+00:00"
+}

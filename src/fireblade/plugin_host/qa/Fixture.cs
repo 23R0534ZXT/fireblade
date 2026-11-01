@@ -83,3 +83,9 @@ public sealed class FixtureTemporalRow {
  public DateOnly Day{get;}=new DateOnly(2026,1,2);
  public TimeOnly Clock{get;}=new TimeOnly(12,34,56).Add(TimeSpan.FromTicks(1234567));
 }
+
+// Same source and row count, different public projection at every invocation.
+public sealed class FixtureVolatileReader {
+ public BindingList<FixtureRow> DataList {get;}=[];
+ public void ProcessFile(string path)=>DataList.Add(new FixtureRow {Text=File.ReadAllText(path),Identifier=Guid.NewGuid().ToString()});
+}

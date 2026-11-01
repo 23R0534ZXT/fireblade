@@ -45,7 +45,7 @@ class ObjectSession:
             path=approved_for_analysis(self.case.path,self.reader['sha256'])
             self.session.request(dict(op='load_reader',path=str(path),sha256=self.reader['sha256'],
                 source=self.case.info['path'],source_sha256=self.case.info['sha256'],
-                type=self.reader['type'],rows=self.case.info['rows']),timeout=3600)
+                type=self.reader['type'],rows=self.case.info['rows'],converted_sha256=self.reader.get('converted_sha256')),timeout=3600)
             self.reader_loaded=True
         result=self.session.request(dict(name=name,arguments=arguments,reference=reference))
         if reference:

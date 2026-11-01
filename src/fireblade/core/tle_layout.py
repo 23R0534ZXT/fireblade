@@ -146,12 +146,13 @@ def read_tle_layout(path, headers):
         if index is None:
             continue
         aliases[text(node, "Name", field)] = index
+        view.tle_fields[str(index)]={'name':text(node,'Name',field), 'field':text(node,'FieldName') or (field[3:] if field.startswith('col') else field)}
         style_columns.append((index,node))
         visible = int(text(node, "VisibleIndex", str(len(columns))))
         if text(node, "Visible", "true").lower() == "false":
             visible = -1
         width = int(text(node, "Width", "150"))
-        if not 20 <= width <= 10000:
+        if not 1 <= width <= 1048575:
             raise ValueError("Largeur de colonne invalide")
         fixed = text(node, "Fixed", "None")
         if fixed not in ("None", "Left", "Right", "0", "1", "2", ""):
@@ -221,7 +222,10 @@ def read_tle_layout(path, headers):
     # aliases. Virtual Line/Tag/Note are handled by the expression compiler.
     def expression(value):
         from fireblade.core.tle_criteria import migrate
-        return parse_filter(migrate(value,headers,aliases,resolve),headers)
+        result=parse_filter(migrate(value,headers,aliases,resolve),headers)
+        from fireblade.core.tle_layout_export import condition_key
+        view.tle_expressions[condition_key(result)]=value
+        return result
 
     if text(root, "ActiveFilterEnabled", "true").lower() != "false":
         active = text(root, "ActiveFilterString") or text(root, "FilterString")

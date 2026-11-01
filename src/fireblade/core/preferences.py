@@ -23,6 +23,7 @@ class Preferences:
     details_position: str = "bottom"
     custom_date_format: str = "yyyy-MM-dd HH:mm:ss.fffffffK"
     first_pinned_columns: list[str] = field(default_factory=list)
+    pinned_columns_by_format: dict[str,list[str]] = field(default_factory=dict)
 
     def validate(self):
         if self.theme not in ("light", "dark") or self.date_format not in (
@@ -68,6 +69,15 @@ class Preferences:
             )
         ):
             raise ValueError("Liste de colonnes épinglées invalide")
+        if not isinstance(self.pinned_columns_by_format,dict) or len(self.pinned_columns_by_format)>128:
+            raise ValueError('Épinglages par format invalides')
+        seen=set()
+        for name,columns in self.pinned_columns_by_format.items():
+            if not isinstance(name,str) or not 1<=len(name)<=300 or name.casefold() in seen:
+                raise ValueError('Nom de format absent ou ambigu')
+            seen.add(name.casefold())
+            if not isinstance(columns,list) or len(columns)>128 or any(not isinstance(h,str) or not 1<=len(h)<=300 for h in columns):
+                raise ValueError('Colonnes par format invalides')
         return self
 
 
@@ -75,13 +85,15 @@ def load_preferences(path=None):
     path = Path(path) if path else user_directory() / "preferences.json"
     if not path.exists():
         return Preferences()
-    if path.stat().st_size > 16384:
+    if path.stat().st_size > 128*1024:
         raise ValueError("Préférences trop volumineuses")
     return Preferences(**json.loads(path.read_text(encoding="utf-8"))).validate()
 
 
 def save_preferences(preferences, path=None):
     preferences.validate()
+    if len(json.dumps(asdict(preferences),ensure_ascii=False,indent=2).encode('utf-8'))>128*1024:
+        raise ValueError('Préférences limitées à 128 Ko')
     path = Path(path) if path else user_directory() / "preferences.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
@@ -95,3 +107,22 @@ def save_preferences(preferences, path=None):
     finally:
         if temporary:
             temporary.unlink(missing_ok=True)
+
+
+def default_pinned_columns(preferences, headers, info):
+    """Specific reader overrides, then recognised profile, then generic defaults."""
+    from fireblade.core.profiles import detect_profile
+    reader=info.get('plugin',{}).get('type','')
+    profile=detect_profile(headers)
+    candidates=[reader,reader.rsplit('.',1)[-1] if reader else '',profile.name if profile else 'GenericCsv']
+    mapping={name.casefold():columns for name,columns in preferences.pinned_columns_by_format.items()}
+    selected=preferences.first_pinned_columns
+    for candidate in candidates:
+        if candidate and candidate.casefold() in mapping:
+            selected=mapping[candidate.casefold()];break
+    # Preserve configured order; absent columns do not alter another field.
+    result=[]
+    for name in selected:
+        matches=[i for i,h in enumerate(headers) if h.casefold()==name.casefold()]
+        if len(matches)==1 and matches[0] not in result:result.append(matches[0])
+    return result

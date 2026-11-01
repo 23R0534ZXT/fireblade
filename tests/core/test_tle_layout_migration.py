@@ -130,3 +130,18 @@ def test_layout_imports_both_pinned_sides_and_keeps_hidden_fixed_columns_hidden(
     layout=read_tle_layout(path,['A','B','C'])
     assert layout.view.pinned_columns==[0] and layout.view.right_pinned_columns==[1]
     assert layout.columns[1]['pin_side']=='right' and layout.columns[2]['position']==-1
+
+
+def test_real_upstream_wide_column_is_preserved_without_rejecting_layout(tmp_path):
+    # AmcacheParserDeviceCensus actually ships Width=110009 for colData.
+    source=tmp_path/'wide.layout'
+    source.write_text('<XtraSerializer><property name="Columns"><property name="Item1"><property name="Name">colData</property><property name="Width">110009</property><property name="Fixed">Left</property></property></property></XtraSerializer>')
+    layout=read_tle_layout(source,['Data'])
+    assert layout.columns[0]['width']==110009
+    case_source=tmp_path/'data.csv';case_source.write_text('Data\nvalue\n')
+    case=Case(tmp_path/'data.timeline')
+    try:
+        case.import_csv(case_source)
+        layout.view.pinned_widths={'1':110009}
+        case.validate_view(layout.view)
+    finally:case.close()

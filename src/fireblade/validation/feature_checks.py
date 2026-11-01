@@ -237,3 +237,35 @@ def check_features(window, directory, settle, check, expect, captures=None):
         from fireblade.validation.row_heights import check_progressive_header_probe
         check_progressive_header_probe(directory,expect)
     check('progressive_complete_header_probe_utf8_utf16_utf32',long_headers)
+
+    def xml_export():
+        from fireblade.core.models import Filter,FilterGroup
+        from fireblade.core.tle_layout_export import write_tle_layout
+        from fireblade.core.tle_layout import read_tle_layout
+        from fireblade.core.tle_settings import read_tle_settings
+        from fireblade.core.preferences import default_pinned_columns
+        import hashlib
+        source=directory/'xml-export-source.csv'
+        source.write_text('User,Value\nalice,1\nbob,2\nalice,3\n',encoding='utf-8')
+        original=hashlib.sha256(source.read_bytes()).hexdigest()
+        case=Case(directory/'xml-export.timeline',settings=window.settings)
+        try:
+            case.import_csv(source)
+            view=View(groups=[0],summaries=[Summary(1,'sum','number',1)],group_footer_mode='always',
+                      expression=FilterGroup('and',[Filter(1,'ge','2')]),auto_row_height=True,
+                      layout_styles={'row':{'background':'#80102030','word_wrap':True}})
+            columns=[dict(column=0,position=0,width=210),dict(column=1,position=1,width=180)]
+            target=directory/'exported-tle.layout'
+            write_tle_layout(target,case.headers,view,columns)
+            restored=read_tle_layout(target,case.headers)
+            case.validate_view(restored.view)
+            expect(case.count(view)==case.count(restored.view)==2,'XML export changed selected source events')
+            expect(restored.view.summaries==view.summaries and restored.view.group_footer_mode=='always','XML export changed group footers')
+            expect(restored.view.layout_styles==view.layout_styles,'XML export lost ARGB or wrapping')
+            expect(hashlib.sha256(source.read_bytes()).hexdigest()==original,'XML export changed evidence')
+            prefs=directory/'scoped-pins.xml'
+            prefs.write_text('<Settings><FirstPinnedColumns><Entry><Key>GenericCsv</Key><Value><string>Value</string></Value></Entry></FirstPinnedColumns></Settings>')
+            preferences=read_tle_settings(prefs).preferences
+            expect(default_pinned_columns(preferences,case.headers,{})==[1],'Structured reader pin mapping was lost')
+        finally:case.close()
+    check('tle_xml_layout_export_and_scoped_default_pins',xml_export)

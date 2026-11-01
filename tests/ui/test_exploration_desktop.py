@@ -467,3 +467,34 @@ def test_right_pin_vertical_scroll_and_empty_filter_share_loaded_rows(qt_applica
     filtered=copy.deepcopy(window.view);filtered.filters=[Filter(0,'eq','absent')]
     window.set_view(filtered);settle(qt_application,window)
     assert window.model.rowCount()==0 and tree.right_frozen.isVisible()
+
+
+def test_ordinary_open_detects_real_installed_reader(qt_application,tmp_path,monkeypatch):
+    import os, shutil
+    from fireblade.core.reader_detection import reader_directories
+    from fireblade.ui.dialogs import ImportDialog
+    fixture=os.environ.get('FIREBLADE_PLUGIN_FIXTURE')
+    if not fixture or not os.environ.get('FIREBLADE_PLUGIN_HOST'):
+        pytest.skip('Real .NET helper and fixture required')
+    directory=reader_directories()[0];directory.mkdir(parents=True)
+    shutil.copy2(fixture,directory/Path(fixture).name)
+    source=tmp_path/'new.csv';source.write_text('Text,Identifier\névidence,0001\n',encoding='utf-8')
+    before=source.read_bytes();w=Window();errors=[];w.error=errors.append
+    target=tmp_path/'automatic.timeline';dialogs=[]
+    def accept(dialog):
+        dialogs.append(dialog)
+        dialog.target.setText(str(target));dialog.accept();return dialog.result()
+    monkeypatch.setattr(ImportDialog,'exec',accept)
+    try:
+        w.import_file(source)
+        deadline=time.monotonic()+20
+        while time.monotonic()<deadline and not w.case and not errors:
+            qt_application.processEvents();time.sleep(.005)
+        settle(qt_application,w)
+        assert not errors and w.case is not None
+        assert w.case.info['format']=='tle-plugin' and w.case.info['plugin']['type']=='FixtureReader'
+        assert len(dialogs)==1 and w.view.boolean_columns and w.view.timestamp_columns
+        assert w.model.node(w.model.index(0,0)).values[1]==source.read_text(encoding='utf-8')
+        assert source.read_bytes()==before
+    finally:
+        settle(qt_application,w);w.close()

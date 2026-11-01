@@ -44,6 +44,7 @@ def approve(path,*,analysis=None,source=None,reader=None):
         entry=dict(path=str(path),sha256=sha,analyses=[],readers=[]);entries.append(entry)
     elif entry['sha256']!=sha:
         entry.update(sha256=sha,analyses=[],readers=[])
+        entry.pop('reader_catalog',None)
     if analysis:
         name=str(Path(analysis).resolve())
         if name not in entry.setdefault('analyses',[]):entry['analyses'].append(name)

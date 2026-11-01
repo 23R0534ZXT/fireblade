@@ -74,3 +74,25 @@ def test_session_automatically_uses_registered_reader(tmp_path):
         assert case.info['format']=='tle-plugin' and case.page(View())[0][1]=='évidence originale'
         assert case.bookmarks()=={1:''} and source.read_bytes()==original
     finally:case.close()
+
+
+def test_first_session_source_detects_installed_reader_by_header(tmp_path):
+    import shutil
+    from fireblade.core.reader_detection import reader_directories, detect_reader
+    from fireblade.core.tle_compat import TleSessionImport
+    from fireblade.core.engine import Case
+    from fireblade.core.settings import Settings
+    from fireblade.core.models import View
+    directory=reader_directories()[0];directory.mkdir(parents=True)
+    dll=directory/Path(FIXTURE).name;shutil.copy2(FIXTURE,dll)
+    source=tmp_path/'never-selected.csv';source.write_text('Text,Identifier\névidence,0001\n',encoding='utf-8')
+    original=source.read_bytes()
+    assert detect_reader(source)==(dll,'FixtureReader')
+    snapshots=TleSessionImport([(source,[1])],tmp_path/'sessions',Settings()).run()
+    case=Case(snapshots[0].path)
+    try:
+        assert case.info['format']=='tle-plugin'
+        assert case.info['plugin']['type']=='FixtureReader'
+        assert case.page(View())[0][1]==source.read_text(encoding='utf-8')
+        assert case.bookmarks()=={1:''} and source.read_bytes()==original
+    finally:case.close()

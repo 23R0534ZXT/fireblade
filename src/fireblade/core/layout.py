@@ -23,7 +23,7 @@ def read_layout(path, headers):
     path = Path(path)
     if path.stat().st_size > 4 * 1024 * 1024:
         raise ValueError("Disposition limitée à 4 Mo")
-    payload = json.loads(path.read_text(encoding='utf-8'))
+    payload = json.loads(path.read_text(encoding='utf-8-sig'))
     if not isinstance(payload, dict):
         raise ValueError('Disposition invalide')
     if payload.get('format') != 'fireblade-view' or payload.get('version') != 1:

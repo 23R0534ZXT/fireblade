@@ -44,12 +44,12 @@ Timeline Explorer reste la référence de compatibilité pour ses propres layout
 | Recherche, filtres, tris et groupements | Plusieurs niveaux, glisser-déposer, résumés, expressions et règles de coloration | Usages centraux communs ; la présence de ces fonctions ne suffit pas à garantir toutes les variantes TLE |
 | Gros CSV | Import sur disque, grille paginée, fenêtres bornées, réglages de ressources | Choix d’architecture de Fireblade ; aucun gain de vitesse ou de mémoire face à TLE n’est encore démontré sur le même poste |
 | Personnalisation du programme | Code MIT disponible, modules Python et profils JSON | Atout pour comprendre, modifier et redistribuer Fireblade ; il n’est pas nécessaire d’adapter une interface DevExpress pour modifier sa grille Qt |
-| Présentation | Épinglage gauche/droite simultané, thèmes, polices, formats de dates et règles locales/globales | Les usages de présentation sont repris ; les skins et dessins DevExpress ne sont pas identiques |
-| Layouts TLE | Import des colonnes, groupes, tris, résumés, expressions et apparences compatibles ; `.layout.local` automatiques | Compatibilité encore partielle : apparences non reprises signalées, variantes XML à qualifier et styles personnalisés nécessitant parfois une définition séparée |
-| Plugins TLE | Détection par en-tête, pont .NET intégré, fonctions et objets CLR natifs entre composants compatibles | TLE reste la référence pour ses DLL ; chaque dépendance ou variante tierce doit être qualifiée dans Fireblade |
+| Présentation | Douze thèmes Fireblade, aperçu isolé, couleurs personnalisables, épinglage gauche/droite, polices et règles locales/globales | Les thèmes Office/Studio et contrastés sont des adaptations Qt ; les skins et dessins DevExpress ne sont pas identiques |
+| Layouts TLE | Import et export XML déclaratif des colonnes, groupes, tris, résumés, expressions et apparences compatibles ; `.layout.local` automatiques | Compatibilité partielle : options non représentables signalées ; l’ouverture de chaque export dans la version cible de TLE reste à confirmer |
+| Plugins TLE | Détection par en-tête, helpers .NET/CLR4 intégrés, fonctions et objets CLR natifs entre composants compatibles | TLE reste la référence pour ses DLL ; les lecteurs tiers et leurs dépendances doivent être qualifiés avec leurs vrais exports |
 | Réutilisation d’une analyse | Base `.timeline` contenant données importées, annotations et vues ; sessions par références aux bases | Format propre à Fireblade ; l’import d’une session TLE reprend les sources et tags, sans équivalence complète des formats de session |
 | Distribution | Un EXE Windows x64 ; compilation personnelle documentée | Atout pratique de Fireblade, sans revendication d’exclusivité ; les plugins tiers peuvent nécessiter leurs DLL et dépendances |
-| Maturité | Prototype 0.4, parcours automatisés Windows et jeu synthétique de 3 GiB | TLE bénéficie d’un usage établi ; les sessions prolongées et la diversité des exports réels restent à qualifier dans Fireblade |
+| Maturité | Prototype 0.4 ; scénario local couvrant 320 analyses distinctes ; moteur exercé sur un CSV de 15 GiB sous Linux ; la qualification du véritable EXE Windows suit dans Actions | TLE bénéficie d’un usage établi ; ces scénarios ne constituent ni un benchmark comparatif ni une validation de chaque export réel |
 
 Pour choisir : Fireblade permet d’explorer les fonctions décrites ici, d’ajuster ses ressources et de modifier son code. Si un workflow dépend d’un layout ou d’une DLL TLE précis, vérifiez sa compatibilité avant de l’utiliser sur une analyse. Le [comparatif détaillé](docs/development/PARITE-TIMELINE-EXPLORER.md) et les [limites actuelles](#limites-actuelles) précisent le périmètre.
 
@@ -100,15 +100,16 @@ Les ajouts de présentation restent dans les menus : le démarrage conserve une 
 | Dates et heures | Conversions UTC, fuseaux Windows/IANA, précision jusqu’à neuf décimales et colonnes sources conservées |
 | Regroupements | Plusieurs niveaux par glisser-déposer, année/mois/jour/heure, effectifs, sommes/moyennes/min/max/distincts, tri multicritère des résumés par niveau ; dépliage complet indexé sur disque |
 | Tri | Texte, nombre exact ou date ISO ; plusieurs clés et sens réglables |
-| Onglets | Recherche par nom, plusieurs rangées, réouverture du dernier fermé ; une seule base active |
-| Sessions | Vues, analyses et dispositions ; import des sources et tags des sessions `.tle_sess` |
+| Onglets et espace de travail | Recherche par nom, jusqu’à trois rangées visibles avec défilement, réouverture du dernier fermé ; snapshots légers et une seule base active. Scénario automatisé couvrant 320 analyses, recherche, clics et restauration |
+| Sessions | Vues, analyses et dispositions ; import des sources et tags des sessions `.tle_sess` ; export `.tle_sess` avec empreinte des sources et écriture atomique |
 | Signets et notes | Ligne individuelle ou sélection multiple : marquer, ajouter, remplacer, retirer |
-| Présentation | Colonnes épinglées à gauche/droite, clair/sombre, police et formats de dates ; règles locales/globales, couleurs, styles de texte, barres, dégradés et indicateurs |
+| Présentation | Galerie de 12 thèmes persistants (Office clair/sombre, bleu classique, argent, graphite, Studio clair/sombre, sable, forêt, contraste élevé clair/sombre), aperçu annulable, couleurs personnalisées, colonnes épinglées à gauche/droite, polices et formats de dates |
 | Règles statistiques et graphiques | Top/bottom, moyennes, uniques/doublons ; bornes automatiques, pourcentages et percentiles exacts ; dégradés à deux/trois couleurs, barres négatives avec axe zéro, jeux de trois à cinq icônes et images PNG |
-| Apparences et layouts | Import XML TLE compatible, images intégrées, bordures, polices, alignements, renvoi à la ligne et troncatures ; styles nommés via bibliothèque JSON, sauvegarde dans les vues |
+| Apparences et layouts | Import et export XML TLE compatibles, images intégrées, bordures, polices, alignements, renvoi à la ligne et troncatures ; styles nommés via bibliothèque JSON, sauvegarde dans les vues ; options non exportables signalées |
+| Hauteurs et pieds | Hauteur automatique des lignes partagée avec les colonnes épinglées ; résumés de groupes et totaux globaux distincts, pieds visibles selon l’état déplié/replié |
 | Dispositions automatiques | Rechargement des `.layout.local` selon le lecteur/profil et le schéma ; ordre, largeur, visibilité, épinglage et vue conservés |
 | Règles partagées | Correspondance par noms de colonnes, import/export JSON, rechargement et désactivation par vue |
-| Plugins TLE | Lecteurs DLL détectés par en-tête ; helpers CLR4 ou .NET moderne intégrés, fonctions personnalisées et passage d’objets CLR complexes entre composants compatibles |
+| Plugins TLE | Lecteurs DLL détectés par en-tête ; helpers CLR4 ou .NET moderne intégrés, fonctions personnalisées et passage d’objets CLR complexes entre composants compatibles ; rechargement refusé si la projection publique des valeurs relues diffère de celle importée |
 | Préférences TLE | Import de `TLE_settings.xml` : police, onglets, copie, détails et formats de dates compatibles ; adaptations signalées |
 | Supertimelines | Adaptations Plaso/L2T, Psort, mactime et ForensicTimeline ; UTC, MACB, catégories/couleurs ; variantes encore partielles |
 | Détails | Valeurs complètes, notes, JSON/XML formaté, panneau à droite/en bas et filtrage depuis les détails ; affichage booléen par cases |
@@ -184,7 +185,7 @@ Les anciennes analyses `.timeline` restent ouvrables. Celles d’un ancien proto
 
 Le moteur utilise DuckDB sur disque ; la grille Qt charge des pages et libère les descendants des groupes repliés. Les notes sont chargées avec les pages, pas en totalité à l’ouverture. Les onglets inactifs gardent des snapshots légers de leur vue, sans base ouverte ni copie de toutes leurs lignes.
 
-Les règles de couleur sont évaluées sur les valeurs déjà chargées. Un cache de tri temporaire peut conserver l’ordre des identifiants pour les pages profondes, sans recopier les colonnes source.
+Les règles de couleur sont évaluées sur les valeurs déjà chargées. Un cache temporaire indexé par identifiant de ligne sert les pages profondes en ordre trié ou source, sans recopier les colonnes source. Les valeurs des pages sont lues par blocs bornés.
 
 Par défaut :
 
@@ -197,6 +198,8 @@ Par défaut :
 | Bloc d’export | 2048 lignes |
 
 **Le buffer DuckDB n’est pas un plafond de RAM du processus entier.** Qt, les cellules larges, les branches ouvertes et les bibliothèques ajoutent leur propre coût. Réduire le buffer peut augmenter les accès disque. L’import crée une base et certains traitements peuvent déborder sur disque : prévoir de l’espace libre.
+
+Le rapport [moteur sur 15 GiB](docs/validation/reports/20261101-15gib-engine-linux.json) documente un parcours Linux du moteur DuckDB avec une limite de buffer de 256 Mio : import de 12 206 080 lignes, pages première et dernière, filtre, groupes et réouverture. Le fichier est composé de cinq copies du CSV synthétique publié de 3 GiB. Ce résultat ne mesure ni la mémoire totale, ni l’EXE Windows, ni les performances de Timeline Explorer.
 
 Les mesures historiques se trouvent dans `docs/archive/`. Elles ne démontrent pas un gain face à Timeline Explorer sur des données Windows réelles. Une comparaison sur le même poste, avec les mêmes CSV forensic de plusieurs Go, reste à réaliser.
 
@@ -374,7 +377,7 @@ Après succès sur `main`, le workflow publie une préversion GitHub dont le seu
 
 Le numéro du paquet reste celui du prototype ; il ne constitue pas une validation de production.
 
-Dernière qualification : [`fe2518a`](https://github.com/23R0534ZXT/fireblade/actions/runs/41237678884), **317 tests réussis par version Python Windows**, 32 contrôles du fichier unique, huit variantes visuelles et 43 contrôles sur les 3 GiB existants. Pic du processus : **454,3 Mio** ; pause maximale mesurée : **3,125 s**. [Rapports et limites](docs/validation/AJOUTS-TLE.md) · [Télécharger cet EXE](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-fe2518a5dc14c43bce0797fe305739bc706fbfed).
+La dernière qualification Windows réussie avant la galerie de thèmes est le commit [`103e8d7`](https://github.com/23R0534ZXT/fireblade/actions/runs/41341885757) ; son EXE est publié [ici](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-103e8d71975a691e45c8073840a81dee84e14d6c). La galerie a ensuite été ajoutée dans [`39d8a73`](https://github.com/23R0534ZXT/fireblade/commit/39d8a735c61ebd658b31f79a1267bf0de8de532a). Consultez [GitHub Actions](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml) pour l’état courant de sa qualification avant de considérer son EXE comme publié. Les rapports récents et leur portée sont décrits dans [la qualification du 1er novembre](docs/validation/20261101-compatibilite.md) ; les résultats Linux et Windows y sont distingués.
 
 ## Diagnostic
 

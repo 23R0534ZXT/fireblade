@@ -16,7 +16,8 @@ class GroupHeader(QHeaderView):
     def paintSection(self,painter,rect,logical):
         model=self.model()
         styles=getattr(getattr(model,'view',None),'layout_styles',{})
-        appearance=dict(styles.get('header',{}));appearance.update(styles.get(f'header:{logical-1}',{}))
+        from fireblade.ui.layout_styles import merge_styles
+        appearance=merge_styles(styles.get('header',{}),styles.get(f'header:{logical-1}',{}))
         if not appearance:
             super().paintSection(painter,rect,logical)
             return
@@ -44,7 +45,8 @@ class GroupHeader(QHeaderView):
     def sectionSizeFromContents(self,logical):
         size=super().sectionSizeFromContents(logical)
         model=self.model();styles=getattr(getattr(model,'view',None),'layout_styles',{})
-        appearance=dict(styles.get('header',{}));appearance.update(styles.get(f'header:{logical-1}',{}))
+        from fireblade.ui.layout_styles import merge_styles
+        appearance=merge_styles(styles.get('header',{}),styles.get(f'header:{logical-1}',{}))
         if appearance:
             from fireblade.ui.layout_styles import font_for
             size.setHeight(max(size.height(),QFontMetrics(font_for(appearance,self.font())).height()+8))

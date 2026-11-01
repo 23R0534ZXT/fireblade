@@ -74,6 +74,7 @@ class FormatRule:
     icon_floor_comparison: str = ">="
     icon_thresholds: list[str] = field(default_factory=list)
     icon_threshold_mode: str = "percent"
+    icon_threshold_modes: list[str] = field(default_factory=list)
     icon_set: str = "circles"
     icon_colors: list[str] = field(default_factory=lambda:["#c62828","#c58b00","#218739"])
     icon_images: list[str] = field(default_factory=lambda:["","",""])

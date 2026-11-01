@@ -90,13 +90,13 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(file_menu, "Vider la file d’ouverture", self.clear_open_queue, requires_file=False)
         action(file_menu, "Rouvrir le dernier onglet fermé", self.reopen_closed, "Ctrl+Shift+T", False)
         file_menu.addSeparator()
-        export = action(file_menu, "Exporter…", self.export_csv, "Ctrl+E", icon=QStyle.SP_DialogSaveButton)
+        export = action(file_menu, "Exporter…", self.export_csv, "Ctrl+Shift+E", icon=QStyle.SP_DialogSaveButton)
         action(file_menu, "Exporter les signets et notes…", self.export_annotations)
         file_menu.addSeparator()
         action(file_menu, "Quitter", self.close, "Alt+F4", False)
         action(edit_menu, "Copier les lignes", self.copy_rows, "Ctrl+C")
         action(edit_menu, "Signet / note…", lambda: self.toggle_bookmark(self.tree.currentIndex()))
-        action(edit_menu, "Marquer la sélection", lambda: self.annotate_selection("mark"), "Ctrl+M")
+        action(edit_menu, "Marquer la sélection", lambda: self.annotate_selection("mark"), "Ctrl+Alt+B")
         action(edit_menu, "Ajouter une note à la sélection…", lambda: self.annotate_selection("append"))
         action(edit_menu, "Remplacer les notes de la sélection…", lambda: self.annotate_selection("replace"))
         action(edit_menu, "Retirer les signets de la sélection", lambda: self.annotate_selection("remove"), "Ctrl+Shift+M")
@@ -104,7 +104,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(view_menu, "Colonnes…", self.columns)
         action(view_menu, "Réinitialiser les largeurs", self.reset_widths, "Ctrl+R")
         action(view_menu, "Résumés et tri des groupes…", self.edit_groups)
-        action(view_menu, "Déplier tous les groupes (vue paginée)", self.expand_groups, "Ctrl+Alt+M")
+        action(view_menu, "Déplier tous les groupes (vue paginée)", self.expand_groups, "Ctrl+M")
         action(view_menu, "Replier tous les groupes", self.collapse_groups, "Ctrl+K")
         action(view_menu, "Analyses ouvertes…", self.choose_document, "Ctrl+Shift+P", False)
         action(view_menu, "Messages…", self.show_messages, requires_file=False)
@@ -122,9 +122,10 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(view_menu, "Légende des supertimelines…", self.show_legend, requires_file=False)
         action(view_menu, "Tri sur plusieurs colonnes…", self.edit_sort)
         action(filter_menu, "Expression textuelle…", self.edit_filter_text)
-        action(filter_menu, "Éditeur ET / OU / NON…", self.edit_filters, "Ctrl+Shift+F")
+        action(filter_menu, "Éditeur ET / OU / NON…", self.edit_filters, "Ctrl+Alt+F")
+        action(filter_menu, "Filtrer sur la cellule active", self.filter_current_cell, "Ctrl+Shift+F")
         add_filter = action(filter_menu, "Ajouter un filtre…", self.add_filter)
-        action(filter_menu, "Effacer les filtres", self.clear_filters, "Ctrl+Alt+E")
+        action(filter_menu, "Effacer les filtres", self.clear_filters, "Ctrl+E")
         action(filter_menu, "Réinitialiser", self.reset)
         action(filter_menu, "Rechercher dans toutes les analyses…", self.find_workspace, "Ctrl+F")
         action(analysis_menu, "Enregistrer la vue…", self.save_view, "Ctrl+S")
@@ -912,6 +913,17 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         else:
             self.view.groups = [column]
         self.apply()
+
+    def filter_current_cell(self):
+        """Use the stored value, not a formatted/truncated display string."""
+        if not self.model or self.busy:
+            return
+        index = self.tree.currentIndex()
+        if not index.isValid() or index.column() == 0:
+            return
+        node = self.model.node(index)
+        if not node.group:
+            self.filter_value(index.column() - 1, node.values[index.column()])
 
     def filter_value(self, column, value, exclude=False):
         if not self.case or self.busy or not 0 <= column < len(self.case.headers):

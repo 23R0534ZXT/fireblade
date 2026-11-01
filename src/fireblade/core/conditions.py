@@ -92,6 +92,8 @@ def validate_format_rules(rules, column, numeric_expression, limit=32):
             raise ValueError('Mode de seuil inconnu')
         if not isinstance(rule.icon_thresholds,list) or len(rule.icon_thresholds) not in (0,len(rule.icon_colors)-1):
             raise ValueError('Nombre de seuils incorrect')
+        if not isinstance(rule.icon_threshold_modes,list) or (rule.icon_threshold_modes and len(rule.icon_threshold_modes)!=len(rule.icon_thresholds)) or any(mode not in ('number','percent','percentile') for mode in rule.icon_threshold_modes):
+            raise ValueError('Modes individuels des seuils invalides')
         if not isinstance(rule.icon_comparisons,list) or len(rule.icon_comparisons) not in (0,len(rule.icon_colors)-1) or any(v not in ('>','>=') for v in rule.icon_comparisons):raise ValueError('Comparaisons d’icônes invalides')
         if rule.icon_floor_mode not in ('number','percent','percentile') or rule.icon_floor_comparison not in ('>','>='):raise ValueError('Plancher d’icônes invalide')
         if rule.icon_floor:
@@ -101,8 +103,9 @@ def validate_format_rules(rules, column, numeric_expression, limit=32):
             except (InvalidOperation,TypeError):raise ValueError('Plancher numérique invalide') from None
         try:
             thresholds=[Decimal(v) for v in rule.icon_thresholds]
-            if any(not v.is_finite() for v in thresholds) or any(a>=b for a,b in zip(thresholds,thresholds[1:])):raise ValueError('Seuils non finis ou non croissants')
-            if rule.icon_threshold_mode!='number' and any(not 0<=v<=100 for v in thresholds):raise ValueError('Percentiles et pourcentages entre 0 et 100')
+            modes=rule.icon_threshold_modes or [rule.icon_threshold_mode]*len(thresholds)
+            if any(not v.is_finite() for v in thresholds) or len(set(modes))<=1 and any(a>=b for a,b in zip(thresholds,thresholds[1:])):raise ValueError('Seuils non finis ou non croissants')
+            if any(mode!='number' and not 0<=value<=100 for mode,value in zip(modes,thresholds)):raise ValueError('Percentiles et pourcentages entre 0 et 100')
         except (InvalidOperation,TypeError):raise ValueError('Seuils numériques invalides') from None
         if rule.bound_mode not in ('fixed','auto','percent','percentile'):
             raise ValueError('Mode de bornes inconnu')

@@ -75,3 +75,15 @@ Objets complexes .NET : passage natif par références ajouté pour les argument
 Critères avancés : ajout des restrictions de collections utilisées comme conditions, références parent/grand-parent, champs simples/échappés, constantes typées/GUID/date/heure seules, paramètres positionnels et fonctions scalaires/calendaires supplémentaires. Ces syntaxes traversent les filtres, couleurs, calculs et layouts XML. Les contextes de fournisseurs ORM et extensions externes restent explicitement distingués des données CSV ; aucune parité de toutes les configurations culturelles DevExpress n’est revendiquée.
 
 Apparences, complément : images raster intégrées et enveloppes bitmap extractibles, bordures, renvois à la ligne, troncatures et préfixes clavier ; panneaux de groupement/comptage/titre/recherche/filtres/détails et grille vide. Les styles prédéfinis personnalisés sont résolus depuis une bibliothèque JSON puis intégrés aux vues. Les tests contrôlent les pixels, la persistance, le retour au style par défaut et les colonnes épinglées ; le parcours d’acceptation du véritable EXE utilise aussi ces vérifications. [Guide et limites précises](../guides/LAYOUTS-TLE.md).
+
+
+## Correctifs de reprise du 1er novembre 2026
+
+- Import et fusion effective de `HighPriority` pour les apparences ; conflits et pixels testés, y compris sélection et colonnes épinglées.
+- Seuils d’icônes de types mixtes, plancher avec type propre, conservation de la priorité lors d’un croisement des seuils, édition et persistance.
+- Raccourcis principaux TLE rétablis pour filtres et groupes ; commandes Fireblade déplacées sans suppression.
+- Accès depuis les en-têtes aux regroupements trimestre/semaine/minute/seconde déjà présents dans le moteur.
+
+Ces correctifs ajoutent des contrôles au parcours du fichier unique. Leur présence ne constitue pas une preuve de qualification native Windows réussie : consulter l’exécution Actions du commit concerné. Les quatre XML de régression amont restent distincts des nouveaux cas synthétiques. Aucun jeu de 3 GiB n’est régénéré.
+
+Les écarts restants et les preuves à obtenir sont suivis dans [l’inventaire de travail](ECARTS-TLE.md).

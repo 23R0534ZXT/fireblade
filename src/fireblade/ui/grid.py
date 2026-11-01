@@ -17,14 +17,11 @@ class GridDelegate(QStyledItemDelegate):
     """Draw grid lines without a stylesheet that overrides model colors."""
     def initStyleOption(self,option,index):
         super().initStyleOption(option,index)
-        styles=getattr(index.model().view,'layout_styles',{})
         selected=bool(option.state & QStyle.State_Selected)
-        focused=bool(option.state & QStyle.State_HasFocus)
-        appearance=dict(styles.get('selected_row',{})) if selected else {}
-        widget=self.parent()
-        current=widget.currentIndex() if hasattr(widget,'currentIndex') else QModelIndex()
-        if current.isValid() and current.row()==index.row() and current.parent()==index.parent():appearance.update(styles.get('focused_row',{}))
-        if focused:appearance.update(styles.get('focused_cell',{}))
+        from fireblade.ui.layout_styles import merge_styles
+        states=self.state_layers(index,option)
+        appearance=merge_styles(*states)
+        appearance.update(merge_styles(*self.appearance_layers(index,option),priority_only=True))
         if appearance:
             from fireblade.ui.layout_styles import role_value,font_for
             background=role_value(appearance,Qt.BackgroundRole)
@@ -32,26 +29,28 @@ class GridDelegate(QStyledItemDelegate):
             if background is not None:option.backgroundBrush=QBrush(background)
             if foreground is not None:option.palette.setBrush(QPalette.Text,QBrush(foreground))
             option.font=font_for(appearance,option.font);option.fontMetrics=QFontMetrics(option.font)
+            alignment=role_value(appearance,Qt.TextAlignmentRole)
+            if alignment is not None:option.displayAlignment=alignment
             if selected and (background is not None or foreground is not None):
                 if background is None:option.backgroundBrush=option.palette.brush(QPalette.Highlight)
                 if foreground is None:option.palette.setBrush(QPalette.Text,option.palette.brush(QPalette.HighlightedText))
                 option.state &= ~QStyle.State_Selected
 
-    def appearance(self,index,option):
-        from fireblade.ui.layout_styles import cell_style
-        model=index.model();node=model.node(index)
-        result=cell_style(model.view,node,index.column(),index.row())
-        if not node.group:
-            # cell_rules is already populated by the paged styling query.
-            matched=list(model.cell_rules(node,index.column()))
-            for rule in reversed(matched):
-                if rule.visual=='none':result.update(rule.appearance)
-        styles=model.view.layout_styles
-        if option.state & QStyle.State_Selected:result.update(styles.get('selected_row',{}))
+    def state_layers(self,index,option):
+        styles=index.model().view.layout_styles
+        result=[]
+        if option.state & QStyle.State_Selected:result.append(styles.get('selected_row',{}))
         widget=self.parent();current=widget.currentIndex() if hasattr(widget,'currentIndex') else QModelIndex()
-        if current.isValid() and current.row()==index.row() and current.parent()==index.parent():result.update(styles.get('focused_row',{}))
-        if option.state & QStyle.State_HasFocus:result.update(styles.get('focused_cell',{}))
+        if current.isValid() and current.row()==index.row() and current.parent()==index.parent():result.append(styles.get('focused_row',{}))
+        if option.state & QStyle.State_HasFocus:result.append(styles.get('focused_cell',{}))
         return result
+
+    def appearance_layers(self,index,option):
+        return index.model().appearance_layers(index)+self.state_layers(index,option)
+
+    def appearance(self,index,option):
+        from fireblade.ui.layout_styles import merge_styles
+        return merge_styles(*self.appearance_layers(index,option))
 
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
@@ -283,8 +282,8 @@ class GridModel(QAbstractItemModel):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
             return "Ligne / groupe" if section == 0 else self.headers[section - 1] if 0<section<=len(self.headers) else None
         if orientation==Qt.Horizontal:
-            from fireblade.ui.layout_styles import role_value
-            style=dict(self.view.layout_styles.get('header',{}));style.update(self.view.layout_styles.get(f'header:{section-1}',{}))
+            from fireblade.ui.layout_styles import role_value,merge_styles
+            style=merge_styles(self.view.layout_styles.get('header',{}),self.view.layout_styles.get(f'header:{section-1}',{}))
             return role_value(style,role)
 
     def cell_rules(self,node,col):
@@ -293,6 +292,15 @@ class GridModel(QAbstractItemModel):
             if rule.target is None or col==rule.target+1:
                 yield rule
                 if rule.stop_if_true:break
+
+    def appearance_layers(self,index):
+        from fireblade.ui.layout_styles import cell_layers,rule_style
+        node=self.node(index)
+        layers=cell_layers(self.view,node,index.column(),index.row())
+        if not node.group:
+            # Rule matches are prepared by the paged query, never queried in paint.
+            layers += [rule_style(rule) for rule in reversed(list(self.cell_rules(node,index.column())))]
+        return layers
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
@@ -339,6 +347,10 @@ class GridModel(QAbstractItemModel):
             return QColor("#eeeeee" if self.dark else "#202020")
         if role == Qt.BackgroundRole and node.group:
             return QColor("#39434f" if self.dark else "#e9edf2")
+        if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole, Qt.TextAlignmentRole):
+            from fireblade.ui.layout_styles import merge_styles,role_value
+            prioritized=role_value(merge_styles(*self.appearance_layers(index),priority_only=True),role)
+            if prioritized is not None:return prioritized
         if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole, VISUAL_ROLE, ICON_ROLE, BAR_ROLE, Qt.TextAlignmentRole):
             for rule in self.cell_rules(node,col):
                 if rule.visual!='none':

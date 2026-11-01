@@ -297,7 +297,7 @@ class RulesDialog(QDialog):
         self.icon_threshold_mode=QComboBox()
         for label,code in [('Seuils en pourcent','percent'),('Seuils numériques','number'),('Seuils en percentiles','percentile')]:self.icon_threshold_mode.addItem(label,code)
         icons.addWidget(self.icon_levels,0,0);icons.addWidget(self.icon_set,0,1);icons.addWidget(self.icon_threshold_mode,0,2,1,2)
-        self.icon_colors=[];self.icon_images=[];self.icon_thresholds=[];self.icon_comparisons=[]
+        self.icon_colors=[];self.icon_images=[];self.icon_thresholds=[];self.icon_comparisons=[];self.icon_threshold_modes=[]
         for i in range(5):
             color=QPushButton(f'Couleur {i+1}');image=QPushButton(f'Image {i+1}')
             color.clicked.connect(lambda _=False,b=color:self.pick_color(b));image.clicked.connect(lambda _=False,b=image:self.pick_icon(b))
@@ -306,6 +306,9 @@ class RulesDialog(QDialog):
                 threshold=QLineEdit();threshold.setPlaceholderText(f'Seuil {i+1}')
                 comparison=QComboBox();comparison.addItem('≥','>=');comparison.addItem('>','>')
                 pair=QWidget();pair.setLayout(QHBoxLayout());pair.layout().setContentsMargins(0,0,0,0);pair.layout().addWidget(comparison);pair.layout().addWidget(threshold)
+                unit=QComboBox()
+                for label,code in [('Type commun',''),('Valeur','number'),('Pourcent','percent'),('Percentile','percentile')]:unit.addItem(label,code)
+                pair.layout().addWidget(unit);self.icon_threshold_modes.append(unit)
                 icons.addWidget(pair,3,i);self.icon_thresholds.append(threshold);self.icon_comparisons.append(comparison)
         floor=QHBoxLayout();self.icon_floor=QLineEdit();self.icon_floor.setPlaceholderText('Plancher facultatif')
         self.icon_floor_mode=QComboBox()
@@ -375,6 +378,7 @@ class RulesDialog(QDialog):
                 value_column=self.value_column.currentData(),middle_color=self.middle_color.property("color"),middle_value=self.middle_value.text(),middle_mode=self.middle_mode.currentData(),
                 icon_set=self.icon_set.currentData(),icon_colors=[b.property('color') for b in self.icon_colors[:count]],icon_images=[b.property('image') or '' for b in self.icon_images[:count]],
                 icon_threshold_mode=self.icon_threshold_mode.currentData(),icon_thresholds=thresholds,
+                icon_threshold_modes=([c.currentData() or self.icon_threshold_mode.currentData() for c in self.icon_threshold_modes[:count-1]] if thresholds and any(c.currentData() for c in self.icon_threshold_modes[:count-1]) else []),
                 icon_comparisons=([c.currentData() for c in self.icon_comparisons[:count-1]] if self.rules[self.current].icon_comparisons or any(c.currentData()!=">=" for c in self.icon_comparisons[:count-1]) else []),
                 icon_floor=self.icon_floor.text(),icon_floor_mode=self.icon_floor_mode.currentData(),icon_floor_comparison=self.icon_floor_comparison.currentData())
 
@@ -425,6 +429,7 @@ class RulesDialog(QDialog):
         defaults=['#c62828','#f57c00','#c58b00','#8dbb38','#218739']
         for i,button in enumerate(self.icon_colors):self.set_color(button,rule.icon_colors[i] if i<len(rule.icon_colors) else defaults[i])
         for i,button in enumerate(self.icon_images):button.setProperty('image',rule.icon_images[i] if i<len(rule.icon_images) else '')
+        for i,combo in enumerate(self.icon_threshold_modes):combo.setCurrentIndex(combo.findData(rule.icon_threshold_modes[i] if i<len(rule.icon_threshold_modes) else ''))
         for i,field in enumerate(self.icon_thresholds):field.setText(rule.icon_thresholds[i] if i<len(rule.icon_thresholds) else '')
         for i,combo in enumerate(self.icon_comparisons):combo.setCurrentIndex(combo.findData(rule.icon_comparisons[i] if i<len(rule.icon_comparisons) else '>='))
         self.icon_floor.setText(rule.icon_floor);self.icon_floor_mode.setCurrentIndex(self.icon_floor_mode.findData(rule.icon_floor_mode));self.icon_floor_comparison.setCurrentIndex(self.icon_floor_comparison.findData(rule.icon_floor_comparison))
@@ -444,7 +449,7 @@ class RulesDialog(QDialog):
         old.deleteLater()
         for widget in (self.all_source_rows,self.editor, self.enabled, self.target, self.background, self.foreground, self.bold, self.visual, self.minimum, self.maximum, self.italic, self.underline, self.strikeout, self.bound_mode, self.custom_font, self.font_family, self.font_size,self.high_mode,self.value_column,self.middle_color,self.middle_mode,self.middle_value,self.stop_if_true,self.use_background,self.use_foreground,self.use_font,self.show_values,self.zero_based,self.draw_axis,self.negative_color,self.axis_color,self.statistic,self.stat_rank,self.stat_column,self.stat_percent,self.stat_ignore_case,self.stat_include_null):
             widget.setEnabled(index >= 0)
-        for widget in [self.icon_set,self.icon_levels,self.icon_threshold_mode,*self.icon_thresholds,*self.icon_colors,*self.icon_images]:widget.setEnabled(index>=0)
+        for widget in [self.icon_set,self.icon_levels,self.icon_threshold_mode,*self.icon_thresholds,*self.icon_threshold_modes,*self.icon_colors,*self.icon_images]:widget.setEnabled(index>=0)
         self.message.clear()
 
     def add(self):

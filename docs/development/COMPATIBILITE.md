@@ -104,3 +104,10 @@ Cela couvre les syntaxes et fonctions identifiées pour les données de grille. 
 La qualification du fichier unique attend désormais l’ouverture effective du dialogue d’import après la détection des lecteurs. Le rapport est enregistré avant/après chaque contrôle ; un dépassement de délai arrête l’arbre du processus onefile, afin de conserver le diagnostic et libérer l’EXE relocalisé.
 
 Les conversions numériques des colonnes réutilisent le chemin natif HUGEINT pour les chaînes entières, sans passer par un flottant ; les autres chaînes conservent le parseur décimal. Un contrôle ciblé sur l’analyse existante du CSV de 3 Go est conservé dans [ce rapport](../validation/reports/advanced-criteria-existing-dataset.json). Il ne constitue pas un benchmark comparatif avec TLE.
+
+
+## Complément : priorités et unités des icônes
+
+`Options.HighPriority` participe maintenant à la fusion des apparences par propriété, y compris pour la sélection et les colonnes épinglées. Les seuils d’icônes peuvent avoir des types différents dans une même règle ; les types et l’ordre de priorité sont conservés à l’import, dans l’éditeur, les vues et les règles globales. Le plancher utilise aussi le type déclaré sur son entrée XML. Les nouvelles validations du fichier unique vérifient les pixels et le recalcul après filtrage. Voir [les règles précises](../guides/LAYOUTS-TLE.md#priorités-dapparence).
+
+Les raccourcis `Ctrl+E`, `Ctrl+Maj+F`, `Ctrl+M` et `Ctrl+K` reprennent respectivement l’effacement des filtres, le filtrage par cellule, le dépliage et le repliage documentés par TLE. Les commandes déplacées restent accessibles, avec leurs nouveaux raccourcis dans le [guide](../guides/UTILISATION.md#raccourcis). Les regroupements par trimestre, semaine, minute et seconde déjà disponibles dans le moteur sont maintenant accessibles depuis les en-têtes.

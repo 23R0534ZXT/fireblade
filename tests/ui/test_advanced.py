@@ -417,3 +417,18 @@ def test_additional_icon_presets_roundtrip_and_render(case,shape):
     image=QImage(32,32,QImage.Format_ARGB32);image.fill(Qt.white);p=QPainter(image)
     paint_shape(p,QRect(0,0,32,32),shape,2,3,QColor('#123456'));p.end()
     assert any(image.pixelColor(x,y).name()=='#123456' for x in range(32) for y in range(32))
+
+
+def test_mixed_icon_units_survive_editor_and_change_independently(case):
+    rule=FormatRule(target=1,visual='icon',bound_mode='auto',icon_thresholds=['200','50'],icon_threshold_modes=['number','percentile'])
+    dialog=RulesDialog(case.headers,[rule])
+    try:
+        dialog.accept()
+        assert dialog.result()==1 and dialog.rules==[rule]
+        dialog.icon_threshold_modes[0].setCurrentIndex(dialog.icon_threshold_modes[0].findData('percent'))
+        dialog.icon_thresholds[0].setText('25')
+        dialog.store()
+        assert dialog.rules[0].icon_threshold_modes==['percent','percentile']
+        assert dialog.rules[0].icon_thresholds==['25','50']
+        assert rule.icon_threshold_modes==['number','percentile']
+    finally:dialog.deleteLater()

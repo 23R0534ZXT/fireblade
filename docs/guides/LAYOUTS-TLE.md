@@ -70,4 +70,19 @@ Après import et sauvegarde d’une vue Fireblade, les propriétés résolues so
 
 Les tests d’interface chargent des XML, vérifient les pixels des images/bordures/fonds, la hauteur des lignes et en-têtes épinglés, les règles conditionnelles, la sauvegarde/réouverture et le retrait des styles lorsqu’on change de vue. Ils contrôlent également les données d’image invalides et les options désactivées.
 
-Le rendu est une adaptation Qt : les skins, métriques exactes, dessins propriétaires, `HighPriority` et propriétés XML non reconnues ne sont pas reproduits à l’identique. Les propriétés actives non reprises sont signalées lors de l’import. La taille maximale d’un layout demeure 4 Mio. Les tests d’apparence ne constituent pas un nouveau benchmark du CSV de 3 Gio ; ce fichier existant n’est pas régénéré pour ces changements.
+Le rendu est une adaptation Qt : les skins, métriques exactes, dessins propriétaires et propriétés XML non reconnues ne sont pas reproduits à l’identique. Les propriétés actives non reprises sont signalées lors de l’import. La taille maximale d’un layout demeure 4 Mio. Les tests d’apparence ne constituent pas un nouveau benchmark du CSV de 3 Gio ; ce fichier existant n’est pas régénéré pour ces changements.
+
+
+## Priorités d’apparence
+
+`Options.HighPriority` est lu dans les deux formes XML : option imbriquée dans `Options` ou propriété nommée `Options.HighPriority`. La valeur doit être `true` ou `false`. Elle est conservée dans les vues et les styles conditionnels.
+
+La fusion se fait par propriété : les apparences prioritaires passent après les apparences ordinaires. Entre deux apparences de même priorité, la plus spécifique ou la dernière couche applicable prévaut : ligne, alternance, colonne, règles conditionnelles dans leur ordre de priorité, sélection, ligne active et cellule active. Une ligne prioritaire ne définissant que le fond ne remplace donc pas une couleur de texte fournie par une autre règle. Une option `Use…=false` ne fournit aucune valeur pour la propriété désactivée. Les en-têtes centraux et épinglés appliquent la même fusion.
+
+Les tests vérifient les conflits ligne/colonne/règle/sélection, les pixels dessinés, les en-têtes épinglés, la sauvegarde et le retour au style ordinaire. Le parcours Windows du fichier unique contient ces contrôles. Cela ne garantit pas l’identité de toutes les variantes de rendu DevExpress.
+
+## Types de seuils d’icônes indépendants
+
+Une règle peut combiner des seuils numériques, en pourcentage de la plage et en percentile. Chaque seuil et le plancher gardent leur propre type. Le menu des règles propose un type commun et une dérogation pour chaque seuil. L’import conserve l’ordre de priorité des icônes XML ; il ne trie pas ensemble des nombres exprimés dans des unités différentes.
+
+Les pourcentages et percentiles sont calculés sur l’ensemble des résultats filtrés, ou sur toute la source lorsque cette option est activée. Si des seuils de types différents se croisent après filtrage, l’icône de priorité la plus élevée dont le seuil est satisfait est retenue. Les comparaisons `>`/`>=` et les types du plancher restent conservés. Les anciens fichiers avec un type commun restent lisibles.

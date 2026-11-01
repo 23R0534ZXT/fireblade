@@ -4,7 +4,7 @@ import re
 
 FONT_FLAGS=('bold','italic','underline','strikeout')
 COLORS=('background','foreground','background2','border_color')
-EXTRA=('word_wrap','trimming','hotkey','image','image_align','border_width','border_style')
+EXTRA=('high_priority','word_wrap','trimming','hotkey','image','image_align','border_width','border_style')
 ROLES={'row','odd_row','even_row','group_row','selected_row','focused_row','focused_cell','header','group_panel','footer_panel','view_caption','preview','empty','filter_panel','find_panel'}
 
 
@@ -21,6 +21,7 @@ def validate_styles(styles,columns):
             from fireblade.core.layout_images import image_bytes
             image_bytes(style['image'])
         for key,value in style.items():
+            if key=='high_priority' and type(value) is not bool:raise ValueError('Priorité de style invalide')
             if key=='word_wrap' and type(value) is not bool:raise ValueError('Renvoi à la ligne invalide')
             if key=='trimming' and value not in ('None','Character','Word','EllipsisCharacter','EllipsisWord','EllipsisPath'):raise ValueError('Troncature invalide')
             if key=='hotkey' and value not in ('None','Show','Hide'):raise ValueError('Préfixe clavier invalide')
@@ -44,6 +45,10 @@ def appearance(node,text,properties,color,warnings,defaults=None):
         flag=(text(options,name) if options is not None else '') or text(node,'Options.'+name)
         if flag and flag.lower() not in ('true','false'):raise ValueError('Option de style invalide : '+name)
         return flag.lower()=='true' if flag else present
+    priority=(text(options,'HighPriority') if options is not None else '') or text(node,'Options.HighPriority')
+    if priority:
+        if priority.lower() not in ('true','false'):raise ValueError('Priorité de style invalide')
+        result['high_priority']=priority.lower()=='true'
     for prop,key,flag in [('BackColor','background','UseBackColor'),('ForeColor','foreground','UseForeColor')]:
         raw=text(node,prop)
         if use(flag,bool(raw) or key in result):
@@ -92,7 +97,7 @@ def appearance(node,text,properties,color,warnings,defaults=None):
     elif not use('UseTextOptions',True):
         for key in ('horizontal','vertical','word_wrap','trimming','hotkey'):result.pop(key,None)
     known={'Options','BackColor','BackColor2','ForeColor','GradientMode','Font','TextOptions','BorderColor','Image','ImageOptions','ImageAlignment'}
-    supported_options={'UseBackColor','UseForeColor','UseFont','UseTextOptions','UseBorderColor','UseImage'}
+    supported_options={'HighPriority','UseBackColor','UseForeColor','UseFont','UseTextOptions','UseBorderColor','UseImage'}
     def active(child):
         return len(child)>0 or (child.text or '').strip() not in ('','False','false','Default','None','-1','0')
     for prop,child in properties(node).items():

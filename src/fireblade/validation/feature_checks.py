@@ -47,6 +47,16 @@ def check_features(window, directory, settle, check, expect, captures=None):
         check_layout_appearance(window,directory,settle,expect,captures)
     check('group_summaries_sort_and_exact_large_values',summaries)
 
+    def mixed_icons():
+        from fireblade.validation.layout_appearance import check_mixed_icon_layout
+        check_mixed_icon_layout(window,directory,settle,expect)
+    check('mixed_icon_threshold_units_and_pinned_rendering',mixed_icons)
+
+    def priority_appearance():
+        from fireblade.validation.layout_appearance import check_priority_layout
+        check_priority_layout(window,directory,settle,expect)
+    check('high_priority_layout_and_selection_rendering',priority_appearance)
+
     def periods():
         view=View(groups=[0],group_intervals={'0':'month'},group_order='value',group_descending=False)
         window.set_view(view);settle()

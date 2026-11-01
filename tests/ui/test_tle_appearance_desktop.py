@@ -181,3 +181,79 @@ def test_search_filters_and_detail_controls_show_panel_styles_and_reset(qt_appli
         assert not w.search.styleSheet() and not w.details.styleSheet() and not w.filters.wordWrap()
         assert not errors
     finally:settle(qt_application,w);w.close()
+
+
+def test_standalone_mixed_icon_acceptance_runs_against_real_widgets(qt_application,tmp_path):
+    from fireblade.validation.layout_appearance import check_mixed_icon_layout
+    source=tmp_path/'s.csv';source.write_text('ID,User\n9007199254740993,alice\n1,bob\n5,alice\n')
+    case=Case(tmp_path/'s.timeline');case.import_csv(source)
+    window=Window();errors=[];window.error=errors.append
+    def expect(value,message):assert value,message
+    try:
+        window.attach(case);window.show();settle(qt_application,window)
+        check_mixed_icon_layout(window,tmp_path,lambda:settle(qt_application,window),expect)
+        assert not errors
+    finally:settle(qt_application,window);window.close()
+
+
+def test_high_priority_appearance_overrides_per_property_and_resets(qt_application,tmp_path):
+    from dataclasses import replace
+    from PySide6.QtGui import QImage,QPainter,QColor
+    from fireblade.core.models import FormatRule
+    from fireblade.core.rule_store import RuleBook
+    source=tmp_path/'s.csv';source.write_text('Value\n1\n2\n');case=Case(tmp_path/'s.timeline');case.import_csv(source)
+    rule=FormatRule(target=0,background='#0000ff',foreground='#ffffff',use_font=False)
+    view=View(format_rules=[rule],right_pinned_columns=[0],layout_styles={
+        'row':dict(background='#aabbcc',high_priority=True),
+        'cell:0':dict(background='#00ff00',foreground='#112233'),
+        'selected_row':dict(background='#ffff00'),
+        'header':dict(background='#123456',high_priority=True),
+        'header:0':dict(background='#654321'),
+    })
+    window=Window();errors=[];window.error=errors.append
+    try:
+        window.attach(case,view);window.show();settle(qt_application,window)
+        index=window.model.index(0,1)
+        assert index.data(Qt.BackgroundRole).name()=='#aabbcc'
+        assert index.data(Qt.ForegroundRole).name()=='#ffffff'  # priority only affects specified properties
+        tree=window.tree.right_frozen;delegate=tree.itemDelegate()
+        option=QStyleOptionViewItem();option.rect=tree.visualRect(index);option.state|=QStyle.State_Selected
+        delegate.initStyleOption(option,index)
+        assert option.backgroundBrush.color().name()=='#aabbcc'
+        image=QImage(220,32,QImage.Format_ARGB32);image.fill(Qt.white)
+        paint_option=QStyleOptionViewItem();paint_option.rect=image.rect();paint_option.state|=QStyle.State_Selected
+        painter=QPainter(image)
+        try:delegate.paint(painter,paint_option,index)
+        finally:painter.end()
+        assert image.pixelColor(180,5).name()=='#aabbcc'
+        header=tree.header();raster=header.viewport().grab().toImage();x=header.sectionViewportPosition(1)+8
+        assert raster.pixelColor(x,3).name()=='#123456'
+        # A later high-priority column overrides an earlier high-priority row.
+        saved=View.from_json(window.view.to_json());saved.layout_styles['cell:0']['high_priority']=True
+        window.set_view(saved);settle(qt_application,window)
+        assert window.model.index(0,1).data(Qt.BackgroundRole).name()=='#00ff00'
+        # A high-priority conditional rule participates in the same ordering.
+        saved.format_rules=[replace(rule,appearance={'high_priority':True})]
+        assert RuleBook.from_bytes(RuleBook(case.headers,saved.format_rules).to_bytes()).rules==saved.format_rules
+        window.set_view(saved);settle(qt_application,window)
+        assert window.model.index(0,1).data(Qt.BackgroundRole).name()=='#0000ff'
+        window.set_view(View(format_rules=[rule]));settle(qt_application,window)
+        option=QStyleOptionViewItem();option.state|=QStyle.State_Selected
+        window.tree.itemDelegate().initStyleOption(option,window.model.index(0,1))
+        assert option.state & QStyle.State_Selected  # default Qt selection restored
+        assert window.model.index(0,1).data(Qt.BackgroundRole).name()=='#0000ff'
+        assert not errors
+    finally:settle(qt_application,window);window.close()
+
+
+def test_standalone_priority_acceptance_runs_against_real_widgets(qt_application,tmp_path):
+    from fireblade.validation.layout_appearance import check_priority_layout
+    source=tmp_path/'s.csv';source.write_text('ID,User\n1,alice\n2,bob\n')
+    case=Case(tmp_path/'s.timeline');case.import_csv(source)
+    window=Window();errors=[];window.error=errors.append
+    def expect(value,message):assert value,message
+    try:
+        window.attach(case);window.show();settle(qt_application,window)
+        check_priority_layout(window,tmp_path,lambda:settle(qt_application,window),expect)
+        assert not errors
+    finally:settle(qt_application,window);window.close()

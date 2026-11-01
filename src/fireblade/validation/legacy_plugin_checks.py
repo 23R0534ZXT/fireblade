@@ -21,11 +21,14 @@ def verify(host,legacy,fixture):
                 import_plugin(case,source,fixture,'LegacyReader');assert case.page(View())[0][1]=='&lt;preuve&gt;'
                 register_functions(case,fixture)
                 assert case.count(View(expression=parse_filter("LegacyEncode('<x>') = '&lt;x&gt;'",case.headers)))==1
+                assert case.count(View(expression=parse_filter("LegacyNative([Details]) = 91",case.headers)))==1
             finally:case.close()
             case=Case(root/'s.timeline')
-            try:assert case.count(View(expression=parse_filter("LegacyEncode('<x>') = '&lt;x&gt;'",case.headers)))==1
+            try:
+                assert case.count(View(expression=parse_filter("LegacyEncode('<x>') = '&lt;x&gt;'",case.headers)))==1
+                assert case.count(View(expression=parse_filter("LegacyNative([Details]) = 91",case.headers)))==1
             finally:case.close()
-        return dict(status='passed',checks=['CLR4 automatic selection','real System.Web dependency','reader','custom function','automatic reopen'])
+        return dict(status='passed',checks=['CLR4 automatic selection','real System.Web dependency','reader','custom function','automatic reopen','native CLR4 complex object'])
     finally:
         for k,v in saved.items():
             if v is None:os.environ.pop(k,None)

@@ -17,6 +17,7 @@ def build(root,python=None):
     project=root/'src/fireblade/plugin_host/Fireblade.PluginHost.csproj'
     subprocess.run([dotnet,'publish',str(project),'-c','Release','-r','win-x64','--self-contained','true','-p:DebugType=none','-p:IncludeAllContentForSelfExtract=true','-o',str(output)],check=True)
     subprocess.run([dotnet,'build',str(project.parent/'qa/Fixture.csproj'),'-c','Release','-p:DebugType=none','-o',str(fixture)],check=True)
+    subprocess.run([dotnet,'build',str(project.parent/'qa_other/Fixture.csproj'),'-c','Release','-p:DebugType=none','-o',str(fixture)],check=True)
     legacy=output/'legacy';legacy_fixture=root/'build/windows/plugin-legacy-fixture'
     subprocess.run([dotnet,'build',str(project.parent/'legacy/Fireblade.LegacyHost.csproj'),'-c','Release','-p:DebugType=none','-o',str(legacy)],check=True)
     subprocess.run([dotnet,'build',str(project.parent/'qa_legacy/Fixture.csproj'),'-c','Release','-p:DebugType=none','-o',str(legacy_fixture)],check=True)

@@ -233,6 +233,7 @@ class Value:
     kind: str
     parameters: list
     date_ns: "Value | None" = None
+    clr_ref: "Value | None" = None
 
     def __post_init__(self):
         if len(self.sql) > 1024 * 1024 or len(self.parameters) > 4096:
@@ -303,7 +304,14 @@ class Compiler:
         if self.nodes > 1024 or depth > 24:
             raise ValueError("Expression limitée à 1024 nœuds et 24 niveaux")
         if node.kind == "column":
-            return Value(self.column(node.value), "column", [])
+            value=Value(self.column(node.value),"column",[])
+            owner=getattr(self.column,'__self__',getattr(self.column,'case',None))
+            columns=getattr(owner,'info',{}).get('plugin',{}).get('columns',[])
+            from fireblade.core.clr_objects import complex_column
+            if 0<=node.value<len(columns) and complex_column(columns[node.value]):
+                name=columns[node.value].get('source_name',columns[node.value]['name'])
+                value.clr_ref=Value("json_object('$fb_type','clr_column','row',events.__row_id,'column',?)",'text',[name])
+            return value
         if node.kind == "null":
             return Value("NULL", "null", [])
         if node.kind in ("text", "number", "date", "boolean"):
@@ -427,10 +435,13 @@ class Compiler:
         )
 
     def plugin_arguments(self,args):
-        owner=getattr(self.column,'__self__',None)
+        owner=getattr(self.column,'__self__',getattr(self.column,'case',None))
         columns=getattr(owner,'info',{}).get('plugin',{}).get('columns',[])
         output=[];parameters=[]
         for value in args:
+            if value.clr_ref is not None:
+                output.append('cast('+value.clr_ref.sql+' AS JSON)');parameters+=value.clr_ref.parameters
+                continue
             tag=None;expression=value.sql;params=value.parameters
             column=re.fullmatch(r'"c(\d+)"',value.sql)
             if column and int(column.group(1))<len(columns):
@@ -851,10 +862,18 @@ class Compiler:
             arity(1,2)
             path=args[1] if len(args)>1 else Value("'$'",'text',[])
             function='json_extract_string' if name=='jsonvalue' else 'json_array_length'
-            return Value(f"TRY({function}(try_cast({args[0].sql} AS JSON),{path.sql}))",'text' if name=='jsonvalue' else 'number',args[0].parameters+path.parameters)
+            value=Value(f"TRY({function}(try_cast({args[0].sql} AS JSON),{path.sql}))",'text' if name=='jsonvalue' else 'number',args[0].parameters+path.parameters)
+            if name=='jsonvalue' and args[0].clr_ref is not None:
+                parent=args[0].clr_ref
+                value.clr_ref=Value("json_object('$fb_type','clr_path','parent',cast("+parent.sql+" AS JSON),'path',"+path.sql+")",'text',parent.parameters+path.parameters)
+            return value
         if name=='jsonsingle' and len(args)==1:
             array=f'try_cast(try_cast({args[0].sql} AS JSON) AS JSON[])'
-            return Value(f"CASE WHEN array_length({array})>1 THEN error('Single : plusieurs objets correspondent') ELSE cast(list_extract({array},1) AS VARCHAR) END",'text',args[0].parameters*2)
+            value=Value(f"CASE WHEN array_length({array})>1 THEN error('Single : plusieurs objets correspondent') ELSE cast(list_extract({array},1) AS VARCHAR) END",'text',args[0].parameters*2)
+            if args[0].clr_ref is not None:
+                parent=args[0].clr_ref
+                value.clr_ref=Value("json_object('$fb_type','clr_single','parent',cast("+parent.sql+" AS JSON))",'text',parent.parameters)
+            return value
         if name in ('jsonfilter','jsonany','jsonall','jsonsumexpr','jsonavgexpr','jsonminexpr','jsonmaxexpr','jsonsingle'):
             arity(2)
             if self.collection_depth>=16:raise ValueError('16 niveaux de collections maximum')
@@ -892,10 +911,10 @@ class Compiler:
             arity(1,32)
             if args[0].sql!='?' or len(args[0].parameters)!=1:raise ValueError('Nom de fonction Custom constant requis')
             target=args[0].parameters[0].casefold()
-            owner=getattr(self.column,'__self__',None);functions=getattr(owner,'expression_functions',CUSTOM_FUNCTIONS)
+            owner=getattr(self.column,'__self__',getattr(self.column,'case',None));functions=getattr(owner,'expression_functions',CUSTOM_FUNCTIONS)
             if target not in functions:raise ValueError('Fonction personnalisée non chargée : '+target)
             return self.function(target,args[1:])
-        owner=getattr(self.column,'__self__',None)
+        owner=getattr(self.column,'__self__',getattr(self.column,'case',None))
         functions=getattr(owner,'expression_functions',CUSTOM_FUNCTIONS)
         if name in ('plugintext','pluginnumber','pluginbool','plugindate'):
             arity(1,32)
@@ -904,11 +923,13 @@ class Compiler:
             if owner is not None and hasattr(owner,'expression_functions') and target not in functions:raise ValueError('Charger les fonctions .NET avant d’utiliser '+target)
             array,parameters=self.plugin_arguments(args[1:])
             value=Value('__fireblade_plugin_eval(?,cast('+array+' AS VARCHAR))','text',[target]+parameters)
+            value.clr_ref=Value('__fireblade_plugin_ref_eval(?,cast('+array+' AS VARCHAR))','text',value.parameters)
             kind={'plugintext':'text','pluginnumber':'number','pluginbool':'boolean','plugindate':'date'}[name]
             return Value(f'try_cast({value.sql} AS BOOLEAN)','boolean',value.parameters) if kind=='boolean' else self.cast(value,kind)
         if name in functions:
             array,parameters=self.plugin_arguments(args)
             value=Value('__fireblade_plugin_eval(?,cast('+array+' AS VARCHAR))','text',[name]+parameters)
+            value.clr_ref=Value('__fireblade_plugin_ref_eval(?,cast('+array+' AS VARCHAR))','text',value.parameters)
             kind=functions[name]
             return Value(f'try_cast({value.sql} AS BOOLEAN)','boolean',value.parameters) if kind=='boolean' else self.cast(value,kind)
         raise ValueError(f"Fonction non prise en charge : {name}")

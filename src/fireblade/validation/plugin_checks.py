@@ -20,10 +20,11 @@ def verify(host,fixture):
             readers_dir=reader_directories()[0];readers_dir.mkdir(parents=True)
             installed=readers_dir/Path(fixture).name;shutil.copy2(fixture,installed)
             fresh=root/'never-selected.csv';fresh.write_text('Text,Identifier\névidence,0001\n',encoding='utf-8')
-            assert detect_reader(fresh)==(installed,'FixtureReader')
+            detected=detect_reader(fresh)
+            assert detected==(installed.resolve(),'FixtureReader'),f'Unexpected reader detection: {detected!r}; expected {installed.resolve()!r}'
             # Persisted descriptors must also recognize a different source path.
             second=root/'second.csv';second.write_bytes(fresh.read_bytes())
-            assert detect_reader(second)==(installed,'FixtureReader')
+            assert detect_reader(second)==(installed.resolve(),'FixtureReader')
             source=root/'source.txt';source.write_text('évidence\n0001',encoding='utf-8',newline='');digest=hashlib.sha256(source.read_bytes()).hexdigest()
             case=Case(root/'case.timeline')
             try:
@@ -32,7 +33,11 @@ def verify(host,fixture):
                 assert case.info['sha256']==digest and case.info['path']==str(source.resolve())
                 assert hashlib.sha256(source.read_bytes()).hexdigest()==digest
                 register_functions(case,fixture)
-                for expression in ("PluginNumber('FixtureDouble', 21) = 42", "PluginText('FixtureEcho', 'évidence') = 'évidence'", "PluginText('FixtureEcho', Null) Is Null", "FixtureTypes([Time],[LargeId]) = True", "[Details.Name] = 'évidence' And [Details.Children].Sum([Amount]) = 10"):
+                other=Path(fixture).with_name('Fireblade.PluginFunctionsFixture.dll')
+                if not other.is_file():raise AssertionError('Cross-DLL QA fixture missing')
+                register_functions(case,other)
+                assert case._plugin_object_session is None
+                for expression in ("PluginNumber('FixtureDouble', 21) = 42", "PluginText('FixtureEcho', 'évidence') = 'évidence'", "PluginText('FixtureEcho', Null) Is Null", "FixtureTypes([Time],[LargeId]) = True", "[Details.Name] = 'évidence' And [Details.Children].Sum([Amount]) = 10", "FixtureSameObject([Details],[Details])=True", "FixtureChildren([Details.Children])=True", "FixtureSecret(FixtureMake())=73", "FixtureOtherSecret([Details])=37", "FixtureOtherSecret(FixtureMake())=73"):
                     view=View(expression=FilterGroup('and',[Filter(0,'expression',expression)]));assert case.count(view)==1
                 import threading
                 from fireblade.core.errors import OperationCancelled
@@ -50,8 +55,10 @@ def verify(host,fixture):
             reopened=Case(imported_path)
             try:
                 assert reopened.count(View(expression=FilterGroup('and',[Filter(0,'expression',"FixtureDouble(21)=42")])))==1
+                assert reopened._plugin_object_session is None
+                assert reopened.count(View(expression=FilterGroup('and',[Filter(0,'expression',"FixtureSecret([Details])=37")])))==1
             finally:reopened.close()
-        return dict(status='passed',checks=['automatic header detection without source binding','cached reader detection for a second source','plugin inspection','typed import','source provenance','exact numeric UDF','Unicode UDF','NULL UDF','UDF cancellation','explicit reload after cancellation','automatic restore on reopen'])
+        return dict(status='passed',checks=['automatic header detection without source binding','cached reader detection for a second source','plugin inspection','typed import','source provenance','exact numeric UDF','Unicode UDF','NULL UDF','UDF cancellation','explicit reload after cancellation','automatic restore on reopen','native CLR identity and typed collections','private state through nested function calls','typed instances across DLLs'])
     finally:
         if previous_storage is None:os.environ.pop('LOCALAPPDATA',None)
         else:os.environ['LOCALAPPDATA']=previous_storage

@@ -30,6 +30,7 @@ def main():
     host=build_host(root,python)
     shutil.copytree(host.parent,generated/"plugin-host",dirs_exist_ok=True)
     shutil.copy2(root/"build/windows/plugin-fixture/Fireblade.PluginFixture.dll",generated/"plugin-host/Fireblade.PluginFixture.dll")
+    shutil.copy2(root/"build/windows/plugin-fixture/Fireblade.PluginFunctionsFixture.dll",generated/"plugin-host/Fireblade.PluginFunctionsFixture.dll")
     staging = root / "build" / "windows" / "output"
     command = [str(python), "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--onefile",
                "--name", "Fireblade", "--paths", str(root / "src"),

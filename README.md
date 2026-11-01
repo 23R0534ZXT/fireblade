@@ -426,6 +426,10 @@ La détection compare les colonnes complètes dans leur ordre, sans tenir compte
 
 **Analyse → Charger des fonctions .NET…** rend accessibles les fonctions `Name`/`Evaluate(object[])`, par leur nom ou `Custom('Nom', …)`. Les adaptateurs `PluginText/Number/Bool/Date` permettent de préciser le type. Les fonctions déjà choisies pour une analyse sont rechargées automatiquement à sa réouverture, après contrôle de l’empreinte de la DLL et de son approbation locale. Une analyse reçue d’un autre poste ne peut pas lancer une DLL inconnue automatiquement.
 
+Les fonctions .NET peuvent recevoir directement les **objets CLR complexes** produits par un lecteur : classe originale, méthodes, état privé, collections typées et références partagées sont conservés. `MaFonction([Details])`, `MaFonction([Details.Children])` et les appels imbriqués transmettent des références aux instances natives, y compris entre deux DLL compatibles. Les objets retournés par une fonction peuvent alimenter la suivante sans conversion JSON intermédiaire.
+
+Le contexte CLR est créé à la demande. Pour retrouver les objets d’une analyse importée, Fireblade relit sa source avec le lecteur approuvé après contrôle des empreintes et du nombre de lignes, puis garde le graphe dans le processus .NET jusqu’à la fermeture de l’analyse. **La source et la DLL doivent rester disponibles et inchangées.** Un lecteur tiers peut charger toute sa `DataList` en mémoire ; ce coût apparaît seulement lorsque les objets sont utilisés. La grille continue d’afficher son instantané sur disque. L’import CSV natif et les fonctions scalaires seules ne chargent pas ce graphe.
+
 Les collections JSON acceptent la syntaxe `[Items][[Amount] > 5].Sum([Amount])`, ainsi que `Count`, `Exists`, `Avg`, `Min`, `Max` et `Single`. Il s’agit de collections JSON stockées dans une cellule, pas d’un ORM DevExpress. Voir [compatibilité](docs/development/COMPATIBILITE.md) et [plugins](docs/development/PLUGINS.md).
 
 

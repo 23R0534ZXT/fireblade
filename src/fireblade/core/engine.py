@@ -47,6 +47,9 @@ class Case:
         self._outline_key = None
         self._source_index_tried = False
         self._read_only = read_only
+        self._plugin_object_session=None
+        self._plugin_object_lock=threading.RLock()
+        self._operation_depth=0
         self._plugin_sessions=[]
         self._plugin_functions={}
         self._saved_function_types={}
@@ -81,6 +84,7 @@ class Case:
 
     def close(self):
         with self.lock:
+            if self._plugin_object_session:self._plugin_object_session.close();self._plugin_object_session=None
             for session in self._plugin_sessions:session.close()
             self._plugin_sessions.clear();self._plugin_functions.clear()
             self.db.close()
@@ -124,6 +128,7 @@ class Case:
         returning; mutations check before their explicit commit/replace instead.
         """
         with self.lock:
+            self._operation_depth+=1
             self.cancelled.clear()
             try:
                 self.check_cancelled()
@@ -136,6 +141,14 @@ class Case:
                 # Python UDF exceptions are wrapped by DuckDB as InvalidInputException.
                 if self.cancelled.is_set() or job_cancelled():raise OperationCancelled() from exc
                 raise
+            finally:
+                self._operation_depth-=1
+                if self._operation_depth==0 and self._plugin_object_session:
+                    try:
+                        self.check_cancelled()
+                        self._plugin_object_session.clear_handles()
+                    except BaseException:
+                        self._plugin_object_session.close();self._plugin_object_session=None
 
     @contextmanager
     def utf8_input(self, source, encoding):
@@ -312,6 +325,7 @@ class Case:
                 if type(index) is not int or not 0 <= index < len(headers):
                     raise ValueError('Une colonne dérivée ne peut référencer que les colonnes précédentes')
                 return f'"c{index}"'
+            column.case=self
             expression = compile_definition(definition, headers, column, self.numeric_expression)
             sql = f'SELECT events.*, cast(({expression}) AS VARCHAR) AS "c{len(headers)}" FROM ({sql}) AS events'
             headers.append(name)

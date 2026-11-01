@@ -13,5 +13,5 @@
     <PublishTrimmed>false</PublishTrimmed>
     <AssemblyName>Fireblade.PluginHost</AssemblyName>
   </PropertyGroup>
-  <ItemGroup><Compile Remove="qa/**/*.cs;legacy/**/*.cs;qa_legacy/**/*.cs" /></ItemGroup>
+  <ItemGroup><Compile Remove="qa/**/*.cs;legacy/**/*.cs;qa_legacy/**/*.cs;qa_other/**/*.cs" /></ItemGroup>
 </Project>

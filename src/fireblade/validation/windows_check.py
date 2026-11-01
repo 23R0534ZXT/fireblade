@@ -158,6 +158,19 @@ def run_check(app, report_path):
             from fireblade.core.settings import load_settings
             expect(load_settings(default_config()).memory_mb == 256, "La configuration intégrée n’a pas été lue.")
             expect("Fireblade" in resource_path("docs/guides/UTILISATION.md").read_text(encoding="utf-8"), "Le guide intégré est absent.")
+            tutorial = resource_path("docs/guides/TUTORIEL-COMPLET.md")
+            expect(tutorial.is_file() and "Tutoriel complet" in tutorial.read_text(encoding="utf-8"),
+                   "Le tutoriel complet intégré est absent.")
+            for relative in (
+                "docs/guides/LAYOUTS-TLE.md",
+                "docs/development/COMPATIBILITE.md",
+                "docs/development/ECARTS-TLE.md",
+                "docs/development/PARITE-TIMELINE-EXPLORER.md",
+                "docs/development/PLUGINS.md",
+                "docs/validation/20261101-compatibilite.md",
+                "docs/validation/reports/20261101-15gib-engine-linux.json",
+            ):
+                expect(resource_path(relative).is_file(), f"Ressource du tutoriel absente : {relative}")
             expect("MIT License" in resource_path("LICENSE").read_text(encoding="utf-8"), "La licence du projet n’est pas intégrée.")
             if report["frozen"]:
                 expect(report["packaging"] == "onefile", "Le livrable doit être un exécutable onefile.")

@@ -6,6 +6,8 @@ Fireblade est un explorateur local de CSV, TSV, XLS et XLSX pour l’analyse for
 
 Télécharger `Fireblade.exe`, puis double-cliquer dessus. Python, Excel et un dossier de bibliothèques à côté du programme ne sont pas nécessaires. Le guide et les licences sont accessibles dans le menu **Aide**, même sans analyse ouverte.
 
+Pour la référence détaillée qui couvre toutes les commandes, règles, profils, thèmes et fonctions TLE, ouvrir **Aide → Tutoriel complet — toutes les fonctionnalités** ou lire le [tutoriel complet](TUTORIEL-COMPLET.md).
+
 Le programme prépare ses bibliothèques dans le dossier temporaire de Windows au démarrage. Cette étape peut prendre quelques secondes. Ce dossier est normalement supprimé à la fermeture. Les analyses sont enregistrées séparément pour conserver le travail.
 
 ## Ouvrir des données

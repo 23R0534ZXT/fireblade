@@ -25,6 +25,8 @@ Les développements suivants complètent ce suivi :
 | L03 | `RowAutoHeight`, hauteurs explicites et réglage depuis l’interface | Plus de trois lignes, retour à la hauteur uniforme, redimensionnement sans SQL, cache des nœuds chargés et défilement synchronisé ; texte affiché toujours limité à 600 caractères et comparaison visuelle TLE encore en Q06 |
 | D05 | Sonde d’en-tête progressive au-delà de 64 Kio | UTF-8/16/32, champs multilignes, guillemets, EOF sans fin de ligne, préfixe tronqué refusé ; une lecture pour les petits en-têtes, borne totale de 4 Mio |
 
+Les onglets multilignes sont limités à trois rangées visibles, avec défilement vertical vers toutes les analyses et maintien de l’onglet actif dans la zone visible. Un test couvre aussi un clic pendant une reconstruction différée et une boucle d’événements imbriquée : le widget cliqué reste vivant jusqu’à la fin du geste.
+
 ## Différences encore connues
 
 | ID | Écart | Condition de clôture |
@@ -52,7 +54,7 @@ Les plafonds de Fireblade (règles, résumés, sessions, tags, tailles de fichie
 | ID | Preuve manquante |
 |---|---|
 | Q01 | Comparaison fonctionnelle et visuelle avec TLE sur un même poste Windows et une version identifiée |
-| Q02 | Plus de 300 fichiers ouverts et recherche/navigation entre eux |
+| Q02 | Test automatisé de 320 CSV et analyses distinctes réussi sous Qt hors écran : navigation premier/milieu/dernier, recherche sur les 320 et références de session. Vérification Windows des sources dans la CI ; parcours du véritable EXE avec 320 fichiers et usage humain prolongé encore à qualifier |
 | Q03 | Fichier de plus de 14 Go, valeur mentionnée par le manuel TLE ; réutiliser des données existantes, ne jamais régénérer le CSV de 3 GiB |
 | Q04 | Benchmark comparatif mémoire, import, filtres, tris, regroupements et réactivité |
 | Q05 | Sessions prolongées sur vrais exports, gestes de l'Explorateur, dialogues natifs et diversité des partages Windows |

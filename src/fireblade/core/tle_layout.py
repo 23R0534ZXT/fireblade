@@ -65,6 +65,8 @@ def read_tle_layout(path, headers):
     if "<!DOCTYPE" in raw.upper() or "<!ENTITY" in raw.upper():
         raise ValueError("DTD et entités non prises en charge")
     root = ET.fromstring(raw)
+    from fireblade.core.tle_styles import custom_styles
+    named_styles=custom_styles(path)
 
     def normalize(name):
         return re.sub(r"[^a-z0-9]", "", name.casefold())
@@ -371,15 +373,20 @@ def read_tle_layout(path, headers):
                 raise ValueError(f"Règle de layout non traduite : {rule_type}")
             appearance = properties(rule_node).get("Appearance")
             if appearance is None:
-                appearance = rule_node
+                # Some serializers put appearance values directly on the rule.
+                # Rule metadata (Expression/PredefinedName/etc.) is not appearance data.
+                appearance=ET.Element('property')
+                for name,child in properties(rule_node).items():
+                    if name in {'BackColor','BackColor2','ForeColor','GradientMode','Font','TextOptions','Options','BorderColor','Image','ImageOptions','ImageAlignment'} or name.startswith('Options.'):
+                        appearance.append(child)
             target = None
             if text(item, "ApplyToRow", "true").lower() == "false":
                 name = text(item, "ColumnApplyToName") or text(item, "ColumnName")
                 target = aliases[name] if name in aliases else resolve(name)
             predefined=text(rule_node,'PredefinedName')
             from fireblade.core.tle_styles import style
-            from fireblade.core.tle_appearance import appearance as read_appearance
-            defaults=style(predefined) if predefined else {}
+            from fireblade.core.tle_appearance import appearance as read_appearance, EXTRA
+            defaults=style(predefined,named_styles) if predefined else {}
             adapted=read_appearance(appearance,text,properties,color,warnings,defaults)
             view.format_rules.append(
                 FormatRule(
@@ -393,7 +400,7 @@ def read_tle_layout(path, headers):
                     underline=adapted.get('underline',False),
                     strikeout=adapted.get('strikeout',False),
                     font_family=adapted.get('font_family',''),font_size=adapted.get('font_size',0),
-                    appearance={key:value for key,value in adapted.items() if key in ('background2','gradient','horizontal','vertical')},
+                    appearance={key:value for key,value in adapted.items() if key in ('background2','gradient','horizontal','vertical','border_color')+EXTRA},
                     statistic=statistic,stat_rank=stat_rank,stat_percent=stat_percent,value_column=value_column,
                     stop_if_true=text(item,'StopIfTrue','false').lower()=='true',
                     use_background='background' in adapted,use_foreground='foreground' in adapted,use_font=any(key in adapted for key in ('font_family','font_size','bold','italic','underline','strikeout')),

@@ -256,7 +256,8 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.tree.customContextMenuRequested.connect(self.show_cell_menu)
         self.tree.setToolTip("Double-clic : signet et note. Dépliez un groupe pour explorer ses lignes.")
         splitter.addWidget(self.tree)
-        self.details = QPlainTextEdit()
+        from fireblade.ui.layout_styles import AppearanceTextEdit
+        self.details = AppearanceTextEdit()
         self.details.setReadOnly(True)
         self.details.setPlaceholderText("Détails de la ligne sélectionnée")
         splitter.addWidget(self.details)
@@ -731,6 +732,8 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.global_rules_action.setChecked(self.view.global_rules_enabled)
         self.global_rules_action.blockSignals(False)
         self._expand_generation += 1
+        from fireblade.ui.layout_styles import apply_panel_styles
+        apply_panel_styles(self)
         self.model.reset(self.view, self.global_rules_for_view())
         self.detail_fields = []
         self.details.clear()

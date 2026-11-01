@@ -65,7 +65,8 @@ def validate_format_rules(rules, column, numeric_expression, limit=32):
     for rule in rules:
         from fireblade.core.tle_appearance import validate_styles
         validate_styles({"row":rule.appearance},0)
-        if set(rule.appearance)-{"background2","gradient","horizontal","vertical"}:raise ValueError("Apparence de règle invalide")
+        from fireblade.core.tle_appearance import EXTRA
+        if set(rule.appearance)-set(("background2","gradient","horizontal","vertical","border_color")+EXTRA):raise ValueError("Apparence de règle invalide")
         from decimal import Decimal, InvalidOperation
         if rule.icon_set not in ('circles','arrows','signs','triangles','squares','diamonds','stars','ratings','flags') or not isinstance(rule.icon_colors,list) or not 3<=len(rule.icon_colors)<=5 or not isinstance(rule.icon_images,list) or len(rule.icon_images)!=len(rule.icon_colors):
             raise ValueError('Jeu d’icônes invalide')

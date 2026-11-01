@@ -20,18 +20,20 @@ class GroupHeader(QHeaderView):
         if not appearance:
             super().paintSection(painter,rect,logical)
             return
-        from fireblade.ui.layout_styles import role_value,font_for
+        from fireblade.ui.layout_styles import role_value,font_for,paint_image,paint_border,paint_text
         painter.save();painter.setClipRect(rect)
         background=role_value(appearance,Qt.BackgroundRole)
         painter.fillRect(rect,background if background is not None else self.palette().brush(QPalette.Button))
         painter.setPen(self.palette().color(QPalette.Mid));painter.drawLine(rect.bottomLeft(),rect.bottomRight());painter.drawLine(rect.topRight(),rect.bottomRight())
+        paint_image(painter,rect,appearance)
         font=font_for(appearance,self.font());painter.setFont(font)
         painter.setPen(QColor(appearance['foreground']) if 'foreground' in appearance else self.palette().color(QPalette.ButtonText))
         content=rect.adjusted(5,2,-5,-2)
         if self.isSortIndicatorShown() and self.sortIndicatorSection()==logical:content.adjust(0,0,-16,0)
         label=str(model.headerData(logical,Qt.Horizontal) or '')
         alignment=role_value(appearance,Qt.TextAlignmentRole) or (Qt.AlignLeft|Qt.AlignVCenter)
-        painter.drawText(content,alignment,QFontMetrics(font).elidedText(label,Qt.ElideRight,max(0,content.width())))
+        paint_text(painter,content,label,appearance,alignment)
+        paint_border(painter,rect,appearance)
         if self.isSortIndicatorShown() and self.sortIndicatorSection()==logical:
             option=QStyleOptionHeader();self.initStyleOption(option)
             option.rect=rect.adjusted(rect.width()-17,2,-3,-2)

@@ -164,14 +164,14 @@ def run_stress(app,spec_path,report_path):
             def fill(dialog):
                 if not isinstance(dialog,FilterDialog):raise AssertionError('Expected Boolean editor')
                 editor=dialog.editor
-                run.choose(editor.tree.itemWidget(editor.root,0),1)  # OR
+                QTest.mouseClick(editor.root.any_button,Qt.LeftButton)
                 for user in ('user042','user043'):
-                    QTest.mouseClick(next(b for b in editor.findChildren(QPushButton) if b.text()=='+ Condition'),Qt.LeftButton)
-                    item=editor.tree.currentItem()
-                    run.choose(editor.tree.itemWidget(item,0),3)
-                    operators=editor.tree.itemWidget(item,1)
+                    QTest.mouseClick(editor.root.add_condition_button,Qt.LeftButton)
+                    item=editor.root.children[-1]
+                    run.choose(item.column,3)
+                    operators=item.operator
                     run.choose(operators,operators.findData('eq'))
-                    run.text(editor.tree.itemWidget(item,2),user)
+                    run.text(item.text,user)
                 run.capture('03-filter-editor',dialog)
                 run.accept(dialog)
             run.modal(fill);run.menu('Filtres','Éditeur ET / OU / NON…')

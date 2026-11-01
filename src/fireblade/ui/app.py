@@ -254,6 +254,11 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.tree.expanded.connect(lambda index: self.model.fetchMore(index) if self.model and not self.model.node(index).children else None)
         self.tree.collapsed.connect(lambda index: self.model.unload(index) if self.model else None)
         self.tree.header().sectionClicked.connect(self.header_sort)
+        for grid in (self.tree, *self.tree.frozen_views):
+            grid.header().filterChanged.connect(self.column_search)
+            grid.header().sortRequested.connect(self.set_sort)
+            if grid is not self.tree:
+                grid.header().sectionClicked.connect(self.header_sort)
         self.tree.header().setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.header().customContextMenuRequested.connect(self.show_header_menu)
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -728,7 +733,9 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         if self.view.expression is not None:
             self.filters.addItem("Expression ET / OU / NON · ouvrir l’éditeur pour modifier")
         self.filters.setVisible(bool(self.view.filters) or self.view.expression is not None)
-        self.groups_label.setText("Groupement : " + " > ".join(self.case.headers[i] for i in self.view.groups) if self.view.groups else "Glissez un en-tête ici pour regrouper")
+        self.groups_label.set_groups(self.case.headers, self.view.groups)
+        for grid in (self.tree, *self.tree.frozen_views):
+            grid.header().sync_filters(self.view.filters, self.view.sort_column, self.view.descending)
         section = self.view.sort_column
         self.tree.header().setSortIndicatorShown(section is not None)
         if section is not None:
@@ -765,6 +772,9 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.set_view(View())
 
     def set_view(self, view):
+        for grid in (self.tree, *self.tree.frozen_views):
+            grid.header().timer.stop()
+            grid.header().pending.clear()
         if self.case:
             try:
                 self.case.validate_view(view)
@@ -906,6 +916,20 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
             self.sort_type.setCurrentIndex(self.sort_type.findData(sort_type))
         for widget, blocked in zip(widgets, previous):
             widget.blockSignals(blocked)
+        self.apply()
+
+    def column_search(self, column, text):
+        if not self.case or not 0 <= column < len(self.case.headers):
+            return
+        if self.busy:
+            # Keep the edit pending while an import or query owns the interface.
+            self.tree.header().queue_filter(column, text)
+            return
+        existing = next((f for f in self.view.filters if f.column == column and f.operator == "contains"), None)
+        if existing is not None:
+            self.view.filters.remove(existing)
+        if text:
+            self.view.filters.append(Filter(column, "contains", text))
         self.apply()
 
     def header_sort(self, section):

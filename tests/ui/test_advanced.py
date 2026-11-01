@@ -312,10 +312,9 @@ def test_rules_dialog_click_creation_replaces_visible_editor_and_saves(case, mon
         # processEvents deliberately does not force DeferredDelete delivery:
         # these controls must already be retired while a modal loop is active.
         assert sum(e.isVisible() for e in dialog.findChildren(ExpressionEditor)) == 1
-        item = dialog.editor.root.child(0)
-        tree = dialog.editor.tree
-        tree.itemWidget(item, 1).setCurrentIndex(tree.itemWidget(item, 1).findData('eq'))
-        QTest.keyClicks(tree.itemWidget(item, 2), 'alice')
+        row = dialog.editor.root.children[0]
+        row.operator.setCurrentIndex(row.operator.findData('eq'))
+        QTest.keyClicks(row.text, 'alice')
         monkeypatch.setattr(QColorDialog, 'getColor', lambda *a, **k: QColor('#ff0000'))
         click('Fond')
         QTest.mouseClick(dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Ok), Qt.LeftButton)

@@ -27,21 +27,23 @@ Les valeurs sont conservées comme texte pour préserver les zéros initiaux et 
 
 Saisir le texte dans **Rechercher**, puis appuyer sur Entrée. Cette recherche porte sur les colonnes de l’analyse active.
 
+Sous chaque en-tête de données, le champ **Contient…** filtre directement cette colonne. Le filtre s’applique après une courte pause de saisie ou immédiatement avec Entrée. Plusieurs champs se combinent avec **ET** ; vider un champ retire son filtre « contient ». Les champs suivent les colonnes déplacées ou épinglées. **Filtres → Effacer les filtres** vide également ces champs.
+
 Un clic droit sur une cellule permet de filtrer sur sa valeur ou de l’exclure. Un clic droit sur un en-tête ouvre les filtres de colonne. Les filtres simples se combinent par ET ; un double-clic dans leur liste retire un filtre.
 
-**Filtres → Éditeur ET / OU / NON** permet de construire des groupes imbriqués. Un groupe NON contient exactement une condition ou un groupe. Les opérateurs comprennent recherche textuelle, égalité exacte, regex RE2, cellules vides, comparaisons numériques et bornes de dates ISO. Les données dont la conversion numérique ou temporelle est impossible ne correspondent pas à cette comparaison.
+**Filtres → Éditeur ET / OU / NON** permet de construire des groupes imbriqués. Les conditions sont présentées dans des cartes imbriquées : choisir **Toutes les conditions** (ET) ou **Au moins une** (OU). Chaque carte propose **+ Condition** et **+ Sous-groupe**, sans sélection préalable dans un arbre. Cocher **Exclure (NON)** inverse une condition ; **Inverser le groupe (NON)** inverse le bloc complet. Les libellés ET, OU et NON et les cadres imbriqués permettent de repérer les blocs. La phrase **Lecture du filtre** se met à jour pendant la saisie. Les opérateurs comprennent recherche textuelle, égalité exacte, regex RE2, cellules vides, comparaisons numériques et bornes de dates ISO. Les données dont la conversion numérique ou temporelle est impossible ne correspondent pas à cette comparaison.
 
 **Réinitialiser** rétablit une vue par défaut, avec les règles globales activées.
 
 ## Trier
 
-Cliquer sur un en-tête ou utiliser son menu contextuel. Choisir le type **Texte**, **Nombre** ou **Date ISO** selon les données.
+Les deux flèches à droite de chaque en-tête trient directement en ordre croissant (**▲**) ou décroissant (**▼**). La flèche active reste sélectionnée. Cliquer sur le nom de l’en-tête alterne aussi le sens ; le menu contextuel reste disponible. Choisir le type **Texte**, **Nombre** ou **Date ISO** selon les données.
 
 **Affichage → Tri sur plusieurs colonnes** permet d’ordonner plusieurs clés. La première a priorité, puis les suivantes départagent les valeurs identiques. Les cellules NULL viennent en dernier. Les conversions numériques évitent les arrondis en flottants des grands identifiants.
 
 ## Regrouper
 
-Glisser un en-tête dans la barre de groupement, ou choisir **Grouper par cette colonne** dans son menu. Plusieurs colonnes créent des niveaux imbriqués.
+Glisser un en-tête dans la barre de groupement, ou choisir **Grouper par cette colonne** dans son menu. Plusieurs colonnes créent des niveaux imbriqués. La barre affiche ces niveaux sous forme de boutons numérotés reliés par des chevrons. Cliquer sur le **×** d’un bouton retire ce niveau en conservant les autres.
 
 **Regrouper…** permet de sélectionner les colonnes et leur ordre. Déplier un groupe charge une page de ses enfants ; le replier libère les descendants chargés. Les comptages des groupes portent sur les résultats filtrés, pas seulement sur les lignes visibles.
 

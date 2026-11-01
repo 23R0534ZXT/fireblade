@@ -6,98 +6,113 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog,
     QDoubleSpinBox, QFontComboBox, QDialogButtonBox, QHBoxLayout, QLabel, QLineEdit, QListWidget, QMessageBox,
-    QGridLayout, QSizePolicy, QScrollArea, QTabWidget, QFileDialog, QPushButton, QTableWidget, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
+    QGridLayout, QSizePolicy, QScrollArea, QTabWidget, QFileDialog, QPushButton, QTableWidget, QVBoxLayout, QWidget)
 
 from fireblade.core.models import Filter, FilterGroup, FormatRule, SortKey, OPERATORS
 
 
 class ExpressionEditor(QWidget):
+    """Compose conditions through nested cards and local add/remove actions."""
     def __init__(self, headers, condition=None, parent=None):
         super().__init__(parent)
         self.headers = headers
+        self.root = None
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Logique / colonne", "Condition", "Valeur"])
-        self.tree.setColumnWidth(0, 235)
-        self.tree.setColumnWidth(1, 185)
-        layout.addWidget(self.tree)
-        row = QHBoxLayout()
-        for label, callback in [("+ Condition", self.add_condition), ("+ Groupe", self.add_group), ("Retirer", self.remove)]:
-            button = QPushButton(label)
-            button.clicked.connect(callback)
-            row.addWidget(button)
-        row.addStretch()
-        layout.addLayout(row)
-        self.root = self.add_node(None, condition or FilterGroup())
-        self.tree.setCurrentItem(self.root)
-        self.tree.expandAll()
+        hint = QLabel("Choisissez une colonne, une comparaison et une valeur. Ajoutez un sous-groupe pour combiner ET et OU.")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QScrollArea.NoFrame)
+        self.scroll.setMinimumHeight(230)
+        self.canvas = QWidget()
+        self.cards = QVBoxLayout(self.canvas)
+        self.cards.setContentsMargins(0, 0, 4, 0)
+        self.scroll.setWidget(self.canvas)
+        layout.addWidget(self.scroll, 1)
+        self.preview = QLabel()
+        self.preview.setWordWrap(True)
+        self.preview.setTextFormat(Qt.PlainText)
+        self.preview.setContentsMargins(8, 6, 8, 6)
+        layout.addWidget(self.preview)
+        self.unwrap_single = isinstance(condition, Filter) or (isinstance(condition, FilterGroup) and condition.logic == "not" and len(condition.children) == 1 and isinstance(condition.children[0], Filter))
+        initial = FilterGroup("and", [condition]) if self.unwrap_single else condition or FilterGroup()
+        self.root = self.add_node(None, initial, notify=False)
+        self.cards.addWidget(self.root)
+        self.cards.addStretch()
+        self.changed()
 
-    def add_node(self, parent, value):
-        item = QTreeWidgetItem(parent) if parent is not None else QTreeWidgetItem(self.tree)
-        is_group = isinstance(value, FilterGroup)
-        item.setData(0, Qt.UserRole, is_group)
-        choice = QComboBox()
-        if is_group:
-            for label, logic in [("ET : toutes", "and"), ("OU : au moins une", "or"), ("NON : inverse", "not")]:
-                choice.addItem(label, logic)
-            choice.setCurrentIndex(choice.findData(value.logic))
+    def add_node(self, parent, value, notify=True):
+        from fireblade.ui.condition_cards import ConditionGroup, ConditionRow
+        if isinstance(value, FilterGroup) and value.logic == "not" and len(value.children) == 1 and isinstance(value.children[0], Filter):
+            node = ConditionRow(self, value.children[0], parent, inverted=True)
+        elif isinstance(value, FilterGroup):
+            node = ConditionGroup(self, value, parent)
         else:
-            choice.addItems(self.headers)
-            choice.setCurrentIndex(value.column)
-        self.tree.setItemWidget(item, 0, choice)
-        if is_group:
-            for child in value.children:
-                self.add_node(item, child)
-        else:
-            operator = QComboBox()
-            for label, code in OPERATORS:
-                operator.addItem(label, code)
-            operator.setCurrentIndex(operator.findData(value.operator))
-            self.tree.setItemWidget(item, 1, operator)
-            self.tree.setItemWidget(item, 2, QLineEdit(value.value))
-        item.setExpanded(True)
-        return item
+            node = ConditionRow(self, value, parent)
+        if parent is not None:
+            parent.children.append(node)
+            parent.refresh_children()
+        if notify:
+            self.changed()
+        return node
 
-    def destination(self):
-        item = self.tree.currentItem() or self.root
-        return item if item.data(0, Qt.UserRole) else item.parent()
+    def remove_node(self, node):
+        if node.owner is None:
+            return
+        owner = node.owner
+        owner.children.remove(node)
+        owner.body.removeWidget(node)
+        node.hide()
+        node.deleteLater()
+        owner.refresh_children()
+        self.changed()
 
-    def add_condition(self):
-        self.tree.setCurrentItem(self.add_node(self.destination(), Filter(0, "contains")))
+    def changed(self, *_):
+        if self.root is None:
+            return
+        from fireblade.ui.condition_cards import ConditionGroup
+        def update(node):
+            if isinstance(node, ConditionGroup):
+                node.refresh_children()
+                for child in node.children:
+                    update(child)
+        update(self.root)
+        def describe(value):
+            if isinstance(value, Filter):
+                label = dict((code, label) for label, code in OPERATORS).get(value.operator, value.operator).lower()
+                column = self.headers[value.column] if 0 <= value.column < len(self.headers) else "Colonne"
+                return f"{column} {label}" + (f" « {value.value} »" if value.value and value.operator not in ("empty", "not_empty") else "")
+            if not value.children:
+                return "toutes les lignes" if value.logic == "and" else "aucune ligne"
+            if value.logic == "not":
+                return "NON (" + describe(value.children[0]) + ")"
+            return "(" + (" ET " if value.logic == "and" else " OU ").join(describe(child) for child in value.children) + ")"
+        try:
+            text = describe(self.value())
+            self.preview.setText("Lecture du filtre : " + (text[:497] + "…" if len(text) > 500 else text))
+        except ValueError as exc:
+            self.preview.setText(str(exc))
 
-    def add_group(self):
-        self.tree.setCurrentItem(self.add_node(self.destination(), FilterGroup()))
-
-    def remove(self):
-        item = self.tree.currentItem()
-        if item and item is not self.root:
-            item.parent().removeChild(item)
-            self.tree.setCurrentItem(self.root)
-
-    def value(self, item=None, depth=0):
-        if depth > 24:
-            raise ValueError("24 niveaux au maximum")
-        item = self.root if item is None else item
-        choice = self.tree.itemWidget(item, 0)
-        if item.data(0, Qt.UserRole):
-            children = [self.value(item.child(i), depth + 1) for i in range(item.childCount())]
-            logic = choice.currentData()
-            if logic == "not" and len(children) != 1:
-                raise ValueError("Placez une seule condition ou un seul groupe sous NON.")
-            return FilterGroup(logic, children)
-        return Filter(choice.currentIndex(), self.tree.itemWidget(item, 1).currentData(), self.tree.itemWidget(item, 2).text())
+    def value(self):
+        result = self.root.value()
+        if self.unwrap_single and result.logic == "and" and len(result.children) == 1:
+            return result.children[0]
+        return result
 
 
 class FilterDialog(QDialog):
     def __init__(self, headers, expression, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Éditeur de filtres · ET / OU / NON")
-        self.resize(760, 420)
+        self.resize(980, 720)
         layout = QVBoxLayout(self)
         self.editor = ExpressionEditor(headers, expression)
         layout.addWidget(self.editor)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.button(QDialogButtonBox.Ok).setText("Appliquer les filtres")
+        buttons.button(QDialogButtonBox.Cancel).setText("Annuler")
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)

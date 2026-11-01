@@ -1,6 +1,6 @@
 # Compatibilité et transformations
 
-Le moteur est Python + DuckDB + Qt. Un hôte .NET autonome, lancé uniquement sur demande, permet l’utilisation explicite de lecteurs et de fonctions TLE. Aucun serveur ni `eval` Python n’est ajouté. Les fichiers d’origine restent en lecture seule ; leur empreinte et leur schéma d’acquisition ne sont jamais remplacés par les colonnes dérivées.
+Le moteur est Python + DuckDB + Qt. Un hôte .NET autonome exécute les lecteurs TLE installés reconnus par en-tête et les fonctions choisies par l’utilisateur. Aucun serveur ni `eval` Python n’est ajouté. Les fichiers d’origine restent en lecture seule ; leur empreinte et leur schéma d’acquisition ne sont jamais remplacés par les colonnes dérivées.
 
 ## Expressions
 
@@ -38,7 +38,7 @@ Le lecteur prend en charge les propriétés XML de colonnes et leurs noms de con
 
 Une colonne absente d’une version d’export est signalée. Une expression qui dépend d’un champ absent ou une règle non traduite arrête l’import au lieu de modifier silencieusement les résultats. Les couleurs ARGB sont composées sur un fond clair et cette adaptation est signalée ; gras, italique, souligné et barré des polices de règles sont repris. Les règles standards à barres, échelles de deux/trois couleurs et jeux de trois à cinq icônes sont traduites, ainsi que les classements, moyennes, doublons et valeurs uniques. Les seuils, leurs comparaisons strictes et le plancher sont conservés. Les formes prédéfinies sont adaptées et signalées ; les images PNG intégrées sont conservées. Les options propres à DevExpress ne deviennent pas automatiquement des préférences Qt.
 
-Les sessions `.tle_sess` reprennent sources et tags, avec détection de BOM UTF-8/16/32 pour les CSV ; les layouts restent des fichiers séparés à importer sur l’analyse correspondante. Le fichier documenté `Settings/TLE_settings.xml` reprend police (y compris les tailles fractionnaires), copie, onglets, détails en haut/bas, formats de dates et épinglage par défaut. Les thèmes DevExpress sont adaptés aux thèmes clair/sombre de Fireblade ; les préférences inconnues sont signalées. Les sessions retrouvent automatiquement le lecteur DLL déjà associé à chaque source ; les autres CSV conservent leur import natif. Aucun objet .NET sérialisé n’est désérialisé depuis le XML.
+Les sessions `.tle_sess` reprennent sources et tags, avec détection de BOM UTF-8/16/32 pour les CSV ; les layouts restent des fichiers séparés à importer sur l’analyse correspondante. Le fichier documenté `Settings/TLE_settings.xml` reprend police (y compris les tailles fractionnaires), copie, onglets, détails en haut/bas, formats de dates et épinglage par défaut. Les thèmes DevExpress sont adaptés aux thèmes clair/sombre de Fireblade ; les préférences inconnues sont signalées. Les ouvertures ordinaires et les sessions retrouvent les lecteurs installés dans `Readers` par leurs `ExpectedHeaders`, sans association préalable. Les associations explicites par source restent prioritaires. Sonde bornée à 64 Kio, cache par empreinte de DLL, refus des signatures ambiguës ; aucun lecteur générique sans signature ne remplace l’import natif. Aucun objet .NET sérialisé n’est désérialisé depuis le XML.
 
 ## Dépliage et ressources
 

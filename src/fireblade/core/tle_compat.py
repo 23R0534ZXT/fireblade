@@ -67,8 +67,8 @@ class TleSessionImport:
                         self.current = case
                     if self.cancelled.is_set():
                         raise OperationCancelled()
-                    from fireblade.core.plugin_registry import reader_for_source
-                    reader=reader_for_source(source)
+                    from fireblade.core.reader_detection import detect_reader
+                    reader=detect_reader(source)
                     if reader:
                         from fireblade.core.tle_plugins import import_plugin
                         import_plugin(case,source,*reader)

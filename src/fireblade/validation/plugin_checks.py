@@ -9,11 +9,22 @@ from fireblade.core.tle_plugins import inspect_plugin,import_plugin,register_fun
 
 
 def verify(host,fixture):
-    previous=os.environ.get('FIREBLADE_PLUGIN_HOST');os.environ['FIREBLADE_PLUGIN_HOST']=str(host)
+    previous=os.environ.get('FIREBLADE_PLUGIN_HOST');previous_storage=os.environ.get('LOCALAPPDATA');os.environ['FIREBLADE_PLUGIN_HOST']=str(host)
     try:
         readers=inspect_plugin(fixture);assert any(r['type']=='FixtureReader' for r in readers)
         with tempfile.TemporaryDirectory(prefix='Fireblade plugin été ') as folder:
-            root=Path(folder);source=root/'source.txt';source.write_text('évidence\n0001',encoding='utf-8',newline='');digest=hashlib.sha256(source.read_bytes()).hexdigest()
+            root=Path(folder)
+            os.environ['LOCALAPPDATA']=str(root/'user')
+            import shutil
+            from fireblade.core.reader_detection import reader_directories,detect_reader
+            readers_dir=reader_directories()[0];readers_dir.mkdir(parents=True)
+            installed=readers_dir/Path(fixture).name;shutil.copy2(fixture,installed)
+            fresh=root/'never-selected.csv';fresh.write_text('Text,Identifier\névidence,0001\n',encoding='utf-8')
+            assert detect_reader(fresh)==(installed,'FixtureReader')
+            # Persisted descriptors must also recognize a different source path.
+            second=root/'second.csv';second.write_bytes(fresh.read_bytes())
+            assert detect_reader(second)==(installed,'FixtureReader')
+            source=root/'source.txt';source.write_text('évidence\n0001',encoding='utf-8',newline='');digest=hashlib.sha256(source.read_bytes()).hexdigest()
             case=Case(root/'case.timeline')
             try:
                 import_plugin(case,source,fixture,'FixtureReader')
@@ -40,7 +51,9 @@ def verify(host,fixture):
             try:
                 assert reopened.count(View(expression=FilterGroup('and',[Filter(0,'expression',"FixtureDouble(21)=42")])))==1
             finally:reopened.close()
-        return dict(status='passed',checks=['plugin inspection','typed import','source provenance','exact numeric UDF','Unicode UDF','NULL UDF','UDF cancellation','explicit reload after cancellation','automatic restore on reopen'])
+        return dict(status='passed',checks=['automatic header detection without source binding','cached reader detection for a second source','plugin inspection','typed import','source provenance','exact numeric UDF','Unicode UDF','NULL UDF','UDF cancellation','explicit reload after cancellation','automatic restore on reopen'])
     finally:
+        if previous_storage is None:os.environ.pop('LOCALAPPDATA',None)
+        else:os.environ['LOCALAPPDATA']=previous_storage
         if previous is None:os.environ.pop('FIREBLADE_PLUGIN_HOST',None)
         else:os.environ['FIREBLADE_PLUGIN_HOST']=previous

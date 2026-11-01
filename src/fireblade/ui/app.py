@@ -454,6 +454,13 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         if not path.is_file():
             self.error("Le fichier source est introuvable.")
             return
+        if tle_plugin is None:
+            from fireblade.core.reader_detection import detect_reader
+            try:
+                tle_plugin=self.connection_work(lambda:detect_reader(path),'Recherche d’un lecteur TLE par en-tête…')
+            except Exception as exc:
+                self.error(exc)
+                return
         try:
             dialog = ImportDialog(path, self, plugin=True) if tle_plugin is not None else ImportDialog(path, self)
         except Exception as exc:

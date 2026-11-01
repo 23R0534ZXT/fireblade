@@ -175,8 +175,8 @@ def test_rule_editor_keeps_fields_for_other_artifact_types(qt_application, case,
         captured.extend(dialog.headers)
         dialog.add()
         # Select the current CSV's User column; keep the foreign rule unchanged.
-        dialog.editor.tree.itemWidget(dialog.editor.root.child(0), 0).setCurrentIndex(dialog.headers.index("User"))
-        dialog.editor.tree.itemWidget(dialog.editor.root.child(0), 2).setText("alice")
+        dialog.editor.root.children[0].column.setCurrentIndex(dialog.headers.index("User"))
+        dialog.editor.root.children[0].text.setText("alice")
         dialog.accept()
         return dialog.result()
     monkeypatch.setattr(ui.RulesDialog, "exec", accept)

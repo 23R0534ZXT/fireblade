@@ -459,3 +459,103 @@ def test_all_date_group_intervals_are_accessible_in_header_menu(app,window):
         next(action for action in dates.actions() if action.text()=='Semaine').trigger();settle(app,window)
         assert window.view.group_intervals['1']=='week'
     finally:menu.deleteLater()
+
+
+def test_inline_filters_sort_pins_and_clear(app, window):
+    from PySide6.QtTest import QTest
+    header = window.tree.header()
+    edit, up, down = header.controls[2]
+    QTest.keyClicks(edit, "ali")
+    QTest.qWait(500)
+    settle(app, window)
+    assert window.case.count(window.view) == 2
+    assert edit.text() == "ali"
+    # Filtering a second column combines with ET and preserves the first filter.
+    QTest.keyClicks(header.controls[3][0], "001")
+    QTest.keyClick(header.controls[3][0], Qt.Key_Return)
+    settle(app, window)
+    assert window.case.count(window.view) == 1
+    window.clear_filters()
+    settle(app, window)
+    assert all(not widgets[0].text() for widgets in header.controls.values())
+    QTest.mouseClick(down, Qt.LeftButton)
+    settle(app, window)
+    assert window.view.sort_column == 1 and window.view.descending
+    assert down.isChecked() and not up.isChecked()
+    window.pin_column(1)
+    settle(app, window)
+    frozen_header = window.tree.frozen.header()
+    assert frozen_header.controls[2][0].isVisible()
+    QTest.keyClicks(frozen_header.controls[2][0], "bob")
+    QTest.keyClick(frozen_header.controls[2][0], Qt.Key_Return)
+    settle(app, window)
+    assert window.case.count(window.view) == 1
+    assert header.controls[2][0].text() == "bob"
+    window.clear_filters()
+    settle(app, window)
+    QTest.mouseClick(frozen_header.controls[2][1], Qt.LeftButton)
+    settle(app, window)
+    assert not window.view.descending
+
+
+def test_group_chips_remove_one_level(app, window):
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QToolButton
+    window.group_column(0)
+    window.group_column(1, append=True)
+    settle(app, window)
+    chips = window.groups_label.findChildren(QToolButton)
+    chips = [chip for chip in chips if chip.isVisible()]
+    assert [chip.text() for chip in chips] == ["1 · Artifact  ×", "2 · User  ×"]
+    QTest.mouseClick(chips[0], Qt.LeftButton)
+    settle(app, window)
+    assert window.view.groups == [1]
+
+
+def test_boolean_cards_invert_preserves_nested_siblings(app):
+    from fireblade.ui.advanced_dialogs import ExpressionEditor
+    from fireblade.core.models import FilterGroup
+    expression = FilterGroup("and", [Filter(0, "contains", "alice"), Filter(1, "eq", "MFT")])
+    editor = ExpressionEditor(["User", "Artifact"], expression)
+    editor.root.children[0].inverse.setChecked(True)
+    assert editor.value() == FilterGroup("and", [FilterGroup("not", [expression.children[0]]), expression.children[1]])
+    editor.root.children[0].inverse.setChecked(False)
+    assert editor.value() == expression
+    editor.root.inverse.setChecked(True)
+    assert editor.value() == FilterGroup("not", [expression])
+    editor.root.inverse.setChecked(False)
+    assert editor.value() == expression
+    single = ExpressionEditor(["User"], FilterGroup("not", [Filter(0, "eq", "alice")]))
+    single.root.children[0].inverse.setChecked(False)
+    assert single.value() == Filter(0, "eq", "alice")
+    single.add_node(single.root, Filter(0, "contains", "bob"))
+    assert len(single.value().children) == 2
+    single.close()
+    editor.close()
+
+
+def test_header_controls_follow_layout_and_cancel_pending_on_view_change(app, window):
+    from PySide6.QtTest import QTest
+    header = window.tree.header()
+    for column in range(header.count()):
+        window.tree.setColumnWidth(column, 400)
+    header.moveSection(header.visualIndex(2), 1)
+    window.tree.horizontalScrollBar().setValue(150)
+    app.processEvents()
+    edit = header.controls[2][0]
+    assert edit.x() == header.sectionViewportPosition(2) + 3
+    assert edit.width() == header.sectionSize(2) - 6
+    window.tree.setColumnHidden(2, True)
+    app.processEvents()
+    assert edit.isHidden()
+    window.tree.setColumnHidden(2, False)
+    app.processEvents()
+    assert not edit.isHidden()
+    # A pending debounce must not filter another tab/restored view later.
+    QTest.keyClicks(edit, "alice")
+    window.set_view(View(filters=[Filter(1, "contains", "bob")]))
+    QTest.qWait(500)
+    settle(app, window)
+    assert window.case.count(window.view) == 1
+    assert edit.text() == "bob"
+    assert View.from_json(window.view.to_json()).filters == [Filter(1, "contains", "bob")]

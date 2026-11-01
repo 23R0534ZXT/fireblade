@@ -394,9 +394,21 @@ class Case:
     def condition(self, expression):
         return compile_condition(expression, self.expression_column, self.numeric_expression)
 
+    def total_summary(self,view):
+        """One filtered aggregate over source rows, independent of grouping/pages."""
+        expressions=summary_expressions(self,view,view.total_summaries)
+        where,args=self.where(view)
+        with self.operation():
+            return self.db.execute('SELECT count(*)'+''.join(', '+value for value in expressions)+' FROM events'+where,args).fetchone()
+
     def validate_view(self, view):
         self.where(view)
         self.order(view)
+        if type(view.auto_row_height) is not bool or any(type(value) is not int or not 0<=value<=10000 for value in (view.row_height,view.group_row_height,view.header_height)):
+            raise ValueError('Hauteur de ligne ou d’en-tête invalide')
+        if view.group_footer_mode not in ("hidden","expanded","always") or type(view.show_total_footer) is not bool:
+            raise ValueError("Affichage des pieds de page invalide")
+        summary_expressions(self,view,view.total_summaries)
         if type(view.expand_all) is not bool:
             raise ValueError("expand_all doit être un booléen")
         if len(view.groups) != len(set(view.groups)):

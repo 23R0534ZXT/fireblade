@@ -229,52 +229,80 @@ def read_tle_layout(path, headers):
             view.expression = expression(active)
     view.search = text(root, "FindFilterText")
     summary_indices=[];summary_tags={}
-    for summary_name in ("GroupSummary", "TotalSummary"):
-        collection = properties(root).get(summary_name)
-        if collection is None:
-            continue
-        for item in collection:
-            kind = text(item, "SummaryType")
-            fieldname = text(item, "FieldName")
-            mapped='unsupported'
-            if summary_name=='GroupSummary':summary_indices.append(mapped)
-            if kind in ("None", ""):
-                continue
-            if kind == "Count" and not fieldname:
+    def summary_tag(item):
+        node=properties(item).get('Tag')
+        return (node.text or '') if node is not None else ''
+    collections=[]
+    for name in ("GroupSummary","TotalSummary"):
+        collection=properties(root).get(name)
+        if collection is not None:collections.append((name,list(collection),None))
+    for index,column_node in style_columns:
+        for name in ('Summary','SummaryItem'):
+            collection=properties(column_node).get(name)
+            if collection is not None:
+                items=[collection] if 'SummaryType' in properties(collection) else list(collection)
+                collections.append(('TotalSummary',items,index))
+    for summary_name,items,default_column in collections:
+        for item in items:
+            kind=text(item,'SummaryType')
+            fieldname=text(item,'FieldName')
+            if summary_name=='GroupSummary':summary_indices.append('unsupported')
+            if kind in ('None',''):continue
+            footer_name=text(item,'ShowInGroupColumnFooterName') or text(item,'ShowInGroupColumnFooter')
+            footer_column=(aliases[footer_name] if footer_name in aliases else resolve(footer_name)) if footer_name else -1
+            if kind=='Count' and not fieldname and default_column is None:
                 if summary_name=='GroupSummary':
                     summary_indices[-1]=None
-                    tag_node=properties(item).get('Tag')
-                    tag=(tag_node.text or '') if tag_node is not None else ''
+                    tag=summary_tag(item)
                     if tag:
                         if tag in summary_tags:raise ValueError('Tag de résumé TLE ambigu : '+tag)
                         summary_tags[tag]=None
-                continue  # built-in group count
-            mapping = {
-                "Count": "count",
-                "Sum": "sum",
-                "Average": "avg",
-                "Min": "min",
-                "Max": "max",
-                "DistinctCount": "distinct",
-            }
-            if kind not in mapping:
-                raise ValueError(f"Résumé non traduit : {kind}")
-            resolved=resolve(fieldname)
+                    if footer_column!=-1:
+                        summary=Summary(0,'rows','number',footer_column)
+                        if summary not in view.summaries:view.summaries.append(summary)
+                else:
+                    summary=Summary(0,'rows','number')
+                    if summary not in view.total_summaries:view.total_summaries.append(summary)
+                continue
+            mapping={'Count':'count','Sum':'sum','Average':'avg','Min':'min','Max':'max','DistinctCount':'distinct'}
+            if kind not in mapping:raise ValueError(f"Résumé non traduit : {kind}")
+            resolved=(aliases[fieldname] if fieldname in aliases else resolve(fieldname)) if fieldname else default_column
             column_node=next((node for index,node in style_columns if index==resolved),None)
             declared=text(column_node,'UnboundType') if column_node is not None else ''
             display=properties(column_node).get('DisplayFormat') if column_node is not None else None
             numeric=declared in ('Integer','Decimal','Double') or (display is not None and text(display,'FormatType')=='Numeric')
-            summary = Summary(resolved,mapping[kind],
-                'number' if kind in ('Sum','Average') or numeric else 'timestamp' if resolved in view.timestamp_columns else 'text')
-            if summary not in view.summaries:
-                view.summaries.append(summary)
+            summary=Summary(resolved,mapping[kind],
+                'number' if kind in ('Sum','Average') or numeric else 'timestamp' if resolved in view.timestamp_columns else 'text',
+                footer_column)
+            destination=view.summaries if summary_name=='GroupSummary' else view.total_summaries
+            if summary not in destination:destination.append(summary)
             if summary_name=='GroupSummary':
-                mapped=view.summaries.index(summary);summary_indices[-1]=mapped
-                tag_node=properties(item).get('Tag')
-                tag=(tag_node.text or '') if tag_node is not None else ''
+                summary_indices[-1]=view.summaries.index(summary)
+                tag=summary_tag(item)
                 if tag:
                     if tag in summary_tags:raise ValueError('Tag de résumé TLE ambigu : '+tag)
-                    summary_tags[tag]=mapped
+                    summary_tags[tag]=summary_indices[-1]
+    options_view=properties(root).get('OptionsView')
+    def view_option(name,default=''):
+        return (text(options_view,name) if options_view is not None else '') or text(root,'OptionsView.'+name,default)
+    mode=view_option('GroupFooterShowMode')
+    if mode:
+        modes={'Hidden':'hidden','VisibleIfExpanded':'expanded','VisibleAlways':'always'}
+        if mode not in modes:raise ValueError('Mode de pied de groupe non traduit : '+mode)
+        view.group_footer_mode=modes[mode]
+    elif any(summary.footer_column!=-1 for summary in view.summaries):
+        view.group_footer_mode='expanded'
+    show=view_option('ShowFooter','true')
+    if show.lower() not in ('true','false'):raise ValueError('Visibilité du pied global invalide')
+    view.show_total_footer=show.lower()=='true'
+    auto=view_option('RowAutoHeight','false')
+    if auto.lower() not in ('true','false'):raise ValueError('Hauteur automatique de ligne invalide')
+    view.auto_row_height=auto.lower()=='true'
+    for name,key in [('RowHeight','row_height'),('GroupRowHeight','group_row_height'),('ColumnPanelRowHeight','header_height')]:
+        height=int(text(root,name,'-1'))
+        if height!=-1 and not 1<=height<=10000:raise ValueError('Hauteur de layout invalide : '+name)
+        setattr(view,key,0 if height==-1 else height)
+
     from fireblade.core.tle_summary_sort import read_summary_sorts
     state_node=properties(root).get('GroupSummarySortInfoState')
     view.group_sorts=read_summary_sorts((state_node.text or '') if state_node is not None else '',lambda name:aliases[name] if name in aliases else resolve(name),summary_indices,summary_tags)
@@ -404,6 +432,6 @@ def read_tle_layout(path, headers):
                     use_background='background' in adapted,use_foreground='foreground' in adapted,use_font=any(key in adapted for key in ('font_family','font_size','bold','italic','underline','strikeout')),
                 )
             )
-    if len(view.format_rules) > 32 or len(view.summaries) > 16:
+    if len(view.format_rules) > 32 or len(view.summaries) > 16 or len(view.total_summaries)>16:
         raise ValueError("Disposition dépassant les limites de règles ou de résumés")
     return TleLayout(columns, view, list(dict.fromkeys(warnings)))

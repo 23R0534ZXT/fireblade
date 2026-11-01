@@ -11,7 +11,8 @@ Fireblade 0.4 importe les données XML de disposition sans installer DevExpress.
 | `HeaderPanel` | En-têtes centraux et épinglés à gauche/droite |
 | `SelectedRow`, `FocusedRow`, `FocusedCell` | Sélection et focus |
 | `GroupPanel` | Barre de groupement, avec glisser-déposer conservé |
-| `FooterPanel`, `GroupFooter` | Panneau de comptage ; ces deux apparences partagent le même contrôle, la dernière définition XML prévaut |
+| `FooterPanel` | Pied global : comptage et résumés globaux du résultat filtré |
+| `GroupFooter` | Lignes de pied de chaque groupe, avec style et valeurs indépendants |
 | `ViewCaption` | Libellé du fichier dans la barre d’état |
 | `Preview` | Panneau de détails de la ligne sélectionnée |
 | `FilterPanel`, `FindPanel` | Liste des filtres et champ de recherche |
@@ -29,7 +30,7 @@ Chaque image est limitée à **256 Kio et 1024 × 1024 pixels**. Les décodages 
 
 Dans les cellules et en-têtes :
 
-- `WordWrap=Wrap/NoWrap` active ou désactive le renvoi à la ligne. La hauteur uniforme réserve trois lignes lorsqu’un style utilise `Wrap`, puis coupe le débordement. Ce choix garde les colonnes épinglées alignées et évite de mesurer chaque ligne d’un gros CSV.
+- `WordWrap=Wrap/NoWrap` active ou désactive le renvoi à la ligne. Avec `OptionsView.RowAutoHeight=true`, la hauteur s’adapte au texte affiché des seules lignes chargées, y compris ses sauts de ligne. Les volets centraux et épinglés partagent le même calcul et défilent en pixels. Sans hauteur automatique, le mode uniforme conserve la réserve de trois lignes pour `Wrap`.
 - `Trimming=None/Character/Word/EllipsisCharacter/EllipsisWord/EllipsisPath` choisit la coupure ou les points de suspension, au milieu pour un chemin. Le dessin est adapté aux métriques Qt ; le texte complet reste disponible dans les détails et à l’export.
 - `HotkeyPrefix=None/Show/Hide` traite les préfixes `&` comme du texte ordinaire, un raccourci souligné ou un raccourci masqué.
 - `UseTextOptions=false` retire les options héritées du style prédéfini.
@@ -70,7 +71,7 @@ Après import et sauvegarde d’une vue Fireblade, les propriétés résolues so
 
 Les tests d’interface chargent des XML, vérifient les pixels des images/bordures/fonds, la hauteur des lignes et en-têtes épinglés, les règles conditionnelles, la sauvegarde/réouverture et le retrait des styles lorsqu’on change de vue. Ils contrôlent également les données d’image invalides et les options désactivées.
 
-Le rendu est une adaptation Qt : les skins, métriques exactes, dessins propriétaires et propriétés XML non reconnues ne sont pas reproduits à l’identique. Les propriétés actives non reprises sont signalées lors de l’import. La taille maximale d’un layout demeure 4 Mio. Les tests d’apparence ne constituent pas un nouveau benchmark du CSV de 3 Gio ; ce fichier existant n’est pas régénéré pour ces changements.
+Le rendu est une adaptation Qt : les skins, métriques exactes, dessins propriétaires et propriétés XML non reconnues ne sont pas reproduits à l’identique. Les propriétés d’apparence actives non reprises sont signalées lors de l’import. Les autres variantes XML restent suivies dans l’inventaire de compatibilité. La taille maximale d’un layout demeure 4 Mio. Les tests d’apparence ne constituent pas un nouveau benchmark du CSV de 3 Gio ; ce fichier existant n’est pas régénéré pour ces changements.
 
 
 ## Priorités d’apparence
@@ -93,3 +94,20 @@ Les pourcentages et percentiles sont calculés sur l’ensemble des résultats f
 Les couleurs XML `A, R, G, B` et les couleurs `#AARRGGBB` conservent leur alpha dans les cellules, règles, dégradés, bordures, en-têtes et panneaux. Elles sont composées au dessin sur le fond effectif, y compris les lignes alternées du thème sombre. Les échelles de couleurs interpolent aussi l’alpha. Le choix de couleur des règles propose un canal alpha et l’édition/sauvegarde conserve les valeurs importées.
 
 Le texte automatique tient compte du fond composé lorsqu’aucune couleur de texte explicite n’est imposée. Les tests vérifient les pixels des thèmes clair/sombre, les colonnes épinglées, la sélection et les panneaux ; un parcours équivalent est ajouté à la qualification du fichier unique. Cela ne constitue pas une comparaison visuelle exhaustive avec chaque skin TLE.
+
+
+## Pieds de groupes et pied global
+
+`GroupSummary` et `TotalSummary` alimentent deux listes distinctes. Les résumés globaux des colonnes sérialisés dans `SummaryItem` ou `Summary` sont aussi repris. Les agrégats globaux portent directement sur les enregistrements filtrés, indépendamment du groupement et de la page visible : une moyenne globale ne résulte pas de la moyenne des moyennes de groupes.
+
+`OptionsView.GroupFooterShowMode` reprend `Hidden`, `VisibleIfExpanded` et `VisibleAlways`. Dans le second mode, le pied suit la dernière page du groupe déplié. Dans le troisième, il suit le sous-arbre du groupe et reste présent lorsque ce groupe est replié. Le dépliage complet stocke aussi les positions des pieds dans son index sur disque. Ces lignes de présentation ne sont ni des événements sélectionnables, ni des signets, et ne sont jamais ajoutées aux exports des données source.
+
+`ShowInGroupColumnFooterName` associe un résumé à une colonne de pied, y compris par son nom de contrôle TLE. Sans cette association, le résumé importé reste dans l’en-tête de groupe. **Affichage → Résumés et tri des groupes** permet de choisir l’emplacement des résumés, le mode des pieds et les agrégats globaux. Modifier seulement leur présentation conserve les critères de tri importés. `OptionsView.ShowFooter` commande l’affichage des résumés globaux ; le compteur de navigation Fireblade reste disponible.
+
+`GroupFooter` possède son propre fond, texte, police, images et bordures. `FooterPanel` s’applique au pied global. Les valeurs et styles restent conservés dans les vues et sessions.
+
+## Hauteurs et texte affiché
+
+`RowHeight`, `GroupRowHeight` et `ColumnPanelRowHeight` sont importés ; `-1` conserve la hauteur par défaut. Les hauteurs explicites acceptent 1 à 10 000 pixels logiques. En mode automatique, les hauteurs de lignes servent de minimum et le texte peut les augmenter. **Affichage → Hauteur des lignes** propose les mêmes réglages et le renvoi à la ligne par défaut.
+
+Le calcul utilise les largeurs réelles des colonnes visibles, y compris celles épinglées, et les polices des cellules. Chaque nœud de la fenêtre chargée conserve un résultat de hauteur ; un redimensionnement, un changement de police ou de vue l’invalide. Aucun parcours du CSV ou requête SQL n’est lancé pendant ce calcul. Le texte de grille reste borné à 600 caractères par cellule ; les détails, la copie et l’export conservent les valeurs complètes. Cette limite d’affichage et les métriques Qt restent distinctes d’une équivalence visuelle exhaustive avec TLE.

@@ -15,6 +15,7 @@ from fireblade.runtime.windows_paths import user_directory
 
 
 HEADER_LIMIT = 65536
+MAX_HEADER_BYTES = 4 * 1024 * 1024
 
 
 def reader_directories():
@@ -30,39 +31,54 @@ def check_cancelled():
 
 
 def header_record(source):
-    with Path(source).open('rb') as stream:
-        data = stream.read(HEADER_LIMIT)
-    if data.startswith((codecs.BOM_UTF32_LE, codecs.BOM_UTF32_BE)):
-        encoding = 'utf-32'
-    elif data.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
-        encoding = 'utf-16'
-    else:
-        encoding = 'utf-8-sig'
-    try:
-        text = codecs.getincrementaldecoder(encoding)().decode(data, final=len(data) < HEADER_LIMIT)
-    except UnicodeError:
-        if encoding != 'utf-8-sig':
-            return None
-        text = data.decode('cp1252', errors='replace')
-    from fireblade.core.csv_preamble import preamble_lines
-    stream = io.StringIO(text, newline='')
-    skip = preamble_lines(stream)
-    stream.seek(0)
-    for _ in range(skip):
-        stream.readline()
-    text = stream.read().lstrip('\r\n')
-    # A truncated oversized header must never be mistaken for a supported one.
-    if len(data) == HEADER_LIMIT and '\n' not in text:
-        return None
-    return text
+    """Grow only while a header may be incomplete, never accept a prefix."""
+    csv.field_size_limit(max(csv.field_size_limit(),MAX_HEADER_BYTES))
+    data=bytearray();budget=min(HEADER_LIMIT,MAX_HEADER_BYTES);eof=False
+    with Path(source).open('rb') as source_stream:
+        while True:
+            while len(data)<budget:
+                check_cancelled()
+                chunk=source_stream.read(min(HEADER_LIMIT,budget-len(data)))
+                if not chunk:eof=True;break
+                data.extend(chunk)
+            if data.startswith((codecs.BOM_UTF32_LE,codecs.BOM_UTF32_BE)):encoding='utf-32'
+            elif data.startswith((codecs.BOM_UTF16_LE,codecs.BOM_UTF16_BE)):encoding='utf-16'
+            else:encoding='utf-8-sig'
+            try:
+                decoded=codecs.getincrementaldecoder(encoding)().decode(data,final=eof)
+            except UnicodeError:
+                if encoding!='utf-8-sig':return None
+                decoded=data.decode('cp1252',errors='replace')
+            from fireblade.core.csv_preamble import preamble_lines
+            stream=io.StringIO(decoded,newline='');skip=preamble_lines(stream);stream.seek(0)
+            for _ in range(skip):stream.readline()
+            text=stream.read().lstrip('\r\n')
+            incomplete=False
+            for delimiter in (',','\t',';','|'):
+                check_cancelled()
+                candidate=io.StringIO(text,newline='')
+                try:
+                    next(csv.reader(candidate,delimiter=delimiter,strict=True))
+                    if candidate.tell()>=len(text) and not text.endswith(('\n','\r')) and not eof:incomplete=True
+                except StopIteration:
+                    if not eof:incomplete=True
+                except csv.Error as exc:
+                    if 'unexpected end of data' in str(exc) and not eof:incomplete=True
+            if not incomplete:return text
+            if eof:return None
+            if budget>=MAX_HEADER_BYTES:
+                # A record ending exactly at the bound without a final newline
+                # is complete only if the file really ends there.
+                check_cancelled()
+                if source_stream.read(1):return None
+                eof=True
+            else:budget=min(budget*2,MAX_HEADER_BYTES)
 
 
 def signature(text, delimiter):
     try:
         stream = io.StringIO(text, newline='')
         row = next(csv.reader(stream, delimiter=delimiter, strict=True))
-        if stream.tell() >= len(text) and len(text.encode('utf-8')) >= HEADER_LIMIT:
-            return None
         return tuple(value.strip().casefold() for value in row) or None
     except (csv.Error, StopIteration):
         return None

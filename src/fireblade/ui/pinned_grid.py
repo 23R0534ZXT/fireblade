@@ -11,6 +11,8 @@ class PinnedTree(QTreeView):
         self._syncing = False
         self._positioning = False
         self._widths = {}
+        from fireblade.ui.row_heights import RowHeights
+        self.row_heights=RowHeights(self)
         self.setHorizontalScrollMode(QTreeView.ScrollPerPixel)
         self.frozen = self.make_panel()
         self.right_frozen = self.make_panel()
@@ -18,7 +20,19 @@ class PinnedTree(QTreeView):
         self.right_frozen.setItemsExpandable(False)
         self.right_frozen.setIndentation(0)
         self.right_frozen.setTreePosition(0)
-        self.header().sectionResized.connect(lambda *_: self.position_pins())
+        self.header().sectionResized.connect(self.columns_changed)
+
+    def setHeader(self,header):
+        super().setHeader(header)
+        header.sectionResized.connect(self.columns_changed)
+
+    def columns_changed(self,*_):
+        self.position_pins()
+        self.row_heights.schedule()
+
+    def setColumnHidden(self,column,hidden):
+        super().setColumnHidden(column,hidden)
+        if hasattr(self,'row_heights'):self.row_heights.schedule()
 
     @property
     def frozen_views(self):
@@ -33,6 +47,7 @@ class PinnedTree(QTreeView):
 
     def make_panel(self):
         panel = QTreeView(self)
+        panel._pinned_tree=self
         from fireblade.ui.grouping import GroupHeader
         panel.setHeader(GroupHeader(panel))
         panel.hide()
@@ -67,6 +82,7 @@ class PinnedTree(QTreeView):
             for panel in self.frozen_views:
                 panel.setSelectionModel(self.selectionModel())
             model.modelReset.connect(lambda: QTimer.singleShot(0, self.position_pins))
+            model.modelReset.connect(self.row_heights.schedule)
         self.set_pins([])
 
     def set_pins(self, columns, right_columns=()):
@@ -93,6 +109,7 @@ class PinnedTree(QTreeView):
         finally:
             self._syncing = False
         self.position_pins()
+        self.row_heights.schedule()
         for panel in self.frozen_views:
             panel.doItemsLayout()
             panel.viewport().update()
@@ -101,6 +118,7 @@ class PinnedTree(QTreeView):
         if not self._syncing and column in self.all_pinned and width > 0:
             self._widths[column] = width
             self.position_pins()
+            self.row_heights.schedule()
 
     def position_pins(self):
         if self._syncing or self._positioning:

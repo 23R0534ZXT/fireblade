@@ -1,6 +1,6 @@
 """Validated grouping expressions. Only generated identifiers enter SQL."""
 
-OPERATIONS = ("count", "distinct", "sum", "avg", "min", "max")
+OPERATIONS = ("rows", "count", "distinct", "sum", "avg", "min", "max")
 INTERVALS = {
     "year": "%Y",
     "month": "%Y-%m",
@@ -24,18 +24,24 @@ def group_expression(case, view, column):
     return f"strftime(cast(try_cast({col} AS TIMESTAMPTZ) AT TIME ZONE 'UTC' AS TIMESTAMP), '{INTERVALS[interval]}')"
 
 
-def summary_expressions(case, view):
-    if len(view.summaries) > 16:
+def summary_expressions(case, view, summaries=None):
+    summaries=view.summaries if summaries is None else summaries
+    if not isinstance(summaries,list) or len(summaries) > 16:
         raise ValueError("16 résumés au maximum")
     expressions = []
-    for summary in view.summaries:
+    for summary in summaries:
         col = case.column(summary.column)
+        if summary.footer_column is not None and type(summary.footer_column) is not int:raise ValueError('Colonne de pied invalide')
+        if summary.footer_column not in (None,-1):case.column(summary.footer_column)
         if summary.operation not in OPERATIONS or summary.kind not in (
             "text",
             "number",
             "timestamp",
         ):
             raise ValueError("Résumé invalide")
+        if summary.operation == "rows":
+            expressions.append("count(*)")
+            continue
         if summary.operation == "distinct":
             expressions.append(f"count(DISTINCT {col})")
             continue

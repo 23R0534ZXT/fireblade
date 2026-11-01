@@ -103,6 +103,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(edit_menu, "Retirer les signets de la sélection", lambda: self.annotate_selection("remove"), "Ctrl+Shift+M")
         grouping = action(view_menu, "Regrouper…", self.group_by)
         action(view_menu, "Colonnes…", self.columns)
+        action(view_menu, "Hauteur des lignes…", self.edit_row_heights)
         action(view_menu, "Réinitialiser les largeurs", self.reset_widths, "Ctrl+R")
         action(view_menu, "Résumés et tri des groupes…", self.edit_groups)
         action(view_menu, "Déplier tous les groupes (vue paginée)", self.expand_groups, "Ctrl+M")
@@ -745,8 +746,16 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         case = self.case
         self.count_label.setText("Comptage…")
         # Obsolete queued counts need not scan a large case before the latest view.
-        self.run(lambda: case.count(view) if generation == self.count_generation else None,
-                 lambda n: self.count_label.setText(f"{n:,} / {case.info['rows']:,} lignes") if generation == self.count_generation else None,
+        def footer_values():
+            if generation!=self.count_generation:return None
+            return case.total_summary(view) if view.show_total_footer and view.total_summaries else (case.count(view),)
+        def show_footer(values):
+            if generation!=self.count_generation or values is None:return
+            label=f"{values[0]:,} / {case.info['rows']:,} lignes"
+            if len(values)>1:
+                label+=' · '+' · '.join(f"{summary.operation}({case.headers[summary.column][:256]})={'∅' if value is None else str(value)[:600]}" for summary,value in zip(view.total_summaries,values[1:]))
+            self.count_label.setText(label)
+        self.run(footer_values,show_footer,
                  on_cancel=lambda: self.count_label.setText("Comptage interrompu") if generation == self.count_generation else None)
 
     def reset(self):

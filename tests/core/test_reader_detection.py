@@ -114,8 +114,10 @@ def test_header_with_tab_separator_and_alternative_signature(tmp_path, installed
     assert detect_reader(source)==(dll,'TSV.Reader')
 
 
-def test_oversized_header_cannot_match_a_truncated_prefix(tmp_path, installed):
+def test_wide_header_matches_only_after_its_complete_record_is_read(tmp_path, installed):
     source=tmp_path/'wide.csv';source.write_text('Text,Identifier'+(' '*65536)+'\n')
+    assert detect_reader(source)==(installed[0],'Typed.Reader')
+    source.write_text('Text,Identifier'+(' '*65536)+',Extra\n')
     assert detect_reader(source) is None
 
 
@@ -149,3 +151,41 @@ def test_blank_line_after_powershell_preamble_is_ignored(tmp_path, installed):
     source=tmp_path/'double-crlf.csv'
     source.write_bytes(('#TYPE Test\r\r\nText,Identifier\r\r\nvalue,1\r\n').encode('utf-32'))
     assert detect_reader(source)==(installed[0],'Typed.Reader')
+
+
+@pytest.mark.parametrize('encoding',['utf-8','utf-16','utf-32'])
+def test_progressive_headers_support_multiline_quoted_fields(tmp_path,installed,monkeypatch,encoding):
+    import csv,io
+    name='Large\n'+('x'*140000)
+    record=io.StringIO();csv.writer(record).writerow(['Text',name])
+    monkeypatch.setattr('fireblade.core.tle_plugins.inspect_plugin',lambda *_:[dict(type='Wide.Reader',headers=[record.getvalue()])])
+    source=tmp_path/'wide.csv';source.write_text(record.getvalue()+'value,1\n',encoding=encoding,newline='')
+    assert detect_reader(source)==(installed[0],'Wide.Reader')
+
+
+def test_header_probe_is_bounded_and_never_matches_a_partial_record(tmp_path,installed,monkeypatch):
+    import fireblade.core.reader_detection as module
+    monkeypatch.setattr(module,'MAX_HEADER_BYTES',65536)
+    source=tmp_path/'wide.csv';source.write_text('Text,Identifier'+(' '*65536)+',Extra\n')
+    assert detect_reader(source) is None
+    # At EOF, a valid record may end exactly on the byte bound with no newline.
+    source.write_text('Text,Identifier'+(' '*(65536-len('Text,Identifier'))))
+    assert detect_reader(source)==(installed[0],'Typed.Reader')
+
+
+def test_short_header_in_a_larger_file_uses_one_small_read(tmp_path,installed,monkeypatch):
+    source=tmp_path/'normal.csv';source.write_text('Text,Identifier\n'+'a,1\n'*100000)
+    original=Path.open;reads=[]
+    def opened(path,*args,**kwargs):
+        stream=original(path,*args,**kwargs)
+        if path!=source:return stream
+        class Bounded:
+            def __enter__(self):return self
+            def __exit__(self,*_):stream.close()
+            def read(self,size=-1):
+                assert 0<size<=65536
+                reads.append(size);return stream.read(size)
+        return Bounded()
+    monkeypatch.setattr(Path,'open',opened)
+    assert detect_reader(source)==(installed[0],'Typed.Reader')
+    assert reads==[65536]

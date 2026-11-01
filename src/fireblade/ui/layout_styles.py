@@ -40,6 +40,7 @@ def merge_styles(*styles,priority_only=False):
 
 def cell_layers(view,node,column,row):
     styles=view.layout_styles
+    if getattr(node,'footer',False):return [styles.get('group_footer',{})]
     if node.group:return [styles.get('group_row',{})]
     return [styles.get('row',{}),styles.get('even_row' if row%2 else 'odd_row',{}),styles.get(f'cell:{column-1}',{})]
 

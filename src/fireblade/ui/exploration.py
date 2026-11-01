@@ -57,6 +57,7 @@ class ExplorationMixin:
             self.model.date_pattern = p.custom_date_format
             self.model.dark = p.theme == "dark"
             self.model.layoutChanged.emit()
+            self.tree.row_heights.schedule()
 
     def edit_preferences(self):
         dialog = PreferencesDialog(self.preferences, self)
@@ -161,6 +162,13 @@ class ExplorationMixin:
             QApplication.clipboard().setText("" if value is None else str(value))
             return True
         return False
+
+    def edit_row_heights(self):
+        if not self.case or self.busy:return
+        from fireblade.ui.row_heights import RowHeightDialog
+        dialog=RowHeightDialog(self.view,self)
+        if dialog.exec():self.set_view(dialog.view)
+        dialog.deleteLater()
 
     def edit_groups(self):
         if not self.case or self.busy:

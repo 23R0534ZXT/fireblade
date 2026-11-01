@@ -48,6 +48,7 @@ class GridDelegate(QStyledItemDelegate):
                 option.palette.setColor(QPalette.Text,contrast_color(background,base))
 
     def state_layers(self,index,option):
+        if index.model().node(index).footer:return []
         styles=index.model().view.layout_styles
         result=[]
         if option.state & QStyle.State_Selected:result.append(styles.get('selected_row',{}))
@@ -65,7 +66,13 @@ class GridDelegate(QStyledItemDelegate):
 
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
-        size.setHeight(max(22, option.fontMetrics.height() + 6, getattr(index.model(),"max_rule_height",0)))
+        view=index.model().view;node=index.model().node(index)
+        parent=self.parent();owner=getattr(parent,'_pinned_tree',parent)
+        if view.auto_row_height and hasattr(owner,'row_heights'):
+            size.setHeight(owner.row_heights.height(index))
+        else:
+            fixed=view.group_row_height if node.group and not node.footer and view.group_row_height else view.row_height
+            size.setHeight(fixed or max(22,option.fontMetrics.height()+6,getattr(index.model(),'max_rule_height',0)))
         return size
 
     def paint(self, painter, option, index):
@@ -141,6 +148,10 @@ class Node:
     styles: tuple = ()
     note: str | None = None
     used: int = 0
+    footer: bool = False
+    window_size: int = 0
+    height: int = 0
+    height_key: tuple = ()
 
 
 class GridModel(QAbstractItemModel):
@@ -195,18 +206,18 @@ class GridModel(QAbstractItemModel):
                 font.setPointSizeF(rule.font_size)
                 self.max_rule_height=max(self.max_rule_height,QFontMetrics(font).height()+6)
         from fireblade.ui.layout_styles import font_for
-        self.max_header_height=0
+        self.max_header_height=self.view.header_height
         for target,style in self.view.layout_styles.items():
             if target=='header' or target.startswith('header:'):
                 self.max_header_height=max(self.max_header_height,QFontMetrics(font_for(style)).height()+8)
-            elif style.get('font_size') and (target in ('row','odd_row','even_row','group_row','selected_row','focused_row','focused_cell') or target.startswith('cell:')):
+            elif style.get('font_size') and (target in ('row','odd_row','even_row','group_row','group_footer','selected_row','focused_row','focused_cell') or target.startswith('cell:')):
                 self.max_rule_height=max(self.max_rule_height,QFontMetrics(font_for(style)).height()+6)
         # Uniform bounded height keeps frozen panels aligned and avoids measuring millions of rows.
         all_styles=list(self.view.layout_styles.items())+[("rule",r.appearance) for r in self.rules if r.enabled]
         for target,style in all_styles:
-            height=QFontMetrics(font_for(style)).height()*3+8 if style.get('word_wrap') else 0
+            height=QFontMetrics(font_for(style)).height()*3+8 if style.get('word_wrap') and not self.view.auto_row_height else 0
             if target=='header' or target.startswith('header:'):self.max_header_height=max(self.max_header_height,height)
-            elif target in ('row','odd_row','even_row','focused_row','focused_cell','selected_row','group_row','rule') or target.startswith('cell:'):self.max_rule_height=max(self.max_rule_height,height)
+            elif target in ('row','odd_row','even_row','focused_row','focused_cell','selected_row','group_row','group_footer','rule') or target.startswith('cell:'):self.max_rule_height=max(self.max_rule_height,height)
         self.endResetModel()
         self.fetchMore(QModelIndex())
 
@@ -230,7 +241,7 @@ class GridModel(QAbstractItemModel):
     def unload(self, index):
         """Collapsing a group releases its cached descendants."""
         node = self.node(index)
-        if not index.isValid() or not node.group:
+        if not index.isValid() or not node.group or node.footer:
             return
         self.cancel_branch(node)
         node.revision += 1
@@ -317,16 +328,37 @@ class GridModel(QAbstractItemModel):
         if not index.isValid():
             return None
         node, col = self.node(index), index.column()
+        if node.footer:
+            from fireblade.ui.layout_styles import role_value
+            style=self.view.layout_styles.get('group_footer',{})
+            if role==Qt.DisplayRole:
+                if col==0:
+                    label=self.headers[self.view.groups[len(node.path)-1]]
+                    value='∅' if node.path[-1] is None else str(node.path[-1])[:600]
+                    indent='    '*(len(node.path)-1) if self.view.expand_all else ''
+                    return f'{indent}Total {label} : {value}  ({node.values[1]:,})'[:600]
+                values=[]
+                for summary,value in zip(self.view.summaries,node.values[2:]):
+                    if summary.footer_column==-1:continue
+                    target=summary.footer_column if summary.footer_column is not None else summary.column
+                    if target==col-1:values.append(f"{summary.operation}={'∅' if value is None else str(value)[:600]}")
+                return ' · '.join(values)[:600]
+            if role==Qt.ToolTipRole:return self.data(index,Qt.DisplayRole)[:4000]
+            styled=role_value(style,role)
+            if styled is not None:return styled
+            if role==Qt.BackgroundRole:return QColor('#303943' if self.dark else '#f0f3f7')
+            if role==Qt.ForegroundRole:return QColor('#eeeeee' if self.dark else '#202020')
+            return None
         if role == Qt.DisplayRole:
             if node.group:
                 if col:
                     return ""
                 label = self.case.headers[self.view.groups[len(node.path) - 1]]
                 value, count = node.values[:2]
-                result = f"{label} : {'∅' if value is None else value}  ({count:,})"
-                if self.view.summaries:
-                    result += " · " + " · ".join(f"{s.operation}({self.case.headers[s.column]})={value}" for s, value in zip(self.view.summaries, node.values[2:]))
-                return (("    " * (len(node.path)-1) + "▾ ") if self.view.expand_all else "") + result
+                result = f"{label} : {'∅' if value is None else str(value)[:600]}  ({count:,})"
+                inline=[f"{s.operation}({self.case.headers[s.column]})={'∅' if value is None else str(value)[:600]}" for s,value in zip(self.view.summaries,node.values[2:]) if s.footer_column==-1]
+                if inline:result+=' · '+' · '.join(inline)
+                return ((("    " * (len(node.path)-1) + "▾ ") if self.view.expand_all else "") + result)[:600]
             if col == 0:
                 return ("★ " if node.note is not None else "") + str(node.values[0])
             for rule in self.cell_rules(node,col):
@@ -341,7 +373,11 @@ class GridModel(QAbstractItemModel):
                     value = display_timestamp(str(value), self.date_format)
             if col - 1 in self.view.boolean_columns and str(value).casefold() in ("true", "false", "0", "1"):
                 return ""
-            return "∅" if value is None else str(value).replace("\n", " ↵ ")[:600]
+            if value is None:return '∅'
+            if self.view.auto_row_height:
+                from fireblade.ui.layout_styles import merge_styles
+                if merge_styles(*self.appearance_layers(index)).get('word_wrap'):return str(value)[:600]
+            return str(value).replace("\n", " ↵ ")[:600]
         if role == Qt.CheckStateRole and not node.group and col == 0:
             return Qt.Checked if node.note is not None else Qt.Unchecked
         if role == Qt.CheckStateRole and not node.group and col > 0 and col - 1 in self.view.boolean_columns:
@@ -412,6 +448,7 @@ class GridModel(QAbstractItemModel):
 
     def flags(self, index):
         flags = super().flags(index)
+        if index.isValid() and self.node(index).footer:return Qt.ItemIsEnabled
         if index.isValid() and index.column() == 0 and not self.node(index).group:
             flags |= Qt.ItemIsUserCheckable
         return flags
@@ -423,7 +460,7 @@ class GridModel(QAbstractItemModel):
         return False
 
     def hasChildren(self, parent=QModelIndex()):
-        return parent.column() <= 0 and self.node(parent).group and (not self.view.expand_all or not parent.isValid())
+        return parent.column() <= 0 and self.node(parent).group and not self.node(parent).footer and (not self.view.expand_all or not parent.isValid())
 
     def canFetchMore(self, parent=QModelIndex()):
         # QTreeView may eagerly call fetchMore during relayout. Paging is explicit
@@ -432,15 +469,18 @@ class GridModel(QAbstractItemModel):
 
     def fetchMore(self, parent=QModelIndex()):
         node, generation = self.node(parent), self.generation
-        if parent.column() > 0 or not node.group or not node.more or node.loading:
+        if parent.column() > 0 or not node.group or node.footer or not node.more or node.loading:
             return
         revision = node.revision
         self._cache_clock += 1
         node.used = self._cache_clock
         node.loading = True
-        view, path, offset = copy.deepcopy(self.view), node.path, node.offset + len(node.children)
+        view=copy.deepcopy(self.view)
+        outline=view.expand_all and bool(view.groups)
+        path=node.path
+        loaded=len(node.children) if outline else sum(not child.footer for child in node.children)
+        offset=node.offset+loaded
         global_rules = copy.deepcopy(self.global_rules)
-        outline = view.expand_all and bool(view.groups)
         def read_page():
             from fireblade.core.visual_bounds import resolve_rules
             render_rules=resolve_rules(self.case,view,view.format_rules+global_rules)
@@ -476,26 +516,35 @@ class GridModel(QAbstractItemModel):
             self.rules=render_rules
             node.loading = False
             node.more = len(rows) == self.settings.page_size
-            if rows:
-                groups = len(path) < len(view.groups)
-                # Bound both rows and groups; release descendants of evicted groups.
-                if len(node.children) >= self.settings.max_loaded_rows:
-                    self.beginRemoveRows(parent, 0, len(node.children) - 1)
-                    node.offset += len(node.children)
-                    for child in node.children:
-                        self.cancel_branch(child)
+            additions=[]
+            groups=len(path)<len(view.groups)
+            if outline:
+                additions=[Node(node,r['path'],r['values'],r['group'],more=False,
+                    styles=styles.get(r['values'][0],()) if not r['group'] else (),
+                    note=notes.get(r['values'][0]) if not r['group'] else None,footer=r.get('footer',False)) for r in rows]
+            else:
+                for r in rows:
+                    child_path=path+(r[0],) if groups else path
+                    additions.append(Node(node,child_path,r,groups,more=groups,
+                        styles=styles.get(r[0],()),note=notes.get(r[0]) if not groups else None))
+                    if groups and view.group_footer_mode=='always':
+                        additions.append(Node(node,child_path,r,True,more=False,footer=True))
+                if path and view.group_footer_mode=='expanded' and not node.more:
+                    additions.append(Node(node,path,node.values,True,more=False,footer=True))
+            if additions:
+                # Positions into source queries exclude synthetic footers. The
+                # flattened index already includes them in its disk positions.
+                if rows and len(node.children)>=self.settings.max_loaded_rows:
+                    self.beginRemoveRows(parent,0,len(node.children)-1)
+                    node.window_size=loaded
+                    node.offset+=loaded
+                    for child in node.children:self.cancel_branch(child)
                     node.children.clear()
                     self.endRemoveRows()
-                self.trim_cache(node,len(rows))
-                start = len(node.children)
-                self.beginInsertRows(parent, start, start + len(rows) - 1)
-                if outline:
-                    node.children += [Node(node,r['path'],r['values'],r['group'],more=False,
-                         styles=styles.get(r['values'][0],()) if not r['group'] else (),
-                         note=notes.get(r['values'][0]) if not r['group'] else None) for r in rows]
-                else:
-                    node.children += [Node(node, path + (r[0],) if groups else path,
-                                           r, groups, more=groups, styles=styles.get(r[0], ()), note=notes.get(r[0]) if not groups else None) for r in rows]
+                self.trim_cache(node,len(additions))
+                start=len(node.children)
+                self.beginInsertRows(parent,start,start+len(additions)-1)
+                node.children+=additions
                 self.endInsertRows()
             self.status.emit(f"{offset + len(rows):,} éléments chargés dans ce niveau")
             self.loaded.emit()
@@ -524,7 +573,7 @@ class GridModel(QAbstractItemModel):
         for child in node.children:
             self.cancel_branch(child)
         node.children.clear()
-        node.offset = max(0, node.offset - self.settings.max_loaded_rows)
+        node.offset = max(0, node.offset - (node.window_size or self.settings.max_loaded_rows))
         node.more = True
         self.endRemoveRows()
         self.fetchMore(parent)

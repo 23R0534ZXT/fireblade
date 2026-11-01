@@ -93,6 +93,7 @@ class Summary:
     column: int
     operation: str = "count"
     kind: str = "number"
+    footer_column: int | None = -1
 
 
 @dataclass
@@ -131,6 +132,13 @@ class View:
     right_pinned_columns: list[int] = field(default_factory=list)
     group_sorts: list[GroupSort] = field(default_factory=list)
     layout_styles: dict = field(default_factory=dict)
+    group_footer_mode: str = "hidden"
+    total_summaries: list[Summary] = field(default_factory=list)
+    show_total_footer: bool = True
+    auto_row_height: bool = False
+    row_height: int = 0
+    group_row_height: int = 0
+    header_height: int = 0
 
     def to_json(self):
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -147,6 +155,7 @@ class View:
         data["format_rules"] = [FormatRule(**{**r, "condition": condition_from_dict(r["condition"])}) for r in rules]
         data["sorts"] = [SortKey(**key) for key in data.get("sorts", [])]
         data["summaries"] = [Summary(**item) for item in data.get("summaries", [])]
+        data["total_summaries"] = [Summary(**item) for item in data.get("total_summaries", [])]
         data["group_sorts"] = [GroupSort(**item) for item in data.get("group_sorts", [])]
         return cls(**data)
 

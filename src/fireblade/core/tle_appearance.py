@@ -5,7 +5,7 @@ import re
 FONT_FLAGS=('bold','italic','underline','strikeout')
 COLORS=('background','foreground','background2','border_color')
 EXTRA=('high_priority','word_wrap','trimming','hotkey','image','image_align','border_width','border_style')
-ROLES={'row','odd_row','even_row','group_row','selected_row','focused_row','focused_cell','header','group_panel','footer_panel','view_caption','preview','empty','filter_panel','find_panel'}
+ROLES={'row','odd_row','even_row','group_row','group_footer','selected_row','focused_row','focused_cell','header','group_panel','footer_panel','view_caption','preview','empty','filter_panel','find_panel'}
 
 
 def validate_styles(styles,columns):
@@ -111,7 +111,7 @@ def appearance(node,text,properties,color,warnings,defaults=None):
 
 def read_layout_styles(root,columns,text,properties,color,warnings):
     result={};container=properties(root).get('Appearance')
-    mapping={'Row':'row','OddRow':'odd_row','EvenRow':'even_row','GroupRow':'group_row','SelectedRow':'selected_row','FocusedRow':'focused_row','FocusedCell':'focused_cell','HeaderPanel':'header','GroupPanel':'group_panel','FooterPanel':'footer_panel','GroupFooter':'footer_panel','ViewCaption':'view_caption','Preview':'preview','Empty':'empty','FilterPanel':'filter_panel','FindPanel':'find_panel'}
+    mapping={'Row':'row','OddRow':'odd_row','EvenRow':'even_row','GroupRow':'group_row','SelectedRow':'selected_row','FocusedRow':'focused_row','FocusedCell':'focused_cell','HeaderPanel':'header','GroupPanel':'group_panel','FooterPanel':'footer_panel','GroupFooter':'group_footer','ViewCaption':'view_caption','Preview':'preview','Empty':'empty','FilterPanel':'filter_panel','FindPanel':'find_panel'}
     options=properties(root).get('OptionsView')
     if container is not None:
         for name,node in properties(container).items():

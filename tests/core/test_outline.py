@@ -62,14 +62,15 @@ def test_cancel_outline_cleans_staging_and_preserves_previous_index(tmp_path):
     finally:case.close()
 
 
-def test_complete_outline_spills_under_a_64_mb_budget_without_path_arrays(tmp_path):
+@pytest.mark.parametrize('footer_mode',['hidden','always'])
+def test_complete_outline_spills_under_a_64_mb_budget_without_path_arrays(tmp_path,footer_mode):
     # SQL-only fixture: no new large CSV is generated. A million narrow source
     # rows force the hierarchy beyond a small in-memory sort workspace.
     case=Case(tmp_path/'spill.timeline',memory_mb=64,threads=1)
     try:
         case.db.execute("CREATE TABLE events AS SELECT i+1 AS __row_id,'g'||cast(i%7 AS VARCHAR) AS c0,'u'||cast(i%100 AS VARCHAR) AS c1,'h'||cast(i%24 AS VARCHAR) AS c2,cast(i AS VARCHAR) AS c3 FROM range(1000000) t(i)")
         case.headers=['Group','User','Host','N'];case.info={'rows':1000000,'headers':list(case.headers)}
-        view=View(groups=[0,1,2],summaries=[Summary(3,'sum')],group_order='value',group_descending=False)
+        view=View(groups=[0,1,2],summaries=[Summary(3,'sum')],group_order='value',group_descending=False,group_footer_mode=footer_mode)
         assert len(case.outline_page(view))==250
         count,distinct,minimum,maximum=case.db.execute('SELECT count(*),count(DISTINCT position),min(position),max(position) FROM __fireblade_outline').fetchone()
         assert count==distinct==maximum and minimum==1

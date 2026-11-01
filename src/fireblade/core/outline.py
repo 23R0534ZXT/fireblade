@@ -25,6 +25,7 @@ def build_outline(case, view, progress=lambda _: None):
     summaries = summary_expressions(case, view)
     where, args = case.where(view)
     count = len(groupcols)
+    footer_count=0 if view.group_footer_mode=="hidden" else 1
     preserve = case.db.execute(
         "SELECT current_setting('preserve_insertion_order')"
     ).fetchone()[0]
@@ -81,14 +82,14 @@ def build_outline(case, view, progress=lambda _: None):
                 if depth == count:
                     create(
                         f"_span{depth}",
-                        f'SELECT *,cast(n+1 AS BIGINT) AS span FROM "{prefix}_rank{depth}"',
+                        f'SELECT *,cast(n+1+{footer_count} AS BIGINT) AS span FROM "{prefix}_rank{depth}"',
                     )
                 else:
                     parent_fields = ",".join(f"g{i}" for i in range(depth))
                     children = f'SELECT {parent_fields},sum(span) AS span FROM "{prefix}_span{depth + 1}" GROUP BY {parent_fields}'
                     create(
                         f"_span{depth}",
-                        f'SELECT g.*,cast(coalesce(c.span,0)+1 AS BIGINT) AS span FROM "{prefix}_rank{depth}" g LEFT JOIN ({children}) c ON '
+                        f'SELECT g.*,cast(coalesce(c.span,0)+1+{footer_count} AS BIGINT) AS span FROM "{prefix}_rank{depth}" g LEFT JOIN ({children}) c ON '
                         + equal("g", "c", depth),
                     )
             # Prefix sums operate on group tables, not on a variable-width key
@@ -129,6 +130,8 @@ def build_outline(case, view, progress=lambda _: None):
                 unions.append(
                     f'SELECT start AS position,{depth} AS depth,NULL::BIGINT AS row_id,to_json([{path}]) AS path,n{sums} FROM "{prefix}_pos{depth}"'
                 )
+                if footer_count:
+                    unions.append(f'SELECT start+span-1 AS position,{-depth} AS depth,NULL::BIGINT AS row_id,to_json([{path}]) AS path,n{sums} FROM "{prefix}_pos{depth}"')
             sums = ",NULL" * len(summaries)
             unions.append(
                 f'SELECT position,0 AS depth,row_id,NULL AS path,NULL AS n{sums} FROM "{prefix}_leaves"'
@@ -183,5 +186,7 @@ def outline_page(case, view, offset=0, limit=None, progress=lambda _: None):
             group = bool(row[0])
             path = tuple(json.loads(row[1])) if group else ()
             cells = (path[-1], row[2], *row[3:-1]) if group else values[row[-1]]
-            result.append(dict(group=group, path=path, values=cells))
+            record=dict(group=group, path=path, values=cells)
+            if row[0]<0:record["footer"]=True
+            result.append(record)
         return result

@@ -62,6 +62,11 @@ def check_features(window, directory, settle, check, expect, captures=None):
         check_alpha_layout(window,directory,settle,expect,captures)
     check('argb_layout_pixels_light_dark_and_selection',alpha_appearance)
 
+    def group_footers():
+        from fireblade.validation.group_footers import check_group_footers
+        check_group_footers(window,directory,settle,expect,captures)
+    check('separate_group_global_footers_and_source_export',group_footers)
+
     def periods():
         view=View(groups=[0],group_intervals={'0':'month'},group_order='value',group_descending=False)
         window.set_view(view);settle()
@@ -220,3 +225,14 @@ def check_features(window, directory, settle, check, expect, captures=None):
             window.apply_preferences()
             QApplication.processEvents()
     check('dark_theme_actual_glyphs_and_wrapped_tabs',preferences)
+
+
+    def automatic_heights():
+        from fireblade.validation.row_heights import check_auto_row_heights
+        check_auto_row_heights(window,directory,expect,captures)
+    check('automatic_multiline_row_heights_and_pinned_scrolling',automatic_heights)
+
+    def long_headers():
+        from fireblade.validation.row_heights import check_progressive_header_probe
+        check_progressive_header_probe(directory,expect)
+    check('progressive_complete_header_probe_utf8_utf16_utf32',long_headers)

@@ -92,3 +92,8 @@ Les écarts restants et les preuves à obtenir sont suivis dans [l’inventaire 
 Complément de reprise : transparence ARGB conservée jusqu’au rendu, contraste automatique sur le fond composé, persistance dans les règles et vues ; export du contrat `.tle_sess` depuis tous les onglets avec vérification des sources et des numéros de signets. Les tests de pixels et le retour export/import sont intégrés au parcours du fichier unique. L’ouverture native dans TLE reste à qualifier.
 
 Le lot `ff8d241` a terminé sa qualification Windows avec succès : [exécution 41323179854](https://github.com/23R0534ZXT/fireblade/actions/runs/41323179854). Ce résultat concerne les priorités d’apparence, seuils mixtes, raccourcis et regroupements ; il ne qualifie pas les changements ultérieurs tant que leur propre workflow n’a pas terminé.
+
+
+Complément suivant : pieds de groupes séparés du pied global, collections d’agrégats distinctes, placement par colonne et modes TLE de visibilité ; hauteurs de lignes/groupes/en-têtes et `RowAutoHeight` avec cache commun aux panneaux épinglés ; sonde progressive d’en-tête jusqu’à 4 Mio. Les parcours intégrés vérifient les valeurs, les pixels, la pagination, la sauvegarde, le défilement et les en-têtes UTF-8/16/32. La hauteur porte sur le texte affiché borné, pas sur une mesure exhaustive du CSV.
+
+Le lot `8b94303` a terminé sa qualification Windows avec succès : [exécution 41325211129](https://github.com/23R0534ZXT/fireblade/actions/runs/41325211129). Ce résultat couvre la transparence ARGB et l’export `.tle_sess` ; le lot suivant doit terminer sa propre qualification.

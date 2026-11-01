@@ -15,14 +15,20 @@ Une ligne est terminée lorsque le comportement est implémenté et vérifié pa
 | L08 | Alpha des couleurs conservé jusqu’au dessin et dans les vues/règles | Pixels clair/sombre, alternance, épinglage, sélection, en-têtes et panneaux ; interpolation alpha et contrôle du fichier unique |
 | F02 | Export du contrat `.tle_sess`, sources et signets de tous les onglets | Retour JSON documenté/export/import, correspondance des lecteurs, intégrité, annulation et remplacement atomique ; ouverture dans TLE encore à qualifier (Q07) |
 
-Les contrôles intégrés ajoutés sont `mixed_icon_threshold_units_and_pinned_rendering`, `high_priority_layout_and_selection_rendering` et `argb_layout_pixels_light_dark_and_selection`. Le contrôle existant de sessions vérifie aussi le retour export/import. Les nouveaux exemples XML sont synthétiques. Ils complètent les quatre layouts amont conservés dans `tests/fixtures/tle-layouts` ; ils ne prouvent pas à eux seuls une identité de toutes les variantes TLE.
+Les contrôles intégrés ajoutés sont `mixed_icon_threshold_units_and_pinned_rendering`, `high_priority_layout_and_selection_rendering` et `argb_layout_pixels_light_dark_and_selection`. Le contrôle existant de sessions vérifie aussi le retour export/import. Les contrôles suivants portent sur les pieds séparés, les hauteurs automatiques et la sonde progressive. Les nouveaux exemples XML sont synthétiques. Ils complètent les quatre layouts amont conservés dans `tests/fixtures/tle-layouts` ; ils ne prouvent pas à eux seuls une identité de toutes les variantes TLE.
+
+Les développements suivants complètent ce suivi :
+
+| ID | Comportement implémenté | Preuves et portée |
+|---|---|---|
+| L02 | Pieds de groupes et pied global séparés, agrégats distincts, colonnes et modes de visibilité | Ordre des pieds, fenêtres, repli/dépliage, pixels, épinglage, export source sans faux événements, sauvegarde et calculs globaux directs ; test disque sous 64 Mio avec pieds |
+| L03 | `RowAutoHeight`, hauteurs explicites et réglage depuis l’interface | Plus de trois lignes, retour à la hauteur uniforme, redimensionnement sans SQL, cache des nœuds chargés et défilement synchronisé ; texte affiché toujours limité à 600 caractères et comparaison visuelle TLE encore en Q06 |
+| D05 | Sonde d’en-tête progressive au-delà de 64 Kio | UTF-8/16/32, champs multilignes, guillemets, EOF sans fin de ligne, préfixe tronqué refusé ; une lecture pour les petits en-têtes, borne totale de 4 Mio |
 
 ## Différences encore connues
 
 | ID | Écart | Condition de clôture |
 |---|---|---|
-| L02 | `FooterPanel` et `GroupFooter` partagent un contrôle | Pied global et pieds de groupes distincts avec résumés et styles indépendants ; navigation, export, pagination et colonnes épinglées vérifiés |
-| L03 | Hauteur de renvoi à la ligne bornée à trois lignes | Définir et comparer les options de hauteur réellement exposées par TLE ; reproduire le comportement sans mesure globale des millions de cellules |
 | L04 | Skins, métriques et dessins adaptés à Qt | Comparaison visuelle Windows des réglages exposés dans TLE ; distinguer équivalence d'usage et identité graphique |
 | L05 | Propriétés/rôles/variantes XML hors des traductions explicites | Inventorier des layouts TLE réellement produits, associer chaque propriété active à un résultat attendu et à un test |
 | L06 | Styles nommés sans définition embarquée | Importer une définition exportable lorsqu'elle existe ; signaler les définitions externes absentes sans inventer leur contenu |
@@ -37,7 +43,6 @@ Les contrôles intégrés ajoutés sont `mixed_icon_threshold_units_and_pinned_r
 | D02 | Variantes de supertimelines non toutes qualifiées | Comparer dates, MACB, catégories, couleurs et champs dérivés pour chaque variante ciblée |
 | D03 | DLL/dépendances/contrats tiers non tous qualifiés | Matrice de lecteurs et fonctions réels, sur CLR4 et CLR moderne compatibles |
 | D04 | Objets CLR reconstruits depuis source et lecteur déterministe | Définir les garanties de persistance et comparer les cas source absente/modifiée et lecteurs non déterministes |
-| D05 | Détection de lecteur limitée à 64 Kio d'en-tête | Comparer un en-tête dépassant cette limite avec TLE et décider d'une sonde progressive bornée si nécessaire |
 | N01 | Navigation par fenêtres et indexation initiale du dépliage | Comparer les gestes, accès profonds, sélection et réactivité avec TLE sur les mêmes données |
 
 Les plafonds de Fireblade (règles, résumés, sessions, tags, tailles de fichiers de configuration) sont documentés mais leur caractère plus restrictif que TLE n'est pas établi pour chaque cas. Ils demandent une comparaison avant d'être tous traités comme des fonctions manquantes.

@@ -39,6 +39,11 @@ def main():
                "--hidden-import", "numpy", "--hidden-import", "decimal", "--hidden-import", "uuid", "--hidden-import", "fractions"]
     for source, target in [(generated, "resources"), (root / "config" / "fireblade.toml", "resources/config"),
                            (root / "docs" / "guides" / "UTILISATION.md", "resources/docs/guides"),
+                           (root / "docs" / "guides" / "TUTORIEL-COMPLET.md", "resources/docs/guides"),
+                           (root / "docs" / "guides" / "LAYOUTS-TLE.md", "resources/docs/guides"),
+                           (root / "docs" / "development", "resources/docs/development"),
+                           (root / "docs" / "validation" / "20261101-compatibilite.md", "resources/docs/validation"),
+                           (root / "docs" / "validation" / "reports", "resources/docs/validation/reports"),
                            (root / "LICENSE", "resources"),
                            (root / "tests" / "fixtures" / "tle-exports", "resources/qa/tle-exports"),
                            (root / "tests" / "fixtures" / "tle-layouts", "resources/qa/tle-layouts")]:

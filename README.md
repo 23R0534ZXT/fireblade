@@ -130,7 +130,7 @@ Fireblade ouvre les exports déjà produits par les outils forensic. Il ne lit p
 5. Sélectionner des lignes pour poser des signets ou des notes depuis **Édition**.
 6. Exporter la vue filtrée ou les lignes marquées depuis **Fichier**.
 
-Les menus gardent les fonctions avancées à portée sans ajouter d’étape obligatoire au démarrage. Le **[guide d’utilisation](docs/guides/UTILISATION.md)** détaille chaque parcours ; il est aussi intégré au programme via **Aide → Guide d’utilisation** ou **F1**.
+Les menus gardent les fonctions avancées à portée sans ajouter d’étape obligatoire au démarrage. Le **[guide d’utilisation](docs/guides/UTILISATION.md)** présente les parcours principaux. Le **[tutoriel complet](docs/guides/TUTORIEL-COMPLET.md)** passe en revue les commandes, fonctions avancées et limites ; il est intégré au programme sous **Aide → Tutoriel complet — toutes les fonctionnalités**. Le guide reste accessible via **Aide → Guide d’utilisation** ou **F1**.
 
 ### Raccourcis principaux
 

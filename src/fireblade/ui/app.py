@@ -32,7 +32,7 @@ from fireblade.ui.workers import Job, Signals
 from fireblade.ui.exploration import ExplorationMixin
 from fireblade.ui.pinned_grid import PinnedTree
 from fireblade.runtime.resources import default_config
-from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses
+from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses, show_tutorial
 
 
 class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
@@ -155,6 +155,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         action(analysis_menu, 'Contrôler les colonnes dérivées…', lambda: quality(self))
         self.cancel_action = action(analysis_menu, "Interrompre la requête", self.interrupt_queries, requires_file=False)
         self.cancel_action.setEnabled(False)
+        action(help_menu, "Tutoriel complet — toutes les fonctionnalités", lambda: show_tutorial(self), requires_file=False)
         action(help_menu, "Guide d’utilisation", lambda: show_guide(self), "F1", False)
         action(help_menu, "Licences", lambda: show_licenses(self), requires_file=False)
         action(help_menu, "À propos de Fireblade", lambda: show_about(self), requires_file=False)

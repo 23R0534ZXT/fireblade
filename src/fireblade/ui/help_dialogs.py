@@ -1,18 +1,50 @@
-"""Built-in user guide and license viewer; no external files are required."""
+"""Built-in tutorial, user guide and license viewer; no external files are required."""
 import json
+import re
+import unicodedata
 
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextBrowser, QVBoxLayout
 
 from fireblade.runtime.resources import build_info, resource_path
 
 
-def show_text(parent, title, content, markdown=False):
+def show_text(parent, title, content, markdown=False, base_url=None):
     dialog = QDialog(parent)
     dialog.setWindowTitle(title)
     dialog.resize(850, 620)
     layout = QVBoxLayout(dialog)
     browser = QTextBrowser()
-    browser.setOpenExternalLinks(True)
+    browser.setOpenExternalLinks(False)
+    browser.setOpenLinks(False)
+    if base_url is not None:
+        browser.document().setBaseUrl(QUrl.fromLocalFile(str(base_url)))
+
+    def open_link(url):
+        if url.scheme().lower() in {"http", "https", "mailto"}:
+            QDesktopServices.openUrl(url)
+        elif not url.path() and url.fragment():
+            def slug(value):
+                value = "".join(char for char in unicodedata.normalize("NFKD", value.lower())
+                                if not unicodedata.combining(char))
+                return re.sub(r"[\s-]+", "-", re.sub(r"[^\w\s-]", "", value).strip())
+
+            target = slug(url.fragment())
+            block = browser.document().begin()
+            while block.isValid():
+                if block.blockFormat().headingLevel() and slug(block.text()) == target:
+                    cursor = browser.textCursor()
+                    cursor.setPosition(block.position())
+                    browser.setTextCursor(cursor)
+                    browser.ensureCursorVisible()
+                    return
+                block = block.next()
+        else:
+            target = browser.document().baseUrl().resolved(url)
+            QDesktopServices.openUrl(target)
+
+    browser.anchorClicked.connect(open_link)
     if markdown:
         browser.setMarkdown(content)
     else:
@@ -27,7 +59,12 @@ def show_text(parent, title, content, markdown=False):
 
 def show_guide(parent):
     path = resource_path("docs/guides/UTILISATION.md")
-    show_text(parent, "Guide d’utilisation · Fireblade", path.read_text(encoding="utf-8"), markdown=True)
+    show_text(parent, "Guide d’utilisation · Fireblade", path.read_text(encoding="utf-8"), markdown=True, base_url=path)
+
+
+def show_tutorial(parent):
+    path = resource_path("docs/guides/TUTORIEL-COMPLET.md")
+    show_text(parent, "Tutoriel complet · Fireblade", path.read_text(encoding="utf-8"), markdown=True, base_url=path)
 
 
 def show_licenses(parent):

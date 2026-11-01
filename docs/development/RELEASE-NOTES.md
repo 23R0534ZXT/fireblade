@@ -1,5 +1,7 @@
 # Fireblade — prototype Windows 0.4
 
+Les apparences des layouts TLE reprennent maintenant les images raster intégrées, les bordures, le renvoi à la ligne, les troncatures et les préfixes clavier dans la grille et les en-têtes épinglés. Les panneaux correspondants et les styles personnalisés nommés sont adaptés ; les valeurs des styles restent dans les vues sauvegardées. [Formats et limites](../guides/LAYOUTS-TLE.md).
+
 Cette évolution complète les règles de coloration : bornes automatiques, pourcentages et percentiles exacts sur tout le résultat filtré, dégradés à trois couleurs, barres négatives avec axe zéro, trois à cinq icônes, seuils stricts/inclusifs et images PNG. Les règles se combinent par propriété, avec arrêt optionnel, police et taille propres à chaque règle. Classement, moyenne, uniques et doublons utilisent toute la population filtrée.
 
 Les layouts TLE reprennent ces formats standards. Un pont .NET autonome importe explicitement les lecteurs TLE `ProcessFile/DataList` et leurs fonctions `Name/Evaluate`, sans installation .NET chez le destinataire. Les collections JSON acceptent les agrégats de critères, dont `Single`. Le lecteur GenericCsv amont est compilé et exécuté pendant la qualification Windows, en plus du helper intégré au véritable EXE.

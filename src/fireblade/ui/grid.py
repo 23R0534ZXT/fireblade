@@ -29,10 +29,29 @@ class GridDelegate(QStyledItemDelegate):
             from fireblade.ui.layout_styles import role_value,font_for
             background=role_value(appearance,Qt.BackgroundRole)
             foreground=role_value(appearance,Qt.ForegroundRole)
-            option.backgroundBrush=QBrush(background) if background is not None else option.palette.brush(QPalette.Highlight if selected else QPalette.Base)
-            option.palette.setBrush(QPalette.Text,QBrush(foreground) if foreground is not None else option.palette.brush(QPalette.HighlightedText if selected else QPalette.Text))
+            if background is not None:option.backgroundBrush=QBrush(background)
+            if foreground is not None:option.palette.setBrush(QPalette.Text,QBrush(foreground))
             option.font=font_for(appearance,option.font);option.fontMetrics=QFontMetrics(option.font)
-            option.state &= ~QStyle.State_Selected
+            if selected and (background is not None or foreground is not None):
+                if background is None:option.backgroundBrush=option.palette.brush(QPalette.Highlight)
+                if foreground is None:option.palette.setBrush(QPalette.Text,option.palette.brush(QPalette.HighlightedText))
+                option.state &= ~QStyle.State_Selected
+
+    def appearance(self,index,option):
+        from fireblade.ui.layout_styles import cell_style
+        model=index.model();node=model.node(index)
+        result=cell_style(model.view,node,index.column(),index.row())
+        if not node.group:
+            # cell_rules is already populated by the paged styling query.
+            matched=list(model.cell_rules(node,index.column()))
+            for rule in reversed(matched):
+                if rule.visual=='none':result.update(rule.appearance)
+        styles=model.view.layout_styles
+        if option.state & QStyle.State_Selected:result.update(styles.get('selected_row',{}))
+        widget=self.parent();current=widget.currentIndex() if hasattr(widget,'currentIndex') else QModelIndex()
+        if current.isValid() and current.row()==index.row() and current.parent()==index.parent():result.update(styles.get('focused_row',{}))
+        if option.state & QStyle.State_HasFocus:result.update(styles.get('focused_cell',{}))
+        return result
 
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
@@ -40,7 +59,24 @@ class GridDelegate(QStyledItemDelegate):
         return size
 
     def paint(self, painter, option, index):
-        super().paint(painter, option, index)
+        from PySide6.QtWidgets import QStyleOptionViewItem,QApplication
+        from fireblade.ui.layout_styles import paint_image,paint_border,paint_text
+        appearance=self.appearance(index,option)
+        custom=any(key in appearance for key in ('image','word_wrap','trimming','hotkey'))
+        if custom:
+            prepared=QStyleOptionViewItem(option);self.initStyleOption(prepared,index)
+            label=prepared.text;prepared.text=''
+            widget=prepared.widget or self.parent()
+            qtstyle=widget.style() if widget else QApplication.style()
+            qtstyle.drawControl(QStyle.CE_ItemViewItem,prepared,painter,widget)
+            painter.save();painter.setClipRect(option.rect)
+            paint_image(painter,option.rect.adjusted(2,2,-2,-2),appearance)
+            painter.setFont(prepared.font)
+            painter.setPen(prepared.palette.color(QPalette.HighlightedText if prepared.state & QStyle.State_Selected else QPalette.Text))
+            content=qtstyle.subElementRect(QStyle.SE_ItemViewItemText,prepared,widget).adjusted(2,0,-2,0)
+            paint_text(painter,content,label,appearance,prepared.displayAlignment)
+            painter.restore()
+        else:super().paint(painter, option, index)
         painter.save()
         graphic = index.data(VISUAL_ROLE)
         if graphic:
@@ -76,6 +112,7 @@ class GridDelegate(QStyledItemDelegate):
         painter.drawLine(option.rect.topRight(), option.rect.bottomRight())
         painter.setPen(QColor("#eeeeee"))
         painter.drawLine(option.rect.bottomLeft(), option.rect.bottomRight())
+        paint_border(painter,option.rect,appearance)
         painter.restore()
 
 
@@ -152,8 +189,14 @@ class GridModel(QAbstractItemModel):
         for target,style in self.view.layout_styles.items():
             if target=='header' or target.startswith('header:'):
                 self.max_header_height=max(self.max_header_height,QFontMetrics(font_for(style)).height()+8)
-            elif style.get('font_size'):
+            elif style.get('font_size') and (target in ('row','odd_row','even_row','group_row','selected_row','focused_row','focused_cell') or target.startswith('cell:')):
                 self.max_rule_height=max(self.max_rule_height,QFontMetrics(font_for(style)).height()+6)
+        # Uniform bounded height keeps frozen panels aligned and avoids measuring millions of rows.
+        all_styles=list(self.view.layout_styles.items())+[("rule",r.appearance) for r in self.rules if r.enabled]
+        for target,style in all_styles:
+            height=QFontMetrics(font_for(style)).height()*3+8 if style.get('word_wrap') else 0
+            if target=='header' or target.startswith('header:'):self.max_header_height=max(self.max_header_height,height)
+            elif target in ('row','odd_row','even_row','focused_row','focused_cell','selected_row','group_row','rule') or target.startswith('cell:'):self.max_rule_height=max(self.max_rule_height,height)
         self.endResetModel()
         self.fetchMore(QModelIndex())
 

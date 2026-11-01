@@ -43,6 +43,8 @@ def check_features(window, directory, settle, check, expect, captures=None):
         expect(window.model.node(index).values[0]=='A','Imported summary sorting changed the group order')
         expect(index.data(Qt.BackgroundRole).name()=='#daf0da' and index.data(Qt.FontRole).bold(),'Imported group appearance is missing')
         expect(window.model.headerData(1,Qt.Horizontal,Qt.ForegroundRole).name()=='#123456','Imported header appearance is missing')
+        from fireblade.validation.layout_appearance import check_layout_appearance
+        check_layout_appearance(window,directory,settle,expect,captures)
     check('group_summaries_sort_and_exact_large_values',summaries)
 
     def periods():

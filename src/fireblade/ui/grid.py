@@ -4,8 +4,8 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal, QPoint, QRect
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPolygon
-from PySide6.QtWidgets import QStyledItemDelegate
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPolygon, QPalette, QBrush
+from PySide6.QtWidgets import QStyledItemDelegate, QStyle
 
 from fireblade.core.models import View
 from fireblade.core.conditions import validate_format_rules
@@ -15,6 +15,25 @@ from fireblade.ui.workers import Job
 
 class GridDelegate(QStyledItemDelegate):
     """Draw grid lines without a stylesheet that overrides model colors."""
+    def initStyleOption(self,option,index):
+        super().initStyleOption(option,index)
+        styles=getattr(index.model().view,'layout_styles',{})
+        selected=bool(option.state & QStyle.State_Selected)
+        focused=bool(option.state & QStyle.State_HasFocus)
+        appearance=dict(styles.get('selected_row',{})) if selected else {}
+        widget=self.parent()
+        current=widget.currentIndex() if hasattr(widget,'currentIndex') else QModelIndex()
+        if current.isValid() and current.row()==index.row() and current.parent()==index.parent():appearance.update(styles.get('focused_row',{}))
+        if focused:appearance.update(styles.get('focused_cell',{}))
+        if appearance:
+            from fireblade.ui.layout_styles import role_value,font_for
+            background=role_value(appearance,Qt.BackgroundRole)
+            foreground=role_value(appearance,Qt.ForegroundRole)
+            option.backgroundBrush=QBrush(background) if background is not None else option.palette.brush(QPalette.Highlight if selected else QPalette.Base)
+            option.palette.setBrush(QPalette.Text,QBrush(foreground) if foreground is not None else option.palette.brush(QPalette.HighlightedText if selected else QPalette.Text))
+            option.font=font_for(appearance,option.font);option.fontMetrics=QFontMetrics(option.font)
+            option.state &= ~QStyle.State_Selected
+
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
         size.setHeight(max(22, option.fontMetrics.height() + 6, getattr(index.model(),"max_rule_height",0)))
@@ -128,6 +147,13 @@ class GridModel(QAbstractItemModel):
                 font=QFont(rule.font_family) if rule.font_family else QFont()
                 font.setPointSizeF(rule.font_size)
                 self.max_rule_height=max(self.max_rule_height,QFontMetrics(font).height()+6)
+        from fireblade.ui.layout_styles import font_for
+        self.max_header_height=0
+        for target,style in self.view.layout_styles.items():
+            if target=='header' or target.startswith('header:'):
+                self.max_header_height=max(self.max_header_height,QFontMetrics(font_for(style)).height()+8)
+            elif style.get('font_size'):
+                self.max_rule_height=max(self.max_rule_height,QFontMetrics(font_for(style)).height()+6)
         self.endResetModel()
         self.fetchMore(QModelIndex())
 
@@ -213,6 +239,10 @@ class GridModel(QAbstractItemModel):
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
             return "Ligne / groupe" if section == 0 else self.headers[section - 1] if 0<section<=len(self.headers) else None
+        if orientation==Qt.Horizontal:
+            from fireblade.ui.layout_styles import role_value
+            style=dict(self.view.layout_styles.get('header',{}));style.update(self.view.layout_styles.get(f'header:{section-1}',{}))
+            return role_value(style,role)
 
     def cell_rules(self,node,col):
         for i in node.styles:
@@ -258,11 +288,15 @@ class GridModel(QAbstractItemModel):
                 return Qt.Checked if value in ("true", "1") else Qt.Unchecked
         if role == Qt.ToolTipRole and not node.group:
             return (node.note or "") if col == 0 else str(node.values[col])[:4000]
+        if node.group:
+            from fireblade.ui.layout_styles import role_value
+            styled=role_value(self.view.layout_styles.get('group_row',{}),role)
+            if styled is not None:return styled
         if role == Qt.ForegroundRole and node.group:
             return QColor("#eeeeee" if self.dark else "#202020")
         if role == Qt.BackgroundRole and node.group:
             return QColor("#39434f" if self.dark else "#e9edf2")
-        if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole, VISUAL_ROLE, ICON_ROLE, BAR_ROLE):
+        if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole, VISUAL_ROLE, ICON_ROLE, BAR_ROLE, Qt.TextAlignmentRole):
             for rule in self.cell_rules(node,col):
                 if rule.visual!='none':
                     value_column=rule.value_column if rule.value_column is not None else rule.target
@@ -282,7 +316,13 @@ class GridModel(QAbstractItemModel):
                     if role==Qt.BackgroundRole and scale and rule.use_background:return graphic[2]
                     if role==Qt.ForegroundRole and scale and rule.use_foreground and rule.use_background:return contrast_color(graphic[2])
                 else:
-                    if role==Qt.BackgroundRole and rule.use_background:return QColor(rule.background)
+                    if role==Qt.BackgroundRole and rule.use_background:
+                        from fireblade.ui.layout_styles import role_value
+                        return role_value(dict(background=rule.background,**rule.appearance),role)
+                    if role==Qt.TextAlignmentRole and rule.appearance:
+                        from fireblade.ui.layout_styles import role_value
+                        alignment=role_value(rule.appearance,role)
+                        if alignment is not None:return alignment
                     if role==Qt.ForegroundRole and rule.use_foreground:return QColor(rule.foreground)
                 if role==Qt.FontRole and rule.use_font:
                     font=QFont(rule.font_family) if rule.font_family else QFont()
@@ -295,9 +335,14 @@ class GridModel(QAbstractItemModel):
             if any(self.view.highlight.casefold() in str(v).casefold() for v in node.values[1:] if v is not None):
                 return QColor("#674242" if self.dark else "#fce2e2")
 
+        if not node.group:
+            from fireblade.ui.layout_styles import cell_style,role_value
+            styled=role_value(cell_style(self.view,node,col,index.row()),role)
+            if styled is not None:return styled
         if role==Qt.ForegroundRole and not node.group:
             background=self.data(index,Qt.BackgroundRole)
             if isinstance(background,QColor):return contrast_color(background)
+            if isinstance(background,QBrush) and background.gradient():return contrast_color(background.gradient().stops()[0][1])
 
     def flags(self, index):
         flags = super().flags(index)

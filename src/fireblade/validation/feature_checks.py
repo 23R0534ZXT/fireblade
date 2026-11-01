@@ -32,6 +32,17 @@ def check_features(window, directory, settle, check, expect, captures=None):
         expect(values[0]=='A' and str(values[2]).startswith('9007199254740994'),'Group summary lost integer precision')
         target=directory/'résumés.csv';case.export(target,view,grouped=True)
         expect('sum(ID)' in target.read_text(encoding='utf-8-sig'),'Missing summary export')
+        # Exercise serialized summary sorting and custom appearances inside the EXE.
+        from fireblade.core.tle_layout import read_tle_layout
+        record='colType,Descending,#0'
+        state=str(len(record))+':'+record
+        xml=directory/'summary-style.layout'
+        xml.write_text(f'<XtraSerializer><property name="Columns"><property name="Item1"><property name="FieldName">Type</property><property name="Name">colType</property><property name="GroupIndex">0</property></property></property><property name="GroupSummary"><property name="Item1"><property name="FieldName">ID</property><property name="SummaryType">Sum</property></property></property><property name="GroupSummarySortInfoState">{state}</property><property name="Appearance"><property name="GroupRow"><property name="BackColor">#daf0da</property><property name="Font">Arial, 10pt, style=Bold</property></property><property name="HeaderPanel"><property name="ForeColor">#123456</property></property></property></XtraSerializer>',encoding='utf-8')
+        window.apply_tle_layout(read_tle_layout(xml,case.headers));settle()
+        index=window.model.index(0,0)
+        expect(window.model.node(index).values[0]=='A','Imported summary sorting changed the group order')
+        expect(index.data(Qt.BackgroundRole).name()=='#daf0da' and index.data(Qt.FontRole).bold(),'Imported group appearance is missing')
+        expect(window.model.headerData(1,Qt.Horizontal,Qt.ForegroundRole).name()=='#123456','Imported header appearance is missing')
     check('group_summaries_sort_and_exact_large_values',summaries)
 
     def periods():

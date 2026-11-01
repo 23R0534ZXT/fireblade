@@ -33,6 +33,8 @@ class PinnedTree(QTreeView):
 
     def make_panel(self):
         panel = QTreeView(self)
+        from fireblade.ui.grouping import GroupHeader
+        panel.setHeader(GroupHeader(panel))
         panel.hide()
         panel.setFrameShape(QFrame.NoFrame)
         panel.setStyleSheet("QTreeView { border: 0; }")

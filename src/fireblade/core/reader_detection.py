@@ -50,7 +50,7 @@ def header_record(source):
     stream.seek(0)
     for _ in range(skip):
         stream.readline()
-    text = stream.read()
+    text = stream.read().lstrip('\r\n')
     # A truncated oversized header must never be mistaken for a supported one.
     if len(data) == HEADER_LIMIT and '\n' not in text:
         return None

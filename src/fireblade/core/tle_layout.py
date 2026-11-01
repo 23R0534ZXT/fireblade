@@ -11,6 +11,7 @@ from fireblade.core.models import (
     Filter,
     FilterGroup,
     FormatRule,
+    GroupSort,
 )
 from fireblade.core.filter_text import parse_filter
 
@@ -117,6 +118,7 @@ def read_tle_layout(path, headers):
         raise ValueError(f"Colonne du layout absente ou ambiguë : {original}")
 
     columns = []
+    style_columns = []
     warnings = []
     if profile:
         from fireblade.core.profiles import profile_view
@@ -144,6 +146,7 @@ def read_tle_layout(path, headers):
         if index is None:
             continue
         aliases[text(node, "Name", field)] = index
+        style_columns.append((index,node))
         visible = int(text(node, "VisibleIndex", str(len(columns))))
         if text(node, "Visible", "true").lower() == "false":
             visible = -1
@@ -251,6 +254,7 @@ def read_tle_layout(path, headers):
         if active:
             view.expression = expression(active)
     view.search = text(root, "FindFilterText")
+    summary_indices=[];summary_tags={}
     for summary_name in ("GroupSummary", "TotalSummary"):
         collection = properties(root).get(summary_name)
         if collection is None:
@@ -258,9 +262,18 @@ def read_tle_layout(path, headers):
         for item in collection:
             kind = text(item, "SummaryType")
             fieldname = text(item, "FieldName")
+            mapped='unsupported'
+            if summary_name=='GroupSummary':summary_indices.append(mapped)
             if kind in ("None", ""):
                 continue
             if kind == "Count" and not fieldname:
+                if summary_name=='GroupSummary':
+                    summary_indices[-1]=None
+                    tag_node=properties(item).get('Tag')
+                    tag=(tag_node.text or '') if tag_node is not None else ''
+                    if tag:
+                        if tag in summary_tags:raise ValueError('Tag de résumé TLE ambigu : '+tag)
+                        summary_tags[tag]=None
                 continue  # built-in group count
             mapping = {
                 "Count": "count",
@@ -272,13 +285,35 @@ def read_tle_layout(path, headers):
             }
             if kind not in mapping:
                 raise ValueError(f"Résumé non traduit : {kind}")
-            summary = Summary(
-                resolve(fieldname),
-                mapping[kind],
-                "number" if kind in ("Sum", "Average") else "text",
-            )
+            resolved=resolve(fieldname)
+            column_node=next((node for index,node in style_columns if index==resolved),None)
+            declared=text(column_node,'UnboundType') if column_node is not None else ''
+            display=properties(column_node).get('DisplayFormat') if column_node is not None else None
+            numeric=declared in ('Integer','Decimal','Double') or (display is not None and text(display,'FormatType')=='Numeric')
+            summary = Summary(resolved,mapping[kind],
+                'number' if kind in ('Sum','Average') or numeric else 'timestamp' if resolved in view.timestamp_columns else 'text')
             if summary not in view.summaries:
                 view.summaries.append(summary)
+            if summary_name=='GroupSummary':
+                mapped=view.summaries.index(summary);summary_indices[-1]=mapped
+                tag_node=properties(item).get('Tag')
+                tag=(tag_node.text or '') if tag_node is not None else ''
+                if tag:
+                    if tag in summary_tags:raise ValueError('Tag de résumé TLE ambigu : '+tag)
+                    summary_tags[tag]=mapped
+    from fireblade.core.tle_summary_sort import read_summary_sorts
+    state_node=properties(root).get('GroupSummarySortInfoState')
+    view.group_sorts=read_summary_sorts((state_node.text or '') if state_node is not None else '',lambda name:aliases[name] if name in aliases else resolve(name),summary_indices,summary_tags)
+    for c in sorted(columns,key=lambda item:item['group']):
+        if c['group']>=0:
+            view.group_sorts.append(GroupSort(c['column'],'value',descending=c['sort']=='Descending'))
+    if view.groups:
+        first=next((key for key in view.group_sorts if key.column==view.groups[0]),None)
+        if first:
+            view.group_order,view.group_summary,view.group_descending=first.kind,first.summary,first.descending
+    from fireblade.core.tle_appearance import read_layout_styles,validate_styles
+    view.layout_styles=read_layout_styles(root,style_columns,text,properties,color,warnings)
+    validate_styles(view.layout_styles,len(headers))
     for name in ("FormatRules", "FormatConditions"):
         collection = properties(root).get(name)
         if collection is None:
@@ -363,49 +398,33 @@ def read_tle_layout(path, headers):
             appearance = properties(rule_node).get("Appearance")
             if appearance is None:
                 appearance = rule_node
-            background = color(text(appearance, "BackColor"), "#ffffff", warnings)
-            rgb = [int(background[i : i + 2], 16) for i in (1, 3, 5)]
-            foreground = color(
-                text(appearance, "ForeColor"),
-                "#202020" if sum(rgb) > 350 else "#ffffff",
-                warnings,
-            )
             target = None
             if text(item, "ApplyToRow", "true").lower() == "false":
                 name = text(item, "ColumnApplyToName") or text(item, "ColumnName")
                 target = aliases[name] if name in aliases else resolve(name)
-            font = text(appearance, "Font")
-            size_match=re.search(r',\s*(\d+(?:\.\d+)?)\s*pt\b',font,re.I)
-            font_family=font.split(',')[0].strip() if size_match else ''
-            font_size=float(size_match.group(1)) if size_match else 0
             predefined=text(rule_node,'PredefinedName')
-            if predefined and not (text(appearance,'BackColor') or text(appearance,'ForeColor') or font):
-                from fireblade.core.tle_styles import style
-                defaults=style(predefined)
-            else:defaults={}
-            options=properties(appearance).get('Options')
-            def use_option(name,present):
-                flag=(text(options,name) if options is not None else '') or text(appearance,'Options.'+name)
-                return flag.lower()=='true' if flag else present
+            from fireblade.core.tle_styles import style
+            from fireblade.core.tle_appearance import appearance as read_appearance
+            defaults=style(predefined) if predefined else {}
+            adapted=read_appearance(appearance,text,properties,color,warnings,defaults)
             view.format_rules.append(
                 FormatRule(
                     condition,
-                    defaults.get("background",background),
-                    defaults.get("foreground",foreground),
-                    defaults.get("bold","bold" in font.lower()),
+                    adapted.get("background","#ffffff"),
+                    adapted.get("foreground","#202020"),
+                    adapted.get("bold",False),
                     target,
                     enabled,
-                    italic=defaults.get('italic','italic' in font.lower()),
-                    underline='underline' in font.lower(),
-                    strikeout=defaults.get('strikeout','strikeout' in font.lower()),
-                    font_family=font_family,font_size=font_size,
+                    italic=adapted.get('italic',False),
+                    underline=adapted.get('underline',False),
+                    strikeout=adapted.get('strikeout',False),
+                    font_family=adapted.get('font_family',''),font_size=adapted.get('font_size',0),
+                    appearance={key:value for key,value in adapted.items() if key in ('background2','gradient','horizontal','vertical')},
                     statistic=statistic,stat_rank=stat_rank,stat_percent=stat_percent,value_column=value_column,
                     stop_if_true=text(item,'StopIfTrue','false').lower()=='true',
-                    use_background=use_option('UseBackColor','background' in defaults or bool(text(appearance,'BackColor'))),use_foreground=use_option('UseForeColor','foreground' in defaults or bool(text(appearance,'ForeColor'))),use_font=use_option('UseFont',any(k in defaults for k in ('bold','italic','strikeout')) or bool(font)),
+                    use_background='background' in adapted,use_foreground='foreground' in adapted,use_font=any(key in adapted for key in ('font_family','font_size','bold','italic','underline','strikeout')),
                 )
             )
-    if text(root, "GroupSummarySortInfoState"):
-        warnings.append("Tri de résumés sérialisé TLE : vérifier le tri des groupes")
     if len(view.format_rules) > 32 or len(view.summaries) > 16:
         raise ValueError("Disposition dépassant les limites de règles ou de résumés")
     return TleLayout(columns, view, list(dict.fromkeys(warnings)))

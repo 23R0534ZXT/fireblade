@@ -75,6 +75,8 @@ class GroupsDialog(QDialog):
         if any(s.operation in ("sum", "avg") and s.kind != "number" for s in summaries):
             self.message.setText("Somme et moyenne nécessitent le type Nombre.")
             return
+        if summaries!=self.view.summaries or (self.order.currentData(),self.descending.isChecked(),self.selected_summary.value()-1)!=(self.view.group_order,self.view.group_descending,self.view.group_summary):
+            self.view.group_sorts=[]
         self.view.summaries = summaries
         self.view.group_order = self.order.currentData()
         self.view.group_descending = self.descending.isChecked()

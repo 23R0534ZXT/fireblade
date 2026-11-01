@@ -32,7 +32,7 @@ def installed(tmp_path, monkeypatch):
 def test_first_csv_matches_without_manual_binding(tmp_path, installed, encoding, header):
     dll, calls = installed
     source = tmp_path / 'first.csv'
-    source.write_text(header+'évidence,0001\n', encoding=encoding)
+    source.write_text(header+'évidence,0001\n', encoding=encoding, newline='')
     original = source.read_bytes()
     assert detect_reader(source) == (dll, 'Typed.Reader')
     assert calls == [dll] and source.read_bytes() == original
@@ -143,3 +143,9 @@ def test_cancellation_stops_detection(tmp_path, installed):
 def test_quoted_single_field_is_not_a_two_column_signature(tmp_path, installed):
     source=tmp_path/'single.csv';source.write_text('"Text,Identifier"\nvalue\n')
     assert detect_reader(source) is None
+
+
+def test_blank_line_after_powershell_preamble_is_ignored(tmp_path, installed):
+    source=tmp_path/'double-crlf.csv'
+    source.write_bytes(('#TYPE Test\r\r\nText,Identifier\r\r\nvalue,1\r\n').encode('utf-32'))
+    assert detect_reader(source)==(installed[0],'Typed.Reader')

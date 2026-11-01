@@ -220,34 +220,8 @@ def read_tle_layout(path, headers):
     # Bind each bracketed name to the *source* header, including colFoo / Foo_Bar
     # aliases. Virtual Line/Tag/Note are handled by the expression compiler.
     def expression(value):
-        def replace(token):
-            name = token[1:-1].replace("]]", "]")
-            if name.casefold() in ("line", "tag", "note") and name.casefold() not in [
-                h.casefold() for h in headers
-            ]:
-                return token
-            i = aliases[name] if name in aliases else resolve(name)
-            return "[" + headers[i].replace("]", "]]") + "]"
-
-        # Tokenize so a string literal containing '[Foo]' is never rewritten.
-        from fireblade.core.expressions import TOKEN
-
-        tokens = []
-        offset = 0
-        while offset < len(value):
-            match = TOKEN.match(value, offset)
-            if not match:
-                if value[offset:].strip():
-                    raise ValueError("Syntaxe de filtre TLE inconnue")
-                break
-            token = match.group(0)
-            if match.group(1):
-                token = token[: len(token) - len(match.group(1))] + replace(
-                    match.group(1)
-                )
-            tokens.append(token)
-            offset = match.end()
-        return parse_filter("".join(tokens), headers)
+        from fireblade.core.tle_criteria import migrate
+        return parse_filter(migrate(value,headers,aliases,resolve),headers)
 
     if text(root, "ActiveFilterEnabled", "true").lower() != "false":
         active = text(root, "ActiveFilterString") or text(root, "FilterString")

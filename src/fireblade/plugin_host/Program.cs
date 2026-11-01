@@ -69,6 +69,10 @@ internal static class Program
     {
         null => "",
         string text => text,
+#if !NETFRAMEWORK
+        DateOnly d => d.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),
+        TimeOnly d => d.ToString("HH:mm:ss.fffffff",CultureInfo.InvariantCulture),
+#endif
         DateTime d => d.ToString("O",CultureInfo.InvariantCulture),
         DateTimeOffset d => d.ToString("O",CultureInfo.InvariantCulture),
         IEnumerable list when value is not string => ObjectCell(value),
@@ -256,8 +260,16 @@ internal static class Program
         {
             var content=value.GetProperty("value");if(content.ValueKind==JsonValueKind.Null)return null;
             var text=content.GetString()!;
-            if(tag.GetString() is "date" or "dateoffset")text=System.Text.RegularExpressions.Regex.Replace(text,@"(\.\d{7})\d+","$1");
+            if(tag.GetString() is "date" or "dateoffset" or "timeonly")text=System.Text.RegularExpressions.Regex.Replace(text,@"(\.\d{7})\d+","$1");
             return tag.GetString() switch {
+                "guid" => Guid.Parse(text),
+                "char" => text.Length==1 ? text[0] : throw new InvalidOperationException("Un caractère CLR requis"),
+#if NETFRAMEWORK
+                "dateonly" or "timeonly" => throw new InvalidOperationException("DateOnly/TimeOnly nécessitent le CLR moderne"),
+#else
+                "dateonly" => DateOnly.Parse(text.Substring(0,10),CultureInfo.InvariantCulture),
+                "timeonly" => TimeOnly.Parse(text,CultureInfo.InvariantCulture),
+#endif
                 "date" => DateTime.Parse(text,CultureInfo.InvariantCulture,DateTimeStyles.RoundtripKind),
                 "dateoffset" => DateTimeOffset.Parse(text,CultureInfo.InvariantCulture),
                 "i64" => long.Parse(text,NumberStyles.Any,CultureInfo.InvariantCulture),

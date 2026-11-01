@@ -161,3 +161,22 @@ def test_parallel_native_calls_share_one_object_process(tmp_path,monkeypatch):
             assert list(pool.map(lambda _:evaluate(case,'FixtureSecret',args),range(16)))==['37']*16
         assert len(created)==1
     finally:case.close()
+
+
+def test_criteria_typed_literals_keep_native_clr_operand_types(tmp_path):
+    case,source=imported(tmp_path)
+    try:
+        assert count(case,"FixtureLiteralTypes('z'c,{513724e5-17b7-4ec6-abc4-0eae12c72c1f},1s,2b,3m,4f,5d,#!2026-01-01!#,#!12:34:56.1234567!#)=True")==1
+        assert case._plugin_object_session is None
+    finally:case.close()
+
+
+def test_dateonly_timeonly_reader_fields_keep_precision_in_criteria(tmp_path):
+    source=tmp_path/'temporal.txt';source.write_text('evidence')
+    case=Case(tmp_path/'temporal.timeline')
+    try:
+        import_plugin(case,source,FIXTURE,'FixtureTemporalReader')
+        assert case.page(View())[0][1:]==('2026-01-02','12:34:56.1234567')
+        assert count(case,'[Day]=#!2026-01-02!# And [Clock]=#!12:34:56.1234567!#')==1
+        assert count(case,'GetHour([Clock])=12 And GetTimeOfDay([Clock])=452961234567')==1
+    finally:case.close()

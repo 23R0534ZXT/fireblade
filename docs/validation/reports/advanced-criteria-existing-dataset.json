@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "rows": 2441216,
+  "matched": 252557,
+  "seconds": 0.588,
+  "mode": "existing read-only analysis; no CSV regeneration or reimport",
+  "previous_seconds": 52.876,
+  "numeric_integer_fast_path": true,
+  "platform": "Linux",
+  "kind": "targeted regression check; not a Timeline Explorer comparison",
+  "base_commit": "f6a19303c6aea8b7d23c85a6e99ecd179f5be3f7",
+  "expression": "InRange(Size,1000000000m,2000000000m)",
+  "reference": "Independent SQL count using BIGINT bounds",
+  "csv_regenerated": false,
+  "csv_reimported": false
+}

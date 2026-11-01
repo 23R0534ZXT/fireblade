@@ -444,7 +444,7 @@ class Case:
             if isinstance(condition, Filter):
                 if condition.operator == 'expression':
                     from fireblade.core.expressions import referenced_columns
-                    required.update(referenced_columns(condition.value,self.headers))
+                    required.update(referenced_columns(condition.value,self.headers,self.expression_functions))
                 else:
                     required.add(condition.column)
             else:

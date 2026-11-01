@@ -62,3 +62,12 @@ def test_unknown_or_ambiguous_structured_pins_keep_previous_values(tmp_path,xml)
     assert result.preferences.first_pinned_columns==['Before']
     assert result.preferences.pinned_columns_by_format=={'Original':['Field']}
     assert result.warnings
+
+
+@pytest.mark.parametrize('name,preset',[('Office 2019 Black','office-black'),('Office 2019 Dark Gray','office-dark'),('Visual Studio 2013 Dark','studio-dark'),('Office 2019 Colorful','office-white')])
+def test_tle_theme_families_select_adapted_gallery_presets(tmp_path,name,preset):
+    source=tmp_path/'TLE_settings.xml';source.write_text('<Settings><Theme>'+name+'</Theme></Settings>')
+    result=read_tle_settings(source,Preferences(theme_palette={'base':'#123456'}))
+    assert result.preferences.theme_preset==preset
+    assert not result.preferences.theme_palette
+    assert 'rendu Qt' in result.warnings[0]

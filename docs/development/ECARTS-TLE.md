@@ -46,7 +46,7 @@ Ces lignes décrivent des limites ou des preuves absentes ; elles ne signifient 
 
 | ID | Point restant | Preuve nécessaire |
 |---|---|---|
-| L04/R02 | Apparence Qt, skins, métriques et pictogrammes adaptés | Comparaison visuelle sur la même machine avec une version TLE identifiée |
+| L04/R02 | Galerie de 12 thèmes Qt ajoutée avec aperçu, personnalisation, import par famille et sauvegarde ; les ressources/métriques des skins DevExpress et certains pictogrammes restent adaptés | Comparaison visuelle sur la même machine avec une version TLE identifiée |
 | L05/L07/P01/P02 | Variantes supplémentaires de layouts, images et préférences | Un export TLE réel montrant la propriété active et son résultat attendu ; tous les champs du fichier de préférences public documenté sont déjà traités |
 | L06 | Nom de style sans définition embarquée | Sa définition exportable ; Fireblade accepte les bibliothèques de styles et refuse de deviner une définition absente |
 | E01 | Calendriers, cultures, UTC et périodes relatives | Tests comparatifs de culture/fuseau/heure d’été avec TLE ; Fireblade conserve pour l’instant ses conventions UTC et semaine du lundi |

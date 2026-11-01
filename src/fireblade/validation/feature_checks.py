@@ -269,3 +269,8 @@ def check_features(window, directory, settle, check, expect, captures=None):
             expect(default_pinned_columns(preferences,case.headers,{})==[1],'Structured reader pin mapping was lost')
         finally:case.close()
     check('tle_xml_layout_export_and_scoped_default_pins',xml_export)
+
+    def gallery():
+        from fireblade.validation.theme_gallery import check_theme_gallery
+        check_theme_gallery(window,captures)
+    check('gallery_themes_and_isolated_preview',gallery)

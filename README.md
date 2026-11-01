@@ -4,7 +4,7 @@
 
 **Explorateur de données forensic pour Windows : CSV, TSV, XLS et XLSX, avec recherche, filtres, regroupements, signets et notes.**
 
-Fireblade utilise une interface de bureau classique et une base DuckDB sur disque pour explorer les données sans charger toutes les lignes dans la grille. Le projet reste un **prototype** : il ne revendique pas encore la parité complète avec Timeline Explorer ni des gains de performances démontrés sur tous les exports réels.
+Fireblade utilise une interface de bureau classique et une base DuckDB sur disque pour explorer les données sans charger toutes les lignes dans la grille. Le projet est un **prototype Windows 0.4** : il ne revendique pas encore la parité complète avec Timeline Explorer ni des gains de performances démontrés sur tous les exports réels.
 
 ## Télécharger et lancer
 
@@ -22,6 +22,37 @@ Si aucune Release n’est encore disponible, ouvrir une [exécution réussie d�
 
 ![Interface de Fireblade](docs/assets/fireblade.png)
 
+## Pourquoi Fireblade ?
+
+Fireblade reprend les gestes d’un explorateur de timelines forensic : ouvrir un export, trier, filtrer, regrouper, annoter et exporter. Son interface reste une grille de bureau classique. Il s’adresse notamment aux analyses de CSV volumineux et aux personnes qui veulent pouvoir adapter l’outil à leur travail.
+
+- **Grille paginée et données sur disque** : DuckDB conserve l’analyse dans un fichier `.timeline` ; seuls les éléments nécessaires sont chargés dans la grille. Les regroupements, résumés et exports portent sur tous les résultats filtrés.
+- **Ressources réglables** : buffer du moteur, nombre de threads, taille des pages et fenêtres de lignes sont configurables. Le fichier source et la grille ne sont pas intégralement copiés en RAM par l’import CSV natif.
+- **Code disponible sous licence MIT** : Python pour l’application, Qt pour l’interface et DuckDB pour les requêtes ; le lecteur de données, les règles, l’interface et la validation sont organisés en modules. Les profils JSON permettent d’ajouter des présentations sans modifier la grille.
+- **Analyses conservées** : données importées, vues, signets et notes restent dans les bases `.timeline`. Les dispositions sont mémorisées automatiquement par format et schéma.
+- **Programme Windows en un fichier** : `Fireblade.exe` intègre ses bibliothèques, son guide et ses licences. Le destinataire n’installe ni Python ni .NET pour utiliser les fonctions intégrées.
+- **Vérifications consultables** : sources, procédure de compilation, rapports et CSV synthétique de 3 GiB sont accessibles depuis ce dépôt.
+
+Ces choix sont les points forts de Fireblade. Ils ne prouvent pas qu’il consomme moins de RAM ou qu’il est plus rapide que Timeline Explorer dans chaque situation : un benchmark comparatif sur la même machine reste à réaliser. Les DLL tierces peuvent aussi avoir leur propre coût mémoire.
+
+## Fireblade et Timeline Explorer
+
+Timeline Explorer reste la référence de compatibilité pour ses propres layouts et plugins. Fireblade propose une autre implémentation des usages principaux, avec une base sur disque et un code modifiable. Les fonctions partagées ne sont pas présentées comme des exclusivités de Fireblade.
+
+| Sujet | Fireblade | Comparaison avec Timeline Explorer |
+|---|---|---|
+| Recherche, filtres, tris et groupements | Plusieurs niveaux, glisser-déposer, résumés, expressions et règles de coloration | Usages centraux communs ; la présence de ces fonctions ne suffit pas à garantir toutes les variantes TLE |
+| Gros CSV | Import sur disque, grille paginée, fenêtres bornées, réglages de ressources | Choix d’architecture de Fireblade ; aucun gain de vitesse ou de mémoire face à TLE n’est encore démontré sur le même poste |
+| Personnalisation du programme | Code MIT disponible, modules Python et profils JSON | Atout pour comprendre, modifier et redistribuer Fireblade ; il n’est pas nécessaire d’adapter une interface DevExpress pour modifier sa grille Qt |
+| Présentation | Épinglage gauche/droite simultané, thèmes, polices, formats de dates et règles locales/globales | Les usages de présentation sont repris ; les skins et dessins DevExpress ne sont pas identiques |
+| Layouts TLE | Import des colonnes, groupes, tris, résumés, expressions et apparences compatibles ; `.layout.local` automatiques | Compatibilité encore partielle : options non traduites signalées, certains styles personnalisés nécessitent une définition séparée |
+| Plugins TLE | Détection par en-tête, pont .NET intégré, fonctions et objets CLR natifs entre composants compatibles | TLE reste la référence pour ses DLL ; chaque dépendance ou variante tierce doit être qualifiée dans Fireblade |
+| Réutilisation d’une analyse | Base `.timeline` contenant données importées, annotations et vues ; sessions par références aux bases | Format propre à Fireblade ; l’import d’une session TLE reprend les sources et tags, sans équivalence complète des formats de session |
+| Distribution | Un EXE Windows x64 ; compilation personnelle documentée | Atout pratique de Fireblade, sans revendication d’exclusivité ; les plugins tiers peuvent nécessiter leurs DLL et dépendances |
+| Maturité | Prototype 0.4, parcours automatisés Windows et jeu synthétique de 3 GiB | TLE bénéficie d’un usage établi ; les sessions prolongées et la diversité des exports réels restent à qualifier dans Fireblade |
+
+Pour choisir : Fireblade permet d’explorer les fonctions décrites ici, d’ajuster ses ressources et de modifier son code. Si un workflow dépend d’un layout ou d’une DLL TLE précis, vérifiez sa compatibilité avant de l’utiliser sur une analyse. Le [comparatif détaillé](docs/development/PARITE-TIMELINE-EXPLORER.md) et les [limites actuelles](#limites-actuelles) précisent le périmètre.
+
 ## CSV de test de 3 Go
 
 **[Télécharger le CSV complet en ZIP](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/Fireblade-test-3GiB.zip)** · [Release du jeu de test et empreintes](https://github.com/23R0534ZXT/fireblade/releases/tag/test-data-3gib)
@@ -34,6 +65,8 @@ Pour commencer : regrouper par **Artifact**, ajouter **User** puis **Computer** 
 
 ## Sommaire
 
+- [Pourquoi Fireblade ?](#pourquoi-fireblade)
+- [Fireblade et Timeline Explorer](#fireblade-et-timeline-explorer)
 - [CSV de test de 3 Go](#csv-de-test-de-3-go)
 - [Fonctionnalités](#fonctionnalités)
 - [Première analyse](#première-analyse)
@@ -47,6 +80,9 @@ Pour commencer : regrouper par **Artifact**, ajouter **User** puis **Computer** 
 - [Construire le fichier Windows](#construire-le-fichier-windows)
 - [Tests et publication](#tests-et-publication)
 - [Diagnostic](#diagnostic)
+- [Conversions et compatibilité TLE](#conversions-et-compatibilité-tle)
+- [Contraste Windows et qualification en charge](#contraste-windows-et-qualification-en-charge)
+- [Formats avancés et plugins TLE](#formats-avancés-et-plugins-tle)
 - [Limites actuelles](#limites-actuelles)
 - [Documentation et contribution](#documentation-et-contribution)
 - [Licence](#licence)
@@ -59,16 +95,24 @@ Les ajouts de présentation restent dans les menus : le démarrage conserve une 
 |---|---|
 | Import | CSV, TSV, TXT délimité, XLS/XLSX avec choix de feuille ; ouverture multiple et file d’attente |
 | Recherche | Analyse active et recherche entre toutes les analyses ouvertes ; résultats par fichier, filtres et calendrier |
-| Filtres avancés | Arbres ET / OU / NON, texte, égalité, regex RE2, nombres, dates ISO et cellules vides |
-| Regroupements | Plusieurs niveaux, périodes de dates, effectifs, sommes/moyennes/min/max/distincts, tri des groupes, pagination |
+| Filtres avancés | Arbres ET / OU / NON, texte, égalité, regex RE2, nombres, dates ISO et cellules vides ; éditeur et expressions textuelles |
+| Expressions et calculs | Fonctions texte/nombre/date, calculs imbriqués, conversions, collections et références parent ; colonnes calculées persistantes |
+| Dates et heures | Conversions UTC, fuseaux Windows/IANA, précision jusqu’à neuf décimales et colonnes sources conservées |
+| Regroupements | Plusieurs niveaux par glisser-déposer, année/mois/jour/heure, effectifs, sommes/moyennes/min/max/distincts, tri multicritère des résumés par niveau ; dépliage complet indexé sur disque |
 | Tri | Texte, nombre exact ou date ISO ; plusieurs clés et sens réglables |
 | Onglets | Recherche par nom, plusieurs rangées, réouverture du dernier fermé ; une seule base active |
 | Sessions | Vues, analyses et dispositions ; import des sources et tags des sessions `.tle_sess` |
 | Signets et notes | Ligne individuelle ou sélection multiple : marquer, ajouter, remplacer, retirer |
 | Présentation | Colonnes épinglées à gauche/droite, clair/sombre, police et formats de dates ; règles locales/globales, couleurs, styles de texte, barres, dégradés et indicateurs |
+| Règles statistiques et graphiques | Top/bottom, moyennes, uniques/doublons ; bornes automatiques, pourcentages et percentiles exacts ; dégradés à deux/trois couleurs, barres négatives avec axe zéro, jeux de trois à cinq icônes et images PNG |
+| Apparences et layouts | Import XML TLE compatible, images intégrées, bordures, polices, alignements, renvoi à la ligne et troncatures ; styles nommés via bibliothèque JSON, sauvegarde dans les vues |
+| Dispositions automatiques | Rechargement des `.layout.local` selon le lecteur/profil et le schéma ; ordre, largeur, visibilité, épinglage et vue conservés |
 | Règles partagées | Correspondance par noms de colonnes, import/export JSON, rechargement et désactivation par vue |
-| Plugins TLE | Lecteurs DLL détectés par en-tête et fonctions personnalisées, helper .NET autonome intégré |
-| Détails | Valeurs complètes, notes, JSON/XML formaté, panneau à droite/en bas et filtrage depuis les détails |
+| Plugins TLE | Lecteurs DLL détectés par en-tête ; helpers CLR4 ou .NET moderne intégrés, fonctions personnalisées et passage d’objets CLR complexes entre composants compatibles |
+| Préférences TLE | Import de `TLE_settings.xml` : police, onglets, copie, détails et formats de dates compatibles ; adaptations signalées |
+| Supertimelines | Adaptations Plaso/L2T, Psort, mactime et ForensicTimeline ; UTC, MACB, catégories/couleurs ; variantes encore partielles |
+| Détails | Valeurs complètes, notes, JSON/XML formaté, panneau à droite/en bas et filtrage depuis les détails ; affichage booléen par cases |
+| Intégration Windows | Ouvrir un chemin dans l’Explorateur ou un programme choisi ; préférences de copie au clic droit et avec en-têtes |
 | Profils forensic | Catalogue de 222 signatures / 193 noms de formats ; types et présentation ; profils personnels JSON |
 | Export | CSV/XLSX, colonnes visibles dans leur ordre, résultats filtrés, résumés et annotations |
 | Provenance | Chemin, taille, nombre d’enregistrements et empreinte SHA-256 de la source à l’import |
@@ -414,7 +458,7 @@ La [qualification du 31 octobre 2026](docs/validation/QUALIFICATION.md#résultat
 Derniers ajouts qualifiés : [mises en forme graphiques, styles de règles et préambules PeScan/Wisp](docs/validation/AJOUTS-TLE.md), avec rapports conservés et limites de compatibilité.
 
 
-## Nouveaux formats et plugins TLE
+## Formats avancés et plugins TLE
 
 Les règles proposent maintenant des bornes automatiques, pourcentages et **percentiles exacts calculés sur tous les résultats filtrés**, des dégradés à trois couleurs, barres négatives avec axe zéro et jeux de trois à cinq icônes. Chaque seuil accepte `>` ou `>=` ; couleurs et images PNG sont personnalisables. Les règles peuvent combiner fond, texte et police, puis arrêter les suivantes. Une police et une taille fractionnaire peuvent être propres à une règle. Classements haut/bas, moyenne, doublons et valeurs uniques utilisent également le résultat filtré complet.
 
@@ -440,6 +484,6 @@ Les collections JSON acceptent la syntaxe `[Items][[Amount] > 5].Sum([Amount])`,
 Les règles statistiques et graphiques proposent aussi un calcul sur toute la source, en ignorant le filtre actif. Les moyennes acceptent les comparaisons strictes ou inclusives. Les dates relatives utilisent `InDateRange([Date], 'Today')` et les périodes proposées dans l’éditeur de règles ; les jours sont calculés en UTC, les semaines commencent le lundi. L’import XML reprend les dates relatives combinées, les listes de valeurs et les douze styles texte/fond prédéfinis documentés de DevExpress. Les palettes prédéfinies sont adaptées ; les styles personnalisés nommés sont résolus dans les bibliothèques locales ; un nom sans définition reste refusé avec un message explicite.
 
 
-### Derniers ajouts sur main
+### Fonctions complémentaires
 
 Reprise automatique des fonctions approuvées, lecteurs de session mémorisés, sélection du helper .NET Framework/CLR4 ou moderne, navigation dans les objets/collections imbriqués, formes d’icônes supplémentaires (étoiles, classements, drapeaux, triangles, carrés, losanges) et couleurs de thème personnalisables. Les tests ciblés sont exécutés localement ; la construction et la qualification du nouvel EXE sont visibles dans [GitHub Actions](https://github.com/23R0534ZXT/fireblade/actions). Le lien de qualification précédent identifie explicitement le dernier binaire déjà publié.

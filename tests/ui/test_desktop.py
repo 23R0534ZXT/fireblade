@@ -416,3 +416,46 @@ def test_restore_rejects_different_decoding_of_the_same_source(app, tmp_path):
     assert error and "remplacée" in error
     assert window.case is None and window.model is None
     assert window.close()
+
+
+def test_tle_shortcuts_act_on_raw_cell_and_clear_filters(app,window):
+    from PySide6.QtTest import QTest
+    window.activateWindow();window.tree.setFocus()
+    index=window.model.index(0,3)
+    window.tree.setCurrentIndex(index)
+    QTest.keyClick(window.tree,Qt.Key_F,Qt.ControlModifier|Qt.ShiftModifier)
+    settle(app,window)
+    assert window.view.filters==[Filter(2,'eq','001')]
+    assert window.case.count(window.view)==1
+    QTest.keyClick(window.tree,Qt.Key_E,Qt.ControlModifier)
+    settle(app,window)
+    assert window.view.filters==[] and window.case.count(window.view)==4
+    window.group_column(0);settle(app,window)
+    QTest.keyClick(window.tree,Qt.Key_M,Qt.ControlModifier)
+    settle(app,window)
+    assert window.view.expand_all
+    assert not window.case.bookmarks([1,2,3,4])
+    QTest.keyClick(window.tree,Qt.Key_K,Qt.ControlModifier)
+    settle(app,window)
+    assert not window.view.expand_all
+
+
+def test_current_cell_filter_handles_null_and_ignores_group_and_line(app,window):
+    window.tree.setCurrentIndex(window.model.index(3,2));window.filter_current_cell();settle(app,window)
+    assert window.view.filters==[Filter(1,'empty')]
+    window.clear_filters();settle(app,window)
+    window.tree.setCurrentIndex(window.model.index(0,0));window.filter_current_cell()
+    assert not window.view.filters
+    window.group_column(0);settle(app,window)
+    window.tree.setCurrentIndex(window.model.index(0,1));window.filter_current_cell()
+    assert not window.view.filters
+
+
+def test_all_date_group_intervals_are_accessible_in_header_menu(app,window):
+    menu=header_menu(window,2)
+    dates=next(action.menu() for action in menu.actions() if action.text()=='Regrouper les dates par')
+    try:
+        assert [action.text() for action in dates.actions()]==['Valeur entière','Année','Trimestre','Mois','Semaine','Jour','Heure','Minute','Seconde']
+        next(action for action in dates.actions() if action.text()=='Semaine').trigger();settle(app,window)
+        assert window.view.group_intervals['1']=='week'
+    finally:menu.deleteLater()

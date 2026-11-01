@@ -55,7 +55,10 @@ def read_graphic(item,node,kind,text,properties,color,resolve,aliases,warnings):
         container=properties(icon_set).get('Icons')
         entries=list(container) if container is not None else [c for c in icon_set if c.get('name','').startswith('Item')]
         if not 3<=len(entries)<=5:raise ValueError('Le jeu doit contenir 3 à 5 icônes')
-        entries=sorted(entries,key=lambda e:Decimal(text(e,'Value','0')))
+        entry_modes=[mode(text(entry,'ValueType',text(icon_set,'ValueType','Percent'))) for entry in entries]
+        # DevExpress serializes icons from highest priority to lowest. Numeric
+        # sorting only works when every threshold uses the same unit.
+        entries=list(reversed(entries)) if len(set(entry_modes))>1 else sorted(entries,key=lambda e:Decimal(text(e,'Value','0')))
         label=(text(icon_set,'Name')+' '+text(entries[0],'PredefinedName')).lower()
         rule.icon_set=next((shape for words,shape in [(('arrow','direction'),'arrows'),(('triangle',),'triangles'),(('square',),'squares'),(('diamond',),'diamonds'),(('star',),'stars'),(('rating','bar'),'ratings'),(('flag',),'flags'),(('sign',),'signs')] if any(w in label for w in words)),'circles')
         palette={3:['#c62828','#c58b00','#218739'],4:['#c62828','#e39900','#88aa33','#218739'],5:['#c62828','#f57c00','#c58b00','#88aa33','#218739']}
@@ -65,6 +68,8 @@ def read_graphic(item,node,kind,text,properties,color,resolve,aliases,warnings):
             comparison=text(entry,'ValueComparison','GreaterOrEqual')
             if comparison not in ('GreaterOrEqual','Greater'):raise ValueError('Comparaison d’icône non traduite : '+comparison)
             if i==0:
+                floor_mode=mode(text(entry,'ValueType',text(icon_set,'ValueType','Percent')))
+                rule.icon_floor_mode={'fixed':'number','auto':'number'}.get(floor_mode,floor_mode)
                 rule.icon_floor=text(entry,'Value','0');rule.icon_floor_comparison='>' if comparison=='Greater' else '>='
             else:rule.icon_comparisons.append('>' if comparison=='Greater' else '>=')
             if i:
@@ -76,10 +81,10 @@ def read_graphic(item,node,kind,text,properties,color,resolve,aliases,warnings):
             if encoded:png_bytes(encoded)
             images.append(encoded)
             colors.append(color(text(entry,'Color'),palette[len(entries)][i],warnings))
-        if len(set(threshold_modes))>1:raise ValueError('Types mixtes de seuils d’icônes non pris en charge')
+        if len(set(threshold_modes))>1:
+            rule.icon_threshold_modes=[{'fixed':'number','auto':'number'}.get(value,value) for value in threshold_modes]
         mode_name=threshold_modes[0] if threshold_modes else default_type
         rule.icon_threshold_mode={'fixed':'number','auto':'number'}.get(mode_name,mode_name)
-        rule.icon_floor_mode={'fixed':'number','auto':'number'}.get(default_type,default_type)
         rule.icon_thresholds=thresholds;rule.icon_images=images;rule.icon_colors=colors
         warnings.append('Pictogrammes prédéfinis adaptés aux formes Fireblade ; images PNG intégrées conservées')
     return rule

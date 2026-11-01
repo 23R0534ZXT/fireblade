@@ -27,12 +27,37 @@ def role_value(style,role):
         return horizontal[style.get('horizontal','Default')]|vertical[style.get('vertical','Default')]
 
 
-def cell_style(view,node,column,row):
+def merge_styles(*styles,priority_only=False):
+    """Merge per property; high-priority appearances override ordinary ones."""
+    result={}
+    for high in (False,True):
+        if priority_only and not high:continue
+        for style in styles:
+            if bool(style.get('high_priority'))==high:
+                result.update({key:value for key,value in style.items() if key!='high_priority'})
+    return result
+
+
+def cell_layers(view,node,column,row):
     styles=view.layout_styles
-    if node.group:return dict(styles.get('group_row',{}))
-    result=dict(styles.get('row',{}))
-    result.update(styles.get('even_row' if row%2 else 'odd_row',{}))
-    result.update(styles.get(f'cell:{column-1}',{}))
+    if node.group:return [styles.get('group_row',{})]
+    return [styles.get('row',{}),styles.get('even_row' if row%2 else 'odd_row',{}),styles.get(f'cell:{column-1}',{})]
+
+
+def cell_style(view,node,column,row):
+    return merge_styles(*cell_layers(view,node,column,row))
+
+
+def rule_style(rule):
+    """Only enabled appearance properties participate in priority arbitration."""
+    if rule.visual!='none':return {}
+    result=dict(rule.appearance)
+    if rule.use_background:result['background']=rule.background
+    if rule.use_foreground:result['foreground']=rule.foreground
+    if rule.use_font:
+        result.update({key:getattr(rule,key) for key in ('bold','italic','underline','strikeout')})
+        if rule.font_family:result['font_family']=rule.font_family
+        if rule.font_size:result['font_size']=rule.font_size
     return result
 
 

@@ -115,11 +115,14 @@ Les emplacements d’analyse, de session et d’export peuvent être choisis. Le
 |---|---|
 | Ouvrir des données | Ctrl+O |
 | Ouvrir une analyse | Ctrl+Maj+O |
-| Exporter | Ctrl+E |
+| Exporter | Ctrl+Maj+E |
 | Enregistrer / charger une vue | Ctrl+S / Ctrl+L |
 | Enregistrer la session | Ctrl+Maj+S |
-| Éditeur de filtres | Ctrl+Maj+F |
-| Marquer / retirer la sélection | Ctrl+M / Ctrl+Maj+M |
+| Filtrer sur la valeur de la cellule active | Ctrl+Maj+F |
+| Éditeur de filtres | Ctrl+Alt+F |
+| Effacer les filtres | Ctrl+E |
+| Déplier / replier les groupes | Ctrl+M / Ctrl+K |
+| Marquer / retirer la sélection | Ctrl+Alt+B / Ctrl+Maj+M |
 | Onglet suivant / précédent | Ctrl+Tab / Ctrl+Maj+Tab |
 | Fermer l’onglet | Ctrl+W |
 | Copier les lignes sélectionnées | Ctrl+C |

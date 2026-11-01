@@ -54,3 +54,23 @@ def test_options_disable_inherited_custom_text_image_and_border(tmp_path):
     node=ET.fromstring('<property><property name="Options"><property name="UseTextOptions">false</property><property name="UseImage">false</property><property name="UseBorderColor">false</property></property></property>')
     result=appearance(node,text,properties,color,[],dict(word_wrap=True,hotkey='Show',horizontal='Far',image='bad',border_color='#ffffff'))
     assert result=={}
+
+
+@pytest.mark.parametrize('options',[
+    '<property name="Options"><property name="HighPriority">true</property></property>',
+    '<property name="Options.HighPriority">true</property>',
+])
+def test_high_priority_is_imported_and_persisted_for_rows_and_rules(tmp_path,options):
+    from fireblade.core.models import View
+    path=tmp_path/'priority.layout'
+    path.write_text(f'<XtraSerializer><property name="Columns"><property name="Item1"><property name="FieldName">Value</property></property></property><property name="Appearance"><property name="Row"><property name="BackColor">Red</property>{options}</property></property><property name="FormatRules"><property name="Item1"><property name="RuleType">#FormatConditionRuleExpression</property><property name="Rule"><property name="Expression">[Value]=\'1\'</property><property name="Appearance"><property name="ForeColor">Blue</property>{options}</property></property></property></property></XtraSerializer>')
+    layout=read_tle_layout(path,['Value'])
+    assert not layout.warnings
+    assert layout.view.layout_styles['row']['high_priority'] is True
+    assert layout.view.format_rules[0].appearance['high_priority'] is True
+    restored=View.from_json(layout.view.to_json())
+    assert restored==layout.view
+    for invalid in ('yes','1','sometimes'):
+        path.write_text(f'<XtraSerializer><property name="Appearance"><property name="Row"><property name="Options.HighPriority">{invalid}</property></property></property></XtraSerializer>')
+        with pytest.raises(ValueError):read_tle_layout(path,['Value'])
+    with pytest.raises(ValueError):validate_styles({'row':{'high_priority':1}},0)

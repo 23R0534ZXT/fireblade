@@ -25,7 +25,7 @@ def header_menu(window, section):
     menu.addAction("Filtrer cette colonne…", lambda: window.add_filter(column))
     menu.addAction("Filtrer une date…", lambda: window.date_filter(column))
     intervals = menu.addMenu("Regrouper les dates par")
-    for label, code in [("Valeur entière", "value"), ("Année", "year"), ("Mois", "month"), ("Jour", "day"), ("Heure", "hour")]:
+    for label, code in [("Valeur entière", "value"), ("Année", "year"), ("Trimestre", "quarter"), ("Mois", "month"), ("Semaine", "week"), ("Jour", "day"), ("Heure", "hour"), ("Minute", "minute"), ("Seconde", "second")]:
         intervals.addAction(label, lambda checked=False, value=code: window.group_interval(column, value))
     pinned = column in window.view.pinned_columns + window.view.right_pinned_columns
     menu.addAction("Désépingler la colonne" if pinned else "Épingler la colonne", lambda: window.pin_column(column))

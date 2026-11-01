@@ -60,9 +60,13 @@ def icon_level(rule,value,fraction):
         floor=Decimal(rule.icon_floor)
         if number<floor or number==floor and rule.icon_floor_comparison=='>':return -1
     if rule.icon_thresholds:
-        if rule.icon_threshold_mode=='number':number=Decimal(str(value))
-        else:number=Decimal(str(fraction))*100
-        return sum(number>Decimal(t) if rule.icon_comparisons and rule.icon_comparisons[i]=='>' else number>=Decimal(t) for i,t in enumerate(rule.icon_thresholds))
+        modes=rule.icon_threshold_modes or [rule.icon_threshold_mode]*len(rule.icon_thresholds)
+        # Highest matching icon wins, including when mixed bounds cross after filtering.
+        for i in range(len(rule.icon_thresholds)-1,-1,-1):
+            number=Decimal(str(value)) if modes[i]=='number' else Decimal(str(fraction))*100
+            threshold=Decimal(rule.icon_thresholds[i])
+            if number>threshold or number==threshold and (not rule.icon_comparisons or rule.icon_comparisons[i]=='>='):return i+1
+        return 0
     return min(len(rule.icon_colors)-1,int(fraction*len(rule.icon_colors)))
 
 BAR_ROLE=int(Qt.UserRole)+93

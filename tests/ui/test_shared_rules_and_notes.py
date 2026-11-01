@@ -1,5 +1,6 @@
 import csv
 import hashlib
+import os
 import time
 
 import pytest
@@ -117,6 +118,27 @@ def test_global_rules_invalid_file_is_recoverable_without_changing_analysis(qt_a
     assert window.global_rules_error is None
     assert window.model.data(window.model.index(0, 1), Qt.BackgroundRole).name() == "#ffcccc"
     assert not errors
+    assert window.close()
+
+
+def test_global_rules_export_rejects_hardlink_alias_of_source(qt_application, case, tmp_path):
+    source = tmp_path / "evidence.csv"
+    alias = tmp_path / "source-alias.csv"
+    try:
+        os.link(source, alias)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"Hard links unavailable: {exc}")
+    window = Window(rule_path=tmp_path / "global.json")
+    errors = []
+    window.error = lambda error: errors.append(str(error))
+    window.attach(case)
+    settle(qt_application, window)
+
+    window.export_global_rules(alias)
+
+    assert errors and "distinct" in errors[0]
+    assert os.path.samefile(source, alias)
+    assert alias.read_bytes() == source.read_bytes()
     assert window.close()
 
 

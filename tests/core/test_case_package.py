@@ -159,3 +159,35 @@ def test_coverage_history_and_last_audit_are_transported_with_references(tmp_pat
     assert state['events'][0]['reason']=='Original '+str(source)
     assert Path(state['events'][0]['path']).is_file() and state['events'][0]['path']!=document.path
     assert Path(last['sources'][0]['path']).is_file() and last['stale']
+
+
+def test_export_snapshots_locked_database_and_preserves_derived_columns(tmp_path, monkeypatch):
+    library, data, document, case, source = prepared(tmp_path)
+    archive = tmp_path / 'snapshot.fireblade-case'
+    original_open = Path.open
+
+    def reject_live_database_read(path, mode='r', *args, **kwargs):
+        if path.resolve() == case.path.resolve() and 'r' in mode:
+            raise PermissionError('Simulated Windows DuckDB file lock')
+        return original_open(path, mode, *args, **kwargs)
+
+    try:
+        case.add_derived_columns([dict(name='UserCopy', operation='expression', expression='[User]')])
+        expected = case.page(View())
+        monkeypatch.setattr(Path, 'open', reject_live_database_read)
+        export_package(library, data, [document], 0, archive, active_case=case)
+        assert case.page(View()) == expected
+        case.bookmark(1, 'Still writable after snapshot')
+        assert case.bookmarks()[1] == 'Still writable after snapshot'
+    finally:
+        case.close()
+    imported_library = InvestigationLibrary(tmp_path / 'imported')
+    imported = import_package(imported_library, archive)['case']
+    snapshots, _ = read_session(imported_library.session_path(imported))
+    restored = Case(snapshots[0].path)
+    try:
+        assert restored.page(View()) == expected
+        assert restored.headers[-1] == 'UserCopy'
+        assert restored.bookmarks()[1] == 'Note <exacte>'
+    finally:
+        restored.close()

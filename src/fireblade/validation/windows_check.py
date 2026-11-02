@@ -182,17 +182,10 @@ def run_check(app, report_path):
                 expect(sorted(p.name for p in Path(sys.executable).parent.iterdir()) == [Path(sys.executable).name], "Le programme a besoin de fichiers à côté du .exe.")
         check("single_file_embedded_guide_defaults_and_licenses", embedded_resources)
         if report['frozen']:
-            from fireblade.validation.forensic_tools import verify_embedded_engines
-            def display_parser_result(path, expected):
-                window.load_case(path)
-                settle()
-                expect(window.case is not None and str(window.case.path) == path, 'Résultat du parseur non ouvert : '+path)
-                expect(window.model.rowCount() == len(expected), 'Nombre de lignes affichées incorrect : '+path)
-                if expected:
-                    actual = tuple(window.model.node(window.model.index(0, 0)).values)
-                    expect(actual == expected[0], 'Valeurs affichées altérées : '+path)
+            from fireblade.validation.forensic_tools import parser_result_display, verify_embedded_engines
             def forensic_engines():
-                report['forensic_engines'] = verify_embedded_engines(report_path.parent/(report_path.stem+'-forensic-engines'), display_parser_result)
+                with parser_result_display(app, window.settings) as display:
+                    report['forensic_engines'] = verify_embedded_engines(report_path.parent/(report_path.stem+'-forensic-engines'), display)
             check('embedded_EZ_parsers_and_real_Hayabusa_alerts', forensic_engines)
 
         def importing():

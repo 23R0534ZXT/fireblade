@@ -10,6 +10,7 @@ Commencez par votre parcours d’entrée, puis utilisez les sections de référe
 - [Cases — dossiers d’enquête](#cases--dossiers-denquête)
 - [Se repérer dans la fenêtre](#se-repérer-dans-la-fenêtre)
 - [Collecte brute et détection Hayabusa](#collecte-brute-et-détection-hayabusa)
+- [Shellbags et WebCache Windows](#shellbags-et-webcache-windows)
 - [Importer une collecte Linux CatScale](#importer-une-collecte-linux-catscale)
 - [Passer des alertes aux preuves EVTX et à leur contexte](#passer-des-alertes-aux-preuves-evtx-et-à-leur-contexte)
 - [Parcours guidé](#parcours-guidé)
@@ -118,9 +119,11 @@ Les moteurs et leur runtime sont embarqués dans le seul EXE Windows ; les résu
 | RBCmd | Métadonnées `$I` de la corbeille |
 | RecentFileCacheParser | `RecentFileCache.bcf` |
 | SQLECmd | Bases SQLite reconnues par ses maps |
+| Hôte Shellbags Fireblade | Ruches hors ligne UsrClass.dat / NTUSER.DAT, bibliothèques Registry et ExtensionBlocks. |
+| Lecteur WebCache | Bases ESE WebCacheV*.dat, bibliothèque dissect.esedb. |
 | Hayabusa 4.3.1 | Détections et corrélations sur les EVTX inventoriés |
 
-Le nom et la signature du fichier orientent le choix du moteur ; Fireblade ne lance pas arbitrairement tous les parseurs sur chaque fichier. Les journaux `.LOG1` et `.LOG2` associés à une ruche sont traités comme compagnons. Les Shellbags peuvent provenir des résultats du registre ou d’exports existants ; ils n’ont pas un parseur autonome supplémentaire dans ce pack. Les variantes non reconnues sont conservées dans le bilan.
+Le nom et la signature du fichier orientent le choix du moteur ; Fireblade ne lance pas arbitrairement tous les parseurs sur chaque fichier. Les journaux `.LOG1` et `.LOG2` associés à une ruche sont traités comme compagnons. Les ruches UsrClass / NTUSER sont également orientées vers le lecteur Shellbags dédié ; les exports Shellbags existants restent importables. Les variantes non reconnues sont conservées dans le bilan.
 
 ### Lire le bilan avant de conclure
 
@@ -141,6 +144,33 @@ Une collecte peut être globalement terminée avec certains fichiers en erreur. 
 **Reprendre une collecte…** demande le dossier de travail contenant `collection.json`, pas le dossier d’artefacts. Les bases importées permettent de consulter les données sans les originaux. Une nouvelle exécution de Hayabusa demande les EVTX originaux aux chemins enregistrés, avec leurs empreintes inchangées. Chaque exécution conserve ses résultats séparément.
 
 Le niveau minimal se choisit avant **Analyser avec Hayabusa**. Zéro alerte, une sortie vide inattendue et une erreur de moteur sont des états distincts. Les règles embarquées ne sont pas mises à jour pendant l’analyse. Le contexte décrit dans la section suivante ne réexécute pas Hayabusa.
+
+## Shellbags et WebCache Windows
+
+Créez ou ouvrez un case, puis utilisez **Importer un dossier de collecte…**. Placez `UsrClass.dat`, `NTUSER.DAT` et/ou `WebCacheV01.dat` dans le dossier choisi, avec les journaux de registre `.LOG1` / `.LOG2` à côté de leur ruche. L’organisation par artefact ouvre des onglets **Shellbags** et **WebCache** ; la grille combinée les regroupe par artefact. Les analyses sont conservées dans le case, avec les filtres, signets, notes et dispositions de sa session.
+
+### Lire les Shellbags
+
+| Champ | Utilisation |
+|---|---|
+| Path / Value | Chemin reconstruit dans l’espace de noms Shell et nom décodé de l’élément. |
+| RegistryKey / ValueName | Emplacement exact dans la ruche. |
+| MRUPosition / NodeSlot | Ordre MRU disponible et slot de la vue associée ; `-1` signifie que la position MRU n’est pas disponible. |
+| BagMRUKeyLastWriteUtc | Dernière écriture de la clé de registre, distincte d’une heure de visite certaine. |
+| ShellItemModified / Created / Accessed | Dates embarquées dans l’élément lorsqu’elles existent. Les dates DOS/FAT ne permettent pas de déduire à elles seules un fuseau d’origine. |
+| Status / RawHex | Élément décodé, inconnu ou endommagé ; octets conservés pour vérification. |
+
+Le lecteur Fireblade utilise les bibliothèques MIT Registry et ExtensionBlocks avec le runtime .NET déjà embarqué. Il n’embarque pas SBECmd. Les journaux utilisables sont rejoués en mémoire ; les originaux ne sont pas réécrits. Une ruche sale ou avec checksum invalide reste signalée si sa récupération est indisponible ou incomplète. Le passage séparé de RECmd peut refuser cette ruche alors que le lecteur Shellbags en extrait encore des éléments lisibles. Les clés supprimées ne sont pas récupérées. Limites du lecteur : ruche de 512 Mio, un million de clés parcourues, profondeur de 512.
+
+Un chemin Shellbags peut être virtuel, réseau, ancien ou supprimé. Il ne prouve pas que le répertoire existe encore ni qu’un fichier a été ouvert. Les horodatages de clé ou d’élément ne constituent pas une chronologie exacte des visites.
+
+### Lire le WebCache
+
+Le format ESE de `WebCacheV*.dat` est lu par dissect.esedb ; ce n’est pas SQLite. Les tables utilisateur sont exportées avec **WebCache_Table**, **WebCache_Container** et **WebCache_Directory**. **WebCache_RecordType** distingue `CacheEntry`, `AppCacheEntry`, `DependencyEntry`, `Metadata` et les autres lignes `TableRecord`. Filtrez sur ces colonnes pour séparer historique, contenu et autres conteneurs selon ce que contient réellement la base.
+
+Les valeurs d’origine sont conservées, notamment URL, identifiants, champs binaires préfixés par `hex:` et entiers FILETIME exacts. Les colonnes `*_UTC` donnent une interprétation UTC distincte, à 100 ns près ; les sentinelles et dates absentes restent vides. La colonne **WebCache_ReadError** signale les champs illisibles ou dates hors plage. Les erreurs de table figurent également dans le bilan et dans `collection.json`.
+
+La lecture ne répare pas la base, ne rejoue pas les journaux ESE, ne récupère pas les lignes supprimées et n’ouvre pas les URL. Une base non fermée proprement produit un avertissement : ses pages lisibles ne garantissent pas un résultat complet. Travaillez sur une copie collectée hors ligne ; Fireblade ne contourne pas les verrous d’une base en cours d’utilisation.
 
 ## Importer une collecte Linux CatScale
 

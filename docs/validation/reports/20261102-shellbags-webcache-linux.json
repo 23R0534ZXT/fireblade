@@ -1,0 +1,54 @@
+{
+  "status": "passed",
+  "records": {
+    "Shellbags": 523,
+    "WebCache": 1612
+  },
+  "analyses": 2,
+  "case_and_notes_restored": true,
+  "dirty_fixture_warning_expected": true,
+  "webcache_recovery": "not performed",
+  "date": "2026-11-02",
+  "environment": "Linux Python 3.12, actual win-x64-targeted managed Shellbags DLL through .NET 10; not a Windows EXE run",
+  "full_source_suite": {
+    "passed": 908,
+    "skipped": 6,
+    "seconds": 291.02
+  },
+  "shellbags_libraries": {
+    "Registry": "2026.10.1",
+    "ExtensionBlocks": "2026.10.9"
+  },
+  "webcache_reader": {
+    "dissect.esedb": "3.18",
+    "dissect.cstruct": "4.7",
+    "dissect.util": "3.24"
+  },
+  "fixtures": [
+    {
+      "tool": "Shellbags",
+      "name": "UsrClass.dat",
+      "url": "https://raw.githubusercontent.com/EricZimmerman/Registry/de0bdbbea699637fe0e7b519c9f7fc07aafb173a/Registry.Test/Hives/ERZ_Win81_UsrClass.dat",
+      "compression": null,
+      "sha256": "dc43388d50ecfadd85053e2345f62324c2b0b2901a6945d480a2899f0e8c5185"
+    },
+    {
+      "tool": "WebCache",
+      "name": "WebCacheV01.dat",
+      "url": "https://raw.githubusercontent.com/Sootmark/ese/3570ed9280f73d0d4796ed8979a7a4e30ea022d9/tests/fixtures/plaso/WebCacheV01.dat.gz",
+      "compression": "gzip",
+      "sha256": "2713e7ff413c69659442c5dcb0f23f41230fa76bf760b8aeac0ffd430d10c83e"
+    }
+  ],
+  "limitations": [
+    "The pinned UsrClass hive is dirty without transaction logs; the Shellbags warning is required and RECmd may refuse its separate pass",
+    "1612 WebCache rows include metadata and cache entries",
+    "No deleted-record carving or ESE transaction-log recovery",
+    "These representative fixtures do not qualify every Windows version or damaged input"
+  ],
+  "final_targeted_suite": {
+    "passed": 20,
+    "seconds": 22.72,
+    "scope": "Shellbags and WebCache core, actual managed host, desktop case restore and forensic packaging contracts"
+  }
+}

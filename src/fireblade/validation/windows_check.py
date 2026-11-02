@@ -416,6 +416,10 @@ def run_check(app, report_path):
         def catscale_collection():
             report['catscale']=verify_catscale(app,directory/'catscale-collection',window.settings)
         check('catscale_families_import_grid_and_case_restore',catscale_collection)
+        from fireblade.validation.browser_artifacts import verify_browser_artifacts
+        def browser_artifacts():
+            report['browser_artifacts']=verify_browser_artifacts(app,directory/'browser-artifacts',window.settings)
+        if report['frozen']:check('shellbags_webcache_real_parse_import_grid_case_restore',browser_artifacts)
         report["memory"] = windows_memory()
         report["status"] = "passed"
     except Exception as exc:

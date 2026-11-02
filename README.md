@@ -54,9 +54,27 @@ Screenshot from a real workflow using a public demonstration EVTX, captured with
 | RBCmd | Recycle Bin `$I` metadata |
 | RecentFileCacheParser | `RecentFileCache.bcf` |
 | SQLECmd | SQLite databases recognized by its maps |
+| Fireblade Shellbags host | Offline `UsrClass.dat` / `NTUSER.DAT` Shellbags, using Registry and ExtensionBlocks |
+| WebCache reader | `WebCacheV*.dat` ESE databases, using dissect.esedb |
 | Hayabusa 4.3.1 | Detections and correlations across inventoried EVTX files |
 
 Versions, sources, and hashes are pinned in the [engine configuration](config/forensic-toolchain.json). EvtxECmd and SQLECmd include their maps; RECmd includes 70 registry plugins. A SQLite database requires a matching map. This list does not guarantee every variant or every input supported by each upstream tool's command line. Fireblade does not mount disk images.
+
+## Shellbags and Windows WebCache
+
+Use **Importer un dossier de collecte…** inside a case and select a folder containing `UsrClass.dat`, `NTUSER.DAT`, and/or `WebCacheV01.dat`. Keep registry `.LOG1` / `.LOG2` companions beside their hive. With separate artifact tabs, the results appear in **Shellbags** and **WebCache**; the combined option groups them by artifact. All ordinary filters, notes, bookmarks, exports, and case/session saving apply.
+
+The Shellbags host reconstructs shell namespace paths and retains the registry key, value name, MRU position, NodeSlot, key last-write timestamp, decoded item timestamps where available, and raw bytes. Unknown or damaged items remain visible with their status. It uses the MIT Registry/ExtensionBlocks libraries in the existing bundled .NET runtime; it is a Fireblade reader, not a redistributed SBECmd executable. Transaction logs are applied in memory when usable. A dirty hive without usable logs is read with a warning; RECmd's separate registry pass may refuse that same hive. The host reads active keys only, with a 512 MiB input limit and traversal guards. A Shellbags entry does not prove that a folder currently exists or that a file was opened; key last-write and embedded item dates are not precise visit times.
+
+The WebCache reader exports non-system ESE tables, resolves container names/directories, and preserves URLs, exact identifiers, binary fields as `hex:...`, and original FILETIME values. Separate `*_UTC` columns add timestamp interpretations with 100 ns precision; absent/sentinel timestamps remain blank. **WebCache_RecordType** distinguishes `CacheEntry`, `AppCacheEntry`, `DependencyEntry`, metadata, and other table records. Inspect **WebCache_Table**, **WebCache_Container**, and **WebCache_ReadError** when filtering or reviewing errors.
+
+WebCache processing is read-only. It does not replay ESE transaction logs, repair the database, carve deleted records, read live locked files, or fetch URLs. Dirty databases and unreadable tables/fields produce explicit warnings; readable pages may be incomplete. All readers run locally within the single-EXE workflow, with no additional installation on the analysis PC.
+
+![Shellbags results in a case](docs/assets/fireblade-shellbags.png)
+
+![WebCache results in a case](docs/assets/fireblade-webcache.png)
+
+Captures from the pinned public test artifacts, rendered offscreen on Linux. [Validation and limits](docs/validation/SHELLBAGS-WEBCACHE.md).
 
 ## Linux CatScale collections
 
@@ -150,7 +168,7 @@ Processing takes place locally. The bundle includes its engines and rules; the n
 
 Validation tests the sources on Windows with Python 3.11, 3.12, and 3.13, then runs the actual EXE alone in an empty folder: resources, engines, imports, rendering, sessions, cancellation, annotations, and exports. Publication also depends on Windows storage checks, reader checks, visual captures, a 320-analysis workflow, and the 3 GiB dataset.
 
-The forensic check requires nonempty output from each of the 13 parsers, opens every result in the grid, and checks displayed values. It also checks Hayabusa detections and their context. Public fixtures are pinned and their SHA-256 hashes are verified. **Adding a test is not proof that it passed**: consult the workflow results for the relevant commit.
+The forensic check requires nonempty output from each of the 13 parsers, opens every result in the grid, and checks displayed values. It also checks Hayabusa detections and their context. A separate mandatory frozen-EXE check parses the public Shellbags/WebCache fixtures, renders their results, and restores their case and notes. Public fixtures are pinned and their SHA-256 hashes are verified. **Adding a test is not proof that it passed**: consult the workflow results for the relevant commit.
 
 Results and limitations are documented in [forensic validation](docs/validation/COLLECTE-FORENSIC.md), [Windows validation](docs/validation/WINDOWS.md), and [qualification reports](docs/validation/QUALIFICATION.md). Linux and native Windows results are distinguished. Representative examples do not qualify every Windows version, every SQLite map, or every damaged file.
 

@@ -323,3 +323,9 @@ Ces palettes et rendus sont des créations Qt de Fireblade. Les ressources, dess
 Dans un case, utilisez **Importer un dossier de collecte…** pour choisir un dossier CatScale extrait ou contenant ses archives `catscale_*.tar.gz` / `FSecure_*.tar.gz`. Choisissez les onglets par famille ou la grille regroupée. Le parser est intégré sans dépendance Linux.
 
 La colonne Lecture distingue les données structurées du texte brut conservé ; Source et Ligne gardent la provenance. Vérifiez les avertissements, binaires non pris en charge et limites avant de conclure que la collecte est complète. Hayabusa reste réservé aux EVTX Windows. Voir [le parcours complet et ses limites](TUTORIEL-COMPLET.md#importer-une-collecte-linux-catscale).
+
+## Shellbags et WebCache
+
+Importez le dossier contenant les ruches `UsrClass.dat` / `NTUSER.DAT` et la base ESE `WebCacheV01.dat`. Gardez les `.LOG1` / `.LOG2` de registre à côté de leur ruche. Le choix par artefact donne des onglets Shellbags et WebCache, avec les filtres, notes et sauvegardes du case.
+
+Les références au registre, octets Shellbags, tables/containeurs WebCache et dates brutes sont conservés. Les avertissements signalent les ruches/bases sales ou éléments illisibles. Les dates de clé Shellbags ne sont pas des heures de visite certaines ; le lecteur WebCache ne rejoue pas les journaux ESE et ne récupère pas les données supprimées. Voir [les champs et limites du tutoriel](TUTORIEL-COMPLET.md#shellbags-et-webcache-windows).

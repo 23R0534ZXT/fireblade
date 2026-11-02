@@ -104,13 +104,13 @@ class CollectionMixin(AlertContextMixin):
     def show_collection_report(self, report=None):
         pack = self.toolpack()
         from fireblade.core.collection import PARSERS
-        ready = [name for name in (*PARSERS, 'Hayabusa') if pack.available(name)]
+        ready = [name for name in (*PARSERS, 'Shellbags', 'Hayabusa') if pack.available(name)]
         names = {'pending':'En attente', 'running':'En cours', 'complete':'Terminé',
                  'complete_with_warnings':'Terminé avec avertissements', 'unsupported':'Non reconnu',
                  'skipped':'Ignoré', 'error':'Erreur', 'cancelled':'Interrompu',
                  'attention':'À vérifier', 'no_output':'Aucune sortie', 'companion':'Journal de transaction'}
         status = lambda value: names.get(value, value)
-        lines = ['CatScale Linux : parser intégré, sans dépendance externe.', 'Moteurs Windows disponibles : '+(', '.join(ready) or 'aucun pack intégré dans cette construction')]
+        lines = ['Parsers intégrés : CatScale Linux et WebCache ESE (lecture seule).', 'Moteurs Windows disponibles : '+(', '.join(ready) or 'aucun pack intégré dans cette construction')]
         if report:
             organization = {'files':'Un onglet par résultat', 'artifacts':'Un onglet par artefact', 'combined':'Onglet unique regroupé par artefact'}.get(report.get('organization', 'files'), '')
             lines += ['', 'Organisation : '+organization, 'Dossier source : '+report['source'], 'Dossier de travail : '+report['output'],

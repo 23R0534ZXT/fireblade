@@ -777,7 +777,7 @@ Les épinglages par lecteur/profil repris depuis les préférences TLE sont cons
 
 ### Galerie de thèmes
 
-**Affichage → Préférences → Galerie de thèmes** propose Office clair/gris foncé/noir, Bleu classique, Argent, Graphite, Studio clair/sombre, Sable, Forêt et Contraste élevé clair/sombre. L’aperçu montre une petite grille, une sélection et des commandes. Il reste local au dialogue : **Annuler** conserve le thème de l’application. **OK** applique et sauvegarde le choix pour le prochain démarrage.
+**Affichage → Préférences → Galerie de thèmes** propose Office clair/gris foncé/noir, Bleu classique, Argent, Graphite, Studio clair/sombre, Sable, Forêt et Contraste élevé clair/sombre, ainsi que Nuit profonde, Nuit éclairée, Code sombre, Bleu minuit, Nuit violette, Océan nocturne, Nordique, Aurore claire, Atelier clair, Ambre nocturne, Rose nocturne et Émeraude nocturne, soit 24 palettes au total. Les modes clair et sombre standards restent disponibles. L’aperçu montre une petite grille, une sélection et des commandes. Il reste local au dialogue : **Annuler** conserve le thème de l’application. **OK** applique et sauvegarde le choix pour le prochain démarrage.
 
 Choisir un thème de galerie rétablit sa palette ; **Personnaliser les couleurs** permet ensuite de la modifier. Changer manuellement de mode vers un mode différent de celui du thème revient à « Standard / personnalisé ». Les préférences restent défilables lorsque l’écran ou le zoom limite l’espace, avec OK/Annuler toujours accessibles.
 

@@ -1,0 +1,802 @@
+{
+  "platform": "Linux / Qt offscreen",
+  "data": "Synthetic documentation records; no real incident",
+  "themes": {
+    "office-white": {
+      "name": "Office clair",
+      "mode": "light",
+      "colors": {
+        "window": "#f3f3f3",
+        "text": "#202020",
+        "base": "#ffffff",
+        "alternate": "#f5f7fa",
+        "highlight": "#cde6ff",
+        "selection_text": "#102030"
+      },
+      "capture": "gallery-office-white.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 200,
+          "contrast": 16.16,
+          "background": [
+            254,
+            254,
+            254
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 84,
+          "contrast": 5.07,
+          "background": [
+            244,
+            244,
+            244
+          ]
+        }
+      }
+    },
+    "office-dark": {
+      "name": "Office gris foncé",
+      "mode": "dark",
+      "colors": {
+        "window": "#3b3b3b",
+        "text": "#f3f3f3",
+        "base": "#292929",
+        "alternate": "#333333",
+        "highlight": "#385d80",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-office-dark.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 163,
+          "contrast": 6.82,
+          "background": [
+            84,
+            84,
+            84
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 93,
+          "contrast": 5.84,
+          "background": [
+            73,
+            73,
+            73
+          ]
+        }
+      }
+    },
+    "office-black": {
+      "name": "Office noir",
+      "mode": "dark",
+      "colors": {
+        "window": "#202020",
+        "text": "#f5f5f5",
+        "base": "#141414",
+        "alternate": "#252525",
+        "highlight": "#284d71",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-office-black.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 155,
+          "contrast": 12.11,
+          "background": [
+            48,
+            48,
+            48
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 79,
+          "contrast": 8.8,
+          "background": [
+            46,
+            46,
+            46
+          ]
+        }
+      }
+    },
+    "classic-blue": {
+      "name": "Bleu classique",
+      "mode": "light",
+      "colors": {
+        "window": "#e7eff8",
+        "text": "#172c43",
+        "base": "#ffffff",
+        "alternate": "#f0f5fb",
+        "highlight": "#b4d5f5",
+        "selection_text": "#102438"
+      },
+      "capture": "gallery-classic-blue.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 195,
+          "contrast": 14.07,
+          "background": [
+            253,
+            254,
+            255
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 84,
+          "contrast": 5.04,
+          "background": [
+            240,
+            244,
+            248
+          ]
+        }
+      }
+    },
+    "silver": {
+      "name": "Argent",
+      "mode": "light",
+      "colors": {
+        "window": "#e8e9ec",
+        "text": "#25272d",
+        "base": "#ffffff",
+        "alternate": "#f2f3f5",
+        "highlight": "#d4dcf0",
+        "selection_text": "#202838"
+      },
+      "capture": "gallery-silver.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 197,
+          "contrast": 13.45,
+          "background": [
+            242,
+            243,
+            245
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 87,
+          "contrast": 4.84,
+          "background": [
+            238,
+            239,
+            240
+          ]
+        }
+      }
+    },
+    "graphite": {
+      "name": "Graphite",
+      "mode": "dark",
+      "colors": {
+        "window": "#292d34",
+        "text": "#eef1f5",
+        "base": "#1d2127",
+        "alternate": "#262b33",
+        "highlight": "#3f526b",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-graphite.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 157,
+          "contrast": 8.91,
+          "background": [
+            62,
+            66,
+            73
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 86,
+          "contrast": 6.65,
+          "background": [
+            61,
+            65,
+            72
+          ]
+        }
+      }
+    },
+    "studio-light": {
+      "name": "Studio clair",
+      "mode": "light",
+      "colors": {
+        "window": "#eeeeF2",
+        "text": "#222222",
+        "base": "#ffffff",
+        "alternate": "#f4f4f7",
+        "highlight": "#c9def5",
+        "selection_text": "#152b43"
+      },
+      "capture": "gallery-studio-light.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 200,
+          "contrast": 15.0,
+          "background": [
+            248,
+            248,
+            250
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 86,
+          "contrast": 4.94,
+          "background": [
+            241,
+            241,
+            243
+          ]
+        }
+      }
+    },
+    "studio-dark": {
+      "name": "Studio sombre",
+      "mode": "dark",
+      "colors": {
+        "window": "#2d2d30",
+        "text": "#f1f1f1",
+        "base": "#1e1e1e",
+        "alternate": "#29292c",
+        "highlight": "#264f78",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-studio-dark.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 157,
+          "contrast": 9.58,
+          "background": [
+            61,
+            61,
+            64
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 86,
+          "contrast": 6.7,
+          "background": [
+            64,
+            64,
+            67
+          ]
+        }
+      }
+    },
+    "night": {
+      "name": "Nuit profonde",
+      "mode": "dark",
+      "colors": {
+        "window": "#11151b",
+        "text": "#e8edf5",
+        "base": "#090c11",
+        "alternate": "#141a22",
+        "highlight": "#274d73",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-night.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 120,
+          "contrast": 14.23,
+          "background": [
+            26,
+            30,
+            36
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 78,
+          "contrast": 10.73,
+          "background": [
+            27,
+            31,
+            37
+          ]
+        }
+      }
+    },
+    "night-lit": {
+      "name": "Nuit éclairée",
+      "mode": "dark",
+      "colors": {
+        "window": "#303949",
+        "text": "#f2f5fa",
+        "base": "#252e3e",
+        "alternate": "#2e394b",
+        "highlight": "#37618f",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-night-lit.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 165,
+          "contrast": 6.47,
+          "background": [
+            79,
+            89,
+            106
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 94,
+          "contrast": 5.36,
+          "background": [
+            70,
+            79,
+            94
+          ]
+        }
+      }
+    },
+    "code-dark": {
+      "name": "Code sombre",
+      "mode": "dark",
+      "colors": {
+        "window": "#181818",
+        "text": "#e6e6e6",
+        "base": "#1f1f1f",
+        "alternate": "#27272b",
+        "highlight": "#264f78",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-code-dark.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 113,
+          "contrast": 12.44,
+          "background": [
+            36,
+            36,
+            36
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 79,
+          "contrast": 10.32,
+          "background": [
+            34,
+            34,
+            34
+          ]
+        }
+      }
+    },
+    "midnight-blue": {
+      "name": "Bleu minuit",
+      "mode": "dark",
+      "colors": {
+        "window": "#161e31",
+        "text": "#dde7ff",
+        "base": "#0d1424",
+        "alternate": "#18213b",
+        "highlight": "#314a80",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-midnight-blue.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 120,
+          "contrast": 10.03,
+          "background": [
+            43,
+            52,
+            73
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 81,
+          "contrast": 8.31,
+          "background": [
+            41,
+            50,
+            70
+          ]
+        }
+      }
+    },
+    "violet-night": {
+      "name": "Nuit violette",
+      "mode": "dark",
+      "colors": {
+        "window": "#282a36",
+        "text": "#f8f8f2",
+        "base": "#20212b",
+        "alternate": "#2d3040",
+        "highlight": "#55466f",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-violet-night.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 159,
+          "contrast": 9.34,
+          "background": [
+            64,
+            66,
+            79
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 85,
+          "contrast": 7.09,
+          "background": [
+            58,
+            60,
+            72
+          ]
+        }
+      }
+    },
+    "ocean-night": {
+      "name": "Océan nocturne",
+      "mode": "dark",
+      "colors": {
+        "window": "#15303a",
+        "text": "#e3f4f5",
+        "base": "#0c222b",
+        "alternate": "#17343d",
+        "highlight": "#216678",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-ocean-night.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 157,
+          "contrast": 8.22,
+          "background": [
+            45,
+            75,
+            86
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 85,
+          "contrast": 6.61,
+          "background": [
+            41,
+            69,
+            79
+          ]
+        }
+      }
+    },
+    "nord": {
+      "name": "Nordique",
+      "mode": "dark",
+      "colors": {
+        "window": "#2e3440",
+        "text": "#eceff4",
+        "base": "#242933",
+        "alternate": "#353d4c",
+        "highlight": "#425b77",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-nord.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 158,
+          "contrast": 7.36,
+          "background": [
+            71,
+            77,
+            90
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 93,
+          "contrast": 5.77,
+          "background": [
+            68,
+            74,
+            86
+          ]
+        }
+      }
+    },
+    "arctic-light": {
+      "name": "Aurore claire",
+      "mode": "light",
+      "colors": {
+        "window": "#e7f0f4",
+        "text": "#173441",
+        "base": "#f8fcff",
+        "alternate": "#edf5fa",
+        "highlight": "#bddbea",
+        "selection_text": "#132d3b"
+      },
+      "capture": "gallery-arctic-light.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 191,
+          "contrast": 12.83,
+          "background": [
+            251,
+            253,
+            254
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 84,
+          "contrast": 5.47,
+          "background": [
+            252,
+            253,
+            253
+          ]
+        }
+      }
+    },
+    "warm-light": {
+      "name": "Atelier clair",
+      "mode": "light",
+      "colors": {
+        "window": "#f0eae4",
+        "text": "#342c27",
+        "base": "#fffaf4",
+        "alternate": "#f6efe7",
+        "highlight": "#dfc6aa",
+        "selection_text": "#32251b"
+      },
+      "capture": "gallery-warm-light.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 194,
+          "contrast": 12.7,
+          "background": [
+            249,
+            246,
+            243
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 87,
+          "contrast": 5.3,
+          "background": [
+            250,
+            249,
+            248
+          ]
+        }
+      }
+    },
+    "amber-night": {
+      "name": "Ambre nocturne",
+      "mode": "dark",
+      "colors": {
+        "window": "#30271f",
+        "text": "#f4eadb",
+        "base": "#211b16",
+        "alternate": "#332b23",
+        "highlight": "#70502b",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-amber-night.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 150,
+          "contrast": 9.77,
+          "background": [
+            64,
+            55,
+            47
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 82,
+          "contrast": 7.43,
+          "background": [
+            65,
+            56,
+            48
+          ]
+        }
+      }
+    },
+    "rose-night": {
+      "name": "Rose nocturne",
+      "mode": "dark",
+      "colors": {
+        "window": "#32252e",
+        "text": "#f8eaf2",
+        "base": "#221a21",
+        "alternate": "#362631",
+        "highlight": "#71405b",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-rose-night.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 155,
+          "contrast": 9.52,
+          "background": [
+            69,
+            56,
+            65
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 82,
+          "contrast": 7.3,
+          "background": [
+            68,
+            55,
+            64
+          ]
+        }
+      }
+    },
+    "emerald-night": {
+      "name": "Émeraude nocturne",
+      "mode": "dark",
+      "colors": {
+        "window": "#17332e",
+        "text": "#e1f5ed",
+        "base": "#10251f",
+        "alternate": "#1a382f",
+        "highlight": "#23634f",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-emerald-night.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 157,
+          "contrast": 8.28,
+          "background": [
+            45,
+            76,
+            70
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 86,
+          "contrast": 7.04,
+          "background": [
+            39,
+            66,
+            61
+          ]
+        }
+      }
+    },
+    "sand": {
+      "name": "Sable",
+      "mode": "light",
+      "colors": {
+        "window": "#f1eadb",
+        "text": "#352c20",
+        "base": "#fffdf7",
+        "alternate": "#f7f1e4",
+        "highlight": "#e6d2a7",
+        "selection_text": "#352613"
+      },
+      "capture": "gallery-sand.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 194,
+          "contrast": 13.27,
+          "background": [
+            253,
+            251,
+            248
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 87,
+          "contrast": 5.44,
+          "background": [
+            253,
+            252,
+            251
+          ]
+        }
+      }
+    },
+    "forest": {
+      "name": "Forêt",
+      "mode": "dark",
+      "colors": {
+        "window": "#25352f",
+        "text": "#edf5ef",
+        "base": "#182820",
+        "alternate": "#22362b",
+        "highlight": "#345e4b",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-forest.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 158,
+          "contrast": 7.84,
+          "background": [
+            61,
+            79,
+            72
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 88,
+          "contrast": 6.17,
+          "background": [
+            57,
+            73,
+            67
+          ]
+        }
+      }
+    },
+    "contrast-light": {
+      "name": "Contraste élevé clair",
+      "mode": "light",
+      "colors": {
+        "window": "#ffffff",
+        "text": "#000000",
+        "base": "#ffffff",
+        "alternate": "#eeeeee",
+        "highlight": "#000000",
+        "selection_text": "#ffffff"
+      },
+      "capture": "gallery-contrast-light.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 233,
+          "contrast": 21.0,
+          "background": [
+            255,
+            255,
+            255
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 81,
+          "contrast": 5.38,
+          "background": [
+            251,
+            251,
+            251
+          ]
+        }
+      }
+    },
+    "contrast-dark": {
+      "name": "Contraste élevé sombre",
+      "mode": "dark",
+      "colors": {
+        "window": "#000000",
+        "text": "#ffffff",
+        "base": "#000000",
+        "alternate": "#181818",
+        "highlight": "#ffff00",
+        "selection_text": "#000000"
+      },
+      "capture": "gallery-contrast-dark.png",
+      "contrast": {
+        "enabled": {
+          "ink_pixels": 149,
+          "contrast": 21.0,
+          "background": [
+            0,
+            0,
+            0
+          ]
+        },
+        "disabled": {
+          "ink_pixels": 75,
+          "contrast": 13.62,
+          "background": [
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    }
+  },
+  "standard_modes": [
+    "standard-light.png",
+    "standard-dark.png"
+  ]
+}

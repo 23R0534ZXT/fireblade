@@ -22,6 +22,7 @@ Choose a collection folder, parse its artifacts, and explore the results in Fire
 | Windows WebCache | Read-only ESE reader with URLs, container metadata, exact FILETIME values and separate UTC columns |
 | Linux CatScale | Extracted folders and archives organized into seven analysis families |
 | Hayabusa | Bundled EVTX rules, alert results, surrounding events and navigation to the source record |
+| Appearance | 24 theme presets, standard light/dark modes, isolated previews and custom palette colors |
 | Data exploration | Column filters, AND/OR/NOT conditions, sorting, grouping, bookmarks, notes and CSV/XLSX exports |
 | Graphical chronology | Cross-analysis density lanes, zoom, time selection, entity correlation and source-row navigation |
 | Investigation reports | Standalone HTML/PDF findings with notes, provenance, coverage findings and an optional timeline capture |
@@ -40,6 +41,7 @@ Data lives in disk-backed DuckDB `.timeline` databases. The grid loads pages; fi
 - [Import Linux CatScale collections](#linux-catscale-collections)
 - [Investigate Hayabusa alerts and their EVTX context](#hayabusa-alerts-and-evtx-context)
 - [Filter, group, annotate and calculate](#explore-the-results)
+- [Choose a theme and browse all palette screenshots](#themes-and-appearance)
 - [Explore the graphical chronology](#graphical-chronology-and-correlations)
 - [Run a bulk IOC hunt](#bulk-ioc-hunting)
 - [Check collection coverage and incidents](#collection-coverage-and-diagnostics)
@@ -260,6 +262,46 @@ Synthetic demonstration records, rendered offscreen on Linux.
 Keep the source values and add separate calculated columns for supported date conversions, expressions, categories and MACB-style interpretation. For a known local time zone, create a UTC column explicitly rather than silently treating local timestamps as UTC. Calculated definitions are retained with the analysis.
 
 Named views preserve investigation layouts. Local and shared formatting rules can highlight rows or cells using visual condition blocks; the grid also supports icons, bars and scales, pinned columns, multiline values and adjustable row heights. Rules change presentation, while filters change which records participate in the view. Import compatibility with Timeline Explorer remains scoped to the documented formats and supported .NET helpers.
+
+### Themes and appearance
+
+Fireblade now includes **24 theme presets**, including **12 new palettes**, plus the standard light and dark modes. The new set includes deep and illuminated night modes, Studio/Code-style neutrals, blue and ocean tones, violet, amber, rose, emerald and two additional light palettes. These are original Qt palettes inspired by familiar editor environments; no Visual Studio, VS Code or DevExpress skin assets are included.
+
+Open **Affichage → Préférences… → Apparence → Galerie de thèmes** to choose a palette. The mode follows the selected preset. The preview stays inside the dialog until you confirm with **OK**; **Annuler** keeps the current application theme. The choice is saved for the next launch, and individual palette colors can be customized.
+
+![Theme selection and isolated preview](docs/assets/themes/theme-preferences.png)
+
+*Actual preferences dialog showing Nuit éclairée. All captures in this gallery use the same synthetic records and the real desktop interface, rendered offscreen on Linux. Click an image to inspect it at full size.*
+
+#### Twelve new themes
+
+| Preview | Preview |
+|---|---|
+| **Nuit profonde**<br>![Nuit profonde](docs/assets/themes/gallery-night.png) | **Nuit éclairée**<br>![Nuit éclairée](docs/assets/themes/gallery-night-lit.png) |
+| **Code sombre**<br>![Code sombre](docs/assets/themes/gallery-code-dark.png) | **Bleu minuit**<br>![Bleu minuit](docs/assets/themes/gallery-midnight-blue.png) |
+| **Nuit violette**<br>![Nuit violette](docs/assets/themes/gallery-violet-night.png) | **Océan nocturne**<br>![Océan nocturne](docs/assets/themes/gallery-ocean-night.png) |
+| **Nordique**<br>![Nordique](docs/assets/themes/gallery-nord.png) | **Aurore claire**<br>![Aurore claire](docs/assets/themes/gallery-arctic-light.png) |
+| **Atelier clair**<br>![Atelier clair](docs/assets/themes/gallery-warm-light.png) | **Ambre nocturne**<br>![Ambre nocturne](docs/assets/themes/gallery-amber-night.png) |
+| **Rose nocturne**<br>![Rose nocturne](docs/assets/themes/gallery-rose-night.png) | **Émeraude nocturne**<br>![Émeraude nocturne](docs/assets/themes/gallery-emerald-night.png) |
+
+#### Existing theme presets
+
+| Preview | Preview |
+|---|---|
+| **Office clair**<br>![Office clair](docs/assets/themes/gallery-office-white.png) | **Office gris foncé**<br>![Office gris foncé](docs/assets/themes/gallery-office-dark.png) |
+| **Office noir**<br>![Office noir](docs/assets/themes/gallery-office-black.png) | **Bleu classique**<br>![Bleu classique](docs/assets/themes/gallery-classic-blue.png) |
+| **Argent**<br>![Argent](docs/assets/themes/gallery-silver.png) | **Graphite**<br>![Graphite](docs/assets/themes/gallery-graphite.png) |
+| **Studio clair**<br>![Studio clair](docs/assets/themes/gallery-studio-light.png) | **Studio sombre**<br>![Studio sombre](docs/assets/themes/gallery-studio-dark.png) |
+| **Sable**<br>![Sable](docs/assets/themes/gallery-sand.png) | **Forêt**<br>![Forêt](docs/assets/themes/gallery-forest.png) |
+| **Contraste élevé clair**<br>![Contraste élevé clair](docs/assets/themes/gallery-contrast-light.png) | **Contraste élevé sombre**<br>![Contraste élevé sombre](docs/assets/themes/gallery-contrast-dark.png) |
+
+#### Standard light and dark modes
+
+| Standard light | Standard dark |
+|---|---|
+| ![Standard light](docs/assets/themes/standard-light.png) | ![Standard dark](docs/assets/themes/standard-dark.png) |
+
+The captures cover every shipped preset and both standard modes. Rendered button contrast is checked for enabled and disabled controls, along with preference persistence and cancellation of the isolated preview. Themes change the interface palette; evidence values, filters and annotations stay in their analyses. Reproduce the gallery with `python scripts/benchmarks/preview_themes.py --output docs/assets/themes`; [capture metadata and contrast measurements](docs/assets/themes/manifest.json) are included.
 
 ### Graphical chronology and correlations
 

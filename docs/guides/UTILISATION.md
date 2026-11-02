@@ -215,7 +215,7 @@ La case à cocher de la colonne Ligne/groupe marque une ligne sans demander de n
 
 ## Préférences et détails
 
-**Affichage → Préférences** sépare Apparence, Grille et copie, Dates et Compatibilité. La page Apparence propose une galerie de 12 thèmes avec aperçu et règle le mode clair/sombre, la famille et taille de police, les dates reconnues (source, ISO, ISO à sept décimales), la position du panneau de détails, la copie des en-têtes et la copie immédiate au clic droit. **Maj+clic droit** conserve le menu contextuel lorsque la copie immédiate est active. Les préférences sont enregistrées dans `%LOCALAPPDATA%\Fireblade\preferences.json`.
+**Affichage → Préférences** sépare Apparence, Grille et copie, Dates et Compatibilité. La page Apparence propose une galerie de 24 thèmes avec aperçu et règle le mode clair/sombre, la famille et taille de police, les dates reconnues (source, ISO, ISO à sept décimales), la position du panneau de détails, la copie des en-têtes et la copie immédiate au clic droit. **Maj+clic droit** conserve le menu contextuel lorsque la copie immédiate est active. Les préférences sont enregistrées dans `%LOCALAPPDATA%\Fireblade\preferences.json`.
 
 Le détail et l’export conservent le texte source, même si la grille présente une date ou un booléen. Le format à sept décimales ne retire pas les décimales supplémentaires présentes dans la source. Le clic droit d’un champ du panneau Détails permet de copier sa valeur complète, la filtrer ou l’exclure. La fenêtre de cellule peut formater du JSON ou XML jusqu’à 2 Mo ; les DTD et entités XML sont refusées.
 

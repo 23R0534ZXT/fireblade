@@ -261,10 +261,10 @@ def parse(source,output):
                         budget.consume(len(data))
                         return data
                 with tarfile.open(fileobj=Counted(),mode='r|') as archive:
-                    for item in archive:
+                    for ordinal,item in enumerate(archive,1):
                         check_cancel();budget.members+=1
                         if budget.members>MAX_MEMBERS:raise ValueError('CatScale : limite de 100000 fichiers atteinte')
-                        member_path=path+'!/'+item.name
+                        member_path=path+f'[entry {ordinal}]!/'+item.name
                         if item.isdir():continue
                         if not safe_member(item.name) or not item.isfile() or item.issparse():
                             members.append(dict(path=member_path,status='skipped',reason='Chemin non sûr, lien ou fichier spécial'));continue
@@ -297,9 +297,10 @@ def parse(source,output):
                     outputs[family]=dict(csv=str(target),family=family,rows=0);used[family]=set()
                 row.update({'Hôte':record_host or row.get('Hôte',''),'Collecte':record_collection,'Famille':family,'Type':kind(path),'Source':path})
                 writers[family].writerow(row);outputs[family]['rows']+=1;total+=1
+                totals['raw' if row['Lecture']=='Brute' else 'structured']+=1
+                entry.update(rows=total,raw_rows=raw_count+(row['Lecture']=='Brute'))
                 used[family].update(key for key,value in row.items() if value)
                 raw_count+=row['Lecture']=='Brute'
-            totals['structured']+=total-raw_count;totals['raw']+=raw_count
             entry.update(status='complete' if total else 'empty',rows=total,raw_rows=raw_count)
         except OperationCancelled:raise
         except (OSError,ValueError,tarfile.TarError,EOFError) as exc:

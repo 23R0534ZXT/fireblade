@@ -209,3 +209,20 @@ def test_same_case_cannot_be_opened_in_two_windows(qt_application,tmp_path):
         assert first.close_investigation();settle(qt_application,first)
         assert second.open_investigation(data['id'])
     finally:first.close();second.close()
+
+
+def test_large_old_case_catalogue_stays_unloaded_and_searchable(qt_application,tmp_path,monkeypatch):
+    from fireblade.core.investigations import InvestigationLibrary
+    library=InvestigationLibrary(tmp_path/'catalogue')
+    for index in range(300):library.create(f'Ancienne enquête {index:04d}',environment='linux' if index%2 else 'windows')
+    def forbidden(*args,**kwargs):raise AssertionError('Catalogue loaded an analysis database')
+    with monkeypatch.context() as patch:
+        patch.setattr('fireblade.ui.app.Case',forbidden)
+        window=Window(investigation_root=library.root)
+    try:
+        assert window.cases_table.rowCount()==300 and window.case is None and window.documents==[]
+        window.cases_search.setText('0299');assert window.cases_table.rowCount()==1
+        assert window.cases_table.item(0,0).text()=='Ancienne enquête 0299'
+        window.cases_search.clear();assert window.cases_table.rowCount()==300
+        assert window.active_investigation is None
+    finally:window.close()

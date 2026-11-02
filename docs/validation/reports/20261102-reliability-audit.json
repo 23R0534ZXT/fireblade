@@ -1,0 +1,73 @@
+{
+  "date": "2026-11-02",
+  "scope": "Reliability regression after Cases, CatScale, Shellbags and WebCache integration",
+  "baseline_commit": "ca66a546b1b07963a9da11e22b66b2e99c207c86",
+  "baseline_native_exe": {
+    "status": "passed",
+    "platform": "win32",
+    "frozen": true,
+    "investigations": {
+      "status": "passed",
+      "cases": 2,
+      "restored_analyses": 2,
+      "unloaded_startup": true,
+      "session_and_notes_restored": true
+    },
+    "catscale": {
+      "status": "passed",
+      "families": [
+        "Conteneurs et virtualisation",
+        "Fichiers et chronologie",
+        "Journaux et connexions",
+        "Persistance",
+        "Processus et réseau",
+        "Système",
+        "Utilisateurs"
+      ],
+      "analyses": 7,
+      "structured_records": 15,
+      "raw_records": 0,
+      "source_files_unchanged": true,
+      "case_restored": true
+    },
+    "browser_artifacts": {
+      "status": "passed",
+      "records": {
+        "Shellbags": 523,
+        "WebCache": 1612
+      },
+      "analyses": 2,
+      "case_and_notes_restored": true,
+      "dirty_fixture_warning_expected": true,
+      "webcache_recovery": "not performed"
+    },
+    "forensic_tools": null
+  },
+  "baseline_native_check_count": 45,
+  "full_local_suite": {
+    "passed": 916,
+    "skipped": 6,
+    "seconds": 315.15
+  },
+  "final_catscale_targeted_suite": {
+    "passed": 42,
+    "seconds": 7.8
+  },
+  "new_regressions": [
+    "native CSV/TSV columns preserved inside CatScale trees",
+    "partial output row counts agree with retained rows after line limits",
+    "duplicate TAR member names retain distinct source references",
+    "50-host archive retains all host identities",
+    "NUL-delimited process command line survives raw import",
+    "active case OS lock released after process termination",
+    "process termination between session write and metadata commit preserves last saved session",
+    "catalogue of 300 old cases remains unloaded and searchable",
+    "mixed CatScale, Shellbags and WebCache collections retain 9 analyses across 12 case switches, preserving filters/groups/pins/notes and exact filtered export"
+  ],
+  "fixes": [
+    "Route ordinary CSV/TSV exports through the native reader while retaining CatScale full-timeline CSV parsing",
+    "Count retained rows incrementally before a later source failure",
+    "Include TAR entry ordinal in the source reference"
+  ],
+  "qualification_note": "The previous EXE report is identified by commit; it is not a Windows execution of these fixes. The new workflow must pass on the delivered commit."
+}

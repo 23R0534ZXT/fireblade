@@ -204,3 +204,67 @@ def test_legacy_fsecure_short_date_retains_hostname_and_original_date(tmp_path):
     from fireblade.core.catscale import identity
     assert identity('FSecure_node-a-201102-1000.tar.gz!/FSecure-out/Logs/auth.log')==('node-a','201102-1000')
     assert recognized(tmp_path/'Process_and_Network'/'node-a-201102-1000-processes-ef.txt')
+
+
+@pytest.mark.parametrize('name,separator',[('custom.csv',','),('node-full-timeline.tsv','\t')])
+def test_native_csv_inside_catscale_tree_preserves_its_columns(tmp_path,name,separator):
+    root=corpus(tmp_path/'evidence')
+    source=root/'Logs'/name;source.write_text(f'Account{separator}Identifier\nalice{separator}000000000000001\n',encoding='utf-8')
+    collection=Collection(root,tmp_path/'work',ToolPack(tmp_path/'no-engines'))
+    report=collection.parse()
+    entry=next(item for item in report['files'] if item['path']==str(source))
+    assert entry['tools']==['native']
+    case=Case(entry['runs'][0]['outputs'][0]['analysis'])
+    try:
+        assert case.headers==['Account','Identifier']
+        assert case.page(View())[0][1:]==('alice','000000000000001')
+    finally:case.close()
+
+
+def test_partial_catscale_output_counts_agree_after_line_limit(tmp_path,monkeypatch):
+    import fireblade.core.catscale as module
+    monkeypatch.setattr(module,'MAX_LINE',64)
+    source=tmp_path/'unknown.txt';source.write_bytes(b'first readable line\n'+b'x'*65+b'\n')
+    output=tmp_path/'out';output.mkdir();result=parse(source,output)
+    assert result['members'][0]['status']=='error'
+    assert result['raw']==1 and result['structured']==0
+    assert sum(item['rows'] for item in result['outputs'])==result['raw']+result['structured']
+    assert result['members'][0]['rows']==1
+
+
+def test_process_cmdline_nuls_survive_import_with_decoded_command(tmp_path):
+    root=tmp_path/'catscale_out';folder=root/'Process_and_Network';folder.mkdir(parents=True)
+    source=folder/'node-20261102-1000-process-cmdline.txt'
+    source.write_bytes(b'==> /proc/42/cmdline <==\n/usr/bin/python\x00app.py\x00--flag\x00\n')
+    collection=Collection(root,tmp_path/'work',ToolPack(tmp_path/'no-engines'))
+    report=collection.parse();assert len(report['documents'])==1
+    case=Case(report['documents'][0]['path'])
+    try:
+        row=next(row for row in case.page(View()) if row[1+case.headers.index('PID')]=='42')
+        assert row[1+case.headers.index('Texte brut')]=='/usr/bin/python\x00app.py\x00--flag\x00'
+        assert row[1+case.headers.index('Commande')]=='/usr/bin/python ␀ app.py ␀ --flag ␀ '
+    finally:case.close()
+
+
+def test_duplicate_tar_member_names_have_distinct_provenance(tmp_path):
+    source=tmp_path/'catscale_srv-20261102-1000.tar.gz'
+    name='catscale_out/Process_and_Network/srv-20261102-1000-processes-ef.txt'
+    with tarfile.open(source,'w:gz') as archive:
+        for pid in (41,42):add_tar(archive,name,f'UID PID PPID C STIME TTY TIME CMD\nroot {pid} 1 0 10:00 ? 00:00 /tmp/test\n'.encode())
+    output=tmp_path/'out';output.mkdir();report=parse(source,output)
+    with Path(report['outputs'][0]['csv']).open(encoding='utf-8') as stream:result=list(csv.DictReader(stream))
+    assert len(result)==2 and {row['PID'] for row in result}=={'41','42'}
+    assert len({(row['Source'],row['Ligne']) for row in result})==2
+
+
+def test_archive_with_fifty_hosts_retains_all_host_identities(tmp_path):
+    source=tmp_path/'catscale_multi-20261102-1000.tar.gz'
+    with tarfile.open(source,'w:gz') as archive:
+        for index in range(50):
+            name=f'extracted/node-{index:03d}-20261102-1000/Process_and_Network/node-{index:03d}-20261102-1000-processes-ef.txt'
+            add_tar(archive,name,f'UID PID PPID C STIME TTY TIME CMD\nroot {1000+index} 1 0 10:00 ? 00:00 /tmp/test\n'.encode())
+    output=tmp_path/'out';output.mkdir();report=parse(source,output)
+    with Path(report['outputs'][0]['csv']).open(encoding='utf-8') as stream:result=list(csv.DictReader(stream))
+    assert report['structured']==50 and report['raw']==0 and len(result)==50
+    assert len({row['Hôte'] for row in result})==50 and len({row['PID'] for row in result})==50
+    assert not report['warnings']

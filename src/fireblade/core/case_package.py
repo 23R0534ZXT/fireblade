@@ -112,8 +112,21 @@ def export_package(library, data, documents, active, target, *, include_sources=
                     with case.operation():
                         if case.info != document.source_info:
                             raise ValueError('Analyse remplacée : ' + document.path)
-                        case.db.execute('CHECKPOINT')
-                        member = add(archive, case.path, f'analyses/{number:04}.timeline')
+                        # Copy through DuckDB: Windows locks prevent reading the
+                        # live database with Python's file API, even after CHECKPOINT.
+                        with tempfile.TemporaryDirectory(dir=target.parent, prefix='.snapshot-') as scratch:
+                            snapshot = Path(scratch) / 'analysis.timeline'
+                            database = case.db.execute('SELECT current_database()').fetchone()[0]
+                            quoted_database = '"' + database.replace('"', '""') + '"'
+                            quoted_path = "'" + str(snapshot).replace("'", "''") + "'"
+                            case.db.execute(f'ATTACH {quoted_path} AS __fireblade_portable_snapshot')
+                            try:
+                                case.db.execute(f'COPY FROM DATABASE {quoted_database} TO __fireblade_portable_snapshot')
+                            finally:
+                                case.db.execute('DETACH __fireblade_portable_snapshot')
+                            member = add(archive, snapshot, f'analyses/{number:04}.timeline')
+                            mapping.pop(str(snapshot.resolve()))
+                            mapping[str(case.path.resolve())] = member
                     packed.append(dict(database=member, source=copy.deepcopy(case.info),
                                        view=json.loads(document.view.to_json()),
                                        header=base64.b64encode(document.header_state).decode('ascii')))
@@ -206,7 +219,10 @@ def verify_package(source, staging=None):
             safe_member(info.filename)
             if stat.S_ISLNK(info.external_attr >> 16) or info.is_dir():
                 raise ValueError('Liens et entrées de dossier interdits dans l’archive')
-        info = archive.getinfo('manifest.json')
+        try:
+            info = archive.getinfo('manifest.json')
+        except KeyError as error:
+            raise ValueError('Manifeste absent de l’archive') from error
         if info.file_size > MAX_MANIFEST:raise ValueError('Manifeste limité à 16 Mio')
         manifest = json.loads(archive.read(info).decode('utf-8'))
         if manifest.get('format') != 'fireblade-case-package' or manifest.get('version') != 1:

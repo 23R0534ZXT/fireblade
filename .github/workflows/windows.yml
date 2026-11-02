@@ -68,6 +68,9 @@ jobs:
           RELEASE_TAG: prototype-${{ github.sha }}
         run: |
           $PSNativeCommandUseErrorActionPreference = $false
+          $versionLine = Get-Content src/fireblade/__init__.py | Where-Object { $_ -match '^__version__\s*=' } | Select-Object -First 1
+          if ($versionLine -notmatch '"([0-9]+\.[0-9]+\.[0-9]+)"') { throw 'Version Fireblade introuvable' }
+          $releaseTitle = "Fireblade $($Matches[1]) — Windows x64 (prototype)"
           $hash = (Get-FileHash dist/Fireblade.exe -Algorithm SHA256).Hash.ToLowerInvariant()
           $notes = Join-Path $env:RUNNER_TEMP 'fireblade-release-notes.md'
           Get-Content docs/development/RELEASE-NOTES.md -Raw | Set-Content $notes -Encoding utf8
@@ -76,9 +79,9 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:RELEASE_TAG dist/Fireblade.exe --clobber --repo $env:GITHUB_REPOSITORY
             if ($LASTEXITCODE -ne 0) { throw 'Envoi du fichier autonome impossible' }
-            gh release edit $env:RELEASE_TAG --notes-file $notes --repo $env:GITHUB_REPOSITORY
+            gh release edit $env:RELEASE_TAG --title $releaseTitle --notes-file $notes --repo $env:GITHUB_REPOSITORY
           } else {
-            gh release create $env:RELEASE_TAG dist/Fireblade.exe --target $env:GITHUB_SHA --prerelease --title "Fireblade - prototype Windows" --notes-file $notes --repo $env:GITHUB_REPOSITORY
+            gh release create $env:RELEASE_TAG dist/Fireblade.exe --target $env:GITHUB_SHA --prerelease --title $releaseTitle --notes-file $notes --repo $env:GITHUB_REPOSITORY
           }
           if ($LASTEXITCODE -ne 0) { throw 'Publication du fichier autonome impossible' }
 

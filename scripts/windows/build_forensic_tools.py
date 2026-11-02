@@ -190,4 +190,22 @@ def build(root, resources):
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
     (destination/'manifest.json').write_text(json.dumps(lock, indent=2), encoding='utf-8')
+    stage_parser_fixtures(root, destination)
     return destination
+
+
+def stage_parser_fixtures(root, destination):
+    """Pinned public examples, hashed after decompression; no user evidence."""
+    import gzip
+    entries = json.loads((Path(root)/'config/forensic-qa-fixtures.json').read_text())
+    for item in entries:
+        with urllib.request.urlopen(item['url'], timeout=90) as response:
+            data = response.read()
+        if item['compression'] == 'gzip':
+            data = gzip.decompress(data)
+        if hashlib.sha256(data).hexdigest() != item['sha256']:
+            raise ValueError('Échantillon de qualification modifié : '+item['tool'])
+        target = Path(destination)/'qa'/'matrix'/item['tool']/item['name']
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    (Path(destination)/'qa'/'matrix-sources.json').write_text(json.dumps(entries, indent=2), encoding='utf-8')

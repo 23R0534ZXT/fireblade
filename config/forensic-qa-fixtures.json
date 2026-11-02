@@ -1,0 +1,79 @@
+[
+  {
+    "tool": "LECmd",
+    "name": "GameExplorer.lnk",
+    "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/7d16ff39c9efc0ddd7307fcb3d30ff5c6e8d99f3/Windows/LNK/WinVista/GameExplorer.lnk",
+    "compression": null,
+    "sha256": "51c6a7cbebf2ca076d784ca8474a88f34d7b79609ce1d24987a187377839428c"
+  },
+  {
+    "tool": "JLECmd",
+    "name": "573770283dc3d854.automaticDestinations-ms",
+    "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/7d16ff39c9efc0ddd7307fcb3d30ff5c6e8d99f3/Windows/JumpLists/Win10/APTSimulatorVM/573770283dc3d854.automaticDestinations-ms",
+    "compression": null,
+    "sha256": "037c010283086e74a18bf72a1d64d5e895eea1953acc80e202756e1872ffb9ff"
+  },
+  {
+    "tool": "AmcacheParser",
+    "name": "Amcache.hve",
+    "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/7d16ff39c9efc0ddd7307fcb3d30ff5c6e8d99f3/Windows/Amcache/Win2012R2/StolenSzechuan/Amcache.hve",
+    "compression": null,
+    "sha256": "1061bb492f4bb4ac159a6fb8f396a30d37fad0c46f2f7022b737f8803ebe44e2"
+  },
+  {
+    "tool": "WxTCmd",
+    "name": "ActivitiesCache.db",
+    "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/7d16ff39c9efc0ddd7307fcb3d30ff5c6e8d99f3/Windows/WindowsTimeline/Win10/APTSimulatorVM/ActivitiesCache.db",
+    "compression": null,
+    "sha256": "8599f6b7a7677bd0c31b2c9828da3543728dec16afe09f5da772ffcc0dffea06"
+  },
+  {
+    "tool": "SQLECmd",
+    "name": "CarsDB.db",
+    "url": "https://raw.githubusercontent.com/EricZimmerman/SQLECmd/c67634af503bd53777689998f1d9e3c0b4e2fdff/SQLMap.Test/TestFiles/CarsDB.db",
+    "compression": null,
+    "sha256": "680a5c9e2413db7ae3af83cb5af99530ca04cccf1f596ff49e12a2f3711ad9be"
+  },
+  {
+    "tool": "RECmd",
+    "name": "SYSTEM",
+    "url": "https://raw.githubusercontent.com/EricZimmerman/RECmd/8d1955910964209500b6f74f169e3e52554838d7/RECmd.Test/TestFiles/DFIRArtifactMuseum/Win11/RathbunVM/SYSTEM.gz",
+    "compression": "gzip",
+    "sha256": "d65c718c91e50d57fd549e9fa8782a5edad60c8cdcd597bb40481a81854496ee"
+  },
+  {
+    "tool": "RecentFileCacheParser",
+    "name": "RecentFileCache.bcf",
+    "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/7d16ff39c9efc0ddd7307fcb3d30ff5c6e8d99f3/Windows/RecentFileCache/Win7/EricZimmerman/RecentFileCache.bcf",
+    "compression": null,
+    "sha256": "cd6a3cd76c2b6ba8a0f2038230b375ed53ceefaf993658f82dfbf1a06b9db226"
+  },
+  {
+    "tool": "PECmd",
+    "name": "KAPE.pf",
+    "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/7d16ff39c9efc0ddd7307fcb3d30ff5c6e8d99f3/Windows/Prefetch/Win11/RathbunVM/Decompressed/KAPE.EXE-07476F82-decompressed",
+    "compression": null,
+    "sha256": "79059c89802d00ddf916cb4ff2749f66f52e9beebafeff13434f8a749c8a8d0b"
+  },
+  {
+    "tool": "MFTECmd",
+    "name": "$MFT",
+    "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/7d16ff39c9efc0ddd7307fcb3d30ff5c6e8d99f3/Windows/NTFSArtifacts/MFT/Unknown/NIST/DFR-16/%24MFT",
+    "compression": null,
+    "sha256": "9d42474a778c6c5c817c8b0ec59607df637eff24917e6266602d78fbd97b95f6"
+  },
+  {
+    "tool": "RBCmd",
+    "name": "$IRL4KYI.txt",
+    "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/7d16ff39c9efc0ddd7307fcb3d30ff5c6e8d99f3/Windows/%24Recycle.Bin/Win10/%24IRL4KYI.txt",
+    "compression": null,
+    "sha256": "6aa8866abae721cc43f6b30ecc33fa21347a17c497abb94aaf668f845d2463d8"
+  },
+  {
+    "tool": "SrumECmd",
+    "name": "SRUDB.dat",
+    "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/7d16ff39c9efc0ddd7307fcb3d30ff5c6e8d99f3/Windows/SRUM/Win10/RathbunVM/Clean/SRUDB.dat",
+    "compression": null,
+    "sha256": "f0ce646fee265c8c438459fc3bcb616e084c875389a6189d2945be4a52e1602c"
+  }
+]

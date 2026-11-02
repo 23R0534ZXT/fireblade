@@ -1,0 +1,110 @@
+{
+  "platform": "Linux, .NET 10.0.403, win-x64 managed assemblies",
+  "native_windows_qualified": false,
+  "results": [
+    {
+      "tool": "LECmd",
+      "source": "LECmd/GameExplorer.lnk",
+      "status": "complete",
+      "outputs": 1,
+      "rows": 1,
+      "displayed": 1
+    },
+    {
+      "tool": "JLECmd",
+      "source": "JLECmd/573770283dc3d854.automaticDestinations-ms",
+      "status": "complete",
+      "outputs": 1,
+      "rows": 1,
+      "displayed": 1
+    },
+    {
+      "tool": "AmcacheParser",
+      "source": "AmcacheParser/Amcache.hve",
+      "status": "complete",
+      "outputs": 1,
+      "rows": 2,
+      "displayed": 2
+    },
+    {
+      "tool": "WxTCmd",
+      "source": "WxTCmd/ActivitiesCache.db",
+      "status": "complete",
+      "outputs": 2,
+      "rows": 151,
+      "displayed": 151
+    },
+    {
+      "tool": "SQLECmd",
+      "source": "SQLECmd/CarsDB.db",
+      "status": "error",
+      "outputs": 0,
+      "rows": 0,
+      "displayed": 0
+    },
+    {
+      "tool": "EvtxECmd",
+      "source": "EvtxECmd/System.evtx",
+      "status": "complete",
+      "outputs": 1,
+      "rows": 13,
+      "displayed": 13
+    },
+    {
+      "tool": "AppCompatCacheParser",
+      "source": "RECmd/SYSTEM",
+      "status": "complete",
+      "outputs": 1,
+      "rows": 359,
+      "displayed": 250
+    },
+    {
+      "tool": "RECmd",
+      "source": "RECmd/SYSTEM",
+      "status": "complete",
+      "outputs": 1,
+      "rows": 3720,
+      "displayed": 250
+    },
+    {
+      "tool": "RecentFileCacheParser",
+      "source": "RecentFileCacheParser/RecentFileCache.bcf",
+      "status": "complete",
+      "outputs": 1,
+      "rows": 6,
+      "displayed": 6
+    },
+    {
+      "tool": "PECmd",
+      "source": "PECmd/KAPE.pf",
+      "status": "complete",
+      "outputs": 2,
+      "rows": 2,
+      "displayed": 2
+    },
+    {
+      "tool": "MFTECmd",
+      "source": "MFTECmd/$MFT",
+      "status": "complete",
+      "outputs": 1,
+      "rows": 117,
+      "displayed": 117
+    },
+    {
+      "tool": "RBCmd",
+      "source": "RBCmd/$IRL4KYI.txt",
+      "status": "complete",
+      "outputs": 1,
+      "rows": 1,
+      "displayed": 1
+    },
+    {
+      "tool": "SrumECmd",
+      "source": "SrumECmd/SRUDB.dat",
+      "status": "error",
+      "outputs": 0,
+      "rows": 0,
+      "displayed": 0
+    }
+  ]
+}

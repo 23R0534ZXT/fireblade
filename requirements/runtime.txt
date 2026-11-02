@@ -7,6 +7,7 @@ openpyxl==3.1.5
 xlrd==2.0.2
 
 numpy==2.3.5
+idna==3.11
 
 # Read-only ESE WebCache reader and its Apache-2.0 dependencies.
 dissect.esedb==3.18

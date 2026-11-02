@@ -32,7 +32,7 @@ from fireblade.ui.workers import Job, Signals
 from fireblade.ui.exploration import ExplorationMixin
 from fireblade.ui.pinned_grid import PinnedTree
 from fireblade.runtime.resources import default_config
-from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses, show_tutorial, show_investigation_guide
+from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses, show_tutorial, show_investigation_guide, show_ioc_guide
 
 
 from fireblade.ui.collection import CollectionMixin
@@ -67,6 +67,9 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
         self.setup_investigations()
         self.setup_investigation_tools()
         self.setup_timeline()
+        from fireblade.ui.ioc_hunt import HuntPanel
+        self.ioc_panel = HuntPanel(self)
+        self.workbench.addTab(self.ioc_panel, "Chasse IOC")
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -172,6 +175,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
         self.cancel_action = action(analysis_menu, "Interrompre la requête", self.interrupt_queries, requires_file=False)
         self.cancel_action.setEnabled(False)
         action(help_menu, "Tutoriel complet — toutes les fonctionnalités", lambda: show_tutorial(self), requires_file=False)
+        action(help_menu, "Chasse IOC en masse", lambda: show_ioc_guide(self), requires_file=False)
         action(help_menu, "Chronologie, sauvegardes et rapports", lambda: show_investigation_guide(self), requires_file=False)
         action(help_menu, "Guide d’utilisation", lambda: show_guide(self), "F1", False)
         action(help_menu, "Licences", lambda: show_licenses(self), requires_file=False)
@@ -335,6 +339,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
     def interrupt_queries(self):
         if getattr(self,'investigation_task',None):self.investigation_task.interrupt()
         if getattr(self,'timeline_panel',None):self.timeline_panel.interrupt()
+        if getattr(self,'ioc_panel',None):self.ioc_panel.interrupt()
         if getattr(self, 'collection', None) is not None:
             self.collection.interrupt()
         self._expand_generation += 1
@@ -1333,6 +1338,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
                 return
         self.detach()
         if getattr(self,'timeline_panel',None):self.timeline_panel.reset_workspace()
+        if getattr(self,'ioc_panel',None):self.ioc_panel.reset_workspace()
         if hasattr(self,'active_investigation'):
             self.clear_context_preview()
             self.release_investigation_lease()

@@ -1087,3 +1087,7 @@ Ce tutoriel décrit les commandes utilisateur et les réglages présents dans le
 - [Essai de 3 GiB](TESTER-3GIB.md) : fichier publié, vérifications et résultats attendus.
 
 Les fonctions de développement, la construction de l’EXE et les scénarios de qualification sont distincts des gestes d’analyse. Les consulter permet de vérifier les affirmations de performance et de compatibilité sans les confondre avec une garantie sur chaque fichier réel.
+
+## Chasse IOC en masse
+
+L’onglet **Chasse IOC** recherche une liste d’IP, domaines, URL et empreintes dans toutes les analyses ouvertes. Importez TXT/CSV/TSV ou collez un IOC par ligne, puis lancez la chasse. Consultez les compteurs, les résultats paginés et les exports. Le menu **Aide → Chasse IOC en masse** détaille les règles et les limites ; [guide complet](CHASSE-IOC.md).

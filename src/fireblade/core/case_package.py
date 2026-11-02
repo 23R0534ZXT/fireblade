@@ -72,6 +72,8 @@ def export_package(library, data, documents, active, target, *, include_sources=
         folder = Path(entry['path']).resolve()
         if target.is_relative_to(folder):
             raise ValueError('Enregistrez l’archive hors du dossier de collecte')
+    hunt_root = library.folder(data['id']) / 'IOC-hunts'
+    if target.is_relative_to(hunt_root.resolve()):raise ValueError('Enregistrez l’archive hors du dossier des chasses IOC')
     mapping, files, missing = {}, [], []
     temporary = None
     total_bytes = 0
@@ -149,6 +151,21 @@ def export_package(library, data, documents, active, target, *, include_sources=
                         if (name=='collection.json' or name.endswith('.fireblade-session')) and path.stat().st_size>MAX_MANIFEST:
                             raise ValueError('Références de collecte trop volumineuses pour le transport (16 Mio maximum)')
                         add(archive, path, base + '/' + path.relative_to(folder).as_posix())
+            from fireblade.core.ioc_results import discover_hunts,HuntStore
+            saved_hunts,hunt_errors=discover_hunts(hunt_root)
+            if hunt_errors:raise ValueError('Chasse IOC illisible : '+' ; '.join(hunt_errors))
+            for saved in saved_hunts:
+                check_cancelled()
+                path=Path(saved['path'])
+                if saved.get('status') not in ('complete','partial'):
+                    missing.append(str(path));continue
+                store=HuntStore(path)
+                try:
+                    for source in store.sources():
+                        reference=Path(source['path'])
+                        if str(reference.resolve()) not in mapping:missing.append(str(reference))
+                    add(archive,path,'IOC-hunts/'+path.parent.name+'/results.sqlite')
+                finally:store.close()
             state = library.folder(data['id']) / 'timeline-state.json'
             if state.is_file():add(archive, state, 'timeline-state.json')
             by_member={item['path']:item for item in files}
@@ -252,6 +269,11 @@ def import_package(library, source):
                     info['path'] = mapping.get(info['path'], info['path'])
                     connection.execute("UPDATE metadata SET value=? WHERE key='source'", [json.dumps(info)])
                 finally:connection.close()
+            from fireblade.core.ioc_results import HuntStore
+            for path in (destination/'IOC-hunts').glob('*/results.sqlite'):
+                store=HuntStore(path)
+                try:store.rebind(mapping)
+                finally:store.close()
             # Workspaces are JSON references; original event values stay untouched.
             for path in (destination/'collections').rglob('*') if (destination/'collections').exists() else []:
                 if path.name=='collection.json' or path.suffix=='.fireblade-session':

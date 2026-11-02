@@ -467,6 +467,7 @@ class TimelinePanel(QWidget):
         row=self.model.rows[index.row()];document=self.documents[row[0]]
         target=next((i for i,d in enumerate(self.window.documents) if d.path==document.path and d.source_info==document.source_info),None)
         if target is None:self.stats.setText('L’analyse a changé ; reconstruisez la chronologie.');return
+        if getattr(self.window,'ioc_panel',None):self.window.ioc_panel.restore_origin(refresh=False)
         previous=self.window._timeline_origin
         if previous and previous.path!=document.path:self.window.restore_timeline_origin(refresh=False)
         self.window.switch_document(target)

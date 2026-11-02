@@ -1,4 +1,6 @@
-# Fireblade — prototype Windows 0.5
+# Fireblade — prototype Windows 0.7.0
+
+La version 0.7 ajoute la chasse IOC sur les analyses ouvertes, les diagnostics de couverture des collectes, les exports relus avec reçus de vérification et les palettes de thèmes. Elle rassemble les fonctions de chronologie, de rapports et de récupération décrites ci-dessous.
 
 Un nouvel onglet **Chronologie & corrélations** réunit les analyses dans un index sur disque : densité globale, pistes par analyse, signets sur le graphique, zoom à la molette, sélection de période, déplacement, historique de zoom et vue d’ensemble. Les recherches par utilisateur, IP, chemin et empreinte croisent les analyses ; chaque événement reste relié à sa ligne source. Les réglages temporels sont conservés par case, les lignes sans date restent consultables et les dates sans fuseau sont signalées. L’export CSV suit le périmètre filtré ; le graphique peut être inclus dans un rapport.
 

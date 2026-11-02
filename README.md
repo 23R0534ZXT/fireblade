@@ -48,11 +48,25 @@ Data lives in disk-backed DuckDB `.timeline` databases. The grid loads pages; fi
 - [Create reports and verified exports](#investigation-reports)
 - [Understand storage, validation and limits](#validation-and-known-limitations)
 
+## Recherche de testeurs / Call for testers
+
+**Vous faites de la DFIR ou vous apprenez l’investigation numérique ? Vos retours sont les bienvenus.**
+
+- [Télécharger une version Windows publiée](https://github.com/23R0534ZXT/fireblade/releases?q=prototype-&expanded=true) · [Pack de test (~5,1 Mo)](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
+- [Parcours de test de 15 minutes et retours généraux](https://github.com/23R0534ZXT/fireblade/issues/6)
+- [Signaler un bug ou proposer une amélioration](https://github.com/23R0534ZXT/fireblade/issues/new/choose)
+
+Les sources sont en **0.7.0**. La version d’un EXE dépend de la dernière publication Windows réussie : vérifiez **Aide → À propos** et le commit de sa release. Les prochaines releases afficheront leur version dans leur titre.
+
+Commencez avec le pack public et son **LIRE-MOI.md** : ouvrez un CSV, filtrez les données, ajoutez une note ou un signet, puis sauvegardez et rouvrez votre travail. Partagez ce qui vous a aidé, ce qui vous a bloqué et ce qui manque à votre usage. Pour un bug, ouvrez une issue par problème avec les étapes de reproduction et vos versions de Windows et Fireblade. Un compte GitHub est nécessaire pour publier un retour ; masquez les informations sensibles dans vos pièces jointes.
+
+**English:** French-speaking testers are welcome. Use the public sample pack, report your application version, and share feedback in [the tester issue](https://github.com/23R0534ZXT/fireblade/issues/6). For a specific problem, [open a separate issue](https://github.com/23R0534ZXT/fireblade/issues/new/choose).
+
 ## Downloads
 
 | Download | Purpose |
 |---|---|
-| [Fireblade application releases](https://github.com/23R0534ZXT/fireblade/releases) | Choose the latest **Fireblade - prototype Windows** prerelease and download `Fireblade.exe` for Windows x64 |
+| [Fireblade application releases](https://github.com/23R0534ZXT/fireblade/releases) | Choose the latest published **Windows x64** application prerelease and download `Fireblade.exe` for Windows x64 |
 | [**Forensic test pack v1 — ZIP, about 5.1 MB**](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) | Native Windows artifacts, synthetic CatScale examples and CSV/TSV/XLSX exercises, with a French guide |
 | [Large CSV test dataset — 3 GiB ZIP](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/Fireblade-test-3GiB.zip) | Separate load-test dataset with 2,441,216 records |
 

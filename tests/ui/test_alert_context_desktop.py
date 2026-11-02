@@ -94,3 +94,22 @@ def test_saved_context_reconnects_to_collection_without_raw_evtx(qt_application,
 def case_view():
     from fireblade.core.models import View
     return View()
+
+
+def test_alert_from_another_collection_cannot_use_current_collection(qt_application,tmp_path):
+    collection,raw,alert_path=prepare_collection(tmp_path)
+    window=Window();errors=[];window.error=errors.append
+    try:
+        window.collection=collection
+        window.load_case(alert_path);settle(qt_application,window)
+        window.tree.setCurrentIndex(window.model.index(0,0))
+        assert window.context_action.isEnabled()
+        other=tmp_path/'other';other.mkdir();evidence=other/'evidence';evidence.mkdir()
+        window.collection=Collection(evidence,other/'work',ToolPack(other/'pack'))
+        window.update_alert_context_bar()
+        assert not window.context_action.isEnabled()
+        window.open_alert_context()
+        assert not window.jobs
+        assert not window.collection.report.get('contexts')
+        assert not errors
+    finally:window.close()

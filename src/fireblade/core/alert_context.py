@@ -40,7 +40,7 @@ def instant(value):
     try:
         stamp = datetime.fromisoformat(str(value).strip().replace('Z', '+00:00'))
         return stamp.replace(tzinfo=timezone.utc) if stamp.tzinfo is None else stamp.astimezone(timezone.utc)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
         return None
 
 
@@ -141,7 +141,7 @@ def build_context(collection, alert, alert_analysis, alert_row, minutes=5, max_e
     if not machines:machines=derived_machines
     if not anchors:notes.append('Événement référencé non retrouvé : aucune ligne n’est présentée comme une correspondance certaine.')
     if total_candidates>len(anchors):notes.append('Références limitées par la taille maximale du contexte.')
-    if len(anchors)>1:ambiguous=True
+    if total_candidates>1:ambiguous=True
     if ambiguous and anchors:notes.append('Alerte agrégée ou références multiples : les identifiants donnent des candidats, pas une association individuelle certaine.')
     if stamp is None:notes.append('Horodatage absent ou invalide : voisinage temporel indisponible.')
     if not machines:notes.append('Machine inconnue : voisinage temporel désactivé pour éviter de mélanger des machines.')
@@ -151,8 +151,11 @@ def build_context(collection, alert, alert_analysis, alert_row, minutes=5, max_e
     serial=0
     neighbor_candidates=0
     capacity=max_events-len(anchors)
-    if stamp is not None and machines and capacity:
-        start,end=stamp-timedelta(minutes=minutes),stamp+timedelta(minutes=minutes)
+    if stamp is not None and machines:
+        try:start=stamp-timedelta(minutes=minutes)
+        except OverflowError:start=datetime.min.replace(tzinfo=timezone.utc)
+        try:end=stamp+timedelta(minutes=minutes)
+        except OverflowError:end=datetime.max.replace(tzinfo=timezone.utc)
         for document, source in expected:
             check_cancel()
             case=None
@@ -172,6 +175,7 @@ def build_context(collection, alert, alert_analysis, alert_row, minutes=5, max_e
                             key=(str(case.path),int(row[0]))
                             if key in anchors:continue
                             neighbor_candidates+=1
+                            if not capacity:continue
                             item=take(case,columns,row,source)
                             distance=abs((item['time']-stamp).total_seconds()) if item['time'] else float('inf')
                             serial+=1

@@ -2,6 +2,8 @@
 
 | Besoin | Document |
 |---|---|
+| Parser le grand pack d’artefacts bruts | [Exercice brut](guides/PACK-BRUT.md) et [choix des collectes](guides/COLLECTES-PACK-BRUT.md) |
+| Choisir entre petit pack, gros CSV et fichiers bruts | [Jeux de test](guides/JEUX-DE-TEST.md) |
 | Installer le programme et découvrir le dépôt | [README principal](../README.md) |
 | Voir la démonstration courte | [Démonstration](guides/DEMONSTRATION.md) |
 | Lire la référence détaillée et les mesures historiques | [Fonctionnalités et limites](guides/FONCTIONNALITES.md) |

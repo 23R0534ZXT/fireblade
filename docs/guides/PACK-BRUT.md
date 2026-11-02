@@ -1,5 +1,7 @@
 # Grand pack brut Fireblade — exercice de parsing
 
+**[Télécharger le ZIP brut (~521 Mo, 3,44 Go de données brutes extraites)](https://github.com/23R0534ZXT/fireblade/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip)** · [Rapport et SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/raw-artifacts-v1)
+
 Ce pack est destiné à **importer et parser des fichiers bruts**, pas à ouvrir des CSV déjà calculés. Il vise au moins **3 Gio de données d’entrée après extraction**. La taille du ZIP est différente et peut être nettement inférieure, notamment pour les journaux texte et les zones compressibles des artefacts natifs.
 
 ## Ce que contient le pack
@@ -14,11 +16,13 @@ Ce pack est destiné à **importer et parser des fichiers bruts**, pas à ouvrir
 
 Les collections Windows proviennent de laboratoires publics distincts. Leurs horloges, comptes et traces ne forment **pas un seul incident**. Conserver cette séparation lors de l’enquête ; ne pas inventer une relation entre deux sources parce qu’elles sont distribuées dans le même ZIP. Le scénario Linux est un exercice séparé, généré et explicitement identifié comme tel.
 
+La qualification s’est terminée sous Windows : 2 795 fichiers soumis au parsing, 7 585 912 lignes Linux vérifiées, 16 refus de lecteurs et 48 diagnostics d’avertissement ou de sortie vide conservés dans les rapports. Elle utilise un buffer DuckDB de 512 Mo, deux threads et le mode par fichier. [Tailles par origine et limites des sessions](COLLECTES-PACK-BRUT.md).
+
 ## Premier parcours Windows
 
 1. Télécharger l’EXE Fireblade indiqué par la release et vérifier son SHA-256.
 2. Extraire le ZIP dans un dossier disposant de suffisamment d’espace. Les analyses, CSV produits par les parseurs et fichiers temporaires s’ajoutent à la taille brute du pack. Commencer avec un sous-dossier d’origine si l’espace disque est limité.
-3. Créer un dossier d’enquête **Windows**, puis utiliser **Importer un dossier de collecte…** sur un groupe de `01-Windows`. Choisir d’abord **un onglet par fichier** pour observer les résultats individuels.
+3. Créer un dossier d’enquête **Windows**, puis utiliser **Importer un dossier de collecte…** sur une origine ou une famille de `01-Windows`, par exemple `Win10/APTSimulatorVM`. Ne pas importer toute la racine Windows en une seule session : elle peut dépasser la limite de 1 000 analyses. Choisir d’abord **un onglet par fichier** pour observer les résultats individuels.
 4. Examiner **Collecte et détection** : fichiers reconnus, lecteurs exécutés, avertissements et éventuels résultats partiels. Les journaux de registre restent à côté de leurs ruches.
 5. Pour les sous-dossiers EVTX, lancer Hayabusa puis ouvrir le contexte d’une alerte et l’événement source. Les détections dépendent de la collection et de la version des règles ; le rapport de validation ne garantit pas un verdict sur chaque alerte.
 6. Comparer les traces MFT, registre, Prefetch et raccourcis d’une même origine. Conserver les références de source, les notes et les limites constatées.

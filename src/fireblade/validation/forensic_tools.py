@@ -2,10 +2,50 @@
 import gzip
 import shutil
 import json
+from contextlib import contextmanager
+import time
 from pathlib import Path
 
 from fireblade.core.collection import Collection, PARSERS, ToolPack, execute
 from fireblade.runtime.resources import resource_path
+
+
+@contextmanager
+def parser_result_display(app, settings=None):
+    """Render parser outputs without adding documents to other validation windows."""
+    from fireblade.ui.app import Window
+    window = Window(settings=settings)
+    errors = []
+    window.error = errors.append
+    window.show()
+
+    def settle():
+        deadline = time.monotonic()+30
+        while time.monotonic() < deadline:
+            app.processEvents()
+            if not window.jobs and not window.pool.activeThreadCount() and (window.model is None or not window.model.jobs):
+                return
+            time.sleep(.005)
+        raise TimeoutError('Affichage des résultats des parseurs non terminé')
+
+    def display(path, expected):
+        window.load_case(path)
+        settle()
+        if errors:
+            raise AssertionError(str(errors))
+        if window.case is None or str(window.case.path) != str(path):
+            raise AssertionError('Résultat du parseur non ouvert : '+str(path))
+        if window.model.rowCount() != len(expected):
+            raise AssertionError('Nombre de lignes affichées incorrect : '+str(path))
+        if expected and tuple(window.model.node(window.model.index(0, 0)).values) != expected[0]:
+            raise AssertionError('Valeurs affichées altérées : '+str(path))
+
+    try:
+        yield display
+    finally:
+        settle()
+        window.close()
+        window.deleteLater()
 
 
 def verify_embedded_engines(directory, display=None):

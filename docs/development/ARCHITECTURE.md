@@ -30,6 +30,7 @@ Le moteur reste importable sans Qt. Les modèles métier sont des dataclasses si
 | Dialogues d’import et éditeurs | `src/fireblade/ui/dialogs.py`, `advanced_dialogs.py` |
 | Menus contextuels et geste de groupement | `src/fireblade/ui/menus.py`, `grouping.py` |
 | Onglets et sessions | `src/fireblade/ui/workspace.py`, `src/fireblade/core/sessions.py` |
+| Lecture CatScale et archives en flux | `src/fireblade/core/catscale.py` |
 | Catalogue des cases, sauvegarde atomique et verrouillage | `src/fireblade/core/investigations.py`, `src/fireblade/ui/investigations.py` |
 | Commandes des règles globales | `src/fireblade/ui/shared_rules.py` |
 | Palette et tâches en arrière-plan | `src/fireblade/ui/theme.py`, `workers.py` |

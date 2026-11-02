@@ -21,13 +21,13 @@ class CollectionOrganizationDialog(QDialog):
         self.resize(570, 260)
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel('Comment souhaitez-vous consulter les résultats ?'))
-        self.artifacts = QRadioButton('Un onglet par type d’artefact')
+        self.artifacts = QRadioButton('Un onglet par type d’artefact ou famille CatScale')
         self.artifacts.setChecked(True)
         layout.addWidget(self.artifacts)
-        separate = QLabel('Exemples : Amcache, EVTX, Shellbags, Jump Lists… Les fichiers du même type sont réunis.')
+        separate = QLabel('Exemples Windows : Amcache, EVTX… CatScale : processus et réseau, persistance, journaux, système, utilisateurs… Les résultats du même type sont réunis.')
         separate.setWordWrap(True)
         layout.addWidget(separate)
-        self.combined = QRadioButton('Tout dans un seul onglet, regroupé par artefact')
+        self.combined = QRadioButton('Tout dans un seul onglet, regroupé par artefact ou famille CatScale')
         layout.addWidget(self.combined)
         merged = QLabel('Une grille unique, avec les groupes déjà créés. Chaque ligne conserve son fichier source. Les colonnes propres à chaque format restent disponibles.')
         merged.setWordWrap(True)
@@ -56,7 +56,7 @@ class CollectionMixin(AlertContextMixin):
         title = QLabel('Collecte forensic')
         title.setStyleSheet('font-size: 18px; font-weight: bold;')
         layout.addWidget(title)
-        explanation = QLabel('Choisissez un dossier d’artefacts. Les moteurs intégrés produisent des résultats séparés, puis Fireblade les ouvre dans une session. Hayabusa analyse les EVTX inventoriés et ajoute un onglet Alertes.')
+        explanation = QLabel('Choisissez un dossier d’artefacts Windows ou une collecte Linux CatScale (dossier extrait ou archives catscale_*.tar.gz). Les moteurs intégrés produisent des résultats séparés, puis Fireblade les ouvre dans une session. Hayabusa analyse uniquement les EVTX Windows inventoriés et ajoute un onglet Alertes.')
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
         row = QHBoxLayout()
@@ -110,7 +110,7 @@ class CollectionMixin(AlertContextMixin):
                  'skipped':'Ignoré', 'error':'Erreur', 'cancelled':'Interrompu',
                  'attention':'À vérifier', 'no_output':'Aucune sortie', 'companion':'Journal de transaction'}
         status = lambda value: names.get(value, value)
-        lines = ['Moteurs disponibles : '+(', '.join(ready) or 'aucun pack intégré dans cette construction')]
+        lines = ['CatScale Linux : parser intégré, sans dépendance externe.', 'Moteurs Windows disponibles : '+(', '.join(ready) or 'aucun pack intégré dans cette construction')]
         if report:
             organization = {'files':'Un onglet par résultat', 'artifacts':'Un onglet par artefact', 'combined':'Onglet unique regroupé par artefact'}.get(report.get('organization', 'files'), '')
             lines += ['', 'Organisation : '+organization, 'Dossier source : '+report['source'], 'Dossier de travail : '+report['output'],
@@ -125,6 +125,9 @@ class CollectionMixin(AlertContextMixin):
                 for run in entry.get('runs', []):
                     lines.append('  '+run['tool']+' : '+status(run['status'])+' '+run.get('error', ''))
                     lines.extend('    '+warning for warning in run.get('warnings', [])[:10])
+                    for member in run.get('catscale',{}).get('members',[]):
+                        if member['status'] in ('error','unsupported','skipped'):
+                            lines.append('    '+member['status']+' · '+member['path']+' : '+member.get('reason',''))
         lines += ['', 'Un fichier non reconnu, un moteur absent ou une erreur restent dans le bilan. Une alerte est une piste à vérifier, pas une conclusion de compromission. Les résultats et journaux sont conservés dans le dossier de travail.']
         self.collection_report.setPlainText('\n'.join(lines))
 
@@ -215,6 +218,10 @@ class CollectionMixin(AlertContextMixin):
         if self.collection is None:
             self.workbench.setCurrentIndex(1)
             self.statusBar().showMessage('Importez ou reprenez une collecte avant l’analyse Hayabusa.')
+            return
+        if not any('EvtxECmd' in entry.get('tools',[]) for entry in self.collection.report['files']):
+            self.workbench.setCurrentIndex(1)
+            self.statusBar().showMessage('Hayabusa nécessite des EVTX Windows. Les données CatScale se consultent dans les onglets d’analyse.')
             return
         self.remember_collection_views()
         level = self.hayabusa_level.currentData()

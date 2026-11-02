@@ -1,0 +1,78 @@
+{
+  "date": "2026-11-02",
+  "scope": "CatScale import into Fireblade, Linux source checks; Windows EXE qualification is separate",
+  "upstream_format_reference": {
+    "repository": "WithSecureLabs/LinuxCatScale",
+    "commit": "0014f234a472f536d28664902daed90527ff5858"
+  },
+  "desktop_acceptance": {
+    "status": "passed",
+    "families": [
+      "Conteneurs et virtualisation",
+      "Fichiers et chronologie",
+      "Journaux et connexions",
+      "Persistance",
+      "Processus et réseau",
+      "Système",
+      "Utilisateurs"
+    ],
+    "analyses": 7,
+    "structured_records": 15,
+    "raw_records": 0,
+    "source_files_unchanged": true,
+    "case_restored": true
+  },
+  "actual_linux_outputs": {
+    "status": "complete",
+    "real_commands": [
+      "ps",
+      "proc/status",
+      "sha1sum",
+      "proc/meminfo"
+    ],
+    "analyses": [
+      {
+        "rows": 52,
+        "pid_records": 0
+      },
+      {
+        "rows": 3,
+        "pid_records": 2
+      }
+    ],
+    "file_statuses": [
+      "complete",
+      "complete",
+      "complete",
+      "complete"
+    ]
+  },
+  "full_source_suite": {
+    "passed": 891,
+    "skipped": 6,
+    "seconds": 267.37
+  },
+  "coverage": [
+    "dedicated text formats and unknown raw lines",
+    "files, family tabs, combined groups",
+    "tar/gzip and nested archive provenance",
+    "unsafe paths and links skipped",
+    "binary files reported",
+    "source integrity",
+    "invalid UTF-8 and large cells",
+    "line, block, member and decompression limits",
+    "cancellation",
+    "folder picker, active case storage, grid rendering, session and notes restore"
+  ],
+  "limitations": [
+    "Corpus reflects representative command output formats, not every distribution, locale or collector version",
+    "Remaining text is explicit raw data; arbitrary tables and JSON are not fully structured",
+    "Unsupported binary formats remain in evidence and in the disposition report",
+    "Hayabusa detection remains EVTX-only"
+  ],
+  "final_targeted_suite": {
+    "passed": 40,
+    "seconds": 6.3,
+    "scope": "CatScale core, desktop, Windows path dispatch, resources; after final parsing refinements"
+  }
+}

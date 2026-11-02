@@ -6,9 +6,23 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog,
     QDoubleSpinBox, QFontComboBox, QDialogButtonBox, QHBoxLayout, QLabel, QLineEdit, QListWidget, QMessageBox,
-    QGridLayout, QSizePolicy, QScrollArea, QTabWidget, QFileDialog, QPushButton, QTableWidget, QVBoxLayout, QWidget)
+    QGridLayout, QSizePolicy, QScrollArea, QTabWidget, QFileDialog, QPushButton, QTableWidget, QVBoxLayout, QWidget, QFormLayout)
 
 from fireblade.core.models import Filter, FilterGroup, FormatRule, SortKey, OPERATORS
+
+
+class RuleStylePreview(QLabel):
+    graphic = None
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self.graphic:return
+        from PySide6.QtGui import QPainter
+        mode,fraction,color=self.graphic
+        painter=QPainter(self);painter.setPen(Qt.NoPen);painter.setBrush(color)
+        if mode=='bar':painter.drawRect(2,self.height()-5,round((self.width()-4)*fraction),3)
+        elif mode=='icon':painter.drawEllipse(self.width()-20,self.height()//2-6,12,12)
+        painter.end()
 
 
 class ExpressionEditor(QWidget):
@@ -106,7 +120,8 @@ class FilterDialog(QDialog):
     def __init__(self, headers, expression, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Éditeur de filtres · ET / OU / NON")
-        self.resize(980, 720)
+        area=self.screen().availableGeometry()
+        self.resize(min(980,max(360,area.width()-40)),min(720,max(360,area.height()-70)))
         layout = QVBoxLayout(self)
         self.editor = ExpressionEditor(headers, expression)
         layout.addWidget(self.editor)
@@ -218,21 +233,30 @@ class RulesDialog(QDialog):
             button.clicked.connect(callback)
             row.addWidget(button)
         layout.addLayout(row)
-        self.format_tabs=QTabWidget();self.format_tabs.setMaximumHeight(190)
+        self.rule_steps=QTabWidget()
+        self.condition_page=QWidget();self.condition_layout=QVBoxLayout(self.condition_page)
+        self.target_page=QWidget();target_layout=QFormLayout(self.target_page)
+        target_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
+        self.appearance_page=QWidget();appearance_layout=QVBoxLayout(self.appearance_page)
+        self.rule_steps.addTab(self.condition_page,'1. Quand ?')
+        self.rule_steps.addTab(self.target_page,'2. Appliquer à')
+        self.rule_steps.addTab(self.appearance_page,'3. Apparence')
+        layout.addWidget(self.rule_steps,1)
+        self.format_tabs=QTabWidget()
         appearance=QWidget();appearance.setLayout(QVBoxLayout())
         graphic_content=QWidget();graphic_content.setLayout(QVBoxLayout())
         graphic_scroll=QScrollArea();graphic_scroll.setWidgetResizable(True);graphic_scroll.setWidget(graphic_content)
         appearance_scroll=QScrollArea();appearance_scroll.setWidgetResizable(True);appearance_scroll.setWidget(appearance)
         self.format_tabs.addTab(appearance_scroll,'Apparence');self.format_tabs.addTab(graphic_scroll,'Graphique')
-        layout.addWidget(self.format_tabs)
+        appearance_layout.addWidget(self.format_tabs,1)
         controls = QHBoxLayout()
         self.enabled = QCheckBox("Active")
-        controls.addWidget(self.enabled)
+        target_layout.addRow(self.enabled)
         self.target = QComboBox()
         self.target.addItem("Toute la ligne", None)
         for i, header in enumerate(headers):
             self.target.addItem(header, i)
-        controls.addWidget(self.target)
+        target_layout.addRow('Colonne cible',self.target)
         self.background = QPushButton("Fond")
         self.foreground = QPushButton("Texte")
         self.background.clicked.connect(lambda: self.pick_color(self.background))
@@ -271,7 +295,10 @@ class RulesDialog(QDialog):
         fonts.addWidget(self.custom_font);fonts.addWidget(self.font_family);fonts.addWidget(self.font_size)
         appearance.layout().addLayout(fonts)
         flags=QHBoxLayout();self.use_background=QCheckBox('Fond actif');self.use_foreground=QCheckBox('Texte actif');self.use_font=QCheckBox('Police active');self.stop_if_true=QCheckBox('Arrêter après cette règle')
-        for widget in (self.use_background,self.use_foreground,self.use_font,self.stop_if_true):flags.addWidget(widget)
+        for widget in (self.use_background,self.use_foreground,self.use_font):flags.addWidget(widget)
+        target_layout.addRow(self.stop_if_true)
+        scope_hint=QLabel('Toute la ligne colore chaque cellule. Une colonne cible limite le style à ce champ. Les règles sont examinées dans l’ordre de la liste.')
+        scope_hint.setWordWrap(True);target_layout.addRow(scope_hint)
         appearance.layout().addLayout(flags)
         statistics=QHBoxLayout();self.statistic=QComboBox()
         for label,code in [('Conditions seulement',''),('Valeurs les plus élevées','top'),('Valeurs les plus basses','bottom'),('Au-dessus de la moyenne','above_avg'),('Sous la moyenne','below_avg'),('Moyenne ou plus','above_eq_avg'),('Moyenne ou moins','below_eq_avg'),('Valeurs uniques','unique'),('Doublons','duplicate')]:self.statistic.addItem(label,code)
@@ -342,8 +369,31 @@ class RulesDialog(QDialog):
                     self.icon_thresholds[i].parentWidget().setVisible(i<count-1)
         self.visual.currentIndexChanged.connect(update_icons);self.icon_levels.currentIndexChanged.connect(update_icons)
         self._update_icons=update_icons
+        self.advanced_button=QPushButton('Réglages avancés : statistiques et police')
+        self.advanced_button.setCheckable(True)
+        self.advanced_options=QWidget();advanced=QVBoxLayout(self.advanced_options)
+        advanced.setContentsMargins(0,0,0,0)
+        for old_layout in (fonts,flags,statistics,matching,dates):
+            appearance.layout().removeItem(old_layout);advanced.addLayout(old_layout)
+        appearance.layout().removeWidget(self.all_source_rows);advanced.addWidget(self.all_source_rows)
+        appearance.layout().addWidget(self.advanced_button);appearance.layout().addWidget(self.advanced_options)
+        self.advanced_options.hide();self.advanced_button.toggled.connect(self.advanced_options.setVisible)
+        appearance.layout().addStretch()
+        self.sample_value=QLineEdit('42');self.sample_value.setPlaceholderText('Valeur d’exemple')
+        self.style_preview=RuleStylePreview();self.style_preview.setTextFormat(Qt.PlainText)
+        self.style_preview.setMinimumHeight(36);self.style_preview.setAlignment(Qt.AlignCenter)
+        preview_row=QHBoxLayout();preview_row.addWidget(QLabel('Aperçu du style :'));preview_row.addWidget(self.sample_value);preview_row.addWidget(self.style_preview,1)
+        appearance_layout.addLayout(preview_row)
+        preview_hint=QLabel('Exemple de style uniquement ; la condition et les statistiques de la source ne sont pas évaluées ici.')
+        preview_hint.setWordWrap(True);appearance_layout.addWidget(preview_hint)
+        for widget in (self.bold,self.italic,self.underline,self.strikeout,self.use_background,self.use_foreground,self.use_font):widget.toggled.connect(self.update_preview)
+        for widget in (self.sample_value,self.minimum,self.maximum):widget.textChanged.connect(self.update_preview)
+        self.visual.currentIndexChanged.connect(self.update_preview)
+        self.font_family.currentFontChanged.connect(self.update_preview)
+        self.font_size.valueChanged.connect(self.update_preview)
+        self.custom_font.toggled.connect(self.update_preview)
         self.editor = ExpressionEditor(headers)
-        layout.addWidget(self.editor)
+        self.condition_layout.addWidget(self.editor)
         self.message = QLabel()
         layout.addWidget(self.message)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -372,6 +422,39 @@ class RulesDialog(QDialog):
         color = QColorDialog.getColor(QColor(button.property("color") or "#ffffff"), self, options=QColorDialog.ShowAlphaChannel)
         if color.isValid():
             self.set_color(button, color.name(QColor.HexArgb) if color.alpha()!=255 else color.name())
+            self.update_preview()
+
+    def update_preview(self, *_):
+        if not hasattr(self,'style_preview'):return
+        from PySide6.QtGui import QFont, QPalette
+        palette=self.palette()
+        background=QColor(self.background.property('color') or '#fce2e2')
+        foreground=QColor(self.foreground.property('color') or '#202020')
+        if self.use_background.isChecked():palette.setColor(QPalette.Window,background)
+        if self.use_foreground.isChecked():palette.setColor(QPalette.WindowText,foreground)
+        self.style_preview.setPalette(palette);self.style_preview.setAutoFillBackground(True)
+        font=QFont(self.font())
+        if self.use_font.isChecked():
+            if self.custom_font.isChecked():font.setFamily(self.font_family.currentFont().family())
+            if self.font_size.value():font.setPointSizeF(self.font_size.value())
+            font.setBold(self.bold.isChecked());font.setItalic(self.italic.isChecked())
+            font.setUnderline(self.underline.isChecked());font.setStrikeOut(self.strikeout.isChecked())
+        self.style_preview.setFont(font)
+        self.style_preview.setText(self.sample_value.text())
+        from fireblade.ui.visual_rules import visual_value, contrast_color
+        self.style_preview.graphic=None
+        visual=self.visual.currentData()
+        try:
+            rule=FormatRule(visual=visual,minimum=self.minimum.text(),maximum=self.maximum.text(),
+                background=background.name(),foreground=foreground.name(),middle_color=self.middle_color.property('color') or '#ffffbf',
+                middle_value=self.middle_value.text(),middle_mode=self.middle_mode.currentData())
+            if visual!='none':self.style_preview.graphic=visual_value(rule,self.sample_value.text())
+            if visual in ('scale','scale3') and self.style_preview.graphic:
+                color=self.style_preview.graphic[2]
+                palette.setColor(QPalette.Window,color);palette.setColor(QPalette.WindowText,contrast_color(color))
+                self.style_preview.setPalette(palette)
+        except (ValueError,ArithmeticError):pass
+        self.style_preview.update()
 
     @staticmethod
     def set_color(button, color):
@@ -460,12 +543,14 @@ class RulesDialog(QDialog):
         old.hide()
         old.setEnabled(False)
         self.editor = ExpressionEditor(self.headers, rule.condition)
-        self.layout().replaceWidget(old, self.editor)
+        self.condition_layout.replaceWidget(old, self.editor)
         old.deleteLater()
         for widget in (self.all_source_rows,self.editor, self.enabled, self.target, self.background, self.foreground, self.bold, self.visual, self.minimum, self.maximum, self.italic, self.underline, self.strikeout, self.bound_mode, self.custom_font, self.font_family, self.font_size,self.high_mode,self.value_column,self.middle_color,self.middle_mode,self.middle_value,self.stop_if_true,self.use_background,self.use_foreground,self.use_font,self.show_values,self.zero_based,self.draw_axis,self.negative_color,self.axis_color,self.statistic,self.stat_rank,self.stat_column,self.stat_percent,self.stat_ignore_case,self.stat_include_null):
             widget.setEnabled(index >= 0)
         for widget in [self.icon_set,self.icon_levels,self.icon_threshold_mode,*self.icon_thresholds,*self.icon_threshold_modes,*self.icon_colors,*self.icon_images]:widget.setEnabled(index>=0)
         self.message.clear()
+        self.advanced_button.setChecked(bool(rule.statistic or rule.all_source_rows or rule.font_family))
+        self.update_preview()
 
     def add(self):
         try:

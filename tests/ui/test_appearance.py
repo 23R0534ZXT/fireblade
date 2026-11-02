@@ -52,7 +52,7 @@ def test_GUI_driver_uses_visible_import_and_context_menus(qt_application,tmp_pat
         run.window.tree.setCurrentIndex(index)
         QTest.keyClick(run.window.tree,Qt.Key_Right);run.settle()
         assert run.window.model.rowCount(index)==1
-        run.button('Réinitialiser')
+        run.menu('Affichage','Réinitialiser la vue')
         assert run.window.view.groups==[]
     except Exception as exc:
         error=exc;raise
@@ -78,7 +78,7 @@ def test_GUI_driver_sort_editor_and_note_dialog(qt_application,tmp_path):
         run.modal(edit);run.menu('Affichage','Tri sur plusieurs colonnes…')
         assert run.window.model.node(run.window.model.index(0,0)).values[2]=='1'
         tree=run.window.tree
-        QTest.mouseClick(tree.viewport(),Qt.LeftButton,pos=tree.visualRect(run.window.model.index(0,0)).center())
+        QTest.mouseClick(tree.viewport(),Qt.LeftButton,pos=tree.visualRect(run.window.model.index(0,1)).center())
         def note(dialog):
             field=dialog.findChild(QPlainTextEdit)
             assert field is not None

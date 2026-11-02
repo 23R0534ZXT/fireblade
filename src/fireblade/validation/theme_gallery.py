@@ -36,7 +36,10 @@ def check_theme_gallery(window,captures=None):
         try:
             dialog.skin.setCurrentIndex(dialog.skin.findData('classic-blue'));QTest.qWait(20)
             assert QApplication.palette()==palette and QApplication.instance().styleSheet()==stylesheet
-            assert dialog.scroll.verticalScrollBar().maximum()>0
+            assert dialog.pages.count()==4
+            for page in range(4):
+                dialog.pages.setCurrentIndex(page);QTest.qWait(10)
+                assert dialog.page_scrolls[page].isVisible()
             buttons=dialog.findChild(QDialogButtonBox)
             for role in (QDialogButtonBox.Ok,QDialogButtonBox.Cancel):
                 widget=buttons.button(role)

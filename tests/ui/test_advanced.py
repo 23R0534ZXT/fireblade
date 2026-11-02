@@ -275,7 +275,7 @@ def test_editors_roundtrip_nested_expression_and_format_priorities(case):
     QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
 
 
-def test_format_rule_precedes_bookmark_and_targets_only_one_cell(case):
+def test_bookmark_highlights_whole_row_while_retaining_rule_font(case):
     app = QApplication.instance() or QApplication([])
     case.bookmark(1, "investigate")
     window = Window()
@@ -285,13 +285,13 @@ def test_format_rule_precedes_bookmark_and_targets_only_one_cell(case):
     view = View(format_rules=[FormatRule(FilterGroup("and", [Filter(0, "eq", "alice")]), "#ff0000", "#0000ff", True, 1)])
     window.set_view(view)
     settle(app, window)
-    assert window.model.data(window.model.index(0, 2), Qt.BackgroundRole).name() == "#ff0000"
+    assert window.model.data(window.model.index(0, 2), Qt.BackgroundRole).name() == "#fff4c2"
     assert window.model.data(window.model.index(0, 2), Qt.FontRole).bold()
     assert window.model.data(window.model.index(0, 1), Qt.BackgroundRole).name() == "#fff4c2"
     window.tree.clearSelection()
     rectangle = window.tree.visualRect(window.model.index(0, 2))
     pixel = window.tree.viewport().grab().toImage().pixelColor(rectangle.right() - 8, rectangle.bottom() - 4)
-    assert pixel.name() == "#ff0000"
+    assert pixel.name() == "#fff4c2"
     assert window.close()
 
 
@@ -316,6 +316,7 @@ def test_rules_dialog_click_creation_replaces_visible_editor_and_saves(case, mon
         row.operator.setCurrentIndex(row.operator.findData('eq'))
         QTest.keyClicks(row.text, 'alice')
         monkeypatch.setattr(QColorDialog, 'getColor', lambda *a, **k: QColor('#ff0000'))
+        dialog.rule_steps.setCurrentIndex(2);app.processEvents()
         click('Fond')
         QTest.mouseClick(dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Ok), Qt.LeftButton)
         assert dialog.result() == QDialog.DialogCode.Accepted
@@ -397,6 +398,7 @@ def test_statistic_editor_controls_remain_on_appearance_tab(case):
     from PySide6.QtWidgets import QScrollArea
     app=QApplication.instance() or QApplication([]);dialog=RulesDialog(case.headers,[FormatRule(target=1,statistic='top',stat_rank='2')]);dialog.show();app.processEvents()
     try:
+        dialog.rule_steps.setCurrentIndex(2);app.processEvents()
         appearance=dialog.format_tabs.widget(0);assert isinstance(appearance,QScrollArea)
         assert appearance.widget().isAncestorOf(dialog.statistic)
         appearance.ensureWidgetVisible(dialog.statistic);app.processEvents()

@@ -37,7 +37,7 @@ def run_stress(app,spec_path,report_path):
     def count(view):return run.work(lambda:run.window.case.count(view))
 
     def reset():
-        run.button('Réinitialiser')
+        run.menu('Affichage','Réinitialiser la vue')
 
     def group(columns):
         run.header(columns[0],'Grouper par cette colonne')

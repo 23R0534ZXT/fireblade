@@ -87,6 +87,7 @@ def run_appearance(app,report_path):
                     # Adding the editor posts layout requests; settle those before scrolling.
                     QTest.qWait(50)
                     # Exercise every newly scrollable section at every Windows DPI.
+                    dialog.rule_steps.setCurrentIndex(2);dialog.advanced_button.setChecked(True)
                     appearance=dialog.format_tabs.widget(0)
                     appearance.ensureWidgetVisible(dialog.all_source_rows);QTest.qWait(20)
                     assert appearance.viewport().rect().contains(dialog.all_source_rows.mapTo(appearance.viewport(),dialog.all_source_rows.rect().center())), 'Source-scope checkbox inaccessible after settled layout'

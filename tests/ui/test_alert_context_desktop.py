@@ -51,6 +51,10 @@ def test_alert_context_original_and_return_keep_alert_filters_and_notes(qt_appli
         window.tree.setCurrentIndex(window.model.index(0,0))
         assert window.context_action.isEnabled() and window.context_open.isVisibleTo(window)
         window.context_open.click()
+        settle(qt_application,window,lambda:window.context_preview is not None)
+        assert str(window.case.path)==alert_path
+        assert window.context_preview.model.rowCount()==3
+        window.context_preview.keep.click()
         settle(qt_application,window,lambda:window.context_metadata() is not None)
         assert window.model.rowCount()==3
         role=window.case.headers.index('Relation à l’alerte')+1
@@ -94,6 +98,57 @@ def test_saved_context_reconnects_to_collection_without_raw_evtx(qt_application,
 def case_view():
     from fireblade.core.models import View
     return View()
+
+
+def test_preview_reuses_panel_and_only_kept_context_enters_saved_session(qt_application,tmp_path):
+    collection,raw,alert_path=prepare_collection(tmp_path)
+    window=Window();errors=[];window.error=errors.append
+    window.resize(1024,700);window.show()
+    try:
+        window.collection=collection;window.load_case(alert_path);settle(qt_application,window)
+        window.tree.setCurrentIndex(window.model.index(0,0))
+        before=len(collection.report['documents']);tabs=len(window.documents)
+        window.preview_alert_context();settle(qt_application,window,lambda:window.context_preview is not None)
+        first=window._preview_result['analysis']
+        assert window.case.path==Path(alert_path) and len(window.documents)==tabs
+        assert len(collection.report['documents'])==before
+        assert not collection.report.get('contexts')
+        assert window.context_preview.model.rowCount()==3
+        assert window.width()<=1024
+        assert window.navigator.isHidden()
+        assert window.context_preview.selected()['Relation à l’alerte']=='Événement de l’alerte'
+        window.preview_alert_context();settle(qt_application,window)
+        assert window._preview_result['analysis']==first
+        window.context_minutes.setValue(1);window.preview_alert_context()
+        settle(qt_application,window)
+        assert window._preview_result['analysis']!=first and not Path(first).exists()
+        assert len(collection.report['documents'])==before
+        window.keep_preview_context();settle(qt_application,window)
+        kept=window.context_metadata();assert kept['minutes']==1
+        assert len(collection.report['documents'])==before+1
+        restored=Collection.reopen(collection.output,collection.pack)
+        assert restored.report['contexts'][0]['analysis']==kept['analysis']
+        assert not errors
+    finally:window.close()
+
+
+def test_preview_opens_verified_source_and_close_removes_only_unkept_files(qt_application,tmp_path):
+    collection,raw,alert_path=prepare_collection(tmp_path)
+    window=Window();errors=[];window.error=errors.append
+    try:
+        window.collection=collection;window.load_case(alert_path);settle(qt_application,window)
+        window.tree.setCurrentIndex(window.model.index(0,0));window.preview_alert_context()
+        settle(qt_application,window,lambda:window.context_preview is not None)
+        preview=Path(window._preview_result['analysis'])
+        window.context_preview.open_source.click()
+        settle(qt_application,window,lambda:window.case.path==Path(raw))
+        assert window.model.rowCount()==1 and window.model.node(window.model.index(0,0)).values[1]=='42'
+        window.return_to_alerts();settle(qt_application,window)
+        assert window.case.path==Path(alert_path)
+        assert not errors
+        assert window.close()
+        assert not preview.exists() and Path(raw).exists() and Path(alert_path).exists()
+    finally:window.close()
 
 
 def test_alert_from_another_collection_cannot_use_current_collection(qt_application,tmp_path):

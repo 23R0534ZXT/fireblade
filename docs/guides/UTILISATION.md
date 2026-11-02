@@ -23,6 +23,8 @@ Les colonnes de formats différents sont réunies sans conversion de leurs valeu
 
 Le pack Windows construit depuis les sources épinglées comprend EvtxECmd, AmcacheParser, AppCompatCacheParser, PECmd, MFTECmd, RECmd, LECmd, JLECmd, SrumECmd, WxTCmd, RBCmd, RecentFileCacheParser et SQLECmd. RECmd utilise le batch Kroll et les 70 plugins de registre construits depuis RegistryPlugins ; EvtxECmd et SQLECmd disposent de leurs maps. Les CSV et TSV déjà produits peuvent aussi être importés. Il ne s’agit pas d’une prise en charge de chaque format forensic existant ni de tous les parseurs tiers.
 
+Le bilan est une table triable avec une recherche et un filtre **Tous les fichiers**, **Réussis**, **Avertissements / à vérifier**, **Erreurs / interrompus** ou **Non reconnus / ignorés**. Sélectionnez un fichier pour lire ses avertissements, son SHA-256 et ses sorties. **Bilan complet** retrouve les informations générales ; **Ouvrir les résultats** ouvre le dossier de travail. La partie **1. Importer et parser** est distincte de **2. Détecter dans les EVTX Windows** ; Hayabusa reste désactivé si aucune collecte EVTX exploitable n’est prête.
+
 L’onglet **Collecte et détection** conserve le bilan : fichiers traités, non reconnus, liens ignorés, erreurs et absence de sortie. Les CSV des moteurs restent dans `results`, les bases dans `analyses`, avec un manifeste `collection.json`, les journaux et une session `collection.fireblade-session`. Les sorties parsées ajoutent le chemin de l’artefact et le nom du parseur. Le plafond existant de 1000 analyses par session s’applique ; les sorties qui ne peuvent pas être chargées restent sur disque et sont signalées en erreur. Les empreintes des sources reconnues sont vérifiées avant et après traitement. Les moteurs absents ou en erreur ne sont jamais comptés comme réussis. Les journaux de transaction de registre LOG1/LOG2 sont conservés comme fichiers compagnons, utilisés par les lecteurs de ruches et non parsés comme des ruches indépendantes. Les moteurs EZ compilés désactivent leur télémétrie Exceptionless.
 
 **Analyser la collecte avec Hayabusa** traite ensemble les EVTX inventoriés, après vérification et copie temporaire. Choisissez le niveau minimal dans l’onglet Collecte ; il vaut **Faible** par défaut. Fireblade utilise Hayabusa **4.3.1**, sa commande `dfir-timeline` et son profil verbose, sans assistant interactif ni téléchargement de règles pendant l’analyse. Les règles bruyantes, obsolètes et non prises en charge ne sont pas activées automatiquement.
@@ -31,7 +33,7 @@ L’onglet **Alertes Hayabusa.csv** devient une analyse Fireblade : filtrez Leve
 
 **Reprendre une collecte…** rouvre son dossier de travail. Conservez les artefacts sources pour relancer Hayabusa ; un EVTX modifié depuis l’inventaire est refusé. **Analyse → Interrompre la requête** interrompt aussi le moteur externe ; les résultats déjà terminés et leur bilan restent conservés. Chaque traitement externe a un délai maximal d’une heure. Les limites DuckDB ne plafonnent pas la mémoire des parseurs et de Hayabusa ; prévoyez aussi le disque nécessaire aux CSV, aux bases et aux copies temporaires des EVTX.
 
-Le programme Windows embarque les moteurs, le runtime .NET, Hayabusa et les règles : l’utilisateur conserve un seul EXE pour le programme. Les résultats restent séparés dans le dossier de travail. Cette distribution est plus volumineuse et son extraction au démarrage demande davantage de disque temporaire. Les sources Hayabusa distribuées sont exportables depuis l’onglet Collecte ; les licences restent dans **Aide → Licences**.
+Le programme Windows embarque les moteurs, le runtime .NET, Hayabusa et les règles : l’utilisateur conserve un seul EXE pour le programme. Les résultats restent séparés dans le dossier de travail. Cette distribution est plus volumineuse et son extraction au démarrage demande davantage de disque temporaire. Les sources Hayabusa distribuées sont exportables depuis **Aide → Exporter les sources Hayabusa…** ; les licences restent dans **Aide → Licences**.
 
 Une règle correspondante donne une piste, pas une preuve automatique de compromission. Hayabusa couvre ici les EVTX ; les autres artefacts sont parsés et explorables, sans prétendre leur appliquer les règles EVTX.
 
@@ -39,7 +41,7 @@ Une règle correspondante donne une piste, pas une preuve automatique de comprom
 
 L’onglet **Alertes Hayabusa** reste la liste courte des détections. Sélectionnez une alerte, choisissez la durée avant/après (5 minutes par défaut), puis cliquez **Voir le contexte de cette alerte**. La commande est aussi disponible au clic droit et dans **Analyse → Voir le contexte EVTX de l’alerte**.
 
-Un nouvel onglet **Contexte EVTX** présente une chronologie des événements importés : date, EventID, machine, canal, description et données détaillées. La colonne **Relation à l’alerte**, épinglée à gauche, distingue :
+Un panneau latéral réutilisable **Contexte EVTX de l’alerte** présente une chronologie des événements importés. La liste d’alertes reste ouverte. **Conserver ce contexte en onglet** enregistre une analyse consultable dans la session ; les aperçus non conservés ne sont pas ajoutés aux onglets et leurs fichiers temporaires sont retirés au remplacement ou à la fermeture. Le contexte contient : date, EventID, machine, canal, description et données détaillées. La colonne **Relation à l’alerte**, épinglée dans un contexte conservé en onglet, distingue :
 
 - **Événement de l’alerte** : correspondance avec le fichier EVTX et EventRecordID, contrôlée aussi par la machine et l’EventID lorsqu’ils sont disponibles. La ligne apparaît en gras.
 - **Référence candidate (agrégation)** : plusieurs références ne permettent pas d’attribuer chaque identifiant à un événement de façon certaine.
@@ -49,7 +51,7 @@ Le contexte est limité à 1000 événements, en conservant les références et 
 
 Sélectionnez une ligne du contexte puis **Ouvrir l’événement EVTX source** pour retrouver exactement cette ligne dans la base EvtxECmd originale. **Effacer les filtres** retrouve les autres événements de ce fichier ; **Revenir aux alertes** ramène à la liste des détections et conserve ses filtres et annotations. Le panneau Détails et la fenêtre de cellule permettent de lire les charges utiles complètes, même si la grille les abrège.
 
-Les contextes sont des analyses Fireblade ordinaires : notes, signets, filtres et exports restent disponibles. Leur lien avec l’alerte est enregistré dans le dossier de travail ; leur ouverture retrouve automatiquement la collecte associée. Ils restent consultables avec les bases importées même si les EVTX originaux ne sont plus accessibles. Il s’agit des instantanés déjà parsés, sans reparsing ni réévaluation de la règle Hayabusa ; les sources restent nécessaires pour relancer la détection elle-même.
+L’aperçu est en lecture seule. Les contextes conservés en onglet sont des analyses Fireblade ordinaires : notes, signets, filtres et exports restent disponibles. Leur lien avec l’alerte est enregistré dans le dossier de travail ; leur ouverture retrouve automatiquement la collecte associée. Ils restent consultables avec les bases importées même si les EVTX originaux ne sont plus accessibles. Il s’agit des instantanés déjà parsés, sans reparsing ni réévaluation de la règle Hayabusa ; les sources restent nécessaires pour relancer la détection elle-même.
 
 
 ## Ouvrir des données
@@ -73,9 +75,9 @@ Sous chaque en-tête de données, le champ **Contient…** filtre directement ce
 
 Un clic droit sur une cellule permet de filtrer sur sa valeur ou de l’exclure. Un clic droit sur un en-tête ouvre les filtres de colonne. Les filtres simples se combinent par ET ; un double-clic dans leur liste retire un filtre.
 
-**Filtres → Éditeur ET / OU / NON** permet de construire des groupes imbriqués. Les conditions sont présentées dans des cartes imbriquées : choisir **Toutes les conditions** (ET) ou **Au moins une** (OU). Chaque carte propose **+ Condition** et **+ Sous-groupe**, sans sélection préalable dans un arbre. Cocher **Exclure (NON)** inverse une condition ; **Inverser le groupe (NON)** inverse le bloc complet. Les libellés ET, OU et NON et les cadres imbriqués permettent de repérer les blocs. La phrase **Lecture du filtre** se met à jour pendant la saisie. Les opérateurs comprennent recherche textuelle, égalité exacte, regex RE2, cellules vides, comparaisons numériques et bornes de dates ISO. Les données dont la conversion numérique ou temporelle est impossible ne correspondent pas à cette comparaison.
+**Filtres → Éditeur ET / OU / NON** permet de construire des groupes imbriqués. Les conditions sont présentées dans des cartes imbriquées : choisir **Toutes les conditions** (ET) ou **Au moins une** (OU). Chaque carte propose **+ Condition** et **+ Sous-groupe**, sans sélection préalable dans un arbre. Cocher **Exclure (NON)** inverse une condition ; **Inverser le groupe (NON)** inverse le bloc complet. Les libellés ET, OU et NON et les cadres imbriqués permettent de repérer les blocs. La phrase **Lecture du filtre** se met à jour pendant la saisie. **Replier / Déplier** réduit un groupe sans retirer ses conditions ; le résumé reste accessible. Les opérateurs comprennent recherche textuelle, égalité exacte, regex RE2, cellules vides, comparaisons numériques et bornes de dates ISO. Les données dont la conversion numérique ou temporelle est impossible ne correspondent pas à cette comparaison.
 
-**Réinitialiser** rétablit une vue par défaut, avec les règles globales activées.
+**Effacer les filtres**, près de la recherche, retire les recherches et critères sans changer les groupes, le tri, les couleurs ni les épinglages. **Affichage → Réinitialiser la vue** remet une vue par défaut, avec les règles globales activées.
 
 ## Trier
 
@@ -93,6 +95,8 @@ Les boutons **Suivant** et **Précédent** parcourent les pages du niveau sélec
 
 ## Onglets et sessions
 
+Le panneau de navigation **Collectes et analyses** regroupe les résultats par collecte et artefact/famille ; sa recherche filtre les noms sans ouvrir les bases inactives. Cliquez une analyse pour l’activer. Le bouton **×** masque la navigation ; **Affichage → Navigation des analyses** la retrouve. Les onglets restent disponibles. Le bouton **Détails de la ligne**, près de Regrouper, replie ou affiche le panneau de détails.
+
 Chaque analyse s’ouvre dans un onglet. **Ctrl+Tab** et **Ctrl+Shift+Tab** changent d’onglet ; **Ctrl+W** ferme l’onglet actif. Attendre ou interrompre une opération avant de changer d’analyse.
 
 Seule la base de l’onglet actif reste ouverte. Revenir à un onglet restaure sa vue et ses colonnes, puis recharge les premières pages. La sélection, le défilement et les groupes dépliés ne sont pas conservés.
@@ -101,12 +105,12 @@ Seule la base de l’onglet actif reste ouverte. Revenir à un onglet restaure s
 
 Les règles globales appartiennent au profil utilisateur : les exporter séparément si la session doit être partagée avec la même présentation.
 
-**Fichier → Exporter une session TLE (sources et signets)…** crée un `.tle_sess` référençant les fichiers sources originaux de tous les onglets et leurs signets, même masqués par un filtre. Les notes, vues et dispositions restent propres à Fireblade. Garder les sources aux chemins indiqués et installer les lecteurs nécessaires dans TLE. Une vérification d’intégrité lit les sources avant l’enregistrement ; elle peut être interrompue et ne réécrit pas les données. Les cas qui changeraient les tags sont refusés : source modifiée, même source ouverte dans plusieurs analyses, numéro de lecteur ambigu ou feuille Excel autre que la première. L’échec ou l’annulation conserve une session déjà présente à la destination. Voir [le contrat et les limites](../development/COMPATIBILITE.md#export-de-sessions-timeline-explorer).
+**Fichier → Compatibilité Timeline Explorer → Exporter une session TLE (sources et signets)…** crée un `.tle_sess` référençant les fichiers sources originaux de tous les onglets et leurs signets, même masqués par un filtre. Les notes, vues et dispositions restent propres à Fireblade. Garder les sources aux chemins indiqués et installer les lecteurs nécessaires dans TLE. Une vérification d’intégrité lit les sources avant l’enregistrement ; elle peut être interrompue et ne réécrit pas les données. Les cas qui changeraient les tags sont refusés : source modifiée, même source ouverte dans plusieurs analyses, numéro de lecteur ambigu ou feuille Excel autre que la première. L’échec ou l’annulation conserve une session déjà présente à la destination. Voir [le contrat et les limites](../development/COMPATIBILITE.md#export-de-sessions-timeline-explorer).
 
 
 ## Signets et notes
 
-Un double-clic sur une ligne ouvre son signet et sa note. Dans ce dialogue individuel, une note vide retire le signet.
+Un clic dans la première colonne surligne toute la ligne et l’ajoute aux signets. Le repère est conservé dans la base et retrouvé après réouverture. Un nouveau clic retire le signet ; si une note existe, Fireblade demande confirmation avant de la supprimer. Un double-clic sur une cellule de données ouvre le signet et sa note. Dans ce dialogue individuel, une note vide retire le signet.
 
 Pour plusieurs lignes, utiliser Ctrl/clic ou Maj/clic, puis le menu **Édition** :
 
@@ -120,6 +124,8 @@ Les en-têtes de groupes sont ignorés : sélectionner un groupe seul ne marque 
 Les notes sont conservées dans l’analyse. La grille charge seulement les annotations des pages chargées.
 
 ## Couleurs et détails
+
+L’éditeur suit trois étapes : **1. Quand ?** pour les cartes de conditions, **2. Appliquer à** pour l’activation, la cible et l’arrêt après la règle, puis **3. Apparence** pour les couleurs ou graphiques. Dans Apparence, **Réglages avancés : statistiques et police** déplie les options supplémentaires. L’aperçu utilise une valeur d’exemple ; il ne vérifie ni la condition ni la distribution statistique de la source. Le surlignage des signets garde un fond uniforme sur toute la ligne, même lorsqu’une règle colore une cellule ; les règles ne sont pas supprimées.
 
 **Analyse → Règles de coloration** définit les règles locales à la vue : conditions, couleurs du fond et du texte, gras, ligne ou cellule. La première règle correspondante a priorité.
 
@@ -209,7 +215,7 @@ La case à cocher de la colonne Ligne/groupe marque une ligne sans demander de n
 
 ## Préférences et détails
 
-**Affichage → Préférences** propose une galerie de 12 thèmes avec aperçu et règle le mode clair/sombre, la famille et taille de police, les dates reconnues (source, ISO, ISO à sept décimales), la position du panneau de détails, la copie des en-têtes et la copie immédiate au clic droit. **Maj+clic droit** conserve le menu contextuel lorsque la copie immédiate est active. Les préférences sont enregistrées dans `%LOCALAPPDATA%\Fireblade\preferences.json`.
+**Affichage → Préférences** sépare Apparence, Grille et copie, Dates et Compatibilité. La page Apparence propose une galerie de 12 thèmes avec aperçu et règle le mode clair/sombre, la famille et taille de police, les dates reconnues (source, ISO, ISO à sept décimales), la position du panneau de détails, la copie des en-têtes et la copie immédiate au clic droit. **Maj+clic droit** conserve le menu contextuel lorsque la copie immédiate est active. Les préférences sont enregistrées dans `%LOCALAPPDATA%\Fireblade\preferences.json`.
 
 Le détail et l’export conservent le texte source, même si la grille présente une date ou un booléen. Le format à sept décimales ne retire pas les décimales supplémentaires présentes dans la source. Le clic droit d’un champ du panneau Détails permet de copier sa valeur complète, la filtrer ou l’exclure. La fenêtre de cellule peut formater du JSON ou XML jusqu’à 2 Mo ; les DTD et entités XML sont refusées.
 
@@ -223,7 +229,7 @@ La légende des supertimelines décrit les premières catégories de coloration 
 
 **Analyse → Exporter/importer la disposition** partage une vue `.fireblade-view` entre analyses ayant exactement les mêmes colonnes. L’import accepte aussi certains layouts XML TLE pour l’ordre, les largeurs, l’épinglage à gauche/droite, les groupes et les tris. Les filtres et règles non compatibles provoquent un message explicite au lieu d’être ignorés.
 
-**Fichier → Importer une session Timeline Explorer** lit un `.tle_sess`, vérifie ses sources et les réimporte dans de nouvelles bases, avec les tags. Les sources doivent être disponibles ; le CSV utilise sa BOM UTF-8/16/32 (UTF-8 en l’absence de BOM), les classeurs utilisent leur première feuille pour cette migration. Les dispositions locales du format sont retrouvées automatiquement à l’ouverture de chaque onglet. En cas d’échec ou d’annulation, les nouvelles bases de cette migration sont supprimées et l’analyse précédente est restaurée.
+**Fichier → Compatibilité Timeline Explorer → Importer une session Timeline Explorer** lit un `.tle_sess`, vérifie ses sources et les réimporte dans de nouvelles bases, avec les tags. Les sources doivent être disponibles ; le CSV utilise sa BOM UTF-8/16/32 (UTF-8 en l’absence de BOM), les classeurs utilisent leur première feuille pour cette migration. Les dispositions locales du format sont retrouvées automatiquement à l’ouverture de chaque onglet. En cas d’échec ou d’annulation, les nouvelles bases de cette migration sont supprimées et l’analyse précédente est restaurée.
 
 **Filtres → Expression textuelle** accepte une grammaire limitée et contrôlée : `Contains`, `StartsWith`, `EndsWith`, `IsNull`, `IsNullOrEmpty`, `In`, `Between`, comparaisons, `And`, `Or`, `Not`. Exemples : `Contains([User], 'alice') And [ID] >= 10` ; `[Date] >= #2026-01-01# And [Date] < #2026-02-01#`. Les expressions acceptent aussi fonctions imbriquées, calculs, `Iif`, `Upper`, `Substring`, `ToInt`, `Round`, `GetYear`, `AddDays`, `DateDiffDay` et les champs virtuels `Line`, `Tag`, `Note`. Les fonctions DevExpress non prises en charge sont refusées. L’éditeur ET/OU/NON permet de construire les conditions sans connaître cette syntaxe.
 
@@ -231,7 +237,7 @@ La légende des supertimelines décrit les premières catégories de coloration 
 
 ## Colonnes dérivées
 
-**Analyse → Convertir une date…** : choisir la colonne, éventuellement une seconde colonne d’heure, le format source et le fuseau des dates sans décalage. Le résultat est une nouvelle colonne UTC à neuf décimales ; la source reste intacte. Formats : ISO, dates US/européennes, Unix s/ms/us/ns, FILETIME, WebKit, .NET et OLE. Les fuseaux IANA et Windows sont acceptés. Les heures locales suivent les conventions DST d’ICU ; pour lever une ambiguïté, fournir un décalage explicite.
+**Analyse → Calculs et conversions → Convertir une date…** : choisir la colonne, éventuellement une seconde colonne d’heure, le format source et le fuseau des dates sans décalage. Le résultat est une nouvelle colonne UTC à neuf décimales ; la source reste intacte. Formats : ISO, dates US/européennes, Unix s/ms/us/ns, FILETIME, WebKit, .NET et OLE. Les fuseaux IANA et Windows sont acceptés. Les heures locales suivent les conventions DST d’ICU ; pour lever une ambiguïté, fournir un décalage explicite.
 
 **Ajouter une colonne calculée…** : saisir un nom et une expression, par exemple `Iif([Size] > 1024, 'large', 'small')`. La colonne est calculée par DuckDB et persistée dans l’analyse. **Contrôler les colonnes dérivées…** compte les valeurs NULL ; celles-ci peuvent indiquer une source vide, invalide ou hors plage. Aucun enregistrement n’est supprimé.
 
@@ -239,7 +245,7 @@ L’application d’un profil peut proposer ces colonnes normalisées, les caté
 
 ## Préférences Timeline Explorer
 
-**Fichier → Importer les préférences Timeline Explorer…** lit `Settings/TLE_settings.xml` : police, taille, copie des en-têtes, copie au clic droit, onglets sur plusieurs rangées, détails en haut/bas, format des dates et liste simple de colonnes épinglées. Les familles Office, Visual Studio, bleu, argent et contraste élevé sont associées aux thèmes Fireblade correspondants ; cette association adapte les couleurs et ne charge pas les skins DevExpress. Les champs inconnus ou structurés non traduits sont signalés dans Messages. Le fichier TLE reste intact. Les mêmes réglages sont modifiables dans les préférences Fireblade ; l’épinglage par défaut utilise un nom par ligne.
+**Fichier → Compatibilité Timeline Explorer → Importer les préférences Timeline Explorer…** lit `Settings/TLE_settings.xml` : police, taille, copie des en-têtes, copie au clic droit, onglets sur plusieurs rangées, détails en haut/bas, format des dates et liste simple de colonnes épinglées. Les familles Office, Visual Studio, bleu, argent et contraste élevé sont associées aux thèmes Fireblade correspondants ; cette association adapte les couleurs et ne charge pas les skins DevExpress. Les champs inconnus ou structurés non traduits sont signalés dans Messages. Le fichier TLE reste intact. Les mêmes réglages sont modifiables dans les préférences Fireblade ; l’épinglage par défaut utilise un nom par ligne.
 
 Les profils forensic reconnus s’appliquent automatiquement aux nouveaux imports, avant l’affichage de leurs colonnes. Désactiver **Appliquer le profil forensic reconnu à l’import** dans les préférences pour garder une grille générique. L’ajout d’une colonne dérivée conserve l’ordre, les largeurs, le masquage et l’épinglage des colonnes existantes.
 
@@ -253,7 +259,7 @@ Les valeurs invalides restent sans graphique. Masquer les valeurs ne change ni l
 
 ## Plugins de lecture et fonctions TLE
 
-**Fichier → Importer avec un plugin TLE (.NET)…** permet de choisir une DLL de lecteur et une source. **Analyse → Charger des fonctions .NET…** ajoute ses fonctions aux expressions, pour l’analyse active. Les fonctions déjà sélectionnées pour cette analyse se rechargent automatiquement, sous contrôle du registre local et de l’empreinte de la DLL. Utiliser l’import CSV natif pour les gros volumes habituels. Voir le [guide des plugins](../development/PLUGINS.md) pour les contrats et limites.
+**Fichier → Compatibilité Timeline Explorer → Importer avec un plugin TLE (.NET)…** permet de choisir une DLL de lecteur et une source. **Analyse → Calculs et conversions → Charger des fonctions .NET…** ajoute ses fonctions aux expressions, pour l’analyse active. Les fonctions déjà sélectionnées pour cette analyse se rechargent automatiquement, sous contrôle du registre local et de l’empreinte de la DLL. Utiliser l’import CSV natif pour les gros volumes habituels. Voir le [guide des plugins](../development/PLUGINS.md) pour les contrats et limites.
 
 
 Les règles statistiques et graphiques proposent aussi un calcul sur toute la source, en ignorant le filtre actif. Les moyennes acceptent les comparaisons strictes ou inclusives. Les dates relatives utilisent `InDateRange([Date], 'Today')` et les périodes proposées dans l’éditeur de règles ; les jours sont calculés en UTC, les semaines commencent le lundi. L’import XML reprend les dates relatives combinées, les listes de valeurs et les douze styles texte/fond prédéfinis documentés de DevExpress. Les palettes prédéfinies sont adaptées ; les styles personnalisés peuvent être définis dans une bibliothèque JSON locale ou associée au layout ; voir [les exemples et limites](LAYOUTS-TLE.md). Un nom sans définition reste refusé.

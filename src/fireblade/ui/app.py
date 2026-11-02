@@ -13,7 +13,7 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
     QDialogButtonBox, QFileDialog, QFormLayout, QHBoxLayout, QHeaderView,
     QInputDialog, QLabel, QLineEdit, QListWidget, QMainWindow, QMessageBox,
-    QPlainTextEdit, QPushButton, QSplitter, QStackedWidget, QStyle,
+    QPlainTextEdit, QPushButton, QSplitter, QStackedWidget, QStyle, QToolButton,
     QTreeView, QVBoxLayout, QWidget)
 
 from fireblade.ui.dialogs import ImportDialog
@@ -88,13 +88,14 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
             return item
 
         open_csv = action(file_menu, "Ouvrir un fichier…", self.import_csv, "Ctrl+O", False, QStyle.SP_DialogOpenButton)
-        action(file_menu, "Importer avec un plugin TLE (.NET)…", self.import_with_tle_plugin, requires_file=False)
+        compatibility = file_menu.addMenu("Compatibilité Timeline Explorer")
+        action(compatibility, "Importer avec un plugin TLE (.NET)…", self.import_with_tle_plugin, requires_file=False)
         action(file_menu, "Ouvrir une analyse…", self.open_case, "Ctrl+Shift+O", False)
-        action(file_menu, 'Importer les préférences Timeline Explorer…', self.import_tle_settings,requires_file=False)
-        action(file_menu, "Importer une session Timeline Explorer…", lambda: self.import_tle_session(), requires_file=False)
+        action(compatibility, 'Importer les préférences Timeline Explorer…', self.import_tle_settings,requires_file=False)
+        action(compatibility, "Importer une session Timeline Explorer…", lambda: self.import_tle_session(), requires_file=False)
         action(file_menu, "Ouvrir une session…", lambda: self.load_session(), requires_file=False)
         action(file_menu, "Enregistrer la session…", lambda: self.save_session(), "Ctrl+Shift+S")
-        action(file_menu, "Exporter une session TLE (sources et signets)…", lambda: self.export_tle_session())
+        action(compatibility, "Exporter une session TLE (sources et signets)…", lambda: self.export_tle_session())
         action(file_menu, "Fermer l’onglet", lambda: self.close_document(self.active_document), "Ctrl+W")
         action(file_menu, "Vider la file d’ouverture", self.clear_open_queue, requires_file=False)
         action(file_menu, "Rouvrir le dernier onglet fermé", self.reopen_closed, "Ctrl+Shift+T", False)
@@ -128,23 +129,26 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         action(view_menu, "Onglet suivant", lambda: self.next_document(), "Ctrl+Tab", False)
         action(view_menu, "Onglet précédent", lambda: self.next_document(-1), "Ctrl+Shift+Tab", False)
         action(view_menu, "Appliquer le profil détecté", self.apply_profile)
-        action(view_menu, "Profils et plugins…", self.manage_plugins, requires_file=False)
-        action(view_menu, "Légende des supertimelines…", self.show_legend, requires_file=False)
+        expert_view=view_menu.addMenu('Profils et compatibilité')
+        action(expert_view, "Profils et plugins…", self.manage_plugins, requires_file=False)
+        action(expert_view, "Légende des supertimelines…", self.show_legend, requires_file=False)
         action(view_menu, "Tri sur plusieurs colonnes…", self.edit_sort)
         action(filter_menu, "Expression textuelle…", self.edit_filter_text)
         action(filter_menu, "Éditeur ET / OU / NON…", self.edit_filters, "Ctrl+Alt+F")
         action(filter_menu, "Filtrer sur la cellule active", self.filter_current_cell, "Ctrl+Shift+F")
         add_filter = action(filter_menu, "Ajouter un filtre…", self.add_filter)
         action(filter_menu, "Effacer les filtres", self.clear_filters, "Ctrl+E")
-        action(filter_menu, "Réinitialiser", self.reset)
+        action(view_menu, "Réinitialiser la vue", self.reset)
         action(filter_menu, "Rechercher dans toutes les analyses…", self.find_workspace, "Ctrl+F")
         action(analysis_menu, "Enregistrer la vue…", self.save_view, "Ctrl+S")
         action(analysis_menu, "Charger une vue…", self.load_view, "Ctrl+L")
-        action(analysis_menu, "Exporter la disposition…", self.export_layout)
-        action(analysis_menu, "Importer une disposition…", self.import_layout)
+        layouts_menu=analysis_menu.addMenu('Dispositions de la grille')
+        action(layouts_menu, "Exporter la disposition…", self.export_layout)
+        action(layouts_menu, "Importer une disposition…", self.import_layout)
         analysis_menu.addSeparator()
         action(analysis_menu, "Règles de coloration…", self.edit_rules)
-        action(analysis_menu, "Charger des fonctions .NET…", self.load_dotnet_functions)
+        functions_menu=analysis_menu.addMenu('Calculs et conversions')
+        action(functions_menu, "Charger des fonctions .NET…", self.load_dotnet_functions)
         global_menu = analysis_menu.addMenu("Règles globales")
         action(global_menu, "Modifier…", self.edit_global_rules, requires_file=False)
         action(global_menu, "Recharger depuis le disque", self.reload_global_rules, requires_file=False)
@@ -158,9 +162,9 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         action(analysis_menu, "Provenance et SHA-256…", self.integrity)
         analysis_menu.addSeparator()
         from fireblade.ui.derived_columns import edit_derived, quality
-        action(analysis_menu, 'Convertir une date…', lambda: edit_derived(self))
-        action(analysis_menu, 'Ajouter une colonne calculée…', lambda: edit_derived(self,expression=True))
-        action(analysis_menu, 'Contrôler les colonnes dérivées…', lambda: quality(self))
+        action(functions_menu, 'Convertir une date…', lambda: edit_derived(self))
+        action(functions_menu, 'Ajouter une colonne calculée…', lambda: edit_derived(self,expression=True))
+        action(functions_menu, 'Contrôler les colonnes dérivées…', lambda: quality(self))
         self.cancel_action = action(analysis_menu, "Interrompre la requête", self.interrupt_queries, requires_file=False)
         self.cancel_action.setEnabled(False)
         action(help_menu, "Tutoriel complet — toutes les fonctionnalités", lambda: show_tutorial(self), requires_file=False)
@@ -168,26 +172,31 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         action(help_menu, "Licences", lambda: show_licenses(self), requires_file=False)
         action(help_menu, "À propos de Fireblade", lambda: show_about(self), requires_file=False)
 
-        toolbar = self.addToolBar("Fichier")
+        toolbar = self.main_toolbar = self.addToolBar("Fichier")
         toolbar.setMovable(False)
         toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         toolbar.addAction(open_csv)
         toolbar.addAction(export)
-        toolbar.addSeparator()
-        toolbar.addAction(add_filter)
-        toolbar.addAction(grouping)
+        # Column filters and the grouping bar already expose these operations.
 
         self.content_stack = QStackedWidget()
         welcome = QWidget()
         welcome_layout = QVBoxLayout(welcome)
         welcome_layout.addStretch()
-        message = QLabel("Aucun fichier ouvert.")
+        message = self.welcome_title = QLabel("Commencer une analyse")
         message.setAlignment(Qt.AlignCenter)
         welcome_layout.addWidget(message)
-        open_button = QPushButton("Ouvrir un CSV…")
+        collect_button = QPushButton("Importer une collecte…")
+        collect_button.clicked.connect(self.parse_collection)
+        collect_button.setToolTip("Artefacts Windows ou collecte Linux CatScale : choisir un dossier et parser ses fichiers.")
+        welcome_layout.addWidget(collect_button, 0, Qt.AlignHCenter)
+        open_button = QPushButton("Ouvrir un export…")
         open_button.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
         open_button.clicked.connect(self.import_csv)
         welcome_layout.addWidget(open_button, 0, Qt.AlignHCenter)
+        hint = QLabel("CSV, TSV, TXT, XLS ou XLSX déjà produits")
+        hint.setAlignment(Qt.AlignCenter)
+        welcome_layout.addWidget(hint)
         welcome_layout.addStretch()
         self.content_stack.addWidget(welcome)
 
@@ -196,8 +205,10 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(4)
         self.source = QLabel()
+        self.source.setMaximumWidth(240)
         self.statusBar().addPermanentWidget(self.source)
         self.rules_summary = QLabel()
+        self.rules_summary.setMaximumWidth(180)
         self.statusBar().addPermanentWidget(self.rules_summary)
         row = QHBoxLayout()
         row.addWidget(QLabel("Rechercher :"))
@@ -206,8 +217,9 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         self.search.setClearButtonEnabled(True)
         self.search.returnPressed.connect(self.apply)
         row.addWidget(self.search, 1)
-        clear = QPushButton("Réinitialiser")
-        clear.clicked.connect(self.reset)
+        clear = QPushButton("Effacer les filtres")
+        clear.setToolTip("Retirer les recherches et filtres sans modifier les groupes, le tri ou les couleurs.")
+        clear.clicked.connect(self.clear_filters)
         row.addWidget(clear)
         self.only_notes = QCheckBox("Signets")
         self.only_notes.toggled.connect(self.apply)
@@ -244,6 +256,9 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         change_groups = QPushButton("Regrouper…")
         change_groups.clicked.connect(self.group_by)
         group_row.addWidget(change_groups)
+        details_button = QToolButton()
+        details_button.setDefaultAction(self.details_action)
+        group_row.addWidget(details_button)
         layout.addLayout(group_row)
         splitter = self.splitter = QSplitter(Qt.Vertical)
         self.tree = PinnedTree()
@@ -271,7 +286,7 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         self.tree.header().customContextMenuRequested.connect(self.show_header_menu)
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.show_cell_menu)
-        self.tree.setToolTip("Double-clic : signet et note. Dépliez un groupe pour explorer ses lignes.")
+        self.tree.setToolTip("Clic dans la première colonne : surligner la ligne / signet. Double-clic sur une donnée : modifier la note.")
         splitter.addWidget(self.tree)
         from fireblade.ui.layout_styles import AppearanceTextEdit
         self.details = AppearanceTextEdit()
@@ -303,6 +318,10 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
     def set_file_actions(self, enabled):
         for item in self.analysis_actions:
             item.setEnabled(enabled)
+        if hasattr(self, 'save_case_action'):
+            self.save_case_action.setEnabled(self.active_investigation is not None and not self.busy)
+        if hasattr(self, 'update_collection_controls'):
+            self.update_collection_controls()
 
     def error(self, message):
         self.statusBar().showMessage("Opération interrompue ou en erreur")
@@ -716,7 +735,7 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         for i in range(self.model.columnCount()):
             self.tree.setColumnHidden(i, False)
             self.tree.header().moveSection(self.tree.header().visualIndex(i), i)
-            self.tree.setColumnWidth(i, 210 if i == 0 else 150)
+            self.tree.setColumnWidth(i, 90 if i == 0 else 150)
         self.sort_column.blockSignals(True)
         self.sort_column.clear()
         self.sort_column.addItem("Ordre source", None)
@@ -1046,7 +1065,7 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         if not self.model or not index.isValid():
             return
         node = self.model.node(index)
-        if node.group:
+        if node.group or node.footer or index.column() == 0:
             return
         self.edit_bookmark(node.values[0])
 
@@ -1307,9 +1326,14 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
                 return
         self.detach()
         if hasattr(self,'active_investigation'):
+            self.clear_context_preview()
             self.release_investigation_lease()
             self.active_investigation=None
         event.accept()
+
+    def resizeEvent(self,event):
+        super().resizeEvent(event)
+        if hasattr(self,'navigator'):self.update_navigation_visibility()
 
 
 def main():

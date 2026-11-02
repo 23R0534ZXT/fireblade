@@ -7,7 +7,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSpinBox, QVBoxLayout, QWidget
 
 from fireblade.core.collection import Collection
-from fireblade.core.alert_context import build_context, sources
+from fireblade.core.alert_context import build_context, sources, retain_context, discard_preview
 from fireblade.core.engine import Case
 from fireblade.core.models import Filter, View
 
@@ -18,11 +18,15 @@ class AlertContextMixin:
         self._context_navigation=None
         self._context_source_analysis=None
         self._context_source_role=None
+        self._preview_result=None
+        self._preview_collection=None
+        self.context_preview=None
         self.context_action=QAction('Voir le contexte EVTX de l’alerte',self)
-        self.context_action.triggered.connect(self.open_alert_context)
+        self.context_action.triggered.connect(self.preview_alert_context)
         self.context_action.setEnabled(False)
         menu=next(a.menu() for a in self.menuBar().actions() if a.text().replace('&','')=='Analyse')
         menu.addAction(self.context_action)
+        self.workbench.currentChanged.connect(lambda index: self.context_preview.hide() if index!=0 and self.context_preview else None)
 
     def is_hayabusa_analysis(self):
         return self.case is not None and 'Relation à l’alerte' not in self.case.headers and {'RuleTitle','RecordID','Fireblade_EVTX_Source'}.issubset(self.case.headers)
@@ -77,17 +81,20 @@ class AlertContextMixin:
         self.context_minutes=QSpinBox();self.context_minutes.setRange(1,1440);self.context_minutes.setValue(5)
         self.context_minutes.setSuffix(' min')
         row.addWidget(self.context_minutes)
-        self.context_open=QPushButton('Voir le contexte de cette alerte')
-        self.context_open.clicked.connect(self.open_alert_context)
-        row.addWidget(self.context_open)
-        self.context_source=QPushButton('Ouvrir l’événement EVTX source')
-        self.context_source.clicked.connect(self.open_context_source)
-        row.addWidget(self.context_source)
-        self.context_return=QPushButton('Revenir aux alertes')
-        self.context_return.clicked.connect(self.return_to_alerts)
-        row.addWidget(self.context_return)
         row.addStretch()
         layout.addLayout(row)
+        actions=QHBoxLayout()
+        self.context_open=QPushButton('Voir le contexte de cette alerte')
+        self.context_open.clicked.connect(self.preview_alert_context)
+        actions.addWidget(self.context_open)
+        self.context_source=QPushButton('Ouvrir l’événement EVTX source')
+        self.context_source.clicked.connect(self.open_context_source)
+        actions.addWidget(self.context_source)
+        self.context_return=QPushButton('Revenir aux alertes')
+        self.context_return.clicked.connect(self.return_to_alerts)
+        actions.addWidget(self.context_return)
+        actions.addStretch()
+        layout.addLayout(actions)
         self.content_stack.widget(1).layout().insertWidget(0,self._context_bar)
 
     def update_alert_context_bar(self,*_):
@@ -98,6 +105,9 @@ class AlertContextMixin:
         relevant=alert or metadata is not None or source
         row=self.selected_evidence_row() if alert else None
         associated=self.alert_document() is not None
+        if self.context_preview and (not alert or not associated or row is None or not self._preview_result or
+                self._preview_collection is not self.collection or self._preview_result['alert_analysis']!=str(self.case.path) or self._preview_result['alert_row']!=row[0]):
+            self.context_preview.hide()
         self.context_action.setEnabled(alert and row is not None and associated)
         if not relevant:
             if self._context_bar is not None:self._context_bar.hide()
@@ -158,12 +168,89 @@ class AlertContextMixin:
         job=self.run(lambda:build_context(collection,alert,alert_path,row,minutes),done,exclusive=True)
         if job is not None:collection.progress=job.signals.progress.emit
 
+    def preview_alert_context(self):
+        if not self.can_open_file():return
+        selected=self.selected_evidence_row()
+        if self.alert_document() is None or selected is None:
+            self.statusBar().showMessage('Sélectionnez une alerte dans sa collecte.');return
+        row,alert=selected;collection=self.collection;alert_path=str(self.case.path)
+        minutes=self.context_minutes.value()
+        if self._preview_result and self._preview_collection is collection and all((
+                self._preview_result['alert_analysis']==alert_path,self._preview_result['alert_row']==row,
+                self._preview_result['minutes']==minutes)):
+            self.context_preview.show();return
+        self.remember_collection_views()
+        old_result=self._preview_result;old_collection=self._preview_collection
+        def build():
+            result=build_context(collection,alert,alert_path,row,minutes,register=False)
+            case=None
+            try:
+                case=Case(result['analysis'],settings=self.settings,read_only=True)
+                document=result['_document']
+                view=View.from_json(json.dumps(document['view']))
+                rows=[]
+                while len(rows)<result['events']:
+                    page=case.page(view,offset=len(rows))
+                    if not page:break
+                    rows.extend(page)
+                headers=list(case.headers)
+            except BaseException:
+                if case:case.close();case=None
+                discard_preview(collection,result)
+                raise
+            finally:
+                if case:case.close()
+            if old_collection:discard_preview(old_collection,old_result)
+            return result,headers,rows
+        def display(value):
+            result,headers,rows=value
+            self._preview_result=result;self._preview_collection=collection
+            if self.context_preview is None:
+                from fireblade.ui.context_preview import ContextPreview
+                self.context_preview=ContextPreview(self)
+                self.context_preview.hide()
+                self.context_preview.visibilityChanged.connect(self.update_navigation_visibility)
+                if self.width()<1100:self.navigator.hide()
+                self.addDockWidget(Qt.RightDockWidgetArea,self.context_preview)
+                self.context_preview.keep.clicked.connect(self.keep_preview_context)
+                self.context_preview.open_source.clicked.connect(self.open_preview_source)
+            self.context_preview.display(result,headers,rows)
+            if self.width()<1100:self.navigator.hide()
+            self.context_preview.show()
+            self.resizeDocks([self.context_preview],[max(320,self.width()//2)],Qt.Horizontal)
+        job=self.run(build,display,exclusive=True)
+        if job is not None:collection.progress=job.signals.progress.emit
+
+    def keep_preview_context(self):
+        if not self.can_open_file() or not self._preview_result or self._preview_collection is not self.collection:return
+        result=self._preview_result;collection=self.collection
+        try:
+            self._context_navigation=self.connection_work(lambda:retain_context(collection,result),'Enregistrement du contexte…')
+            self.load_case(result['analysis'])
+            self.workbench.setCurrentIndex(0);self.show_collection_report(collection.report)
+        except Exception as exc:self.error(exc)
+
+    def open_preview_source(self):
+        if not self.can_open_file() or self._preview_collection is not self.collection:return
+        row=self.context_preview.selected()
+        if row is not None:self.open_source_reference(row,self._preview_result)
+
+    def clear_context_preview(self):
+        if self.context_preview:self.context_preview.hide()
+        if self._preview_collection:
+            try:discard_preview(self._preview_collection,self._preview_result)
+            except OSError as exc:self.statusBar().showMessage('Contexte temporaire conservé : '+str(exc))
+        self._preview_result=None;self._preview_collection=None
+
     def open_context_source(self):
         if not self.can_open_file() or self.context_metadata() is None:return
         selected=self.selected_evidence_row()
         if selected is None:
             self.statusBar().showMessage('Sélectionnez un événement du contexte.');return
         row=selected[1]
+        self.open_source_reference(row,self.context_metadata())
+
+    def open_source_reference(self,row,context):
         path=row.get('Fireblade_Analysis')
         known={document['path']:document for document,_ in sources(self.collection.report)}
         if path not in known:
@@ -178,7 +265,7 @@ class AlertContextMixin:
                 finally:case.close()
             self.connection_work(verify)
         except Exception as exc:self.error(str(exc) or 'Référence de ligne invalide');return
-        self._context_navigation=self.context_metadata()
+        self._context_navigation=context
         self._context_source_analysis=path
         self._context_source_role=row.get('Relation à l’alerte')
         self.load_case(path)

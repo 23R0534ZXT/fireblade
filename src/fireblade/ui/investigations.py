@@ -51,6 +51,7 @@ class InvestigationMixin:
         self.investigation_collections=[]
         self._investigation_switching=False
         self._investigation_rows={}
+        self._investigation_cache = None
         self.cases_panel=QWidget();layout=QVBoxLayout(self.cases_panel)
         title=QLabel('Cases — dossiers d’enquête');title.setStyleSheet('font-size: 18px; font-weight: bold;')
         layout.addWidget(title)
@@ -65,9 +66,9 @@ class InvestigationMixin:
             if label=='Archiver':self.archive_case_button=button
         controls.addStretch();layout.addLayout(controls)
         filters=QHBoxLayout();self.cases_search=QLineEdit();self.cases_search.setPlaceholderText('Rechercher un nom, une description…')
-        self.cases_search.textChanged.connect(self.refresh_investigations)
+        self.cases_search.textChanged.connect(lambda *_: self.refresh_investigations(reload=False))
         filters.addWidget(self.cases_search,1)
-        self.cases_archived=QCheckBox('Inclure les archivés');self.cases_archived.toggled.connect(self.refresh_investigations)
+        self.cases_archived=QCheckBox('Inclure les archivés');self.cases_archived.toggled.connect(lambda *_: self.refresh_investigations(reload=False))
         filters.addWidget(self.cases_archived)
         refresh=QPushButton('Actualiser');refresh.clicked.connect(self.refresh_investigations);filters.addWidget(refresh)
         layout.addLayout(filters)
@@ -98,6 +99,7 @@ class InvestigationMixin:
         layout.addWidget(self.cases_status)
         self.cases_tab_index=self.workbench.addTab(self.cases_panel,'Cases')
         self.case_badge=QLabel();self.case_badge.setTextFormat(Qt.PlainText)
+        self.case_badge.setMaximumWidth(230);self.case_badge.setMinimumWidth(0)
         self.workbench.setCornerWidget(self.case_badge,Qt.TopRightCorner)
         self.case_collection_panel=QWidget();row=QHBoxLayout(self.case_collection_panel);row.setContentsMargins(0,0,0,0)
         row.addWidget(QLabel('Collecte du case :'))
@@ -115,6 +117,13 @@ class InvestigationMixin:
             if shortcut:action.setShortcut(shortcut)
             menu.insertAction(anchor,action)
         menu.insertSeparator(anchor)
+        self.main_toolbar.addSeparator()
+        self.main_toolbar.addAction(self.save_case_action)
+        self.last_case_save = QLabel()
+        self.last_case_save.setTextFormat(Qt.PlainText)
+        self.statusBar().addPermanentWidget(self.last_case_save)
+        self.save_case_action.setText('Enregistrer le case')
+        self.save_case_action.setToolTip('Sauvegarder le case actif et sa session (Ctrl+Alt+S). Les vues nommées restent indépendantes.')
         self.refresh_investigations();self.update_investigation_badge()
         self.show_investigations()
 
@@ -126,6 +135,13 @@ class InvestigationMixin:
         data=self.active_investigation
         self.case_badge.setText('Case : '+data['name'][:45] if data else 'Aucun case actif')
         self.case_badge.setToolTip(data['name'] if data else 'Ouvrez ou créez un dossier d’enquête dans Cases.')
+        self.welcome_title.setText('Case : '+data['name'] if data else 'Commencer une analyse')
+        self.welcome_title.setWordWrap(True)
+        if data:
+            stamp = datetime.fromisoformat(data['updated']).astimezone().strftime('%H:%M:%S')
+            self.last_case_save.setText('Case enregistré à '+stamp)
+        else:
+            self.last_case_save.clear()
         self.save_case_button.setEnabled(data is not None);self.close_case_button.setEnabled(data is not None)
         self.save_case_action.setEnabled(data is not None);self.close_case_action.setEnabled(data is not None)
         self.case_collection_panel.setVisible(data is not None)
@@ -135,12 +151,14 @@ class InvestigationMixin:
         item=self.cases_table.item(row,0) if row>=0 else None
         return self._investigation_rows.get(item.data(Qt.UserRole)) if item else None
 
-    def refresh_investigations(self,*_):
+    def refresh_investigations(self,*_, reload=True):
         if not hasattr(self,'cases_table'):return
         selected=self.selected_investigation()
         identifier=selected['id'] if selected else None
-        try:records,errors=self.investigation_library.list()
-        except (OSError,ValueError) as exc:records,errors=[],[str(exc)]
+        if reload or self._investigation_cache is None:
+            try:self._investigation_cache=self.investigation_library.list()
+            except (OSError,ValueError) as exc:self._investigation_cache=([],[str(exc)])
+        records,errors=self._investigation_cache
         query=self.cases_search.text().strip().casefold()
         self._investigation_rows={item['id']:item for item in records}
         visible=[item for item in records if (self.cases_archived.isChecked() or item['status']!='archived') and
@@ -199,6 +217,7 @@ class InvestigationMixin:
         for item in self.investigation_collections:self.case_collections_combo.addItem(item['name'],item['path'])
         if self.collection:self.case_collections_combo.setCurrentIndex(self.case_collections_combo.findData(str(self.collection.output)))
         self.case_collections_combo.blockSignals(False)
+        self.refresh_navigation()
 
     def select_investigation_collection(self,index):
         if not self.can_open_file():return
@@ -242,6 +261,7 @@ class InvestigationMixin:
 
     def clear_investigation_workspace(self):
         self.detach()
+        self.clear_context_preview()
         self.release_investigation_lease()
         self.documents=[];self.active_document=-1;self.closed_documents=[];self.sync_tabs()
         self.collection=None;self.investigation_collections=[]

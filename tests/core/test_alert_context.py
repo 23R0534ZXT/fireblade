@@ -98,6 +98,38 @@ def test_context_uses_original_evtx_bases_after_artifact_organization(context_co
     assert result['events']==5 and result['references']==1
 
 
+def test_portable_case_keeps_context_links_without_rewriting_evidence(context_collection,tmp_path):
+    from fireblade.core.case_package import export_package,import_package
+    from fireblade.core.investigations import InvestigationLibrary
+    from fireblade.core.models import AnalysisSnapshot
+    from fireblade.core.sessions import read_session
+    collection,alert=context_collection
+    alert_csv=collection.output/'results'/'alerts.csv'
+    with alert_csv.open('w',newline='',encoding='utf-8') as stream:
+        writer=csv.DictWriter(stream,fieldnames=list(alert));writer.writeheader();writer.writerow(alert)
+    alert_analysis=collection.import_result(alert_csv,'Hayabusa')
+    context=build_context(collection,alert,alert_analysis,1)
+    before=context_rows(context)
+    library=InvestigationLibrary(tmp_path/'cases');data=library.create('Contexte portable')
+    documents=[AnalysisSnapshot(d['path'],d['source'],View.from_json(json.dumps(d['view'])),b'') for d in collection.report['documents']]
+    data=library.save(data['id'],documents,len(documents)-1,[dict(path=str(collection.output),name='Collecte')],str(collection.output),data['revision'])
+    archive=tmp_path/'case.fireblade-case';export_package(library,data,documents,len(documents)-1,archive,include_sources=True)
+    generated_sources=export_package(library,data,documents,len(documents)-1,tmp_path/'generated-sources.fireblade-case')
+    assert generated_sources['missing_sources']==[]  # Result CSVs are already inside the collection workspace.
+    shutil.rmtree(collection.output);shutil.rmtree(collection.root)
+    target=InvestigationLibrary(tmp_path/'imported');imported=import_package(target,archive)['case']
+    snapshots,_=read_session(target.session_path(imported))
+    reopened=Collection.reopen(imported['active_collection'],ToolPack(tmp_path/'pack'))
+    restored_context=dict(analysis=snapshots[-1].path)
+    after=context_rows(restored_context)
+    assert after==before  # Original path strings inside evidence stay exact.
+    from fireblade.core.alert_context import sources
+    known={document['path'] for document,_ in sources(reopened.report)}
+    assert all(reopened.report['portable_relocation'][row['Fireblade_Analysis']] in known for row in after)
+    new_context=build_context(reopened,alert,snapshots[-2].path,1)
+    assert new_context['references']==1 and new_context['events']==5
+
+
 def test_context_can_reopen_without_original_raw_files(context_collection):
     collection,alert=context_collection
     shutil.rmtree(collection.root)

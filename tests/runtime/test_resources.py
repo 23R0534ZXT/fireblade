@@ -15,6 +15,7 @@ from fireblade.ui.help_dialogs import show_guide, show_licenses, show_tutorial
 def test_source_resources_and_user_configuration_priority(tmp_path):
     assert resources.resource_path("docs/guides/UTILISATION.md").is_file()
     assert resources.resource_path("docs/guides/TUTORIEL-COMPLET.md").is_file()
+    assert resources.resource_path('docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md').is_file()
     assert load_settings(resources.default_config()).memory_mb == 256
     from fireblade.runtime.windows_paths import user_directory
     custom = user_directory() / "fireblade.toml"
@@ -81,6 +82,16 @@ def test_complete_tutorial_is_available_from_the_help_menu(qt_application):
     assert any(action.text() == "Tutoriel complet — toutes les fonctionnalités"
                for action in help_menu.actions())
     window.close()
+
+
+def test_investigation_guide_is_readable_inside_the_application(qt_application):
+    from fireblade.ui.help_dialogs import show_investigation_guide
+    collected=[]
+    def close():
+        dialog=QApplication.activeModalWidget()
+        collected.append(dialog.findChild(QTextBrowser).toPlainText());dialog.reject()
+    QTimer.singleShot(0,close);show_investigation_guide(None)
+    assert 'dix dernières versions' in collected[0] and 'Corréler' in collected[0] and 'PDF' in collected[0]
 
 
 def test_core_import_does_not_load_qt():

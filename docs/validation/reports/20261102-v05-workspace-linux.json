@@ -1,0 +1,130 @@
+{
+  "version": "0.5.0",
+  "base_commit": "e3614d2342f622c0e2b6b0dec1604142bae29cbb",
+  "date": "2026-11-02",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "duckdb": "1.5.6",
+  "qt": "6.12.0",
+  "qt_platform": "offscreen",
+  "full_suite": {
+    "tests": 991,
+    "passed": 963,
+    "skipped": 28,
+    "failed": 0,
+    "errors": 0,
+    "seconds": 163.111
+  },
+  "additional_ui_accessibility": {
+    "passed": 25,
+    "scope": "Final timeline scroll host, 1024x600 window, context navigation, reports and embedded help"
+  },
+  "additional_pdf_checks": {
+    "passed": 9,
+    "scope": "Final explicit 72-DPI page geometry and CSS-image scaling, worker-created PDF, embedded timeline image, atomic output, notes, row references and hash preservation"
+  },
+  "timeline_250k": {
+    "status": "passed",
+    "rows": 250000,
+    "source_bytes": 51009272,
+    "source_sha256": "c2182530f1bd58cd6821ee9d895d8dd1e923aef869673022cb5a1634e8c6d947",
+    "memory_limit_mb_per_database": 64,
+    "peak_process_rss_mib": 198.6,
+    "entity_matches": 2475,
+    "timings": {
+      "source_import_s": 2.023,
+      "index_s": 6.082,
+      "entity_query_s": 0.242,
+      "last_page_s": 0.202,
+      "histogram_s": 0.201,
+      "filtered_export_s": 0.253
+    },
+    "checks": [
+      "source_integrity",
+      "full_count",
+      "last_page_independent_oracle",
+      "entity_count_independent_oracle",
+      "histogram_count",
+      "every_filtered_export_row_id"
+    ],
+    "caveat": "Synthetic repeated entities; Linux source engine. Memory budgets are per DuckDB database, not total process RSS."
+  },
+  "timeline_1m": {
+    "status": "passed",
+    "rows": 1000000,
+    "source_bytes": 204370280,
+    "source_sha256": "a596ace1ee5887d78639cacbbff71ba4285befb31f750914ab9357646dd6bc89",
+    "memory_limit_mb_per_database": 64,
+    "peak_process_rss_mib": 210.3,
+    "entity_matches": 9901,
+    "timings": {
+      "source_import_s": 7.591,
+      "index_s": 23.411,
+      "entity_query_s": 1.092,
+      "last_page_s": 0.862,
+      "histogram_s": 0.818,
+      "filtered_export_s": 1.208
+    },
+    "checks": [
+      "source_integrity",
+      "full_count",
+      "last_page_independent_oracle",
+      "entity_count_independent_oracle",
+      "histogram_count",
+      "every_filtered_export_row_id"
+    ],
+    "caveat": "Synthetic repeated entities; Linux source engine. Memory budgets are per DuckDB database, not total process RSS."
+  },
+  "visual_preview": {
+    "events": 4200,
+    "analyses": 6,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "correlation": "exact IP query with zoomed period",
+    "csv_export": "passed"
+  },
+  "portable_case_checks": [
+    "all ZIP CRCs and SHA-256 hashes read back before publication",
+    "every imported member hash verified before creating a case",
+    "source hashes compared with import metadata when transported",
+    "annotations, views and header states retained",
+    "new destination case and source-path rebinding",
+    "raw event values and path filter literals preserved",
+    "retained EVTX context source links rebound without changing row values",
+    "new EVTX context built after original workspaces removed",
+    "unsafe Windows paths, traversal and tampered packages rejected",
+    "cancelled export preserves existing archive"
+  ],
+  "recovery_checks": [
+    "ten bounded session manifests",
+    "old filters restored without overwriting current database annotations",
+    "corrupt case.json discoverable through history",
+    "stale revision rejected",
+    "missing database prevents replacing current case",
+    "automatic save can be disabled and preference is persisted"
+  ],
+  "report_checks": [
+    "HTML values and notes escaped",
+    "explicit count and cell/document limits",
+    "selected rows and per-analysis filters",
+    "missing analyses listed",
+    "PDF created in background worker",
+    "optional timeline figure with applied filter provenance",
+    "independent PDF text extraction preserves complete import SHA-256 values and row references"
+  ],
+  "limitations": [
+    "Native Windows frozen executable must pass its own CI qualification.",
+    "Synthetic performance results do not predict arbitrary forensic workloads.",
+    "Automatic history contains session metadata and references, not historical copies of annotations or databases.",
+    "Portable archive transports current case and collection outputs; keep raw collection artifacts and approved plugins for reruns.",
+    "Dates without timezone are flagged UTC assumptions; normalize source times explicitly when known.",
+    "Entity families are recognized from column names; exact matching does not canonicalize identities, IP addresses or paths.",
+    "Timeline is a refreshable snapshot. Display summaries are bounded; complete values remain in the source analysis."
+  ],
+  "final_failure_guards": {
+    "passed": 17,
+    "scope": "Recovery symlinks, cleanup errors after commit, incomplete PDF and renderer failure, worker PDF, portability and timeline UI"
+  }
+}

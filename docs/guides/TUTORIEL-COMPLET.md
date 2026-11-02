@@ -9,6 +9,7 @@ Commencez par votre parcours d’entrée, puis utilisez les sections de référe
 - [Démarrage](#démarrage)
 - [Première enquête avec le pack de test](#première-enquête-avec-le-pack-de-test)
 - [Cases — dossiers d’enquête](#cases--dossiers-denquête)
+- [Chronologie, récupération et rapports](#chronologie-récupération-et-rapports)
 - [Se repérer dans la fenêtre](#se-repérer-dans-la-fenêtre)
 - [Collecte brute et détection Hayabusa](#collecte-brute-et-détection-hayabusa)
 - [Shellbags et WebCache Windows](#shellbags-et-webcache-windows)
@@ -37,6 +38,26 @@ Commencez par votre parcours d’entrée, puis utilisez les sections de référe
 - [Dépannage par symptôme](#dépannage-par-symptôme)
 - [Fidélité, stockage et limites](#fidélité-stockage-et-limites)
 - [Référence technique et périmètre](#référence-technique-et-périmètre)
+
+## Chronologie, récupération et rapports
+
+La version 0.5 complète ce parcours avec :
+
+- un onglet **Chronologie & corrélations**, avec vue d’ensemble, pistes par
+  analyse, zoom, sélection de période, signets et accès aux lignes sources ;
+- la recherche transversale par utilisateur, IP, chemin, empreinte ou texte,
+  également accessible depuis le menu contextuel d’une cellule ;
+- une sauvegarde automatique toutes les deux minutes et dix versions de
+  récupération des sessions de cases, sans annuler les annotations des bases ;
+- les archives **`.fireblade-case`**, avec vérification SHA-256, réaffectation des
+  références et création d’un nouveau case à l’import ;
+- les rapports **HTML/PDF**, à partir des signets, notes ou lignes sélectionnées,
+  avec une capture facultative de la chronologie.
+
+Ouvrez **Aide → Chronologie, sauvegardes et rapports** pour le parcours détaillé,
+ou lisez le [guide dédié](CHRONOLOGIE-ET-SAUVEGARDES.md). Il explique les dates sans
+fuseau, les lignes sans date, les sources non transportées et les limites des
+rapports. Les corrélations restent des pistes à vérifier.
 
 ## Démarrage
 

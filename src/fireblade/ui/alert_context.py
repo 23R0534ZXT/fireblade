@@ -252,6 +252,7 @@ class AlertContextMixin:
 
     def open_source_reference(self,row,context):
         path=row.get('Fireblade_Analysis')
+        path=self.collection.report.get('portable_relocation',{}).get(path,path)
         known={document['path']:document for document,_ in sources(self.collection.report)}
         if path not in known:
             self.error('Cette référence n’appartient pas aux analyses EVTX de la collecte.');return

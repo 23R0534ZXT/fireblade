@@ -335,3 +335,10 @@ La colonne Lecture distingue les données structurées du texte brut conservé ;
 Importez le dossier contenant les ruches `UsrClass.dat` / `NTUSER.DAT` et la base ESE `WebCacheV01.dat`. Gardez les `.LOG1` / `.LOG2` de registre à côté de leur ruche. Le choix par artefact donne des onglets Shellbags et WebCache, avec les filtres, notes et sauvegardes du case.
 
 Les références au registre, octets Shellbags, tables/containeurs WebCache et dates brutes sont conservés. Les avertissements signalent les ruches/bases sales ou éléments illisibles. Les dates de clé Shellbags ne sont pas des heures de visite certaines ; le lecteur WebCache ne rejoue pas les journaux ESE et ne récupère pas les données supprimées. Voir [les champs et limites du tutoriel](TUTORIEL-COMPLET.md#shellbags-et-webcache-windows).
+
+## Chronologie et sauvegardes avancées
+
+La version 0.5 ajoute un onglet **Chronologie & corrélations**, l’historique de
+récupération des cases, les archives portables `.fireblade-case` et les rapports
+HTML/PDF. Consultez le [guide détaillé](CHRONOLOGIE-ET-SAUVEGARDES.md) pour choisir
+les dates, croiser les artefacts, récupérer une session et transporter une enquête.

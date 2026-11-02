@@ -36,7 +36,8 @@ def test_case_and_session_save_together_and_keep_previous_snapshot(tmp_path):
     assert previous.exists() and read_session(library.session_path(data))[0][0].view.search=='bob'
     data=library.save(data['id'],[], -1,[],None,data['revision'])
     assert data['session'] is None and data['analysis_count']==0
-    assert len(list(library.folder(data['id']).glob('session-*.fireblade-session')))<=1
+    assert len(library.history(data['id'])) == 3
+    assert previous.exists()  # Closing tabs must retain the earlier recoverable session.
 
 
 def test_failed_manifest_commit_keeps_previous_session(tmp_path,monkeypatch):

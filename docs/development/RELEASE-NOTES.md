@@ -1,4 +1,12 @@
-# Fireblade — prototype Windows 0.4
+# Fireblade — prototype Windows 0.5
+
+Un nouvel onglet **Chronologie & corrélations** réunit les analyses dans un index sur disque : densité globale, pistes par analyse, signets sur le graphique, zoom à la molette, sélection de période, déplacement, historique de zoom et vue d’ensemble. Les recherches par utilisateur, IP, chemin et empreinte croisent les analyses ; chaque événement reste relié à sa ligne source. Les réglages temporels sont conservés par case, les lignes sans date restent consultables et les dates sans fuseau sont signalées. L’export CSV suit le périmètre filtré ; le graphique peut être inclus dans un rapport.
+
+Les cases disposent d’une sauvegarde automatique toutes les deux minutes et d’un historique borné à dix versions de session. La récupération restaure les onglets, vues et métadonnées, y compris après corruption de `case.json` ; elle ne revient pas sur les annotations déjà enregistrées dans les bases. Les archives **.fireblade-case** transportent l’état courant, les analyses, annotations et résultats de collecte, avec les sources des analyses en option. Les empreintes sont relues avant publication de l’archive et vérifiées à l’import ; les références sont réaffectées dans un nouveau case sans modifier les valeurs des événements. Les artefacts bruts et les plugins nécessaires à une nouvelle exécution des parseurs restent à conserver séparément.
+
+Les rapports **HTML et PDF** rassemblent les signets, notes ou lignes sélectionnées, la synthèse de l’enquête, les références aux enregistrements et les empreintes à l’import. Les limites et analyses indisponibles sont explicites. La capture de chronologie est facultative ; aucune conclusion de compromission n’est produite automatiquement.
+
+La qualification de sélection à la souris utilise désormais les cellules de données : le premier bandeau de colonne sert au marquage des lignes et ne doit pas être confondu avec une sélection multiple.
 
 La sauvegarde de session vérifie les limites de 1000 analyses et 4 Mio avant de remplacer le fichier précédent. Un dépassement conserve la sauvegarde existante et affiche une erreur ; les fichiers temporaires sont nettoyés.
 

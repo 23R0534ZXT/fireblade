@@ -42,6 +42,12 @@ def show_text(parent, title, content, markdown=False, base_url=None):
                 block = block.next()
         else:
             target = browser.document().baseUrl().resolved(url)
+            if target.isLocalFile():
+                from pathlib import Path
+                path=Path(target.toLocalFile()).resolve()
+                if path.suffix=='.md' and path.is_relative_to(resource_path('docs').resolve()) and path.is_file():
+                    show_text(dialog,path.stem,path.read_text(encoding='utf-8'),markdown=True,base_url=path)
+                    return
             QDesktopServices.openUrl(target)
 
     browser.anchorClicked.connect(open_link)
@@ -65,6 +71,11 @@ def show_guide(parent):
 def show_tutorial(parent):
     path = resource_path("docs/guides/TUTORIEL-COMPLET.md")
     show_text(parent, "Tutoriel complet · Fireblade", path.read_text(encoding="utf-8"), markdown=True, base_url=path)
+
+
+def show_investigation_guide(parent):
+    path=resource_path('docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md')
+    show_text(parent,'Chronologie, sauvegardes et rapports · Fireblade',path.read_text(encoding='utf-8'),markdown=True,base_url=path)
 
 
 def show_licenses(parent):

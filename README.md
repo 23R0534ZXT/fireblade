@@ -166,7 +166,7 @@ Capture from a public demonstration EVTX workflow, rendered offscreen on Linux.
 
 ## Explore the results
 
-A collapsible **Collectes et analyses** navigator groups results by collection and artifact/family without opening inactive databases. Collection outcomes use a sortable table with status/search filters and file diagnostics on demand. Preferences are divided into Appearance, Grid/copy, Dates and Compatibility; formatting rules separate conditions, target and appearance.
+A collapsible **Collectes et analyses** navigator groups results by collection and artifact/family without opening inactive databases. Collection outcomes use a sortable table with status/search filters and file diagnostics on demand. Partial reader errors remain visible when usable output was produced; successful EVTX parsing with warnings still allows Hayabusa detection. Preferences are divided into Appearance, Grid/copy, Dates and Compatibility; formatting rules separate conditions, target and appearance.
 
 | Task | Command or gesture |
 |---|---|
@@ -266,7 +266,9 @@ For reference, the [qualified `0c36f0d` EXE](https://github.com/23R0534ZXT/fireb
 
 The DuckDB memory setting limits its buffer, not total application or external-engine RAM. Wide rows, groups, caches and plugins add costs. The 250,000-row CatScale pack prototype exceeded the default 256 MiB buffer during organization on Windows; the published pack uses a 100,000-row sample that passed with default settings. A large CSV import and collection organization have different memory workloads.
 
-Allow disk space for source data, parser outputs, organized databases and temporary copies. Sessions are limited to 1000 analyses. Interrupted imports cannot resume in the middle of a write; completed collection tasks are retained. HTML/PDF report export is not available. Representative tests do not qualify every Windows version, artifact variant, SQLite map or damaged file.
+Allow disk space for source data, parser outputs, organized databases and temporary copies. Sessions are limited to 1000 analyses and 4 MiB. A standalone session save that exceeds either limit is rejected before replacing the previous file, preserving the existing session and reporting an error. Interrupted imports cannot resume in the middle of a write; completed collection tasks are retained. HTML/PDF report export is not available. Representative tests do not qualify every Windows version, artifact variant, SQLite map or damaged file.
+
+The [2 November 2026 Linux audit and session-save fix](docs/validation/reports/20261102-adversarial-audit-linux.md) records 922 passing tests and 28 skipped tests after integrating the workspace changes. Additional checks covered 42 CSV scenarios and a synthetic 3,275,068,297-byte CSV with 8,380,000 records. These Linux source results do not qualify the Windows executable.
 
 - [Cases/CatScale reliability audit](docs/validation/FIABILITE-CASES-CATSCALE.md).
 - [Shellbags and WebCache validation](docs/validation/SHELLBAGS-WEBCACHE.md).

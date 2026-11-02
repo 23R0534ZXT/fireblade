@@ -155,7 +155,9 @@ def execute(command, cwd, log, timeout=3600):
 
 
 class Collection:
-    def __init__(self, root, output, pack, settings=None, progress=lambda _: None):
+    def __init__(self, root, output, pack, settings=None, progress=lambda _: None, organization='files'):
+        if organization not in ('files', 'artifacts', 'combined'):
+            raise ValueError('Organisation de collecte inconnue')
         self.root, self.output = Path(root).resolve(), Path(output).resolve()
         if not self.root.is_dir():
             raise ValueError('Dossier de collecte introuvable')
@@ -166,7 +168,7 @@ class Collection:
         self._case_lock = threading.Lock()
         self._active_case = None
         self.report = dict(format='fireblade-collection', version=1, source=str(self.root),
-                           output=str(self.output), status='pending', files=[], documents=[], detection=None)
+                           output=str(self.output), organization=organization, status='pending', files=[], documents=[], detection=None)
         manifest = Path(self.pack.root)/'manifest.json'
         if manifest.is_file():
             self.report['toolchain'] = json.loads(manifest.read_text(encoding='utf-8'))
@@ -188,9 +190,9 @@ class Collection:
             atomic_json(self.output/'collection.fireblade-session', dict(
                 format='fireblade-session', version=1, active=0, documents=self.report['documents']))
 
-    def import_result(self, csv, kind):
+    def import_result(self, csv, kind, view=None, register=True):
         check_cancel()
-        if len(self.report['documents']) >= 1000:
+        if register and len(self.report['documents']) >= 1000:
             raise ValueError('Limite de 1000 analyses atteinte ; résultat conservé sur disque')
         target = self.output/'analyses'/(uuid.uuid4().hex+'.timeline')
         case = Case(target, settings=self.settings)
@@ -200,10 +202,12 @@ class Collection:
         try:
             self.progress('Chargement Fireblade : '+Path(csv).name)
             case.import_csv(csv, encoding='auto', progress=self.progress)
-            view = View()
-            self.report['documents'].append(dict(path=str(target), source=case.info,
-                                                   view=json.loads(view.to_json()), header=''))
-            return str(target)
+            view = view or View()
+            document = dict(path=str(target), source=case.info, view=json.loads(view.to_json()), header='')
+            if register:
+                self.report['documents'].append(document)
+                return str(target)
+            return document
         except BaseException:
             failed = True
             raise
@@ -335,6 +339,8 @@ class Collection:
                     finally:
                         if time.monotonic()-self._last_checkpoint >= 1:
                             self.save()
+            from fireblade.core.collection_organization import organize
+            organize(self)
             self.report['status'] = 'complete'
         except OperationCancelled:
             self.report['status'] = 'cancelled'

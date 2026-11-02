@@ -29,3 +29,9 @@ Les contrôles ciblés de la version corrigée couvrent le parsing, la création
 La construction compile les moteurs et plugins, embarque le runtime .NET, les règles et sources Hayabusa, les maps et le batch Kroll. Elle vérifie les points d’entrée des moteurs et les empreintes des archives. Le contrôle du fichier unique relocalisé exécute ensuite les moteurs intégrés, importe l’EVTX et la ruche d’exemple et exige au moins les deux alertes Hayabusa attendues, sans runtime .NET provenant du PATH du poste.
 
 Les résultats ne qualifient pas chaque format ou variante pris en charge par les outils amont. Le parsing source, les limites de ressources des moteurs externes et la compatibilité Windows native doivent être distingués des garanties du moteur de grille DuckDB. La session garde son plafond de 1000 analyses et les fichiers refusés ou non chargés restent explicitement dans le bilan.
+
+## Organisation des résultats
+
+Le dialogue d’import propose un onglet par type d’artefact ou une analyse unique avec groupement sur l’artefact. Sur les 15 analyses de parsing de l’essai réel précédent, les deux organisations conservent exactement 7 627 lignes : trois onglets de familles dans le premier mode, une analyse regroupée dans le second. Les alertes Hayabusa restent indépendantes.
+
+Les tests vérifient également les schémas hétérogènes, les noms de colonnes qui entrent en collision, les zéros initiaux, les fichiers sources, la reprise de session, l’annulation du choix et le maintien de la session originale si l’organisation échoue. Une disposition automatique d’un import précédent ne remplace pas le groupement choisi pour la collecte.

@@ -6,11 +6,40 @@ import uuid
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QAction, QPalette
-from PySide6.QtWidgets import QComboBox, QFileDialog, QHBoxLayout, QLabel, QPushButton, QTabWidget, QTextBrowser, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QTabWidget, QTextBrowser, QVBoxLayout, QWidget
 
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.runtime.resources import resource_path
 from fireblade.runtime.windows_paths import user_directory
+
+
+class CollectionOrganizationDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Organiser les résultats de la collecte')
+        self.resize(570, 260)
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel('Comment souhaitez-vous consulter les résultats ?'))
+        self.artifacts = QRadioButton('Un onglet par type d’artefact')
+        self.artifacts.setChecked(True)
+        layout.addWidget(self.artifacts)
+        separate = QLabel('Exemples : Amcache, EVTX, Shellbags, Jump Lists… Les fichiers du même type sont réunis.')
+        separate.setWordWrap(True)
+        layout.addWidget(separate)
+        self.combined = QRadioButton('Tout dans un seul onglet, regroupé par artefact')
+        layout.addWidget(self.combined)
+        merged = QLabel('Une grille unique, avec les groupes déjà créés. Chaque ligne conserve son fichier source. Les colonnes propres à chaque format restent disponibles.')
+        merged.setWordWrap(True)
+        layout.addWidget(merged)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.button(QDialogButtonBox.Ok).setText('Importer et parser')
+        buttons.button(QDialogButtonBox.Cancel).setText('Annuler')
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def organization(self):
+        return 'combined' if self.combined.isChecked() else 'artifacts'
 
 
 class CollectionMixin:
@@ -81,7 +110,8 @@ class CollectionMixin:
         status = lambda value: names.get(value, value)
         lines = ['Moteurs disponibles : '+(', '.join(ready) or 'aucun pack intégré dans cette construction')]
         if report:
-            lines += ['', 'Dossier source : '+report['source'], 'Dossier de travail : '+report['output'],
+            organization = {'files':'Un onglet par résultat', 'artifacts':'Un onglet par artefact', 'combined':'Onglet unique regroupé par artefact'}.get(report.get('organization', 'files'), '')
+            lines += ['', 'Organisation : '+organization, 'Dossier source : '+report['source'], 'Dossier de travail : '+report['output'],
                       'État de l’import : '+status(report['status']), 'Bilan : '+str(dict(Counter(status(e['status']) for e in report['files']))),
                       'Analyses chargées : '+str(len(report['documents']))]
             if report.get('detection'):
@@ -117,7 +147,12 @@ class CollectionMixin:
 
     def start_collection_job(self, function):
         self.workbench.setCurrentIndex(1)
-        job = self.run(function, self.collection_finished, exclusive=True)
+        def failed(message):
+            self.show_collection_report(self.collection.report)
+            self.collection_report.setPlainText(self.collection_report.toPlainText()+'\nErreur : '+message)
+            self.workbench.setCurrentIndex(1)
+            self.error(message)
+        job = self.run(function, self.collection_finished, exclusive=True, on_error=failed)
         if job is not None:
             self.collection.progress = job.signals.progress.emit
         self.cancel_action.setEnabled(True)
@@ -126,11 +161,16 @@ class CollectionMixin:
         if not self.can_open_file():return
         path = QFileDialog.getExistingDirectory(self, 'Dossier contenant les artefacts forensic')
         if not path:return
+        dialog = CollectionOrganizationDialog(self)
+        accepted = dialog.exec()
+        organization = dialog.organization()
+        dialog.deleteLater()
+        if accepted != QDialog.DialogCode.Accepted:return
         parent = user_directory()/'Collectes'
         parent.mkdir(parents=True, exist_ok=True)
         output = parent/(datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:8])
         try:
-            self.collection = Collection(path, output, self.toolpack(), self.settings)
+            self.collection = Collection(path, output, self.toolpack(), self.settings, organization=organization)
             self.start_collection_job(self.collection.parse)
         except (OSError, ValueError) as exc:
             self.error(exc)

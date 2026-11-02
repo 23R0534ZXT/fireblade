@@ -674,6 +674,11 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
 
     def attach(self, case, initial_view=None, header_state=None, auto_layout=None):
         use_auto_layout=(initial_view is None or header_state == b'') if auto_layout is None else auto_layout
+        collection = getattr(self, 'collection', None)
+        if auto_layout is None and collection is not None and collection.report.get('organization', 'files') != 'files':
+            if any(document['path'] == str(case.path) for document in collection.report['documents']):
+                # The organization selected at import owns the initial/saved view.
+                use_auto_layout = False
         self._layout_save_enabled=True
         self.case = case
         self.content_stack.setCurrentIndex(1)

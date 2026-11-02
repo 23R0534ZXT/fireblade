@@ -188,3 +188,49 @@ def test_cross_file_detection_keeps_all_original_evtx_references(collection, mon
         origins=json.loads(case.page(View())[0][-1])
         assert set(origins)=={str(collection.root/'Security.evtx'),str(collection.root/'System.evtx')}
     finally:case.close()
+
+
+@pytest.mark.parametrize('mode',['artifacts','combined'])
+def test_collection_organization_preserves_rows_fields_and_provenance(collection, monkeypatch, mode):
+    (collection.root/'System.evtx').write_bytes(b'ElfFile\0'+b'1'*40)
+    (collection.root/'other.csv').write_text('user,Artefact,Value\nbob,original,0002\n')
+    collection.report['organization']=mode
+    monkeypatch.setattr('fireblade.core.collection.execute', fake_execute)
+    report=collection.parse()
+    assert report['status']=='complete'
+    snapshots,_=read_session(collection.output/'collection.fireblade-session')
+    assert len(snapshots)==(1 if mode=='combined' else 2)
+    assert len(report['raw_documents'])==4
+    total=0
+    records=[]
+    for snapshot in snapshots:
+        case=Case(snapshot.path)
+        try:
+            total+=case.count(View())
+            assert snapshot.view.groups==([0] if mode=='combined' else [])
+            for row in case.page(View()):records.append(dict(zip(case.headers,row[1:])))
+            if mode=='combined':
+                assert 'User' in case.headers
+                assert any(h.startswith('user (') for h in case.headers)
+                assert case.headers[0]!='Artefact'  # the original source's Artefact remains intact
+        finally:case.close()
+    assert total==4
+    assert {row['Fichier source'] for row in records}=={str(collection.root/name) for name in ('data.csv','other.csv','Security.evtx','System.evtx')}
+    assert any('0002' in row.values() and 'original' in row.values() for row in records)
+    restored=Collection.reopen(collection.output,collection.pack)
+    assert restored.report['organization']==mode
+    if mode=='artifacts':
+        assert {Path(s.source_info['path']).stem for s in snapshots}=={'EVTX','Exports CSV'}
+
+
+def test_organization_failure_keeps_original_session(collection, monkeypatch):
+    collection.report['organization']='combined'
+    monkeypatch.setattr('fireblade.core.collection.execute',fake_execute)
+    original=collection.import_result
+    def fail_organized(source,kind,**kwargs):
+        if kind=='organized':raise ValueError('Organisation interrompue')
+        return original(source,kind,**kwargs)
+    monkeypatch.setattr(collection,'import_result',fail_organized)
+    with pytest.raises(ValueError,match='Organisation interrompue'):collection.parse()
+    assert len(read_session(collection.output/'collection.fireblade-session')[0])==2
+    assert collection.report['status']=='error'

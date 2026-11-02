@@ -40,6 +40,15 @@ def rendered_contrast(widget,rect=None):
     return dict(ink_pixels=ink,contrast=round(contrast,2),background=background)
 
 
+def ensure_control_visible(app, scroll, widget):
+    """Deliver layout requests before scrolling to newly revealed controls."""
+    app.processEvents()
+    app.processEvents()
+    scroll.ensureWidgetVisible(widget)
+    app.processEvents()
+    return scroll.viewport().rect().contains(widget.mapTo(scroll.viewport(), widget.rect().center()))
+
+
 def run_appearance(app,report_path):
     run=GuiRun(app,report_path,'appearance')
     error=None
@@ -89,14 +98,13 @@ def run_appearance(app,report_path):
                     # Exercise every newly scrollable section at every Windows DPI.
                     dialog.rule_steps.setCurrentIndex(2);dialog.advanced_button.setChecked(True)
                     appearance=dialog.format_tabs.widget(0)
-                    appearance.ensureWidgetVisible(dialog.all_source_rows);QTest.qWait(20)
-                    assert appearance.viewport().rect().contains(dialog.all_source_rows.mapTo(appearance.viewport(),dialog.all_source_rows.rect().center())), 'Source-scope checkbox inaccessible after settled layout'
+                    assert ensure_control_visible(app,appearance,dialog.all_source_rows), 'Source-scope checkbox inaccessible after settled layout'
                     run.capture('03-rules-statistics',dialog)
                     dialog.format_tabs.setCurrentIndex(1);dialog.visual.setCurrentIndex(dialog.visual.findData('icon'))
                     dialog.icon_levels.setCurrentIndex(dialog.icon_levels.findData(5));QTest.qWait(20)
                     for widget in (dialog.bound_mode,dialog.icon_colors[4],dialog.icon_floor):
-                        scroll=dialog.format_tabs.widget(1);scroll.ensureWidgetVisible(widget);QTest.qWait(20)
-                        assert scroll.viewport().rect().contains(widget.mapTo(scroll.viewport(),widget.rect().center())), 'Rule control inaccessible after scrolling'
+                        scroll=dialog.format_tabs.widget(1)
+                        assert ensure_control_visible(app,scroll,widget), 'Rule control inaccessible after scrolling'
                     run.capture('03-rules-graphics',dialog)
                     appearance.verticalScrollBar().setValue(0)
                     dialog.format_tabs.setCurrentIndex(0)

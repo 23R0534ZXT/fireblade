@@ -59,7 +59,7 @@ jobs:
           if ($exists -and $state.Trim() -ne 'true') { throw 'Published test pack is immutable; bump the pack version.' }
           $notes = 'artifacts/test-pack/release-notes.md'
           @"
-          ZIP prêt à extraire : artefacts Windows pour les 13 EZ Tools, Shellbags, WebCache, EVTX/Hayabusa, exemple CatScale synthétique en dossier et archive, scénario de 250 000 lignes et exports CSV/TSV/XLSX.
+          ZIP prêt à extraire : artefacts Windows pour les 13 EZ Tools, Shellbags, WebCache, EVTX/Hayabusa, exemple CatScale synthétique en dossier et archive, scénario de 100 000 lignes et exports CSV/TSV/XLSX.
 
           Guide français, résultats attendus, sources, licences et SHA-256 inclus. Les artefacts Windows proviennent de sources publiques indépendantes. L'avertissement de ruche sale du jeu Shellbags est attendu.
 

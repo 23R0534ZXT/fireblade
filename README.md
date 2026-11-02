@@ -22,7 +22,7 @@ A build running on `main` does not mean its release is ready: publication waits 
 
 ## Download a forensic test pack
 
-[**Download Fireblade-Test-Pack-v1.zip**](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) contains public Windows artifacts covering the 13 EZ Tools, Shellbags and WebCache, EVTX for Hayabusa, a clearly labelled synthetic CatScale collection (extracted and archived), a 250,000-row CatScale timeline, and matching CSV/TSV/XLSX examples.
+[**Download Fireblade-Test-Pack-v1.zip**](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) contains public Windows artifacts covering the 13 EZ Tools, Shellbags and WebCache, EVTX for Hayabusa, a clearly labelled synthetic CatScale collection (extracted and archived), a 100,000-row CatScale timeline, and matching CSV/TSV/XLSX examples.
 
 Extract the ZIP and start with its French **LIRE-MOI.md** guide. It explains which folders to import, expected results, case/session checks, and the expected dirty-hive warning on the public Shellbags sample. Sources, licenses, file hashes, and expected counts are included. [Validation and archive checksum](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1) accompany the download. The large 3 GiB CSV remains a separate download. The pack is qualified with application commit `0c36f0d`; its Windows artifacts come from independent public sources.
 

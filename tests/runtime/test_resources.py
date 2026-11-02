@@ -111,3 +111,13 @@ def test_ioc_guide_is_readable_inside_application(qt_application):
         collected.append(dialog.findChild(QTextBrowser).toPlainText());dialog.reject()
     QTimer.singleShot(0,close);show_ioc_guide(None)
     assert '50 000' in collected[0] and 'Interrompre' in collected[0] and 'SHA-512' in collected[0]
+
+
+def test_coverage_guide_is_readable_inside_application(qt_application):
+    from fireblade.ui.help_dialogs import show_coverage_guide
+    collected=[]
+    def close():
+        dialog=QApplication.activeModalWidget()
+        collected.append(dialog.findChild(QTextBrowser).toPlainText());dialog.reject()
+    QTimer.singleShot(0,close);show_coverage_guide(None)
+    assert 'SHA-256' in collected[0] and '200 000' in collected[0] and 'jamais collectés' in collected[0]

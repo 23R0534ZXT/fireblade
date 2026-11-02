@@ -1,5 +1,6 @@
 """Standalone, escaped reports from explicit forensic findings."""
 from datetime import datetime, timezone
+import json
 import html
 import os
 from pathlib import Path
@@ -37,7 +38,7 @@ def describe_view(view, headers):
 
 
 def build_report(reader: WorkspaceReader, title, description='', *, bookmarks_only=True,
-                 respect_filters=True, row_ids=None, limit=2000, timeline=None):
+                 respect_filters=True, row_ids=None, limit=2000, timeline=None,coverage=None):
     if not isinstance(title, str) or not title.strip() or len(title) > 500:
         raise ValueError('Titre de rapport requis (500 caractères maximum)')
     if type(limit) is not int or not 1 <= limit <= 10000:
@@ -61,6 +62,15 @@ def build_report(reader: WorkspaceReader, title, description='', *, bookmarks_on
               (' · filtres de chaque analyse appliqués' if respect_filters else ' · filtres ignorés') +
               (' · sélection explicite de lignes' if row_ids is not None else '') +
               f' · maximum {limit} constats.</p>']:result.append(part)
+    result.append('<h2>Contrôle de couverture</h2>')
+    if coverage is None:result.append('<p class="warning">Aucun contrôle de couverture joint. Ce rapport ne démontre pas la complétude de la collecte.</p>')
+    else:
+        result.append('<p>Instantané du '+escape(coverage.get('created',''))+' · '+('à actualiser' if coverage.get('stale') else 'dernier contrôle réalisé')+'</p>')
+        result.append('<p>'+escape(coverage.get('scope',''))+'</p><pre>'+escape(json.dumps(coverage.get('counts',{}),ensure_ascii=False))+'</pre>')
+        issues=[item for item in coverage.get('findings',[]) if item.get('severity') in ('error','warning')]
+        for item in issues[:100]:
+            result.append('<p class="warning">'+escape(item.get('stage'))+' · '+escape(item.get('path'))+' : '+escape(item.get('reason'))+'</p><p>'+escape(item.get('action'))+'</p>')
+        if len(issues)>100:result.append('<p class="warning">Détail limité aux 100 premiers points ; exporter le bilan JSON complet.</p>')
     if timeline is not None:
         image = base64.b64decode(timeline['png'], validate=True)
         if len(image) > 2 * 1024 * 1024 or not image.startswith(b'\x89PNG\r\n\x1a\n'):
@@ -68,6 +78,7 @@ def build_report(reader: WorkspaceReader, title, description='', *, bookmarks_on
         result.append('<h2>Chronologie graphique</h2><p>' + escape(timeline['caption']) + '</p>')
         result.append('<img alt="Vue graphique de la chronologie" width="680" style="max-width:100%;height:auto" src="data:image/png;base64,'+timeline['png']+'">')
     records, errors, remaining = 0, [], limit
+    omitted=abbreviated=0
     for document in reader.documents:
         reader.check()
         result.append('<h2>' + escape(Path(document.source_info['path']).name) + '</h2>')
@@ -103,10 +114,12 @@ def build_report(reader: WorkspaceReader, title, description='', *, bookmarks_on
                     result.append('<table>')
                     for name, value in zip(case.headers, row[1:-1]):
                         value = '∅' if value is None else str(value)
-                        if len(value) > 20000:value = value[:20000] + '\n[Valeur abrégée dans le rapport ; valeur complète dans l’analyse.]'
+                        if len(value) > 20000:
+                            abbreviated+=1;value = value[:20000] + '\n[Valeur abrégée dans le rapport ; valeur complète dans l’analyse.]'
                         result.append('<tr><th>' + escape(name) + '</th><td><pre>' + escape(value) + '</pre></td></tr>')
                     result.append('</table>')
                 records += included;remaining -= included
+                omitted+=max(0,count-included)
                 if count > included:result.append('<p class="warning">Résultats partiels : limite du rapport atteinte. Les autres constats restent dans les analyses.</p>')
         except Exception as exc:
             from fireblade.core.errors import OperationCancelled
@@ -114,7 +127,7 @@ def build_report(reader: WorkspaceReader, title, description='', *, bookmarks_on
             errors.append(str(exc));result.append('<p class="warning">Analyse non incluse : ' + escape(exc) + '</p>')
     result.append(f'<hr><p>{records} constat(s) inclus · {len(errors)} analyse(s) en erreur.</p></body></html>')
     reader.check()
-    return dict(html='\n'.join(result), records=records, errors=errors)
+    return dict(html='\n'.join(result), records=records, errors=errors,omitted=omitted,abbreviated=abbreviated)
 
 
 def write_report(target, report, documents, *, pdf=False):

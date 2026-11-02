@@ -117,6 +117,8 @@ class TimelineStore:
                                      f'{naive} AS naive, {text} AS text, ' +
                                      ','.join(f'{value} AS {name}' for value, name in zip(arrays, ('users','ips','paths','hashes'))) +
                                      ' FROM events' + where)
+                            from fireblade.core.coverage import analysis_fingerprint
+                            source['analysis_fingerprint']=analysis_fingerprint(case,reader.check)
                             bridge = self.root/'bridge.csv'
                             try:
                                 location = str(bridge).replace("'", "''")
@@ -138,8 +140,9 @@ class TimelineStore:
                                         progress(f'Chronologie · analyse {number+1}/{len(reader.documents)} · {written:,} événements indexés')
                                 finally:chunks.close()
                             finally:bridge.unlink(missing_ok=True)
-                        stats = self.db.execute('SELECT count(*),count(time_ns),count(*) FILTER(WHERE naive) FROM events WHERE source=?', [number]).fetchone()
-                        source.update(rows=stats[0], dated=stats[1], undated=stats[0]-stats[1], naive=stats[2])
+                        stats = self.db.execute("SELECT count(*),count(time_ns),count(*) FILTER(WHERE naive),count(*) FILTER(WHERE time_ns IS NULL AND (source_time IS NULL OR trim(source_time)='')),count(*) FILTER(WHERE time_ns IS NULL AND source_time IS NOT NULL AND trim(source_time)<>'') FROM events WHERE source=?", [number]).fetchone()
+                        source.update(rows=stats[0], dated=stats[1], undated=stats[0]-stats[1], naive=stats[2],empty_dates=stats[3],invalid_dates=stats[4])
+                        if stats[4]:source['invalid_examples']=[dict(row_id=r[0],value=r[1]) for r in self.db.execute("SELECT row_id,left(source_time,200) FROM events WHERE source=? AND time_ns IS NULL AND source_time IS NOT NULL AND trim(source_time)<>'' ORDER BY row_id LIMIT 5",[number]).fetchall()]
                     except OperationCancelled:raise
                     except Exception as exc:
                         # DuckDB errors in our transaction abort it; source errors do not.
@@ -205,7 +208,7 @@ class TimelineStore:
         if result is None:raise ValueError('Date ISO invalide ; indiquez le fuseau (ex. 2026-01-01T12:00:00Z)')
         return int(result)
 
-    def export_csv(self, target, **filters):
+    def export_csv(self, target, *, receipt=False, **filters):
         from fireblade.core.case_package import check_cancelled
         from fireblade.core.paths import protected_destination
         target = Path(target).resolve()
@@ -216,8 +219,11 @@ class TimelineStore:
         try:
             with self.lock, tempfile.NamedTemporaryFile('w', encoding='utf-8-sig', newline='', dir=target.parent, suffix='.partial', delete=False) as stream:
                 temporary = Path(stream.name)
-                writer = csv.writer(stream)
-                writer.writerow(['Date_UTC','Analyse','Source','Ligne_source','Date_source','Résumé_d’événement','Note','Signet','Fuseau_UTC_supposé','SHA256_source_à_l_import'])
+                from fireblade.core.coverage import RowDigest,verify_export
+                content=RowDigest();writer = csv.writer(stream)
+                headers=['Date_UTC','Analyse','Source','Ligne_source','Date_source','Résumé_d’événement','Note','Signet','Fuseau_UTC_supposé','SHA256_source_à_l_import']
+                writer.writerow(headers)
+                expected=self.db.execute('SELECT count(*) FROM events'+where,args).fetchone()[0]
                 cursor = self.db.execute('SELECT source,row_id,time_ns,source_time,summary,note,bookmarked,naive FROM events'+where+
                                          ' ORDER BY time_ns ASC NULLS LAST,source,row_id',args)
                 count = 0
@@ -225,9 +231,14 @@ class TimelineStore:
                     check_cancelled()
                     for row in rows:
                         source = self.sources[row[0]]
-                        writer.writerow([utc_label(row[2]),source['path'],source['original'],row[1],row[3],row[4],row[5],row[6],row[7],source['sha256']])
+                        values=[utc_label(row[2]),source['path'],source['original'],row[1],row[3],row[4],row[5],row[6],row[7],source['sha256']]
+                        content.update(values);writer.writerow(values)
                     count += len(rows)
+            if count!=expected:raise ValueError(f'Export incomplet : {count} / {expected} lignes')
+            verified=verify_export(temporary,expected,headers,content.hexdigest(),checker=check_cancelled);sha=verified['sha256']
             check_cancelled();os.replace(temporary,target)
+            if receipt:return dict(path=str(target),expected=expected,written=count,sha256=sha,verified_rows=verified['verified_rows'],content_sha256=verified['content_sha256'],filters=filters,
+                                   partial=any(s['error'] for s in self.sources),undated=sum(s['undated'] for s in self.sources),sources=self.sources)
             return count
         finally:
             if temporary:temporary.unlink(missing_ok=True)

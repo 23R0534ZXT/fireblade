@@ -139,7 +139,7 @@ class HuntStore:
                                 (mapping.get(source['path'],source['path']),json.dumps(info,ensure_ascii=False),source['id']))
             self.set_meta('portable_rebound',True);self.db.commit();self.metadata=self.all_meta()
 
-    def export(self,target,summary=False):
+    def export(self,target,summary=False,receipt=False):
         target=Path(target).resolve();sources=self.sources()
         protected=[self.path]+[s[key] for s in sources for key in ('path',)]+[s['info']['path'] for s in sources]
         origin=self.metadata.get('origin',{}).get('path')
@@ -172,7 +172,13 @@ class HuntStore:
         try:
             with self.lock:
                 with tempfile.NamedTemporaryFile(dir=target.parent,suffix='.partial',delete=False) as stream:temporary=Path(stream.name)
-                iterator=iter(records())
+                expected=self.db.execute('SELECT count(*) FROM indicators').fetchone()[0]+self.db.execute('SELECT count(*) FROM rejections').fetchone()[0] if summary else self.db.execute('SELECT count(*) FROM hits').fetchone()[0]
+                from fireblade.core.coverage import RowDigest,verify_export
+                content=RowDigest();written=0
+                def counted():
+                    nonlocal written
+                    for row in records():written+=1;content.update(row);yield row
+                iterator=iter(counted())
                 if target.suffix.lower()=='.xlsx':
                     from fireblade.core.spreadsheets import write_xlsx
                     class Cursor:
@@ -182,7 +188,10 @@ class HuntStore:
                     with temporary.open('w',encoding='utf-8-sig',newline='') as stream:
                         writer=csv.writer(stream);writer.writerow(headers)
                         for row in iterator:check_cancelled();writer.writerow(row)
+                if written!=expected:raise ValueError(f'Export incomplet : {written} / {expected} lignes')
+                verified=verify_export(temporary,expected,headers,content.hexdigest(),xlsx=target.suffix.lower()=='.xlsx',checker=check_cancelled);sha=verified['sha256']
                 check_cancelled();os.replace(temporary,target)
+            if receipt:return dict(path=str(target),expected=expected,written=written,sha256=sha,verified_rows=verified['verified_rows'],content_sha256=verified['content_sha256'],partial=partial,truncated=truncated,summary=summary)
             return str(target)
         finally:
             if temporary:temporary.unlink(missing_ok=True)

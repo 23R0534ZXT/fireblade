@@ -695,7 +695,9 @@ class Case:
                 sql = f"SELECT {cols} FROM events{where}{self.order(view)}"
             owns_temporary = False
             try:
-                cursor = self.db.execute(sql, args)
+                expected=self.db.execute('SELECT count(*) FROM ('+sql+') AS export_coverage',args).fetchone()[0]
+                from fireblade.core.coverage import ExportCursor,verify_export
+                cursor = ExportCursor(self.db.execute(sql, args))
                 if target.suffix.lower() == ".xlsx":
                     from fireblade.core.spreadsheets import write_xlsx
                     with temporary.open("xb"):
@@ -710,7 +712,12 @@ class Case:
                             self.check_cancelled()
                             writer.writerows(batch)
                 self.check_cancelled()
-                os.replace(temporary, target)
+                if cursor.written!=expected:raise ValueError(f'Export incomplet : {cursor.written} lignes écrites sur {expected} attendues')
+                verified=verify_export(temporary,expected,headers,cursor.rows.hexdigest(),xlsx=target.suffix.lower()=='.xlsx',checker=self.check_cancelled)
+                sha=verified['sha256']
+                self.check_cancelled();os.replace(temporary, target)
+                return dict(path=str(target),expected=expected,written=cursor.written,sha256=sha,content_sha256=verified['content_sha256'],verified_rows=verified['verified_rows'],analysis=str(self.path),source=self.info['path'],
+                            source_rows=self.info['rows'],available_columns=len(self.headers),view=json.loads(view.to_json()),columns=headers,grouped=bool(grouped and view.groups))
             except Exception:
                 if owns_temporary:
                     temporary.unlink(missing_ok=True)

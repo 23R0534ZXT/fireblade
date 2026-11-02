@@ -16,4 +16,6 @@
 | Consulter les derniers ajouts et leurs contrôles | [Ajouts TLE](validation/AJOUTS-TLE.md) |
 | Lire les anciens essais et captures | [Archives](archive/README.md) |
 
+[Contrôle de couverture et diagnostics](guides/COUVERTURE-COLLECTE.md) : inventaires, dates, intégrité, reçus d’export et limites.
+
 Le tutoriel complet, le guide utilisateur et les notices sont intégrés au programme. Le reste de ce dossier est destiné au développement et n’est pas nécessaire à côté du `.exe`.

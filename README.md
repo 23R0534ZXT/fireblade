@@ -237,6 +237,14 @@ Synthetic demonstration rendered offscreen on Linux; this is not a Windows EXE c
 
 The **Chasse IOC** tab searches up to 50,000 IP, domain, HTTP/HTTPS URL and file-hash indicators across every open analysis, entirely offline. Paste a list or import TXT/CSV/TSV, inspect per-indicator row and field counts, filter paginated occurrences, jump to an original row, and export CSV/XLSX summaries or details. Subdomain matching and saved-filter scope are explicit options. Full-scan counts continue after the configurable detail-storage limit; unreadable analyses and rejected indicators are reported. Hunts persist in investigation folders and travel with portable cases. [Usage and matching limits](docs/guides/CHASSE-IOC.md) · [Synthetic IOC list](examples/ioc/indicators.csv).
 
+### Collection coverage and diagnostics
+
+![Collection coverage diagnostics](docs/assets/fireblade-coverage.png)
+
+Synthetic offscreen Linux demonstration showing missing and invalid dates, empty columns and an uninventoried file.
+
+**Couverture & diagnostics** connects collection inventories, imports, analysis scope, timestamps, IOC hunts and exports. It reports missing or changed sources, parser failures, uninventoried files, missing outputs, closed analyses, empty columns, inconsistent row IDs and unusable dates, with causes and corrective actions. Expected artifact families can be adjusted per investigation. Optional SHA-256 checks revalidate sources and the latest export receipts. CSV/XLSX data exports are independently reopened to verify their schema, row counts and textual content before atomic replacement. The incident journal and last audit persist with portable cases; HTML/PDF reports include the latest coverage snapshot and its limitations. [Checks, workflow and limits](docs/guides/COUVERTURE-COLLECTE.md).
+
 ### Investigation reports
 
 **Créer un rapport HTML / PDF…** exports bookmarks, notes or selected rows with your

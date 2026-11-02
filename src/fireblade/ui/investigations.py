@@ -269,6 +269,7 @@ class InvestigationMixin:
         self.detach()
         if getattr(self,'timeline_panel',None):self.timeline_panel.reset_workspace()
         if getattr(self,'ioc_panel',None):self.ioc_panel.reset_workspace()
+        if getattr(self,'coverage_panel',None):self.coverage_panel.reset_workspace()
         self.clear_context_preview()
         self.release_investigation_lease()
         self.documents=[];self.active_document=-1;self.closed_documents=[];self.sync_tabs()

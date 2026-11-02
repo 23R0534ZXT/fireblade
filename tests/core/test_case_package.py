@@ -142,3 +142,20 @@ def test_ioc_hunts_survive_portable_case_without_rewriting_observations(tmp_path
         assert restored.sources()[0]['path']!=document.path
         assert Path(restored.sources()[0]['info']['path']).is_file()
     finally:restored.close()
+
+
+def test_coverage_history_and_last_audit_are_transported_with_references(tmp_path):
+    from fireblade.core.coverage import audit,event,save_state,load_state,save_report,load_report,FORMAT
+    from fireblade.core.workspace_reader import WorkspaceReader
+    library,data,document,case,source=prepared(tmp_path)
+    folder=library.folder(data['id'])
+    save_state(folder/'coverage-state.json',dict(format=FORMAT,version=1,events=[event('Import','info','Original '+str(source),document.path,source=str(source))],dropped=0))
+    report=audit(WorkspaceReader([document],active=case));save_report(folder/'coverage-last.json',report)
+    archive=tmp_path/'case.fireblade-case'
+    try:export_package(library,data,[document],0,archive,include_sources=True,active_case=case)
+    finally:case.close()
+    target=InvestigationLibrary(tmp_path/'new-cases');result=import_package(target,archive);restored=target.folder(result['case']['id'])
+    state=load_state(restored/'coverage-state.json');last=load_report(restored/'coverage-last.json')
+    assert state['events'][0]['reason']=='Original '+str(source)
+    assert Path(state['events'][0]['path']).is_file() and state['events'][0]['path']!=document.path
+    assert Path(last['sources'][0]['path']).is_file() and last['stale']

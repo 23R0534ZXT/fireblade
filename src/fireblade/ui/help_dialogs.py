@@ -83,6 +83,11 @@ def show_ioc_guide(parent):
     show_text(parent,'Chasse IOC en masse · Fireblade',path.read_text(encoding='utf-8'),markdown=True,base_url=path)
 
 
+def show_coverage_guide(parent):
+    path=resource_path('docs/guides/COUVERTURE-COLLECTE.md')
+    show_text(parent,'Couverture de collecte et diagnostics · Fireblade',path.read_text(encoding='utf-8'),markdown=True,base_url=path)
+
+
 def show_licenses(parent):
     parts = [resource_path("LICENSE").read_text(encoding="utf-8")]
     legal = resource_path("legal")

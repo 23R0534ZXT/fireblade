@@ -364,7 +364,8 @@ class TimelinePanel(QWidget):
             self.saved_bounds=None;self.saved_sources=None;self.applied_filters=copy.deepcopy(filters);self.built_respect=respect
             self.overview.display(overview,self.bounds)
             self.show_result(page,histogram);self.save_state()
-        self.pending_job=self.window.run(work,done,on_error=self.failed,on_cancel=lambda:self.failed('Construction interrompue ; l’index précédent est conservé.'))
+            self.window.coverage_panel.record_timeline(self)
+        self.pending_job=self.window.run(work,done,on_error=self.failed,on_cancel=lambda:self.failed('Construction interrompue ; l’index précédent est conservé.'),coverage_stage='Chronologie')
 
     def failed(self,message):
         self.reader=None;self.busy(False);self.stats.setText(str(message))
@@ -393,7 +394,7 @@ class TimelinePanel(QWidget):
             if fit:self.full_bounds=self.bounds;self.overview.display(histogram,self.bounds)
             else:self.overview.display(self.overview.histogram,self.bounds)
             self.show_result(page,histogram);self.save_state()
-        self.pending_job=self.window.run(work,done,on_error=self.failed,on_cancel=lambda:self.failed('Requête interrompue.'))
+        self.pending_job=self.window.run(work,done,on_error=self.failed,on_cancel=lambda:self.failed('Requête interrompue.'),coverage_stage='Chronologie')
 
     def show_result(self,page,histogram):
         sources=self.store.sources
@@ -498,8 +499,9 @@ class TimelinePanel(QWidget):
         if not path:path,_=QFileDialog.getSaveFileName(self,'Exporter la chronologie filtrée','chronologie.csv','CSV (*.csv)')
         if not path or not self.window.investigation_destination_is_safe(path):return
         filters=copy.deepcopy(self.applied_filters);store=self.store;self.busy(True)
-        def done(count):self.busy(False);self.stats.setText(f'Chronologie exportée : {count} événements · {path}')
-        self.pending_job=self.window.run(lambda:store.export_csv(path,**filters),done,exclusive=True,on_error=self.failed,on_cancel=lambda:self.failed('Export annulé.'))
+        def done(receipt):
+            self.busy(False);self.stats.setText(f"Chronologie exportée : {receipt['written']} événements · {path}");self.window.coverage_panel.export_done(receipt)
+        self.pending_job=self.window.run(lambda:store.export_csv(path,receipt=True,**filters),done,exclusive=True,on_error=self.failed,on_cancel=lambda:self.failed('Export annulé.'),coverage_stage='Export',coverage_context=path)
 
 
 class TimelineMixin:

@@ -121,10 +121,11 @@ def test_collection_report_filters_statuses_and_keeps_exact_diagnostics(qt_appli
         dict(path='A.evtx',status='complete',tools=['EvtxECmd']),
         dict(path='B.dat',status='attention',tools=['Shellbags'],sha256='abc',runs=[
             dict(tool='Shellbags',status='complete_with_warnings',warnings=['Ruche sale'],outputs=[])]),
-        dict(path='C.bin',status='error',tools=[],error='Illisible')])
+        dict(path='C.bin',status='error',tools=[],error='Illisible'),
+        dict(path='D.dat',status='attention',tools=['RECmd'],runs=[dict(tool='RECmd',status='error',error='Ruche illisible')])])
     try:
         panel.set_report(report,'Bilan complet de démonstration')
-        assert panel.proxy.rowCount()==3
+        assert panel.proxy.rowCount()==4
         panel.status.setCurrentIndex(panel.status.findData('warnings'))
         assert panel.proxy.rowCount()==1
         panel.table.setCurrentIndex(panel.proxy.index(0,0))
@@ -133,6 +134,9 @@ def test_collection_report_filters_statuses_and_keeps_exact_diagnostics(qt_appli
         assert panel.proxy.rowCount()==1
         panel.status.setCurrentIndex(panel.status.findData('errors'))
         assert panel.proxy.rowCount()==0
+        panel.search.clear()
+        assert panel.proxy.rowCount()==2
+        assert '2 erreurs/interrompus' in panel.summary.text()
         assert panel.toPlainText()=='Bilan complet de démonstration'
     finally:
         panel.close();panel.deleteLater()
@@ -167,6 +171,9 @@ def test_hayabusa_is_disabled_for_text_collection_and_enabled_for_parsed_evtx(qt
         window.show_collection_report(report)
         assert not window.hayabusa_button.isEnabled()
         report['files'].append(dict(path='System.evtx',status='complete',tools=['EvtxECmd']))
+        window.show_collection_report(report)
+        assert window.hayabusa_button.isEnabled()
+        report['files'][-1].update(status='attention',runs=[dict(tool='EvtxECmd',status='complete_with_warnings',outputs=[dict(analysis='events.timeline')])])
         window.show_collection_report(report)
         assert window.hayabusa_button.isEnabled()
         window.busy=True;window.update_collection_controls()

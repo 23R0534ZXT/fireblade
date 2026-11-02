@@ -13,6 +13,16 @@ STATUSES = {'pending':'En attente', 'running':'En cours', 'complete':'Terminé',
     'no_output':'Aucune sortie', 'companion':'Journal de transaction'}
 
 
+def outcome(entry):
+    state=entry['status']
+    # A file can be "attention" because one of several readers failed.
+    # Keep that failure discoverable in the error filter and counters.
+    if state in ('error','cancelled') or any(run['status'] in ('error','cancelled') for run in entry.get('runs',[])):return 'errors'
+    if state in ('complete_with_warnings','attention','no_output'):return 'warnings'
+    if state in ('unsupported','skipped'):return 'unsupported'
+    return 'complete' if state=='complete' else 'other'
+
+
 class OutcomeModel(QAbstractTableModel):
     def __init__(self, parent=None):
         super().__init__(parent);self.entries=[]
@@ -29,7 +39,9 @@ class OutcomeModel(QAbstractTableModel):
         entry=self.entries[index.row()]
         if role==Qt.ToolTipRole:return str(entry.get('path',''))
         if role==Qt.DisplayRole:
-            return [STATUSES.get(entry['status'],entry['status']),str(entry.get('path','')),
+            status=STATUSES.get(entry['status'],entry['status'])
+            if outcome(entry)=='errors' and entry['status']=='attention':status+=' · erreur de lecteur'
+            return [status,str(entry.get('path','')),
                     ', '.join(entry.get('tools',[])),
                     sum(len(run.get('outputs',[])) for run in entry.get('runs',[]))][index.column()]
 
@@ -39,11 +51,7 @@ class OutcomeFilter(QSortFilterProxyModel):
 
     def filterAcceptsRow(self, row, parent):
         entry=self.sourceModel().entries[row]
-        state=entry['status']
-        states={'warnings':{'complete_with_warnings','attention','no_output'},
-                'errors':{'error','cancelled'},'unsupported':{'unsupported','skipped'},
-                'complete':{'complete'}}
-        if self.status and state not in states[self.status]:return False
+        if self.status and outcome(entry)!=self.status:return False
         return self.query in (str(entry.get('path',''))+' '+str(entry.get('error',''))+' '+
                               ' '.join(entry.get('tools',[]))).casefold()
 
@@ -91,10 +99,8 @@ class CollectionReport(QWidget):
         self.model.beginResetModel();self.model.entries=report.get('files',[]) if report else [];self.model.endResetModel()
         self.open_folder.setEnabled(report is not None)
         if report:
-            counts=Counter(e['status'] for e in self.model.entries)
-            successes=counts['complete'];warnings=sum(counts[s] for s in ('complete_with_warnings','attention','no_output'))
-            errors=counts['error']+counts['cancelled'];other=counts['unsupported']+counts['skipped']
-            self.summary.setText(f'{len(self.model.entries)} fichiers · {successes} réussis · {warnings} à vérifier · {errors} erreurs/interrompus · {other} non reconnus/ignorés\n'+
+            counts=Counter(outcome(e) for e in self.model.entries)
+            self.summary.setText(f"{len(self.model.entries)} fichiers · {counts['complete']} réussis · {counts['warnings']} à vérifier · {counts['errors']} erreurs/interrompus · {counts['unsupported']} non reconnus/ignorés · {counts['other']} autres/compagnons\n"+
                 'Import : '+STATUSES.get(report['status'],report['status'])+' · '+str(len(report.get('documents',[])))+' analyses · Source : '+report['source'])
         else:self.summary.setText('Aucune collecte ouverte. Importez un dossier ou reprenez une collecte existante.')
         self.details.setPlainText('Sélectionnez un fichier pour lire ses avertissements, sa provenance et ses sorties. « Bilan complet » affiche les informations de la collecte.' if report else text)

@@ -69,5 +69,31 @@
     "Count retained rows incrementally before a later source failure",
     "Include TAR entry ordinal in the source reference"
   ],
-  "qualification_note": "The previous EXE report is identified by commit; it is not a Windows execution of these fixes. The new workflow must pass on the delivered commit."
+  "qualification_note": "The previous EXE report is identified by commit; it is not a Windows execution of these fixes. The new workflow must pass on the delivered commit.",
+  "local_skips": [
+    {
+      "test": "test_raster_wrappers_are_canonicalized_without_following_metadata[GIF]",
+      "reason": "Image encoder unavailable; decoding remains guarded by Qt"
+    },
+    {
+      "test": "test_windows_extended_long_unicode_paths",
+      "reason": "Native Windows long-path integration"
+    },
+    {
+      "test": "test_actual_unc_import_export_reopen_and_source_alias_protection",
+      "reason": "Requires an explicitly enabled disposable Windows SMB runner"
+    },
+    {
+      "test": "test_probe_reads_only_header_prefix",
+      "reason": "Existing 3 GiB dataset not present"
+    },
+    {
+      "test": "test_default_case_directory_is_user_local_appdata",
+      "reason": "Windows natif requis"
+    },
+    {
+      "test": "test_windows_locked_export_keeps_existing_file",
+      "reason": "Windows natif requis"
+    }
+  ]
 }

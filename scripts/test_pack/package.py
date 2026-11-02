@@ -185,7 +185,7 @@ def verify_archive(archive):
     return manifest
 
 
-def package(directory,project,volume_rows=250000,source_commit=None):
+def package(directory,project,volume_rows=100000,source_commit=None):
     from fireblade.core.catscale import parse
     project,directory=Path(project),Path(directory);directory.mkdir(parents=True)
     root=directory/ROOT;root.mkdir();records=[]
@@ -251,7 +251,7 @@ def package(directory,project,volume_rows=250000,source_commit=None):
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--out',type=Path,required=True);parser.add_argument('--volume-rows',type=int,default=250000);parser.add_argument('--source-commit');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--out',type=Path,required=True);parser.add_argument('--volume-rows',type=int,default=100000);parser.add_argument('--source-commit');args=parser.parse_args()
     if args.volume_rows<2:parser.error('At least two volume records are required')
     print(json.dumps(package(args.out,Path(__file__).parents[2],args.volume_rows,args.source_commit),ensure_ascii=False,indent=2))
 

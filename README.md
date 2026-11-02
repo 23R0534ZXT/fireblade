@@ -119,7 +119,7 @@ Les ajouts de présentation restent dans les menus : le démarrage conserve une 
 | Annulation | Requêtes, import, export et annotations ; restauration de l’analyse précédente après import échoué |
 | Aide intégrée | Guide, licences et informations de construction consultables dans le `.exe` |
 
-Fireblade ouvre les exports déjà produits par les outils forensic. Il ne lit pas directement une MFT, une ruche de registre, un fichier EVTX ou un Prefetch brut.
+La grille ouvre les exports produits par les outils forensic. **Importer un dossier de collecte…** délègue aussi les artefacts bruts reconnus aux 13 parseurs EZ Tools intégrés au pack Windows, puis charge leurs CSV dans une session. **Analyser la collecte avec Hayabusa** ajoute les alertes EVTX à la session. Les formats non reconnus et les erreurs restent dans le bilan. Voir [le parcours collecte et détection](docs/guides/UTILISATION.md#importer-une-collecte-dartefacts-et-lancer-hayabusa). Fireblade ne monte pas une image disque et ne prétend pas parser tous les formats forensic existants.
 
 ## Première analyse
 

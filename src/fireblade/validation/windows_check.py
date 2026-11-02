@@ -181,6 +181,11 @@ def run_check(app, report_path):
                     expect((Path(sys._MEIPASS) / name).is_file(), f"Le runtime Windows {name} n’est pas intégré.")
                 expect(sorted(p.name for p in Path(sys.executable).parent.iterdir()) == [Path(sys.executable).name], "Le programme a besoin de fichiers à côté du .exe.")
         check("single_file_embedded_guide_defaults_and_licenses", embedded_resources)
+        if report['frozen']:
+            from fireblade.validation.forensic_tools import verify_embedded_engines
+            def forensic_engines():
+                report['forensic_engines'] = verify_embedded_engines(report_path.parent/(report_path.stem+'-forensic-engines'))
+            check('embedded_EZ_parsers_and_real_Hayabusa_alerts', forensic_engines)
 
         def importing():
             import_with_dialog(source, case_path)

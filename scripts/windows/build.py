@@ -31,6 +31,8 @@ def main():
     shutil.copytree(host.parent,generated/"plugin-host",dirs_exist_ok=True)
     shutil.copy2(root/"build/windows/plugin-fixture/Fireblade.PluginFixture.dll",generated/"plugin-host/Fireblade.PluginFixture.dll")
     shutil.copy2(root/"build/windows/plugin-fixture/Fireblade.PluginFunctionsFixture.dll",generated/"plugin-host/Fireblade.PluginFunctionsFixture.dll")
+    from scripts.windows.build_forensic_tools import build as build_forensic_tools
+    build_forensic_tools(root, generated)
     staging = root / "build" / "windows" / "output"
     command = [str(python), "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--onefile",
                "--name", "Fireblade", "--paths", str(root / "src"),

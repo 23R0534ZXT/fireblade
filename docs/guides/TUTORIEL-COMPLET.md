@@ -6,6 +6,7 @@ Fireblade est un explorateur local de CSV, TSV, TXT délimité, XLS et XLSX pour
 
 ## Table des matières
 
+- [Collecte brute et détection Hayabusa](#collecte-brute-et-détection-hayabusa)
 - [Parcours guidé](#parcours-guidé)
 - [Démarrage](#démarrage)
 - [Ouvrir des données](#ouvrir-des-données)
@@ -427,7 +428,7 @@ Les règles globales sont stockées dans `%LOCALAPPDATA%\Fireblade\regles-global
 
 ## Profils forensic, détection des lecteurs et transformations
 
-Le catalogue embarqué contient des signatures et des noms de formats forensic issus des déclarations publiques de TLEFilePlugins. Il aide Fireblade à reconnaître les colonnes, présenter dates et booléens, réordonner les champs et proposer certaines règles. Il ne contient pas un parseur spécialisé pour chaque nom de format. Les exports déjà produits sont ouverts ; Fireblade ne lit pas directement les images disque, ruches de registre, EVTX ou fichiers Prefetch bruts.
+Le catalogue embarqué contient des signatures et des noms de formats forensic issus des déclarations publiques de TLEFilePlugins. Il aide Fireblade à reconnaître les colonnes, présenter dates et booléens, réordonner les champs et proposer certaines règles. Il ne contient pas un parseur spécialisé pour chaque nom de format. Les exports déjà produits sont ouverts ; Les profils de présentation ne décodent pas les artefacts bruts. Le parcours **Importer un dossier de collecte** délègue les ruches, EVTX, Prefetch et autres formats reconnus aux moteurs intégrés. Les images disque ne sont pas montées par Fireblade.
 
 Un profil JSON personnel peut définir un nom, une signature, les colonnes date/booléennes, un ordre, des règles et certaines transformations déclaratives. Dans **Affichage → Profils et plugins**, installez ou retirez ces profils. Ils ne peuvent pas contenir du code. Les champs inconnus restent présents ; une reconnaissance insuffisante revient à l’import générique.
 
@@ -870,3 +871,18 @@ Les intitulés ci-dessous lèvent les ambiguïtés des entrées regroupées dans
 | Affichage → Onglet précédent | Activer l’analyse précédente, également par Ctrl+Maj+Tab. |
 | Analyse → Enregistrer la vue | Nommer la vue dans l’analyse courante ; un nom existant est remplacé. |
 | Analyse → Exporter la disposition | Écrire une vue partageable ou un XML TLE compatible, sans exporter les événements. |
+
+
+## Collecte brute et détection Hayabusa
+
+**Fichier → Importer un dossier de collecte…** et la barre **Collecte** ouvrent le nouveau parcours de parsing. Choisissez un dossier source ; Fireblade crée un dossier de travail séparé dans le profil utilisateur et inventorie récursivement les fichiers. Les CSV/TSV déjà produits sont chargés directement ; les artefacts reconnus sont envoyés aux moteurs correspondants. Les résultats ouvrent une session Fireblade. L’onglet **Collecte et détection** permet de consulter les succès, erreurs, absences de sortie et fichiers non pris en charge, puis de reprendre un dossier de travail existant.
+
+Le pack contient EvtxECmd, AmcacheParser, AppCompatCacheParser, PECmd, MFTECmd, RECmd avec son batch Kroll, LECmd, JLECmd, SrumECmd, WxTCmd, RBCmd, RecentFileCacheParser et SQLECmd. Les versions sources sont épinglées dans le manifeste de construction. Une reconnaissance propose un moteur ; elle ne prouve pas que le fichier sera valide pour ce moteur. Un échec reste dans le bilan, avec son journal. Les liens ne sont pas suivis.
+
+**Analyse → Analyser la collecte avec Hayabusa** traite ensemble les EVTX inventoriés et vérifiés, via des copies temporaires. Choisissez le seuil de gravité dans l’onglet Collecte ; le défaut est Faible. L’onglet **Alertes Hayabusa.csv** expose les correspondances aux règles, avec heure UTC, machine, canal, EventID, RecordID, RuleID, nom de règle, détails et chemin de l’EVTX source. Les filtres, tris, notes, signets, vues et exports Fireblade s’appliquent à cet onglet comme aux autres analyses.
+
+Les règles Hayabusa embarquées sont celles de la distribution 4.3.1. Cette version utilise `dfir-timeline`, le profil verbose et le mode sans assistant ; les règles ne sont pas mises à jour automatiquement pendant l’enquête. Les règles bruyantes, obsolètes ou non prises en charge ne sont pas activées par défaut. Une absence de détection ne prouve pas l’absence de compromission ; une correspondance doit être vérifiée dans les événements et leur contexte.
+
+Le dossier de travail contient les CSV originaux des parseurs, leurs copies enrichies avec provenance, les bases d’analyse, les journaux, `collection.json` et la session `collection.fireblade-session`. Les sources restent nécessaires pour relancer Hayabusa ; leurs empreintes sont vérifiées avant copie. Les données déjà importées restent dans les bases. L’annulation conserve les traitements terminés ; le délai maximal de chaque moteur est d’une heure. Un moteur absent, une sortie invalide ou un EVTX modifié ne devient pas un résultat réussi.
+
+Les moteurs et leur runtime sont embarqués dans le seul EXE Windows ; les résultats sont enregistrés séparément. Cette construction est plus volumineuse et demande de l’espace temporaire pour son extraction et les copies de travail. **Exporter les sources Hayabusa…** fournit les sources distribuées avec ce moteur ; les notices restent accessibles dans Licences. Les détails et le parcours de reprise sont dans [le guide de collecte](UTILISATION.md#importer-une-collecte-dartefacts-et-lancer-hayabusa).

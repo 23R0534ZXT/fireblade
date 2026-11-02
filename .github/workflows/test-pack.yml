@@ -7,6 +7,11 @@ on:
       - 'scripts/test_pack/**'
       - '.github/workflows/test-pack.yml'
   workflow_dispatch:
+    inputs:
+      publish_pack:
+        description: Publish a new pack version (an existing published version is never replaced)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -27,15 +32,20 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          ref: 0c36f0d95e47015302983fa8966ef5f2023ff94d
-          path: build/reference-app
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements/runtime.txt
+      - name: Read the qualified application reference
+        id: reference
+        shell: pwsh
+        run: |
+          python -c "from scripts.test_pack.package import APP_COMMIT,APP_SHA256,APP_RELEASE; print('commit='+APP_COMMIT); print('sha256='+APP_SHA256); print('tag='+APP_RELEASE)" >> $env:GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.reference.outputs.commit }}
+          path: build/reference-app
       - run: >-
           python -m pip install --only-binary=:all: -r build/reference-app/requirements/runtime.txt pyinstaller
       - name: Build ZIP and verify every decompressed file hash
@@ -43,17 +53,19 @@ jobs:
           PYTHONPATH: build/reference-app/src
         run: python -m scripts.test_pack.package --out artifacts/test-pack --source-commit "$env:GITHUB_SHA"
       - name: Download the qualified application
-        run: gh release download prototype-0c36f0d95e47015302983fa8966ef5f2023ff94d --pattern Fireblade.exe --dir build/qualified-app
+        run: gh release download ${{ steps.reference.outputs.tag }} --pattern Fireblade.exe --dir build/qualified-app
       - name: Parse and render the exact ZIP with the qualified embedded engines
         env:
           PYTHONPATH: build/reference-app/src
         run: python -m scripts.test_pack.validate_windows --archive artifacts/test-pack/Fireblade-Test-Pack-v1.zip --exe build/qualified-app/Fireblade.exe --out artifacts/test-pack/verification
       - name: Publish immutable test-data release after validation
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_pack }}
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
-          $tag = 'test-pack-v1'
+          $tag = python -c "from scripts.test_pack.package import TAG; print(TAG)"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not read pack version' }
           $state = gh release view $tag --json isDraft --jq '.isDraft' 2>$null
           $exists = $LASTEXITCODE -eq 0
           if ($exists -and $state.Trim() -ne 'true') { throw 'Published test pack is immutable; bump the pack version.' }
@@ -63,7 +75,7 @@ jobs:
 
           Guide français, résultats attendus, sources, licences et SHA-256 inclus. Les artefacts Windows proviennent de sources publiques indépendantes. L'avertissement de ruche sale du jeu Shellbags est attendu.
 
-          Le ZIP exact a été parsé et ses résultats affichés sous Windows avec les moteurs de l'exécutable qualifié 0c36f0d. Télécharger Fireblade-Test-Pack-v1.zip ; les autres fichiers sont les rapports de validation et d'intégrité. Le CSV de 3 Gio reste dans sa release séparée.
+          Le ZIP exact a été parsé et ses résultats affichés sous Windows avec les moteurs de l'exécutable qualifié ${{ steps.reference.outputs.commit }}. Télécharger Fireblade-Test-Pack-v1.zip ; les autres fichiers sont les rapports de validation et d'intégrité. Le CSV de 3 Gio reste dans sa release séparée.
           "@ | Set-Content $notes -Encoding utf8
           if (-not $exists) {
             gh release create $tag --draft --prerelease --latest=false --target $env:GITHUB_SHA --title 'Fireblade - pack de test Windows et CatScale v1' --notes-file $notes

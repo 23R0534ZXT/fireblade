@@ -23,6 +23,8 @@ Les dépendances d’exécution épinglées vivent dans `requirements/runtime.tx
 .\.venv\Scripts\python.exe -m pytest tests/ui -q
 ```
 
+Avant de proposer une PR, lancer aussi `python -m ruff check src scripts tests`. Les règles initiales ciblent les erreurs de syntaxe et de noms ; elles n’imposent pas un reformatage global.
+
 Les fixtures gardent une seule QApplication par processus et isolent le stockage utilisateur. Les tests Windows restent réservés à la sémantique native des verrous et fichiers Windows.
 
 Un changement de requête, d’import, d’annulation ou de persistance doit être vérifié sur son comportement observable, notamment en cas d’échec. Garder les tests lisibles et les jeux de données synthétiques.
@@ -63,10 +65,10 @@ Utiliser un nouveau dossier pour les données générées. Indiquer le système,
 - Préserver les anciennes analyses et vues par défaut compatibles.
 - Décrire le problème concret, le comportement obtenu et les vérifications utiles dans la PR.
 
-Le workflow valide la PR, puis main après intégration. Seul main publie une préversion avec le fichier autonome. Le statut de prototype reste explicite.
+Le workflow valide la PR, puis main après intégration. Une nouvelle préversion nécessite un tag de version ou un lancement manuel explicite après augmentation de la version ; voir [la procédure de publication](PUBLICATION.md). Le statut de prototype reste explicite.
 
 ## Vérifier avant d’utiliser un binaire
 
-Le README principal contient un parcours de récupération des sources, revue des scripts, construction locale et calcul SHA-256. Une archive de sources permet de compiler sans utiliser le binaire publié. Le commit sélectionné doit correspondre à la préversion souhaitée ; un dépôt privé nécessite un accès explicite ou une archive partagée.
+Le présent guide décrit l’installation des sources et la construction locale. Les notes de la release donnent le commit et l’empreinte du binaire publié. Une archive de sources permet de compiler sans utiliser le binaire publié. Le commit sélectionné doit correspondre à la préversion souhaitée ; un dépôt privé nécessite un accès explicite ou une archive partagée.
 
 Les notes de Release indiquent le SHA-256 du fichier publié. Cette empreinte permet de vérifier un téléchargement, pas de certifier qu’un logiciel est sûr. La construction n’étant pas reproductible bit à bit, ne pas exiger que le SHA-256 de la construction locale soit identique à celui de la Release.

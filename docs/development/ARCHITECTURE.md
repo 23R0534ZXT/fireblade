@@ -1,6 +1,6 @@
 # Architecture de Fireblade
 
-L’application utilise Python et cinq dépendances directes : DuckDB, PySide6 Essentials, openpyxl, xlrd et NumPy. Le pont de compatibilité TLE est un petit exécutable C# autonome, séparé du moteur principal. Le code est organisé sous `src/fireblade` et les imports nomment explicitement leur couche.
+L’application utilise Python et neuf dépendances directes : DuckDB, PySide6 Essentials, openpyxl, xlrd, NumPy, idna, dissect.esedb, dissect.cstruct et dissect.util. Le pont de compatibilité TLE est un petit exécutable C# autonome, séparé du moteur principal. Le code est organisé sous `src/fireblade` et les imports nomment explicitement leur couche.
 
 ## Couches
 
@@ -26,6 +26,8 @@ Le moteur reste importable sans Qt. Les modèles métier sont des dataclasses si
 | Signatures et dispositions forensic | `src/fireblade/core/profiles.py` |
 | Annulation indépendante de Qt | `src/fireblade/core/errors.py` |
 | Fenêtre et coordination des commandes | `src/fireblade/ui/app.py` |
+| Ouverture, import et restauration après échec | `src/fireblade/ui/file_commands.py` |
+| Exports, annotations et protection des destinations | `src/fireblade/ui/export_commands.py` |
 | Modèle Qt paginé et rendu de la grille | `src/fireblade/ui/grid.py` |
 | Dialogues d’import et éditeurs | `src/fireblade/ui/dialogs.py`, `advanced_dialogs.py` |
 | Menus contextuels et geste de groupement | `src/fireblade/ui/menus.py`, `grouping.py` |
@@ -111,7 +113,7 @@ La configuration explicite et celle du profil ont priorité sur le défaut embar
 
 `scripts/windows/verify.py` ne copie que le `.exe` dans un dossier vide. Il retire les chemins du Python hôte, isole TEMP/LOCALAPPDATA, lance les contrôles et vérifie le nettoyage. La construction ne publie le binaire dans `dist/` qu’après succès.
 
-La publication GitHub ne s’exécute qu’après succès sur main. Les rapports sont des artefacts de développement séparés ; le seul fichier joint à la préversion est le programme.
+Les contrôles GitHub s’exécutent sur main et les PR. La publication nécessite un tag `vX.Y.Z` cohérent avec la version, ou une demande manuelle explicite sur main, puis le succès de tous les contrôles requis. Une version déjà publiée est refusée. Les rapports sont des artefacts de développement séparés ; le seul fichier joint à la préversion est le programme.
 
 
 ## Modules de compatibilité optionnels

@@ -1,0 +1,56 @@
+{
+  "duration_seconds": 75,
+  "source": "real Qt source application",
+  "platform": "Linux offscreen",
+  "data": "synthetic",
+  "chapters": [
+    {
+      "frame": "00.png",
+      "title": "Fireblade — un parcours d’investigation",
+      "caption": "Un EXE Windows, des données locales et un pack public pour commencer. Voici un exemple synthétique dans la véritable interface.",
+      "seconds": 8
+    },
+    {
+      "frame": "01.png",
+      "title": "1. Ouvrir un export dans un dossier d’enquête",
+      "caption": "Les valeurs, les dates et les références de source restent consultables. Ces six lignes sont fabriquées pour la démonstration.",
+      "seconds": 10
+    },
+    {
+      "frame": "02.png",
+      "title": "2. Filtrer les données",
+      "caption": "Le filtre sur l’utilisateur alice retrouve quatre lignes. Les filtres portent sur toute l’analyse, même quand la grille est paginée.",
+      "seconds": 10
+    },
+    {
+      "frame": "03.png",
+      "title": "3. Garder une piste avec un signet et une note",
+      "caption": "La note est enregistrée dans la base d’analyse. Un indicateur observé est une piste à vérifier, pas une preuve de compromission.",
+      "seconds": 10
+    },
+    {
+      "frame": "04.png",
+      "title": "4. Replacer l’activité dans le temps",
+      "caption": "La chronologie conserve le lien vers les lignes sources. Les dates UTC de cet exemple sont explicites.",
+      "seconds": 10
+    },
+    {
+      "frame": "05.png",
+      "title": "5. Rechercher un IOC dans les analyses",
+      "caption": "L’adresse 192.0.2.10 appartient à une plage de documentation. La recherche s’effectue localement, sans requête vers cette adresse.",
+      "seconds": 12
+    },
+    {
+      "frame": "06.png",
+      "title": "6. Enregistrer et produire un rapport HTML",
+      "caption": "Le dossier a été sauvegardé et un rapport contenant la note a réellement été généré pendant ce parcours.",
+      "seconds": 10
+    },
+    {
+      "frame": "07.png",
+      "title": "À vous d’essayer — 15 minutes suffisent pour un retour",
+      "caption": "Téléchargez Fireblade.exe et le pack de test depuis le README. Partagez vos impressions dans l’issue #6, ou ouvrez une issue pour un bug précis.",
+      "seconds": 5
+    }
+  ]
+}

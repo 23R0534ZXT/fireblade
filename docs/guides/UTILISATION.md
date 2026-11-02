@@ -1,6 +1,6 @@
 # Utiliser Fireblade
 
-Fireblade est un explorateur local de CSV, TSV, XLS et XLSX pour l’analyse forensic sur Windows. Il affiche une grille classique : recherche, filtres, tris, groupes, signets et notes.
+Fireblade permet de parser un dossier d’artefacts, analyser ses EVTX avec Hayabusa et explorer les résultats avec leur contexte. Il ouvre aussi directement CSV, TSV, TXT délimités, XLS et XLSX, avec recherche, filtres, tris, groupes, signets et notes.
 
 ## Démarrage
 
@@ -9,6 +9,48 @@ Télécharger `Fireblade.exe`, puis double-cliquer dessus. Python, Excel et un d
 Pour la référence détaillée qui couvre toutes les commandes, règles, profils, thèmes et fonctions TLE, ouvrir **Aide → Tutoriel complet — toutes les fonctionnalités** ou lire le [tutoriel complet](TUTORIEL-COMPLET.md).
 
 Le programme prépare ses bibliothèques dans le dossier temporaire de Windows au démarrage. Cette étape peut prendre quelques secondes. Ce dossier est normalement supprimé à la fermeture. Les analyses sont enregistrées séparément pour conserver le travail.
+
+## Importer une collecte d’artefacts et lancer Hayabusa
+
+La barre **Collecte** et **Fichier → Importer un dossier de collecte…** permettent de choisir un dossier contenant des artefacts bruts. Les sous-dossiers sont parcourus ; les liens ne sont pas suivis. Le dossier de travail est créé sous `%LOCALAPPDATA%\Fireblade\Collectes`, séparément des preuves.
+
+Avant de lancer les moteurs, choisissez l’organisation :
+
+- **Un onglet par type d’artefact** : les fichiers d’un même type sont réunis, par exemple EVTX, Amcache ou Jump Lists. C’est le choix proposé par défaut.
+- **Tout dans un seul onglet, regroupé par artefact** : une analyse « Collecte complète » est créée avec le groupement déjà appliqué sur la colonne d’artefact.
+
+Les colonnes de formats différents sont réunies sans conversion de leurs valeurs ; les champs absents d’un format restent vides. Les colonnes homonymes ambiguës sont distinguées par un suffixe, et les champs de provenance ajoutés évitent les collisions avec les champs d’origine. Chaque ligne conserve son **Artefact**, son **Fichier source** et son **Parseur**. Les bases et sorties individuelles restent sur disque pour vérification ; seule l’organisation de la session change. Le choix et le groupement sont conservés à la reprise. Les anciennes collectes gardent leur disposition d’origine. Les alertes Hayabusa restent dans leur onglet dédié.
+
+Le pack Windows construit depuis les sources épinglées comprend EvtxECmd, AmcacheParser, AppCompatCacheParser, PECmd, MFTECmd, RECmd, LECmd, JLECmd, SrumECmd, WxTCmd, RBCmd, RecentFileCacheParser et SQLECmd. RECmd utilise le batch Kroll et les 70 plugins de registre construits depuis RegistryPlugins ; EvtxECmd et SQLECmd disposent de leurs maps. Les CSV et TSV déjà produits peuvent aussi être importés. Il ne s’agit pas d’une prise en charge de chaque format forensic existant ni de tous les parseurs tiers.
+
+L’onglet **Collecte et détection** conserve le bilan : fichiers traités, non reconnus, liens ignorés, erreurs et absence de sortie. Les CSV des moteurs restent dans `results`, les bases dans `analyses`, avec un manifeste `collection.json`, les journaux et une session `collection.fireblade-session`. Les sorties parsées ajoutent le chemin de l’artefact et le nom du parseur. Le plafond existant de 1000 analyses par session s’applique ; les sorties qui ne peuvent pas être chargées restent sur disque et sont signalées en erreur. Les empreintes des sources reconnues sont vérifiées avant et après traitement. Les moteurs absents ou en erreur ne sont jamais comptés comme réussis. Les journaux de transaction de registre LOG1/LOG2 sont conservés comme fichiers compagnons, utilisés par les lecteurs de ruches et non parsés comme des ruches indépendantes. Les moteurs EZ compilés désactivent leur télémétrie Exceptionless.
+
+**Analyser la collecte avec Hayabusa** traite ensemble les EVTX inventoriés, après vérification et copie temporaire. Choisissez le niveau minimal dans l’onglet Collecte ; il vaut **Faible** par défaut. Fireblade utilise Hayabusa **4.3.1**, sa commande `dfir-timeline` et son profil verbose, sans assistant interactif ni téléchargement de règles pendant l’analyse. Les règles bruyantes, obsolètes et non prises en charge ne sont pas activées automatiquement.
+
+L’onglet **Alertes Hayabusa.csv** devient une analyse Fireblade : filtrez Level, RuleTitle, Computer ou EventID, examinez RecordID, RuleID et les détails, puis ajoutez vos notes. `Fireblade_EVTX_Source` donne le chemin de l’EVTX original, ou une liste JSON pour une détection agrégée sur plusieurs fichiers ; EvtxFile correspond à la copie temporaire analysée. Les fichiers temporaires de travail sont retirés après exécution. Une analyse sans alerte est distincte d’une analyse en erreur ; le bilan indique les avertissements éventuels.
+
+**Reprendre une collecte…** rouvre son dossier de travail. Conservez les artefacts sources pour relancer Hayabusa ; un EVTX modifié depuis l’inventaire est refusé. **Analyse → Interrompre la requête** interrompt aussi le moteur externe ; les résultats déjà terminés et leur bilan restent conservés. Chaque traitement externe a un délai maximal d’une heure. Les limites DuckDB ne plafonnent pas la mémoire des parseurs et de Hayabusa ; prévoyez aussi le disque nécessaire aux CSV, aux bases et aux copies temporaires des EVTX.
+
+Le programme Windows embarque les moteurs, le runtime .NET, Hayabusa et les règles : l’utilisateur conserve un seul EXE pour le programme. Les résultats restent séparés dans le dossier de travail. Cette distribution est plus volumineuse et son extraction au démarrage demande davantage de disque temporaire. Les sources Hayabusa distribuées sont exportables depuis l’onglet Collecte ; les licences restent dans **Aide → Licences**.
+
+Une règle correspondante donne une piste, pas une preuve automatique de compromission. Hayabusa couvre ici les EVTX ; les autres artefacts sont parsés et explorables, sans prétendre leur appliquer les règles EVTX.
+
+## Comprendre une alerte avec son contexte EVTX
+
+L’onglet **Alertes Hayabusa** reste la liste courte des détections. Sélectionnez une alerte, choisissez la durée avant/après (5 minutes par défaut), puis cliquez **Voir le contexte de cette alerte**. La commande est aussi disponible au clic droit et dans **Analyse → Voir le contexte EVTX de l’alerte**.
+
+Un nouvel onglet **Contexte EVTX** présente une chronologie des événements importés : date, EventID, machine, canal, description et données détaillées. La colonne **Relation à l’alerte**, épinglée à gauche, distingue :
+
+- **Événement de l’alerte** : correspondance avec le fichier EVTX et EventRecordID, contrôlée aussi par la machine et l’EventID lorsqu’ils sont disponibles. La ligne apparaît en gras.
+- **Référence candidate (agrégation)** : plusieurs références ne permettent pas d’attribuer chaque identifiant à un événement de façon certaine.
+- **Proximité temporelle** : événement voisin sur la même machine, éventuellement dans un autre journal EVTX. Ce voisinage ne suffit pas à le déclarer suspect ou à établir une relation causale.
+
+Le contexte est limité à 1000 événements, en conservant les références et les voisins les plus proches ; le résumé signale les limites ou sources indisponibles. La fenêtre est réglable de 1 minute à 24 heures avant et après. Une référence introuvable reste explicitement non résolue ; un événement proche ne la remplace pas silencieusement. Sans machine ou date exploitable, le voisinage n’est pas inventé.
+
+Sélectionnez une ligne du contexte puis **Ouvrir l’événement EVTX source** pour retrouver exactement cette ligne dans la base EvtxECmd originale. **Effacer les filtres** retrouve les autres événements de ce fichier ; **Revenir aux alertes** ramène à la liste des détections et conserve ses filtres et annotations. Le panneau Détails et la fenêtre de cellule permettent de lire les charges utiles complètes, même si la grille les abrège.
+
+Les contextes sont des analyses Fireblade ordinaires : notes, signets, filtres et exports restent disponibles. Leur lien avec l’alerte est enregistré dans le dossier de travail ; leur ouverture retrouve automatiquement la collecte associée. Ils restent consultables avec les bases importées même si les EVTX originaux ne sont plus accessibles. Il s’agit des instantanés déjà parsés, sans reparsing ni réévaluation de la règle Hayabusa ; les sources restent nécessaires pour relancer la détection elle-même.
+
 
 ## Ouvrir des données
 
@@ -19,7 +61,7 @@ Le programme prépare ses bibliothèques dans le dossier temporaire de Windows a
 
 Les exports CSV PowerShell avec une première ligne de métadonnées `#TYPE` sont acceptés. Une telle valeur au milieu des données reste un enregistrement normal.
 
-Pour un CSV, les options permettent de préciser le séparateur et l’encodage : UTF-8, UTF-16, Windows-1252 ou Latin-1. Si la détection est ambiguë, sélectionner explicitement le séparateur. Les cellules vides sont normalisées en NULL.
+Pour un CSV, les options permettent de préciser le séparateur et l’encodage : détection BOM, UTF-8, UTF-16, UTF-32, Windows-1252 ou Latin-1. Si la détection est ambiguë, sélectionner explicitement le séparateur. Les cellules vides sont normalisées en NULL.
 
 Les valeurs sont conservées comme texte pour préserver les zéros initiaux et les grands identifiants. Les formules XLSX sont importées comme texte, sans calcul. Les styles et zéros provenant seulement d’un format numérique Excel ne sont pas importés. XLS est aussi pris en charge : les formules sont lues comme leurs résultats mémorisés ; les macros ne sont pas exécutées.
 
@@ -161,7 +203,7 @@ Le menu d’un en-tête propose le groupement des dates par année, mois, jour o
 
 ## Colonnes épinglées, copie et export
 
-Le menu d’un en-tête permet d’épingler une colonne à gauche, ou de la désépingler. La zone épinglée partage le même modèle et la même sélection ; elle ne charge pas une autre copie des données. Les colonnes épinglées apparaissent en premier dans les copies et exports, puis les autres colonnes visibles dans leur ordre. Masquer une colonne épinglée la retire également de la zone épinglée. **Ctrl+R** réinitialise les largeurs.
+Le menu d’un en-tête permet d’épingler une colonne à gauche ou à droite, de la déplacer de côté ou de la désépingler. Les deux volets partagent le même modèle et la même sélection ; ils ne chargent pas une autre copie des données. Les copies et exports ordonnent les colonnes épinglées à gauche, les colonnes centrales visibles, puis les colonnes épinglées à droite. Masquer une colonne épinglée la retire également de son volet. **Ctrl+R** réinitialise les largeurs.
 
 La case à cocher de la colonne Ligne/groupe marque une ligne sans demander de note ; les notes restent accessibles par double-clic et par le menu Édition. Une colonne source reconnue comme booléenne peut s’afficher en cases sans devenir éditable. Le menu de l’en-tête permet aussi de basculer cet affichage.
 
@@ -175,7 +217,7 @@ Le menu d’une cellule propose **Ouvrir avec** (programme choisi explicitement)
 
 ## Profils, supertimelines et compatibilité TLE
 
-**Affichage → Profils et plugins** affiche les schémas embarqués et installe des profils personnels JSON. **Appliquer le profil détecté** propose colonnes, dates, booléens et présentation. Le catalogue est décrit dans [la documentation des profils](../development/PLUGINS.md). Reconnaître un en-tête ne garantit pas tous les traitements du plugin Timeline Explorer correspondant. Les DLL C# TLE ne sont pas chargées.
+**Affichage → Profils et plugins** affiche les schémas embarqués et installe des profils personnels JSON. **Appliquer le profil détecté** propose colonnes, dates, booléens et présentation. Le catalogue est décrit dans [la documentation des profils](../development/PLUGINS.md). Reconnaître un en-tête ne garantit pas tous les traitements du plugin Timeline Explorer correspondant. Les lecteurs DLL compatibles peuvent être chargés via les helpers .NET ; voir la section Plugins de lecture et fonctions TLE pour leurs limites.
 
 La légende des supertimelines décrit les premières catégories de coloration des profils reconnus. Vérifier les valeurs de l’événement ; une couleur seule ne constitue pas une conclusion forensic.
 
@@ -275,44 +317,3 @@ Dans **Affichage → Résumés et tri des groupes**, l’onglet **Par groupe** c
 Choisir un thème de galerie rétablit sa palette ; **Personnaliser les couleurs** permet ensuite de la modifier. Changer manuellement de mode vers un mode différent de celui du thème revient à « Standard / personnalisé ». Les préférences restent défilables lorsque l’écran ou le zoom limite l’espace, avec OK/Annuler toujours accessibles.
 
 Ces palettes et rendus sont des créations Qt de Fireblade. Les ressources, dessins et métriques propriétaires des skins DevExpress ne sont pas intégrés et l’identité visuelle avec Timeline Explorer n’est pas revendiquée.
-
-## Importer une collecte d’artefacts et lancer Hayabusa
-
-La barre **Collecte** et **Fichier → Importer un dossier de collecte…** permettent de choisir un dossier contenant des artefacts bruts. Les sous-dossiers sont parcourus ; les liens ne sont pas suivis. Le dossier de travail est créé sous `%LOCALAPPDATA%\Fireblade\Collectes`, séparément des preuves.
-
-Avant de lancer les moteurs, choisissez l’organisation :
-
-- **Un onglet par type d’artefact** : les fichiers d’un même type sont réunis, par exemple EVTX, Amcache ou Jump Lists. C’est le choix proposé par défaut.
-- **Tout dans un seul onglet, regroupé par artefact** : une analyse « Collecte complète » est créée avec le groupement déjà appliqué sur la colonne d’artefact.
-
-Les colonnes de formats différents sont réunies sans conversion de leurs valeurs ; les champs absents d’un format restent vides. Les colonnes homonymes ambiguës sont distinguées par un suffixe, et les champs de provenance ajoutés évitent les collisions avec les champs d’origine. Chaque ligne conserve son **Artefact**, son **Fichier source** et son **Parseur**. Les bases et sorties individuelles restent sur disque pour vérification ; seule l’organisation de la session change. Le choix et le groupement sont conservés à la reprise. Les anciennes collectes gardent leur disposition d’origine. Les alertes Hayabusa restent dans leur onglet dédié.
-
-Le pack Windows construit depuis les sources épinglées comprend EvtxECmd, AmcacheParser, AppCompatCacheParser, PECmd, MFTECmd, RECmd, LECmd, JLECmd, SrumECmd, WxTCmd, RBCmd, RecentFileCacheParser et SQLECmd. RECmd utilise le batch Kroll et les 70 plugins de registre construits depuis RegistryPlugins ; EvtxECmd et SQLECmd disposent de leurs maps. Les CSV et TSV déjà produits peuvent aussi être importés. Il ne s’agit pas d’une prise en charge de chaque format forensic existant ni de tous les parseurs tiers.
-
-L’onglet **Collecte et détection** conserve le bilan : fichiers traités, non reconnus, liens ignorés, erreurs et absence de sortie. Les CSV des moteurs restent dans `results`, les bases dans `analyses`, avec un manifeste `collection.json`, les journaux et une session `collection.fireblade-session`. Les sorties parsées ajoutent le chemin de l’artefact et le nom du parseur. Le plafond existant de 1000 analyses par session s’applique ; les sorties qui ne peuvent pas être chargées restent sur disque et sont signalées en erreur. Les empreintes des sources reconnues sont vérifiées avant et après traitement. Les moteurs absents ou en erreur ne sont jamais comptés comme réussis. Les journaux de transaction de registre LOG1/LOG2 sont conservés comme fichiers compagnons, utilisés par les lecteurs de ruches et non parsés comme des ruches indépendantes. Les moteurs EZ compilés désactivent leur télémétrie Exceptionless.
-
-**Analyser la collecte avec Hayabusa** traite ensemble les EVTX inventoriés, après vérification et copie temporaire. Choisissez le niveau minimal dans l’onglet Collecte ; il vaut **Faible** par défaut. Fireblade utilise Hayabusa **4.3.1**, sa commande `dfir-timeline` et son profil verbose, sans assistant interactif ni téléchargement de règles pendant l’analyse. Les règles bruyantes, obsolètes et non prises en charge ne sont pas activées automatiquement.
-
-L’onglet **Alertes Hayabusa.csv** devient une analyse Fireblade : filtrez Level, RuleTitle, Computer ou EventID, examinez RecordID, RuleID et les détails, puis ajoutez vos notes. `Fireblade_EVTX_Source` donne le chemin de l’EVTX original, ou une liste JSON pour une détection agrégée sur plusieurs fichiers ; EvtxFile correspond à la copie temporaire analysée. Les fichiers temporaires de travail sont retirés après exécution. Une analyse sans alerte est distincte d’une analyse en erreur ; le bilan indique les avertissements éventuels.
-
-**Reprendre une collecte…** rouvre son dossier de travail. Conservez les artefacts sources pour relancer Hayabusa ; un EVTX modifié depuis l’inventaire est refusé. **Analyse → Interrompre la requête** interrompt aussi le moteur externe ; les résultats déjà terminés et leur bilan restent conservés. Chaque traitement externe a un délai maximal d’une heure. Les limites DuckDB ne plafonnent pas la mémoire des parseurs et de Hayabusa ; prévoyez aussi le disque nécessaire aux CSV, aux bases et aux copies temporaires des EVTX.
-
-Le programme Windows embarque les moteurs, le runtime .NET, Hayabusa et les règles : l’utilisateur conserve un seul EXE pour le programme. Les résultats restent séparés dans le dossier de travail. Cette distribution est plus volumineuse et son extraction au démarrage demande davantage de disque temporaire. Les sources Hayabusa distribuées sont exportables depuis l’onglet Collecte ; les licences restent dans **Aide → Licences**.
-
-Une règle correspondante donne une piste, pas une preuve automatique de compromission. Hayabusa couvre ici les EVTX ; les autres artefacts sont parsés et explorables, sans prétendre leur appliquer les règles EVTX.
-
-## Comprendre une alerte avec son contexte EVTX
-
-L’onglet **Alertes Hayabusa** reste la liste courte des détections. Sélectionnez une alerte, choisissez la durée avant/après (5 minutes par défaut), puis cliquez **Voir le contexte de cette alerte**. La commande est aussi disponible au clic droit et dans **Analyse → Voir le contexte EVTX de l’alerte**.
-
-Un nouvel onglet **Contexte EVTX** présente une chronologie des événements importés : date, EventID, machine, canal, description et données détaillées. La colonne **Relation à l’alerte**, épinglée à gauche, distingue :
-
-- **Événement de l’alerte** : correspondance avec le fichier EVTX et EventRecordID, contrôlée aussi par la machine et l’EventID lorsqu’ils sont disponibles. La ligne apparaît en gras.
-- **Référence candidate (agrégation)** : plusieurs références ne permettent pas d’attribuer chaque identifiant à un événement de façon certaine.
-- **Proximité temporelle** : événement voisin sur la même machine, éventuellement dans un autre journal EVTX. Ce voisinage ne suffit pas à le déclarer suspect ou à établir une relation causale.
-
-Le contexte est limité à 1000 événements, en conservant les références et les voisins les plus proches ; le résumé signale les limites ou sources indisponibles. La fenêtre est réglable de 1 minute à 24 heures avant et après. Une référence introuvable reste explicitement non résolue ; un événement proche ne la remplace pas silencieusement. Sans machine ou date exploitable, le voisinage n’est pas inventé.
-
-Sélectionnez une ligne du contexte puis **Ouvrir l’événement EVTX source** pour retrouver exactement cette ligne dans la base EvtxECmd originale. **Effacer les filtres** retrouve les autres événements de ce fichier ; **Revenir aux alertes** ramène à la liste des détections et conserve ses filtres et annotations. Le panneau Détails et la fenêtre de cellule permettent de lire les charges utiles complètes, même si la grille les abrège.
-
-Les contextes sont des analyses Fireblade ordinaires : notes, signets, filtres et exports restent disponibles. Leur lien avec l’alerte est enregistré dans le dossier de travail ; leur ouverture retrouve automatiquement la collecte associée. Ils restent consultables avec les bases importées même si les EVTX originaux ne sont plus accessibles. Il s’agit des instantanés déjà parsés, sans reparsing ni réévaluation de la règle Hayabusa ; les sources restent nécessaires pour relancer la détection elle-même.

@@ -27,6 +27,11 @@ class AlertContextMixin:
     def is_hayabusa_analysis(self):
         return self.case is not None and 'Relation à l’alerte' not in self.case.headers and {'RuleTitle','RecordID','Fireblade_EVTX_Source'}.issubset(self.case.headers)
 
+    def alert_document(self):
+        if not self.is_hayabusa_analysis() or self.collection is None:return None
+        return next((d for d in self.collection.report['documents']
+                     if d['path']==str(self.case.path) and d['source']==self.case.info),None)
+
     def selected_evidence_row(self):
         if not self.case or not self.model or self.model.case is not self.case:return None
         index=self.tree.currentIndex()
@@ -92,13 +97,14 @@ class AlertContextMixin:
         source=self.case is not None and self._context_source_analysis==str(self.case.path)
         relevant=alert or metadata is not None or source
         row=self.selected_evidence_row() if alert else None
-        self.context_action.setEnabled(alert and row is not None and self.collection is not None)
+        associated=self.alert_document() is not None
+        self.context_action.setEnabled(alert and row is not None and associated)
         if not relevant:
             if self._context_bar is not None:self._context_bar.hide()
             return
         self.ensure_context_bar();self._context_bar.show()
         self.context_open.setVisible(alert)
-        self.context_open.setEnabled(row is not None and self.collection is not None)
+        self.context_open.setEnabled(row is not None and associated)
         self.context_source.setVisible(metadata is not None)
         self.context_return.setVisible(not alert)
         self.context_minutes.setVisible(alert)
@@ -106,15 +112,17 @@ class AlertContextMixin:
         if alert:
             text='Sélectionnez une alerte pour ouvrir les événements EVTX autour de sa date, sur la même machine.'
             if row:text='Alerte : '+str(row[1].get('RuleTitle',''))+' · Gravité : '+str(row[1].get('Level',''))
-            if self.collection is None:text+=' Reprenez le dossier de collecte pour retrouver ses analyses EVTX.'
+            if not associated:text+=' Reprenez le dossier de collecte pour retrouver ses analyses EVTX.'
         elif metadata:
             text=f"{metadata['rule']} · {metadata['references']} référence(s), {metadata['events']} événement(s) · ± {metadata['minutes']} min."
+            if metadata.get('truncated'):text+=' Contexte limité : certains événements ne sont pas affichés.'
             text+=' Les voisins temporels ne sont pas automatiquement suspects.'
             if metadata['notes']:text+=' '+ ' '.join(metadata['notes'][:3])
             self._context_navigation=metadata
         else:
             text='Ouvert depuis le contexte : '+str(self._context_source_role or 'événement EVTX')+'. Effacer les filtres permet de retrouver tous les événements de ce fichier.'
         self.context_summary.setText(text)
+        self.context_summary.setToolTip('\n'.join(metadata.get('notes',[])) if metadata else '')
 
     def configure_context_columns(self):
         if self.context_metadata() is None:return
@@ -129,7 +137,7 @@ class AlertContextMixin:
     def open_alert_context(self):
         if not self.can_open_file():return
         selected=self.selected_evidence_row()
-        if not self.is_hayabusa_analysis() or selected is None or self.collection is None:
+        if self.alert_document() is None or selected is None:
             self.statusBar().showMessage('Sélectionnez une alerte dans une collecte Fireblade.')
             return
         self.remember_collection_views()
@@ -142,11 +150,8 @@ class AlertContextMixin:
                 if self.pool.activeThreadCount():
                     QTimer.singleShot(20,open_when_idle);return
                 if self.collection is not collection:return
-                document=next(d for d in collection.report['documents'] if d['path']==result['analysis'])
-                candidate=self.connection_work(lambda:Case(document['path'],settings=self.settings))
-                self.detach()
                 self._context_navigation=result
-                self.attach(candidate,View.from_json(json.dumps(document['view'])),auto_layout=False)
+                self.load_case(result['analysis'])
                 self.workbench.setCurrentIndex(0)
                 self.show_collection_report(collection.report)
             QTimer.singleShot(0,open_when_idle)

@@ -122,3 +122,49 @@ def test_missing_time_and_machine_do_not_mix_unrelated_neighbors(context_collect
     assert result['events']==0 and result['association']=='unresolved'
     assert any('Horodatage' in note for note in result['notes'])
     assert any('Machine inconnue' in note for note in result['notes'])
+
+
+def test_full_anchor_capacity_reports_omitted_neighbors(context_collection):
+    collection,alert=context_collection
+    result=build_context(collection,alert,'alerts.timeline',1,max_events=1)
+    assert result['events']==result['references']==1
+    assert result['truncated']
+
+
+def test_truncated_duplicate_reference_is_still_ambiguous(context_collection):
+    collection,alert=context_collection
+    alert['Computer']=''  # Same file contains the same ID on two machines.
+    result=build_context(collection,alert,'alerts.timeline',1,max_events=1)
+    assert result['references']==1 and result['association']=='candidate'
+    assert context_rows(result)[0]['Relation à l’alerte']=='Référence candidate (agrégation)'
+
+
+@pytest.mark.parametrize('timestamp',['0001-01-01T00:00:00Z','9999-12-31T23:59:59Z'])
+def test_context_window_handles_calendar_boundaries(context_collection,timestamp):
+    collection,alert=context_collection
+    alert['Timestamp']=timestamp
+    result=build_context(collection,alert,'alerts.timeline',1)
+    assert result['references']==1
+    assert result['events']==1
+
+
+def test_replaced_source_analysis_cannot_be_reported_as_exact(context_collection):
+    collection,alert=context_collection
+    documents=collection.report['documents']
+    shutil.copyfile(documents[1]['path'],documents[0]['path'])
+    result=build_context(collection,alert,'alerts.timeline',1)
+    assert result['references']==0 and result['association']=='unresolved'
+    assert all(row['Relation à l’alerte']=='Proximité temporelle' for row in context_rows(result))
+    assert any('Analyse remplacée' in note for note in result['notes'])
+
+
+def test_cancelled_context_does_not_register_a_partial_analysis(context_collection):
+    import threading
+    from fireblade.core.errors import OperationCancelled,cancellation_scope
+    collection,alert=context_collection
+    before=len(collection.report['documents'])
+    cancel=threading.Event();cancel.set()
+    with cancellation_scope(cancel),pytest.raises(OperationCancelled):
+        build_context(collection,alert,'alerts.timeline',1)
+    assert len(collection.report['documents'])==before
+    assert not collection.report.get('contexts')

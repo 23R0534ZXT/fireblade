@@ -75,5 +75,19 @@
     "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/7d16ff39c9efc0ddd7307fcb3d30ff5c6e8d99f3/Windows/SRUM/Win10/RathbunVM/Clean/SRUDB.dat",
     "compression": null,
     "sha256": "f0ce646fee265c8c438459fc3bcb616e084c875389a6189d2945be4a52e1602c"
+  },
+  {
+    "tool": "RECmd",
+    "name": "SYSTEM.LOG1",
+    "url": "https://raw.githubusercontent.com/EricZimmerman/RECmd/8d1955910964209500b6f74f169e3e52554838d7/RECmd.Test/TestFiles/DFIRArtifactMuseum/Win11/RathbunVM/SYSTEM.LOG1.gz",
+    "compression": "gzip",
+    "sha256": "fc5f54f2294449a0eb7d1eee1ce050d5d7cf1183f933f51516ea5e1c73511421"
+  },
+  {
+    "tool": "RECmd",
+    "name": "SYSTEM.LOG2",
+    "url": "https://raw.githubusercontent.com/EricZimmerman/RECmd/8d1955910964209500b6f74f169e3e52554838d7/RECmd.Test/TestFiles/DFIRArtifactMuseum/Win11/RathbunVM/SYSTEM.LOG2.gz",
+    "compression": "gzip",
+    "sha256": "efea7ee0f8d3151e7e01427b0a3716c0a45d4959738fd045f4495c5938d13afe"
   }
 ]

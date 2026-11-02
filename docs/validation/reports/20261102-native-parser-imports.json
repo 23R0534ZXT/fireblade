@@ -1,0 +1,90 @@
+{
+  "native_run": 41409240830,
+  "display_platform": "Linux Qt offscreen",
+  "results": [
+    {
+      "tool": "AppCompatCacheParser",
+      "outputs": 1,
+      "rows": 359,
+      "displayed": 250
+    },
+    {
+      "tool": "RECmd",
+      "outputs": 13,
+      "rows": 7255,
+      "displayed": 1308
+    },
+    {
+      "tool": "EvtxECmd",
+      "outputs": 1,
+      "rows": 13,
+      "displayed": 13
+    },
+    {
+      "tool": "AmcacheParser",
+      "outputs": 1,
+      "rows": 2,
+      "displayed": 2
+    },
+    {
+      "tool": "JLECmd",
+      "outputs": 1,
+      "rows": 1,
+      "displayed": 1
+    },
+    {
+      "tool": "LECmd",
+      "outputs": 1,
+      "rows": 1,
+      "displayed": 1
+    },
+    {
+      "tool": "MFTECmd",
+      "outputs": 1,
+      "rows": 117,
+      "displayed": 117
+    },
+    {
+      "tool": "PECmd",
+      "outputs": 2,
+      "rows": 2,
+      "displayed": 2
+    },
+    {
+      "tool": "RBCmd",
+      "outputs": 1,
+      "rows": 1,
+      "displayed": 1
+    },
+    {
+      "tool": "RecentFileCacheParser",
+      "outputs": 1,
+      "rows": 6,
+      "displayed": 6
+    },
+    {
+      "tool": "SQLECmd",
+      "outputs": 4,
+      "rows": 1042,
+      "displayed": 292
+    },
+    {
+      "tool": "SrumECmd",
+      "outputs": 7,
+      "rows": 309,
+      "displayed": 309
+    },
+    {
+      "tool": "WxTCmd",
+      "outputs": 2,
+      "rows": 151,
+      "displayed": 151
+    }
+  ],
+  "windows_gate": {
+    "status": "failed",
+    "reason": "SYSTEM fixture copied without SYSTEM.LOG1 and SYSTEM.LOG2; companions added for the next run",
+    "url": "https://github.com/23R0534ZXT/fireblade/actions/runs/41409240830"
+  },
+  "native_import_successful_parsers": 13
+}

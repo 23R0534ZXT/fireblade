@@ -1,0 +1,16 @@
+[
+  {
+    "mode": "artifacts",
+    "alerts": 2,
+    "context": 13,
+    "references": 1,
+    "source_navigation": true
+  },
+  {
+    "mode": "combined",
+    "alerts": 2,
+    "context": 13,
+    "references": 1,
+    "source_navigation": true
+  }
+]

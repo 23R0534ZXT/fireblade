@@ -67,3 +67,19 @@ Pour WxTCmd, la bibliothèque native SQLite Linux a été ajoutée uniquement au
 `config/forensic-qa-fixtures.json` fixe les URL publiques et les empreintes SHA-256 des échantillons supplémentaires. Ils sont téléchargés et vérifiés pendant la construction, puis embarqués dans les ressources de qualification de l’EXE. L’EVTX et la ruche de qualification existants sont conservés. La qualification Windows exige désormais des résultats non vides de chacun des 13 parseurs, puis ouvre chaque analyse produite dans la grille et compare les valeurs affichées aux données importées. Elle échoue en cas de parseur absent, en erreur, sans sortie ou sans ligne. Son résultat n’est acquis qu’après réussite du workflow Windows.
 
 Cette matrice vérifie des exemples représentatifs ; elle ne prouve pas toutes les versions Windows, tous les schémas SQLite, toutes les maps et tous les cas de corruption. Les formats non reconnus ou refusés restent dans le bilan de collecte.
+
+## Relecture et régressions du contexte
+
+Une nouvelle passe corrige la qualification d’une référence multiple lorsque le plafond ne conserve qu’un candidat : elle reste ambiguë. Le contexte signale également les voisins omis lorsque les références occupent toute la capacité. Les dates aux bornes du calendrier n’interrompent plus la création de la fenêtre ; une alerte d’une autre collecte ne peut pas emprunter les sources de la collecte active. L’ouverture du contexte passe par le parcours normal d’ouverture des analyses, qui traite les erreurs sans fermer prématurément l’analyse courante.
+
+Les régressions couvrent aussi l’analyse source remplacée, l’annulation avant création et la conservation des filtres/notes au retour aux alertes. Les limites sont visibles dans le résumé même lorsque d’autres avertissements le précèdent ; les notes complètes restent dans son infobulle et dans la collecte.
+
+Le parcours réel EvtxECmd + AmcacheParser + Hayabusa a été répété avec les deux organisations. Chacune produit deux alertes et un contexte de 13 événements avec une référence exacte ; les boutons ouvrent la ligne EVTX attendue puis reviennent à l’alerte. [Résultats](reports/20261102-real-context-organizations.json). Cet essai utilise les moteurs réels sous Linux, dont les DLL managées des parseurs ciblant Windows, et Qt hors écran.
+
+## Résultats Windows de la première matrice complète
+
+Le [workflow `323c980`](https://github.com/23R0534ZXT/fireblade/actions/runs/41409240830) a réussi 810 tests des sources sur chacune des versions Python Windows 3.11, 3.12 et 3.13, ainsi que les chemins UNC/longs et la matrice des lecteurs. Le contrôle de l’EXE a toutefois échoué : la nouvelle copie de SYSTEM dans le sous-dossier de matrice omettait LOG1/LOG2, nécessaires à cette ruche dirty. AppCompatCacheParser et RECmd l’ont refusée ; ce refus n’a pas été contourné. Le manifeste de fixtures inclut maintenant les deux compagnons avec leurs empreintes.
+
+Le rapport de collecte produit par cet EXE contient néanmoins des sorties importées non vides pour les 13 moteurs sur les autres échantillons complets : notamment **309 lignes dans sept sorties SRUM**, **1042 lignes dans quatre sorties SQLECmd**, et **151 lignes dans deux sorties WxTCmd**. Les bases produites sous Windows ont toutes été rouvertes dans Qt hors écran sous Linux ; la première page de chaque sortie correspond aux valeurs de la base. Ce contrôle distingue parsing/import natifs Windows et rendu Qt Linux : il ne transforme pas le contrôle d’EXE échoué en qualification Windows réussie. [Rapport de ces imports et affichages](reports/20261102-native-parser-imports.json).
+
+La relance Windows avec les compagnons doit encore réussir l’intégralité du contrôle et les qualifications suivantes avant publication. Les rapports du commit corrigé font foi.

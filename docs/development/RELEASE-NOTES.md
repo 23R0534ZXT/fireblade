@@ -1,5 +1,14 @@
 # Fireblade — prototype Windows 0.4
 
+Le parcours actuel comprend l’import d’un dossier d’artefacts avec 13 parseurs EZ Tools, leur runtime et leurs maps, une organisation par onglets ou par groupes, puis la détection Hayabusa sur les EVTX vérifiés. Les alertes donnent accès à une chronologie de contexte et à la ligne EVTX source. Les références exactes, candidates et les voisins temporels sont distingués. Les résultats et journaux sont conservés dans le dossier de travail.
+
+Le README, le guide et le tutoriel intégré présentent ce parcours avant les références avancées. Les raccourcis décrivent les actions actuelles, notamment Ctrl+Maj+E pour exporter, Ctrl+E pour effacer les filtres et Ctrl+Alt+F pour l’éditeur visuel. Les qualifications des anciens commits ci-dessous restent des archives, distinctes du workflow du commit téléchargé.
+
+La qualification du véritable EXE exige un résultat non vide de chaque parseur et l’ouverture de chaque sortie dans la grille, ainsi que les détections Hayabusa et leur contexte. Les états du workflow Windows et ses rapports déterminent si cette qualification a réussi ; une liste de tests ne constitue pas leur résultat.
+
+## Historique des évolutions
+
+
 Les apparences des layouts TLE reprennent maintenant les images raster intégrées, les bordures, le renvoi à la ligne, les troncatures et les préfixes clavier dans la grille et les en-têtes épinglés. Les panneaux correspondants et les styles personnalisés nommés sont adaptés ; les valeurs des styles restent dans les vues sauvegardées. [Formats et limites](../guides/LAYOUTS-TLE.md).
 
 Cette évolution complète les règles de coloration : bornes automatiques, pourcentages et percentiles exacts sur tout le résultat filtré, dégradés à trois couleurs, barres négatives avec axe zéro, trois à cinq icônes, seuils stricts/inclusifs et images PNG. Les règles se combinent par propriété, avec arrêt optionnel, police et taille propres à chaque règle. Classement, moyenne, uniques et doublons utilisent toute la population filtrée.

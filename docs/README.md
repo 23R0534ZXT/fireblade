@@ -4,6 +4,8 @@
 |---|---|
 | Installer le programme et découvrir le dépôt | [README principal](../README.md) |
 | Parcourir toutes les fonctionnalités dans l’application | [Tutoriel complet](guides/TUTORIEL-COMPLET.md) |
+| Importer une collecte, analyser les EVTX et lire le contexte des alertes | [Parcours collecte](guides/UTILISATION.md#importer-une-collecte-dartefacts-et-lancer-hayabusa) |
+| Vérifier les essais réels des moteurs embarqués | [Validation forensic](validation/COLLECTE-FORENSIC.md) |
 | Utiliser recherche, groupes, notes et exports | [Guide utilisateur](guides/UTILISATION.md) |
 | Comprendre le code et choisir où modifier | [Architecture](development/ARCHITECTURE.md) |
 | Installer les sources, tester et reconstruire | [Contribuer](development/CONTRIBUER.md) |

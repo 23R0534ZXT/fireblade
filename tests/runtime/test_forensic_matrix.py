@@ -22,3 +22,9 @@ def test_missing_or_empty_parser_never_qualifies():
         verify_parser_results({'files': []})
     with pytest.raises(AssertionError, match='Parsing non validé'):
         verify_parser_results({'files': [{'runs': [{'tool': 'SrumECmd', 'status': 'no_output'}]}]})
+
+
+def test_system_hive_fixture_preserves_transaction_log_companions():
+    items=json.loads((Path(__file__).parents[2]/'config/forensic-qa-fixtures.json').read_text())
+    registry={item['name'] for item in items if item['tool']=='RECmd'}
+    assert {'SYSTEM','SYSTEM.LOG1','SYSTEM.LOG2'} <= registry

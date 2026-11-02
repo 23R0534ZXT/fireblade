@@ -1,0 +1,83 @@
+name: Publish downloadable forensic test pack
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/test_pack/**'
+      - '.github/workflows/test-pack.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-forensic-test-pack
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      PYTHONUTF8: '1'
+      QT_QPA_PLATFORM: windows
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 0c36f0d95e47015302983fa8966ef5f2023ff94d
+          path: build/reference-app
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements/runtime.txt
+      - run: python -m pip install --only-binary=:all: -r build/reference-app/requirements/runtime.txt pyinstaller
+      - name: Build ZIP and verify every decompressed file hash
+        env:
+          PYTHONPATH: build/reference-app/src
+        run: python -m scripts.test_pack.package --out artifacts/test-pack --source-commit "$env:GITHUB_SHA"
+      - name: Download the qualified application
+        run: gh release download prototype-0c36f0d95e47015302983fa8966ef5f2023ff94d --pattern Fireblade.exe --dir build/qualified-app
+      - name: Parse and render the exact ZIP with the qualified embedded engines
+        env:
+          PYTHONPATH: build/reference-app/src
+        run: python -m scripts.test_pack.validate_windows --archive artifacts/test-pack/Fireblade-Test-Pack-v1.zip --exe build/qualified-app/Fireblade.exe --out artifacts/test-pack/verification
+      - name: Publish immutable test-data release after validation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $tag = 'test-pack-v1'
+          $state = gh release view $tag --json isDraft --jq '.isDraft' 2>$null
+          $exists = $LASTEXITCODE -eq 0
+          if ($exists -and $state.Trim() -ne 'true') { throw 'Published test pack is immutable; bump the pack version.' }
+          $notes = 'artifacts/test-pack/release-notes.md'
+          @"
+          ZIP prêt à extraire : artefacts Windows pour les 13 EZ Tools, Shellbags, WebCache, EVTX/Hayabusa, exemple CatScale synthétique en dossier et archive, scénario de 250 000 lignes et exports CSV/TSV/XLSX.
+
+          Guide français, résultats attendus, sources, licences et SHA-256 inclus. Les artefacts Windows proviennent de sources publiques indépendantes. L'avertissement de ruche sale du jeu Shellbags est attendu.
+
+          Le ZIP exact a été parsé et ses résultats affichés sous Windows avec les moteurs de l'exécutable qualifié 0c36f0d. Télécharger Fireblade-Test-Pack-v1.zip ; les autres fichiers sont les rapports de validation et d'intégrité. Le CSV de 3 Gio reste dans sa release séparée.
+          "@ | Set-Content $notes -Encoding utf8
+          if (-not $exists) {
+            gh release create $tag --draft --prerelease --latest=false --target $env:GITHUB_SHA --title 'Fireblade - pack de test Windows et CatScale v1' --notes-file $notes
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create test-pack draft' }
+          }
+          gh release upload $tag artifacts/test-pack/Fireblade-Test-Pack-v1.zip artifacts/test-pack/SHA256SUMS.txt artifacts/test-pack/publication.json artifacts/test-pack/validation-windows.json --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Test-pack upload failed' }
+          gh release edit $tag --draft=false --notes-file $notes
+          if ($LASTEXITCODE -ne 0) { throw 'Test-pack publication failed' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Forensic-test-pack-metadata
+          path: |
+            artifacts/test-pack/publication.json
+            artifacts/test-pack/SHA256SUMS.txt
+            artifacts/test-pack/validation-windows.json
+          retention-days: 30

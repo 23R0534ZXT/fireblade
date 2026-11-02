@@ -25,8 +25,9 @@ def format_identity(headers, info):
     return f'{label}--{digest}'
 
 
-def local_path(headers, info):
-    return user_directory() / 'Layouts' / 'Local' / (format_identity(headers, info) + '.layout.local')
+def local_path(headers, info, local_directory=None):
+    directory=Path(local_directory) if local_directory is not None else user_directory() / 'Layouts' / 'Local'
+    return directory / (format_identity(headers, info) + '.layout.local')
 
 
 def layout_directories():
@@ -36,8 +37,8 @@ def layout_directories():
     return [directory for root in roots for directory in (root, root / 'Default')]
 
 
-def candidates(headers, info):
-    yield local_path(headers, info)
+def candidates(headers, info, local_directory=None):
+    yield local_path(headers, info, local_directory)
     reader = info.get('plugin', {}).get('type')
     profile = detect_profile(headers)
     names = [reader, reader.rsplit('.', 1)[-1] if reader else None,
@@ -51,8 +52,8 @@ def candidates(headers, info):
                 yield directory / (name + suffix)
 
 
-def load_auto_layout(headers, info):
-    for path in candidates(headers, info):
+def load_auto_layout(headers, info, local_directory=None):
+    for path in candidates(headers, info, local_directory):
         if not path.is_file():
             continue
         if path.stat().st_size > LIMIT:
@@ -65,12 +66,12 @@ def load_auto_layout(headers, info):
     return None, None
 
 
-def save_auto_layout(headers, info, view):
+def save_auto_layout(headers, info, view, local_directory=None):
     payload = dict(format='fireblade-view', version=1, headers=headers,
                    view=json.loads(view.to_json()))
     if len(json.dumps(payload, ensure_ascii=False).encode('utf-8')) > LIMIT:
         raise ValueError('Disposition locale limitée à 4 Mo')
-    path = local_path(headers, info)
+    path = local_path(headers, info, local_directory)
     path.parent.mkdir(parents=True, exist_ok=True)
     write_json(path, payload)
     return path

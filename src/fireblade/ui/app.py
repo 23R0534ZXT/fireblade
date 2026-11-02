@@ -36,12 +36,14 @@ from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses, sho
 
 
 from fireblade.ui.collection import CollectionMixin
+from fireblade.ui.investigations import InvestigationMixin
 
 
-class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
-    def __init__(self, settings=None, rule_path=None):
+class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
+    def __init__(self, settings=None, rule_path=None, investigation_root=None):
         super().__init__()
         self.settings = settings or Settings()
+        self._investigation_root = investigation_root
         self.setWindowTitle("Fireblade")
         screen = QApplication.primaryScreen()
         available = screen.availableGeometry() if screen else None
@@ -54,11 +56,13 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
         self.jobs = set()
         self.busy = False
         self.count_generation = 0
+        self._workspace_epoch = 0
         self.build_ui()
         self.setup_workspace()
         self.setup_shared_rules(rule_path)
         self.setup_exploration()
         self.setup_collection()
+        self.setup_investigations()
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -414,14 +418,21 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
             job.signals.cancelled.disconnect()
             self.busy = previous_busy
             self.cancel_action.setEnabled(previous_cancel)
-            self.centralWidget().setEnabled(not previous_busy)
-            self.set_file_actions(self.model is not None and not previous_busy)
+            blocked=previous_busy or getattr(self,'_collection_open_pending',False) or getattr(self,'_investigation_switching',False)
+            self.centralWidget().setEnabled(not blocked)
+            self.set_file_actions(self.model is not None and not blocked)
             loop.deleteLater()
         if errors:
             raise RuntimeError(errors[0])
         return result[0]
 
     def can_open_file(self):
+        if getattr(self,'_collection_open_pending',False):
+            self.statusBar().showMessage('Ouverture des résultats de la collecte…')
+            return False
+        if getattr(self,'_investigation_switching',False):
+            self.statusBar().showMessage('Changement de case en cours…')
+            return False
         if self.busy or self.pool.activeThreadCount() or self.jobs or (self.model and self.model.jobs):
             self.statusBar().showMessage("Attendez ou interrompez la requête avant de changer d’analyse.")
             return False
@@ -619,6 +630,7 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
         QTimer.singleShot(0, lambda: self.queue_files(paths))
 
     def detach(self):
+        self._workspace_epoch += 1
         self.save_format_layout()
         self.remember_active()
         # Never close a connection while a queued page request still refers to it.
@@ -674,6 +686,7 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
         self.attach(candidate)
 
     def attach(self, case, initial_view=None, header_state=None, auto_layout=None):
+        if hasattr(self,'workbench'):self.workbench.setCurrentIndex(0)
         initial_view, auto_layout = self.prepare_context_view(case, initial_view, auto_layout)
         use_auto_layout=(initial_view is None or header_state == b'') if auto_layout is None else auto_layout
         collection = getattr(self, 'collection', None)
@@ -725,6 +738,9 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
         self.track_case()
         if not header_state:self.configure_context_columns()
         self.update_alert_context_bar()
+        if hasattr(self,'active_investigation'):
+            self.remember_investigation_collection()
+            self.update_investigation_badge()
 
     def apply(self, *_):
         if not self.case or not self.model or self.busy:
@@ -1277,11 +1293,22 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
         QApplication.clipboard().setText(out.getvalue())
 
     def closeEvent(self, event):
-        if self.busy or self.pool.activeThreadCount():
+        if self.busy or self.pool.activeThreadCount() or getattr(self,'_collection_open_pending',False) or getattr(self,'_investigation_switching',False):
             self.statusBar().showMessage("Interrompez ou attendez la fin de l’opération avant de fermer.")
             event.ignore()
             return
+        if getattr(self,'active_investigation',None) is not None:
+            if self.open_queue:
+                self.statusBar().showMessage('Terminez ou videz la file d’ouverture avant de fermer le case.')
+                event.ignore()
+                return
+            if not self.persist_investigation():
+                event.ignore()
+                return
         self.detach()
+        if hasattr(self,'active_investigation'):
+            self.release_investigation_lease()
+            self.active_investigation=None
         event.accept()
 
 

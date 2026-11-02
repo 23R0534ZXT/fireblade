@@ -7,6 +7,7 @@ Commencez par votre parcours d’entrée, puis utilisez les sections de référe
 ## Table des matières
 
 - [Démarrage](#démarrage)
+- [Cases — dossiers d’enquête](#cases--dossiers-denquête)
 - [Se repérer dans la fenêtre](#se-repérer-dans-la-fenêtre)
 - [Collecte brute et détection Hayabusa](#collecte-brute-et-détection-hayabusa)
 - [Passer des alertes aux preuves EVTX et à leur contexte](#passer-des-alertes-aux-preuves-evtx-et-à-leur-contexte)
@@ -49,12 +50,30 @@ Le pack Windows inclut les moteurs et leurs dépendances. Le lancement depuis le
 
 L’EXE est un seul fichier de programme ; les analyses, artefacts et résultats ne sont pas incorporés à ce fichier. Prévoyez l’espace disque de l’extraction temporaire et du dossier de travail.
 
+## Cases — dossiers d’enquête
+
+Au lancement, l’onglet **Cases** affiche vos enquêtes enregistrées. Il ne charge aucune ancienne analyse : le catalogue lit seulement leurs fiches. Double-cliquez un case, ou sélectionnez-le puis cliquez sur **Ouvrir**, pour reprendre sa session.
+
+1. Cliquez sur **Nouveau case…** (`Ctrl+Alt+N`). Renseignez son nom, sa description, son type de collecte et son statut. Windows, Linux et Mixte sont des étiquettes d’organisation ; elles n’ajoutent aucun parser.
+2. Si des analyses sont déjà ouvertes hors d’un case, laissez **Inclure les analyses actuellement ouvertes** coché pour les rattacher au nouveau case. Les bases existantes restent à leur emplacement : elles ne sont pas copiées.
+3. Importez vos fichiers ou vos collectes. Les destinations proposées sont propres au case : `Analyses` pour les imports, `Collectes` pour les résultats de collecte. Plusieurs collectes peuvent appartenir au même case ; le sélecteur **Collecte du case** retrouve leur bilan. Importer une collecte ajoute ses analyses aux onglets déjà présents.
+4. Cliquez sur **Enregistrer le case actif et sa session** (`Ctrl+Alt+S`). `Ctrl+Maj+S` enregistre également le case actif et sa session. Sans case actif, ce dernier raccourci conserve son fonctionnement d’export de session.
+5. **Fermer le case actif** revient au catalogue. Ouvrir un autre case ou quitter Fireblade enregistre aussi la session avant de fermer les analyses. En cas d’échec de sauvegarde, le changement ou la fermeture est refusé pour vous laisser corriger le problème.
+
+La reprise conserve les onglets, leur ordre, l’onglet actif, les filtres, le tri, les regroupements et la disposition des colonnes. Les signets et notes sont conservés dans les bases d’analyse. Les dispositions automatiques sont propres au case, afin que ses filtres ne se réappliquent pas aux imports d’un autre case. Les préférences et règles partagées restent communes à Fireblade.
+
+Le catalogue propose une recherche sur le nom et la description, des colonnes triables, les dates de création, modification et dernière ouverture, ainsi que le nombre d’analyses. **Modifier…** change la fiche. **Archiver** masque un ancien case sans supprimer ses données ; cochez **Inclure les archivés**, sélectionnez-le puis utilisez **Réactiver** pour le retrouver dans la liste normale. Le statut **Terminé** indique une enquête achevée sans la masquer.
+
+Les cases sont conservés sous `%LOCALAPPDATA%\Fireblade\Cases\<identifiant>`. Sauvegardez ce dossier complet, les bases référencées à l’extérieur et les artefacts originaux nécessaires à une nouvelle analyse. `case.json` et la session contiennent des chemins : déplacer un dossier ne les corrige pas automatiquement. Réutiliser la même base dans plusieurs cases partage ses annotations. Un même case ne peut être ouvert que dans une fenêtre à la fois.
+
+Avant de changer de case, terminez ou annulez les opérations en cours et videz les imports en attente. Si une analyse référencée manque à la réouverture, Fireblade signale le problème et conserve l’espace de travail déjà ouvert.
+
 ## Se repérer dans la fenêtre
 
 | Zone | Rôle et gestes |
 |---|---|
 | Barre de menus et barre d’outils | La barre d’outils donne les accès rapides à l’ouverture, l’export, l’ajout de filtre et le regroupement. Les autres commandes restent dans les menus. |
-| Analyses / Collecte et détection | Le premier espace contient les grilles ; le second contient le bilan, la reprise de collecte et le niveau minimal Hayabusa. |
+| Analyses / Collecte et détection / Cases | Grilles d’analyse ; bilan et détection ; catalogue des enquêtes conservées sans chargement automatique. |
 | Onglets d’analyse | Une analyse par onglet. Utilisez le sélecteur des analyses ouvertes pour retrouver un nom ou un chemin. |
 | Recherche générale | Recherche sur les colonnes de l’analyse active ; Entrée applique le texte. |
 | Liste des filtres | Affiche les filtres simples et l’existence d’une expression. Double-cliquez un filtre simple pour le retirer ; l’entrée d’expression ouvre son éditeur. |
@@ -314,7 +333,7 @@ Chaque analyse s’ouvre dans un onglet. **Ctrl+Tab** et **Ctrl+Shift+Tab** chan
 
 Seule la base de l’onglet actif reste ouverte. Revenir à un onglet restaure sa vue et ses colonnes, puis recharge les premières pages. La sélection, le défilement et les groupes dépliés ne sont pas conservés.
 
-**Fichier → Enregistrer la session** conserve les références aux analyses, leur ordre, les vues et la disposition des colonnes dans un fichier `.fireblade-session`. Ce fichier ne contient pas les données : conserver les bases `.timeline` référencées. Une session dont une analyse manque ou a changé est signalée.
+Sans case actif, **Fichier → Enregistrer la session** conserve les références aux analyses, leur ordre, les vues et la disposition des colonnes dans un fichier `.fireblade-session`. Ce fichier ne contient pas les données : conserver les bases `.timeline` référencées. Une session dont une analyse manque ou a changé est signalée.
 
 Les règles globales appartiennent au profil utilisateur : les exporter séparément si la session doit être partagée avec la même présentation.
 
@@ -637,7 +656,7 @@ export_batch_rows = 2048
 cache_sorted_pages = true
 ```
 
-Les analyses ordinaires sont proposées dans `%LOCALAPPDATA%\Fireblade\Analyses` ; les collectes sont dans `%LOCALAPPDATA%\Fireblade\Collectes`. Les préférences sont dans `preferences.json`, les règles partagées dans `regles-globales.json`, et les dispositions automatiques dans `Layouts\Local`, sous ce même profil utilisateur.
+Dans un case actif, les imports, collectes et dispositions automatiques sont proposés sous `Cases\<identifiant>`. Hors d’un case, les analyses ordinaires sont proposées dans `%LOCALAPPDATA%\Fireblade\Analyses` ; les collectes sont dans `%LOCALAPPDATA%\Fireblade\Collectes`. Les préférences sont dans `preferences.json`, les règles partagées dans `regles-globales.json`, et les dispositions automatiques dans `Layouts\Local`, sous ce même profil utilisateur.
 
 
 ### Priorités de configuration et reprise après incident
@@ -693,6 +712,8 @@ Cette liste sert d’index fonctionnel par menu. Les sections précédentes expl
 
 | Commande | Utilisation |
 |---|---|
+| Nouveau case / Cases | Créer une enquête ou retrouver le catalogue persistant. |
+| Enregistrer le case et sa session / Fermer le case | Sauvegarder le travail ou revenir au catalogue après sauvegarde. |
 | Ouvrir un fichier | Importer CSV, TSV, TXT délimité, XLS ou XLSX. Plusieurs fichiers peuvent être choisis ; les imports suivants attendent dans la file séquentielle. |
 | Importer un dossier de collecte | Choisir le dossier d’artefacts, puis l’organisation par onglets ou par groupes. |
 | Importer avec un plugin TLE (.NET) | Choisir explicitement une DLL et son lecteur `ProcessFile` / `DataList`. Pour un lecteur reconnu, l’ouverture ordinaire peut aussi le détecter selon son en-tête. |
@@ -778,6 +799,7 @@ L’éditeur ET/OU/NON construit des arbres de critères ; Expression textuelle 
 | Réinitialiser les largeurs | Ctrl+R |
 | Copier les lignes sélectionnées | Ctrl+C |
 | Guide d’utilisation | F1 |
+| Nouveau case / enregistrer le case et sa session | Ctrl+Alt+N / Ctrl+Alt+S |
 | Quitter Fireblade | Alt+F4 |
 
 Les raccourcis sont aussi disponibles depuis les menus ; les actions dépendant d’une analyse ne sont actives qu’après ouverture d’un fichier.

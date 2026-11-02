@@ -1,5 +1,7 @@
 # Fireblade — prototype Windows 0.4
 
+Un onglet **Cases** conserve désormais les dossiers d’enquête sans charger leurs analyses au démarrage. Chaque case retrouve sa session, ses vues et ses annotations ; le changement de case et la fermeture enregistrent le travail. Le catalogue propose recherche, tri, modification et archivage. Les nouvelles analyses, collectes et dispositions automatiques sont rangées dans le dossier du case. Un verrou empêche son ouverture simultanée dans deux fenêtres. Le README et le tutoriel expliquent aussi les références externes à conserver dans les sauvegardes.
+
 Le parcours actuel comprend l’import d’un dossier d’artefacts avec 13 parseurs EZ Tools, leur runtime et leurs maps, une organisation par onglets ou par groupes, puis la détection Hayabusa sur les EVTX vérifiés. Les alertes donnent accès à une chronologie de contexte et à la ligne EVTX source. Les références exactes, candidates et les voisins temporels sont distingués. Les résultats et journaux sont conservés dans le dossier de travail.
 
 Le README, le guide et le tutoriel intégré présentent ce parcours avant les références avancées. Les raccourcis décrivent les actions actuelles, notamment Ctrl+Maj+E pour exporter, Ctrl+E pour effacer les filtres et Ctrl+Alt+F pour l’éditeur visuel. Les qualifications des anciens commits ci-dessous restent des archives, distinctes du workflow du commit téléchargé.

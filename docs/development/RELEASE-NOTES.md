@@ -1,5 +1,7 @@
 # Fireblade — prototype Windows 0.4
 
+La sauvegarde de session vérifie les limites de 1000 analyses et 4 Mio avant de remplacer le fichier précédent. Un dépassement conserve la sauvegarde existante et affiche une erreur ; les fichiers temporaires sont nettoyés.
+
 L’espace de travail simplifie les parcours : deux entrées explicites pour importer une collecte ou ouvrir un export, sauvegarde permanente du case avec heure de réussite, navigation repliable par collecte et artefact/famille, bilan triable et filtrable avec diagnostics à la demande. Effacer les filtres conserve la présentation ; la réinitialisation complète est une commande distincte. Les préférences sont réparties en quatre pages et les règles suivent conditions, cible puis apparence, avec options avancées et aperçu.
 
 Un clic dans toute la première colonne surligne la ligne complète et conserve un signet dans l’analyse. Les notes existantes sont protégées par confirmation lors du retrait du signet. Le contexte Hayabusa s’examine dans un panneau latéral réutilisable ; « Conserver ce contexte en onglet » l’ajoute à la session. Les aperçus non conservés restent temporaires. Les références EVTX et les distinctions entre alerte, candidats et voisins sont conservées.

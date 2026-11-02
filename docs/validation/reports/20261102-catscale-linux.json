@@ -71,8 +71,8 @@
     "Hayabusa detection remains EVTX-only"
   ],
   "final_targeted_suite": {
-    "passed": 40,
-    "seconds": 6.3,
-    "scope": "CatScale core, desktop, Windows path dispatch, resources; after final parsing refinements"
+    "passed": 41,
+    "seconds": 7.04,
+    "scope": "CatScale core, desktop, Windows path dispatch, legacy FSecure short dates and resources; after final parsing refinements"
   }
 }

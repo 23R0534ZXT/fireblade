@@ -198,3 +198,9 @@ def test_windows_source_paths_keep_exact_filename_dispatch():
     assert kind(r'C:\case\catscale_out\System_Info\etc-key-files\etc\passwd')=='passwd'
     row=rows('alice:x:1000:1000:Alice:/home/alice:/bin/bash',r'C:\case\catscale_out\System_Info\etc\passwd')[0]
     assert row['UID']=='1000' and row['Utilisateur']=='alice'
+
+
+def test_legacy_fsecure_short_date_retains_hostname_and_original_date(tmp_path):
+    from fireblade.core.catscale import identity
+    assert identity('FSecure_node-a-201102-1000.tar.gz!/FSecure-out/Logs/auth.log')==('node-a','201102-1000')
+    assert recognized(tmp_path/'Process_and_Network'/'node-a-201102-1000-processes-ef.txt')

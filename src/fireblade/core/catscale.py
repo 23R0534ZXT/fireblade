@@ -57,14 +57,14 @@ def recognized(path):
                 siblings={item.name.casefold() for item in parent.parent.iterdir() if item.is_dir()}
                 context=len(siblings & set(FAMILIES))>=2
                 break
-    return bool((family and (context or re.search(r'-\d{8}-\d{4}-',name))) or re.search(r'-(?:console-error-log|host-date-timezone)\.txt$',name) or
+    return bool((family and (context or re.search(r'-(?:\d{8}|\d{6})-\d{4}-',name))) or re.search(r'-(?:console-error-log|host-date-timezone)\.txt$',name) or
                 (name.startswith(('catscale_', 'fsecure_','cat-scale_')) and name.endswith(('.tar.gz','.tgz','.tar'))))
 
 
 def identity(path):
     # Filenames retain the collection hostname/date even after upstream extraction.
     for part in reversed(PurePosixPath(str(path).replace('\\','/')).parts):
-        match=re.search(r'^(.*)-(\d{8}-\d{4})(?:-|\.|$)',part)
+        match=re.search(r'^(.*)-((?:\d{8}|\d{6})-\d{4})(?:-|\.|$)',part)
         if match:return re.sub(r'(?i)^(?:catscale_|fsecure_|cat-scale_)','',match[1]),match[2]
     return '', ''
 

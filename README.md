@@ -23,6 +23,18 @@ Fireblade s’adresse aux analystes DFIR et aux personnes qui apprennent l’inv
 
 [Référence complète : fonctionnalités, captures et limites](docs/guides/FONCTIONNALITES.md) · [Compatibilité Timeline Explorer](docs/development/COMPATIBILITE.md)
 
+## Choisir un jeu d’essai
+
+| Jeu | Taille | Usage |
+|---|---|---|
+| [Découverte v1](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) | ~5,1 Mo ZIP, ~60,6 Mo extraits | Premier essai des formats et de l’interface |
+| [**Grand pack BRUT v1**](https://github.com/23R0534ZXT/fireblade/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip) | **~521 Mo ZIP, 3,44 Go de données brutes extraites** | Parser des MFT, ruches, EVTX, Prefetch, LNK et autres artefacts natifs ; scénario Linux en journaux bruts, aucun CSV d’analyse |
+| [CSV de charge](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/Fireblade-test-3GiB.zip) | 3 Gio de CSV | Tester le volume de la grille, des filtres et des exports ; ce n’est pas une collecte native |
+
+Le grand pack réunit **2,37 Go d’artefacts Windows publics** et **1,07 Go de journaux Linux synthétiques**. Les collections Windows restent indépendantes. Son contrôle Windows a soumis 2 795 fichiers au parsing et vérifié exactement 7 585 912 lignes Linux. **16 refus de lecteurs** et 48 diagnostics d’avertissement ou de sortie vide sont consignés dans le rapport ; ils ne sont pas comptés comme des réussites.
+
+[Guide du grand pack brut](docs/guides/PACK-BRUT.md) · [Choisir une collecte et connaître les paramètres de validation](docs/guides/COLLECTES-PACK-BRUT.md) · [Rapport, empreinte et limites](https://github.com/23R0534ZXT/fireblade/releases/tag/raw-artifacts-v1)
+
 ## Essayer en 15 minutes
 
 1. Téléchargez **Fireblade.exe** avec le lien ci-dessus, puis lancez-le sous **Windows x64**. Python, Excel et une installation préalable de .NET ne sont pas nécessaires.

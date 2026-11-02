@@ -30,3 +30,11 @@ Pour publier un nouveau pack, augmenter sa version dans le générateur et le wo
 `python -m ruff check src scripts tests` vérifie les erreurs de syntaxe et de noms sans exiger un reformatage global. Dependabot propose chaque semaine les mises à jour des dépendances Python déclarées dans `pyproject.toml` et des actions GitHub. Les versions de production restent épinglées dans `requirements/runtime.txt` : une PR de dépendance doit actualiser ces épingles de façon cohérente, puis passer les contrôles avant intégration.
 
 Les mises à jour automatiques ne sont pas fusionnées automatiquement. Conserver les sources et empreintes des moteurs dans `config/forensic-toolchain.json`.
+
+## Grand pack brut
+
+Le workflow `raw-pack.yml` exécute ses tests unitaires sur les changements du générateur. La construction complète, le parsing Windows et la publication nécessitent un lancement manuel ; `publish_pack` contrôle la publication. Le commit et l’empreinte de l’application sont les mêmes références qualifiées que pour le petit pack.
+
+`config/raw-pack-sources.json` épingle les sources publiques et leurs empreintes. `scripts/raw_pack` extrait les artefacts natifs, génère des journaux Linux bruts, contrôle le parsing, puis relit indépendamment chaque entrée du ZIP. La qualification vérifie les 13 références EZ Tools, Shellbags, WebCache, au moins 1 Gio d’entrées Windows ayant produit des lignes, et les comptes exacts de tous les journaux Linux. Les erreurs de lecteurs sur les corpus publics sont listées comme diagnostics ; elles ne sont pas transformées en succès. Le rapport précise le mode par fichier et le buffer de 512 Mo.
+
+Le tag `raw-artifacts-v1` est distinct de l’application et du petit pack. Les fichiers déjà publiés ne sont pas remplacés ; une nouvelle version de contenu doit utiliser un nouveau tag.

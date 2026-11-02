@@ -26,10 +26,18 @@ L’empreinte SHA-256 du ZIP v1 publié est `a546e3eac159f6e9a9e9c90360f4f89bec5
 
 C’est un CSV synthétique. Il ne remplace pas les fichiers natifs d’une collecte et ne prouve pas la couverture de tous les parseurs ou le comportement sur une enquête réelle.
 
+## Parser un grand dossier de fichiers bruts
+
+[Le grand pack BRUT v1](https://github.com/23R0534ZXT/fireblade/releases/tag/raw-artifacts-v1) fournit **3 439 828 945 octets de données brutes** : 2 366 084 169 octets Windows natifs et 1 073 744 776 octets Linux. Le ZIP publié pèse **521 449 067 octets**, grâce à la compression. Aucun CSV d’analyse ni base `.timeline` n’y est distribué.
+
+Les fichiers Windows publics sont conservés avec leurs empreintes et répartis par origine ; le scénario Linux est synthétique. La qualification Windows a soumis 2 795 fichiers au parsing, obtenu des sorties sur les 13 références EZ Tools ainsi que Shellbags/WebCache et compté exactement **7 585 912 lignes Linux**. Les 16 refus de lecteurs et 48 autres diagnostics observés sont joints au rapport : une entrée présente dans le pack ne garantit pas qu’un lecteur en produise un résultat complet.
+
+Commencer par une origine ou famille. [Le guide](PACK-BRUT.md) donne le parcours ; [le tableau des collectes](COLLECTES-PACK-BRUT.md) donne les tailles et la limite des sessions. La qualification utilise le mode par fichier, un buffer DuckDB de 512 Mo et deux threads.
+
 ## Tester une investigation réaliste
 
 Une collecte réelle peut atteindre plusieurs gigaoctets, voire davantage : journaux longs, MFT, registres, historiques de navigateurs, nombreuses traces d’activité et plusieurs hôtes. Sa taille dépend des données collectées ; elle ne mesure pas à elle seule la qualité d’un test.
 
-Le dépôt ne fournit actuellement **aucun gros dossier cohérent réunissant tous ces artefacts autour d’un incident**. Pour ce type d’exercice, il faut un jeu public redistribuable avec un scénario, sa chronologie, sa provenance et des résultats de référence. Dupliquer les petits fichiers jusqu’à atteindre plusieurs gigaoctets fournirait un test de volume, sans constituer une nouvelle couverture forensic.
+Le grand pack brut fournit plusieurs origines Windows publiques et un scénario Linux synthétique. Il ne constitue pas une acquisition Windows unique réunissant tous les artefacts d’un même incident. Un tel exercice demande un jeu redistribuable avec un scénario, sa chronologie, sa provenance et des résultats de référence. Dupliquer les petits fichiers jusqu’à atteindre plusieurs gigaoctets fournirait un test de volume, sans constituer une nouvelle couverture forensic.
 
 Pour un premier retour sur Fireblade, commencer par le petit pack. Pour un retour de performance, utiliser le jeu de charge en indiquant la machine, la version de Fireblade et les opérations mesurées.

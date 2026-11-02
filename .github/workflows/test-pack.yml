@@ -36,7 +36,8 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements/runtime.txt
-      - run: python -m pip install --only-binary=:all: -r build/reference-app/requirements/runtime.txt pyinstaller
+      - run: >-
+          python -m pip install --only-binary=:all: -r build/reference-app/requirements/runtime.txt pyinstaller
       - name: Build ZIP and verify every decompressed file hash
         env:
           PYTHONPATH: build/reference-app/src

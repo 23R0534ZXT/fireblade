@@ -23,6 +23,9 @@ PARSERS = ('EvtxECmd', 'AmcacheParser', 'AppCompatCacheParser', 'PECmd', 'MFTECm
            'RecentFileCacheParser', 'SQLECmd')
 
 
+ADDITIONAL_PARSERS = ('Shellbags', 'WebCache')
+
+
 def check_cancel():
     if job_cancelled():
         raise OperationCancelled()
@@ -62,7 +65,10 @@ def identify(path):
     if name.startswith(('amcache', 'inventory')) and (magic.startswith(b'regf') or magic.startswith(b'SQLite format 3')):
         return ['AmcacheParser']
     if magic.startswith(b'regf'):
+        if name.startswith(('usrclass','ntuser')):return ['RECmd','Shellbags']
         return ['AppCompatCacheParser', 'RECmd'] if name == 'system' else ['RECmd']
+    if name.startswith('webcache') and name.endswith('.dat'):
+        return ['WebCache']
     if name.endswith('.pf'):
         return ['PECmd']
     if name.endswith(('$mft', '$j', '$boot')) or magic.startswith(b'FILE'):
@@ -303,7 +309,13 @@ class Collection:
                             output.mkdir()
                             try:
                                 catscale_outputs = {}
-                                if tool == 'CatScale':
+                                if tool == 'WebCache':
+                                    from fireblade.core.webcache import parse
+                                    result = parse(source, output, self.progress)
+                                    run['webcache'] = result
+                                    run['warnings'] = result['warnings']
+                                    csvs = [Path(item['csv']) for item in result['outputs']]
+                                elif tool == 'CatScale':
                                     from fireblade.core.catscale import parse
                                     result = parse(source, output)
                                     run['catscale'] = result

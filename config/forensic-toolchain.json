@@ -110,5 +110,31 @@
   "registry_fixture_license": {
     "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/main/LICENSE",
     "sha256": "41aaa7bec9ddee674344bc6cad6ac40d2fe48cef6de8287d32ea6b35520dacd1"
+  },
+  "shellbags": {
+    "project": "src/fireblade/shellbags_host/Shellbags.csproj",
+    "library_versions": {
+      "Registry": "2026.10.1",
+      "ExtensionBlocks": "2026.10.9"
+    },
+    "libraries": [
+      {
+        "name": "Registry",
+        "repository": "https://github.com/EricZimmerman/Registry",
+        "commit": "de0bdbbea699637fe0e7b519c9f7fc07aafb173a",
+        "license": "LICENSE.md"
+      },
+      {
+        "name": "ExtensionBlocks",
+        "repository": "https://github.com/EricZimmerman/ExtensionBlocks",
+        "commit": "897bbe39db84c444cda1c4714265b3109848e3d4",
+        "license": "License.md"
+      }
+    ]
+  },
+  "webcache": {
+    "reader": "dissect.esedb",
+    "version": "3.18",
+    "mode": "read-only, no transaction log replay or deleted record carving"
   }
 }

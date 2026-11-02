@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "ExtensionBlocks": {
+        "type": "Direct",
+        "requested": "[2026.10.9, )",
+        "resolved": "2026.10.9",
+        "contentHash": "b+owlIH8IfeUVt8+5JUXTPP3xL29PxsDebDvsXVwI+qW4o+V7rgHCqdZcK+jH8n9w9fdoSmlQmd0ZluktGLtkg==",
+        "dependencies": {
+          "GuidMapping": "2026.10.2"
+        }
+      },
+      "Registry": {
+        "type": "Direct",
+        "requested": "[2026.10.1, )",
+        "resolved": "2026.10.1",
+        "contentHash": "vd6RmcjraQYq2lKuWEVOpqbuSfQxcQf3stmGgYmjs5iQIIjeM151aWSm145OiF/3PUsc3HXKidUFrJX0TLrshQ==",
+        "dependencies": {
+          "Serilog": "4.4.0"
+        }
+      },
+      "GuidMapping": {
+        "type": "Transitive",
+        "resolved": "2026.10.2",
+        "contentHash": "t+ufBZfp/L/el9QNxXJ9PfvtMNeJQr16LVxQG9eVS5x8l21VZRKzxmq712OYzBu48VO5IwyMgh0SKBHppNow9w=="
+      },
+      "Serilog": {
+        "type": "Transitive",
+        "resolved": "4.4.0",
+        "contentHash": "ZC6Le3rr4TVJJjS4KsQAesxeF1EhW9qcZmmG7eP5Y2G3+gTGkJEUXkq4+tZNPtyp05I0wWOxnIjwtxFweJsObw=="
+      }
+    },
+    "net10.0/win-x64": {}
+  }
+}

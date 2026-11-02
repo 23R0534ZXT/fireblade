@@ -66,6 +66,22 @@ def build(root, resources):
         if not (target/(tool['name']+'.dll')).is_file():
             raise ValueError('Parseur non publié : '+tool['name'])
         tool['binary_sha256'] = hashlib.sha256((target/(tool['name']+'.dll')).read_bytes()).hexdigest()
+    # Fireblade's offline Shellbags host shares the MIT Registry/ExtensionBlocks
+    # readers already used by the EZ engines and the embedded .NET runtime.
+    shellbags = lock['shellbags']
+    shellbags['source_commit'] = subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+    subprocess.run(['dotnet','publish',str(root/shellbags['project']),'-c','Release','-r','win-x64',
+                    '--self-contained','false','-p:UseAppHost=false','-p:RestoreLockedMode=true','-o',str(destination/'Shellbags')],check=True)
+    shellbags['binary_sha256'] = hashlib.sha256((destination/'Shellbags'/'Shellbags.dll').read_bytes()).hexdigest()
+    for library in shellbags['libraries']:
+        url = library['repository'].replace('https://github.com/','https://raw.githubusercontent.com/')+'/'+library['commit']+'/'+library['license']
+        with urllib.request.urlopen(url,timeout=60) as response:notice=response.read()
+        if b'permission is hereby granted' not in notice.lower():raise ValueError('Licence Shellbags à vérifier')
+        (legal/('Shellbags-'+library['name']+'-LICENSE.txt')).write_bytes(notice)
+    # Preserve the Apache-licensed public WebCache fixture's source notices.
+    for name in ('LICENSE','NOTICE'):
+        url='https://raw.githubusercontent.com/Sootmark/ese/3570ed9280f73d0d4796ed8979a7a4e30ea022d9/tests/fixtures/plaso/'+name
+        with urllib.request.urlopen(url,timeout=60) as response:(legal/('WebCache-QA-'+name+'.txt')).write_bytes(response.read())
     plugins = lock['registry_plugins']
     source = checkout/'RegistryPlugins'
     if not (source/'.git').exists():
@@ -154,6 +170,9 @@ def build(root, resources):
         if result.returncode:
             raise ValueError('Moteur intégré inutilisable : '+tool['name']+' '+result.stderr[-2000:])
         checks.append(dict(tool=tool['name'], help_passed=True))
+    command=[str(runtime/'dotnet.exe'),str(destination/'Shellbags'/'Shellbags.dll'),'--help']
+    subprocess.run(command,cwd=destination/'Shellbags',check=True,timeout=60)
+    checks.append(dict(tool='Shellbags',help_passed=True))
     result = subprocess.run([str(destination/'Hayabusa'/'hayabusa.exe'), 'dfir-timeline', '--help'],
                             cwd=destination/'Hayabusa', capture_output=True, text=True, timeout=60)
     if result.returncode or '--no-wizard' not in result.stdout:
@@ -189,6 +208,7 @@ def build(root, resources):
             target = legal/'NuGet'/source.relative_to(packages)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
+    if not (destination/'Shellbags'/'Shellbags.dll').is_file():raise ValueError('Hôte Shellbags absent')
     (destination/'manifest.json').write_text(json.dumps(lock, indent=2), encoding='utf-8')
     stage_parser_fixtures(root, destination)
     return destination
@@ -197,15 +217,16 @@ def build(root, resources):
 def stage_parser_fixtures(root, destination):
     """Pinned public examples, hashed after decompression; no user evidence."""
     import gzip
-    entries = json.loads((Path(root)/'config/forensic-qa-fixtures.json').read_text())
-    for item in entries:
-        with urllib.request.urlopen(item['url'], timeout=90) as response:
-            data = response.read()
-        if item['compression'] == 'gzip':
-            data = gzip.decompress(data)
-        if hashlib.sha256(data).hexdigest() != item['sha256']:
-            raise ValueError('Échantillon de qualification modifié : '+item['tool'])
-        target = Path(destination)/'qa'/'matrix'/item['tool']/item['name']
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
-    (Path(destination)/'qa'/'matrix-sources.json').write_text(json.dumps(entries, indent=2), encoding='utf-8')
+    for config, group in [('forensic-qa-fixtures.json','matrix'),('forensic-browser-qa-fixtures.json','browser')]:
+        entries = json.loads((Path(root)/'config'/config).read_text())
+        for item in entries:
+            with urllib.request.urlopen(item['url'], timeout=90) as response:
+                data = response.read()
+            if item['compression'] == 'gzip':
+                data = gzip.decompress(data)
+            if hashlib.sha256(data).hexdigest() != item['sha256']:
+                raise ValueError('Échantillon de qualification modifié : '+item['tool'])
+            target = Path(destination)/'qa'/group/item['tool']/item['name']
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        (Path(destination)/'qa'/(group+'-sources.json')).write_text(json.dumps(entries, indent=2), encoding='utf-8')

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from fireblade.core.collection import PARSERS
+from fireblade.core.collection import PARSERS, ADDITIONAL_PARSERS
 from fireblade.validation.forensic_tools import verify_parser_results
 
 
@@ -11,7 +11,9 @@ def test_pinned_fixtures_cover_remaining_parsers():
     items = json.loads((Path(__file__).parents[2]/'config/forensic-qa-fixtures.json').read_text())
     # Existing qualification includes EVTX and SYSTEM (AppCompatCacheParser).
     assert {item['tool'] for item in items} | {'EvtxECmd', 'AppCompatCacheParser'} == set(PARSERS)
-    for item in items:
+    browser=json.loads((Path(__file__).parents[2]/'config/forensic-browser-qa-fixtures.json').read_text())
+    assert {item['tool'] for item in browser}==set(ADDITIONAL_PARSERS)
+    for item in items+browser:
         assert len(item['sha256']) == 64
         assert item['url'].startswith('https://')
         assert '/' not in item['name'] and '\\' not in item['name']

@@ -38,6 +38,7 @@ def main():
                "--name", "Fireblade", "--paths", str(root / "src"),
                "--distpath", str(staging), "--workpath", str(root / "build" / "windows" / "pyinstaller"),
                "--specpath", str(root / "build" / "windows"), "--collect-all", "duckdb",
+               "--collect-all", "dissect.esedb", "--collect-all", "dissect.cstruct", "--collect-all", "dissect.util",
                "--hidden-import", "numpy", "--hidden-import", "decimal", "--hidden-import", "uuid", "--hidden-import", "fractions"]
     for source, target in [(generated, "resources"), (root / "config" / "fireblade.toml", "resources/config"),
                            (root / "docs" / "guides" / "UTILISATION.md", "resources/docs/guides"),

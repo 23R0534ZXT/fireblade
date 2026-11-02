@@ -1,0 +1,16 @@
+[
+  {
+    "tool": "Shellbags",
+    "name": "UsrClass.dat",
+    "url": "https://raw.githubusercontent.com/EricZimmerman/Registry/de0bdbbea699637fe0e7b519c9f7fc07aafb173a/Registry.Test/Hives/ERZ_Win81_UsrClass.dat",
+    "compression": null,
+    "sha256": "dc43388d50ecfadd85053e2345f62324c2b0b2901a6945d480a2899f0e8c5185"
+  },
+  {
+    "tool": "WebCache",
+    "name": "WebCacheV01.dat",
+    "url": "https://raw.githubusercontent.com/Sootmark/ese/3570ed9280f73d0d4796ed8979a7a4e30ea022d9/tests/fixtures/plaso/WebCacheV01.dat.gz",
+    "compression": "gzip",
+    "sha256": "2713e7ff413c69659442c5dcb0f23f41230fa76bf760b8aeac0ffd430d10c83e"
+  }
+]

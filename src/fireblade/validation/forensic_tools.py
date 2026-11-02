@@ -55,7 +55,7 @@ def verify_embedded_engines(directory, display=None):
     manifest=json.loads((pack.root/'manifest.json').read_text(encoding='utf-8'))
     if {tool['name'] for tool in manifest['parsers']} != set(PARSERS):
         raise AssertionError('Pack de parseurs incomplet')
-    for tool in PARSERS:
+    for tool in (*PARSERS, 'Shellbags'):
         execute(pack.command(tool)+['--help'],pack.root/tool,directory/(tool+'-help.log'),timeout=60)
     execute(pack.command('Hayabusa')+['dfir-timeline','--help'],pack.root/'Hayabusa',directory/'Hayabusa-help.log',timeout=60)
     source=pack.root/'qa'/'System.evtx'

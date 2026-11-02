@@ -408,6 +408,10 @@ def run_check(app, report_path):
         check_features(window, directory, settle, check, expect, report_path.parent)
         from fireblade.validation.completion_checks import check_completion
         check_completion(window,directory,settle,check,expect,report_path.parent)
+        from fireblade.validation.investigations import verify_investigations
+        def investigation_cases():
+            report['investigations']=verify_investigations(app,directory/'investigation-cases',window.settings)
+        check('persistent_cases_unloaded_catalogue_and_session_restore',investigation_cases)
         report["memory"] = windows_memory()
         report["status"] = "passed"
     except Exception as exc:

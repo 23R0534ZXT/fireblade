@@ -131,22 +131,45 @@ class CollectionMixin(AlertContextMixin):
     def collection_finished(self, report):
         self.show_collection_report(report)
         self.workbench.setCurrentIndex(1)
-        if report['documents']:
-            # Job completion can precede the thread pool releasing its worker.
-            def open_results():
-                if self.pool.activeThreadCount():
-                    QTimer.singleShot(20, open_results)
-                    return
+        if not report['documents']:return
+        collection=self.collection
+        epoch=self._workspace_epoch
+        self._collection_open_pending=True
+        self.centralWidget().setEnabled(False)
+        self.set_file_actions(False)
+        def open_results():
+            if self.pool.activeThreadCount():
+                QTimer.singleShot(20,open_results)
+                return
+            try:
+                if self.collection is not collection or self._workspace_epoch!=epoch:return
+                from fireblade.core.sessions import read_session,write_session
+                self.remember_active()
                 if self.documents:
-                    from fireblade.ui.workspace import write_session
-                    self.remember_active()
-                    write_session(self.collection.output/'previous-workspace.fireblade-session', self.documents, self.active_document)
-                self.load_session(str(self.collection.output/'collection.fireblade-session'))
+                    write_session(collection.output/'previous-workspace.fireblade-session',self.documents,self.active_document)
+                incoming,active=read_session(collection.output/'collection.fireblade-session')
+                snapshots=incoming
+                if getattr(self,'active_investigation',None) is not None:
+                    existing={snapshot.path for snapshot in self.documents}
+                    snapshots=list(self.documents)+[snapshot for snapshot in incoming if snapshot.path not in existing]
+                if len(snapshots)>1000:
+                    raise ValueError('Le case dépasserait 1000 analyses. Les résultats restent dans le dossier de collecte.')
+                wanted=(report.get('detection') or {}).get('analysis') or incoming[active].path
+                selected=next(i for i,snapshot in enumerate(snapshots) if snapshot.path==wanted)
+                self.validate_session_snapshots(snapshots)
+                self.install_session_snapshots(snapshots,selected)
                 if (report.get('detection') or {}).get('outputs'):
-                    self.switch_document(len(self.documents)-1)
-                    if self.case:self.select_evidence_row(str(self.case.path),1)
+                    self.select_evidence_row(str(self.case.path),1)
                 self.workbench.setCurrentIndex(0)
-            QTimer.singleShot(0, open_results)
+                if getattr(self,'active_investigation',None) is not None:
+                    self.remember_investigation_collection()
+                    self.persist_investigation()
+            except Exception as exc:self.error(exc)
+            finally:
+                self._collection_open_pending=False
+                self.centralWidget().setEnabled(not self.busy)
+                self.set_file_actions(self.model is not None and not self.busy)
+        QTimer.singleShot(0,open_results)
 
     def start_collection_job(self, function):
         self.workbench.setCurrentIndex(1)
@@ -169,7 +192,7 @@ class CollectionMixin(AlertContextMixin):
         organization = dialog.organization()
         dialog.deleteLater()
         if accepted != QDialog.DialogCode.Accepted:return
-        parent = user_directory()/'Collectes'
+        parent = self.investigation_data_directory('Collectes') or user_directory()/'Collectes'
         parent.mkdir(parents=True, exist_ok=True)
         output = parent/(datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:8])
         try:

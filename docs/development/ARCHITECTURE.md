@@ -29,7 +29,8 @@ Le moteur reste importable sans Qt. Les modèles métier sont des dataclasses si
 | Modèle Qt paginé et rendu de la grille | `src/fireblade/ui/grid.py` |
 | Dialogues d’import et éditeurs | `src/fireblade/ui/dialogs.py`, `advanced_dialogs.py` |
 | Menus contextuels et geste de groupement | `src/fireblade/ui/menus.py`, `grouping.py` |
-| Onglets et sessions | `src/fireblade/ui/workspace.py` |
+| Onglets et sessions | `src/fireblade/ui/workspace.py`, `src/fireblade/core/sessions.py` |
+| Catalogue des cases, sauvegarde atomique et verrouillage | `src/fireblade/core/investigations.py`, `src/fireblade/ui/investigations.py` |
 | Commandes des règles globales | `src/fireblade/ui/shared_rules.py` |
 | Palette et tâches en arrière-plan | `src/fireblade/ui/theme.py`, `workers.py` |
 | Guide, licences et informations du build | `src/fireblade/ui/help_dialogs.py` |
@@ -66,6 +67,8 @@ Ne jamais interpoler une valeur utilisateur dans SQL : les identifiants de colon
 Les valeurs source sont stockées en VARCHAR. Le numéro interne suit l’ordre des enregistrements importés. Les comparaisons numériques utilisent une conversion exacte avec chemin rapide HUGEINT pour les chaînes entières et repli DECIMAL ; elles ne passent pas par un flottant.
 
 Les tables de données, métadonnées, signets et vues vivent dans la base `.timeline`. Les vues JSON acceptent les nouveaux champs avec une valeur par défaut. Une modification du schéma des tables demanderait une migration explicite ; la réorganisation du package Python n’en impose pas.
+
+Le catalogue des cases lit seulement les fiches `case.json` au démarrage. L’ouverture explicite valide les références avant de remplacer la session active. Un verrou système protège le case ouvert ; les sauvegardes écrivent une nouvelle session puis remplacent atomiquement sa référence dans la fiche. Les sorties et dispositions automatiques sont propres au case.
 
 Les sessions JSON conservent des références, des vues et un état d’en-tête. Leurs règles globales restent dans le profil utilisateur et ne sont pas copiées dans les vues locales.
 

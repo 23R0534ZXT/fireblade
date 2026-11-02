@@ -393,7 +393,8 @@ class ExplorationMixin:
     def restore_format_layout(self):
         from fireblade.core.auto_layout import load_auto_layout
         try:
-            layout,path=load_auto_layout(self.case.headers,self.case.info)
+            directory=self.investigation_data_directory('Layouts/Local') if getattr(self,'active_investigation',None) is not None else None
+            layout,path=load_auto_layout(self.case.headers,self.case.info,directory) if directory else load_auto_layout(self.case.headers,self.case.info)
             if layout is None:
                 return False
             self.apply_tle_layout(layout)
@@ -414,7 +415,9 @@ class ExplorationMixin:
             view=copy.deepcopy(self.view)
             view.header_state=base64.b64encode(self.tree.header().saveState()).decode('ascii')
             self.case.validate_view(view)
-            save_auto_layout(self.case.headers,self.case.info,view)
+            directory=self.investigation_data_directory('Layouts/Local') if getattr(self,'active_investigation',None) is not None else None
+            if directory:save_auto_layout(self.case.headers,self.case.info,view,directory)
+            else:save_auto_layout(self.case.headers,self.case.info,view)
         except (OSError,ValueError,TypeError) as exc:
             self.statusBar().showMessage('Disposition locale non enregistrée : '+str(exc))
 

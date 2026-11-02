@@ -58,6 +58,18 @@ Screenshot from a real workflow using a public demonstration EVTX, captured with
 
 Versions, sources, and hashes are pinned in the [engine configuration](config/forensic-toolchain.json). EvtxECmd and SQLECmd include their maps; RECmd includes 70 registry plugins. A SQLite database requires a matching map. This list does not guarantee every variant or every input supported by each upstream tool's command line. Fireblade does not mount disk images.
 
+## Investigation cases
+
+The **Cases** tab opens at startup and lists saved investigations without loading their analyses. Create a case with a name, description, platform label (Windows, Linux, mixed, or unspecified), and status. The platform label organizes the catalogue; it does not add parser support.
+
+Open a case explicitly to restore its analysis tabs, active tab, filters, grouping, sorting, and column layout. Bookmarks and notes remain in the analysis databases. Saving the case saves its session too; switching cases, closing a case, and quitting save the active case first. A failed save prevents closing or switching. Only one window can open a given case at a time.
+
+Use search, sortable columns, and **Archiver** to keep the catalogue organized. Archived cases are retained and can be shown with **Inclure les archivés**, then reactivated. Each case can retain several collection workspaces; choose one in **Collecte et détection**. Importing another collection adds its analyses to the active case.
+
+New imports, collection results, and automatic layouts default to the case's own folder under `%LOCALAPPDATA%\Fireblade\Cases\<case-id>`. Existing analyses can also be included when creating a case. These remain references: adding an existing database does not copy it, and reusing the same database shares its annotations. Back up the case folder **and every externally referenced database and original artifact**. Moving files does not rewrite saved paths.
+
+![Saved investigation catalogue](docs/assets/fireblade-cases.png)
+
 ## Explore the results
 
 | Task | Command or gesture |
@@ -80,6 +92,7 @@ Forensic profiles organize columns; each profile is not a raw artifact parser. F
 
 | Action | Shortcut |
 |---|---|
+| Create a case / save the case and session | Ctrl+Alt+N / Ctrl+Alt+S |
 | Open data / an analysis | Ctrl+O / Ctrl+Shift+O |
 | Export results | Ctrl+Shift+E |
 | Clear filters | Ctrl+E |
@@ -87,7 +100,7 @@ Forensic profiles organize columns; each profile is not a raw artifact parser. F
 | Filter on the active cell | Ctrl+Shift+F |
 | Search across analyses | Ctrl+F |
 | Save / load a view | Ctrl+S / Ctrl+L |
-| Save the session | Ctrl+Shift+S |
+| Save the session (or the active case and session) | Ctrl+Shift+S |
 | Bookmark the selection / remove its bookmarks | Ctrl+Alt+B / Ctrl+Shift+M |
 | Expand / collapse all groups | Ctrl+M / Ctrl+K |
 | Next / previous tab | Ctrl+Tab / Ctrl+Shift+Tab |
@@ -102,11 +115,12 @@ Source files are read without rewriting them and verified using SHA-256. Native 
 |---|---|
 | `.timeline` | Imported data, provenance, annotations, and views |
 | `.fireblade-session` | Database references: keep every referenced database |
+| Investigation case | Entire case folder (`case.json`, session, analyses, collection workspaces, layouts), plus external references |
 | Fireblade collection workspace | `collection.json`, session, individual and organized databases, CSV files, contexts, and logs |
 | Original artifacts | Required to rerun Hayabusa; imported databases remain readable without them |
 | User profile | Preferences, shared rules, personal profiles, and automatic layouts |
 
-Collection workspaces are created in `%LOCALAPPDATA%\Fireblade\Collectes`. **Reprendre une collecte…** opens a collection's working directory. Both `collection.json` and session files store path references: moving a directory does not automatically migrate every reference.
+Outside an active case, collection workspaces are created in `%LOCALAPPDATA%\Fireblade\Collectes`. **Reprendre une collecte…** opens a collection's working directory. Both `collection.json` and session files store path references: moving a directory does not automatically migrate every reference.
 
 Settings and ordinary analyses live under `%LOCALAPPDATA%\Fireblade`. Session backups do not include the evidence. Third-party DLLs may require their own files and dependencies, and run with the user's permissions.
 

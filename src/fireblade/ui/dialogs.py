@@ -18,6 +18,8 @@ class ImportDialog(QDialog):
         self.setMinimumWidth(520)
         source = Path(source)
         directory = analyses_directory() if sys.platform == "win32" else source.parent
+        if parent is not None and hasattr(parent,'investigation_data_directory'):
+            directory = parent.investigation_data_directory('Analyses') or directory
         target = directory / (source.stem + ".timeline")
         number = 2
         while target.exists():

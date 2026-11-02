@@ -1,5 +1,4 @@
 """Build pinned MIT EZ parsers and stage Hayabusa with rules in the one-file bundle."""
-import base64
 import hashlib
 import json
 import os
@@ -20,6 +19,15 @@ def unpack(archive, destination):
             if destination not in target.parents and target != destination:
                 raise ValueError('Chemin ZIP hors du dossier de destination')
         zipped.extractall(destination)
+
+
+def load_evtx_fixture(spec):
+    # Public, commit-pinned raw bytes avoid shared unauthenticated API quotas.
+    with urllib.request.urlopen(spec['url'], timeout=60) as response:
+        sample = response.read()
+    if hashlib.sha256(sample).hexdigest() != spec['sha256']:
+        raise ValueError('EVTX de qualification incorrect')
+    return sample
 
 
 def build(root, resources):
@@ -182,11 +190,8 @@ def build(root, resources):
     (legal/'SOURCES.txt').write_text(json.dumps(lock, indent=2)+'\nHayabusa source: '+source_url+'\n', encoding='utf-8')
     qa = destination/'qa'
     qa.mkdir(exist_ok=True)
-    fixture = 'https://api.github.com/repos/Yamato-Security/hayabusa-sample-evtx/git/blobs/5e7ce922ee681277c8c8d82413bb9ba944caef54'
-    with urllib.request.urlopen(fixture, timeout=60) as response:
-        sample = base64.b64decode(json.load(response)['content'])
-    if hashlib.sha256(sample).hexdigest() != '7645e96c6d778f96d60ce2a6f209cc4202385c9d87cc077139921270a8e9bb23':
-        raise ValueError('EVTX de qualification incorrect')
+    fixture = lock['evtx_fixture']['url']
+    sample = load_evtx_fixture(lock['evtx_fixture'])
     (qa/'System.evtx').write_bytes(sample)
     (legal/'QA-SOURCE.txt').write_text('EVTX public de démonstration (DeepBlueCLI), non issu d’une collecte utilisateur.\n'+fixture+'\n', encoding='utf-8')
     registry_samples = checkout/'RECmd'/'RECmd.Test'/'TestFiles'/'DFIRArtifactMuseum'

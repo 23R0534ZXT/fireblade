@@ -29,3 +29,20 @@ def test_engine_archive_cannot_escape_staging_directory(tmp_path):
         stream.writestr('../outside.exe','unexpected')
     with pytest.raises(ValueError):unpack(archive,tmp_path/'unpacked')
     assert not (tmp_path/'outside.exe').exists()
+
+
+def test_evtx_fixture_uses_pinned_raw_content_and_checks_digest(monkeypatch):
+    import hashlib
+    import io
+    from scripts.windows.build_forensic_tools import load_evtx_fixture
+    root=Path(__file__).parents[2]
+    spec=json.loads((root/'config/forensic-toolchain.json').read_text())['evtx_fixture']
+    assert spec['url'].startswith('https://raw.githubusercontent.com/Yamato-Security/hayabusa-sample-evtx/')
+    assert re.search(r'/[0-9a-f]{40}/',spec['url']) and len(spec['sha256'])==64
+    calls=[]
+    data=b'public pinned fixture bytes'
+    def download(url,timeout):calls.append(url);return io.BytesIO(data)
+    monkeypatch.setattr('scripts.windows.build_forensic_tools.urllib.request.urlopen',download)
+    assert load_evtx_fixture(dict(url=spec['url'],sha256=hashlib.sha256(data).hexdigest()))==data
+    with pytest.raises(ValueError,match='EVTX de qualification incorrect'):load_evtx_fixture(spec)
+    assert calls==[spec['url'],spec['url']]

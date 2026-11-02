@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QLineEdit,
     QPlainTextEdit,
-    QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QLabel, QTableWidget, QTableWidgetItem, QApplication,
+    QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QLabel, QTableWidget, QTableWidgetItem, QApplication, QTabWidget,
 )
 
 
@@ -23,9 +23,17 @@ class PreferencesDialog(QDialog):
         self.preferences = copy.deepcopy(preferences)
         self.palette=dict(preferences.theme_palette)
         root=QVBoxLayout(self)
-        self.scroll=QScrollArea();self.scroll.setWidgetResizable(True)
-        content=QWidget();form=QFormLayout(content)
-        self.scroll.setWidget(content);root.addWidget(self.scroll,1)
+        self.pages=QTabWidget();root.addWidget(self.pages,1)
+        self.page_scrolls=[];forms=[]
+        for title in ('Apparence','Grille et copie','Dates','Compatibilité'):
+            scroll=QScrollArea();scroll.setWidgetResizable(True)
+            content=QWidget();page_form=QFormLayout(content)
+            page_form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+            page_form.setRowWrapPolicy(QFormLayout.WrapLongRows)
+            scroll.setWidget(content);self.pages.addTab(scroll,title)
+            self.page_scrolls.append(scroll);forms.append(page_form)
+        self.scroll=self.page_scrolls[0]
+        form,grid,dates,compatibility=forms
         self.theme = QComboBox()
         self.theme.addItem("Clair", "light")
         self.theme.addItem("Sombre", "dark")
@@ -94,16 +102,20 @@ class PreferencesDialog(QDialog):
         colors=QPushButton("Personnaliser les couleurs…");colors.clicked.connect(self.edit_palette);form.addRow(colors)
         form.addRow("Police", self.font)
         form.addRow("Taille en points", self.size)
-        form.addRow("Dates reconnues", self.dates)
-        form.addRow("Détails", self.details)
+        dates.addRow("Dates reconnues", self.dates)
+        grid.addRow("Position des détails", self.details)
         self.pattern = QLineEdit(preferences.custom_date_format)
-        form.addRow("Format de date personnalisé", self.pattern)
+        dates.addRow("Format de date personnalisé", self.pattern)
+        date_hint=QLabel('Ces réglages changent la présentation. Les conversions créent des colonnes séparées ; les valeurs source restent conservées.')
+        date_hint.setWordWrap(True);dates.addRow(date_hint)
         self.pins = QPlainTextEdit("\n".join(preferences.first_pinned_columns))
         self.pins.setMaximumHeight(70)
         self.pins.setPlaceholderText("Un nom de colonne par ligne")
-        form.addRow("Épinglage par défaut", self.pins)
-        for widget in (self.headers, self.right, self.multiline, self.auto_profiles):
-            form.addRow(widget)
+        grid.addRow("Épinglage par défaut", self.pins)
+        for widget in (self.headers, self.right, self.multiline):grid.addRow(widget)
+        compatibility.addRow(self.auto_profiles)
+        compatibility_hint=QLabel('Les imports Timeline Explorer et les lecteurs .NET se trouvent dans Fichier → Compatibilité Timeline Explorer. Les profils organisent les colonnes ; ils ne remplacent pas un parser.')
+        compatibility_hint.setWordWrap(True);compatibility.addRow(compatibility_hint)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)

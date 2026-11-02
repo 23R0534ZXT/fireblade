@@ -40,6 +40,27 @@ def parser_result_display(app, settings=None):
         if expected and tuple(window.model.node(window.model.index(0, 0)).values) != expected[0]:
             raise AssertionError('Valeurs affichées altérées : '+str(path))
 
+    def preview_context(collection, alert_row, events):
+        window.collection=collection
+        window.load_case(collection.report['detection']['analysis']);settle()
+        window.workbench.setCurrentIndex(0)
+        number=next(i for i in range(window.model.rowCount()) if window.model.node(window.model.index(i,0)).values[0]==alert_row)
+        window.tree.setCurrentIndex(window.model.index(number,1))
+        before=len(window.documents);registered=len(collection.report['documents'])
+        window.context_open.click();settle()
+        preview=window.context_preview
+        if preview is None or not preview.isVisible() or preview.model.rowCount()!=events:
+            raise AssertionError('Aperçu EVTX latéral incomplet : '+str(errors))
+        if len(window.documents)!=before or len(collection.report['documents'])!=registered:
+            raise AssertionError('Un aperçu ne doit pas ajouter un onglet ou modifier la session')
+        preview.keep.click();settle()
+        if window.context_metadata() is None or not window.context_return.isVisibleTo(window):
+            raise AssertionError('Le contexte conservé ne permet pas le retour aux alertes')
+        if errors:raise AssertionError(str(errors))
+        return True
+
+    display.preview_context=preview_context
+
     try:
         yield display
     finally:
@@ -88,7 +109,8 @@ def verify_embedded_engines(directory, display=None):
     context=build_context(collection,alert,report['detection']['analysis'],row[0])
     if context['references']!=1 or context['events']<=context['references']:
         raise AssertionError('Le contexte ne relie pas l’alerte aux événements EVTX voisins : '+str(context))
-    return dict(parser_matrix=matrix,context_events=context['events'],context_references=context['references'],parsers=len(PARSERS),registry_plugins=len(manifest['registry_plugins']['included']),registry_fixture_passed=True,alerts=report['detection']['alerts'])
+    preview_rendered=display.preview_context(collection,row[0],context['events']) if display is not None and hasattr(display,'preview_context') else False
+    return dict(parser_matrix=matrix,context_events=context['events'],context_references=context['references'],context_preview_rendered=preview_rendered,parsers=len(PARSERS),registry_plugins=len(manifest['registry_plugins']['included']),registry_fixture_passed=True,alerts=report['detection']['alerts'])
 
 
 

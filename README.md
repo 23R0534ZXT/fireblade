@@ -5,7 +5,7 @@
 
 **Investigate Windows artifacts and Linux CatScale collections from a single Windows executable.**
 
-Choose a collection folder, parse its artifacts, and explore the results in Fireblade. Save investigations as **cases**, filter and group complete datasets, annotate findings, and investigate **Hayabusa detections with their EVTX context**. Existing CSV, TSV, delimited TXT, XLS, and XLSX exports can also be opened directly.
+Choose a collection folder, parse its artifacts, and explore the results in Fireblade. Save investigations as **cases**, navigate collections and artifact families, filter and group complete datasets, mark entire rows, and investigate **Hayabusa detections with their EVTX context**. Existing CSV, TSV, delimited TXT, XLS, and XLSX exports can also be opened directly.
 
 | Capability | What it provides |
 |---|---|
@@ -45,6 +45,8 @@ At startup, the EXE extracts resources into a temporary Windows directory. Allow
 To explore an existing export, use **Ouvrir un fichier**. It can be imported into an active case or explored outside one.
 
 ## Investigation cases
+
+The permanent **Enregistrer le case** button saves the active case and its session; the status bar shows the last successful save time.
 
 The **Cases** catalogue opens at startup and lists saved investigations **without loading their analyses**. Open a case explicitly to restore its tabs, active tab, filters, grouping, sorting and column layout. Notes and bookmarks are retained in the analysis databases.
 
@@ -148,7 +150,11 @@ Illustrative capture from the synthetic CatScale acceptance corpus, rendered off
 1. Import a collection containing EVTX and choose the minimum severity in **Collecte et détection**; the default is **Faible**.
 2. Click **Analyser la collecte avec Hayabusa**. Inventoried EVTX files are SHA-256 verified, copied temporarily and analyzed together with the bundled rules.
 3. Select a row in **Alertes Hayabusa**, choose the time window and click **Voir le contexte de cette alerte**.
-4. In **Contexte EVTX**, review imported events from the same computer, including other event logs. Use **Ouvrir l’événement EVTX source** to inspect the referenced record, or **Revenir aux alertes** to return with views and annotations preserved.
+4. Review events in the reusable **EVTX context side panel** while keeping the alerts open. **Conserver ce contexte en onglet** saves a context as an analysis in the session. Use **Ouvrir l’événement EVTX source** to inspect the referenced record and **Revenir aux alertes** to return. Unkept previews are temporary and do not add tabs.
+
+![Reusable EVTX context preview](docs/assets/fireblade-context-preview.png)
+
+Synthetic demonstration events and alert, rendered offscreen on Linux.
 
 Links use the EVTX file and EventRecordID, with computer and EventID checks when available. The relationship column distinguishes the alert event, candidate references from an aggregation and nearby events. The default window is ±5 minutes, adjustable from one minute to 24 hours, with a maximum of 1000 events and explicit notices when limits are reached.
 
@@ -160,6 +166,8 @@ Capture from a public demonstration EVTX workflow, rendered offscreen on Linux.
 
 ## Explore the results
 
+A collapsible **Collectes et analyses** navigator groups results by collection and artifact/family without opening inactive databases. Collection outcomes use a sortable table with status/search filters and file diagnostics on demand. Preferences are divided into Appearance, Grid/copy, Dates and Compatibility; formatting rules separate conditions, target and appearance.
+
 | Task | Command or gesture |
 |---|---|
 | Search a column | Use **Contient…** below its header; filtering runs after a short delay or when you press Enter |
@@ -167,7 +175,9 @@ Capture from a public demonstration EVTX workflow, rendered offscreen on Linux.
 | Combine conditions | **Filtres → Éditeur ET / OU / NON** provides nested blocks, exclusions, and a filter preview |
 | Group results | Drag a header into the grouping bar; × removes a level |
 | Read a complete value | Use the Details panel or **Afficher la cellule / JSON** |
+| Mark a complete row | Click anywhere in the left gutter; the full row is highlighted and its bookmark survives reopening. Removing a mark with a note requires confirmation |
 | Keep an investigative lead | Add a bookmark and note to a row, or annotate the selection |
+| Clear a search safely | **Effacer les filtres** preserves groups, sorting and formatting; **Affichage → Réinitialiser la vue** resets the complete view |
 | Search across analyses | **Filtres → Rechercher dans toutes les analyses** |
 | Resume work | Save a named view in the analysis and a `.fireblade-session` workspace |
 | Share results | Export filtered CSV/XLSX data, annotations, or summaries |
@@ -175,6 +185,10 @@ Capture from a public demonstration EVTX workflow, rendered offscreen on Linux.
 The grid also supports sorting by multiple columns, group summaries and a global footer, paged expansion, columns pinned on either side, row heights, themes, and local/shared formatting rules. Date conversions create separate UTC columns; expressions support persistent calculated columns.
 
 Forensic profiles organize columns; each profile is not a raw artifact parser. Fireblade imports some Timeline Explorer layouts, preferences, and sessions, along with compatible DLL readers and functions through its .NET helpers. Compatibility remains partial: see [supported formats and limitations](docs/development/COMPATIBILITE.md) and [profiles and plugins](docs/development/PLUGINS.md).
+
+![Collection navigation and whole-row marking](docs/assets/fireblade-workspace.png)
+
+Synthetic demonstration records, rendered offscreen on Linux.
 
 ### Main keyboard shortcuts
 
@@ -218,6 +232,10 @@ The CatScale collection is **synthetic demonstration data** using the collector'
 The published ZIP was hash-verified, parsed and its outputs displayed under Windows using the engines from qualified application commit `0c36f0d` and that revision's Fireblade source. All 13 EZ Tools, Shellbags, WebCache, both CatScale forms, the 100,000-row sample and the three export formats passed. The sample set covers the bundled readers with representative inputs.
 
 [Pack release, Windows validation report and checksums](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1). The 3 GiB CSV is distributed separately below.
+
+![Collection outcome table](docs/assets/fireblade-collection-report.png)
+
+Illustrative collection report with a synthetic CSV and an unrecognized file, rendered offscreen on Linux.
 
 ## Data and backups
 
@@ -320,4 +338,4 @@ The linked guides currently use French, matching the application interface.
 
 ## License
 
-Fireblade's code is licensed under [MIT](LICENSE). Dependencies and engines retain their respective licenses, including Hayabusa's AGPL. Notices are available through **Aide → Licences**, and bundled Hayabusa sources can be exported from **Collecte et détection**. See [third-party licenses](licenses/THIRD_PARTY.md).
+Fireblade's code is licensed under [MIT](LICENSE). Dependencies and engines retain their respective licenses, including Hayabusa's AGPL. Notices are available through **Aide → Licences**, and bundled Hayabusa sources can be exported from **Aide → Exporter les sources Hayabusa…**. See [third-party licenses](licenses/THIRD_PARTY.md).

@@ -148,8 +148,16 @@ def check_features(window, directory, settle, check, expect, captures=None):
         expect(window.model.data(window.model.index(0,4),Qt.CheckStateRole)==Qt.Checked,'Boolean true not a checkbox')
         expect(window.model.data(window.model.index(1,4),Qt.CheckStateRole)==Qt.Unchecked,'Boolean false not a checkbox')
         expect('.1234567' in window.model.data(window.model.index(0,1)),'Timestamp precision was lost')
-        window.model.setData(window.model.index(0,0),Qt.Checked,Qt.CheckStateRole);settle()
+        from PySide6.QtTest import QTest
+        from PySide6.QtCore import QPoint
+        index=window.model.index(0,0)
+        window.workbench.setCurrentIndex(0);window.tree.scrollTo(index)
+        QApplication.processEvents()
+        rect=window.tree.visualRect(index)
+        QTest.mouseClick(window.tree.viewport(),Qt.LeftButton,pos=rect.topRight()+QPoint(-7,rect.height()//2));settle()
         expect(case.bookmarks().get(1) is not None,'Clickable bookmark checkbox failed')
+        expect(all(window.model.index(0,c).data(Qt.BackgroundRole).name()==('#665c27' if window.model.dark else '#fff4c2')
+                   for c in range(window.model.columnCount())),'Marked row is not highlighted across every column')
     check('boolean_cells_bookmark_checkbox_and_timestamp_precision',booleans)
 
     def closed():

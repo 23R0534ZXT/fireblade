@@ -2,7 +2,9 @@
 import json
 from pathlib import Path
 
-from PySide6.QtWidgets import QFileDialog, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFileDialog, QVBoxLayout, QWidget, QSplitter
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
 
 from fireblade.core.engine import Case
 from fireblade.core.models import AnalysisSnapshot, View
@@ -16,6 +18,7 @@ class WorkspaceMixin:
     def setup_workspace(self):
         self.documents, self.active_document = [], -1
         self.closed_documents = []
+        self._analysis_labels = {}
         content = self.takeCentralWidget()
         wrapper = QWidget()
         layout = QVBoxLayout(wrapper)
@@ -27,10 +30,45 @@ class WorkspaceMixin:
         self.tabs.setUsesScrollButtons(True)
         self.tabs.currentChanged.connect(self.switch_document)
         self.tabs.tabCloseRequested.connect(self.close_document)
-        layout.addWidget(self.tabs)
-        layout.addWidget(content)
+        body = QWidget();body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(0,0,0,0);body_layout.setSpacing(0)
+        body_layout.addWidget(self.tabs);body_layout.addWidget(content)
+        from fireblade.ui.navigation import AnalysisNavigator
+        self.navigator = AnalysisNavigator()
+        self.navigator.activated.connect(self.switch_document)
+        self.workspace_splitter = QSplitter(Qt.Horizontal)
+        self.workspace_splitter.addWidget(self.navigator)
+        self.workspace_splitter.addWidget(body)
+        self.workspace_splitter.setStretchFactor(1,1)
+        self.workspace_splitter.setSizes([210,1000])
+        layout.addWidget(self.workspace_splitter)
+        self.navigation_action = QAction('Navigation des analyses',self)
+        self.navigation_action.setCheckable(True);self.navigation_action.setChecked(True)
+        self.navigation_action.toggled.connect(lambda _:self.refresh_navigation())
+        self.navigator.close_requested.connect(lambda:self.navigation_action.setChecked(False))
+        view_menu = next(a.menu() for a in self.menuBar().actions() if a.text().replace('&','')=='Affichage')
+        view_menu.addAction(self.navigation_action)
         self.setCentralWidget(wrapper)
         self.tabs.hide()
+        self.refresh_navigation()
+
+    def refresh_navigation(self):
+        if not hasattr(self,'navigator'):return
+        collections = list(getattr(self,'investigation_collections',[]))
+        current = getattr(self,'collection',None)
+        if current and not any(c['path']==str(current.output) for c in collections):
+            collections.append(dict(path=str(current.output),name=current.root.name))
+        if current:
+            for context in current.report.get('contexts',[]):
+                self._analysis_labels[context['analysis']]=str(context['rule'])[:120]+' · ± '+str(context['minutes'])+' min'
+        self.navigator.refresh(self.documents,self.active_document,collections,self._analysis_labels)
+        self.update_navigation_visibility()
+
+    def update_navigation_visibility(self, *_):
+        if not hasattr(self,'navigator'):return
+        preview=getattr(self,'context_preview',None)
+        compact=preview is not None and preview.isVisible() and self.width()<1100
+        self.navigator.setVisible(bool(self.documents) and self.navigation_action.isChecked() and not compact)
 
     def remember_active(self):
         snapshot = self.snapshot_analysis()
@@ -43,6 +81,7 @@ class WorkspaceMixin:
                                     [s.path for s in self.documents], self.active_document)
         self.tabs.setVisible(bool(self.documents))
         self.tabs.blockSignals(False)
+        self.refresh_navigation()
 
     def track_case(self):
         snapshot = self.snapshot_analysis()

@@ -71,7 +71,7 @@ def cell_menu(window, index):
     if window.is_hayabusa_analysis():
         def context():
             window.tree.setCurrentIndex(index)
-            window.open_alert_context()
+            window.preview_alert_context()
         menu.addAction("Voir le contexte EVTX de cette alerte", context)
         menu.addSeparator()
     if window.context_metadata() is not None:

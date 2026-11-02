@@ -69,11 +69,12 @@ def test_gallery_accept_override_and_mode_change_keep_consistent_saved_choice(qt
 def test_preferences_small_window_scroll_keeps_confirmation_accessible(qt_application):
     dialog=PreferencesDialog(Preferences());dialog.resize(560,420);dialog.show();qt_application.processEvents()
     try:
-        assert dialog.scroll.verticalScrollBar().maximum()>0
-        dialog.scroll.ensureWidgetVisible(dialog.pins);qt_application.processEvents()
+        assert dialog.pages.count()==4
+        dialog.pages.setCurrentIndex(1);scroll=dialog.page_scrolls[1]
+        scroll.ensureWidgetVisible(dialog.pins);qt_application.processEvents()
         buttons=dialog.findChild(QDialogButtonBox)
         for role in (QDialogButtonBox.Ok,QDialogButtonBox.Cancel):
             button=buttons.button(role)
             assert button.isVisible() and dialog.rect().contains(button.mapTo(dialog,button.rect().center()))
-        assert dialog.scroll.viewport().rect().contains(dialog.pins.mapTo(dialog.scroll.viewport(),dialog.pins.rect().center()))
+        assert scroll.viewport().rect().contains(dialog.pins.mapTo(scroll.viewport(),dialog.pins.rect().center()))
     finally:dialog.close();dialog.deleteLater()

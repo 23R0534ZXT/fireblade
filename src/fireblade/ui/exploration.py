@@ -129,7 +129,7 @@ class ExplorationMixin:
         if not self.model:
             return
         for column in range(self.model.columnCount()):
-            width = 210 if column == 0 else 150
+            width = 90 if column == 0 else 150
             self.tree.setColumnWidth(column, width)
             if column in self.tree.all_pinned:
                 self.tree.frozen_for(column).setColumnWidth(column, width)
@@ -560,8 +560,28 @@ class ExplorationMixin:
     def mark_row(self, row_id, checked):
         if not self.case or self.busy:
             return
+        if not checked and self.model and self.model.notes.get(row_id):
+            from PySide6.QtWidgets import QMessageBox
+            answer=QMessageBox.question(self,'Retirer le signet',
+                'Cette ligne contient une note. Retirer le signet et sa note ?',
+                QMessageBox.Yes|QMessageBox.No,QMessageBox.No)
+            if answer!=QMessageBox.Yes:return
         case = self.case
-        self.run(lambda: case.bookmark_many([row_id], '', 'mark' if checked else 'remove'), lambda _: self.apply(), exclusive=True)
+        def done(_):
+            def has_expression(condition):
+                if condition is None:return False
+                if hasattr(condition,'children'):return any(has_expression(c) for c in condition.children)
+                return condition.operator=='expression'
+            rules=list(self.view.format_rules)+list(self.model.global_rules)
+            dependent=(self.view.bookmarks_only or has_expression(self.view.expression) or
+                any(has_expression(f) for f in self.view.filters) or
+                any(has_expression(rule.condition) for rule in rules) or bool(case.derived))
+            if dependent:self.apply()
+            else:
+                self.model.update_bookmark(row_id,'' if checked else None)
+                self.show_details(self.tree.currentIndex())
+            self.statusBar().showMessage('Ligne surlignée et ajoutée aux signets.' if checked else 'Surlignage et signet retirés.')
+        self.run(lambda: case.bookmark_many([row_id], '', 'mark' if checked else 'remove'),done,exclusive=True)
 
     def details_menu(self, position):
         cursor = self.details.cursorForPosition(position)

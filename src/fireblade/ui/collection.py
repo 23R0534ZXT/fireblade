@@ -4,9 +4,9 @@ from datetime import datetime
 from pathlib import Path
 import uuid
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QAction, QPalette
-from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QTabWidget, QTextBrowser, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QTabWidget, QVBoxLayout, QWidget
 
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.ui.alert_context import AlertContextMixin
@@ -24,12 +24,12 @@ class CollectionOrganizationDialog(QDialog):
         self.artifacts = QRadioButton('Un onglet par type d’artefact ou famille CatScale')
         self.artifacts.setChecked(True)
         layout.addWidget(self.artifacts)
-        separate = QLabel('Exemples Windows : Amcache, EVTX… CatScale : processus et réseau, persistance, journaux, système, utilisateurs… Les résultats du même type sont réunis.')
+        separate = QLabel('Onglets : [Amcache] [EVTX] [Shellbags]…\nCatScale : [Processus et réseau] [Persistance]…\nLes résultats du même type sont réunis.')
         separate.setWordWrap(True)
         layout.addWidget(separate)
         self.combined = QRadioButton('Tout dans un seul onglet, regroupé par artefact ou famille CatScale')
         layout.addWidget(self.combined)
-        merged = QLabel('Une grille unique, avec les groupes déjà créés. Chaque ligne conserve son fichier source. Les colonnes propres à chaque format restent disponibles.')
+        merged = QLabel('Une grille : Artefact → EVTX / Amcache / Shellbags…\nLes groupes sont déjà créés. Chaque ligne conserve son fichier source ; les colonnes propres à chaque format restent disponibles.')
         merged.setWordWrap(True)
         layout.addWidget(merged)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -53,7 +53,7 @@ class CollectionMixin(AlertContextMixin):
         self.workbench.addTab(workspace, 'Analyses')
         panel = QWidget()
         layout = QVBoxLayout(panel)
-        title = QLabel('Collecte forensic')
+        title = QLabel('1. Importer et parser')
         title.setStyleSheet('font-size: 18px; font-weight: bold;')
         layout.addWidget(title)
         explanation = QLabel('Choisissez un dossier d’artefacts Windows ou une collecte Linux CatScale (dossier extrait ou archives catscale_*.tar.gz). Les moteurs intégrés produisent des résultats séparés, puis Fireblade les ouvre dans une session. Hayabusa analyse uniquement les EVTX Windows inventoriés et ajoute un onglet Alertes.')
@@ -61,12 +61,12 @@ class CollectionMixin(AlertContextMixin):
         layout.addWidget(explanation)
         row = QHBoxLayout()
         for label, callback in [('Choisir un dossier et parser…', self.parse_collection),
-                                ('Reprendre une collecte…', self.reopen_collection),
-                                ('Analyser avec Hayabusa', self.analyze_collection)]:
+                                ('Reprendre une collecte…', self.reopen_collection)]:
             control = QPushButton(label)
             control.clicked.connect(callback)
             row.addWidget(control)
         layout.addLayout(row)
+        layout.addWidget(QLabel('2. Détecter dans les EVTX Windows'))
         settings = QHBoxLayout()
         settings.addWidget(QLabel('Gravité minimale Hayabusa :'))
         self.hayabusa_level = QComboBox()
@@ -74,13 +74,15 @@ class CollectionMixin(AlertContextMixin):
             self.hayabusa_level.addItem(label, code)
         self.hayabusa_level.setCurrentIndex(1)
         settings.addWidget(self.hayabusa_level)
-        sources = QPushButton('Exporter les sources Hayabusa…')
-        sources.clicked.connect(self.export_hayabusa_source)
-        settings.addWidget(sources)
+        self.hayabusa_button = QPushButton('Analyser avec Hayabusa')
+        self.hayabusa_button.clicked.connect(self.analyze_collection)
+        settings.addWidget(self.hayabusa_button)
         settings.addStretch()
         layout.addLayout(settings)
-        self.collection_report = QTextBrowser()
-        self.collection_report.setOpenExternalLinks(False)
+        self.hayabusa_hint = QLabel();self.hayabusa_hint.setTextFormat(Qt.PlainText);self.hayabusa_hint.setWordWrap(True)
+        layout.addWidget(self.hayabusa_hint)
+        from fireblade.ui.collection_report import CollectionReport
+        self.collection_report = CollectionReport()
         layout.addWidget(self.collection_report, 1)
         self.workbench.addTab(panel, 'Collecte et détection')
         self.setCentralWidget(self.workbench)
@@ -88,13 +90,16 @@ class CollectionMixin(AlertContextMixin):
         action = QAction('Importer un dossier de collecte…', self)
         action.triggered.connect(self.parse_collection)
         file_menu.insertAction(file_menu.actions()[1], action)
-        analyze = QAction('Analyser la collecte avec Hayabusa', self)
+        analyze = self.hayabusa_action = QAction('Analyser la collecte avec Hayabusa', self)
         analyze.triggered.connect(self.analyze_collection)
         menu = next(a.menu() for a in self.menuBar().actions() if a.text().replace('&', '') == 'Analyse')
         menu.addAction(analyze)
         toolbar = self.addToolBar('Collecte')
         toolbar.addAction(action)
-        toolbar.addAction(analyze)
+        # Detection belongs to the EVTX step, not the global file toolbar.
+        help_menu = next(a.menu() for a in self.menuBar().actions() if a.text().replace('&','')=='Aide')
+        sources = help_menu.addAction('Exporter les sources Hayabusa…')
+        sources.triggered.connect(self.export_hayabusa_source)
         self.show_collection_report()
         self.setup_alert_context()
 
@@ -129,7 +134,26 @@ class CollectionMixin(AlertContextMixin):
                         if member['status'] in ('error','unsupported','skipped'):
                             lines.append('    '+member['status']+' · '+member['path']+' : '+member.get('reason',''))
         lines += ['', 'Un fichier non reconnu, un moteur absent ou une erreur restent dans le bilan. Une alerte est une piste à vérifier, pas une conclusion de compromission. Les résultats et journaux sont conservés dans le dossier de travail.']
-        self.collection_report.setPlainText('\n'.join(lines))
+        self.collection_report.set_report(report, '\n'.join(lines))
+        self.update_collection_controls()
+        self.refresh_navigation()
+
+    def update_collection_controls(self):
+        if not hasattr(self,'hayabusa_action'):return
+        report=self.collection.report if self.collection else None
+        evtx=bool(report and any('EvtxECmd' in e.get('tools',[]) and e['status'] in ('complete','complete_with_warnings') for e in report['files']))
+        ready=evtx and report['status'] not in ('pending','running') and not self.busy
+        self.hayabusa_action.setEnabled(ready);self.hayabusa_button.setEnabled(ready)
+        self.hayabusa_level.setEnabled(ready)
+        reason=('Attendez la fin du traitement en cours.' if self.busy else
+                'Importez une collecte pour activer la détection.' if report is None else
+                'Hayabusa nécessite des EVTX parsés ; les textes CatScale se consultent dans Analyses.' if not evtx else
+                'EVTX disponibles. Choisissez le seuil puis lancez la détection.')
+        detection=report.get('detection') if report else None
+        if detection and detection.get('status')!='running':
+            reason+=' Dernière détection : '+str(detection.get('alerts',0))+' alerte(s) · '+str(detection['status'])
+        self.hayabusa_hint.setText(reason)
+        self.hayabusa_action.setToolTip(reason)
 
     def collection_finished(self, report):
         self.show_collection_report(report)

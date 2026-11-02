@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass, field
-from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal, QPoint, QRect
+from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal, QPoint, QRect, QEvent
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPolygon, QPalette, QBrush
 from PySide6.QtWidgets import QStyledItemDelegate, QStyle
 
@@ -15,6 +15,15 @@ from fireblade.ui.workers import Job
 
 class GridDelegate(QStyledItemDelegate):
     """Draw grid lines without a stylesheet that overrides model colors."""
+    def editorEvent(self, event, model, option, index):
+        if index.column() == 0 and not model.node(index).group and not model.node(index).footer:
+            if event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
+                checked = model.data(index, Qt.CheckStateRole) == Qt.Checked
+                return model.setData(index, Qt.Unchecked if checked else Qt.Checked, Qt.CheckStateRole)
+            if event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonDblClick):
+                return True
+        return super().editorEvent(event, model, option, index)
+
     def initStyleOption(self,option,index):
         super().initStyleOption(option,index)
         selected=bool(option.state & QStyle.State_Selected)
@@ -36,6 +45,15 @@ class GridDelegate(QStyledItemDelegate):
                 if background is None:option.backgroundBrush=option.palette.brush(QPalette.Highlight)
                 if foreground is None:option.palette.setBrush(QPalette.Text,option.palette.brush(QPalette.HighlightedText))
                 option.state &= ~QStyle.State_Selected
+        node = index.model().node(index)
+        if node.note is not None and not node.group and not node.footer:
+            color = QColor("#665c27" if index.model().dark else "#fff4c2")
+            option.backgroundBrush = QBrush(color)
+            option.palette.setColor(QPalette.Text, contrast_color(color))
+            # Keep a uniform marked row even when individual cells have rules.
+            if selected:
+                option.palette.setBrush(QPalette.Highlight, QBrush(color))
+                option.palette.setColor(QPalette.HighlightedText, contrast_color(color))
         # Transparent fills are drawn over the actual alternating row base.
         # Compute automatic text contrast there, rather than against white or
         # the RGB channels of the translucent color alone.
@@ -187,6 +205,16 @@ class GridModel(QAbstractItemModel):
             if not node.group and node.note is not None:
                 notes[node.values[0]] = node.note
         return notes
+
+    def update_bookmark(self, row_id, note):
+        """Repaint loaded occurrences without losing selection or open groups."""
+        pending=[self.root]
+        while pending:
+            parent=pending.pop();pending.extend(parent.children)
+            for row,node in enumerate(parent.children):
+                if not node.group and not node.footer and node.values[0]==row_id:
+                    node.note=note
+                    self.dataChanged.emit(self.createIndex(row,0,node),self.createIndex(row,len(self.headers),node))
 
     def reset(self, view, global_rules=()):
         self.case.validate_view(view)
@@ -385,7 +413,7 @@ class GridModel(QAbstractItemModel):
             if value in ("true", "false", "0", "1"):
                 return Qt.Checked if value in ("true", "1") else Qt.Unchecked
         if role == Qt.ToolTipRole and not node.group:
-            return (node.note or "") if col == 0 else str(node.values[col])[:4000]
+            return ("Clic : surligner / retirer le signet de toute la ligne.\n" + (node.note or "")) if col == 0 else str(node.values[col])[:4000]
         if node.group:
             from fireblade.ui.layout_styles import role_value
             styled=role_value(self.view.layout_styles.get('group_row',{}),role)
@@ -394,6 +422,9 @@ class GridModel(QAbstractItemModel):
             return QColor("#eeeeee" if self.dark else "#202020")
         if role == Qt.BackgroundRole and node.group:
             return QColor("#39434f" if self.dark else "#e9edf2")
+        if not node.group and node.note is not None:
+            if role == Qt.BackgroundRole:return QColor("#665c27" if self.dark else "#fff4c2")
+            if role == Qt.ForegroundRole:return contrast_color(QColor("#665c27" if self.dark else "#fff4c2"))
         if not node.group and role in (Qt.BackgroundRole, Qt.ForegroundRole, Qt.FontRole, Qt.TextAlignmentRole):
             from fireblade.ui.layout_styles import merge_styles,role_value
             prioritized=role_value(merge_styles(*self.appearance_layers(index),priority_only=True),role)
@@ -431,8 +462,6 @@ class GridModel(QAbstractItemModel):
                     if rule.font_size:font.setPointSizeF(rule.font_size)
                     font.setBold(rule.bold);font.setItalic(rule.italic);font.setUnderline(rule.underline);font.setStrikeOut(rule.strikeout)
                     return font
-        if role == Qt.BackgroundRole and not node.group and node.note is not None:
-            return QColor("#665c27" if self.dark else "#fff4c2")
         if role == Qt.BackgroundRole and not node.group and self.view.highlight:
             if any(self.view.highlight.casefold() in str(v).casefold() for v in node.values[1:] if v is not None):
                 return QColor("#674242" if self.dark else "#fce2e2")

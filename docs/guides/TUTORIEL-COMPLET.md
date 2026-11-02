@@ -85,12 +85,12 @@ Commencez par un sous-dossier précis plutôt que par la racine du ZIP. Vous pou
 
 ### Étape 1 — Windows et Hayabusa
 
-1. Dans **Cases**, créez `Formation Windows`, avec l’étiquette **Windows**. Fireblade ouvre alors **Analyses**. Le bouton central **Ouvrir un CSV…** sert aux exports ; pour les artefacts bruts, utilisez la commande **Importer un dossier de collecte…** de la barre d’outils ou du menu Fichier.
+1. Dans **Cases**, créez `Formation Windows`, avec l’étiquette **Windows**. Fireblade ouvre alors **Analyses**. Le centre propose **Importer une collecte…** pour les artefacts bruts et **Ouvrir un export…** pour les fichiers déjà produits.
 2. Sélectionnez `01-Windows/01-Collecte-principale`. Gardez **Un onglet par type d’artefact ou famille CatScale**, puis **Importer et parser**.
 3. Attendez la fin et consultez **Collecte et détection**. Vérifiez le passage des 13 moteurs, leurs sorties et les éventuels avertissements. Le nombre d’onglets organisés n’est pas le nombre de fichiers source ni de CSV produits par les moteurs.
 4. Dans l’onglet EVTX, effacez tout filtre pour retrouver **13 événements**. Lisez un événement dans **Détails**, puis ajoutez un signet et une note.
 5. Revenez à **Collecte et détection**, choisissez la gravité minimale **Faible** et cliquez **Analyser avec Hayabusa**. Avec les règles qualifiées du pack, au moins **deux alertes** sont attendues : effacement d’un journal et modification du démarrage du service Event Log.
-6. Sélectionnez une alerte et cliquez **Voir le contexte de cette alerte**, avec **5 min** avant et après. Dans le contexte, distinguez la référence de l’alerte des voisins temporels. Ouvrez **l’événement EVTX source**, puis **Revenir aux alertes**.
+6. Sélectionnez une alerte et cliquez **Voir le contexte de cette alerte**, avec **5 min** avant et après. Dans le panneau latéral, distinguez la référence de l’alerte des voisins temporels. Ouvrez **l’événement EVTX source**, puis **Revenir aux alertes**. Utilisez **Conserver ce contexte en onglet** si vous voulez le retrouver dans la session sauvegardée.
 7. Enregistrez le case et sa session avec **Ctrl+Alt+S**.
 
 Une alerte n’est pas une preuve de compromission ; les événements voisins ne deviennent pas suspects parce qu’ils sont proches. Les comptes attendus concernent les fichiers et moteurs épinglés du pack. Une autre version des règles peut changer les détections : consultez le [rapport Windows publié](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1) pour comparer les versions.
@@ -160,7 +160,7 @@ Au lancement, l’onglet **Cases** affiche vos enquêtes enregistrées. Il ne ch
 1. Cliquez sur **Nouveau case…** (`Ctrl+Alt+N`). Renseignez son nom, sa description, son type de collecte et son statut. Windows, Linux et Mixte sont des étiquettes d’organisation ; elles servent uniquement au classement.
 2. Si des analyses sont déjà ouvertes hors d’un case, laissez **Inclure les analyses actuellement ouvertes** coché pour les rattacher au nouveau case. Les bases existantes restent à leur emplacement : elles ne sont pas copiées.
 3. Importez vos fichiers ou vos collectes. Les destinations proposées sont propres au case : `Analyses` pour les imports, `Collectes` pour les résultats de collecte. Plusieurs collectes peuvent appartenir au même case ; le sélecteur **Collecte du case** retrouve leur bilan. Importer une collecte ajoute ses analyses aux onglets déjà présents.
-4. Cliquez sur **Enregistrer le case actif et sa session** (`Ctrl+Alt+S`). `Ctrl+Maj+S` enregistre également le case actif et sa session. Sans case actif, ce dernier raccourci conserve son fonctionnement d’export de session.
+4. Utilisez le bouton permanent **Enregistrer le case** (`Ctrl+Alt+S`), également disponible dans Fichier ; le catalogue conserve son bouton **Enregistrer le case actif et sa session**. L’heure de la dernière sauvegarde réussie apparaît dans la barre d’état. `Ctrl+Maj+S` enregistre également le case actif et sa session. Sans case actif, ce dernier raccourci conserve son fonctionnement d’export de session.
 5. **Fermer le case actif** revient au catalogue. Ouvrir un autre case ou quitter Fireblade enregistre aussi la session avant de fermer les analyses. En cas d’échec de sauvegarde, le changement ou la fermeture est refusé pour vous laisser corriger le problème.
 
 La reprise conserve les onglets, leur ordre, l’onglet actif, les filtres, le tri, les regroupements et la disposition des colonnes. Les signets et notes sont conservés dans les bases d’analyse. Les dispositions automatiques sont propres au case, afin que ses filtres ne se réappliquent pas aux imports d’un autre case. Les préférences et règles partagées restent communes à Fireblade.
@@ -205,7 +205,7 @@ Les règles Hayabusa embarquées sont celles de la distribution 4.3.1. Cette ver
 
 Le dossier de travail contient les CSV originaux des parseurs, leurs copies enrichies avec provenance, les bases d’analyse, les journaux, `collection.json` et la session `collection.fireblade-session`. Les sources restent nécessaires pour relancer Hayabusa ; leurs empreintes sont vérifiées avant copie. Les données déjà importées restent dans les bases. L’annulation conserve les traitements terminés ; le délai maximal de chaque moteur est d’une heure. Un moteur absent, une sortie invalide ou un EVTX modifié ne devient pas un résultat réussi.
 
-Les moteurs et leur runtime sont embarqués dans le seul EXE Windows ; les résultats sont enregistrés séparément. Cette construction est plus volumineuse et demande de l’espace temporaire pour son extraction et les copies de travail. **Exporter les sources Hayabusa…** fournit les sources distribuées avec ce moteur ; les notices restent accessibles dans Licences. Les détails et le parcours de reprise sont dans [le guide de collecte](UTILISATION.md#importer-une-collecte-dartefacts-et-lancer-hayabusa).
+Les moteurs et leur runtime sont embarqués dans le seul EXE Windows ; les résultats sont enregistrés séparément. Cette construction est plus volumineuse et demande de l’espace temporaire pour son extraction et les copies de travail. **Aide → Exporter les sources Hayabusa…** fournit les sources distribuées avec ce moteur ; les notices restent accessibles dans Licences. Les détails et le parcours de reprise sont dans [le guide de collecte](UTILISATION.md#importer-une-collecte-dartefacts-et-lancer-hayabusa).
 
 ### Artefacts et moteurs
 
@@ -231,6 +231,8 @@ Les moteurs et leur runtime sont embarqués dans le seul EXE Windows ; les résu
 Le nom et la signature du fichier orientent le choix du moteur ; Fireblade ne lance pas arbitrairement tous les parseurs sur chaque fichier. Les journaux `.LOG1` et `.LOG2` associés à une ruche sont traités comme compagnons. Les ruches UsrClass / NTUSER sont également orientées vers le lecteur Shellbags dédié ; les exports Shellbags existants restent importables. Les variantes non reconnues sont conservées dans le bilan.
 
 ### Lire le bilan avant de conclure
+
+Le bilan est une table triable avec une recherche et un filtre **Tous les fichiers**, **Réussis**, **Avertissements / à vérifier**, **Erreurs / interrompus** ou **Non reconnus / ignorés**. Sélectionnez un fichier pour lire ses avertissements, son SHA-256 et ses sorties. **Bilan complet** retrouve les informations générales ; **Ouvrir les résultats** ouvre le dossier de travail. La partie **1. Importer et parser** est distincte de **2. Détecter dans les EVTX Windows** ; Hayabusa reste désactivé si aucune collecte EVTX exploitable n’est prête.
 
 | État | Interprétation |
 |---|---|
@@ -306,30 +308,36 @@ Ce parcours fonctionne dans le seul EXE Fireblade, sans Linux, CatScale ou Logst
 
 ## Passer des alertes aux preuves EVTX et à leur contexte
 
-Dans l’onglet des alertes, sélectionnez une détection. La barre au-dessus de la grille affiche sa règle et sa gravité. Choisissez une fenêtre **avant et après**, puis **Voir le contexte de cette alerte**. Un onglet de chronologie est créé sans remplacer l’onglet des alertes.
+Dans l’onglet des alertes, sélectionnez une détection. La barre au-dessus de la grille affiche sa règle et sa gravité. Choisissez une fenêtre **avant et après**, puis **Voir le contexte de cette alerte**. Un panneau latéral réutilisable affiche la chronologie sans quitter les alertes. **Conserver ce contexte en onglet** crée l’analyse à retrouver dans la session ; les aperçus non conservés restent temporaires.
 
-L’onglet Contexte EVTX regroupe l’événement référencé et les événements proches des autres journaux de la même machine. Les colonnes de date, EventID, machine, canal et description sont placées en premier ; les données complètes et références techniques restent disponibles dans les autres colonnes et le panneau Détails.
+Le contexte EVTX regroupe l’événement référencé et les événements proches des autres journaux de la même machine. Les colonnes de date, EventID, machine, canal et description sont placées en premier ; les données complètes et références techniques restent disponibles dans les autres colonnes et le panneau Détails.
 
 La correspondance utilise le chemin EVTX et **EventRecordID**, qui n’est ni le numéro de ligne affiché dans Fireblade ni le RecordNumber physique du parseur. Les mêmes identifiants peuvent exister dans plusieurs journaux : un RecordID seul ne constitue pas une preuve de correspondance. La machine et l’EventID servent de contrôles supplémentaires quand ils sont renseignés. Une alerte agrégée conserve le caractère incertain des associations multiples et les signale comme candidates.
 
-La colonne **Relation à l’alerte** reste épinglée. L’événement de l’alerte est en gras ; les voisins portent **Proximité temporelle** et ne deviennent pas suspects du seul fait d’être affichés. La fenêtre par défaut est de cinq minutes de chaque côté, réglable jusqu’à 24 heures. Les mille événements au maximum conservent les références et privilégient les voisins les plus proches. Les références absentes, sources inaccessibles et limites sont signalées.
+Dans un contexte conservé en onglet, la colonne **Relation à l’alerte** reste épinglée. L’événement de l’alerte est en gras ; les voisins portent **Proximité temporelle** et ne deviennent pas suspects du seul fait d’être affichés. La fenêtre par défaut est de cinq minutes de chaque côté, réglable jusqu’à 24 heures. Les mille événements au maximum conservent les références et privilégient les voisins les plus proches. Les références absentes, sources inaccessibles et limites sont signalées.
 
 Le bouton **Ouvrir l’événement EVTX source** ouvre l’analyse EvtxECmd conservée et filtre sur l’enregistrement précis. Il fonctionne également pour un événement voisin ; son rôle reste précisé dans la barre de navigation. **Revenir aux alertes** restaure l’onglet d’alertes sans effacer ses notes ni sa vue. Les analyses initialement réunies par artefact ou dans une table unique restent disponibles : le lien utilise leurs bases individuelles conservées.
 
-Le contexte, ses paramètres et son lien avec l’alerte sont enregistrés dans la collecte. Une reprise peut s’appuyer uniquement sur les bases importées ; l’absence des EVTX bruts empêche une nouvelle exécution de Hayabusa, pas la lecture du contexte existant. Les détails sont dans [le parcours contexte EVTX](UTILISATION.md#comprendre-une-alerte-avec-son-contexte-evtx).
+L’aperçu est en lecture seule ; conservez-le en onglet pour utiliser filtres, notes, signets et exports sur cette chronologie.
+
+Un contexte conservé en onglet, ses paramètres et son lien avec l’alerte sont enregistrés dans la collecte. Une reprise peut s’appuyer uniquement sur les bases importées ; l’absence des EVTX bruts empêche une nouvelle exécution de Hayabusa, pas la lecture du contexte existant. Les détails sont dans [le parcours contexte EVTX](UTILISATION.md#comprendre-une-alerte-avec-son-contexte-evtx).
+
+![Aperçu EVTX sans quitter les alertes](../assets/fireblade-context-preview.png)
+
+Capture d’événements et d’une alerte synthétiques, rendu Qt hors écran sous Linux.
 
 ### Vérifier le lien dans la grille
 
 1. Sélectionnez une ligne d’alerte ; un en-tête de groupe n’est pas une alerte.
 2. Réglez **Contexte avant et après** ; 5 minutes signifie de cinq minutes avant à cinq minutes après.
 3. Cliquez **Voir le contexte de cette alerte**, également disponible au clic droit et dans le menu Analyse.
-4. Dans le nouvel onglet, lisez **Relation à l’alerte** avant d’interpréter la chronologie. Une référence multiple reste candidate, même si le plafond ne permet d’afficher qu’un de ses événements.
+4. Dans le panneau latéral ou l’onglet conservé, lisez **Relation à l’alerte** avant d’interpréter la chronologie. Une référence multiple reste candidate, même si le plafond ne permet d’afficher qu’un de ses événements.
 5. Sélectionnez une référence ou un voisin puis **Ouvrir l’événement EVTX source**. La vue est filtrée sur cette ligne ; **Effacer les filtres** retrouve tous les événements de cette base.
 6. Cliquez **Revenir aux alertes** pour reprendre la liste avec ses filtres et annotations.
 
 Le rapprochement porte sur les EVTX déjà importés de la même machine. Il n’ajoute pas automatiquement Amcache, Prefetch ou le registre au contexte d’une alerte. Une machine inconnue désactive le voisinage ; un horodatage inexploitable ne produit pas de fenêtre inventée. Les références retrouvées sont conservées en priorité. En cas de plafond, les voisins temporels les plus proches sont retenus et la limitation est signalée. La précision d’origine des dates reste dans les cellules.
 
-Chaque contexte est une analyse enregistrée dans la collecte. Il garde les paramètres de sa création ; modifier ensuite la durée dans la liste des alertes ne réécrit pas un ancien contexte. Créez un nouveau contexte pour comparer une autre fenêtre. Une reprise retrouve les liens si les bases référencées sont toujours accessibles. Le dossier de travail n’est pas une archive portable qui corrige automatiquement tous les chemins après déplacement.
+Chaque contexte conservé en onglet est une analyse enregistrée dans la collecte. Il garde les paramètres de sa création ; modifier ensuite la durée dans la liste des alertes ne réécrit pas un ancien contexte. Recréez un aperçu pour comparer une autre fenêtre ; conservez-le en onglet si nécessaire. Une reprise retrouve les liens si les bases référencées sont toujours accessibles. Le dossier de travail n’est pas une archive portable qui corrige automatiquement tous les chemins après déplacement.
 
 ## Parcours guidé
 
@@ -366,9 +374,9 @@ Saisir le texte dans **Rechercher**, puis appuyer sur Entrée. Cette recherche p
 
 Un clic droit sur une cellule permet de filtrer sur sa valeur ou de l’exclure. Un clic droit sur un en-tête ouvre les filtres de colonne. Les filtres simples se combinent par ET ; un double-clic dans leur liste retire un filtre.
 
-**Filtres → Éditeur ET / OU / NON** permet de construire des groupes imbriqués. Les cartes proposent **Toutes les conditions (ET)**, **Au moins une (OU)**, **Exclure (NON)** sur une condition et **Inverser le groupe (NON)**. Chaque bloc dispose de boutons d’ajout et de suppression. La lecture du filtre se met à jour avant application. Le langage interne représente NON avec une condition ou un groupe enfant. Les opérateurs comprennent recherche textuelle, égalité exacte, regex RE2, cellules vides, comparaisons numériques et bornes de dates ISO. Les données dont la conversion numérique ou temporelle est impossible ne correspondent pas à cette comparaison.
+**Filtres → Éditeur ET / OU / NON** permet de construire des groupes imbriqués. Les cartes proposent **Toutes les conditions (ET)**, **Au moins une (OU)**, **Exclure (NON)** sur une condition et **Inverser le groupe (NON)**. Chaque bloc dispose de boutons d’ajout et de suppression. La lecture du filtre se met à jour avant application. Les boutons **Replier / Déplier** masquent le contenu d’un groupe sans modifier le filtre, dont la lecture en phrase reste visible. Le langage interne représente NON avec une condition ou un groupe enfant. Les opérateurs comprennent recherche textuelle, égalité exacte, regex RE2, cellules vides, comparaisons numériques et bornes de dates ISO. Les données dont la conversion numérique ou temporelle est impossible ne correspondent pas à cette comparaison.
 
-**Réinitialiser** rétablit une vue par défaut, avec les règles globales activées.
+**Effacer les filtres**, près de la recherche, retire les recherches et critères sans changer les groupes, le tri, les couleurs ni les épinglages. **Affichage → Réinitialiser la vue** remet une vue par défaut, avec les règles globales activées.
 
 ### Choisir la bonne méthode de filtre
 
@@ -492,6 +500,8 @@ Dans **Affichage → Résumés et tri des groupes**, l’onglet **Par groupe** c
 
 ## Onglets et sessions
 
+Le panneau de navigation **Collectes et analyses** regroupe les résultats par collecte et artefact/famille ; sa recherche filtre les noms sans ouvrir les bases inactives. Cliquez une analyse pour l’activer. Sur une petite fenêtre, la navigation se masque temporairement lorsque le contexte latéral est affiché. Le bouton **×** masque la navigation ; **Affichage → Navigation des analyses** la retrouve. Les onglets restent disponibles. Le bouton **Détails de la ligne**, près de Regrouper, replie ou affiche le panneau de détails.
+
 Chaque analyse s’ouvre dans un onglet. **Ctrl+Tab** et **Ctrl+Shift+Tab** changent d’onglet ; **Ctrl+W** ferme l’onglet actif. Attendre ou interrompre une opération avant de changer d’analyse.
 
 Seule la base de l’onglet actif reste ouverte. Revenir à un onglet restaure sa vue et ses colonnes, puis recharge les premières pages. La sélection, le défilement et les groupes dépliés ne sont pas conservés.
@@ -500,7 +510,7 @@ Sans case actif, **Fichier → Enregistrer la session** conserve les référence
 
 Les règles globales appartiennent au profil utilisateur : les exporter séparément si la session doit être partagée avec la même présentation.
 
-**Fichier → Exporter une session TLE (sources et signets)…** crée un `.tle_sess` référençant les fichiers sources originaux de tous les onglets et leurs signets, même masqués par un filtre. Les notes, vues et dispositions restent propres à Fireblade. Garder les sources aux chemins indiqués et installer les lecteurs nécessaires dans TLE. Une vérification d’intégrité lit les sources avant l’enregistrement ; elle peut être interrompue et ne réécrit pas les données. Les cas qui changeraient les tags sont refusés : source modifiée, même source ouverte dans plusieurs analyses, numéro de lecteur ambigu ou feuille Excel autre que la première. L’échec ou l’annulation conserve une session déjà présente à la destination. Voir [le contrat et les limites](../development/COMPATIBILITE.md#export-de-sessions-timeline-explorer).
+**Fichier → Compatibilité Timeline Explorer → Exporter une session TLE (sources et signets)…** crée un `.tle_sess` référençant les fichiers sources originaux de tous les onglets et leurs signets, même masqués par un filtre. Les notes, vues et dispositions restent propres à Fireblade. Garder les sources aux chemins indiqués et installer les lecteurs nécessaires dans TLE. Une vérification d’intégrité lit les sources avant l’enregistrement ; elle peut être interrompue et ne réécrit pas les données. Les cas qui changeraient les tags sont refusés : source modifiée, même source ouverte dans plusieurs analyses, numéro de lecteur ambigu ou feuille Excel autre que la première. L’échec ou l’annulation conserve une session déjà présente à la destination. Voir [le contrat et les limites](../development/COMPATIBILITE.md#export-de-sessions-timeline-explorer).
 
 ### Espace de travail avec de nombreux onglets
 
@@ -508,9 +518,13 @@ Les onglets peuvent s’afficher sur plusieurs rangées ; les préférences perm
 
 Le scénario automatisé Qt hors écran couvre 320 analyses distinctes, la recherche globale, les clics aux positions initiale, centrale et finale, ainsi que la sauvegarde/restauration de session. Un parcours du véritable EXE Windows est exigé par le workflow de publication ; vérifiez la qualification Actions du commit concerné pour savoir s’il a réussi. Les bases de travail restent séparées. Pour reprendre une session, enregistrez-la et conservez toutes les bases référencées.
 
+![Navigation des collectes et surlignage complet](../assets/fireblade-workspace.png)
+
+Capture de données synthétiques, rendu Qt hors écran sous Linux.
+
 ## Signets et notes
 
-Un double-clic sur une ligne ouvre son signet et sa note. Dans ce dialogue individuel, une note vide retire le signet.
+Un clic dans la première colonne surligne toute la ligne et l’ajoute aux signets. Le repère est conservé dans la base et retrouvé après réouverture. Un nouveau clic retire le signet ; si une note existe, Fireblade demande confirmation avant de la supprimer. Un double-clic sur une cellule de données ouvre le signet et sa note. Dans ce dialogue individuel, une note vide retire le signet.
 
 Pour plusieurs lignes, utiliser Ctrl/clic ou Maj/clic, puis le menu **Édition** :
 
@@ -549,6 +563,8 @@ Le détail, la copie et l’export conservent le texte source, même si la grill
 
 ## Règles de coloration
 
+L’éditeur suit trois étapes : **1. Quand ?** pour les cartes de conditions, **2. Appliquer à** pour l’activation, la cible et l’arrêt après la règle, puis **3. Apparence** pour les couleurs ou graphiques. Dans Apparence, **Réglages avancés : statistiques et police** déplie les options supplémentaires. L’aperçu utilise une valeur d’exemple ; il ne vérifie ni la condition ni la distribution statistique de la source. Le surlignage des signets garde un fond uniforme sur toute la ligne, même lorsqu’une règle colore une cellule ; les règles ne sont pas supprimées.
+
 Les règles de coloration peuvent cibler une ligne, une cellule, une valeur ou une expression. Elles prennent en charge texte et fond, couleurs alpha, styles gras/italique/souligné/barré, police et taille propres à la règle, bordures et priorité. Les propriétés actives permettent de combiner plusieurs règles ; l’option d’arrêt contrôle si les règles suivantes sont évaluées.
 
 Les règles statistiques proposent classement haut/bas, moyenne, valeurs uniques et doublons. Elles peuvent calculer sur la population filtrée ou toute la source, explicitement choisi, et travailler avec des seuils stricts ou inclusifs. Les règles graphiques proposent barres positives/négatives avec axe zéro, dégradés à deux ou trois couleurs, bornes fixes ou automatiques, pourcentages et percentiles exacts, ainsi que trois à cinq niveaux d’icônes. Les formes incluent indicateurs et images PNG ; les seuils, unités, planchers et priorités sont réglables.
@@ -562,9 +578,9 @@ Les règles globales sont stockées dans `%LOCALAPPDATA%\Fireblade\regles-global
 #### Colorer les échecs de connexion
 
 1. Ouvrez **Analyse → Règles de coloration**, puis **Ajouter**.
-2. Laissez la règle **Active**, choisissez **Toute la ligne** et un fond discret.
-3. Dans les cartes de conditions, sélectionnez EventID, Égal à (exact), `4625`.
-4. Gardez **Fond actif** ; désactivez les propriétés que cette règle ne doit pas imposer, puis validez.
+2. Dans **1. Quand ?**, sélectionnez EventID, Égal à (exact), `4625`.
+3. Dans **2. Appliquer à**, laissez **Active**, choisissez **Toute la ligne**.
+4. Dans **3. Apparence**, choisissez un fond discret. Les réglages avancés donnent accès à **Fond actif**, **Texte actif** et **Police active** ; désactivez les propriétés que cette règle ne doit pas imposer, puis validez.
 
 Sur le CSV d’exercice, seul l’échec de connexion prend cette apparence. Le nombre d’événements ne change pas. **Analyse → Surligner un texte** colore les lignes contenant un texte ; une saisie vide désactive ce surlignage. Ce réglage est distinct de la liste des règles et ne filtre pas les événements.
 
@@ -698,7 +714,7 @@ Le plugin s’exécute avec les droits de l’utilisateur dans un processus help
 
 **Analyse → Exporter/importer la disposition** partage une vue `.fireblade-view` entre analyses ayant exactement les mêmes colonnes. L’import accepte aussi certains layouts XML TLE pour l’ordre, les largeurs, l’épinglage à gauche/droite, les groupes et les tris. Les filtres et règles non compatibles provoquent un message explicite au lieu d’être ignorés.
 
-**Fichier → Importer une session Timeline Explorer** lit un `.tle_sess`, vérifie ses sources et les réimporte dans de nouvelles bases, avec les tags. Les sources doivent être disponibles ; le CSV utilise sa BOM UTF-8/16/32 (UTF-8 en l’absence de BOM), les classeurs utilisent leur première feuille pour cette migration. Les dispositions locales du format sont retrouvées automatiquement à l’ouverture de chaque onglet. En cas d’échec ou d’annulation, les nouvelles bases de cette migration sont supprimées et l’analyse précédente est restaurée.
+**Fichier → Compatibilité Timeline Explorer → Importer une session Timeline Explorer** lit un `.tle_sess`, vérifie ses sources et les réimporte dans de nouvelles bases, avec les tags. Les sources doivent être disponibles ; le CSV utilise sa BOM UTF-8/16/32 (UTF-8 en l’absence de BOM), les classeurs utilisent leur première feuille pour cette migration. Les dispositions locales du format sont retrouvées automatiquement à l’ouverture de chaque onglet. En cas d’échec ou d’annulation, les nouvelles bases de cette migration sont supprimées et l’analyse précédente est restaurée.
 
 Les layouts `.layout.local` Fireblade mémorisent automatiquement colonnes, ordre, largeur, masquage, épinglage, groupes, tris, filtres, recherche, résumés et règles par profil et schéma. Une analyse Fireblade garde aussi ses vues. Les XML locaux/default peuvent être déposés dans les dossiers `Layouts/Local` et `Layouts/Default` du profil utilisateur ou dans les dossiers correspondants près de l’EXE. Une disposition Fireblade mémorisée est prioritaire ; une erreur de migration est affichée dans **Affichage → Messages** et le fichier reste intact.
 
@@ -710,7 +726,7 @@ Un `.tle_sess` importé vérifie les sources puis les copie dans de nouvelles ba
 
 ### Préférences Timeline Explorer
 
-**Fichier → Importer les préférences Timeline Explorer…** lit `Settings/TLE_settings.xml` : police, taille, copie des en-têtes, copie au clic droit, onglets sur plusieurs rangées, détails en haut/bas, format des dates et liste simple de colonnes épinglées. Les familles Office, Visual Studio, bleu, argent et contraste élevé sont associées aux thèmes Fireblade correspondants ; cette association adapte les couleurs et ne charge pas les skins DevExpress. Les champs inconnus ou structurés non traduits sont signalés dans Messages. Le fichier TLE reste intact. Les mêmes réglages sont modifiables dans les préférences Fireblade ; l’épinglage par défaut utilise un nom par ligne.
+**Fichier → Compatibilité Timeline Explorer → Importer les préférences Timeline Explorer…** lit `Settings/TLE_settings.xml` : police, taille, copie des en-têtes, copie au clic droit, onglets sur plusieurs rangées, détails en haut/bas, format des dates et liste simple de colonnes épinglées. Les familles Office, Visual Studio, bleu, argent et contraste élevé sont associées aux thèmes Fireblade correspondants ; cette association adapte les couleurs et ne charge pas les skins DevExpress. Les champs inconnus ou structurés non traduits sont signalés dans Messages. Le fichier TLE reste intact. Les mêmes réglages sont modifiables dans les préférences Fireblade ; l’épinglage par défaut utilise un nom par ligne.
 
 Les profils forensic reconnus s’appliquent automatiquement aux nouveaux imports, avant l’affichage de leurs colonnes. Désactiver **Appliquer le profil forensic reconnu à l’import** dans les préférences pour garder une grille générique. L’ajout d’une colonne dérivée conserve l’ordre, les largeurs, le masquage et l’épinglage des colonnes existantes.
 
@@ -718,7 +734,7 @@ Si `TLE_settings.xml` contient un dictionnaire de colonnes épinglées par lecte
 
 ## Préférences et thèmes
 
-Ces réglages sont accessibles dans **Affichage → Préférences**. **OK** applique et enregistre ; **Annuler** conserve les préférences actives. Ils restent distincts du fichier TOML des ressources.
+Ces réglages sont accessibles dans **Affichage → Préférences**. Les préférences sont réparties entre **Apparence**, **Grille et copie**, **Dates** et **Compatibilité**. Les pages restent défilables sur un petit écran. **OK** applique et enregistre ; **Annuler** conserve les préférences actives. Ils restent distincts du fichier TOML des ressources.
 
 | Champ | Effet |
 |---|---|
@@ -907,6 +923,8 @@ Copier les lignes sélectionnées ; ouvrir ou modifier le signet et la note d’
 | Déplier tous les groupes (vue paginée) / Replier tous les groupes | Parcourir l’arbre complet avec son index disque et des fenêtres bornées, puis revenir à l’arbre interactif. |
 | Analyses ouvertes | Filtrer les onglets ouverts par nom ou chemin et activer une analyse. Une seule base est active à la fois. |
 | Messages | Lire les diagnostics et les adaptations de layout/plugin récents. Jusqu’à 500 messages sont gardés pour la session. |
+| Navigation des analyses | Afficher ou masquer l’arborescence des collectes et résultats. |
+| Réinitialiser la vue | Remettre les groupes, règles, épinglages et autres réglages de vue à leur état par défaut. |
 | Préférences | Régler thèmes et couleurs, police, formats de date, panneaux de détails, copie, onglets et épinglage par défaut. |
 | Options de tri / Détails de la ligne | Afficher ou masquer ces panneaux. |
 | Onglet suivant / précédent | Naviguer entre les documents ouverts. |
@@ -919,7 +937,7 @@ Le sélecteur **Affichage → Analyses ouvertes** est aussi accessible par **Ctr
 
 ### Filtres
 
-L’éditeur ET/OU/NON construit des arbres de critères ; Expression textuelle écrit le langage contrôlé ; Filtrer sur la cellule active utilise sa valeur ; Ajouter un filtre crée un filtre de colonne ; Effacer les filtres retire ceux de la vue ; Réinitialiser restaure la vue initiale et les règles globales ; Rechercher dans toutes les analyses inspecte tous les enregistrements des onglets ouverts et peut être interrompu.
+L’éditeur ET/OU/NON construit des arbres de critères ; Expression textuelle écrit le langage contrôlé ; Filtrer sur la cellule active utilise sa valeur ; Ajouter un filtre crée un filtre de colonne ; Effacer les filtres retire ceux de la vue ; Rechercher dans toutes les analyses inspecte tous les enregistrements des onglets ouverts et peut être interrompu.
 
 ### Analyse
 

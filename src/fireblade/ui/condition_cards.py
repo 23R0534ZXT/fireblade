@@ -2,7 +2,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QButtonGroup, QCheckBox, QComboBox, QFrame, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QVBoxLayout,
+    QLineEdit, QPushButton, QVBoxLayout, QWidget, QSizePolicy,
 )
 
 from fireblade.core.models import Filter, FilterGroup, OPERATORS
@@ -35,6 +35,10 @@ class ConditionRow(QFrame):
             self.operator.addItem(label, code)
         self.operator.setCurrentIndex(self.operator.findData(condition.operator))
         self.operator.setAccessibleName("Comparaison")
+        self.column.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.column.setMinimumWidth(80)
+        self.operator.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.operator.setMinimumWidth(100)
         self.text = QLineEdit(condition.value)
         self.text.setPlaceholderText("Valeur à rechercher…")
         self.text.setAccessibleName("Valeur de la condition")
@@ -95,6 +99,10 @@ class ConditionGroup(QFrame):
         title.setFont(font)
         heading.addWidget(title)
         heading.addStretch()
+        self.fold = button('Replier', self.toggle_fold, self)
+        self.fold.setCheckable(True)
+        self.fold.setAccessibleName('Replier ou déplier ce groupe de conditions')
+        heading.addWidget(self.fold)
         if owner is not None:
             remove = button("Supprimer le groupe", lambda: editor.remove_node(self), self)
             heading.addWidget(remove)
@@ -116,14 +124,16 @@ class ConditionGroup(QFrame):
         self.inverse.setToolTip("Garde les lignes qui ne correspondent pas à ce groupe.")
         self.inverse.toggled.connect(self.update_logic)
         options.addWidget(self.inverse)
-        self.layout_box.addLayout(options)
+        self.options_widget=QWidget();self.options_widget.setLayout(options)
+        self.layout_box.addWidget(self.options_widget)
         self.explanation = QLabel()
         self.explanation.setWordWrap(True)
         self.layout_box.addWidget(self.explanation)
         self.body = QVBoxLayout()
         self.body.setContentsMargins(8, 0, 0, 0)
         self.body.setSpacing(7)
-        self.layout_box.addLayout(self.body)
+        self.body_widget=QWidget();self.body_widget.setLayout(self.body)
+        self.layout_box.addWidget(self.body_widget)
         self.empty = QLabel("Aucune condition. Ajoutez une condition pour commencer.")
         self.empty.setWordWrap(True)
         self.body.addWidget(self.empty)
@@ -133,10 +143,18 @@ class ConditionGroup(QFrame):
         actions.addWidget(self.add_condition_button)
         actions.addWidget(self.add_group_button)
         actions.addStretch()
-        self.layout_box.addLayout(actions)
+        self.actions_widget=QWidget();self.actions_widget.setLayout(actions)
+        self.layout_box.addWidget(self.actions_widget)
         for child in condition.children:
             editor.add_node(self, child, notify=False)
         self.update_logic()
+
+    def toggle_fold(self):
+        folded=self.fold.isChecked()
+        self.fold.setText('Déplier' if folded else 'Replier')
+        for widget in (self.options_widget,self.body_widget,self.actions_widget):widget.setVisible(not folded)
+        self.explanation.setVisible(not folded)
+        self.editor.changed()
 
     @property
     def logic(self):

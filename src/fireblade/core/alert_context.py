@@ -44,12 +44,14 @@ def instant(value):
         return None
 
 
-def build_context(collection, alert, alert_analysis, alert_row, minutes=5, max_events=1000):
+def build_context(collection, alert, alert_analysis, alert_row, minutes=5, max_events=1000, register=True):
     from fireblade.core.collection import check_cancel
     if type(minutes) is not int or not 1 <= minutes <= 1440:
         raise ValueError('Fenêtre de contexte : 1 à 1440 minutes')
     if type(max_events) is not int or not 1 <= max_events <= 1000:
         raise ValueError('Contexte limité à 1000 événements')
+    if register and len(collection.report['documents'])>=1000:
+        raise ValueError('Limite de 1000 analyses atteinte ; fermez des analyses avant de conserver un contexte')
     source_value = alert.get('Fireblade_EVTX_Source', '')
     try:
         paths = json.loads(source_value) if source_value.startswith('[') else [source_value]
@@ -226,10 +228,34 @@ def build_context(collection, alert, alert_analysis, alert_row, minutes=5, max_e
                 references=len(anchors),events=len(events),truncated=truncated,notes=notes,
                 association=('candidate' if ambiguous else 'exact') if anchors else 'unresolved',
                 machines=machines, timestamp=stamp.isoformat() if stamp else None)
-    if len(collection.report['documents'])>=1000:
-        Path(document['path']).unlink(missing_ok=True)
-        raise ValueError('Limite de 1000 analyses atteinte ; contexte CSV conservé sur disque')
-    collection.report['documents'].append(document)
-    collection.report.setdefault('contexts',[]).append(result)
-    collection.save()
+    result['_document']=document
+    if register:
+        return retain_context(collection,result)
     return result
+
+
+def retain_context(collection, result):
+    """Publish an inspected preview in the collection/session only on request."""
+    if any(item['path']==result['analysis'] for item in collection.report['documents']):
+        return {k:v for k,v in result.items() if k!='_document'}
+    document=result['_document']
+    if len(collection.report['documents'])>=1000:
+        raise ValueError('Limite de 1000 analyses atteinte ; contexte CSV conservé sur disque')
+    metadata={k:v for k,v in result.items() if k!='_document'}
+    collection.report['documents'].append(document)
+    collection.report.setdefault('contexts',[]).append(metadata)
+    collection.save()
+    return metadata
+
+
+def discard_preview(collection, result):
+    """Remove only unregistered files created by the preview builder."""
+    if not result or '_document' not in result:return
+    if any(item['path']==result['analysis'] for item in collection.report['documents']):return
+    database=Path(result['analysis'])
+    source=Path(result['_document']['source']['path'])
+    if database.parent!=collection.output/'analyses' or source.parent.parent!=collection.output/'results' or not source.parent.name.startswith('contexte-'):
+        raise ValueError('Emplacement du contexte temporaire invalide')
+    database.unlink(missing_ok=True)
+    source.unlink(missing_ok=True)
+    source.parent.rmdir()

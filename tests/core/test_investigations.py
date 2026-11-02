@@ -80,3 +80,72 @@ def test_oversized_session_and_invalid_selection_do_not_replace_manifest(tmp_pat
     with pytest.raises(ValueError):library.save(data['id'],[entry],2,[],None,data['revision'])
     assert library.read(data['id'])==data
     assert not list(library.folder(data['id']).glob('*.fireblade-session'))
+
+
+def test_active_case_lock_is_released_after_process_crash(tmp_path):
+    import os
+    import subprocess
+    import sys
+    import time
+    library=InvestigationLibrary(tmp_path/'cases');data=library.create('Crash recovery')
+    ready=tmp_path/'ready'
+    script=tmp_path/'owner.py'
+    script.write_text('''import sys,time
+from pathlib import Path
+from fireblade.core.investigations import InvestigationLibrary
+library=InvestigationLibrary(sys.argv[1])
+with library.lease(sys.argv[2]):
+    Path(sys.argv[3]).write_text('locked')
+    while True:time.sleep(.05)
+''')
+    env=os.environ.copy();env['PYTHONPATH']=str(Path(__file__).parents[2]/'src')
+    process=subprocess.Popen([sys.executable,str(script),str(library.root),data['id'],str(ready)],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+    try:
+        deadline=time.monotonic()+10
+        while not ready.exists() and process.poll() is None and time.monotonic()<deadline:time.sleep(.01)
+        assert ready.exists(),'Child could not acquire case lock'
+        with pytest.raises(ValueError,match='déjà ouvert'):
+            with library.lease(data['id']):pass
+        process.kill();process.communicate(timeout=5)
+        with library.lease(data['id']):assert library.read(data['id'])['name']=='Crash recovery'
+    finally:
+        if process.poll() is None:process.kill()
+        process.communicate(timeout=5)
+
+
+def test_killed_session_writer_keeps_last_committed_case(tmp_path):
+    import os
+    import subprocess
+    import sys
+    import time
+    library=InvestigationLibrary(tmp_path/'cases');data=library.create('Atomic crash recovery')
+    document=snapshot(tmp_path);document.view.search='committed'
+    data=library.save(data['id'],[document],0,[],None,data['revision'])
+    ready=tmp_path/'ready';script=tmp_path/'writer.py'
+    script.write_text('''import sys,time
+from pathlib import Path
+import fireblade.core.investigations as module
+from fireblade.core.sessions import read_session
+library=module.InvestigationLibrary(sys.argv[1]);data=library.read(sys.argv[2])
+documents,active=read_session(library.session_path(data));documents[0].view.search='uncommitted'
+def pause_before_commit(path,value):
+    Path(sys.argv[3]).write_text('session-written-manifest-not-committed')
+    while True:time.sleep(.05)
+module.write_json=pause_before_commit
+library.save(data['id'],documents,active,[],None,data['revision'])
+''')
+    env=os.environ.copy();env['PYTHONPATH']=str(Path(__file__).parents[2]/'src')
+    process=subprocess.Popen([sys.executable,str(script),str(library.root),data['id'],str(ready)],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+    try:
+        deadline=time.monotonic()+10
+        while not ready.exists() and process.poll() is None and time.monotonic()<deadline:time.sleep(.01)
+        assert ready.exists(),'Session writer did not reach commit boundary'
+        process.kill();process.communicate(timeout=5)
+        assert library.read(data['id'])==data
+        assert read_session(library.session_path(data))[0][0].view.search=='committed'
+        saved=library.save(data['id'],[document],0,[],None,data['revision'])
+        assert read_session(library.session_path(saved))[0][0].view.search=='committed'
+        assert len(list(library.folder(data['id']).glob('session-*.fireblade-session')))==2
+    finally:
+        if process.poll() is None:process.kill()
+        process.communicate(timeout=5)

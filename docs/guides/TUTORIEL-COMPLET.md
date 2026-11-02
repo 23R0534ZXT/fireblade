@@ -191,7 +191,7 @@ La lecture ne répare pas la base, ne rejoue pas les journaux ESE, ne récupère
 
 Les principaux formats ont des lecteurs dédiés : processus, `ss`, `netstat`, hashes, liens, cron, systemctl, passwd/group, historiques, syslog/audit et timeline. Pour les autres textes, Fireblade extrait les paires clé/valeur lorsqu’elles sont présentes et conserve les lignes restantes. Les tableaux arbitraires et JSON ne sont pas présentés comme entièrement structurés.
 
-La colonne **Lecture** distingue **Structurée** et **Brute**. Une ligne inconnue reste visible dans **Texte brut** et produit un avertissement. Les colonnes **Source**, **Ligne** et **Fin de ligne** permettent de retrouver son contexte ; la notation `archive!/fichier` désigne un membre d’archive. Les colonnes entièrement vides sont retirées des CSV générés.
+La colonne **Lecture** distingue **Structurée** et **Brute**. Une ligne inconnue reste visible dans **Texte brut** et produit un avertissement. Les colonnes **Source**, **Ligne** et **Fin de ligne** permettent de retrouver son contexte ; la notation `archive[entry N]!/fichier` distingue les entrées TAR, même lorsque plusieurs portent le même nom. Les colonnes entièrement vides sont retirées des CSV générés.
 
 Les archives tar/gzip et sous-archives sont lues sans exécuter les scripts ni extraire leurs chemins sur disque. Les sources sont vérifiées par SHA-256 avant et après traitement. Les binaires non pris en charge, dont les journaux binaires et bases de connexion, les liens, chemins dangereux et fichiers endommagés restent signalés dans le bilan et dans le détail `catscale.members` de `collection.json`.
 

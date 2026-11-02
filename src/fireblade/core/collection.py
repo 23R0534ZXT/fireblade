@@ -87,8 +87,8 @@ def identify(path):
         return ['RecentFileCacheParser']
     if magic.startswith(b'SQLite format 3\0'):
         return ['SQLECmd']
-    from fireblade.core.catscale import recognized
-    if recognized(path):
+    from fireblade.core.catscale import recognized, kind
+    if recognized(path) and (path.suffix.casefold() not in ('.csv','.tsv') or (path.suffix.casefold()=='.csv' and kind(path)=='timeline')):
         return ['CatScale']
     if path.suffix.casefold() in ('.csv', '.tsv'):
         return ['native']

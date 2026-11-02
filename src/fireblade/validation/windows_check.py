@@ -420,6 +420,10 @@ def run_check(app, report_path):
         def browser_artifacts():
             report['browser_artifacts']=verify_browser_artifacts(app,directory/'browser-artifacts',window.settings)
         if report['frozen']:check('shellbags_webcache_real_parse_import_grid_case_restore',browser_artifacts)
+        from fireblade.validation.reliability import verify_mixed_cases
+        def mixed_case_reliability():
+            report['mixed_cases']=verify_mixed_cases(app,directory/'mixed-cases',window.settings)
+        if report['frozen']:check('mixed_windows_catscale_cases_filters_export_and_restart',mixed_case_reliability)
         report["memory"] = windows_memory()
         report["status"] = "passed"
     except Exception as exc:

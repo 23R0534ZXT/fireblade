@@ -41,3 +41,29 @@ Les tests vérifient également les schémas hétérogènes, les noms de colonne
 Le parcours réel a été répété avec l’organisation par artefact : trois analyses de parsing et une liste de deux alertes. Depuis « Important Log File Cleared », la commande de contexte retrouve une référence exacte et affiche les 13 événements EVTX dans la fenêtre de cinq minutes. Le fichier et EventRecordID identifient la référence ; les autres événements restent qualifiés de voisins temporels. L’essai passe dans l’interface Qt avec les bases réelles, sans simuler les parseurs ni Hayabusa.
 
 Les tests couvrent également les identifiants identiques dans des fichiers ou machines distincts, les références agrégées et introuvables, les voisins provenant d’autres journaux de la même machine, les fenêtres et plafonds, la conservation des charges utiles et de la précision des dates, les entrées SQL hostiles, la reprise sans artefacts originaux et le lien vers les bases brutes après organisation des onglets. Le parcours graphique vérifie l’ouverture de la ligne source exacte et le retour aux alertes avec leurs filtres et annotations. La qualification Windows du fichier unique exige maintenant un contexte comportant une référence et des événements voisins.
+
+## Matrice des 13 parseurs et affichage
+
+Les moteurs épinglés ont été reconstruits avec .NET 10.0.403. Un second parcours réel vérifie chaque CSV produit, son import DuckDB et l’ouverture dans la grille Qt : nombre de lignes de la première page et égalité des valeurs de sa première ligne. Résultats locaux sous Linux :
+
+| Parseur | Lignes importées | Affichage vérifié |
+| --- | ---: | --- |
+| EvtxECmd | 13 | oui |
+| AmcacheParser | 2 | oui |
+| AppCompatCacheParser | 359 | oui |
+| PECmd | 2, réparties sur 2 sorties | oui |
+| MFTECmd | 117 | oui |
+| RECmd | 3720, sans plugins dans cet essai | oui |
+| LECmd | 1 | oui |
+| JLECmd | 1 | oui |
+| WxTCmd | 151, réparties sur 2 sorties | oui |
+| RBCmd | 1 | oui |
+| RecentFileCacheParser | 6 | oui |
+| SrumECmd | non qualifié sous Linux | moteur exigeant les bibliothèques ESE Windows |
+| SQLECmd | non qualifié sous Linux | bibliothèque SQLite.Interop Windows |
+
+Pour WxTCmd, la bibliothèque native SQLite Linux a été ajoutée uniquement au pack d’essai Linux. Le pack livré reste ciblé Windows. Une sortie vide d’un premier échantillon EVTX et JumpList n’a pas été comptée comme une réussite : l’essai a été répété sur des échantillons contenant des données.
+
+`config/forensic-qa-fixtures.json` fixe les URL publiques et les empreintes SHA-256 des échantillons supplémentaires. Ils sont téléchargés et vérifiés pendant la construction, puis embarqués dans les ressources de qualification de l’EXE. L’EVTX et la ruche de qualification existants sont conservés. La qualification Windows exige désormais des résultats non vides de chacun des 13 parseurs, puis ouvre chaque analyse produite dans la grille et compare les valeurs affichées aux données importées. Elle échoue en cas de parseur absent, en erreur, sans sortie ou sans ligne. Son résultat n’est acquis qu’après réussite du workflow Windows.
+
+Cette matrice vérifie des exemples représentatifs ; elle ne prouve pas toutes les versions Windows, tous les schémas SQLite, toutes les maps et tous les cas de corruption. Les formats non reconnus ou refusés restent dans le bilan de collecte.

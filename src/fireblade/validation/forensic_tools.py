@@ -8,7 +8,7 @@ from fireblade.core.collection import Collection, PARSERS, ToolPack, execute
 from fireblade.runtime.resources import resource_path
 
 
-def verify_embedded_engines(directory):
+def verify_embedded_engines(directory, display=None):
     directory=Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     pack=ToolPack(resource_path('forensic-tools'))
@@ -27,7 +27,9 @@ def verify_embedded_engines(directory):
         with gzip.open(compressed,'rb') as incoming,(evidence/compressed.stem).open('wb') as outgoing:
             shutil.copyfileobj(incoming,outgoing)
     collection=Collection(evidence,directory/'forensic-collection',pack)
+    shutil.copytree(pack.root/'qa'/'matrix', evidence/'matrix')
     report=collection.parse()
+    matrix = verify_parser_results(report, display)
     event=next(entry for entry in report['files'] if Path(entry['path']).name=='System.evtx')
     if event['status']!='complete':raise AssertionError(str(event))
     system=next(entry for entry in report['files'] if Path(entry['path']).name=='SYSTEM')
@@ -46,4 +48,37 @@ def verify_embedded_engines(directory):
     context=build_context(collection,alert,report['detection']['analysis'],row[0])
     if context['references']!=1 or context['events']<=context['references']:
         raise AssertionError('Le contexte ne relie pas l’alerte aux événements EVTX voisins : '+str(context))
-    return dict(context_events=context['events'],context_references=context['references'],parsers=len(PARSERS),registry_plugins=len(manifest['registry_plugins']['included']),registry_fixture_passed=True,alerts=report['detection']['alerts'])
+    return dict(parser_matrix=matrix,context_events=context['events'],context_references=context['references'],parsers=len(PARSERS),registry_plugins=len(manifest['registry_plugins']['included']),registry_fixture_passed=True,alerts=report['detection']['alerts'])
+
+
+
+def verify_parser_results(report, display=None):
+    from fireblade.core.engine import Case
+    from fireblade.core.models import View
+    results = {name: dict(files=0, outputs=0, rows=0) for name in PARSERS}
+    for entry in report['files']:
+        for run in entry.get('runs', []):
+            name = run['tool']
+            if name not in results:
+                continue
+            if run['status'] != 'complete':
+                raise AssertionError('Parsing non validé : '+str(run))
+            result = results[name]
+            result['files'] += 1
+            for output in run['outputs']:
+                case = Case(output['analysis'])
+                try:
+                    count = case.count(View())
+                    page = case.page(View())
+                    if count and not page:
+                        raise AssertionError('Résultats illisibles : '+output['analysis'])
+                finally:
+                    case.close()
+                if display is not None:
+                    display(output['analysis'], page)
+                result['outputs'] += 1
+                result['rows'] += count
+    missing = [name for name, result in results.items() if not result['outputs'] or not result['rows']]
+    if missing:
+        raise AssertionError('Parseurs sans résultat non vide vérifié : '+', '.join(missing))
+    return results

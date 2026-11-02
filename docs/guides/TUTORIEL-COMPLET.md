@@ -1,12 +1,13 @@
 # Tutoriel complet — toutes les fonctionnalités de Fireblade
 
-Ce tutoriel décrit le parcours actuel de Fireblade 0.4 : collecte d’artefacts, parsing, détection Hayabusa, contexte EVTX et exploration des résultats. Il couvre aussi les exports existants, les règles, les expressions, les profils, les plugins, les sauvegardes et les limites. Il est accessible sans analyse ouverte via **Aide → Tutoriel complet — toutes les fonctionnalités**.
+Ce tutoriel décrit le parcours actuel de Fireblade : cases persistants, collectes Windows et Linux CatScale, parsing, Shellbags, WebCache, détection Hayabusa, contexte EVTX et exploration des résultats. Il propose un apprentissage avec le pack de test téléchargeable, puis une référence des filtres, règles, expressions, profils, plugins, sauvegardes et limites. Il est accessible sans analyse ouverte via **Aide → Tutoriel complet — toutes les fonctionnalités**.
 
 Commencez par votre parcours d’entrée, puis utilisez les sections de référence selon votre besoin. Les commandes dépendant d’une analyse restent inactives tant qu’aucune analyse n’est ouverte. Les moteurs Windows nécessitent le pack de la construction Windows. Le parser CatScale est intégré sans moteur externe.
 
 ## Table des matières
 
 - [Démarrage](#démarrage)
+- [Première enquête avec le pack de test](#première-enquête-avec-le-pack-de-test)
 - [Cases — dossiers d’enquête](#cases--dossiers-denquête)
 - [Se repérer dans la fenêtre](#se-repérer-dans-la-fenêtre)
 - [Collecte brute et détection Hayabusa](#collecte-brute-et-détection-hayabusa)
@@ -39,7 +40,7 @@ Commencez par votre parcours d’entrée, puis utilisez les sections de référe
 
 ## Démarrage
 
-Télécharger `Fireblade.exe`, puis double-cliquer dessus. Python, Excel et un dossier de bibliothèques à côté du programme ne sont pas nécessaires. Le guide et les licences sont accessibles dans le menu **Aide**, même sans analyse ouverte.
+Téléchargez `Fireblade.exe` dans une [release **Fireblade - prototype Windows**](https://github.com/23R0534ZXT/fireblade/releases), puis double-cliquez dessus. Les releases **test-pack-v1** et **test-data-3gib** contiennent les jeux de données ; elles ne remplacent pas le téléchargement du programme. Les archives automatiques **Source code** contiennent les sources à construire. Python, Excel et un dossier de bibliothèques à côté du programme ne sont pas nécessaires. Le guide et les licences sont accessibles dans le menu **Aide**, même sans analyse ouverte.
 
 Le programme prépare ses bibliothèques dans le dossier temporaire de Windows au démarrage. Cette étape peut prendre quelques secondes. Ce dossier est normalement supprimé à la fermeture. Les analyses sont enregistrées séparément pour conserver le travail.
 
@@ -51,6 +52,106 @@ Le programme distingue deux parcours :
 Le pack Windows inclut les moteurs et leurs dépendances. Le lancement depuis les sources ne les construit pas automatiquement : si le bilan indique « aucun pack intégré », l’exploration des exports reste disponible mais le parsing brut nécessite une construction complète du pack.
 
 L’EXE est un seul fichier de programme ; les analyses, artefacts et résultats ne sont pas incorporés à ce fichier. Prévoyez l’espace disque de l’extraction temporaire et du dossier de travail.
+
+### Distinguer les éléments du travail
+
+| Élément | Ce qu’il représente |
+|---|---|
+| Case | Une enquête enregistrée qui retrouve ses analyses et ses collectes. |
+| Collecte | Un dossier source et son traitement, avec un bilan, des résultats et des journaux. Un case peut en contenir plusieurs. |
+| Analyse `.timeline` | Les données importées dans une base, avec leurs notes, signets et vues. |
+| Vue | Les filtres, tris, groupes et réglages de présentation d’une analyse. |
+| Session | La liste et l’état des analyses à retrouver. Elle référence les bases sans les copier. La sauvegarde du case enregistre aussi sa session. |
+
+## Première enquête avec le pack de test
+
+### Télécharger et choisir son parcours
+
+Téléchargez le [**ZIP forensic v1 — environ 5,1 Mo**](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip), puis extrayez-le entièrement. Les chemins ci-dessous partent du dossier `Fireblade-Test-Pack-v1`. Gardez sa structure et les journaux de registre à côté de leur ruche. Le pack contient `LIRE-MOI.md`, `RESULTATS-ATTENDUS.json`, `MANIFEST.json` et les licences dans `NOTICES`.
+
+| Votre objectif | Entrée à choisir | Commande |
+|---|---|---|
+| Tester les 13 EZ Tools | `01-Windows/01-Collecte-principale` | **Importer un dossier de collecte…** |
+| Lire une ruche Shellbags | `01-Windows/02-Shellbags` | **Importer un dossier de collecte…** |
+| Lire une base ESE WebCache | `01-Windows/03-WebCache` | **Importer un dossier de collecte…** |
+| Lire CatScale déjà extrait | `02-Linux-CatScale/01-Dossier-extrait` | **Importer un dossier de collecte…** |
+| Lire CatScale en archive | `02-Linux-CatScale/02-Archive` | Choisir ce dossier avec **Importer un dossier de collecte…** |
+| Tester une timeline CatScale plus volumineuse | `02-Linux-CatScale/03-Volume` | **Importer un dossier de collecte…** |
+| Apprendre les filtres sans parsing | Un fichier dans `03-Exports` | **Ouvrir un fichier…** |
+
+Les artefacts Windows sont dans leurs **formats natifs**, et non des CSV déjà parsés. Ils proviennent de sources publiques indépendantes : ils ne racontent pas un incident unique. La collecte CatScale est **synthétique**, au format des sorties du collecteur ; ce n’est pas une collecte d’une machine Linux réelle. Le pack couvre des entrées représentatives des lecteurs embarqués, pas toutes leurs variantes.
+
+Commencez par un sous-dossier précis plutôt que par la racine du ZIP. Vous pourrez vérifier son bilan et ses comptes avant d’ajouter la suite. Pour comparer CatScale extrait et archivé, utilisez deux cases distincts : les données de ces deux exemples sont identiques.
+
+### Étape 1 — Windows et Hayabusa
+
+1. Dans **Cases**, créez `Formation Windows`, avec l’étiquette **Windows**. Fireblade ouvre alors **Analyses**. Le bouton central **Ouvrir un CSV…** sert aux exports ; pour les artefacts bruts, utilisez la commande **Importer un dossier de collecte…** de la barre d’outils ou du menu Fichier.
+2. Sélectionnez `01-Windows/01-Collecte-principale`. Gardez **Un onglet par type d’artefact ou famille CatScale**, puis **Importer et parser**.
+3. Attendez la fin et consultez **Collecte et détection**. Vérifiez le passage des 13 moteurs, leurs sorties et les éventuels avertissements. Le nombre d’onglets organisés n’est pas le nombre de fichiers source ni de CSV produits par les moteurs.
+4. Dans l’onglet EVTX, effacez tout filtre pour retrouver **13 événements**. Lisez un événement dans **Détails**, puis ajoutez un signet et une note.
+5. Revenez à **Collecte et détection**, choisissez la gravité minimale **Faible** et cliquez **Analyser avec Hayabusa**. Avec les règles qualifiées du pack, au moins **deux alertes** sont attendues : effacement d’un journal et modification du démarrage du service Event Log.
+6. Sélectionnez une alerte et cliquez **Voir le contexte de cette alerte**, avec **5 min** avant et après. Dans le contexte, distinguez la référence de l’alerte des voisins temporels. Ouvrez **l’événement EVTX source**, puis **Revenir aux alertes**.
+7. Enregistrez le case et sa session avec **Ctrl+Alt+S**.
+
+Une alerte n’est pas une preuve de compromission ; les événements voisins ne deviennent pas suspects parce qu’ils sont proches. Les comptes attendus concernent les fichiers et moteurs épinglés du pack. Une autre version des règles peut changer les détections : consultez le [rapport Windows publié](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1) pour comparer les versions.
+
+### Étape 2 — Ajouter Shellbags et WebCache au même case
+
+Importez successivement les dossiers suivants, sans fermer `Formation Windows`. Chaque import ajoute ses analyses. Dans **Collecte et détection**, le sélecteur **Collecte du case** retrouve le bilan de chaque import.
+
+| Dossier | Attendu | Vérification pratique |
+|---|---|---|
+| `01-Windows/02-Shellbags` | **523 Shellbags** | Lire `Path`, `RegistryKey`, `Status` et `RawHex`. La ruche est sale et sans journaux : un avertissement Shellbags et le refus du passage RECmd sont attendus. Ce n’est pas une récupération complète. |
+| `01-Windows/03-WebCache` | **1 612 lignes**, métadonnées comprises | Filtrer `WebCache_Container` sur `History` ou `Url` sur `code.google.com/p/libyal`. Comparer FILETIME brut et colonne UTC. Les lignes ne sont pas toutes des visites web. |
+
+Le lecteur WebCache produit plusieurs tables ; leur organisation dans Fireblade dépend du choix initial par artefact ou en grille unique. Comparez le total des lignes après avoir retiré les filtres, pas le nombre de tables ou de pages affichées.
+
+Pour tester l’autre organisation sans mélanger deux imports identiques, créez un nouveau case et réimportez un petit dossier avec **Tout dans un seul onglet, regroupé par artefact ou famille CatScale**. Les groupes sont préparés à l’ouverture ; la provenance reste disponible.
+
+### Étape 3 — Linux CatScale
+
+1. Créez le case `Formation Linux`, étiquette **Linux**. Le changement sauvegarde le case précédent.
+2. Importez **un seul** dossier : `02-Linux-CatScale/01-Dossier-extrait` ou `02-Linux-CatScale/02-Archive`. Pour une archive, sélectionnez son dossier contenant, sans la décompresser manuellement.
+3. Choisissez un onglet par artefact ou famille, puis vérifiez **26 lignes au total** :
+
+| Famille | Lignes attendues |
+|---|---:|
+| Processus et réseau | 8 |
+| Persistance | 4 |
+| Journaux et connexions | 2 |
+| Système | 5 |
+| Utilisateurs | 4 |
+| Fichiers et chronologie | 1 |
+| Conteneurs et virtualisation | 2 |
+
+Sur ces 26 lignes, **25 sont structurées et une est conservée en lecture brute**. Un avertissement est volontaire. Retrouvez cette ligne avec `Lecture = Brute`, puis lisez **Texte brut**, **Source**, **Ligne** et **Fin de ligne**. Une source archivée indique aussi l’entrée TAR. En cas de grille combinée, effacez les filtres avant de vérifier le total.
+
+Ouvrez les données de processus et réseau, filtrez une commande ou un utilisateur, puis ajoutez une note. Les commandes figurant dans le corpus sont des valeurs à lire ; elles ne sont pas exécutées. Hayabusa ne traite pas ces textes Linux.
+
+En option, importez `02-Linux-CatScale/03-Volume` : **100 000 lignes** sont attendues, réparties entre `alice` et `bob`. Vérifiez les chemins accentués contenant une virgule, les inodes avec zéros initiaux et la taille exacte `18446744073709551615`. Ce jeu est distinct de la petite collecte ; le total du case peut donc dépasser 26 lignes.
+
+### Étape 4 — Exports, filtres et annotations
+
+Ouvrez séparément les fichiers CSV, TSV et XLSX de `03-Exports` avec **Ouvrir un fichier…**. Pour XLSX, choisissez la feuille **Activite**. Chaque fichier contient **six lignes**. Vérifiez :
+
+- Les identifiants `000001` et `9007199254740993` restent exacts.
+- Le message de `charlie` contient une virgule, des accents et un retour à la ligne, tout en restant dans une seule cellule.
+- Les champs **Contient…**, les flèches de tri et les groupes portent sur le résultat complet.
+- Une note et un signet sont retrouvés après réouverture de l’analyse.
+
+L’[exercice de cinq lignes](#exercice-complet-avec-résultats-attendus) plus bas donne les comptes exacts pour apprendre ET, OU, NON et les résumés. Il s’agit d’un autre jeu de données, à créer séparément ; n’attendez pas ces mêmes comptes dans les fichiers de `03-Exports`.
+
+### Étape 5 — Fermer, reprendre et archiver
+
+1. Enregistrez le case Linux, ouvrez `Formation Windows` depuis **Cases** et vérifiez ses propres onglets, notes et filtres. Le changement ne fusionne pas les enquêtes.
+2. Quittez normalement Fireblade, puis relancez-le. Les cases doivent rester visibles dans le catalogue, **sans analyses chargées**.
+3. Ouvrez explicitement un case : sa session doit revenir. Une base référencée déplacée ou manquante empêche sa restauration normale ; conservez ses chemins.
+4. Sélectionnez un ancien case et cliquez **Archiver**. Il disparaît de la liste normale. Cochez **Inclure les archivés**, puis **Réactiver** pour le retrouver.
+5. Sauvegardez le dossier complet du case, les éventuelles bases externes et les sources utiles. **Archiver** classe un case ; ce bouton ne fabrique pas un ZIP de sauvegarde.
+
+### Tester un gros CSV séparément
+
+Le [CSV de plus de 3 Gio](TESTER-3GIB.md) est un téléchargement séparé : **2 441 216 enregistrements**, à ouvrir comme fichier, pas comme artefact brut. Vérifiez ses comptes avec son guide. L’import de CSV et l’organisation d’une collecte n’ont pas la même charge mémoire. Le résultat Linux enregistré sur **12 206 080 lignes / environ 15 Gio** concerne le moteur et son corpus précis ; il ne garantit pas l’affichage Windows à cette taille. Les limites mémoire sont détaillées dans [Ressources et stockage](#ressources-et-stockage).
 
 ## Cases — dossiers d’enquête
 
@@ -90,7 +191,11 @@ Avant de changer de case, terminez ou annulez les opérations en cours et videz 
 
 ## Collecte brute et détection Hayabusa
 
-**Fichier → Importer un dossier de collecte…** et la barre **Collecte** ouvrent le parcours de parsing. Choisissez un dossier source, puis **un onglet par type d’artefact** ou **un onglet unique regroupé par artefact**. Les fichiers de même type sont réunis ; les colonnes de schémas différents restent disponibles, avec cellules vides si le champ est absent. La provenance de chaque ligne est conservée. Le choix est enregistré avec la session ; Hayabusa garde son onglet d’alertes. Fireblade crée un dossier de travail séparé dans le profil utilisateur et inventorie récursivement les fichiers. Les CSV/TSV déjà produits sont chargés directement ; les artefacts reconnus sont envoyés aux moteurs correspondants. Les résultats ouvrent une session Fireblade. L’onglet **Collecte et détection** permet de consulter les succès, erreurs, absences de sortie et fichiers non pris en charge, puis de reprendre un dossier de travail existant.
+**Fichier → Importer un dossier de collecte…** et la barre **Collecte** ouvrent le parcours de parsing. Dans un case actif, les imports s’ajoutent à ses analyses. Hors d’un case, le chargement d’une nouvelle collecte remplace l’espace affiché et conserve sa session précédente dans le dossier de travail (`previous-workspace.fireblade-session`). Créez un case si vous souhaitez réunir plusieurs collectes.
+
+Choisissez un dossier source, puis **un onglet par type d’artefact** ou **un onglet unique regroupé par artefact**. Les fichiers de même type sont réunis ; les colonnes de schémas différents restent disponibles, avec cellules vides si le champ est absent. La provenance de chaque ligne est conservée. Le choix est enregistré avec la session ; Hayabusa garde son onglet d’alertes.
+
+Fireblade crée un dossier de travail séparé dans le profil utilisateur et inventorie récursivement les fichiers. Les CSV/TSV déjà produits sont chargés directement ; les artefacts reconnus sont envoyés aux moteurs correspondants. Les résultats sont enregistrés dans une session de collecte et ouverts dans Fireblade. L’onglet **Collecte et détection** permet de consulter les succès, erreurs, absences de sortie et fichiers non pris en charge, puis de reprendre un dossier de travail existant.
 
 Le pack contient EvtxECmd, AmcacheParser, AppCompatCacheParser, PECmd, MFTECmd, RECmd avec son batch Kroll, LECmd, JLECmd, SrumECmd, WxTCmd, RBCmd, RecentFileCacheParser et SQLECmd. Les versions sources sont épinglées dans le manifeste de construction. Une reconnaissance propose un moteur ; elle ne prouve pas que le fichier sera valide pour ce moteur. Un échec reste dans le bilan, avec son journal. Les liens ne sont pas suivis.
 
@@ -679,8 +784,8 @@ XLSX écrit les valeurs comme texte pour ne pas exécuter les chaînes commença
 
 #### Transporter une enquête sur un autre poste
 
-1. Terminez les opérations et sauvegardez une vue nommée ainsi que la session utile.
-2. Conservez toutes les bases référencées, les sources nécessaires et les bibliothèques personnelles.
+1. Terminez les opérations. Dans un case actif, utilisez **Enregistrer le case actif et sa session** ; hors d’un case, sauvegardez la session. Enregistrez aussi les vues nommées utiles.
+2. Pour un case, conservez son dossier complet (`case.json`, sessions, analyses, collectes et dispositions). Ajoutez toutes les bases référencées à l’extérieur, les sources nécessaires et les bibliothèques personnelles.
 3. Vérifiez les chemins de la session sur le poste destinataire. Les DLL approuvées localement sur le premier poste ne sont pas automatiquement approuvées sur le second.
 4. Rouvrez une analyse, rechargez la vue et comparez effectifs, annotations et provenance.
 5. N’effacez la copie de départ qu’après votre vérification et selon votre procédure de sauvegarde.
@@ -699,6 +804,8 @@ Le fichier TOML ne remplace pas les préférences de présentation. Les six rég
 | `max_loaded_rows` | 1000 | 25–10000 | Fenêtre par parent ; multiple obligatoire de page_size. |
 | `export_batch_rows` | 2048 | 1–10000 | Taille des lots d’export. |
 | `cache_sorted_pages` | true | true / false | Cache d’ordre pour éviter certains tris répétés sur les pages profondes. |
+
+Lors de la préparation du pack v1, une timeline CatScale de **250 000 lignes** a dépassé le buffer par défaut de **256 Mio** pendant l’organisation sous Windows. Le pack publié contient **100 000 lignes** et a passé ce scénario avec les réglages par défaut. Une grille paginée ne dispense pas de mémoire pour préparer les résultats. En cas de manque de mémoire, conservez le bilan, vérifiez l’espace disque, réduisez la collecte de test ou adaptez `memory_mb` à la RAM disponible puis redémarrez ; augmenter la valeur n’est pas une garantie pour toutes les collectes.
 
 Exemple de fenêtre plus petite : `page_size = 100`, `max_loaded_rows = 400`. Gardez les autres valeurs du modèle précédent et redémarrez. Une valeur invalide empêche le lancement : restaurez le dernier fichier valide et consultez le journal. Les branches ouvertes, grands champs, règles statistiques et lecteurs tiers ajoutent leur propre mémoire.
 
@@ -891,6 +998,14 @@ Pour signaler un problème reproductible, indiquez version/commit depuis **À pr
 
 | Symptôme | Vérification |
 |---|---|
+| Case visible mais aucune analyse au lancement | Comportement attendu : ouvrez explicitement le case depuis le catalogue. |
+| Un case ne s’ouvre pas | Vérifier ses bases référencées, ses chemins et son éventuelle ouverture dans une autre fenêtre. Ne pas déplacer ses fichiers pour corriger un filtre. |
+| Une ancienne collecte semble avoir disparu | Dans un case, choisir son bilan avec **Collecte du case**. Hors d’un case, reprendre son dossier de travail. |
+| Shellbags lisibles mais RECmd en erreur | Une ruche sale sans journaux utilisables peut être partiellement lisible par Shellbags et refusée par le passage RECmd. Lire les deux diagnostics. |
+| WebCache contient plus de lignes que de visites | Séparer `WebCache_RecordType`, table et conteneur : le lecteur conserve aussi les métadonnées. |
+| CatScale affiche un avertissement Brute | Filtrer `Lecture = Brute` ; vérifier le texte et la provenance. Le pack v1 contient volontairement une telle ligne. |
+| CatScale extrait et archive doublent les résultats | Ces deux petits exemples du pack sont identiques. Les comparer dans des cases distincts. |
+| Organisation interrompue par manque de mémoire | Consulter la section Ressources ; ne pas confondre buffer DuckDB et RAM totale. |
 | Aucun moteur disponible | Vérifier la construction : le simple lancement des sources n’embarque pas le pack Windows. |
 | Fichier non reconnu ou aucune sortie | Lire le bilan et `parser.log`. Le nom/signature, la version de l’artefact et les maps déterminent le traitement. |
 | SRUM ou SQLite échoue | Lire le message et les dépendances natives ; un test Linux d’un moteur Windows ne valide pas son fonctionnement dans l’EXE Windows. |
@@ -928,6 +1043,8 @@ Ce tutoriel décrit les commandes utilisateur et les réglages présents dans le
 - [Architecture](../development/ARCHITECTURE.md) : couches, stockage, concurrence et points de modification.
 - [Contribution](../development/CONTRIBUER.md) : environnement de développement, vérification et construction.
 - [Qualification](../validation/QUALIFICATION.md) : parcours Windows et conditions de validation.
+- [Pack forensic v1](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1) : ZIP, empreintes, sources et rapport Windows.
+- [Validation CatScale](../validation/CATSCALE.md), [fiabilité cases/CatScale](../validation/FIABILITE-CASES-CATSCALE.md) et [Shellbags/WebCache](../validation/SHELLBAGS-WEBCACHE.md) : contrôles et limites des lecteurs.
 - [Essai de 3 GiB](TESTER-3GIB.md) : fichier publié, vérifications et résultats attendus.
 
 Les fonctions de développement, la construction de l’EXE et les scénarios de qualification sont distincts des gestes d’analyse. Les consulter permet de vérifier les affirmations de performance et de compatibilité sans les confondre avec une garantie sur chaque fichier réel.

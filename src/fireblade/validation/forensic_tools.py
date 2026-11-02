@@ -35,4 +35,15 @@ def verify_embedded_engines(directory):
     report=collection.analyze()
     if report['detection']['status']!='complete' or report['detection']['alerts']<2:
         raise AssertionError(str(report['detection']))
-    return dict(parsers=len(PARSERS),registry_plugins=len(manifest['registry_plugins']['included']),registry_fixture_passed=True,alerts=report['detection']['alerts'])
+    from fireblade.core.alert_context import build_context
+    from fireblade.core.engine import Case
+    from fireblade.core.models import View
+    alerts=Case(report['detection']['analysis'])
+    try:
+        row=alerts.page(View())[0]
+        alert=dict(zip(alerts.headers,row[1:]))
+    finally:alerts.close()
+    context=build_context(collection,alert,report['detection']['analysis'],row[0])
+    if context['references']!=1 or context['events']<=context['references']:
+        raise AssertionError('Le contexte ne relie pas l’alerte aux événements EVTX voisins : '+str(context))
+    return dict(context_events=context['events'],context_references=context['references'],parsers=len(PARSERS),registry_plugins=len(manifest['registry_plugins']['included']),registry_fixture_passed=True,alerts=report['detection']['alerts'])

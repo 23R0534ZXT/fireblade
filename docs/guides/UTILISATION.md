@@ -300,3 +300,19 @@ L’onglet **Alertes Hayabusa.csv** devient une analyse Fireblade : filtrez Leve
 Le programme Windows embarque les moteurs, le runtime .NET, Hayabusa et les règles : l’utilisateur conserve un seul EXE pour le programme. Les résultats restent séparés dans le dossier de travail. Cette distribution est plus volumineuse et son extraction au démarrage demande davantage de disque temporaire. Les sources Hayabusa distribuées sont exportables depuis l’onglet Collecte ; les licences restent dans **Aide → Licences**.
 
 Une règle correspondante donne une piste, pas une preuve automatique de compromission. Hayabusa couvre ici les EVTX ; les autres artefacts sont parsés et explorables, sans prétendre leur appliquer les règles EVTX.
+
+## Comprendre une alerte avec son contexte EVTX
+
+L’onglet **Alertes Hayabusa** reste la liste courte des détections. Sélectionnez une alerte, choisissez la durée avant/après (5 minutes par défaut), puis cliquez **Voir le contexte de cette alerte**. La commande est aussi disponible au clic droit et dans **Analyse → Voir le contexte EVTX de l’alerte**.
+
+Un nouvel onglet **Contexte EVTX** présente une chronologie des événements importés : date, EventID, machine, canal, description et données détaillées. La colonne **Relation à l’alerte**, épinglée à gauche, distingue :
+
+- **Événement de l’alerte** : correspondance avec le fichier EVTX et EventRecordID, contrôlée aussi par la machine et l’EventID lorsqu’ils sont disponibles. La ligne apparaît en gras.
+- **Référence candidate (agrégation)** : plusieurs références ne permettent pas d’attribuer chaque identifiant à un événement de façon certaine.
+- **Proximité temporelle** : événement voisin sur la même machine, éventuellement dans un autre journal EVTX. Ce voisinage ne suffit pas à le déclarer suspect ou à établir une relation causale.
+
+Le contexte est limité à 1000 événements, en conservant les références et les voisins les plus proches ; le résumé signale les limites ou sources indisponibles. La fenêtre est réglable de 1 minute à 24 heures avant et après. Une référence introuvable reste explicitement non résolue ; un événement proche ne la remplace pas silencieusement. Sans machine ou date exploitable, le voisinage n’est pas inventé.
+
+Sélectionnez une ligne du contexte puis **Ouvrir l’événement EVTX source** pour retrouver exactement cette ligne dans la base EvtxECmd originale. **Effacer les filtres** retrouve les autres événements de ce fichier ; **Revenir aux alertes** ramène à la liste des détections et conserve ses filtres et annotations. Le panneau Détails et la fenêtre de cellule permettent de lire les charges utiles complètes, même si la grille les abrège.
+
+Les contextes sont des analyses Fireblade ordinaires : notes, signets, filtres et exports restent disponibles. Leur lien avec l’alerte est enregistré dans le dossier de travail ; leur ouverture retrouve automatiquement la collecte associée. Ils restent consultables avec les bases importées même si les EVTX originaux ne sont plus accessibles. Il s’agit des instantanés déjà parsés, sans reparsing ni réévaluation de la règle Hayabusa ; les sources restent nécessaires pour relancer la détection elle-même.

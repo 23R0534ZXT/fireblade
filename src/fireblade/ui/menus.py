@@ -68,6 +68,18 @@ def cell_menu(window, index):
             menu.addAction("Afficher dans l’Explorateur", lambda: window.open_external(str(value)))
             menu.addAction("Ouvrir le dossier parent", lambda: window.open_external(str(value), directory=True))
         menu.addSeparator()
+    if window.is_hayabusa_analysis():
+        def context():
+            window.tree.setCurrentIndex(index)
+            window.open_alert_context()
+        menu.addAction("Voir le contexte EVTX de cette alerte", context)
+        menu.addSeparator()
+    if window.context_metadata() is not None:
+        def original():
+            window.tree.setCurrentIndex(index)
+            window.open_context_source()
+        menu.addAction("Ouvrir l’événement EVTX source", original)
+        menu.addSeparator()
     menu.addAction("Copier les lignes sélectionnées", window.copy_rows)
     menu.addAction("Signet / note…", lambda: window.edit_bookmark(row_id))
     menu.addSeparator()

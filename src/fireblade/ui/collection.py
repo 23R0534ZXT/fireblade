@@ -9,6 +9,7 @@ from PySide6.QtGui import QAction, QPalette
 from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QTabWidget, QTextBrowser, QVBoxLayout, QWidget
 
 from fireblade.core.collection import Collection, ToolPack
+from fireblade.ui.alert_context import AlertContextMixin
 from fireblade.runtime.resources import resource_path
 from fireblade.runtime.windows_paths import user_directory
 
@@ -42,7 +43,7 @@ class CollectionOrganizationDialog(QDialog):
         return 'combined' if self.combined.isChecked() else 'artifacts'
 
 
-class CollectionMixin:
+class CollectionMixin(AlertContextMixin):
     def setup_collection(self):
         self.collection = None
         self.workbench = QTabWidget()
@@ -95,6 +96,7 @@ class CollectionMixin:
         toolbar.addAction(action)
         toolbar.addAction(analyze)
         self.show_collection_report()
+        self.setup_alert_context()
 
     def toolpack(self):
         return ToolPack(resource_path('forensic-tools'))
@@ -142,6 +144,7 @@ class CollectionMixin:
                 self.load_session(str(self.collection.output/'collection.fireblade-session'))
                 if (report.get('detection') or {}).get('outputs'):
                     self.switch_document(len(self.documents)-1)
+                    if self.case:self.select_evidence_row(str(self.case.path),1)
                 self.workbench.setCurrentIndex(0)
             QTimer.singleShot(0, open_results)
 
@@ -190,6 +193,11 @@ class CollectionMixin:
             self.workbench.setCurrentIndex(1)
             self.statusBar().showMessage('Importez ou reprenez une collecte avant l’analyse Hayabusa.')
             return
+        self.remember_collection_views()
+        level = self.hayabusa_level.currentData()
+        self.start_collection_job(lambda: self.collection.analyze(level))
+
+    def remember_collection_views(self):
         import base64
         import json
         self.remember_active()
@@ -200,8 +208,6 @@ class CollectionMixin:
                 document['view'] = json.loads(snapshot.view.to_json())
                 document['header'] = base64.b64encode(snapshot.header_state).decode('ascii')
         self.collection.save()
-        level = self.hayabusa_level.currentData()
-        self.start_collection_job(lambda: self.collection.analyze(level))
 
     def export_hayabusa_source(self):
         import shutil

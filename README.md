@@ -1,9 +1,15 @@
-# Fireblade
+# Fireblade 0.7
 
 [![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 [![Forensic test pack](https://github.com/23R0534ZXT/fireblade/actions/workflows/test-pack.yml/badge.svg)](https://github.com/23R0534ZXT/fireblade/actions/workflows/test-pack.yml)
 
-**Investigate Windows artifacts and Linux CatScale collections from a single Windows executable.**
+**A local forensic investigation workspace for Windows artifacts, Linux CatScale collections and existing data exports.**
+
+**Current source version: 0.7.0.** Version 0.7 brings the complete workflow together: persistent cases, recovery and portable archives, Shellbags and WebCache readers, graphical chronology, bulk IOC hunting, investigation reports, and collection coverage diagnostics. The version of a downloadable EXE depends on the last successful Windows release; check **Aide → À propos** and the release commit.
+
+![Fireblade investigation workspace](docs/assets/fireblade-workspace.png)
+
+*The desktop interface uses French. This overview and the other screenshots below show the actual application; demonstration data and Linux offscreen captures are identified in their captions.*
 
 Choose a collection folder, parse its artifacts, and explore the results in Fireblade. Save investigations as **cases**, navigate collections and artifact families, filter and group complete datasets, mark entire rows, and investigate **Hayabusa detections with their EVTX context**. Existing CSV, TSV, delimited TXT, XLS, and XLSX exports can also be opened directly.
 
@@ -18,9 +24,27 @@ Choose a collection folder, parse its artifacts, and explore the results in Fire
 | Hayabusa | Bundled EVTX rules, alert results, surrounding events and navigation to the source record |
 | Data exploration | Column filters, AND/OR/NOT conditions, sorting, grouping, bookmarks, notes and CSV/XLSX exports |
 | Graphical chronology | Cross-analysis density lanes, zoom, time selection, entity correlation and source-row navigation |
-| Investigation reports | Standalone HTML/PDF findings with notes, provenance and an optional timeline capture |
+| Investigation reports | Standalone HTML/PDF findings with notes, provenance, coverage findings and an optional timeline capture |
+| Bulk IOC hunting | Up to 50,000 IPs, domains, URLs and hashes across open analyses, with saved hunts and CSV/XLSX exports |
+| Coverage and diagnostics | Sources, reader failures, expected artifact families, row IDs, empty columns, timestamps and stale timeline checks |
+| Verified data exports | Independent CSV/XLSX re-reading, schema/row/content checks, SHA-256 receipts and atomic replacement |
 
 Data lives in disk-backed DuckDB `.timeline` databases. The grid loads pages; filters, counts and exports operate on the complete result set. The application ships as **one `Fireblade.exe`**, with its engines and runtimes. Evidence and investigation results are stored separately.
+
+## Find your workflow
+
+- [Get started and download Fireblade](#downloads)
+- [Create and reopen investigation cases](#investigation-cases)
+- [Recover sessions and move an investigation](#automatic-recovery-and-portable-cases)
+- [Import Windows artifacts](#windows-artifacts-and-bundled-engines), [Shellbags](#shellbags) and [WebCache](#windows-webcache)
+- [Import Linux CatScale collections](#linux-catscale-collections)
+- [Investigate Hayabusa alerts and their EVTX context](#hayabusa-alerts-and-evtx-context)
+- [Filter, group, annotate and calculate](#explore-the-results)
+- [Explore the graphical chronology](#graphical-chronology-and-correlations)
+- [Run a bulk IOC hunt](#bulk-ioc-hunting)
+- [Check collection coverage and incidents](#collection-coverage-and-diagnostics)
+- [Create reports and verified exports](#investigation-reports)
+- [Understand storage, validation and limits](#validation-and-known-limitations)
 
 ## Downloads
 
@@ -44,6 +68,10 @@ At startup, the EXE extracts resources into a temporary Windows directory. Allow
 4. Review **Collecte et détection** for completed tasks, warnings, errors, unrecognized files and missing outputs.
 5. Explore the **Analyses** tabs, add notes and bookmarks, and save the case and its session.
 6. For a collection containing EVTX, use **Analyser la collecte avec Hayabusa**, then investigate the alerts and their event context.
+7. Open **Chronologie & corrélations**, choose the date columns and build the index to compare activity across sources.
+8. Open **Chasse IOC** to search an indicator list across your open analyses.
+9. Use **Couverture & diagnostics → Contrôler toute la couverture** to review omissions, errors and assumptions. Adjust the expected artifact families to your collection plan.
+10. Export the findings as HTML/PDF, export the underlying data as CSV/XLSX, or create a portable case for another workstation.
 
 To explore an existing export, use **Ouvrir un fichier**. It can be imported into an active case or explored outside one.
 
@@ -76,6 +104,18 @@ analysis source files optionally included. Files are hash-verified before public
 and again on import. Import creates a new case and rebinds references without
 rewriting original event values. Keep raw collection artifacts separately for
 parser reruns; engines and approved plugins are not automatically transported.
+
+![Session recovery history](docs/assets/fireblade-recovery.png)
+
+*Synthetic 0.7 case with several saved sessions. The actual recovery dialog explains what restoration includes and what remains in the databases; captured offscreen on Linux.*
+
+| Operation | What it preserves | What to remember |
+|---|---|---|
+| Save the case | Case details, analysis references, active tab and session views | Notes and bookmarks live in the referenced databases |
+| Automatic save | The current case/session when the application is idle | Enabled by default; configurable in the File menu |
+| Restore a session version | Earlier tabs, views and case metadata | Does not restore an earlier copy of database annotations |
+| Export a portable case | Current databases, annotations, collection results, saved IOC hunts, coverage journal and last audit | Original analysis source files are optional; keep raw artifacts needed for reruns separately |
+| Import a portable case | A new case with verified files and relocated references | Recheck coverage on the destination workstation |
 
 [Recovery, transport, chronology and reporting guide](docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md).
 
@@ -137,6 +177,12 @@ Processing is read-only. ESE logs are not replayed, the database is not repaired
 ![WebCache results in a case](docs/assets/fireblade-webcache.png)
 
 The Shellbags and WebCache captures use pinned public test artifacts, rendered offscreen on Linux. See [their validation and limits](docs/validation/SHELLBAGS-WEBCACHE.md).
+
+### What was checked for WebCache
+
+The bundled public WebCache fixture produces **1,612 records across 23 non-empty table exports**, including metadata. Tests check a known URL, its `History` container, the exact original FILETIME and its UTC conversion, app-cache/dependency records and unchanged source hashes. They also exercise invalid files, dirty databases, unreadable tables and cancellation, and import the results in all three organization modes.
+
+These are records from several table types, **not 1,612 confirmed browser visits**. WebCache is an ESE artifact associated with Internet Explorer and legacy Edge; it is not the Chromium or Firefox history format. Representative fixture tests do not establish recovery completeness for an arbitrary damaged database.
 
 ## Linux CatScale collections
 
@@ -209,6 +255,12 @@ Forensic profiles organize columns; each profile is not a raw artifact parser. F
 
 Synthetic demonstration records, rendered offscreen on Linux.
 
+### Calculations, layouts and reusable rules
+
+Keep the source values and add separate calculated columns for supported date conversions, expressions, categories and MACB-style interpretation. For a known local time zone, create a UTC column explicitly rather than silently treating local timestamps as UTC. Calculated definitions are retained with the analysis.
+
+Named views preserve investigation layouts. Local and shared formatting rules can highlight rows or cells using visual condition blocks; the grid also supports icons, bars and scales, pinned columns, multiline values and adjustable row heights. Rules change presentation, while filters change which records participate in the view. Import compatibility with Timeline Explorer remains scoped to the documented formats and supported .NET helpers.
+
 ### Graphical chronology and correlations
 
 The dedicated **Chronologie & corrélations** tab builds a disk-backed index across
@@ -229,6 +281,23 @@ every matching event, source references, notes and import-time hashes.
 
 Synthetic demonstration: 4,200 events in six analyses, rendered offscreen on Linux.
 
+![Correlating an IP over a selected period](docs/assets/fireblade-timeline-correlation.png)
+
+*The same synthetic investigation after an IP correlation and a narrower time selection, captured offscreen on Linux.*
+
+| Timeline task | How it works |
+|---|---|
+| Select a date field | **Sources et dates…** lets you review each source and choose its column |
+| Find a burst of activity | Use the overview, per-analysis lanes and logarithmic density |
+| Focus on a period | Zoom with the wheel, drag a selection, pan or enter explicit bounds |
+| Follow an entity | Correlate a user, IP, path, hash or arbitrary text across sources |
+| Review a marked event | Bookmark markers identify relevant density buckets; open the matching rows below |
+| Inspect the evidence | Open the source row, then return with the previous analysis view restored |
+| Include events without dates | Make them visible in the table; they cannot be positioned on the density chart |
+| Export the selection | Export every matching event from the applied filter, beyond the displayed page |
+
+The index is a snapshot. Coverage checks compare its source scope and the indexed annotation/column fingerprint to the current analyses, so changes can be flagged for reconstruction.
+
 ### Bulk IOC hunting
 
 ![Bulk offline IOC hunt](docs/assets/fireblade-ioc-hunt.png)
@@ -236,6 +305,22 @@ Synthetic demonstration: 4,200 events in six analyses, rendered offscreen on Lin
 Synthetic demonstration rendered offscreen on Linux; this is not a Windows EXE capture.
 
 The **Chasse IOC** tab searches up to 50,000 IP, domain, HTTP/HTTPS URL and file-hash indicators across every open analysis, entirely offline. Paste a list or import TXT/CSV/TSV, inspect per-indicator row and field counts, filter paginated occurrences, jump to an original row, and export CSV/XLSX summaries or details. Subdomain matching and saved-filter scope are explicit options. Full-scan counts continue after the configurable detail-storage limit; unreadable analyses and rejected indicators are reported. Hunts persist in investigation folders and travel with portable cases. [Usage and matching limits](docs/guides/CHASSE-IOC.md) · [Synthetic IOC list](examples/ioc/indicators.csv).
+
+#### A typical IOC hunt
+
+1. Paste one IOC per line or import TXT, CSV or TSV. CSV can use `type,value,label`; an [example list](examples/ioc/indicators.csv) is included.
+2. Choose whether subdomains should match, whether to respect each analysis's saved filters and how many occurrence details to retain.
+3. Run the hunt, then select an indicator to review its occurrences. The list includes indicators with no matches as well.
+4. Double-click an occurrence to open its original row in an unchanged, open analysis; use **Retour à la chasse IOC** to restore the previous view.
+5. Export the occurrence details or the per-indicator summary, or reopen a saved hunt from its history.
+
+Supported types are IPv4/IPv6, domains, HTTP/HTTPS URLs, MD5, SHA-1, SHA-256 and SHA-512. Canonicalization handles supported defanged forms, IP notation and IDNA domain names. Domain matching respects name boundaries; URL paths and queries retain their case. The reader never contacts the listed hosts or a reputation service.
+
+Counts distinguish matching **fields** from matching **rows**. Repeated appearances of one IOC in one field count once. The default storage cap is **250,000 occurrence details**, adjustable up to **5 million**; scanning and counts continue after the detail cap. Occurrences are paginated by 250. Input is limited to 8 MiB and 50,000 entries, including duplicates and rejected entries. The UI and exports identify partial scans, rejected indicators and limited details.
+
+![Filtering hunt occurrences by indicator](docs/assets/fireblade-ioc-filtered.png)
+
+*Actual 0.7 IOC tab with one domain selected across three synthetic analyses; captured offscreen on Linux. Example domains and documentation IP ranges are used.*
 
 ### Collection coverage and diagnostics
 
@@ -245,6 +330,28 @@ Synthetic offscreen Linux demonstration showing missing and invalid dates, empty
 
 **Couverture & diagnostics** connects collection inventories, imports, analysis scope, timestamps, IOC hunts and exports. It reports missing or changed sources, parser failures, uninventoried files, missing outputs, closed analyses, empty columns, inconsistent row IDs and unusable dates, with causes and corrective actions. Expected artifact families can be adjusted per investigation. Optional SHA-256 checks revalidate sources and the latest export receipts. CSV/XLSX data exports are independently reopened to verify their schema, row counts and textual content before atomic replacement. The incident journal and last audit persist with portable cases; HTML/PDF reports include the latest coverage snapshot and its limitations. [Checks, workflow and limits](docs/guides/COUVERTURE-COLLECTE.md).
 
+#### What the coverage audit examines
+
+| Stage | Checks and explanations |
+|---|---|
+| Collection inventory | Reader dispositions, unsupported or skipped files, missing outputs, unreadable inventories, newly present files and expected families |
+| Original sources | Availability, recorded size and optional complete SHA-256 re-reading |
+| Imported analyses | Declared versus actual row counts, current filtered scope, empty analyses, empty columns and source-row ID consistency |
+| Chronology | Missing/invalid dates, timezone assumptions, invalid-value samples, missing sources, filters and index freshness |
+| IOC hunts | Partial execution, rejected indicators and truncated occurrence details |
+| Existing exports | With hash verification enabled, compare the current file with its latest saved receipt |
+| Operational incidents | Preserve import, query, timeline and export failures, with causes and suggested remedies |
+
+Choose the observed scope, a Windows or Linux profile, or adjust individual expected families. A missing expected family is a question to investigate, not evidence that the activity never existed. Deep checks include filesystem inventory, empty columns and row IDs; hash checks are optional because they reread the files completely.
+
+Each finding provides a **cause, consequence and proposed action**, with supporting measurements and source references. Filters distinguish errors, points to review and informational scope decisions. A separate history retains past incidents, so an earlier failure is not presented as proof that the current operation is still broken.
+
+![Operational incident history and corrective action](docs/assets/fireblade-coverage-history.png)
+
+*Actual 0.7 incident-history view with an explicitly simulated access-denied incident. This is synthetic documentation data, captured offscreen on Linux.*
+
+The journal keeps up to 2,000 operations within its size budget; displaced entries and abbreviated details are explicit. The last audit is saved separately and is marked for refresh after reopening. Export JSON for the complete audit structure and per-analysis metrics, or CSV for findings and operations. This control cannot discover never-collected hosts, prove expected log retention or replace an independent acquisition manifest.
+
 ### Investigation reports
 
 **Créer un rapport HTML / PDF…** exports bookmarks, notes or selected rows with your
@@ -252,6 +359,27 @@ summary, source-row references and import-time SHA-256 hashes. A timeline captur
 can be included with its applied query and period. Missing analyses and truncation
 are explicit; reports add no automatic conclusions. HTML is standalone, and PDF
 uses the bundled Qt runtime. [Scope and limits](docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md).
+
+![Investigation report configuration](docs/assets/fireblade-report-options.png)
+
+*Actual 0.7 report dialog with a synthetic investigation and the timeline option enabled, captured offscreen on Linux.*
+
+Choose a title and summary, then decide whether to include bookmarks/notes, the current row selection, saved analysis filters and the visible timeline. The default limit is **2,000 findings**, adjustable to **10,000**. Large cells and omitted findings are explicitly identified. The latest coverage snapshot is included with its date and freshness status; if no audit exists, the report says so.
+
+HTML can be read offline as a standalone document. PDF uses the bundled Qt runtime. Reports summarize selected findings; they are not a replacement for the original artifacts, full databases or a complete coverage export.
+
+#### Verified CSV and Excel exports
+
+Data exports include the current filtered records, bookmark/note exports or grouped counts. Chronology and IOC exports use their corresponding applied scope. The displayed page does not limit the export.
+
+Before replacing the destination, Fireblade reopens the newly written CSV/XLSX and verifies:
+
+- The expected headers and number of columns.
+- The number of logical data records, including multiline CSV values and multiple Excel sheets.
+- A canonical digest of the textual cell values supplied to the writer versus the values read back.
+- The SHA-256 of the finished file, retained in the export receipt.
+
+A failed or cancelled verification preserves the previous destination. Excel values are written as text rather than executable formulas; Excel's cell-size limit can require a CSV export. Verification adds work and disk I/O, especially for large exports. A coverage audit can later check whether the latest export file at each path still matches its receipt.
 
 ### Main keyboard shortcuts
 
@@ -309,6 +437,9 @@ Source files are read without rewriting them and verified using SHA-256. Native 
 | `.timeline` | Imported data, provenance, annotations, and views |
 | `.fireblade-session` | Database references: keep every referenced database |
 | Investigation case | Entire case folder (`case.json`, session, analyses, collection workspaces, layouts), plus external references |
+| IOC hunt | Saved `IOC-hunts` results and their analysis references; export temporary hunts before closing |
+| Coverage | `coverage-state.json` incident journal and `coverage-last.json` last audit; refresh a restored snapshot |
+| Export receipt | Retained in the coverage journal for the corresponding export; keep external exported files separately |
 | Fireblade collection workspace | `collection.json`, session, individual and organized databases, CSV files, contexts, and logs |
 | Original artifacts | Required to rerun Hayabusa; imported databases remain readable without them |
 | User profile | Preferences, shared rules, personal profiles, and automatic layouts |
@@ -330,6 +461,21 @@ For reference, the [qualified `0c36f0d` EXE](https://github.com/23R0534ZXT/fireb
 The DuckDB memory setting limits its buffer, not total application or external-engine RAM. Wide rows, groups, caches and plugins add costs. The 250,000-row CatScale pack prototype exceeded the default 256 MiB buffer during organization on Windows; the published pack uses a 100,000-row sample that passed with default settings. A large CSV import and collection organization have different memory workloads.
 
 Allow disk space for source data, parser outputs, organized databases, timeline indexes and temporary copies. Sessions are limited to 1000 analyses and 4 MiB. A standalone session save that exceeds either limit is rejected before replacing the previous file, preserving the existing session and reporting an error. Interrupted imports cannot resume in the middle of a write; completed collection tasks are retained. Portable archives are limited to 50,000 files and 64 GiB expanded. Reports default to 2000 findings, with explicit limits for large cells and documents. Representative tests do not qualify every Windows version, artifact variant, SQLite map or damaged file.
+
+### Version 0.7 validation
+
+The [0.7 coverage validation](docs/validation/reports/20261102-coverage-linux.md) records **1,005 passing tests and 28 skipped tests** in the complete Linux source suite, with additional targeted checks after the final changes. It covers real DuckDB analyses, source tampering, invalid dates, reader errors, row IDs, cancelled operations, persistent diagnostics and portable cases. An intentionally faulty XLSX writer is rejected even when it writes the expected number of rows with incorrect values.
+
+| Recorded local exercise | Result and scope |
+|---|---|
+| Coverage audit of two analyses, 120,000 synthetic rows | 0.21–0.23 s, with deep checks and source hash verification |
+| Independently verified export of 6,000 filtered records | 0.06 s for the CSV exercise, including multiline values |
+| [IOC hunt: 100,000 rows and 50,000 indicators](docs/validation/reports/20261102-ioc-hunt-linux.md) | 2.39–2.50 s scanning; full counts verified despite a 1,000-detail storage cap |
+| Desktop layout | Coverage workflow checked at 1024 × 600 under Qt offscreen |
+
+These are recorded synthetic Linux measurements, not performance promises or confirmation that the current Windows EXE has passed its release gates. See the workflow for the exact release commit.
+
+### Earlier validation records
 
 The [2 November 2026 Linux audit and session-save fix](docs/validation/reports/20261102-adversarial-audit-linux.md) records 922 passing tests and 28 skipped tests after integrating the workspace changes. Additional checks covered 42 CSV scenarios and a synthetic 3,275,068,297-byte CSV with 8,380,000 records. These Linux source results do not qualify the Windows executable.
 
@@ -402,6 +548,9 @@ This uses synthetic qualification data and bundled public artifacts; it can take
 
 - [Complete tutorial](docs/guides/TUTORIEL-COMPLET.md): collection, detection, context, exploration, rules, backups, and reference sections.
 - [User guide](docs/guides/UTILISATION.md): getting started.
+- [Recovery, portable cases, chronology and reporting](docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md).
+- [Bulk IOC hunting](docs/guides/CHASSE-IOC.md): formats, normalization, counts and limits.
+- [Collection coverage and diagnostics](docs/guides/COUVERTURE-COLLECTE.md): expected families, integrity, incidents and verified exports.
 - [Documentation index](docs/README.md).
 - [Timeline Explorer compatibility](docs/development/COMPATIBILITE.md).
 

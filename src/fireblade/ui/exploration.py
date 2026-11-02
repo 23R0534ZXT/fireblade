@@ -44,6 +44,8 @@ class ExplorationMixin:
 
     def apply_preferences(self):
         p = self.preferences
+        if hasattr(self,'autosave_action'):
+            self.autosave_action.blockSignals(True);self.autosave_action.setChecked(p.case_autosave);self.autosave_action.blockSignals(False)
         from fireblade.core.themes import effective_palette
         apply_theme(QApplication.instance(), p.theme, effective_palette(p))
         font = QFont(p.font_family) if p.font_family else QApplication.font()

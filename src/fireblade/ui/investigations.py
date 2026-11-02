@@ -140,6 +140,7 @@ class InvestigationMixin:
         if data:
             stamp = datetime.fromisoformat(data['updated']).astimezone().strftime('%H:%M:%S')
             self.last_case_save.setText('Case enregistré à '+stamp)
+            self.last_case_save.setToolTip('Dernière sauvegarde réussie du case et de sa session.')
         else:
             self.last_case_save.clear()
         self.save_case_button.setEnabled(data is not None);self.close_case_button.setEnabled(data is not None)
@@ -231,7 +232,7 @@ class InvestigationMixin:
         except Exception as exc:self.error(exc)
         self.refresh_investigation_collections()
 
-    def persist_investigation(self):
+    def persist_investigation(self, automatic=False):
         if self.active_investigation is None:return True
         try:
             latest=self.investigation_library.read(self.active_investigation['id'])
@@ -250,7 +251,12 @@ class InvestigationMixin:
             self.update_investigation_badge();self.refresh_investigations()
             return True
         except Exception as exc:
-            self.error('Le case n’a pas été enregistré : '+str(exc))
+            message='Le case n’a pas été enregistré : '+str(exc)
+            if automatic:
+                self.statusBar().showMessage('Sauvegarde automatique en erreur : '+str(exc))
+                self.last_case_save.setText('Échec de la sauvegarde automatique')
+                self.last_case_save.setToolTip(message)
+            else:self.error(message)
             return False
 
     def save_investigation(self):
@@ -261,6 +267,7 @@ class InvestigationMixin:
 
     def clear_investigation_workspace(self):
         self.detach()
+        if getattr(self,'timeline_panel',None):self.timeline_panel.reset_workspace()
         self.clear_context_preview()
         self.release_investigation_lease()
         self.documents=[];self.active_document=-1;self.closed_documents=[];self.sync_tabs()

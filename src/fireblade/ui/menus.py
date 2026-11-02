@@ -63,6 +63,7 @@ def cell_menu(window, index):
         menu.addAction("Copier la valeur", lambda: QApplication.clipboard().setText("" if value is None else str(value)))
         menu.addAction("Filtrer sur cette valeur", lambda: window.filter_value(column, value))
         menu.addAction("Exclure cette valeur", lambda: window.filter_value(column, value, exclude=True))
+        menu.addAction("Corréler dans toutes les analyses", lambda: window.correlate_value(column, value))
         if value is not None:
             menu.addAction("Ouvrir avec…", lambda: window.open_with(str(value)))
             menu.addAction("Afficher dans l’Explorateur", lambda: window.open_external(str(value)))

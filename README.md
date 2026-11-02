@@ -10,12 +10,15 @@ Choose a collection folder, parse its artifacts, and explore the results in Fire
 | Capability | What it provides |
 |---|---|
 | Investigation cases | Persistent catalogue, case/session saving, multiple collections per case, search and archiving |
+| Recovery and transport | Automatic saves, ten session versions, verified portable case archives |
 | Windows artifact parsing | 13 bundled EZ Tools, their maps, and 70 RECmd registry plugins |
 | Shellbags | Dedicated offline hive reader with reconstructed paths, MRU information and raw bytes |
 | Windows WebCache | Read-only ESE reader with URLs, container metadata, exact FILETIME values and separate UTC columns |
 | Linux CatScale | Extracted folders and archives organized into seven analysis families |
 | Hayabusa | Bundled EVTX rules, alert results, surrounding events and navigation to the source record |
 | Data exploration | Column filters, AND/OR/NOT conditions, sorting, grouping, bookmarks, notes and CSV/XLSX exports |
+| Graphical chronology | Cross-analysis density lanes, zoom, time selection, entity correlation and source-row navigation |
+| Investigation reports | Standalone HTML/PDF findings with notes, provenance and an optional timeline capture |
 
 Data lives in disk-backed DuckDB `.timeline` databases. The grid loads pages; filters, counts and exports operate on the complete result set. The application ships as **one `Fireblade.exe`**, with its engines and runtimes. Evidence and investigation results are stored separately.
 
@@ -59,6 +62,22 @@ A case can retain multiple collection workspaces. Importing another collection a
 When creating a case from an existing workspace, you can include its open analyses. Existing databases remain at their original paths. Reusing the same database shares its annotations. Case/session files store references: back up the case folder, external databases and original evidence needed for a rerun. Moving files does not rewrite those references.
 
 ![Saved investigation catalogue](docs/assets/fireblade-cases.png)
+
+### Automatic recovery and portable cases
+
+An active case saves automatically every two minutes when the workspace is idle.
+The last ten session versions can be restored through **Historique / récupération…**,
+including when the case manifest is damaged. These versions retain views and
+references; they do not roll back annotations already stored in the databases.
+
+**Exporter le case portable…** creates a `.fireblade-case` archive of the current
+workspace, analysis databases, annotations and collection outputs, with available
+analysis source files optionally included. Files are hash-verified before publication
+and again on import. Import creates a new case and rebinds references without
+rewriting original event values. Keep raw collection artifacts separately for
+parser reruns; engines and approved plugins are not automatically transported.
+
+[Recovery, transport, chronology and reporting guide](docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md).
 
 ## Windows artifacts and bundled engines
 
@@ -190,6 +209,34 @@ Forensic profiles organize columns; each profile is not a raw artifact parser. F
 
 Synthetic demonstration records, rendered offscreen on Linux.
 
+### Graphical chronology and correlations
+
+The dedicated **Chronologie & corrélations** tab builds a disk-backed index across
+the open analyses. Choose each source's date column, then explore a global density
+overview and colored lanes with mouse-wheel zoom, drag selection, panning, bookmark
+markers and deep result pages. Click an entity cell's **Corréler dans toutes les
+analyses** command to search users, IPs, paths, hashes or all text across artifacts.
+Open a result's original row and return with its previous analysis view restored.
+
+Timestamp keys retain nanosecond precision and explicit offsets are placed in UTC.
+Dates without a timezone are flagged and positioned as UTC assumptions; choose a
+converted UTC column when the source zone is known. Undated rows remain searchable
+and are counted separately. Refresh the snapshot after changing annotations or
+analyses. Timeline settings are saved with the case; filtered CSV export includes
+every matching event, source references, notes and import-time hashes.
+
+![Graphical chronology and bookmark markers](docs/assets/fireblade-timeline.png)
+
+Synthetic demonstration: 4,200 events in six analyses, rendered offscreen on Linux.
+
+### Investigation reports
+
+**Créer un rapport HTML / PDF…** exports bookmarks, notes or selected rows with your
+summary, source-row references and import-time SHA-256 hashes. A timeline capture
+can be included with its applied query and period. Missing analyses and truncation
+are explicit; reports add no automatic conclusions. HTML is standalone, and PDF
+uses the bundled Qt runtime. [Scope and limits](docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md).
+
 ### Main keyboard shortcuts
 
 | Action | Shortcut |
@@ -266,9 +313,15 @@ For reference, the [qualified `0c36f0d` EXE](https://github.com/23R0534ZXT/fireb
 
 The DuckDB memory setting limits its buffer, not total application or external-engine RAM. Wide rows, groups, caches and plugins add costs. The 250,000-row CatScale pack prototype exceeded the default 256 MiB buffer during organization on Windows; the published pack uses a 100,000-row sample that passed with default settings. A large CSV import and collection organization have different memory workloads.
 
-Allow disk space for source data, parser outputs, organized databases and temporary copies. Sessions are limited to 1000 analyses and 4 MiB. A standalone session save that exceeds either limit is rejected before replacing the previous file, preserving the existing session and reporting an error. Interrupted imports cannot resume in the middle of a write; completed collection tasks are retained. HTML/PDF report export is not available. Representative tests do not qualify every Windows version, artifact variant, SQLite map or damaged file.
+Allow disk space for source data, parser outputs, organized databases, timeline indexes and temporary copies. Sessions are limited to 1000 analyses and 4 MiB. A standalone session save that exceeds either limit is rejected before replacing the previous file, preserving the existing session and reporting an error. Interrupted imports cannot resume in the middle of a write; completed collection tasks are retained. Portable archives are limited to 50,000 files and 64 GiB expanded. Reports default to 2000 findings, with explicit limits for large cells and documents. Representative tests do not qualify every Windows version, artifact variant, SQLite map or damaged file.
 
 The [2 November 2026 Linux audit and session-save fix](docs/validation/reports/20261102-adversarial-audit-linux.md) records 922 passing tests and 28 skipped tests after integrating the workspace changes. Additional checks covered 42 CSV scenarios and a synthetic 3,275,068,297-byte CSV with 8,380,000 records. These Linux source results do not qualify the Windows executable.
+
+The [0.5 workspace validation](docs/validation/reports/20261102-v05-workspace-linux.md)
+records 963 passing tests and 28 skipped tests, plus timeline checks over one
+million synthetic events, portable EVTX context references, recovery, and rendered
+HTML/PDF reports. The Linux timeline index took 23.411 seconds for that dataset
+under a 64 MB budget per database; this is a synthetic measurement, not Windows qualification.
 
 - [Cases/CatScale reliability audit](docs/validation/FIABILITE-CASES-CATSCALE.md).
 - [Shellbags and WebCache validation](docs/validation/SHELLBAGS-WEBCACHE.md).

@@ -20,6 +20,7 @@ class Preferences:
     right_click_copy: bool = False
     auto_profiles: bool = True
     multiline_tabs: bool = False
+    case_autosave: bool = True
     date_format: str = "source"
     details_position: str = "bottom"
     custom_date_format: str = "yyyy-MM-dd HH:mm:ss.fffffffK"
@@ -58,6 +59,7 @@ class Preferences:
                 "right_click_copy",
                 "multiline_tabs",
                 "auto_profiles",
+                "case_autosave",
             )
         ):
             raise ValueError("Préférence booléenne invalide")

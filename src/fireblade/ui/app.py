@@ -32,14 +32,16 @@ from fireblade.ui.workers import Job, Signals
 from fireblade.ui.exploration import ExplorationMixin
 from fireblade.ui.pinned_grid import PinnedTree
 from fireblade.runtime.resources import default_config
-from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses, show_tutorial
+from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses, show_tutorial, show_investigation_guide
 
 
 from fireblade.ui.collection import CollectionMixin
 from fireblade.ui.investigations import InvestigationMixin
+from fireblade.ui.investigation_tools import InvestigationToolsMixin
+from fireblade.ui.timeline import TimelineMixin
 
 
-class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
+class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
     def __init__(self, settings=None, rule_path=None, investigation_root=None):
         super().__init__()
         self.settings = settings or Settings()
@@ -63,6 +65,8 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         self.setup_exploration()
         self.setup_collection()
         self.setup_investigations()
+        self.setup_investigation_tools()
+        self.setup_timeline()
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -168,6 +172,7 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         self.cancel_action = action(analysis_menu, "Interrompre la requête", self.interrupt_queries, requires_file=False)
         self.cancel_action.setEnabled(False)
         action(help_menu, "Tutoriel complet — toutes les fonctionnalités", lambda: show_tutorial(self), requires_file=False)
+        action(help_menu, "Chronologie, sauvegardes et rapports", lambda: show_investigation_guide(self), requires_file=False)
         action(help_menu, "Guide d’utilisation", lambda: show_guide(self), "F1", False)
         action(help_menu, "Licences", lambda: show_licenses(self), requires_file=False)
         action(help_menu, "À propos de Fireblade", lambda: show_about(self), requires_file=False)
@@ -328,6 +333,8 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
         QMessageBox.warning(self, "Opération impossible", str(message))
 
     def interrupt_queries(self):
+        if getattr(self,'investigation_task',None):self.investigation_task.interrupt()
+        if getattr(self,'timeline_panel',None):self.timeline_panel.interrupt()
         if getattr(self, 'collection', None) is not None:
             self.collection.interrupt()
         self._expand_generation += 1
@@ -349,7 +356,7 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
             self.busy = True
             self.centralWidget().setEnabled(False)
             self.set_file_actions(False)
-            self.cancel_action.setEnabled(self.case is not None)
+            self.cancel_action.setEnabled(True)
         job = Job(fn)
         self.jobs.add(job)
         released = False
@@ -1325,6 +1332,7 @@ class Window(InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesM
                 event.ignore()
                 return
         self.detach()
+        if getattr(self,'timeline_panel',None):self.timeline_panel.reset_workspace()
         if hasattr(self,'active_investigation'):
             self.clear_context_preview()
             self.release_investigation_lease()

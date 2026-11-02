@@ -74,7 +74,9 @@ def run_stress(app,spec_path,report_path):
     def select_first_two():
         tree=run.window.tree
         for i,modifier in ((0,Qt.NoModifier),(1,Qt.ControlModifier)):
-            index=run.window.model.index(i,0)
+            # The gutter now toggles row bookmarks. Select data cells to test
+            # mouse multi-selection without changing the evidence annotations.
+            index=run.window.model.index(i,1)
             tree.scrollTo(index)
             run.app.processEvents()
             QTest.mouseClick(tree.viewport(),Qt.LeftButton,modifier,pos=tree.visualRect(index).center())

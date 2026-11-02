@@ -3,6 +3,8 @@
 [![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 [![Forensic test pack](https://github.com/23R0534ZXT/fireblade/actions/workflows/test-pack.yml/badge.svg)](https://github.com/23R0534ZXT/fireblade/actions/workflows/test-pack.yml)
 
+**[Download Fireblade 0.7.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8) · [Test pack](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Give feedback](https://github.com/23R0534ZXT/fireblade/issues/6)
+
 **A local forensic investigation workspace for Windows artifacts, Linux CatScale collections and existing data exports.**
 
 **Current source version: 0.7.0.** Version 0.7 brings the complete workflow together: persistent cases, recovery and portable archives, Shellbags and WebCache readers, graphical chronology, bulk IOC hunting, investigation reports, and collection coverage diagnostics. The version of a downloadable EXE depends on the last successful Windows release; check **Aide → À propos** and the release commit.
@@ -52,11 +54,11 @@ Data lives in disk-backed DuckDB `.timeline` databases. The grid loads pages; fi
 
 **Vous faites de la DFIR ou vous apprenez l’investigation numérique ? Vos retours sont les bienvenus.**
 
-- [Télécharger une version Windows publiée](https://github.com/23R0534ZXT/fireblade/releases?q=prototype-&expanded=true) · [Pack de test (~5,1 Mo)](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
+- [Télécharger Fireblade 0.7.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8/Fireblade.exe) · [Pack de test (~5,1 Mo)](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
 - [Parcours de test de 15 minutes et retours généraux](https://github.com/23R0534ZXT/fireblade/issues/6)
 - [Signaler un bug ou proposer une amélioration](https://github.com/23R0534ZXT/fireblade/issues/new/choose)
 
-Les sources sont en **0.7.0**. La version d’un EXE dépend de la dernière publication Windows réussie : vérifiez **Aide → À propos** et le commit de sa release. Les prochaines releases afficheront leur version dans leur titre.
+**Fireblade 0.7.0 est publié.** [Cette release](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8) a réussi les contrôles Windows, les huit variantes visuelles, le parcours de 3 Gio et les 320 analyses. Vérifiez **Aide → À propos** et le commit de la release lorsque vous donnez un retour.
 
 Commencez avec le pack public et son **LIRE-MOI.md** : ouvrez un CSV, filtrez les données, ajoutez une note ou un signet, puis sauvegardez et rouvrez votre travail. Partagez ce qui vous a aidé, ce qui vous a bloqué et ce qui manque à votre usage. Pour un bug, ouvrez une issue par problème avec les étapes de reproduction et vos versions de Windows et Fireblade. Un compte GitHub est nécessaire pour publier un retour ; masquez les informations sensibles dans vos pièces jointes.
 
@@ -66,11 +68,11 @@ Commencez avec le pack public et son **LIRE-MOI.md** : ouvrez un CSV, filtrez le
 
 | Download | Purpose |
 |---|---|
-| [Fireblade application releases](https://github.com/23R0534ZXT/fireblade/releases) | Choose the latest published **Windows x64** application prerelease and download `Fireblade.exe` for Windows x64 |
+| [**Fireblade 0.7.0 — Fireblade.exe, Windows x64**](https://github.com/23R0534ZXT/fireblade/releases/download/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8/Fireblade.exe) | Published prototype; [release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8) |
 | [**Forensic test pack v1 — ZIP, about 5.1 MB**](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) | Native Windows artifacts, synthetic CatScale examples and CSV/TSV/XLSX exercises, with a French guide |
 | [Large CSV test dataset — 3 GiB ZIP](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/Fireblade-test-3GiB.zip) | Separate load-test dataset with 2,441,216 records |
 
-The test-data releases contain datasets. Download the application from a **prototype Windows** release. GitHub's automatic “Source code” archives contain source files that must be built.
+The test-data releases contain datasets. Download the application using the **Fireblade.exe** link above. GitHub's automatic “Source code” archives contain source files that must be built.
 
 Users do not need Python, Excel, a separate .NET runtime, EZ Tools, CatScale, or Logstash installed for the bundled features. Launch the EXE and open **Aide → Tutoriel complet — toutes les fonctionnalités**; **F1** opens the quick guide. The application and linked guides currently use French; UI labels quoted here follow that interface.
 

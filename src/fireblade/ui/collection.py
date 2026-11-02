@@ -141,7 +141,10 @@ class CollectionMixin(AlertContextMixin):
     def update_collection_controls(self):
         if not hasattr(self,'hayabusa_action'):return
         report=self.collection.report if self.collection else None
-        evtx=bool(report and any('EvtxECmd' in e.get('tools',[]) and e['status'] in ('complete','complete_with_warnings') for e in report['files']))
+        evtx=bool(report and any('EvtxECmd' in e.get('tools',[]) and
+            (e['status'] in ('complete','complete_with_warnings') or
+             e['status']=='attention' and any(run['tool']=='EvtxECmd' and run['status'] in ('complete','complete_with_warnings') and run.get('outputs')
+                                             for run in e.get('runs',[]))) for e in report['files']))
         ready=evtx and report['status'] not in ('pending','running') and not self.busy
         self.hayabusa_action.setEnabled(ready);self.hayabusa_button.setEnabled(ready)
         self.hayabusa_level.setEnabled(ready)

@@ -1,0 +1,114 @@
+{
+  "format": "fireblade-forensic-toolchain",
+  "version": 1,
+  "parsers": [
+    {
+      "name": "EvtxECmd",
+      "repository": "https://github.com/EricZimmerman/evtx.git",
+      "commit": "fbf2f66736669689bfb95f735f7eca86d29d9800",
+      "project": "EvtxECmd/EvtxECmd.csproj",
+      "license": "LICENSE"
+    },
+    {
+      "name": "AmcacheParser",
+      "repository": "https://github.com/EricZimmerman/AmcacheParser.git",
+      "commit": "4706a080461d9506edbd6327bc58fc558978606d",
+      "project": "AmcacheParser/AmcacheParser.csproj",
+      "license": "LICENSE.md"
+    },
+    {
+      "name": "AppCompatCacheParser",
+      "repository": "https://github.com/EricZimmerman/AppCompatCacheParser.git",
+      "commit": "694c0bba98b7a2edc78f8a8fd6975bf94d37cf8c",
+      "project": "AppCompatCacheParser/AppCompatCacheParser.csproj",
+      "license": "LICENSE.md"
+    },
+    {
+      "name": "PECmd",
+      "repository": "https://github.com/EricZimmerman/PECmd.git",
+      "commit": "6586b8ab2417e4881b3e0166668ed3f1251204e3",
+      "project": "PECmd/PECmd.csproj",
+      "license": "LICENSE"
+    },
+    {
+      "name": "MFTECmd",
+      "repository": "https://github.com/EricZimmerman/MFTECmd.git",
+      "commit": "b1f668d870153f9a4c4073845265c0e6071ed09f",
+      "project": "MFTECmd/MFTECmd.csproj",
+      "license": "LICENSE"
+    },
+    {
+      "name": "RECmd",
+      "repository": "https://github.com/EricZimmerman/RECmd.git",
+      "commit": "8d1955910964209500b6f74f169e3e52554838d7",
+      "project": "RECmd/RECmd.csproj",
+      "license": "LICENSE.md"
+    },
+    {
+      "name": "LECmd",
+      "repository": "https://github.com/EricZimmerman/LECmd.git",
+      "commit": "b5bbf29e4b58384fe7bd4384cb4851960c31dc83",
+      "project": "LECmd/LECmd.csproj",
+      "license": "LICENSE"
+    },
+    {
+      "name": "JLECmd",
+      "repository": "https://github.com/EricZimmerman/JLECmd.git",
+      "commit": "256962fcb3690d779faba11726dd63ee500ae2a7",
+      "project": "JLECmd/JLECmd.csproj",
+      "license": "license"
+    },
+    {
+      "name": "SrumECmd",
+      "repository": "https://github.com/EricZimmerman/Srum.git",
+      "commit": "6dbb636b4fe734874c3439e1f0db5cb7dce618ab",
+      "project": "SrumECmd/SrumECmd.csproj",
+      "license": "LICENSE"
+    },
+    {
+      "name": "WxTCmd",
+      "repository": "https://github.com/EricZimmerman/WxTCmd.git",
+      "commit": "5677ea8a6e38e9d9f66970e90b5fb509bdfe06be",
+      "project": "WxTCmd/WxTCmd.csproj",
+      "license": "LICENSE"
+    },
+    {
+      "name": "RBCmd",
+      "repository": "https://github.com/EricZimmerman/RBCmd.git",
+      "commit": "f2ed07ab4634064e7dbc02a1155fd70b7ff3f51b",
+      "project": "RBCmd/RBCmd.csproj",
+      "license": "LICENSE"
+    },
+    {
+      "name": "RecentFileCacheParser",
+      "repository": "https://github.com/EricZimmerman/RecentFileCacheParser.git",
+      "commit": "f953a6028c09a57006be1fec365a69cda7c87acf",
+      "project": "RecentFileCacheParser/RecentFileCacheParser.csproj",
+      "license": "LICENSE"
+    },
+    {
+      "name": "SQLECmd",
+      "repository": "https://github.com/EricZimmerman/SQLECmd.git",
+      "commit": "c67634af503bd53777689998f1d9e3c0b4e2fdff",
+      "project": "SQLECmd/SQLECmd.csproj",
+      "license": "LICENSE"
+    }
+  ],
+  "hayabusa": {
+    "version": "4.3.1",
+    "url": "https://github.com/Yamato-Security/hayabusa/releases/download/v4.3.1/hayabusa-4.3.1-win-x64.zip",
+    "sha256": "e4196a5e9c9bf46265a45d5272efb2daa489871f2f8ad0c2485a72a0fd0c8ddb",
+    "source_url": "https://github.com/Yamato-Security/hayabusa/archive/refs/tags/v4.3.1.zip",
+    "source_sha256": "12d9d21d25fdf2c9ac91fc11ac4943a1ab439d008af1dc3d18e280674d87e90e"
+  },
+  "registry_plugins": {
+    "repository": "https://github.com/EricZimmerman/RegistryPlugins.git",
+    "commit": "bf564d6c4fcabf67b5ce4428ddf5e4a769b1e9ba",
+    "solution": "RegistryPlugins.slnx",
+    "license": "LICENSE.md"
+  },
+  "registry_fixture_license": {
+    "url": "https://raw.githubusercontent.com/AndrewRathbun/DFIRArtifactMuseum/main/LICENSE",
+    "sha256": "41aaa7bec9ddee674344bc6cad6ac40d2fe48cef6de8287d32ea6b35520dacd1"
+  }
+}

@@ -35,7 +35,10 @@ from fireblade.runtime.resources import default_config
 from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses, show_tutorial
 
 
-class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
+from fireblade.ui.collection import CollectionMixin
+
+
+class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
     def __init__(self, settings=None, rule_path=None):
         super().__init__()
         self.settings = settings or Settings()
@@ -55,6 +58,7 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         self.setup_workspace()
         self.setup_shared_rules(rule_path)
         self.setup_exploration()
+        self.setup_collection()
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -301,6 +305,8 @@ class Window(ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
         QMessageBox.warning(self, "Opération impossible", str(message))
 
     def interrupt_queries(self):
+        if getattr(self, 'collection', None) is not None:
+            self.collection.interrupt()
         self._expand_generation += 1
         if self.workspace_search:
             self.workspace_search.interrupt()

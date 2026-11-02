@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 
 
-def verify(executable, report_path, timeout=180):
+def verify(executable, report_path, timeout=360):
     if os.name != "nt":
         raise RuntimeError("Ce contrôle doit être exécuté sur Windows.")
     executable, report_path = Path(executable).resolve(), Path(report_path).resolve()

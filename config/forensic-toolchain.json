@@ -136,5 +136,9 @@
     "reader": "dissect.esedb",
     "version": "3.18",
     "mode": "read-only, no transaction log replay or deleted record carving"
+  },
+  "evtx_fixture": {
+    "url": "https://raw.githubusercontent.com/Yamato-Security/hayabusa-sample-evtx/0845333ecb4afcf64c55c6e10946383f168f308c/DeepBlueCLI/disablestop-eventlog.evtx",
+    "sha256": "7645e96c6d778f96d60ce2a6f209cc4202385c9d87cc077139921270a8e9bb23"
   }
 }

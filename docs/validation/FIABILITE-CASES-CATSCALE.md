@@ -10,6 +10,10 @@ Le [rapport](reports/20261102-reliability-audit.json) distingue le contrôle Win
 
 Chaque correction a d’abord échoué sur un test de reproduction, puis réussi après modification.
 
+## Construction reproductible
+
+La première reconstruction Windows de cet audit a été bloquée par le quota de l’API GitHub lors du téléchargement du petit EVTX de qualification. Le téléchargement utilise maintenant une URL de contenu brut épinglée à un commit, avec la même empreinte SHA-256 obligatoire. Un test vérifie aussi le refus de données ne correspondant pas à cette empreinte.
+
 ## Scénarios renforcés
 
 Les tests vérifient les archives de 50 hôtes, les commandes contenant des octets NUL, la libération du verrou d’un case après arrêt brutal et la cohérence de la session si le processus meurt avant le remplacement de sa fiche. Un catalogue de 300 anciens cases reste consultable sans ouvrir leurs analyses.

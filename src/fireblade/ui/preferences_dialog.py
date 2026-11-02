@@ -78,7 +78,7 @@ class PreferencesDialog(QDialog):
         self.skin.setCurrentIndex(self.skin.findData(preferences.theme_preset))
         form.addRow("Galerie de thèmes",self.skin)
         form.addRow("Mode", self.theme)
-        note=QLabel('Thèmes Fireblade adaptés à Qt ; les skins DevExpress ne sont pas intégrés.')
+        note=QLabel('Thèmes clairs, nuit profonde, nuit éclairée et ambiances Studio / Code. L’aperçu reste local jusqu’à validation ; les couleurs peuvent être personnalisées.')
         note.setWordWrap(True);form.addRow(note)
         self.preview=QWidget();preview_layout=QVBoxLayout(self.preview)
         preview_layout.setContentsMargins(5,5,5,5)

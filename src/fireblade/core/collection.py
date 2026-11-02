@@ -155,11 +155,11 @@ def execute(command, cwd, log, timeout=3600):
 
 
 class Collection:
-    def __init__(self, root, output, pack, settings=None, progress=lambda _: None, organization='files'):
+    def __init__(self, root, output, pack, settings=None, progress=lambda _: None, organization='files', _reopening=False):
         if organization not in ('files', 'artifacts', 'combined'):
             raise ValueError('Organisation de collecte inconnue')
         self.root, self.output = Path(root).resolve(), Path(output).resolve()
-        if not self.root.is_dir():
+        if not _reopening and not self.root.is_dir():
             raise ValueError('Dossier de collecte introuvable')
         if self.output == self.root or self.root in self.output.parents:
             raise ValueError('Choisissez un dossier de travail hors de la collecte source')
@@ -179,7 +179,7 @@ class Collection:
         data = json.loads((output/'collection.json').read_text(encoding='utf-8'))
         if data.get('format') != 'fireblade-collection' or data.get('version') != 1:
             raise ValueError('Dossier de travail Fireblade invalide')
-        instance = cls(data['source'], output, pack, settings, progress)
+        instance = cls(data['source'], output, pack, settings, progress, _reopening=True)
         instance.report = data
         return instance
 

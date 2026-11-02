@@ -7,6 +7,7 @@ Fireblade est un explorateur local de CSV, TSV, TXT délimité, XLS et XLSX pour
 ## Table des matières
 
 - [Collecte brute et détection Hayabusa](#collecte-brute-et-détection-hayabusa)
+- [Passer des alertes aux preuves EVTX et à leur contexte](#passer-des-alertes-aux-preuves-evtx-et-à-leur-contexte)
 - [Parcours guidé](#parcours-guidé)
 - [Démarrage](#démarrage)
 - [Ouvrir des données](#ouvrir-des-données)
@@ -886,3 +887,17 @@ Les règles Hayabusa embarquées sont celles de la distribution 4.3.1. Cette ver
 Le dossier de travail contient les CSV originaux des parseurs, leurs copies enrichies avec provenance, les bases d’analyse, les journaux, `collection.json` et la session `collection.fireblade-session`. Les sources restent nécessaires pour relancer Hayabusa ; leurs empreintes sont vérifiées avant copie. Les données déjà importées restent dans les bases. L’annulation conserve les traitements terminés ; le délai maximal de chaque moteur est d’une heure. Un moteur absent, une sortie invalide ou un EVTX modifié ne devient pas un résultat réussi.
 
 Les moteurs et leur runtime sont embarqués dans le seul EXE Windows ; les résultats sont enregistrés séparément. Cette construction est plus volumineuse et demande de l’espace temporaire pour son extraction et les copies de travail. **Exporter les sources Hayabusa…** fournit les sources distribuées avec ce moteur ; les notices restent accessibles dans Licences. Les détails et le parcours de reprise sont dans [le guide de collecte](UTILISATION.md#importer-une-collecte-dartefacts-et-lancer-hayabusa).
+
+## Passer des alertes aux preuves EVTX et à leur contexte
+
+Dans l’onglet des alertes, sélectionnez une détection. La barre au-dessus de la grille affiche sa règle et sa gravité. Choisissez une fenêtre **avant et après**, puis **Voir le contexte de cette alerte**. Un onglet de chronologie est créé sans remplacer l’onglet des alertes.
+
+L’onglet Contexte EVTX regroupe l’événement référencé et les événements proches des autres journaux de la même machine. Les colonnes de date, EventID, machine, canal et description sont placées en premier ; les données complètes et références techniques restent disponibles dans les autres colonnes et le panneau Détails.
+
+La correspondance utilise le chemin EVTX et **EventRecordID**, qui n’est ni le numéro de ligne affiché dans Fireblade ni le RecordNumber physique du parseur. Les mêmes identifiants peuvent exister dans plusieurs journaux : un RecordID seul ne constitue pas une preuve de correspondance. La machine et l’EventID servent de contrôles supplémentaires quand ils sont renseignés. Une alerte agrégée conserve le caractère incertain des associations multiples et les signale comme candidates.
+
+La colonne **Relation à l’alerte** reste épinglée. L’événement de l’alerte est en gras ; les voisins portent **Proximité temporelle** et ne deviennent pas suspects du seul fait d’être affichés. La fenêtre par défaut est de cinq minutes de chaque côté, réglable jusqu’à 24 heures. Les mille événements au maximum conservent les références et privilégient les voisins les plus proches. Les références absentes, sources inaccessibles et limites sont signalées.
+
+Le bouton **Ouvrir l’événement EVTX source** ouvre l’analyse EvtxECmd conservée et filtre sur l’enregistrement précis. Il fonctionne également pour un événement voisin ; son rôle reste précisé dans la barre de navigation. **Revenir aux alertes** restaure l’onglet d’alertes sans effacer ses notes ni sa vue. Les analyses initialement réunies par artefact ou dans une table unique restent disponibles : le lien utilise leurs bases individuelles conservées.
+
+Le contexte, ses paramètres et son lien avec l’alerte sont enregistrés dans la collecte. Une reprise peut s’appuyer uniquement sur les bases importées ; l’absence des EVTX bruts empêche une nouvelle exécution de Hayabusa, pas la lecture du contexte existant. Les détails sont dans [le parcours contexte EVTX](UTILISATION.md#comprendre-une-alerte-avec-son-contexte-evtx).

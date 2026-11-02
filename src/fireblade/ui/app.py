@@ -638,6 +638,7 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
         self.set_file_actions(False)
         self.cancel_action.setEnabled(False)
         self.setWindowTitle("Fireblade")
+        self.update_alert_context_bar()
 
     def open_case(self):
         if not self.can_open_file():
@@ -673,6 +674,7 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
         self.attach(candidate)
 
     def attach(self, case, initial_view=None, header_state=None, auto_layout=None):
+        initial_view, auto_layout = self.prepare_context_view(case, initial_view, auto_layout)
         use_auto_layout=(initial_view is None or header_state == b'') if auto_layout is None else auto_layout
         collection = getattr(self, 'collection', None)
         if auto_layout is None and collection is not None and collection.report.get('organization', 'files') != 'files':
@@ -721,6 +723,8 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
         if use_auto_layout:
             self.restore_format_layout()
         self.track_case()
+        if not header_state:self.configure_context_columns()
+        self.update_alert_context_bar()
 
     def apply(self, *_):
         if not self.case or not self.model or self.busy:
@@ -1003,6 +1007,7 @@ class Window(CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin
         self.model.previous(index)
 
     def show_details(self, index, *_):
+        self.update_alert_context_bar()
         if not index.isValid():
             return
         node = self.model.node(index)

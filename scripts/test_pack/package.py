@@ -204,7 +204,7 @@ def package(directory,project,volume_rows=250000,source_commit=None):
         store(relative,data,dict(kind='public-artifact',tool=item['tool'],url=item['url'],sha256=item['sha256']))
     # Transaction logs must accompany their hive in the same directory.
     evtx=lock['evtx_fixture'];store('01-Windows/01-Collecte-principale/EvtxECmd/System.evtx',fetch(evtx['url'],evtx['sha256']),dict(kind='public-artifact',tool='EvtxECmd',**evtx))
-    linux=root/'02-Linux-CatScale';extracted=linux/'01-Dossier-extrait';write_catscale(extracted)
+    linux=root/'02-Linux-CatScale';extracted=linux/'01-Dossier-extrait'/'node-20261102-1000';write_catscale(extracted)
     (linux/'02-Archive').mkdir();tar_directory(extracted,linux/'02-Archive/catscale_node-20261102-1000.tar.gz')
     write_volume(linux/'03-Volume/catscale_volume-20261102-1000.tar.gz',volume_rows)
     write_exports(root/'03-Exports')

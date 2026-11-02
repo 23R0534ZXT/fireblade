@@ -47,7 +47,7 @@ def organize(collection):
         for run in entry.get('runs', []):
             for output in run.get('outputs', []):
                 if output.get('analysis'):
-                    origins[output['analysis']] = (artifact_name(run['tool'], output['csv']), entry['path'], run['tool'])
+                    origins[output['analysis']] = (output.get('family') or artifact_name(run['tool'], output['csv']), entry['path'], run['tool'])
     groups = {}
     for document in originals:
         origin = origins.get(document['path'])

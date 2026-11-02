@@ -317,3 +317,9 @@ Dans **Affichage → Résumés et tri des groupes**, l’onglet **Par groupe** c
 Choisir un thème de galerie rétablit sa palette ; **Personnaliser les couleurs** permet ensuite de la modifier. Changer manuellement de mode vers un mode différent de celui du thème revient à « Standard / personnalisé ». Les préférences restent défilables lorsque l’écran ou le zoom limite l’espace, avec OK/Annuler toujours accessibles.
 
 Ces palettes et rendus sont des créations Qt de Fireblade. Les ressources, dessins et métriques propriétaires des skins DevExpress ne sont pas intégrés et l’identité visuelle avec Timeline Explorer n’est pas revendiquée.
+
+## Collectes Linux CatScale
+
+Dans un case, utilisez **Importer un dossier de collecte…** pour choisir un dossier CatScale extrait ou contenant ses archives `catscale_*.tar.gz` / `FSecure_*.tar.gz`. Choisissez les onglets par famille ou la grille regroupée. Le parser est intégré sans dépendance Linux.
+
+La colonne Lecture distingue les données structurées du texte brut conservé ; Source et Ligne gardent la provenance. Vérifiez les avertissements, binaires non pris en charge et limites avant de conclure que la collecte est complète. Hayabusa reste réservé aux EVTX Windows. Voir [le parcours complet et ses limites](TUTORIEL-COMPLET.md#importer-une-collecte-linux-catscale).

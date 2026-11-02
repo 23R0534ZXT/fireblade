@@ -2,7 +2,7 @@
 
 [![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 
-**A local forensic tool for Windows: parse an artifact collection, explore the results, and investigate Hayabusa alerts with their EVTX context.**
+**A local forensic tool for Windows: import Windows artifacts or Linux CatScale collections, explore the results, and investigate Hayabusa alerts with their EVTX context.**
 
 Select a folder of artifacts, let the bundled engines process it, then investigate in Fireblade using search, column filters, AND/OR/NOT conditions, sorting, grouping, bookmarks, notes, and exports. You can also open existing CSV, TSV, delimited TXT, XLS, and XLSX files directly.
 
@@ -23,7 +23,7 @@ A build running on `main` does not mean its release is ready: publication waits 
 ## From artifact collection to alerts and context
 
 1. Click **Importer un dossier de collecte…** and select the artifact folder. Subfolders are scanned; links are skipped.
-2. Choose **Un onglet par type d’artefact** for one tab per artifact type, or **Tout dans un seul onglet, regroupé par artefact** for a single table grouped by artifact. Results retain their provenance and format-specific fields.
+2. Choose **Un onglet par type d’artefact ou famille CatScale** for one tab per artifact type, or **Tout dans un seul onglet, regroupé par artefact ou famille CatScale** for a single table grouped by artifact. Results retain their provenance and format-specific fields.
 3. Review the report in **Collecte et détection**. It distinguishes completed processing, warnings, errors, unrecognized files, and missing outputs. Original parser outputs and logs are retained.
 4. Click **Analyser la collecte avec Hayabusa**. Inventoried EVTX files are verified using SHA-256, copied temporarily, and analyzed together with the bundled rules.
 5. In **Alertes Hayabusa**, select a detection, set the time window before and after it, and click **Voir le contexte de cette alerte**.
@@ -57,6 +57,26 @@ Screenshot from a real workflow using a public demonstration EVTX, captured with
 | Hayabusa 4.3.1 | Detections and correlations across inventoried EVTX files |
 
 Versions, sources, and hashes are pinned in the [engine configuration](config/forensic-toolchain.json). EvtxECmd and SQLECmd include their maps; RECmd includes 70 registry plugins. A SQLite database requires a matching map. This list does not guarantee every variant or every input supported by each upstream tool's command line. Fireblade does not mount disk images.
+
+## Linux CatScale collections
+
+Create or open a case, then use **Importer un dossier de collecte…**. Select either an extracted CatScale collection, the `extracted` parent containing several hosts, or a folder containing original `catscale_*.tar.gz` / legacy `FSecure_*.tar.gz` archives. No Linux tools, collector, Logstash, or additional runtime are required on the analysis PC.
+
+Choose separate tabs by family, or one table grouped by family:
+
+- **Processus et réseau**: processes, `/proc` status, connections, hashes, links, and command/environment captures.
+- **Persistance**: crontabs, systemd configuration and service status.
+- **Journaux et connexions**, **Système**, **Utilisateurs**, **Fichiers et chronologie**, and **Conteneurs et virtualisation** retain the corresponding outputs.
+
+Dedicated readers extract fields from supported process tables, `ss`/`netstat`, hashes, links, cron, systemctl, passwd/group, shell histories, syslog/audit lines, and the collector's file timeline. Remaining text is retained with **Lecture = Brute** and reported as a warning. Container/configuration text has key/value parsing where applicable; arbitrary tables and JSON are retained as text rather than claimed as fully structured records. Entirely empty columns are removed from each generated CSV.
+
+Each record retains its raw text, source, and physical line range. Archive references use `archive!/member`; gzip logs and nested tar archives are streamed without extracting input paths to disk. Source files are SHA-256 checked before and after processing. Unknown binary files (including binary journals/login databases), links, unsafe paths, corrupt data, and limits are explicitly reported; they are not silently treated as parsed events.
+
+Limits per input: 1 MiB per line or `/proc` block, 256 MiB per archived member, three archive layers, a 100,000-entry traversal guard, and a 4 GiB expanded-data budget (nested reads also count). Results completed before a limit remain in the working directory; inspect the report. Timestamps retain their source representation, including missing years or time zones. The reader follows [LinuxCatScale](https://github.com/WithSecureLabs/LinuxCatScale) commit `0014f234a472f536d28664902daed90527ff5858`; it does not execute or redistribute the collector. Hayabusa detection applies only to Windows EVTX, not CatScale text.
+
+![CatScale process and network family in a Fireblade case](docs/assets/fireblade-catscale.png)
+
+Illustrative capture from the representative CatScale acceptance corpus, rendered with Qt offscreen on Linux.
 
 ## Investigation cases
 

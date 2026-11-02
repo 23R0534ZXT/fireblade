@@ -2,7 +2,7 @@
 
 Ce tutoriel décrit le parcours actuel de Fireblade 0.4 : collecte d’artefacts, parsing, détection Hayabusa, contexte EVTX et exploration des résultats. Il couvre aussi les exports existants, les règles, les expressions, les profils, les plugins, les sauvegardes et les limites. Il est accessible sans analyse ouverte via **Aide → Tutoriel complet — toutes les fonctionnalités**.
 
-Commencez par votre parcours d’entrée, puis utilisez les sections de référence selon votre besoin. Les commandes dépendant d’une analyse restent inactives tant qu’aucune analyse n’est ouverte. Les fonctions intégrées de parsing nécessitent le pack de la construction Windows.
+Commencez par votre parcours d’entrée, puis utilisez les sections de référence selon votre besoin. Les commandes dépendant d’une analyse restent inactives tant qu’aucune analyse n’est ouverte. Les moteurs Windows nécessitent le pack de la construction Windows. Le parser CatScale est intégré sans moteur externe.
 
 ## Table des matières
 
@@ -10,6 +10,7 @@ Commencez par votre parcours d’entrée, puis utilisez les sections de référe
 - [Cases — dossiers d’enquête](#cases--dossiers-denquête)
 - [Se repérer dans la fenêtre](#se-repérer-dans-la-fenêtre)
 - [Collecte brute et détection Hayabusa](#collecte-brute-et-détection-hayabusa)
+- [Importer une collecte Linux CatScale](#importer-une-collecte-linux-catscale)
 - [Passer des alertes aux preuves EVTX et à leur contexte](#passer-des-alertes-aux-preuves-evtx-et-à-leur-contexte)
 - [Parcours guidé](#parcours-guidé)
 - [Ouvrir des données](#ouvrir-des-données)
@@ -54,7 +55,7 @@ L’EXE est un seul fichier de programme ; les analyses, artefacts et résultats
 
 Au lancement, l’onglet **Cases** affiche vos enquêtes enregistrées. Il ne charge aucune ancienne analyse : le catalogue lit seulement leurs fiches. Double-cliquez un case, ou sélectionnez-le puis cliquez sur **Ouvrir**, pour reprendre sa session.
 
-1. Cliquez sur **Nouveau case…** (`Ctrl+Alt+N`). Renseignez son nom, sa description, son type de collecte et son statut. Windows, Linux et Mixte sont des étiquettes d’organisation ; elles n’ajoutent aucun parser.
+1. Cliquez sur **Nouveau case…** (`Ctrl+Alt+N`). Renseignez son nom, sa description, son type de collecte et son statut. Windows, Linux et Mixte sont des étiquettes d’organisation ; elles servent uniquement au classement.
 2. Si des analyses sont déjà ouvertes hors d’un case, laissez **Inclure les analyses actuellement ouvertes** coché pour les rattacher au nouveau case. Les bases existantes restent à leur emplacement : elles ne sont pas copiées.
 3. Importez vos fichiers ou vos collectes. Les destinations proposées sont propres au case : `Analyses` pour les imports, `Collectes` pour les résultats de collecte. Plusieurs collectes peuvent appartenir au même case ; le sélecteur **Collecte du case** retrouve leur bilan. Importer une collecte ajoute ses analyses aux onglets déjà présents.
 4. Cliquez sur **Enregistrer le case actif et sa session** (`Ctrl+Alt+S`). `Ctrl+Maj+S` enregistre également le case actif et sa session. Sans case actif, ce dernier raccourci conserve son fonctionnement d’export de session.
@@ -140,6 +141,33 @@ Une collecte peut être globalement terminée avec certains fichiers en erreur. 
 **Reprendre une collecte…** demande le dossier de travail contenant `collection.json`, pas le dossier d’artefacts. Les bases importées permettent de consulter les données sans les originaux. Une nouvelle exécution de Hayabusa demande les EVTX originaux aux chemins enregistrés, avec leurs empreintes inchangées. Chaque exécution conserve ses résultats séparément.
 
 Le niveau minimal se choisit avant **Analyser avec Hayabusa**. Zéro alerte, une sortie vide inattendue et une erreur de moteur sont des états distincts. Les règles embarquées ne sont pas mises à jour pendant l’analyse. Le contexte décrit dans la section suivante ne réexécute pas Hayabusa.
+
+## Importer une collecte Linux CatScale
+
+1. Créez ou ouvrez un case, puis cliquez sur **Importer un dossier de collecte…**.
+2. Choisissez le dossier CatScale déjà extrait, le dossier `extracted` contenant plusieurs hôtes, ou un dossier contenant les archives d’origine `catscale_*.tar.gz` / anciennes `FSecure_*.tar.gz`.
+3. Choisissez **Un onglet par type d’artefact ou famille CatScale**, ou la grille unique regroupée par famille. Les sorties sont rangées dans le case actif ; sans case actif, elles restent dans le dossier Collectes habituel.
+4. Lisez le bilan, puis explorez les onglets avec les filtres, les groupes, les signets, les notes et les exports habituels. Enregistrez le case pour retrouver la session.
+
+| Famille | Contenu |
+|---|---|
+| Processus et réseau | Tables de processus, détails `/proc`, connexions, hashes, liens, captures de commande et d’environnement. |
+| Persistance | Crontabs, configurations systemd et états des services. |
+| Journaux et connexions | Journaux collectés, syslog, audit et sorties textuelles de connexion. |
+| Système | Informations de l’hôte, mémoire, noyau, logiciels et configurations. |
+| Utilisateurs | Fichiers personnels et historiques de shell. |
+| Fichiers et chronologie | Timeline du collecteur, listes et hashes de fichiers. |
+| Conteneurs et virtualisation | Sorties Docker, Podman et Virsh. |
+
+Les principaux formats ont des lecteurs dédiés : processus, `ss`, `netstat`, hashes, liens, cron, systemctl, passwd/group, historiques, syslog/audit et timeline. Pour les autres textes, Fireblade extrait les paires clé/valeur lorsqu’elles sont présentes et conserve les lignes restantes. Les tableaux arbitraires et JSON ne sont pas présentés comme entièrement structurés.
+
+La colonne **Lecture** distingue **Structurée** et **Brute**. Une ligne inconnue reste visible dans **Texte brut** et produit un avertissement. Les colonnes **Source**, **Ligne** et **Fin de ligne** permettent de retrouver son contexte ; la notation `archive!/fichier` désigne un membre d’archive. Les colonnes entièrement vides sont retirées des CSV générés.
+
+Les archives tar/gzip et sous-archives sont lues sans exécuter les scripts ni extraire leurs chemins sur disque. Les sources sont vérifiées par SHA-256 avant et après traitement. Les binaires non pris en charge, dont les journaux binaires et bases de connexion, les liens, chemins dangereux et fichiers endommagés restent signalés dans le bilan et dans le détail `catscale.members` de `collection.json`.
+
+Limites par entrée source : ligne ou bloc `/proc` de 1 Mio, membre archivé de 256 Mio, trois niveaux d’archives, garde de 100 000 entrées parcourues et budget de 4 Gio de données décompressées (les lectures imbriquées comptent aussi). Une limite ne signifie pas que la collecte entière a été parsée. Les sorties déjà écrites restent dans le dossier de travail ; consultez le bilan. Les dates restent dans leur représentation d’origine : Fireblade n’invente ni année ni fuseau horaire manquant.
+
+Ce parcours fonctionne dans le seul EXE Fireblade, sans Linux, CatScale ou Logstash à installer sur le poste d’analyse. Il lit les formats du [collecteur CatScale](https://github.com/WithSecureLabs/LinuxCatScale) à la révision `0014f234a472f536d28664902daed90527ff5858`, sans embarquer ou lancer ce collecteur. **Hayabusa analyse uniquement les EVTX Windows** : il n’applique pas ses règles aux fichiers texte Linux.
 
 ## Passer des alertes aux preuves EVTX et à leur contexte
 

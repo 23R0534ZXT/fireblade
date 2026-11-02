@@ -412,6 +412,10 @@ def run_check(app, report_path):
         def investigation_cases():
             report['investigations']=verify_investigations(app,directory/'investigation-cases',window.settings)
         check('persistent_cases_unloaded_catalogue_and_session_restore',investigation_cases)
+        from fireblade.validation.catscale import verify_catscale
+        def catscale_collection():
+            report['catscale']=verify_catscale(app,directory/'catscale-collection',window.settings)
+        check('catscale_families_import_grid_and_case_restore',catscale_collection)
         report["memory"] = windows_memory()
         report["status"] = "passed"
     except Exception as exc:

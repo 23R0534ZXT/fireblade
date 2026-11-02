@@ -81,6 +81,9 @@ def identify(path):
         return ['RecentFileCacheParser']
     if magic.startswith(b'SQLite format 3\0'):
         return ['SQLECmd']
+    from fireblade.core.catscale import recognized
+    if recognized(path):
+        return ['CatScale']
     if path.suffix.casefold() in ('.csv', '.tsv'):
         return ['native']
     return []
@@ -299,7 +302,15 @@ class Collection:
                             output = self.output/'results'/uuid.uuid4().hex
                             output.mkdir()
                             try:
-                                if tool == 'native':
+                                catscale_outputs = {}
+                                if tool == 'CatScale':
+                                    from fireblade.core.catscale import parse
+                                    result = parse(source, output)
+                                    run['catscale'] = result
+                                    run['warnings'] = result['warnings']
+                                    csvs = [Path(item['csv']) for item in result['outputs']]
+                                    catscale_outputs = {item['csv']:item for item in result['outputs']}
+                                elif tool == 'native':
                                     csvs = [source]
                                 else:
                                     command = self.pack.arguments(tool, source, output)
@@ -309,8 +320,8 @@ class Collection:
                                     csvs = sorted(output.rglob('*.csv'))
                                 for csv in csvs:
                                     enriched = csv if tool == 'native' else self.enrich_result(csv, source, tool)
-                                    run['outputs'].append(dict(csv=str(csv), analysis=self.import_result(enriched, tool)))
-                                run['status'] = 'complete' if csvs else 'no_output'
+                                    run['outputs'].append(dict(csv=str(csv), analysis=self.import_result(enriched, tool), **({'family':catscale_outputs[str(csv)]['family']} if tool=='CatScale' else {})))
+                                run['status'] = ('complete_with_warnings' if run.get('warnings') else 'complete') if csvs else 'no_output'
                                 log = output/'parser.log'
                                 if log.is_file():
                                     warnings = []

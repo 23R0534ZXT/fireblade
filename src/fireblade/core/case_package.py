@@ -166,6 +166,14 @@ def export_package(library, data, documents, active, target, *, include_sources=
                         if str(reference.resolve()) not in mapping:missing.append(str(reference))
                     add(archive,path,'IOC-hunts/'+path.parent.name+'/results.sqlite')
                 finally:store.close()
+            coverage_state=library.folder(data['id'])/'coverage-state.json'
+            if coverage_state.is_file():
+                from fireblade.core.coverage import load_state
+                load_state(coverage_state);add(archive,coverage_state,'coverage-state.json')
+            coverage_last=library.folder(data['id'])/'coverage-last.json'
+            if coverage_last.is_file():
+                from fireblade.core.coverage import load_report
+                load_report(coverage_last);add(archive,coverage_last,'coverage-last.json')
             state = library.folder(data['id']) / 'timeline-state.json'
             if state.is_file():add(archive, state, 'timeline-state.json')
             by_member={item['path']:item for item in files}
@@ -286,6 +294,14 @@ def import_package(library, source):
                         aliases.update({old:new for old,new in mapping.items() if new.lower().endswith('.timeline')})
                         rebound['portable_relocation']=aliases
                     write_json(path,rebound)
+            coverage_state=destination/'coverage-state.json'
+            if coverage_state.exists():
+                from fireblade.core.coverage import load_state,save_state
+                save_state(coverage_state,relocate(load_state(coverage_state),mapping))
+            coverage_last=destination/'coverage-last.json'
+            if coverage_last.exists():
+                from fireblade.core.coverage import load_report,save_report
+                report=relocate(load_report(coverage_last),mapping);report['stale']=True;save_report(coverage_last,report)
             state = destination/'timeline-state.json'
             if state.exists():
                 from fireblade.core.layout import write_json

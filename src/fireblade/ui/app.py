@@ -32,7 +32,7 @@ from fireblade.ui.workers import Job, Signals
 from fireblade.ui.exploration import ExplorationMixin
 from fireblade.ui.pinned_grid import PinnedTree
 from fireblade.runtime.resources import default_config
-from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses, show_tutorial, show_investigation_guide, show_ioc_guide
+from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses, show_tutorial, show_investigation_guide, show_ioc_guide, show_coverage_guide
 
 
 from fireblade.ui.collection import CollectionMixin
@@ -70,6 +70,10 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
         from fireblade.ui.ioc_hunt import HuntPanel
         self.ioc_panel = HuntPanel(self)
         self.workbench.addTab(self.ioc_panel, "Chasse IOC")
+        from fireblade.ui.coverage import CoveragePanel
+        self.coverage_panel=CoveragePanel(self)
+        self.workbench.addTab(self.coverage_panel, "Couverture & diagnostics")
+        self.workbench.currentChanged.connect(lambda _:self.coverage_panel.open() if self.workbench.currentWidget() is self.coverage_panel else None)
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -175,6 +179,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
         self.cancel_action = action(analysis_menu, "Interrompre la requête", self.interrupt_queries, requires_file=False)
         self.cancel_action.setEnabled(False)
         action(help_menu, "Tutoriel complet — toutes les fonctionnalités", lambda: show_tutorial(self), requires_file=False)
+        action(help_menu, "Couverture de collecte et diagnostics", lambda: show_coverage_guide(self), requires_file=False)
         action(help_menu, "Chasse IOC en masse", lambda: show_ioc_guide(self), requires_file=False)
         action(help_menu, "Chronologie, sauvegardes et rapports", lambda: show_investigation_guide(self), requires_file=False)
         action(help_menu, "Guide d’utilisation", lambda: show_guide(self), "F1", False)
@@ -332,7 +337,14 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
         if hasattr(self, 'update_collection_controls'):
             self.update_collection_controls()
 
+    def coverage_notice(self,stage,severity,reason,path='',**metrics):
+        panel=getattr(self,'coverage_panel',None)
+        if panel:panel.record(stage,severity,str(reason),path,**metrics)
+
     def error(self, message):
+        panel=getattr(self,'coverage_panel',None)
+        if panel and (not panel.events or panel.events[-1]['reason']!=str(message)):
+            self.coverage_notice('Analyse','error',message,str(self.case.path) if self.case else '')
         self.statusBar().showMessage("Opération interrompue ou en erreur")
         QMessageBox.warning(self, "Opération impossible", str(message))
 
@@ -340,6 +352,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
         if getattr(self,'investigation_task',None):self.investigation_task.interrupt()
         if getattr(self,'timeline_panel',None):self.timeline_panel.interrupt()
         if getattr(self,'ioc_panel',None):self.ioc_panel.interrupt()
+        if getattr(self,'coverage_panel',None):self.coverage_panel.interrupt()
         if getattr(self, 'collection', None) is not None:
             self.collection.interrupt()
         self._expand_generation += 1
@@ -354,7 +367,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
             self.case.interrupt()
         self.statusBar().showMessage("Annulation demandée…")
 
-    def run(self, fn, done, exclusive=False, on_cancel=None, on_error=None):
+    def run(self, fn, done, exclusive=False, on_cancel=None, on_error=None, coverage_stage=None, coverage_context=None):
         if exclusive and self.busy:
             return
         if exclusive:
@@ -362,6 +375,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
             self.centralWidget().setEnabled(False)
             self.set_file_actions(False)
             self.cancel_action.setEnabled(True)
+        coverage_path=coverage_context or (str(self.case.path) if self.case else "")
         job = Job(fn)
         self.jobs.add(job)
         released = False
@@ -386,6 +400,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
 
         def fail(message):
             if not release():return
+            self.coverage_notice(coverage_stage or "Analyse","error",message,coverage_path)
             if on_error:
                 on_error(message)
             else:
@@ -393,6 +408,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
 
         def was_cancelled():
             if not release():return
+            if coverage_stage:self.coverage_notice(coverage_stage,"warning","Opération interrompue ; aucun succès complet attesté.",coverage_path)
             self.statusBar().showMessage("Opération annulée.")
             if on_cancel:
                 on_cancel()
@@ -569,6 +585,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
             from fireblade.core.profiles import prepare_case_profile
             return prepare_case_profile(candidate,self.preferences.auto_profiles)
         def imported(result):
+            self.coverage_notice("Import","warning" if not candidate.info["rows"] else "info",f"Import terminé : {candidate.info['rows']} lignes ; empreinte vérifiée avant et après lecture.",str(path),analysis=str(candidate.path),source_info=candidate.info)
             name,view,order=result
             if view is not None:
                 wanted={n.casefold() for n in self.preferences.first_pinned_columns}
@@ -583,7 +600,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
             elif name:self.statusBar().showMessage(f'Profil {name} détecté et appliqué ; valeurs sources intactes')
         sheet = dialog.sheet.currentText() if dialog.sheet is not None else None
         dialog.deleteLater()
-        self.run(importing,imported,exclusive=True,on_cancel=cancelled,on_error=failed)
+        self.run(importing,imported,exclusive=True,on_cancel=cancelled,on_error=failed,coverage_stage="Import",coverage_context=str(path))
 
     def snapshot_analysis(self):
         if not self.case or not self.model:
@@ -826,6 +843,8 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
             if len(values)>1:
                 label+=' · '+' · '.join(f"{summary.operation}({case.headers[summary.column][:256]})={'∅' if value is None else str(value)[:600]}" for summary,value in zip(view.total_summaries,values[1:]))
             self.count_label.setText(label)
+            panel=getattr(self,"coverage_panel",None)
+            if panel:panel.stale=True;panel.update_badge()
         self.run(footer_values,show_footer,
                  on_cancel=lambda: self.count_label.setText("Comptage interrompu") if generation == self.count_generation else None)
 
@@ -1120,7 +1139,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
         view, case = copy.deepcopy(self.view), self.case
         view.bookmarks_only = True
         self.run(lambda: case.export(target, view, include_annotations=True),
-                 lambda _: self.statusBar().showMessage(f"Signets et notes exportés : {target}"), exclusive=True)
+                 self.coverage_panel.export_done, exclusive=True,coverage_stage="Export",coverage_context=target)
 
     def save_view(self):
         if not self.case or self.busy:
@@ -1165,11 +1184,17 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
             grouped = choice == "Comptages par groupe"
         case, view = self.case, copy.deepcopy(self.view)
         self.statusBar().showMessage("Export en cours…")
-        self.run(lambda: case.export(target, view, grouped, columns=columns), lambda _: self.statusBar().showMessage(f"Export terminé : {target}"), exclusive=True)
+        self.run(lambda: case.export(target, view, grouped, columns=columns), self.coverage_panel.export_done, exclusive=True,coverage_stage="Export",coverage_context=target)
 
     def export_destination_is_safe(self, target):
         protected = {Path(s.path).resolve() for s in self.documents} | {Path(s.source_info["path"]).resolve() for s in self.documents}
         protected.add(self.rule_store.path.resolve())
+        data=getattr(self,'active_investigation',None)
+        if data:
+            folder=self.investigation_library.folder(data['id']);destination=Path(target).resolve()
+            protected.update(folder/name for name in ('case.json','timeline-state.json','coverage-state.json','coverage-last.json'))
+            if destination.is_relative_to(folder/'History') or destination.is_relative_to(folder/'IOC-hunts') or destination.parent==folder and destination.name.startswith('session-') and destination.suffix=='.fireblade-session':
+                self.error('L’export ne peut pas remplacer les fichiers de sauvegarde et de couverture du case.');return False
         from fireblade.core.paths import protected_destination
         if protected_destination(target,protected):
             self.error("L’export ne peut pas écraser une source, une analyse ouverte ou les règles globales.")
@@ -1339,6 +1364,7 @@ class Window(TimelineMixin, InvestigationToolsMixin, InvestigationMixin, Collect
         self.detach()
         if getattr(self,'timeline_panel',None):self.timeline_panel.reset_workspace()
         if getattr(self,'ioc_panel',None):self.ioc_panel.reset_workspace()
+        if getattr(self,'coverage_panel',None):self.coverage_panel.reset_workspace()
         if hasattr(self,'active_investigation'):
             self.clear_context_preview()
             self.release_investigation_lease()

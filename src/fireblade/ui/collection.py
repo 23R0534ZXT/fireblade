@@ -159,6 +159,7 @@ class CollectionMixin(AlertContextMixin):
         self.hayabusa_action.setToolTip(reason)
 
     def collection_finished(self, report):
+        self.coverage_panel.record_collection(report)
         self.show_collection_report(report)
         self.workbench.setCurrentIndex(1)
         if not report['documents']:return
@@ -208,7 +209,7 @@ class CollectionMixin(AlertContextMixin):
             self.collection_report.setPlainText(self.collection_report.toPlainText()+'\nErreur : '+message)
             self.workbench.setCurrentIndex(1)
             self.error(message)
-        job = self.run(function, self.collection_finished, exclusive=True, on_error=failed)
+        job = self.run(function, self.collection_finished, exclusive=True, on_error=failed,coverage_stage="Collecte")
         if job is not None:
             self.collection.progress = job.signals.progress.emit
         self.cancel_action.setEnabled(True)

@@ -1091,3 +1091,7 @@ Les fonctions de développement, la construction de l’EXE et les scénarios de
 ## Chasse IOC en masse
 
 L’onglet **Chasse IOC** recherche une liste d’IP, domaines, URL et empreintes dans toutes les analyses ouvertes. Importez TXT/CSV/TSV ou collez un IOC par ligne, puis lancez la chasse. Consultez les compteurs, les résultats paginés et les exports. Le menu **Aide → Chasse IOC en masse** détaille les règles et les limites ; [guide complet](CHASSE-IOC.md).
+
+## Contrôler la couverture de collecte
+
+L’onglet **Couverture & diagnostics** et le bouton permanent **Couverture** présentent les erreurs, exclusions, dates inexploitables, sources manquantes et résultats partiels. Lancez le contrôle complet, ajustez les familles attendues et activez les SHA-256 si vous souhaitez revérifier les fichiers. Le journal distingue les incidents historiques du dernier contrôle. Voir **Aide → Couverture de collecte et diagnostics** ou [le guide détaillé](COUVERTURE-COLLECTE.md).

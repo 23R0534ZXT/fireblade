@@ -41,7 +41,7 @@ class InvestigationToolsMixin:
         data=self.active_investigation
         if data:
             target=Path(path).resolve();folder=self.investigation_library.folder(data['id'])
-            if target==folder/'case.json' or target==folder/'timeline-state.json' or target.is_relative_to(folder/'History') or target.is_relative_to(folder/'IOC-hunts') or target.parent==folder and target.name.startswith('session-') and target.suffix=='.fireblade-session':
+            if target==folder/'case.json' or target==folder/'timeline-state.json' or target==folder/'coverage-state.json' or target==folder/'coverage-last.json' or target.is_relative_to(folder/'History') or target.is_relative_to(folder/'IOC-hunts') or target.parent==folder and target.name.startswith('session-') and target.suffix=='.fireblade-session':
                 self.error('L’export ne peut pas remplacer les fichiers de sauvegarde du case.');return False
         return True
 
@@ -144,10 +144,11 @@ class InvestigationToolsMixin:
         if not path or not self.investigation_destination_is_safe(path) or not self.save_investigation():return
         data=copy.deepcopy(self.active_investigation);documents=copy.deepcopy(self.documents);active=self.active_document;case=self.case
         def done(result):
+            self.coverage_notice('Export','warning' if result['missing_sources'] else 'info',f"Case portable vérifié : {result['files']} fichiers ; {len(result['missing_sources'])} sources non incluses.",result['path'],missing_sources=result['missing_sources'])
             self.statusBar().showMessage(f"Archive vérifiée créée · {result['files']} fichiers · {len(result['missing_sources'])} source(s) non incluse(s) : {result['path']}")
         self.statusBar().showMessage('Création puis vérification SHA-256 de l’archive portable…')
         self.run(lambda:export_package(self.investigation_library,data,documents,active,path,
-                                      include_sources=include_sources,active_case=case,settings=self.settings),done,exclusive=True)
+                                      include_sources=include_sources,active_case=case,settings=self.settings),done,exclusive=True,coverage_stage="Export",coverage_context=path)
 
     def import_investigation_package(self, path=None):
         if not self.can_switch_investigation():return
@@ -157,7 +158,7 @@ class InvestigationToolsMixin:
             self.refresh_investigations();self.show_investigations()
             self.statusBar().showMessage(f"Case importé : {result['case']['name']} · SHA-256 vérifiés · {len(result['missing_sources'])} source(s) à conserver séparément. Ouvrez-le depuis le catalogue.")
         self.statusBar().showMessage('Vérification de l’archive et import dans un nouveau case…')
-        self.run(lambda:import_package(self.investigation_library,path),done,exclusive=True)
+        self.run(lambda:import_package(self.investigation_library,path),done,exclusive=True,coverage_stage="Import",coverage_context=path)
 
     def export_investigation_report(self):
         if not self.can_open_file():return
@@ -167,7 +168,9 @@ class InvestigationToolsMixin:
         dialog=ReportDialog(self,self.active_investigation['name'] if self.active_investigation else 'Rapport Fireblade')
         try:
             if dialog.exec()!=QDialog.Accepted:return
-            options=dict(bookmarks_only=dialog.bookmarks.isChecked(),respect_filters=dialog.filters.isChecked(),limit=dialog.limit.value())
+            self.coverage_panel.ensure_context()
+            options=dict(coverage=copy.deepcopy(self.coverage_panel.report),bookmarks_only=dialog.bookmarks.isChecked(),respect_filters=dialog.filters.isChecked(),limit=dialog.limit.value())
+            if options['coverage'] is not None:options['coverage']['stale']=self.coverage_panel.stale
             if dialog.timeline.isChecked():
                 panel=self.timeline_panel
                 viewport=panel.splitter.widget(0).viewport()
@@ -203,9 +206,11 @@ class InvestigationToolsMixin:
                 return result
             def done(result):
                 self.investigation_task=None
+                self.coverage_notice('Export','warning' if result['errors'] or result.get('omitted') or result.get('abbreviated') else 'info',
+                    f"Rapport : {result['records']} constats, {len(result['errors'])} erreurs, {result.get('omitted',0)} omissions, {result.get('abbreviated',0)} cellules abrégées.",result['path'],errors=result['errors'],omitted=result.get('omitted',0),abbreviated=result.get('abbreviated',0))
                 self.statusBar().showMessage(f"Rapport créé : {result['records']} constats · {len(result['errors'])} analyse(s) en erreur · {result['path']}")
             def failed(message='Rapport annulé'):
                 self.investigation_task=None;self.statusBar().showMessage(message)
             self.statusBar().showMessage('Création du rapport d’investigation…')
-            self.run(work,done,exclusive=True,on_error=failed,on_cancel=failed)
+            self.run(work,done,exclusive=True,on_error=failed,on_cancel=failed,coverage_stage="Export",coverage_context=path)
         finally:dialog.deleteLater()

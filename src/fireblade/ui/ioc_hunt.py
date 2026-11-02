@@ -89,10 +89,15 @@ class HuntPanel(QWidget):
             batch=cached[1] if cached and cached[0]==text else parse_indicators(text)
             return hunt(reader,batch,root,include_subdomains=sub,respect_filters=filters,hit_limit=limit,progress=self.progress.emit)
         def release():self.reader=None;self.build_button.setEnabled(True)
-        def done(store):release();self.display(store)
+        def done(store):
+            release();self.display(store)
+            m=store.metadata
+            self.window.coverage_notice('Chasse IOC','warning' if m.get('truncated') or m.get('rejected') or m.get('status')!='complete' else 'info',
+                f"Chasse {m.get('status')} : {m.get('scanned_rows')} lignes lues ; {m.get('rejected')} IOC rejetés ; détails limités : {m.get('truncated')}.",str(store.path),summary=m)
+
         def fail(message):release();self.window.error(message)
         def cancel():release();self.status.setText('Chasse annulée. Les résultats précédents sont conservés.')
-        self.window.run(work,done,on_cancel=cancel,on_error=fail)
+        self.window.run(work,done,on_cancel=cancel,on_error=fail,coverage_stage="Chasse IOC")
     def display(self,store):
         if self.store and self.store is not store:self.store.close()
         self.store=store;self.ioc=None;self.offset=0
@@ -163,4 +168,4 @@ class HuntPanel(QWidget):
         if not self.store or not self.window.can_open_file():return
         path,_=QFileDialog.getSaveFileName(self,'Exporter la chasse','','CSV (*.csv);;Excel (*.xlsx)')
         if not path or not self.window.investigation_destination_is_safe(path):return
-        store=self.store;self.window.run(lambda:store.export(path,summary=summary),lambda _:self.window.statusBar().showMessage('Chasse exportée.'))
+        store=self.store;self.window.run(lambda:store.export(path,summary=summary,receipt=True),self.window.coverage_panel.export_done,coverage_stage='Export',coverage_context=path)

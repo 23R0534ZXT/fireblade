@@ -3,6 +3,8 @@
 | Besoin | Document |
 |---|---|
 | Installer le programme et découvrir le dépôt | [README principal](../README.md) |
+| Voir la démonstration courte | [Démonstration](guides/DEMONSTRATION.md) |
+| Lire la référence détaillée et les mesures historiques | [Fonctionnalités et limites](guides/FONCTIONNALITES.md) |
 | Parcourir toutes les fonctionnalités dans l’application | [Tutoriel complet](guides/TUTORIEL-COMPLET.md) |
 | Importer une collecte, analyser les EVTX et lire le contexte des alertes | [Parcours collecte](guides/UTILISATION.md#importer-une-collecte-dartefacts-et-lancer-hayabusa) |
 | Vérifier les essais réels des moteurs embarqués | [Validation forensic](validation/COLLECTE-FORENSIC.md) |

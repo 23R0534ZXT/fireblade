@@ -34,7 +34,7 @@ def test_close_and_restart_lists_case_without_loading_databases(qt_application,t
     assert window.close()
     def forbidden(*args,**kwargs):raise AssertionError('Startup opened an analysis')
     with monkeypatch.context() as patch:
-        patch.setattr('fireblade.ui.app.Case',forbidden)
+        patch.setattr('fireblade.ui.file_commands.Case',forbidden)
         restarted=Window();restarted.error=errors.append
     try:
         assert restarted.case is None and restarted.model is None and restarted.documents==[]
@@ -217,7 +217,7 @@ def test_large_old_case_catalogue_stays_unloaded_and_searchable(qt_application,t
     for index in range(300):library.create(f'Ancienne enquête {index:04d}',environment='linux' if index%2 else 'windows')
     def forbidden(*args,**kwargs):raise AssertionError('Catalogue loaded an analysis database')
     with monkeypatch.context() as patch:
-        patch.setattr('fireblade.ui.app.Case',forbidden)
+        patch.setattr('fireblade.ui.file_commands.Case',forbidden)
         window=Window(investigation_root=library.root)
     try:
         assert window.cases_table.rowCount()==300 and window.case is None and window.documents==[]

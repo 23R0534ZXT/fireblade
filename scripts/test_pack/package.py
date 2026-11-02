@@ -13,8 +13,9 @@ import zipfile
 TAG='test-pack-v1'
 ROOT='Fireblade-Test-Pack-v1'
 ARCHIVE=ROOT+'.zip'
-APP_COMMIT='0c36f0d95e47015302983fa8966ef5f2023ff94d'
-APP_SHA256='8ecbf0f816a951536eba49d7b771a42f1d45bed91899d5d3381adad5077d3bac'
+APP_COMMIT='ad1991921b615a209636f0d2c972db0002fb4fe8'
+APP_RELEASE='prototype-ad1991921b615a209636f0d2c972db0002fb4fe8'
+APP_SHA256='828b67897f0ec2971576e99728c6b03b48c344abdda84debf7f36e3f41ec7202'
 DOWNLOAD='https://github.com/23R0534ZXT/fireblade/releases/download/'+TAG+'/'+ARCHIVE
 ROWS=[['EVTX','alice','PC01','4624','2026-11-02T10:00:00Z','2048','Connexion réussie','000001'],
       ['EVTX','bob','PC02','4625','2026-11-02T10:01:00Z','512','Échec de connexion','000002'],

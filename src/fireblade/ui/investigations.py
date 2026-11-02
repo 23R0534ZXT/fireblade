@@ -268,6 +268,7 @@ class InvestigationMixin:
     def clear_investigation_workspace(self):
         self.detach()
         if getattr(self,'timeline_panel',None):self.timeline_panel.reset_workspace()
+        if getattr(self,'ioc_panel',None):self.ioc_panel.reset_workspace()
         self.clear_context_preview()
         self.release_investigation_lease()
         self.documents=[];self.active_document=-1;self.closed_documents=[];self.sync_tabs()

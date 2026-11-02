@@ -1,0 +1,6 @@
+type,value,label
+ip,192.0.2.10,Adresse de démonstration
+ip,2001:db8::10,IPv6 de démonstration
+domain,example.org,Domaine de démonstration
+url,https://example.org/download,URL de démonstration
+sha256,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,Empreinte synthétique

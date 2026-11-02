@@ -101,3 +101,13 @@ def test_core_import_does_not_load_qt():
     result = subprocess.run([sys.executable, "-c", "import sys; from fireblade.core.engine import Case; assert 'PySide6' not in sys.modules"],
                             env=environment, cwd=root, capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stderr
+
+
+def test_ioc_guide_is_readable_inside_application(qt_application):
+    from fireblade.ui.help_dialogs import show_ioc_guide
+    collected=[]
+    def close():
+        dialog=QApplication.activeModalWidget()
+        collected.append(dialog.findChild(QTextBrowser).toPlainText());dialog.reject()
+    QTimer.singleShot(0,close);show_ioc_guide(None)
+    assert '50 000' in collected[0] and 'Interrompre' in collected[0] and 'SHA-512' in collected[0]

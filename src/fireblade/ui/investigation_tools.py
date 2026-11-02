@@ -41,7 +41,7 @@ class InvestigationToolsMixin:
         data=self.active_investigation
         if data:
             target=Path(path).resolve();folder=self.investigation_library.folder(data['id'])
-            if target==folder/'case.json' or target==folder/'timeline-state.json' or target.is_relative_to(folder/'History') or target.parent==folder and target.name.startswith('session-') and target.suffix=='.fireblade-session':
+            if target==folder/'case.json' or target==folder/'timeline-state.json' or target.is_relative_to(folder/'History') or target.is_relative_to(folder/'IOC-hunts') or target.parent==folder and target.name.startswith('session-') and target.suffix=='.fireblade-session':
                 self.error('L’export ne peut pas remplacer les fichiers de sauvegarde du case.');return False
         return True
 

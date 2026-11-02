@@ -72,7 +72,7 @@ annulation conserve la destination précédente et nettoie les fichiers temporai
    signalent les tranches contenant des signets ; sélectionner une ligne dans
    le tableau place un repère sur le graphique.
 
-<img src="../assets/fireblade-timeline.png" alt="Chronologie graphique" width="680">
+![Chronologie graphique](../assets/fireblade-timeline.png)
 
 Capture synthétique : 4200 événements répartis sur six analyses, sous Linux
 avec Qt hors écran. Ce n’est pas une capture du véritable EXE Windows.
@@ -137,7 +137,7 @@ une identité ou une relation causale. La colonne Résumé et son export sont
 limités à 1000 caractères par événement ; la ligne source conserve les champs
 complets et les identifiants exacts.
 
-<img src="../assets/fireblade-timeline-correlation.png" alt="Corrélation IP et période réduite" width="680">
+![Corrélation IP et période réduite](../assets/fireblade-timeline-correlation.png)
 
 La même démonstration synthétique, après recherche d’une IP et zoom sur une période.
 

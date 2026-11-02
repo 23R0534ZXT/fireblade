@@ -229,6 +229,14 @@ every matching event, source references, notes and import-time hashes.
 
 Synthetic demonstration: 4,200 events in six analyses, rendered offscreen on Linux.
 
+### Bulk IOC hunting
+
+![Bulk offline IOC hunt](docs/assets/fireblade-ioc-hunt.png)
+
+Synthetic demonstration rendered offscreen on Linux; this is not a Windows EXE capture.
+
+The **Chasse IOC** tab searches up to 50,000 IP, domain, HTTP/HTTPS URL and file-hash indicators across every open analysis, entirely offline. Paste a list or import TXT/CSV/TSV, inspect per-indicator row and field counts, filter paginated occurrences, jump to an original row, and export CSV/XLSX summaries or details. Subdomain matching and saved-filter scope are explicit options. Full-scan counts continue after the configurable detail-storage limit; unreadable analyses and rejected indicators are reported. Hunts persist in investigation folders and travel with portable cases. [Usage and matching limits](docs/guides/CHASSE-IOC.md) · [Synthetic IOC list](examples/ioc/indicators.csv).
+
 ### Investigation reports
 
 **Créer un rapport HTML / PDF…** exports bookmarks, notes or selected rows with your

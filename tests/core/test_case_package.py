@@ -118,3 +118,27 @@ def test_import_size_budget_prevents_case_creation(tmp_path,monkeypatch):
     target=InvestigationLibrary(tmp_path/'target');monkeypatch.setattr(module,'MAX_BYTES',1)
     with pytest.raises(ValueError,match='64 Gio'):import_package(target,archive)
     assert target.list()==([],[]) and not list(target.root.glob('.import-*'))
+
+
+def test_ioc_hunts_survive_portable_case_without_rewriting_observations(tmp_path):
+    from fireblade.core.ioc_hunt import parse_indicators
+    from fireblade.core.ioc_results import hunt,HuntStore,discover_hunts
+    from fireblade.core.workspace_reader import WorkspaceReader
+    library,data,document,case,source=prepared(tmp_path)
+    source.write_text(source.read_text()+'2026-01-02,example.org,2\n')
+    case.close();case=Case(tmp_path/'ioc-analysis.timeline');case.import_csv(source)
+    document=AnalysisSnapshot(str(case.path),case.info,View(),b'')
+    store=hunt(WorkspaceReader([document],active=case),parse_indicators('example.org'),library.folder(data['id'])/'IOC-hunts')
+    original=store.page()['rows'][0][6:10];store.close()
+    archive=tmp_path/'case.fireblade-case'
+    try:export_package(library,data,[document],0,archive,include_sources=True,active_case=case)
+    finally:case.close()
+    target=InvestigationLibrary(tmp_path/'restored');result=import_package(target,archive)
+    runs,errors=discover_hunts(target.folder(result['case']['id'])/'IOC-hunts');assert len(runs)==1 and not errors
+    restored=HuntStore(runs[0]['path'])
+    try:
+        assert restored.page()['rows'][0][6:10]==original
+        assert Path(restored.sources()[0]['path']).is_file()
+        assert restored.sources()[0]['path']!=document.path
+        assert Path(restored.sources()[0]['info']['path']).is_file()
+    finally:restored.close()

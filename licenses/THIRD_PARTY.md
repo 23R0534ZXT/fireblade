@@ -20,6 +20,7 @@ Sources et documentation :
 - openpyxl : https://openpyxl.readthedocs.io/
 - et-xmlfile : https://et-xmlfile.readthedocs.io/
 - PyInstaller : https://pyinstaller.org/en/stable/license.html
+- idna : https://github.com/kjd/idna (BSD-3-Clause, noms de domaine IDNA/UTS #46 sans requête réseau)
 
 La structure du dépôt, les dépendances épinglées et la procédure de construction permettent de reconstruire Fireblade et de modifier les composants utilisés. Voir docs/development/CONTRIBUER.md et scripts/windows/build.py. Le fichier MIT du projet n’a pas vocation à remplacer les licences des dépendances.
 

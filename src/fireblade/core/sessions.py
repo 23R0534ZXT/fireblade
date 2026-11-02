@@ -7,8 +7,15 @@ import tempfile
 
 from fireblade.core.models import AnalysisSnapshot, View
 
+MAX_SESSION_BYTES = 4 * 1024 * 1024
+MAX_SESSION_DOCUMENTS = 1000
+
 
 def write_session(path, snapshots, active):
+    if not 1 <= len(snapshots) <= MAX_SESSION_DOCUMENTS:
+        raise ValueError("Une session doit contenir de 1 à 1000 analyses")
+    if type(active) is not int or not 0 <= active < len(snapshots):
+        raise ValueError("Onglet actif invalide")
     path = Path(path).resolve()
     payload = dict(format="fireblade-session", version=1, active=active, documents=[
         dict(path=s.path, source=s.source_info, view=json.loads(s.view.to_json()),
@@ -18,6 +25,8 @@ def write_session(path, snapshots, active):
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, suffix=".partial", delete=False) as output:
             temporary = Path(output.name)
             json.dump(payload, output, ensure_ascii=False, indent=2)
+        if temporary.stat().st_size > MAX_SESSION_BYTES:
+            raise ValueError("Session limitée à 4 Mo")
         os.replace(temporary, path)
     finally:
         if temporary:
@@ -26,13 +35,13 @@ def write_session(path, snapshots, active):
 
 def read_session(path):
     path = Path(path)
-    if path.stat().st_size > 4 * 1024 * 1024:
+    if path.stat().st_size > MAX_SESSION_BYTES:
         raise ValueError("Session limitée à 4 Mo")
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("format") != "fireblade-session" or payload.get("version") != 1:
         raise ValueError("Format de session Fireblade inconnu")
     documents = payload.get("documents")
-    if not isinstance(documents, list) or not 1 <= len(documents) <= 1000:
+    if not isinstance(documents, list) or not 1 <= len(documents) <= MAX_SESSION_DOCUMENTS:
         raise ValueError("Une session doit contenir de 1 à 1000 analyses")
     snapshots, seen = [], set()
     for doc in documents:

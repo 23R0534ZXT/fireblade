@@ -1,0 +1,845 @@
+{
+  "commit": "782600867e72a340ca54b6f80e1377f2ff89b363",
+  "date": "2026-11-02",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "duckdb": "1.5.6",
+  "qt": "6.12.0",
+  "environment": {
+    "memory_cgroup_bytes": 8589934592,
+    "cpu_quota_cores": 2,
+    "qt_platform": "offscreen"
+  },
+  "scope": "Linux source build; no native Windows executable qualification",
+  "pytest": {
+    "tests": 929,
+    "passed": 901,
+    "skipped": 28,
+    "failed": 0,
+    "seconds": 129.245,
+    "skip_reasons": [
+      {
+        "test": "test_native_instances_collections_private_state_identity_and_nested_results",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_derived_columns_and_reopening_restore_native_arguments_lazily",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_nested_object_results_do_not_require_a_reader_or_accumulate_handles",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_changed_source_is_rejected_before_reader_graph_is_reloaded",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_cancellation_kills_object_host_and_allows_a_fresh_graph",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_foreign_handle_is_rejected_without_deserializing_objects",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_cross_dll_function_receives_same_reader_type_and_function_result",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_modified_reader_dll_cannot_start_native_object_graph",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_copied_analysis_cannot_reload_reader_without_local_approval",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_parallel_native_calls_share_one_object_process",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_criteria_typed_literals_keep_native_clr_operand_types",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_dateonly_timeonly_reader_fields_keep_precision_in_criteria",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_nondeterministic_reader_cannot_supply_a_different_graph_for_saved_rows",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_raster_wrappers_are_canonicalized_without_following_metadata[GIF]",
+        "reason": "Image encoder unavailable; decoding remains guarded by Qt"
+      },
+      {
+        "test": "test_windows_extended_long_unicode_paths",
+        "reason": "Native Windows long-path integration"
+      },
+      {
+        "test": "test_actual_unc_import_export_reopen_and_source_alias_protection",
+        "reason": "Requires an explicitly enabled disposable Windows SMB runner"
+      },
+      {
+        "test": "test_probe_reads_only_header_prefix",
+        "reason": "Existing 3 GiB dataset not present"
+      },
+      {
+        "test": "test_actual_shellbags_host_parses_public_hive_without_modifying_it",
+        "reason": "Actual .NET Shellbags host required; frozen Windows acceptance is mandatory"
+      },
+      {
+        "test": "test_real_helper_preserves_source_and_evaluates_custom_functions",
+        "reason": "Build the real .NET helper and QA reader first"
+      },
+      {
+        "test": "test_custom_function_name_and_shared_metadata_roundtrip",
+        "reason": "Build the real .NET helper and QA reader first"
+      },
+      {
+        "test": "test_functions_restore_on_reopen_and_unapproved_copy_never_executes",
+        "reason": "Build the real .NET helper and QA reader first"
+      },
+      {
+        "test": "test_session_automatically_uses_registered_reader",
+        "reason": "Build the real .NET helper and QA reader first"
+      },
+      {
+        "test": "test_first_session_source_detects_installed_reader_by_header",
+        "reason": "Build the real .NET helper and QA reader first"
+      },
+      {
+        "test": "test_actual_shellbags_and_webcache_render_and_restore_in_case",
+        "reason": "Actual Shellbags host required; frozen Windows acceptance covers this workflow"
+      },
+      {
+        "test": "test_mixed_linux_windows_collections_survive_repeated_case_switches",
+        "reason": "Actual Shellbags host required; frozen acceptance covers mixed cases"
+      },
+      {
+        "test": "test_ordinary_open_detects_real_installed_reader",
+        "reason": "Real .NET helper and fixture required"
+      },
+      {
+        "test": "test_default_case_directory_is_user_local_appdata",
+        "reason": "Windows natif requis"
+      },
+      {
+        "test": "test_windows_locked_export_keeps_existing_file",
+        "reason": "Windows natif requis"
+      }
+    ]
+  },
+  "csv_adversarial": [
+    {
+      "name": "roundtrip-1",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "','",
+        "encoding": "utf-8",
+        "chunked": false
+      },
+      "seconds": 0.088
+    },
+    {
+      "name": "roundtrip-2",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "','",
+        "encoding": "utf-8",
+        "chunked": true
+      },
+      "seconds": 0.112
+    },
+    {
+      "name": "roundtrip-3",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "','",
+        "encoding": "utf-8-sig",
+        "chunked": false
+      },
+      "seconds": 0.083
+    },
+    {
+      "name": "roundtrip-4",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "','",
+        "encoding": "utf-8-sig",
+        "chunked": true
+      },
+      "seconds": 0.1
+    },
+    {
+      "name": "roundtrip-5",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "','",
+        "encoding": "utf-16",
+        "chunked": false
+      },
+      "seconds": 0.099
+    },
+    {
+      "name": "roundtrip-6",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "','",
+        "encoding": "utf-16",
+        "chunked": true
+      },
+      "seconds": 0.099
+    },
+    {
+      "name": "roundtrip-7",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "','",
+        "encoding": "utf-16-be",
+        "chunked": false
+      },
+      "seconds": 0.086
+    },
+    {
+      "name": "roundtrip-8",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "','",
+        "encoding": "utf-16-be",
+        "chunked": true
+      },
+      "seconds": 0.101
+    },
+    {
+      "name": "roundtrip-9",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "';'",
+        "encoding": "utf-8",
+        "chunked": false
+      },
+      "seconds": 0.101
+    },
+    {
+      "name": "roundtrip-10",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "';'",
+        "encoding": "utf-8",
+        "chunked": true
+      },
+      "seconds": 0.116
+    },
+    {
+      "name": "roundtrip-11",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "';'",
+        "encoding": "utf-8-sig",
+        "chunked": false
+      },
+      "seconds": 0.08
+    },
+    {
+      "name": "roundtrip-12",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "';'",
+        "encoding": "utf-8-sig",
+        "chunked": true
+      },
+      "seconds": 0.118
+    },
+    {
+      "name": "roundtrip-13",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "';'",
+        "encoding": "utf-16",
+        "chunked": false
+      },
+      "seconds": 0.094
+    },
+    {
+      "name": "roundtrip-14",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "';'",
+        "encoding": "utf-16",
+        "chunked": true
+      },
+      "seconds": 0.124
+    },
+    {
+      "name": "roundtrip-15",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "';'",
+        "encoding": "utf-16-be",
+        "chunked": false
+      },
+      "seconds": 0.085
+    },
+    {
+      "name": "roundtrip-16",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "';'",
+        "encoding": "utf-16-be",
+        "chunked": true
+      },
+      "seconds": 0.107
+    },
+    {
+      "name": "roundtrip-17",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'\\t'",
+        "encoding": "utf-8",
+        "chunked": false
+      },
+      "seconds": 0.084
+    },
+    {
+      "name": "roundtrip-18",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'\\t'",
+        "encoding": "utf-8",
+        "chunked": true
+      },
+      "seconds": 0.095
+    },
+    {
+      "name": "roundtrip-19",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'\\t'",
+        "encoding": "utf-8-sig",
+        "chunked": false
+      },
+      "seconds": 0.054
+    },
+    {
+      "name": "roundtrip-20",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'\\t'",
+        "encoding": "utf-8-sig",
+        "chunked": true
+      },
+      "seconds": 0.139
+    },
+    {
+      "name": "roundtrip-21",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'\\t'",
+        "encoding": "utf-16",
+        "chunked": false
+      },
+      "seconds": 0.055
+    },
+    {
+      "name": "roundtrip-22",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'\\t'",
+        "encoding": "utf-16",
+        "chunked": true
+      },
+      "seconds": 0.106
+    },
+    {
+      "name": "roundtrip-23",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'\\t'",
+        "encoding": "utf-16-be",
+        "chunked": false
+      },
+      "seconds": 0.088
+    },
+    {
+      "name": "roundtrip-24",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'\\t'",
+        "encoding": "utf-16-be",
+        "chunked": true
+      },
+      "seconds": 0.103
+    },
+    {
+      "name": "roundtrip-25",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'|'",
+        "encoding": "utf-8",
+        "chunked": false
+      },
+      "seconds": 0.089
+    },
+    {
+      "name": "roundtrip-26",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'|'",
+        "encoding": "utf-8",
+        "chunked": true
+      },
+      "seconds": 0.104
+    },
+    {
+      "name": "roundtrip-27",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'|'",
+        "encoding": "utf-8-sig",
+        "chunked": false
+      },
+      "seconds": 0.081
+    },
+    {
+      "name": "roundtrip-28",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'|'",
+        "encoding": "utf-8-sig",
+        "chunked": true
+      },
+      "seconds": 0.103
+    },
+    {
+      "name": "roundtrip-29",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'|'",
+        "encoding": "utf-16",
+        "chunked": false
+      },
+      "seconds": 0.095
+    },
+    {
+      "name": "roundtrip-30",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'|'",
+        "encoding": "utf-16",
+        "chunked": true
+      },
+      "seconds": 0.123
+    },
+    {
+      "name": "roundtrip-31",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'|'",
+        "encoding": "utf-16-be",
+        "chunked": false
+      },
+      "seconds": 0.101
+    },
+    {
+      "name": "roundtrip-32",
+      "status": "passed",
+      "details": {
+        "records": 110,
+        "delimiter": "'|'",
+        "encoding": "utf-16-be",
+        "chunked": true
+      },
+      "seconds": 0.106
+    },
+    {
+      "name": "blank-lines-False",
+      "status": "passed",
+      "details": {
+        "actual": [
+          [
+            1,
+            "1",
+            "2"
+          ],
+          [
+            2,
+            "3",
+            "4"
+          ]
+        ]
+      },
+      "seconds": 0.054
+    },
+    {
+      "name": "quoted-empty-False",
+      "status": "passed",
+      "details": {
+        "actual": [
+          [
+            1,
+            null,
+            null
+          ],
+          [
+            2,
+            "1",
+            "2"
+          ]
+        ]
+      },
+      "seconds": 0.021
+    },
+    {
+      "name": "nul-False",
+      "status": "passed",
+      "details": {
+        "actual": [
+          [
+            1,
+            "left\u0000right",
+            "x"
+          ]
+        ]
+      },
+      "seconds": 0.022
+    },
+    {
+      "name": "bom-value-False",
+      "status": "passed",
+      "details": {
+        "actual": [
+          [
+            1,
+            "﻿value",
+            "x"
+          ]
+        ]
+      },
+      "seconds": 0.054
+    },
+    {
+      "name": "spaces-False",
+      "status": "passed",
+      "details": {
+        "actual": [
+          [
+            1,
+            "  a  ",
+            "  b  "
+          ]
+        ]
+      },
+      "seconds": 0.02
+    },
+    {
+      "name": "blank-lines-True",
+      "status": "passed",
+      "details": {
+        "actual": [
+          [
+            1,
+            "1",
+            "2"
+          ],
+          [
+            2,
+            "3",
+            "4"
+          ]
+        ]
+      },
+      "seconds": 0.03
+    },
+    {
+      "name": "quoted-empty-True",
+      "status": "passed",
+      "details": {
+        "actual": [
+          [
+            1,
+            null,
+            null
+          ],
+          [
+            2,
+            "1",
+            "2"
+          ]
+        ]
+      },
+      "seconds": 0.052
+    },
+    {
+      "name": "nul-True",
+      "status": "passed",
+      "details": {
+        "actual": [
+          [
+            1,
+            "left\u0000right",
+            "x"
+          ]
+        ]
+      },
+      "seconds": 0.037
+    },
+    {
+      "name": "bom-value-True",
+      "status": "passed",
+      "details": {
+        "actual": [
+          [
+            1,
+            "﻿value",
+            "x"
+          ]
+        ]
+      },
+      "seconds": 0.077
+    },
+    {
+      "name": "spaces-True",
+      "status": "passed",
+      "details": {
+        "actual": [
+          [
+            1,
+            "  a  ",
+            "  b  "
+          ]
+        ]
+      },
+      "seconds": 0.072
+    }
+  ],
+  "load_1gib": {
+    "python": "3.12.14",
+    "duckdb": "1.5.6",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "cpu_count": 3,
+    "csv_bytes": 1129468693,
+    "rows": 2890000,
+    "database_bytes": 35401728,
+    "peak_process_rss_mib": 259.5,
+    "duckdb_memory_limit_mib": 256,
+    "threads": 2,
+    "filtered_count": 241026,
+    "timings": {
+      "import_with_two_sha256_passes_s": 33.81,
+      "first_page_s": 0.007,
+      "group_two_columns_s": 0.005,
+      "numeric_sort_first_page_s": 0.216,
+      "filtered_count_s": 0.004
+    },
+    "caveat": "Synthetic repetitive data; warm filesystem cache; not a comparison with Timeline Explorer."
+  },
+  "load_3gib": {
+    "python": "3.12.14",
+    "duckdb": "1.5.6",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "cpu_count": 3,
+    "csv_bytes": 3275068297,
+    "rows": 8380000,
+    "database_bytes": 100413440,
+    "peak_process_rss_mib": 324.2,
+    "duckdb_memory_limit_mib": 256,
+    "threads": 2,
+    "filtered_count": 698892,
+    "timings": {
+      "import_with_two_sha256_passes_s": 100.947,
+      "first_page_s": 0.008,
+      "group_two_columns_s": 0.013,
+      "numeric_sort_first_page_s": 0.487,
+      "filtered_count_s": 0.009
+    },
+    "caveat": "Synthetic repetitive data; warm filesystem cache; not a comparison with Timeline Explorer."
+  },
+  "large_independent_oracle": {
+    "status": "passed",
+    "rows": 8380000,
+    "source_bytes": 3275068297,
+    "filtered_export_rows": 104750,
+    "checked": [
+      "first_middle_last_pages",
+      "deep_numeric_sorted_pages",
+      "group_counts_independent_python_oracle",
+      "filter_count_independent_python_oracle",
+      "every_exported_value_and_record_order",
+      "reopened_database",
+      "source_sha256"
+    ],
+    "seconds": 8.653
+  },
+  "deep_pages_64mb": {
+    "name": "deep-sorted-pages-64mb-and-combined-filters",
+    "status": "passed",
+    "details": {
+      "rows": 2890000,
+      "memory_mb": 64,
+      "offsets": [
+        1000,
+        1445000,
+        2889750,
+        2890100
+      ]
+    },
+    "seconds": 2.256
+  },
+  "cancel_import": {
+    "name": "cancel-1gib-from-another-thread-and-retry",
+    "status": "passed",
+    "details": {
+      "seconds_to_stop": 0.732,
+      "rollback": true,
+      "source_unchanged": true,
+      "retry": true
+    },
+    "seconds": 2.586
+  },
+  "session_limits": {
+    "status": "failed",
+    "checks": [
+      {
+        "name": "1000 analyses",
+        "status": "passed",
+        "bytes": 1559087
+      },
+      {
+        "name": "1001 analyses",
+        "status": "failed",
+        "bytes": 1560646,
+        "error": "Une session doit contenir de 1 à 1000 analyses",
+        "previous_valid_session_replaced": true
+      },
+      {
+        "name": "320 analyses, recherche de 14000 caractères chacune",
+        "status": "failed",
+        "bytes": 4978967,
+        "error": "Session limitée à 4 Mo",
+        "previous_valid_session_replaced": true
+      }
+    ]
+  },
+  "ui_session_reproduction": {
+    "save_errors": [],
+    "status_message": "Session enregistrée : onglets, vues et dispositions des colonnes",
+    "bytes": 4972777,
+    "reopen_error": "Session limitée à 4 Mo"
+  },
+  "findings": [
+    {
+      "id": "SESSION-01",
+      "severity": "P2",
+      "status": "fixed; original reproduction preserved above",
+      "description": "Standalone saving replaces a valid session with an unreadable file when count exceeds 1000 or size exceeds 4 MiB.",
+      "files": [
+        "src/fireblade/core/sessions.py:11",
+        "src/fireblade/ui/workspace.py:119"
+      ]
+    }
+  ],
+  "caveats": [
+    "Synthetic repetitive load data; compressed database sizes do not represent arbitrary evidence.",
+    "Concurrent workloads and warm caches affect timings.",
+    "Session boundary snapshots and UI documents were constructed programmatically; no manual 1001-tab clicking."
+  ],
+  "correction": {
+    "status": "applied",
+    "finding": "SESSION-01",
+    "behavior": "Reject invalid count and active tab before writing; check temporary UTF-8 file byte size before replacement; keep previous session and remove temporary file on failure.",
+    "targeted_tests_passed": 36,
+    "full_suite": {
+      "tests": 940,
+      "passed": 912,
+      "skipped": 28,
+      "failed": 0,
+      "errors": 0,
+      "seconds": 129.808
+    },
+    "reproduction_after_fix": {
+      "status": "passed",
+      "checks": [
+        {
+          "name": "1000 analyses",
+          "status": "passed",
+          "bytes": 1559087
+        },
+        {
+          "name": "1001 analyses",
+          "status": "passed",
+          "rejected_save": "Une session doit contenir de 1 à 1000 analyses"
+        },
+        {
+          "name": "320 analyses, recherche de 14000 caractères chacune",
+          "status": "passed",
+          "rejected_save": "Session limitée à 4 Mo"
+        }
+      ]
+    }
+  },
+  "integration": {
+    "upstream_commit": "c35b68fbfe091f3e4b0ec8770085ba2386847648",
+    "full_suite": {
+      "tests": 950,
+      "passed": 922,
+      "skipped": 28,
+      "failed": 0,
+      "errors": 0,
+      "seconds": 150.711
+    },
+    "session_audit": {
+      "status": "passed",
+      "checks": [
+        {
+          "name": "1000 analyses",
+          "status": "passed",
+          "bytes": 1575087
+        },
+        {
+          "name": "1001 analyses",
+          "status": "passed",
+          "rejected_save": "Une session doit contenir de 1 à 1000 analyses"
+        },
+        {
+          "name": "320 analyses, recherche de 14000 caractères chacune",
+          "status": "passed",
+          "rejected_save": "Session limitée à 4 Mo"
+        }
+      ]
+    }
+  }
+}

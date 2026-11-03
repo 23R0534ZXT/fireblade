@@ -4,7 +4,7 @@
 
 Les PR et les modifications de code sur `main` exécutent les contrôles Windows. Une modification de `README.md`, de `docs/` ou des notices seule ne lance pas toute la construction sur un push. Une construction ordinaire réussie conserve l’EXE dans les artefacts Actions et ne crée pas de release publique.
 
-La publication nécessite un tag `vX.Y.Z`, ou un lancement manuel du workflow **Windows tests and standalone EXE**, sur `main`, avec **publish_release** activé. Le mode **profile_only** ne publie rien. Tous les contrôles requis, dont Ruff, doivent réussir avant le job de publication.
+La publication nécessite un tag `vX.Y.Z`, ou un lancement manuel du workflow **Windows tests and standalone EXE**, sur `main`, avec **publish_release** activé. Un binaire déjà qualifié peut aussi être publié par le workflow manuel **Publish an already qualified Windows build**, en indiquant son identifiant d’exécution réussie. Le mode **profile_only** ne publie rien. Tous les contrôles requis, dont Ruff, doivent réussir avant le job de publication.
 
 ## Préparer la version
 
@@ -16,6 +16,21 @@ La publication nécessite un tag `vX.Y.Z`, ou un lancement manuel du workflow **
 6. Vérifier le téléchargement, puis actualiser les liens du README et de l’issue des testeurs vers cette release.
 
 Un tag différent de la version du code est refusé. Les préversions restent identifiées comme prototypes. Les packs de données conservent leurs publications séparées ; leurs liens doivent rester disponibles lors du nettoyage des releases de l’application.
+
+## Publier un EXE déjà qualifié
+
+Lancer **Publish an already qualified Windows build** depuis `main`, avec
+`run_id` égal à l’exécution réussie de **Windows tests and standalone EXE**.
+Ce parcours réutilise ses artefacts sans reconstruire le programme.
+
+Le workflow vérifie le dépôt, le commit, le nom du workflow, son succès et chacun
+des neuf jobs requis. Il récupère `Fireblade-exe` et
+`Windows-single-file-verification`, compare le SHA-256 et la version du binaire
+au rapport, puis utilise `scripts.release` : envoi en brouillon avant publication,
+refus de remplacer une version déjà publiée. Le tag cible exactement le commit
+qualifié ; les notes finales proviennent de `main`, avec vérification de version.
+Le jeton GitHub Actions est utilisé pour l’envoi de l’asset. Un reçu de publication
+est conservé dans les artefacts de ce workflow.
 
 ## Pack de test
 

@@ -30,15 +30,14 @@ restent disponibles dans le menu Fichier une fois le case ouvert.
 
 ## Validation et disponibilité
 
-Version des sources : **0.2.0**. Le dernier EXE publié reste **0.1.1** tant qu’une
-construction 0.2.0 n’a pas passé la qualification Windows puis été publiée.
-Les anciens téléchargements ne contiennent pas les nouveautés ci-dessus.
+Version de l’application et du binaire Windows : **0.2.0**. L’exécutable joint
+à cette release est celui du commit qualifié `43893ab`, sans reconstruction.
+Les anciens téléchargements 0.1.1 ne contiennent pas les nouveautés ci-dessus.
 
 La [qualification Windows du correctif 0.2.0](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489) a réussi :
 tests Python 3.11/3.12/3.13, EXE autonome, lecteurs, chemins UNC/longs, apparences,
-charge supérieure à 3 Gio et parcours à 320 analyses. Le binaire est disponible
-dans les artefacts de cette exécution ; le job de publication de release n’a pas
-été demandé.
+charge supérieure à 3 Gio et parcours à 320 analyses. Le binaire publié provient de cette exécution ; son empreinte SHA-256 a été
+comparée au rapport de vérification du programme autonome avant publication.
 
 La validation Linux/Qt hors écran couvre notamment une image FAT12, un disque RAW
 MBR à deux partitions, la publication progressive, les requêtes pendant la tâche,

@@ -8,6 +8,7 @@ import csv
 from datetime import datetime, timedelta, timezone
 import gzip
 import io
+import ipaddress
 import json
 import lzma
 from pathlib import Path, PurePosixPath
@@ -173,7 +174,11 @@ def binary_rows(stream, path):
             seconds, micros = struct.unpack_from('<ii', raw, 340)
             if not 0 <= typ <= 9 or not 0 <= micros < 1000000:
                 raise ValueError(f'ABI utmp inconnu ou fichier corrompu à {offset}')
-            fields = {'Format': 'utmp glibc LE', 'Événement': str(typ), 'PID': str(pid),
+            address = raw[348:364]
+            remote = str(ipaddress.ip_address(address[:4] if not any(address[4:]) else address)) if any(address) else ''
+            fields = {'Adresse distante': remote, 'Champs': encoded({'ut_id': display(raw[40:44].split(b'\0')[0]),
+                       'session': struct.unpack_from('<i', raw, 336)[0],
+                       'exit': list(struct.unpack_from('<hh', raw, 332))}), 'Format': 'utmp glibc LE', 'Événement': str(typ), 'PID': str(pid),
                       'Horodatage': timestamp(seconds, micros), 'Utilisateur': display(raw[44:76].split(b'\0')[0]),
                       'Hôte': display(raw[76:332].split(b'\0')[0]), 'Chemin': display(raw[8:40].split(b'\0')[0])}
         yield dict(fields, Offset=str(offset), Lecture='Structurée', **{'Texte brut': raw.hex()})
@@ -333,9 +338,10 @@ def export_rows(stream):
 
 class BoundedLzma(io.RawIOBase):
     """Bound dictionary allocation and output chunks, including concatenated streams."""
-    def __init__(self, incoming):
+    def __init__(self, incoming, xz=False):
         super().__init__()
         self.incoming = incoming
+        self.xz = xz
         self.decoder = lzma.LZMADecompressor(memlimit=MAX_OBJECT)
         self.pending = b''
         self.finished = False
@@ -350,6 +356,14 @@ class BoundedLzma(io.RawIOBase):
             check_cancel()
             if self.decoder.eof:
                 self.pending = self.decoder.unused_data or self.incoming.read(65536)
+                if self.xz:
+                    padding = 0
+                    while self.pending.startswith(b'\0'):
+                        stripped = self.pending.lstrip(b'\0')
+                        padding += len(self.pending)-len(stripped)
+                        self.pending = stripped or self.incoming.read(65536)
+                    if padding % 4:
+                        raise ValueError('Padding XZ non multiple de quatre octets')
                 if not self.pending:
                     self.finished = True
                     return 0
@@ -460,7 +474,7 @@ def parse(source, output, progress=lambda _: None):
                 elif compression == 'bzip2':
                     decoder = bz2.BZ2File(incoming)
                 elif compression == 'xz':
-                    decoder = io.BufferedReader(BoundedLzma(incoming))
+                    decoder = io.BufferedReader(BoundedLzma(incoming, xz=prefix.startswith(b'\xfd7zXZ\0')))
                 else:
                     import zstandard
                     decoder = io.BufferedReader(zstandard.ZstdDecompressor(max_window_size=MAX_OBJECT//1024).stream_reader(incoming))

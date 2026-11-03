@@ -11,16 +11,21 @@ import io
 import ipaddress
 import json
 import lzma
+import math
 from pathlib import Path, PurePosixPath
 import re
 import struct
 import tarfile
 import tempfile
+import zipfile
+import stat
 
 from fireblade.core.errors import OperationCancelled
 from fireblade.core.catscale import check_cancel, safe_member
 
 HEADERS = ['Format', 'Lecture', 'Horodatage', 'Hôte', 'Processus', 'PID', 'PPID',
+           'Horodatage UTC', 'Clé de corrélation', 'Commande', 'Dossier', 'Utilisateur cible',
+           'Adresse source', 'Adresse destination', 'Port source', 'Port destination', 'Port distant', 'Protocole',
            'Utilisateur', 'UID', 'Adresse distante', 'Méthode', 'Chemin', 'Statut',
            'Octets', 'Événement', 'Détail', 'Champs', 'Source', 'Ligne',
            'Fin de ligne', 'Offset', 'Texte brut']
@@ -29,11 +34,11 @@ MAX_OBJECT = 64 * 1024 * 1024
 MAX_EXPANDED = 1024 ** 4  # Per input, including archive traversal (1 TiB).
 MAX_MEMBERS = 100000
 MAX_DEPTH = 8
-COMPRESSIONS = ('.gz', '.bz2', '.xz', '.lzma', '.zst', '.zstd')
+COMPRESSIONS = ('.gz', '.bz2', '.xz', '.lzma', '.zst', '.zstd', '.lz4')
 KNOWN = re.compile(r'^(?:syslog|messages|secure|auth\.log|kern\.log|daemon\.log|'
                    r'user\.log|mail\.(?:log|info|warn|err)|cron|boot\.log|dmesg|'
                    r'audit\.log|access\.log|error\.log|dpkg\.log|alternatives\.log|'
-                   r'fail2ban\.log|ufw\.log|wtmp|btmp|utmp|lastlog)(?:[.-].*)?$')
+                   r'fail2ban\.log|ufw\.log|wtmp|btmp|utmp|lastlog|pacct|acct)(?:[.-].*)?$')
 
 
 def plain_name(path):
@@ -48,7 +53,7 @@ def recognized(path, magic=b''):
     in_var_log = any(parts[i:i+2] == ['var', 'log'] for i in range(len(parts)-1))
     name = plain_name(path)
     return bool(in_var_log or 'log' in parts[:-1] or KNOWN.fullmatch(name)
-                or re.fullmatch(r'(?:var[-_]log|linux[-_]logs).*\.(?:tar|tgz)', name)
+                or re.fullmatch(r'(?:var[-_]log|linux[-_]logs).*\.(?:tar|tgz|zip)', name)
                 or re.search(r'\.log(?:[.-].*)?$', name) or name.endswith(('.journal', '.journal~'))
                 or magic.startswith(b'LPKSHHRH'))
 
@@ -97,10 +102,15 @@ def text_fields(text, path=''):
         return fields
     rfc5424 = re.match(r'^<(\d{1,3})>([1-9]\d*) (\S+) (\S+) (\S+) (\S+) (\S+) (.*)$', stripped)
     if rfc5424:
-        # Structured data may contain spaces: preserve its full syntax verbatim.
+        from fireblade.core.linux_log_formats import rfc5424_body
+        body = rfc5424_body(rfc5424[8])
+        if body is None or int(rfc5424[1])>191:
+            return {}
+        structured_data, message = body
         return {'Format': 'Syslog RFC5424', 'Horodatage': rfc5424[3], 'Hôte': rfc5424[4],
                 'Processus': rfc5424[5], 'PID': rfc5424[6], 'Événement': rfc5424[7],
-                'Détail': rfc5424[8], 'Champs': encoded({'priority': rfc5424[1], 'version': rfc5424[2]})}
+                'Détail': message, 'Champs': encoded({'priority': rfc5424[1], 'version': rfc5424[2],
+                                                    'structured_data': structured_data})}
     syslog = re.match(r'^(?:<\d{1,3}>)?(\w{3}\s+\d{1,2}\s+\d\d:\d\d:\d\d|'
                       r'\d{4}-\d\d-\d\d[T ]\d\d:\d\d:\d\d\S*)\s+(\S+)\s+'
                       r'([^\s:\[]+)(?:\[(\d+)\])?:\s?(.*)$', stripped)
@@ -149,17 +159,18 @@ def binary_rows(stream, path):
             block = stream.read(size * 2048)
             if not block:
                 return
-            if len(block) % size:
-                raise ValueError(f'Enregistrement Linux tronqué à {ordinal*size+len(block)} ; ABI attendu : glibc LE {size} octets')
-            if not any(block):
+            complete = len(block)//size*size
+            if complete==len(block) and not any(block):
                 ordinal += len(block)//size
                 continue
-            for index in range(0, len(block), size):
+            for index in range(0, complete, size):
                 raw = block[index:index+size]
                 offset = ordinal * size
                 ordinal += 1
                 if any(raw):
                     yield offset, ordinal, raw
+            if complete!=len(block):
+                raise ValueError(f'Enregistrement Linux tronqué à {ordinal*size} ; ABI attendu : glibc LE {size} octets')
 
     for offset, ordinal, raw in chunks():
         check_cancel()
@@ -182,6 +193,32 @@ def binary_rows(stream, path):
                       'Horodatage': timestamp(seconds, micros), 'Utilisateur': display(raw[44:76].split(b'\0')[0]),
                       'Hôte': display(raw[76:332].split(b'\0')[0]), 'Chemin': display(raw[8:40].split(b'\0')[0])}
         yield dict(fields, Offset=str(offset), Lecture='Structurée', **{'Texte brut': raw.hex()})
+
+
+
+def accounting_rows(stream):
+    """Linux acct_v3: the record version explicitly encodes its byte order."""
+    offset = 0
+    while True:
+        check_cancel()
+        raw = stream.read(64)
+        if not raw:
+            return
+        if len(raw)!=64 or raw[1] & 0x7f != 3:
+            raise ValueError(f'Comptabilité Linux acct_v3 invalide/tronquée à {offset}')
+        endian = '>' if raw[1] & 0x80 else '<'
+        tty, exit_code, uid, gid, pid, ppid, seconds, elapsed = struct.unpack_from(endian+'H6If',raw,2)
+        if not math.isfinite(elapsed) or elapsed<0:
+            raise ValueError(f'Durée acct_v3 invalide à {offset}')
+        counters = struct.unpack_from(endian+'8H',raw,32)
+        counters = [(value & 8191) << (3*(value >> 13)) for value in counters]
+        command = display(raw[48:64].split(b'\0')[0])
+        yield {'Format':'Linux acct_v3', 'Lecture':'Structurée', 'Offset':str(offset),
+               'Horodatage':timestamp(seconds), 'PID':str(pid), 'PPID':str(ppid),
+               'UID':str(uid), 'Commande':command, 'Statut':str(exit_code),
+               'Champs':encoded(dict(gid=gid,tty=tty,flags=raw[0],exit_code=exit_code,
+                                    elapsed_seconds=elapsed,counters=counters)), 'Texte brut':raw.hex()}
+        offset += 64
 
 
 def journal_rows(stream):
@@ -225,67 +262,94 @@ def journal_rows(stream):
             raise ValueError(f'Objet systemd journal tronqué à {offset}')
         return typ, flags, size, data
 
-    offset = header_size
-    count = 0
-    while tail and offset <= tail:
-        check_cancel()
-        typ, flags, size, data = object_at(offset)
-        if typ == 3:
-            if flags or len(data) < 48:
-                raise ValueError(f'Enregistrement journal invalide à {offset}')
-            seq, realtime, monotonic = struct.unpack_from('<QQQ', data)
-            width = 4 if compact else 16
-            if (len(data)-48) % width:
-                raise ValueError('Références de données journal tronquées')
-            fields = {}
-            entry_bytes = 0
-            for position in range(48, len(data), width):
+    array_offset, = struct.unpack_from('<Q', header, 176)
+
+    def entry_offsets():
+        # Only linked entries are live. Scanning OBJECT_ENTRY would incorrectly
+        # import orphaned objects that journalctl deliberately excludes.
+        current = array_offset
+        seen = set()
+        emitted = 0
+        previous = 0
+        while current:
+            check_cancel()
+            if current in seen or len(seen) >= MAX_MEMBERS:
+                raise ValueError('Cycle ou nombre excessif de tableaux journal')
+            seen.add(current)
+            _, flags, _, data = object_at(current, 6)
+            width = 4 if compact else 8
+            if flags or len(data)<8 or (len(data)-8) % width:
+                raise ValueError('Tableau d’entrées journal invalide')
+            next_array, = struct.unpack_from('<Q', data)
+            for position in range(8, len(data), width):
                 check_cancel()
-                ref, = struct.unpack_from('<I' if compact else '<Q', data, position)
-                _, compression, _, payload = object_at(ref, 1)
-                skip = 56 if compact else 48
-                if len(payload) < skip:
-                    raise ValueError('Objet DATA journal tronqué')
-                payload = payload[skip:]
-                if compression == 1:
-                    decoder = lzma.LZMADecompressor(memlimit=MAX_OBJECT)
-                    payload = decoder.decompress(payload, max_length=MAX_OBJECT+1)
-                    if len(payload)>MAX_OBJECT or not decoder.eof:
-                        raise ValueError('Données XZ journal tronquées ou supérieures à 64 Mio')
-                elif compression == 2:
-                    import lz4.block
-                    if len(payload)<8:
-                        raise ValueError('Données LZ4 journal tronquées')
-                    expanded, = struct.unpack_from('<Q', payload)
-                    if expanded>MAX_OBJECT:
-                        raise ValueError('Données LZ4 journal supérieures à 64 Mio')
-                    payload = lz4.block.decompress(payload[8:], uncompressed_size=expanded)
-                    if len(payload)!=expanded:
-                        raise ValueError('Taille LZ4 journal incohérente')
-                elif compression == 4:
-                    import zstandard
-                    with zstandard.ZstdDecompressor(max_window_size=MAX_OBJECT//1024).stream_reader(io.BytesIO(payload)) as reader:
-                        payload = reader.read(MAX_OBJECT+1)
-                    if len(payload)>MAX_OBJECT:
-                        raise ValueError('Données Zstandard journal supérieures à 64 Mio')
-                elif compression:
-                    raise ValueError('Compression systemd journal inconnue')
-                entry_bytes += len(payload)
-                if entry_bytes > MAX_OBJECT:
-                    raise ValueError('Entrée journal développée supérieure à 64 Mio')
-                key, sep, value = payload.partition(b'=')
-                if not sep:
-                    raise ValueError('Champ systemd journal sans séparateur')
-                fields.setdefault(display(key), []).append(display(value))
-            values = {key: value[0] for key, value in fields.items()}
-            count += 1
-            yield {'Format': 'systemd journal', 'Lecture': 'Structurée', 'Offset': str(offset),
-                   'Horodatage': timestamp(realtime//1000000, realtime%1000000),
-                   'Hôte': values.get('_HOSTNAME', ''), 'Processus': values.get('SYSLOG_IDENTIFIER', values.get('_COMM', '')),
-                   'PID': values.get('_PID', ''), 'UID': values.get('_UID', ''), 'Détail': values.get('MESSAGE', ''),
-                   'Événement': str(seq), 'Champs': encoded({'fields': fields, 'monotonic_us': monotonic,
-                                                              'boot_id': data[24:40].hex()}), 'Texte brut': encoded(fields)}
-        offset += (size+7) & ~7
+                reference, = struct.unpack_from('<I' if compact else '<Q', data, position)
+                if not reference:
+                    continue
+                if reference <= previous or emitted >= expected_entries:
+                    raise ValueError('Référence journal dupliquée, désordonnée ou surnuméraire')
+                previous = reference
+                emitted += 1
+                yield reference
+            current = next_array
+
+    count = 0
+    for offset in entry_offsets():
+        typ, flags, size, data = object_at(offset, 3)
+        if flags or len(data) < 48:
+            raise ValueError(f'Enregistrement journal invalide à {offset}')
+        seq, realtime, monotonic = struct.unpack_from('<QQQ', data)
+        width = 4 if compact else 16
+        if (len(data)-48) % width:
+            raise ValueError('Références de données journal tronquées')
+        fields = {}
+        entry_bytes = 0
+        for position in range(48, len(data), width):
+            check_cancel()
+            ref, = struct.unpack_from('<I' if compact else '<Q', data, position)
+            _, compression, _, payload = object_at(ref, 1)
+            skip = 56 if compact else 48
+            if len(payload) < skip:
+                raise ValueError('Objet DATA journal tronqué')
+            payload = payload[skip:]
+            if compression == 1:
+                decoder = lzma.LZMADecompressor(memlimit=MAX_OBJECT)
+                payload = decoder.decompress(payload, max_length=MAX_OBJECT+1)
+                if len(payload)>MAX_OBJECT or not decoder.eof:
+                    raise ValueError('Données XZ journal tronquées ou supérieures à 64 Mio')
+            elif compression == 2:
+                import lz4.block
+                if len(payload)<8:
+                    raise ValueError('Données LZ4 journal tronquées')
+                expanded, = struct.unpack_from('<Q', payload)
+                if expanded>MAX_OBJECT:
+                    raise ValueError('Données LZ4 journal supérieures à 64 Mio')
+                payload = lz4.block.decompress(payload[8:], uncompressed_size=expanded)
+                if len(payload)!=expanded:
+                    raise ValueError('Taille LZ4 journal incohérente')
+            elif compression == 4:
+                from fireblade.core.linux_streams import StrictZstd
+                with io.BufferedReader(StrictZstd(io.BytesIO(payload))) as reader:
+                    payload = reader.read(MAX_OBJECT+1)
+                if len(payload)>MAX_OBJECT:
+                    raise ValueError('Données Zstandard journal supérieures à 64 Mio')
+            elif compression:
+                raise ValueError('Compression systemd journal inconnue')
+            entry_bytes += len(payload)
+            if entry_bytes > MAX_OBJECT:
+                raise ValueError('Entrée journal développée supérieure à 64 Mio')
+            key, sep, value = payload.partition(b'=')
+            if not sep:
+                raise ValueError('Champ systemd journal sans séparateur')
+            fields.setdefault(display(key), []).append(display(value))
+        values = {key: value[0] for key, value in fields.items()}
+        count += 1
+        yield {'Format': 'systemd journal', 'Lecture': 'Structurée', 'Offset': str(offset),
+               'Horodatage': timestamp(realtime//1000000, realtime%1000000),
+               'Hôte': values.get('_HOSTNAME', ''), 'Processus': values.get('SYSLOG_IDENTIFIER', values.get('_COMM', '')),
+               'PID': values.get('_PID', ''), 'UID': values.get('_UID', ''), 'Détail': values.get('MESSAGE', ''),
+               'Événement': str(seq), 'Champs': encoded({'fields': fields, 'monotonic_us': monotonic,
+                                                          'boot_id': data[24:40].hex()}), 'Texte brut': encoded(fields)}
     if count != expected_entries:
         raise ValueError(f'Nombre d’entrées journal incohérent : {count} lu(es), {expected_entries} annoncé(es)')
 
@@ -416,6 +480,10 @@ def parse(source, output, progress=lambda _: None):
             handle = target.open('x', encoding='utf-8', newline='')
             writer = csv.DictWriter(handle, HEADERS)
             writer.writeheader()
+        from fireblade.core.linux_log_formats import enrich, utc_time
+        row.update(enrich(row, row.get('Texte brut','')))
+        if row.get('Format') == 'Zeek TSV':
+            row['Horodatage UTC'] = utc_time(row.get('Horodatage',''), epoch=True)
         row['Source'] = path
         writer.writerow(row)
         total += 1
@@ -436,6 +504,7 @@ def parse(source, output, progress=lambda _: None):
         entry = dict(path=path, status='pending', rows=0, raw_rows=0)
         members.append(entry)
         try:
+            from fireblade.core.linux_streams import bom_encoding
             prefix = stream.read(4096)
             class Prefix:
                 def __init__(self):
@@ -459,7 +528,9 @@ def parse(source, output, progress=lambda _: None):
                 compression = 'bzip2'
             elif prefix.startswith(b'\xfd7zXZ\0') or name.endswith('.lzma'):
                 compression = 'xz'
-            elif prefix.startswith(b'\x28\xb5\x2f\xfd') or name.endswith(('.zst', '.zstd')):
+            elif prefix.startswith(b'\x04\x22\x4d\x18') or name.endswith('.lz4'):
+                compression = 'lz4'
+            elif prefix.startswith(b'\x28\xb5\x2f\xfd') or name.endswith(('.zst', '.zstd', '.lz4')):
                 compression = 'zstd'
             if not compression and name.endswith(COMPRESSIONS):
                 raise ValueError('Signature de compression absente ou fichier tronqué')
@@ -472,15 +543,49 @@ def parse(source, output, progress=lambda _: None):
                 if compression == 'gzip':
                     decoder = gzip.GzipFile(fileobj=incoming)
                 elif compression == 'bzip2':
-                    decoder = bz2.BZ2File(incoming)
+                    from fireblade.core.linux_streams import StrictBlocks
+                    decoder = io.BufferedReader(StrictBlocks(incoming,bz2.BZ2Decompressor,'BZip2'))
                 elif compression == 'xz':
                     decoder = io.BufferedReader(BoundedLzma(incoming, xz=prefix.startswith(b'\xfd7zXZ\0')))
+                elif compression == 'lz4':
+                    import lz4.frame
+                    from fireblade.core.linux_streams import StrictBlocks
+                    decoder = io.BufferedReader(StrictBlocks(incoming,lz4.frame.LZ4FrameDecompressor,'LZ4'))
                 else:
-                    import zstandard
-                    decoder = io.BufferedReader(zstandard.ZstdDecompressor(max_window_size=MAX_OBJECT//1024).stream_reader(incoming))
+                    from fireblade.core.linux_streams import StrictZstd
+                    decoder = io.BufferedReader(StrictZstd(incoming))
                 child = path+'!/'+PurePosixPath(child.replace('\\', '/')).name
                 with decoder:
                     read(Counted(decoder), child, depth+1)
+                entry['status'] = 'archive'
+                return
+            if prefix.startswith((b'PK\x03\x04', b'PK\x05\x06')) or name.endswith('.zip'):
+                if depth>=MAX_DEPTH:
+                    raise ValueError('Profondeur de compression/archives supérieure à 8')
+                # ZIP central-directory access requires a bounded disk spool.
+                with tempfile.TemporaryFile() as spool:
+                    while block := incoming.read(1024*1024):
+                        check_cancel();consume(len(block));spool.write(block)
+                    from fireblade.core.linux_streams import validate_zip
+                    validate_zip(spool, MAX_MEMBERS-member_count, MAX_OBJECT)
+                    with zipfile.ZipFile(spool) as archive:
+                        for ordinal,item in enumerate(archive.infolist(),1):
+                            check_cancel()
+                            member_path = path+f'[entry {ordinal}]!/'+item.filename
+                            mode = item.external_attr >> 16
+                            if item.is_dir():
+                                member_count += 1
+                                if member_count>MAX_MEMBERS:
+                                    raise ValueError('Limite de 100000 membres Linux atteinte')
+                                continue
+                            if not safe_member(item.filename) or (stat.S_IFMT(mode) not in (0,stat.S_IFREG)) or item.flag_bits & 1:
+                                member_count += 1
+                                if member_count>MAX_MEMBERS:
+                                    raise ValueError('Limite de 100000 membres Linux atteinte')
+                                members.append(dict(path=member_path,status='skipped',reason='Chemin non sûr, fichier spécial ou ZIP chiffré'))
+                                continue
+                            with archive.open(item) as child:
+                                read(Counted(child),member_path,depth+1)
                 entry['status'] = 'archive'
                 return
             if name.endswith('.tar') or (len(prefix)>262 and prefix[257:262]==b'ustar'):
@@ -521,6 +626,9 @@ def parse(source, output, progress=lambda _: None):
                         for row in journal_rows(spool):
                             emit(row, path, entry)
                 entry['note'] = 'Objets décodés ; scellement et hachages internes non vérifiés'
+            elif re.fullmatch(r'(?:pacct|acct)(?:[.-].*)?', plain_name(path)):
+                for row in accounting_rows(Counted(incoming)):
+                    emit(row, path, entry)
             elif re.fullmatch(r'(?:utmp|wtmp|btmp|lastlog)(?:[.-].*)?', plain_name(path)):
                 for row in binary_rows(Counted(incoming), path):
                     emit(row, path, entry)
@@ -532,12 +640,15 @@ def parse(source, output, progress=lambda _: None):
                     spool.seek(0)
                     for row in export_rows(spool):
                         emit(row, path, entry)
-            elif b'\0' in prefix:
+            elif b'\0' in prefix and not bom_encoding(prefix):
                 entry.update(status='unsupported', reason='Binaire inconnu ; aucun décodage arbitraire')
                 return
             elif name.endswith(('.journal', '.journal~')):
                 raise ValueError('Signature systemd journal absente')
             else:
+                from fireblade.core.linux_streams import AlignedLines, bom_encoding
+                encoding = bom_encoding(prefix)
+                line_stream = AlignedLines(incoming,encoding) if encoding else incoming
                 number = 0
                 offset = 0
                 columns = None
@@ -545,14 +656,16 @@ def parse(source, output, progress=lambda _: None):
                 table_format = ''
                 while True:
                     check_cancel()
-                    raw = incoming.readline(MAX_LINE+1)
+                    raw = line_stream.readline(MAX_LINE+1)
                     if not raw:
                         break
                     consume(len(raw))
                     number += 1
                     if len(raw)>MAX_LINE:
                         raise ValueError(f'Ligne {number} supérieure à 8 Mio ; lecture interrompue explicitement')
-                    text = raw.decode('utf-8-sig' if number==1 else 'utf-8', 'backslashreplace').rstrip('\r\n')
+                    text = raw.decode(encoding or ('utf-8-sig' if number==1 else 'utf-8'), 'backslashreplace').rstrip('\r\n')
+                    if number==1:
+                        text = text.removeprefix('\ufeff')
                     fields = text_fields(text, path)
                     if text.startswith('#separator '):
                         token = text[len('#separator '):]

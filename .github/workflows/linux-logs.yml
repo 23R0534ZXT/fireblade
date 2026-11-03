@@ -1,0 +1,50 @@
+name: Linux offline logs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'src/fireblade/core/linux*.py'
+      - 'src/fireblade/core/collection*.py'
+      - 'tests/core/test_linux_logs.py'
+      - 'scripts/benchmarks/linux*.py'
+      - '.github/workflows/linux-logs.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-logs-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  linux-logs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements/runtime.txt
+      - run: python -m pip install --only-binary=:all: -r requirements/runtime.txt pytest psutil
+      - name: Reader, corruption, provenance and collection regression tests
+        run: python -m pytest tests/core/test_linux_logs.py tests/ui/test_linux_logs_desktop.py tests/core/test_catscale.py tests/core/test_collection.py tests/core/test_coverage.py tests/core/test_timeline.py -q --junitxml=artifacts/linux-log-tests.xml
+      - name: Bounded parsing and persisted collection checks
+        run: python -m scripts.benchmarks.linux_logs --directory artifacts/linux-stress --gib 1 --import-rows 20000 --report artifacts/linux-log-qualification.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Linux-log-qualification
+          path: artifacts/*.json
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Linux-log-test-results
+          path: artifacts/*.xml
+          retention-days: 14

@@ -59,7 +59,6 @@ def identify(path):
             with hive.open('rb') as stream:
                 if stream.read(4) == b'regf':
                     return ['companion']
-        return []
     if magic.startswith(b'ElfFile\0') or name.endswith('.evtx'):
         return ['EvtxECmd']
     if name.startswith(('amcache', 'inventory')) and (magic.startswith(b'regf') or magic.startswith(b'SQLite format 3')):

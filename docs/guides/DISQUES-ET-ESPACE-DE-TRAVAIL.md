@@ -1,9 +1,8 @@
 # Fireblade 0.2.0 — parcours case et analyse de disque
 
-Ces fonctionnalités sont dans les sources en développement. Le téléchargement
-Windows 0.1.1 publié ne les contient pas ; le [nouvel EXE Windows a passé ses qualifications](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489),
-mais n’a pas encore été publié comme release. Il est disponible dans les artefacts
-de cette exécution GitHub Actions.
+Ces fonctionnalités sont disponibles dans la [release Windows 0.2.0](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.0).
+Le binaire publié est celui qui a [passé les qualifications Windows](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489).
+Les limites propres aux formats et périphériques restent détaillées ci-dessous.
 
 ## Commencer
 

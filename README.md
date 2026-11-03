@@ -12,7 +12,7 @@ Fireblade s’adresse aux analystes DFIR et aux personnes qui apprennent l’inv
 
 *Interface en français. Capture de l’application avec des données de démonstration, rendue sous Linux hors écran.*
 
-> **Version des sources : 0.2.0.** Le dernier EXE publié est encore la **0.1.1** : il ne contient pas les nouveautés ci-dessous. La construction 0.2.0 doit passer les contrôles Windows avant publication.
+> **Version des sources : 0.2.0.** Le dernier EXE publié est encore la **0.1.1** : il ne contient pas les nouveautés ci-dessous. La [construction 0.2.0](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489) a passé les contrôles Windows ; son EXE est disponible dans les artefacts de cette exécution, en attendant une publication de release.
 
 ## Nouveautés de la 0.2
 
@@ -82,7 +82,7 @@ Un compte GitHub est nécessaire pour publier un retour.
 
 ## Validation et limites
 
-Les sources 0.2.0 ont été testées sous Linux/Qt hors écran, notamment avec un disque RAW à deux partitions et des requêtes pendant l’indexation. Ces contrôles ne qualifient pas encore le nouvel EXE Windows ni tous les formats et périphériques. [Rapport et limites de la 0.2](docs/validation/reports/20261103-v02-case-disk-linux.md).
+La [0.2.0 corrigée sous Windows](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489) a passé les tests Python 3.11/3.12/3.13 (1 169 tests réussis par version), la construction de l’EXE autonome, les lecteurs, les chemins UNC/longs, les contrôles visuels, le scénario de plus de 3 Gio et les 320 analyses. Les essais Linux couvrent aussi un disque RAW à deux partitions et les requêtes pendant l’indexation. Ces contrôles ne qualifient pas tous les formats d’image ni les périphériques physiques. [Rapport et limites de la 0.2](docs/validation/reports/20261103-v02-case-disk-linux.md).
 
 L’[EXE 0.1.1 publié](https://github.com/23R0534ZXT/fireblade/actions/runs/41652792123) a réussi les contrôles Windows requis : tests sur Python 3.11/3.12/3.13, programme autonome, lecteurs embarqués, chemins longs et réseau, huit variantes visuelles, 320 analyses et un CSV de plus de 3 Gio. Ces vérifications automatisées ne remplacent pas les essais sur vos postes et vos formats d’artefacts.
 

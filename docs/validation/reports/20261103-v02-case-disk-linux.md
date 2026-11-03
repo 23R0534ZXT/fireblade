@@ -65,8 +65,9 @@ l’animation et l’espace de travail avec arbre et grille.
 
 ## Limites de la preuve
 
-Aucune qualification native de cette extension sous Windows, aucun test de
-périphérique physique réel, d’E01, de NTFS ou d’ext n’est attesté ici. Le code
+Les tests de sources et les qualifications générales de l’EXE ont ensuite passé
+sous Windows (voir le retour de CI ci-dessous). Aucun essai de périphérique
+physique réel, d’image E01, NTFS ou ext n’est attesté ici. Le code
 Windows de lecture physique utilise une ouverture `rb` et la demande de longueur
 `IOCTL_DISK_GET_LENGTH_INFO` ; cela reste à vérifier sur un poste approprié.
 Les parseurs Windows dépendent du pack embarqué et leurs erreurs restent dans le
@@ -96,3 +97,19 @@ rend explicitement la main aux threads Python avec `time.sleep`, comme les
 helpers des autres tests de grille. Le délai d’échec reste borné et imprime
 les piles des threads en cas de dépassement. La validation native du correctif
 est à consulter dans la nouvelle exécution GitHub Actions.
+
+
+## Validation Windows du correctif
+
+Le commit `43893ab8b5b7a6d501bc48dfa04591f694f5c5db` a passé tous les
+contrôles requis de l’[exécution 41673982489](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489) :
+
+- Python 3.11, 3.12 et 3.13 : **1 169 tests réussis et 28 ignorés par version** ;
+- construction de l’EXE et son autotest en dossier vide ;
+- chemins UNC et longs, matrice des lecteurs ;
+- apparences Windows, scénario de plus de 3 Gio dans le véritable EXE ;
+- parcours natif à 320 analyses.
+
+Conclusion globale GitHub Actions : **success**. Les jobs optionnels de diagnostic
+et de publication ont été ignorés conformément aux conditions du workflow.
+L’EXE 0.2.0 est disponible comme artefact de l’exécution, pas comme release publiée.

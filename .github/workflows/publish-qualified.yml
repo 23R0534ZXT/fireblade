@@ -1,0 +1,63 @@
+name: Publish an already qualified Windows build
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Windows tests and standalone EXE run to publish
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: publish-qualified-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REQUESTED_RUN_ID: ${{ inputs.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test publication guards
+        run: |
+          python -m pip install pytest ruff==0.14.3
+          python -m ruff check scripts/publish_qualified.py tests/test_publish_qualified.py
+          python -m pytest --noconftest -q tests/test_publish_qualified.py tests/test_release.py
+      - name: Require the successful Windows workflow and every release gate
+        id: qualification
+        run: python -m scripts.publish_qualified inspect
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.qualification.outputs.commit }}
+          path: qualified-source
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: Fireblade-exe
+          path: artifacts/executable
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: Windows-single-file-verification
+          path: artifacts/verification
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify the qualified SHA-256 and publish through a draft
+        env:
+          QUALIFIED_COMMIT: ${{ steps.qualification.outputs.commit }}
+        run: python -m scripts.publish_qualified publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Published-release-receipt
+          path: artifacts/release.json

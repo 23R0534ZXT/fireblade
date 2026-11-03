@@ -23,7 +23,7 @@ def field_kind(header):
     value = re.sub(r'[^a-z0-9]', '', header.casefold())
     if any(token in value for token in ('username', 'accountname', 'userid', 'subjectuser', 'targetuser')) or value in ('user', 'utilisateur', 'account'):
         return 'user'
-    if any(token in value for token in ('ipaddress', 'sourceip', 'destinationip', 'remoteip', 'localip')) or value in ('ip', 'srcip', 'dstip','sourceaddress','destinationaddress','remoteaddress','localaddress'):
+    if any(token in value for token in ('ipaddress', 'sourceip', 'destinationip', 'remoteip', 'localip')) or value in ('ip', 'srcip', 'dstip','sourceaddress','destinationaddress','remoteaddress','localaddress','adressedistante','adresselocale','adressesource','adressedestination'):
         return 'ip'
     if any(token in value for token in ('filepath', 'fullpath', 'targetpath', 'imagepath', 'executablepath')) or value in ('path', 'chemin', 'image', 'filename'):
         return 'path'

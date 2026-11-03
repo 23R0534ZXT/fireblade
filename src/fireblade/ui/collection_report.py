@@ -119,7 +119,7 @@ class CollectionReport(QWidget):
         for run in entry.get('runs',[]):
             lines+=['',run['tool']+' : '+STATUSES.get(run['status'],run['status']),run.get('error','')]
             lines+=run.get('warnings',[])
-            for member in run.get('catscale',{}).get('members',[]):
+            for member in run.get('linux_logs', run.get('catscale',{})).get('members',[]):
                 if member['status'] in ('error','unsupported','skipped'):
                     lines+=[member['status']+' · '+member['path']+' : '+member.get('reason','')]
             for output in run.get('outputs',[]):

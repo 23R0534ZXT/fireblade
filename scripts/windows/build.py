@@ -38,6 +38,7 @@ def main():
                "--name", "Fireblade", "--paths", str(root / "src"),
                "--distpath", str(staging), "--workpath", str(root / "build" / "windows" / "pyinstaller"),
                "--specpath", str(root / "build" / "windows"), "--collect-all", "duckdb",
+               "--collect-all", "lz4", "--collect-all", "zstandard",
                "--collect-all", "dissect.esedb", "--collect-all", "dissect.cstruct", "--collect-all", "dissect.util",
                "--hidden-import", "numpy", "--hidden-import", "decimal", "--hidden-import", "uuid", "--hidden-import", "fractions"]
     for source, target in [(generated, "resources"), (root / "config" / "fireblade.toml", "resources/config"),
@@ -47,6 +48,7 @@ def main():
                            (root / "docs" / "guides" / "CHRONOLOGIE-ET-SAUVEGARDES.md", "resources/docs/guides"),
                            (root / "docs" / "guides" / "CHASSE-IOC.md", "resources/docs/guides"),
                            (root / "docs" / "guides" / "COUVERTURE-COLLECTE.md", "resources/docs/guides"),
+                           (root / "docs" / "guides" / "JOURNAUX-LINUX.md", "resources/docs/guides"),
                            (root / "examples" / "ioc", "resources/examples/ioc"),
                            (root / "docs" / "assets" / "fireblade-timeline.png", "resources/docs/assets"),
                            (root / "docs" / "assets" / "fireblade-ioc-hunt.png", "resources/docs/assets"),

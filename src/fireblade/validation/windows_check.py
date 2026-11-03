@@ -416,6 +416,10 @@ def run_check(app, report_path):
         def catscale_collection():
             report['catscale']=verify_catscale(app,directory/'catscale-collection',window.settings)
         check('catscale_families_import_grid_and_case_restore',catscale_collection)
+        from fireblade.validation.linux_logs import verify_linux_logs
+        def linux_log_collection():
+            report['linux_logs']=verify_linux_logs(app,directory/'linux-log-collection',window.settings)
+        check('linux_logs_compression_journal_binary_grid_and_case_restore',linux_log_collection)
         from fireblade.validation.browser_artifacts import verify_browser_artifacts
         def browser_artifacts():
             report['browser_artifacts']=verify_browser_artifacts(app,directory/'browser-artifacts',window.settings)

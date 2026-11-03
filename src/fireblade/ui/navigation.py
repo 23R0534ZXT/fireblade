@@ -1,5 +1,5 @@
 """Navigate small analysis snapshots without opening inactive databases."""
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
@@ -67,7 +67,7 @@ class AnalysisNavigator(QWidget):
                 if grouping == 'flat' or grouping == 'folders' and origin:
                     parent = roots[root_key]
                     if grouping == 'folders' and origin:
-                        relative = Path(origin.get('relative', ''))
+                        relative = PurePosixPath(origin.get('relative', '').replace('\\', '/'))
                         components = [origin.get('partition', 'Volume'), *relative.parent.parts]
                         key = root_key
                         for component in components:

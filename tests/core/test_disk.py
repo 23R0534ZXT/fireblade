@@ -236,3 +236,13 @@ def test_source_changed_after_parsing_is_not_published(tmp_path):
     assert report['files'][0]['status'] == 'error'
     assert 'modifiée' in report['files'][0]['error']
     assert source.read_bytes() == LOG
+
+
+def test_windows_relative_paths_use_portable_separators(tmp_path):
+    from pathlib import PureWindowsPath
+    root = tmp_path/'source'; root.mkdir()
+    source = root/'auth.log'; source.write_bytes(LOG)
+    collection = DiskCollection(root, tmp_path/'work', ToolPack(tmp_path/'tools'))
+    extracted = collection.copy_artifact(source, 'volume', PureWindowsPath('var/log/auth.log'))
+    assert extracted == collection.root/'volume/var/log/auth.log'
+    assert collection.disk['artifacts'][0]['relative'] == 'var/log/auth.log'

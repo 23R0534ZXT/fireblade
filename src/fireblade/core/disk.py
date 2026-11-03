@@ -134,7 +134,7 @@ class DiskCollection(Collection):
             temporary.unlink(missing_ok=True)
         self.disk['extracted'] += 1
         self.disk['artifacts'].append(dict(source=str(source), partition=partition,
-            relative=str(relative), extracted=str(target), sha256=digest.hexdigest(), size=after.st_size))
+            relative=PurePosixPath(*parts).as_posix(), extracted=str(target), sha256=digest.hexdigest(), size=after.st_size))
         return target
 
     def walk_sources(self, on_error):

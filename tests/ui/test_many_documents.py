@@ -10,7 +10,7 @@ from fireblade.ui.workspace import read_session, write_session
 
 
 def test_320_real_analyses_keep_navigation_search_and_session(qt_application, tmp_path):
-    window = Window()
+    window = Window(require_case=False)
     errors = []
     window.error = errors.append
     window.resize(800, 600)

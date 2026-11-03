@@ -612,6 +612,7 @@ class ExplorationMixin:
                 self.error(exc)
 
     def queue_files(self, paths):
+        if not self.require_active_case():return
         self.open_queue.extend(Path(path) for path in paths)
         if len(self.open_queue) > 1000:
             self.open_queue = self.open_queue[:1000]

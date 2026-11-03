@@ -13,6 +13,7 @@ from fireblade.ui.workers import Signals
 
 class FileCommandsMixin:
     def import_csv(self):
+        if not self.require_active_case():return
         paths, _ = QFileDialog.getOpenFileNames(self, "Ouvrir des fichiers", "", "Données (*.csv *.tsv *.txt *.xlsx *.xls);;Tous les fichiers (*)")
         if paths:
             self.queue_files(paths)
@@ -167,6 +168,7 @@ class FileCommandsMixin:
 
 
     def open_path(self, path):
+        if not self.require_active_case():return
         path = Path(path)
         if path.suffix.lower() == ".fireblade-session":
             self.load_session(path)

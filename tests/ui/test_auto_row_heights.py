@@ -30,7 +30,7 @@ def test_auto_height_exceeds_three_lines_and_stays_shared_after_resize(qt_applic
         writer.writerow(['short','short','2'])
     case=Case(tmp_path/'s.timeline');case.import_csv(source)
     view=View(auto_row_height=True,layout_styles={'row':{'word_wrap':True}},pinned_columns=[0],right_pinned_columns=[2])
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         window.attach(case,view);window.show();settle(qt_application,window)
         tree=window.tree;tree.frozen.setColumnWidth(1,140);tree.setColumnWidth(2,120);settle(qt_application,window)
@@ -81,7 +81,7 @@ def test_fixed_group_row_and_header_heights_match_pinned_views(qt_application,tm
     source=tmp_path/'fixed.csv';source.write_text('Group,N\nA,1\nA,2\n')
     case=Case(tmp_path/'fixed.timeline');case.import_csv(source)
     view=View(groups=[0],row_height=36,group_row_height=48,header_height=52,right_pinned_columns=[1])
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         window.attach(case,view);window.show();settle(qt_application,window)
         parent=window.model.index(0,0);window.tree.setExpanded(parent,True);settle(qt_application,window)

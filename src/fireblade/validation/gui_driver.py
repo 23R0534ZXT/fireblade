@@ -35,7 +35,7 @@ class GuiRun:
                            automation='QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input',
                            checks=[], screenshots=[], style=app.property('fireblade_style'),
                            font=dict(family=app.font().family(), point_size=app.font().pointSizeF()))
-        self.window = Window(rule_path=self.out/'qa-global-rules.json')
+        self.window = Window(require_case=False, rule_path=self.out/'qa-global-rules.json')
         self.window.error = lambda error: self.errors.append(str(error))
         self.window.show()
         self.report['font'] = dict(family=app.font().family(), point_size=app.font().pointSizeF())

@@ -11,6 +11,13 @@ from fireblade.runtime.windows_paths import user_directory
 
 @dataclass
 class Preferences:
+    navigation_grouping: str = "folders"
+    navigation_visible: bool = True
+    navigation_position: str = "left"
+    workspace_details_visible: bool = True
+    main_toolbar_visible: bool = True
+    collection_toolbar_visible: bool = True
+    startup_animation: bool = True
     theme: str = "light"
     theme_preset: str = ""
     theme_palette: dict[str,str] = field(default_factory=dict)
@@ -28,6 +35,10 @@ class Preferences:
     pinned_columns_by_format: dict[str,list[str]] = field(default_factory=dict)
 
     def validate(self):
+        if self.navigation_grouping not in ("folders", "families", "flat") or self.navigation_position not in ("left", "right"):
+            raise ValueError("Organisation de navigation invalide")
+        if any(type(getattr(self, name)) is not bool for name in ("navigation_visible", "startup_animation", "workspace_details_visible", "main_toolbar_visible", "collection_toolbar_visible")):
+            raise ValueError("Préférence de navigation invalide")
         if self.theme not in ("light", "dark") or self.date_format not in (
             "source",
             "iso",

@@ -22,7 +22,7 @@ def settle(app,window):
 
 
 def loaded(app,tmp_path):
-    window=Window(investigation_root=tmp_path/'cases');window.show();errors=[];window.error=lambda value:errors.append(str(value))
+    window=Window(require_case=False, investigation_root=tmp_path/'cases');window.show();errors=[];window.error=lambda value:errors.append(str(value))
     window.create_investigation('Case graphique')
     for n in range(2):
         source=tmp_path/f'events-{n}.csv'

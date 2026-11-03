@@ -25,7 +25,7 @@ def analysis(tmp_path,name):
 
 
 def test_close_and_restart_lists_case_without_loading_databases(qt_application,tmp_path,monkeypatch):
-    path=analysis(tmp_path,'first');window=Window();errors=[];window.error=errors.append
+    path=analysis(tmp_path,'first');window=Window(require_case=False);errors=[];window.error=errors.append
     data=window.create_investigation('Enquête A','Poste compromis','windows')
     window.load_case(path);settle(qt_application,window)
     window.case.bookmark(1,'À vérifier')
@@ -35,7 +35,7 @@ def test_close_and_restart_lists_case_without_loading_databases(qt_application,t
     def forbidden(*args,**kwargs):raise AssertionError('Startup opened an analysis')
     with monkeypatch.context() as patch:
         patch.setattr('fireblade.ui.file_commands.Case',forbidden)
-        restarted=Window();restarted.error=errors.append
+        restarted=Window(require_case=False);restarted.error=errors.append
     try:
         assert restarted.case is None and restarted.model is None and restarted.documents==[]
         assert restarted.active_investigation is None
@@ -52,7 +52,7 @@ def test_close_and_restart_lists_case_without_loading_databases(qt_application,t
 
 def test_switching_cases_saves_session_and_releases_inactive_connection(qt_application,tmp_path):
     first=analysis(tmp_path,'one');second=analysis(tmp_path,'two')
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         one=window.create_investigation('One');window.load_case(first);settle(qt_application,window)
         window.search.setText('alice');window.apply();settle(qt_application,window)
@@ -72,7 +72,7 @@ def test_switching_cases_saves_session_and_releases_inactive_connection(qt_appli
 
 
 def test_missing_analysis_does_not_close_current_case(qt_application,tmp_path):
-    path=analysis(tmp_path,'valid');window=Window();errors=[];window.error=errors.append
+    path=analysis(tmp_path,'valid');window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         broken=window.create_investigation('Broken');window.load_case(path);settle(qt_application,window)
         assert window.close_investigation();settle(qt_application,window)
@@ -84,7 +84,7 @@ def test_missing_analysis_does_not_close_current_case(qt_application,tmp_path):
 
 
 def test_failed_save_prevents_case_switch_and_close(qt_application,tmp_path,monkeypatch):
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         one=window.create_investigation('One');other=window.investigation_library.create('Other')
         def denied(*args,**kwargs):raise PermissionError('locked')
@@ -97,7 +97,7 @@ def test_failed_save_prevents_case_switch_and_close(qt_application,tmp_path,monk
 
 
 def test_archive_search_and_default_import_folder(qt_application,tmp_path):
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         one=window.create_investigation('Laptop Alice','Poste Windows','windows')
         dialog=ImportDialog(tmp_path/'evidence.csv',window)
@@ -116,7 +116,7 @@ def test_archive_search_and_default_import_folder(qt_application,tmp_path):
 
 def test_multiple_tabs_active_view_and_annotations_survive_restart(qt_application,tmp_path):
     one=analysis(tmp_path,'tab-one');two=analysis(tmp_path,'tab-two')
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     data=window.create_investigation('Deux analyses')
     for path in (one,two):window.load_case(path);settle(qt_application,window)
     window.case.bookmark(2,'Deuxième analyse')
@@ -124,7 +124,7 @@ def test_multiple_tabs_active_view_and_annotations_survive_restart(qt_applicatio
     window.set_view(View(sort_column=1,sort_type='number',descending=True,pinned_columns=[0]));settle(qt_application,window)
     window.case.bookmark(1,'Première analyse')
     assert window.close()
-    reopened=Window();reopened.error=errors.append
+    reopened=Window(require_case=False);reopened.error=errors.append
     try:
         assert reopened.open_investigation(data['id']);settle(qt_application,reopened)
         assert len(reopened.documents)==2 and reopened.active_document==0
@@ -138,7 +138,7 @@ def test_multiple_tabs_active_view_and_annotations_survive_restart(qt_applicatio
 
 def test_case_keeps_two_collections_and_their_views(qt_application,tmp_path):
     from fireblade.core.collection import Collection,ToolPack
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         data=window.create_investigation('Collectes multiples')
         first_path=None
@@ -162,7 +162,7 @@ def test_case_keeps_two_collections_and_their_views(qt_application,tmp_path):
 
 
 def test_queued_imports_block_switch_and_metadata_edits_keep_local_session(qt_application,tmp_path):
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         one=window.create_investigation('Original');other=window.investigation_library.create('Other')
         window.open_queue=[tmp_path/'pending.csv']
@@ -185,7 +185,7 @@ def test_frozen_case_qualification_flow_uses_real_widgets_and_databases(qt_appli
 def test_pending_collection_result_blocks_closing_or_switching_case(qt_application,tmp_path):
     from fireblade.core.collection import Collection,ToolPack
     root=tmp_path/'input';root.mkdir();(root/'records.csv').write_text('User\nalice\n')
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         data=window.create_investigation('Pending collection')
         window.collection=Collection(root,tmp_path/'output',ToolPack(tmp_path/'pack'),window.settings)
@@ -200,7 +200,7 @@ def test_pending_collection_result_blocks_closing_or_switching_case(qt_applicati
 
 
 def test_same_case_cannot_be_opened_in_two_windows(qt_application,tmp_path):
-    first=Window();second=Window();errors=[];second.error=errors.append
+    first=Window(require_case=False);second=Window(require_case=False);errors=[];second.error=errors.append
     try:
         data=first.create_investigation('Unique owner')
         assert not second.open_investigation(data['id'])
@@ -218,7 +218,7 @@ def test_large_old_case_catalogue_stays_unloaded_and_searchable(qt_application,t
     def forbidden(*args,**kwargs):raise AssertionError('Catalogue loaded an analysis database')
     with monkeypatch.context() as patch:
         patch.setattr('fireblade.ui.file_commands.Case',forbidden)
-        window=Window(investigation_root=library.root)
+        window=Window(require_case=False, investigation_root=library.root)
     try:
         assert window.cases_table.rowCount()==300 and window.case is None and window.documents==[]
         window.cases_search.setText('0299');assert window.cases_table.rowCount()==1

@@ -26,7 +26,7 @@ def settle(app,window):
 def open_window(tmp_path,source_text,view):
     source=tmp_path/'s.csv';source.write_text(source_text)
     case=Case(tmp_path/'s.timeline',settings=Settings(page_size=25,max_loaded_rows=25));case.import_csv(source)
-    window=Window(settings=case.settings);errors=[];window.error=errors.append
+    window=Window(require_case=False, settings=case.settings);errors=[];window.error=errors.append
     window.attach(case,view);window.show()
     return window,errors
 

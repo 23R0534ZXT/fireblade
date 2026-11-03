@@ -140,7 +140,7 @@ def run_check(app, report_path):
         source.chmod(stat.S_IREAD)
         readonly.append(source)
         case_path = directory / "analyse été.timeline"
-        window = Window(rule_path=directory / "règles globales.json")
+        window = Window(require_case=False, rule_path=directory / "règles globales.json")
         window.error = lambda message: errors.append(str(message))
         window.show()
         app.processEvents()

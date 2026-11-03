@@ -17,7 +17,7 @@ def test_folder_picker_imports_catscale_in_case_and_hayabusa_explains_evtx_requi
     source=write_corpus(tmp_path/'evidence')
     monkeypatch.setattr(ui.QFileDialog,'getExistingDirectory',lambda *args:str(source))
     monkeypatch.setattr(ui.CollectionOrganizationDialog,'exec',lambda self:QDialog.DialogCode.Accepted)
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         case=window.create_investigation('Linux collect',environment='linux')
         window.parse_collection()

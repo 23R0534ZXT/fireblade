@@ -39,7 +39,7 @@ def prepare_collection(tmp_path):
 
 def test_alert_context_original_and_return_keep_alert_filters_and_notes(qt_application,tmp_path):
     collection,raw,alert_path=prepare_collection(tmp_path)
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         window.collection=collection
         window.load_session(str(collection.output/'collection.fireblade-session'))
@@ -83,7 +83,7 @@ def test_saved_context_reconnects_to_collection_without_raw_evtx(qt_application,
     finally:case.close()
     result=build_context(collection,alert,alert_path,1)
     shutil.rmtree(collection.root)
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         assert window.collection is None
         window.load_case(result['analysis']);settle(qt_application,window)
@@ -102,7 +102,7 @@ def case_view():
 
 def test_preview_reuses_panel_and_only_kept_context_enters_saved_session(qt_application,tmp_path):
     collection,raw,alert_path=prepare_collection(tmp_path)
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     window.resize(1024,700);window.show()
     try:
         window.collection=collection;window.load_case(alert_path);settle(qt_application,window)
@@ -134,7 +134,7 @@ def test_preview_reuses_panel_and_only_kept_context_enters_saved_session(qt_appl
 
 def test_preview_opens_verified_source_and_close_removes_only_unkept_files(qt_application,tmp_path):
     collection,raw,alert_path=prepare_collection(tmp_path)
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         window.collection=collection;window.load_case(alert_path);settle(qt_application,window)
         window.tree.setCurrentIndex(window.model.index(0,0));window.preview_alert_context()
@@ -153,7 +153,7 @@ def test_preview_opens_verified_source_and_close_removes_only_unkept_files(qt_ap
 
 def test_alert_from_another_collection_cannot_use_current_collection(qt_application,tmp_path):
     collection,raw,alert_path=prepare_collection(tmp_path)
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         window.collection=collection
         window.load_case(alert_path);settle(qt_application,window)

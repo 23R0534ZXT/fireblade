@@ -4,7 +4,7 @@ from fireblade.ui.app import Window
 
 
 def test_rejected_session_save_reports_error_and_keeps_previous_file(qt_application, tmp_path):
-    window = Window()
+    window = Window(require_case=False)
     errors = []
     window.error = errors.append
     source = tmp_path / 'source.csv'

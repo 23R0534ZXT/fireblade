@@ -76,7 +76,7 @@ def test_help_and_license_texts_are_available_without_a_source_browser(qt_applic
 def test_complete_tutorial_is_available_from_the_help_menu(qt_application):
     from fireblade.ui.app import Window
 
-    window = Window()
+    window = Window(require_case=False)
     help_menu = next(action.menu() for action in window.menuBar().actions()
                      if action.text().replace("&", "") == "Aide")
     assert any(action.text() == "Tutoriel complet — toutes les fonctionnalités"

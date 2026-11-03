@@ -43,8 +43,12 @@ from fireblade.ui.file_commands import FileCommandsMixin
 from fireblade.ui.export_commands import ExportCommandsMixin
 
 
-class Window(FileCommandsMixin, ExportCommandsMixin, TimelineMixin, InvestigationToolsMixin, InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
-    def __init__(self, settings=None, rule_path=None, investigation_root=None):
+from fireblade.ui.start_workflow import StartWorkflowMixin
+
+
+class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, TimelineMixin, InvestigationToolsMixin, InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
+    """Desktop workspace. Case-free mode is an opt-out for component qualification."""
+    def __init__(self, settings=None, rule_path=None, investigation_root=None, require_case=True):
         super().__init__()
         self.settings = settings or Settings()
         self._investigation_root = investigation_root
@@ -76,6 +80,7 @@ class Window(FileCommandsMixin, ExportCommandsMixin, TimelineMixin, Investigatio
         self.coverage_panel=CoveragePanel(self)
         self.workbench.addTab(self.coverage_panel, "Couverture & diagnostics")
         self.workbench.currentChanged.connect(lambda _:self.coverage_panel.open() if self.workbench.currentWidget() is self.coverage_panel else None)
+        self.setup_start_workflow(require_case)
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -202,11 +207,10 @@ class Window(FileCommandsMixin, ExportCommandsMixin, TimelineMixin, Investigatio
         message = self.welcome_title = QLabel("Commencer une analyse")
         message.setAlignment(Qt.AlignCenter)
         welcome_layout.addWidget(message)
-        collect_button = QPushButton("Importer une collecte…")
-        collect_button.clicked.connect(self.parse_collection)
-        collect_button.setToolTip("Artefacts Windows ou collecte Linux CatScale : choisir un dossier et parser ses fichiers.")
-        welcome_layout.addWidget(collect_button, 0, Qt.AlignHCenter)
-        open_button = QPushButton("Ouvrir un export…")
+        disk_button = QPushButton("Analyser un disque logique ou un disque complet…")
+        disk_button.clicked.connect(self.choose_disk)
+        welcome_layout.addWidget(disk_button, 0, Qt.AlignHCenter)
+        open_button = QPushButton("Analyser un fichier de données…")
         open_button.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
         open_button.clicked.connect(self.import_csv)
         welcome_layout.addWidget(open_button, 0, Qt.AlignHCenter)
@@ -475,7 +479,9 @@ class Window(FileCommandsMixin, ExportCommandsMixin, TimelineMixin, Investigatio
             raise RuntimeError(errors[0])
         return result[0]
 
-    def can_open_file(self):
+    def can_open_file(self, allow_without_case=False):
+        if not allow_without_case and not self.require_active_case():
+            return False
         if getattr(self,'_collection_open_pending',False):
             self.statusBar().showMessage('Ouverture des résultats de la collecte…')
             return False
@@ -1089,6 +1095,10 @@ class Window(FileCommandsMixin, ExportCommandsMixin, TimelineMixin, Investigatio
         QApplication.clipboard().setText(out.getvalue())
 
     def closeEvent(self, event):
+        if getattr(self, "disk_job", None) is not None or self.disk_pool.activeThreadCount() or self._disk_pending:
+            self.statusBar().showMessage("Arrêtez ou attendez l’indexation du disque avant de fermer.")
+            event.ignore()
+            return
         if self.busy or self.pool.activeThreadCount() or getattr(self,'_collection_open_pending',False) or getattr(self,'_investigation_switching',False):
             self.statusBar().showMessage("Interrompez ou attendez la fin de l’opération avant de fermer.")
             event.ignore()
@@ -1147,10 +1157,25 @@ def main():
     if args.self_test_report is not None:
         from fireblade.validation.windows_check import run_check
         raise SystemExit(run_check(app, args.self_test_report))
-    window = Window(settings)
-    window.show()
-    if args.file is not None:
-        QTimer.singleShot(0, lambda: window.open_path(args.file))
+    from fireblade.core.preferences import load_preferences
+    try:
+        animate = load_preferences().startup_animation
+    except (OSError, ValueError, TypeError):
+        animate = True
+    splash = None
+    if animate:
+        from fireblade.ui.startup import StartupAnimation
+        splash = StartupAnimation()
+        splash.show()
+        app.processEvents()
+    window = Window(settings, require_case=True)
+    window._startup_file = args.file
+    if splash is not None:
+        splash.finished.connect(window.show)
+        splash.finished.connect(splash.close)
+        splash.animation.start()
+    else:
+        window.show()
     sys.exit(app.exec())
 
 

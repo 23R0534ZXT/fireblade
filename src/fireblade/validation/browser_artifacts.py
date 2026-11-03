@@ -19,7 +19,7 @@ def verify_browser_artifacts(app,directory,settings=None,pack=None,evidence=None
     else:
         for path in Path(evidence).iterdir():
             if path.name in ('UsrClass.dat','WebCacheV01.dat'):shutil.copy2(path,source/path.name)
-    window=Window(settings=settings,investigation_root=directory/'cases');errors=[];window.error=lambda value:errors.append(str(value));window.show()
+    window=Window(require_case=False, settings=settings,investigation_root=directory/'cases');errors=[];window.error=lambda value:errors.append(str(value));window.show()
     def settle():
         deadline=time.monotonic()+45
         while time.monotonic()<deadline:

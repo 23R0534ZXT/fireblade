@@ -33,7 +33,7 @@ def verify_catscale(app,directory,settings=None):
     from fireblade.ui.app import Window
     directory=Path(directory);source=write_corpus(directory/'evidence')
     originals={path:sha256(path) for path in source.rglob('*') if path.is_file()}
-    errors=[];window=Window(settings=settings,investigation_root=directory/'cases');window.error=lambda value:errors.append(str(value));window.show()
+    errors=[];window=Window(require_case=False, settings=settings,investigation_root=directory/'cases');window.error=lambda value:errors.append(str(value));window.show()
     def settle():
         deadline=time.monotonic()+30
         while time.monotonic()<deadline:

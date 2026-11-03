@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tomllib
 
-DISTRIBUTIONS = ("duckdb", "PySide6-Essentials", "shiboken6", "openpyxl", "et-xmlfile", "xlrd", "numpy", "idna", "dissect.esedb", "dissect.cstruct", "dissect.util", "lz4", "zstandard", "pyinstaller")
+DISTRIBUTIONS = ("duckdb", "PySide6-Essentials", "shiboken6", "openpyxl", "et-xmlfile", "xlrd", "numpy", "idna", "dissect.esedb", "dissect.cstruct", "dissect.util", "lz4", "zstandard", "pyinstaller", "dissect.target", "dissect.database", "dissect.eventlog", "dissect.evidence", "dissect.hypervisor", "dissect.ntfs", "dissect.regf", "dissect.volume", "dissect.fat", "dissect.extfs", "flow.record", "defusedxml", "structlog", "msgpack")
 RUNTIME_DLLS = ("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll")
 
 

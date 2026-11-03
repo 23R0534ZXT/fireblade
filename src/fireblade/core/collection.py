@@ -261,8 +261,17 @@ class Collection:
                 writer.writerow(row+[str(artifact), tool])
         return target
 
-    def parse(self):
+    def prepare_output(self):
         self.output.mkdir(parents=True, exist_ok=False)
+
+    def walk_sources(self, on_error):
+        return os.walk(self.root, followlinks=False, onerror=on_error)
+
+    def publish_results(self, start, entry):
+        """Hook for immutable, closed results after source integrity checks."""
+
+    def parse(self):
+        self.prepare_output()
         (self.output/'analyses').mkdir()
         (self.output/'results').mkdir()
         self.report['status'] = 'running'
@@ -270,8 +279,8 @@ class Collection:
         try:
             # os.walk does not follow directory symlinks. Every inaccessible entry is reported.
             def walk_error(error):
-                self.report['files'].append(dict(path=str(error.filename), status='error', error=str(error), tools=[]))
-            for directory, dirs, names in os.walk(self.root, followlinks=False, onerror=walk_error):
+                self.report['files'].append(dict(path=str(getattr(error, 'filename', self.root)), status='error', error=str(error), tools=[]))
+            for directory, dirs, names in self.walk_sources(walk_error):
                 for name in list(dirs):
                     path = Path(directory)/name
                     if path.is_symlink() or (hasattr(path, 'is_junction') and path.is_junction()):
@@ -280,6 +289,7 @@ class Collection:
                 for name in sorted(names):
                     check_cancel()
                     source = Path(directory)/name
+                    document_start = len(self.report['documents'])
                     entry = dict(path=str(source), status='pending', tools=[])
                     self.report['files'].append(entry)
                     self.progress('Collecte : '+str(source.relative_to(self.root)))
@@ -369,6 +379,7 @@ class Collection:
                     except Exception as exc:
                         entry.update(status='error', error=str(exc))
                     finally:
+                        self.publish_results(document_start, entry)
                         if time.monotonic()-self._last_checkpoint >= 1:
                             self.save()
             from fireblade.core.collection_organization import organize

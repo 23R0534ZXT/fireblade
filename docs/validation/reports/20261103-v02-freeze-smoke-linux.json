@@ -1,0 +1,11 @@
+{
+  "platform": "Linux",
+  "application_source_version": "0.2.0",
+  "pyinstaller": "6.22.3",
+  "mode": "onefile",
+  "artifact_size": 114204432,
+  "artifact_sha256": "6b055533b9abed4a7a4663e83510689193ba476e6bc0373504faa90d4c3f45a7",
+  "fixture": "Synthetic FAT12 image with /VAR/LOG/AUTH.LOG",
+  "result": "PASS: one FAT partition, one parsed analysis",
+  "scope": "Disk reader frozen with the same Dissect collection options as the Windows build; this is not qualification of Fireblade.exe on Windows."
+}

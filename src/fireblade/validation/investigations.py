@@ -11,7 +11,7 @@ def verify_investigations(app, directory, settings=None):
     directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
     root=directory/'cases'
     errors=[]
-    window=Window(settings=settings,investigation_root=root)
+    window=Window(require_case=False, settings=settings,investigation_root=root)
     window.error=lambda value:errors.append(str(value))
     window.show()
 
@@ -50,7 +50,7 @@ def verify_investigations(app, directory, settings=None):
         if not window.close():raise AssertionError('Fermeture du case refusée')
     finally:
         window.close();window.deleteLater()
-    reopened=Window(settings=settings,investigation_root=root)
+    reopened=Window(require_case=False, settings=settings,investigation_root=root)
     reopened.error=lambda value:errors.append(str(value));reopened.show()
     try:
         if reopened.case is not None or reopened.model is not None or reopened.documents or reopened.active_investigation is not None:

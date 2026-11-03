@@ -27,7 +27,7 @@ def make_case(tmp_path,name,headers='User,Artifact,ID'):
 
 
 def test_changes_reload_for_new_file_and_preserve_session_snapshot(qt_application,tmp_path):
-    w=Window();errors=[];w.error=errors.append
+    w=Window(require_case=False);errors=[];w.error=errors.append
     try:
         first=make_case(tmp_path,'first');headers=list(first.headers)
         w.attach(first);settle(qt_application,w)
@@ -58,7 +58,7 @@ def test_changes_reload_for_new_file_and_preserve_session_snapshot(qt_applicatio
 
 
 def test_new_csv_import_automatically_loads_saved_layout(qt_application,tmp_path,monkeypatch):
-    w=Window();errors=[];w.error=errors.append
+    w=Window(require_case=False);errors=[];w.error=errors.append
     try:
         w.attach(make_case(tmp_path,'first'));settle(qt_application,w)
         w.set_view(View(groups=[1],right_pinned_columns=[2]));settle(qt_application,w)
@@ -76,7 +76,7 @@ def test_new_csv_import_automatically_loads_saved_layout(qt_application,tmp_path
 
 
 def test_named_tle_local_xml_applies_to_fresh_session_and_invalid_file_is_not_overwritten(qt_application,tmp_path):
-    w=Window();errors=[];w.error=errors.append
+    w=Window(require_case=False);errors=[];w.error=errors.append
     path=user_directory()/'Layouts'/'Default'/'EvtxECmd.layout.local'
     path.parent.mkdir(parents=True)
     path.write_text('''<XtraSerializer><property name="Columns"><property name="Item1"><property name="FieldName">User</property><property name="VisibleIndex">0</property><property name="Width">287</property><property name="Fixed">Right</property></property></property></XtraSerializer>''')
@@ -100,13 +100,13 @@ def test_manually_imported_xml_is_remembered_across_application_restart(qt_appli
     xml=tmp_path/'arbitrary.layout.local'
     xml.write_text('''<XtraSerializer><property name="Columns"><property name="Item1"><property name="FieldName">ID</property><property name="VisibleIndex">0</property><property name="Width">319</property><property name="Fixed">Right</property></property></property></XtraSerializer>''')
     monkeypatch.setattr(QFileDialog,'getOpenFileName',lambda *a,**k:(str(xml),''))
-    w=Window();errors=[];w.error=errors.append
+    w=Window(require_case=False);errors=[];w.error=errors.append
     try:
         w.attach(make_case(tmp_path,'before-restart'));settle(qt_application,w)
         w.import_layout();settle(qt_application,w)
         assert w.view.right_pinned_columns==[2] and not errors
     finally:settle(qt_application,w);w.close()
-    other=Window();other.error=errors.append
+    other=Window(require_case=False);other.error=errors.append
     try:
         other.attach(make_case(tmp_path,'after-restart'));settle(qt_application,other)
         assert other.view.right_pinned_columns==[2]

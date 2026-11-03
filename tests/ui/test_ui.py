@@ -55,7 +55,7 @@ def test_async_model_nested_groups_and_window(tmp_path):
     assert model.data(model.index(0, 3, subgroup)) == '000000'
     assert not errors
     pool.waitForDone()
-    window = Window()
+    window = Window(require_case=False)
     window.attach(case)
     window.show()
     wait(app, lambda: window.model.rowCount() > 0 and not window.jobs and not window.model.jobs)

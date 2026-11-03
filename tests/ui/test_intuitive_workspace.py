@@ -30,13 +30,13 @@ def load(window,folder):
 
 
 def test_empty_case_has_both_entry_points_and_permanent_save(qt_application):
-    window=Window();window.show()
+    window=Window(require_case=False);window.show()
     try:
         window.create_investigation('Enquête intuitive')
         assert window.workbench.currentIndex()==0
         assert 'Enquête intuitive' in window.welcome_title.text()
         labels={b.text() for b in window.findChildren(QPushButton) if b.isVisible()}
-        assert {'Importer une collecte…','Ouvrir un export…'}<=labels
+        assert {'Analyser un disque logique ou un disque complet…','Analyser un fichier de données…'}<=labels
         assert window.save_case_action in window.main_toolbar.actions()
         window.save_case_action.trigger()
         assert window.last_case_save.text().startswith('Case enregistré à ')
@@ -45,7 +45,7 @@ def test_empty_case_has_both_entry_points_and_permanent_save(qt_application):
 
 
 def test_left_gutter_marks_entire_row_and_restores_without_losing_groups(qt_application,tmp_path):
-    window=Window();window.show();path=load(window,tmp_path);settle(qt_application,window)
+    window=Window(require_case=False);window.show();path=load(window,tmp_path);settle(qt_application,window)
     try:
         view=View(groups=[0],format_rules=[FormatRule(Filter(1,'eq','alice'),target=1,background='#ff0000')])
         window.set_view(view);settle(qt_application,window)
@@ -68,7 +68,7 @@ def test_left_gutter_marks_entire_row_and_restores_without_losing_groups(qt_appl
 
 
 def test_removing_a_mark_with_a_note_requires_explicit_choice(qt_application,tmp_path,monkeypatch):
-    window=Window();load(window,tmp_path);settle(qt_application,window)
+    window=Window(require_case=False);load(window,tmp_path);settle(qt_application,window)
     try:
         window.case.bookmark(1,'Ne pas perdre cette note');window.apply();settle(qt_application,window)
         monkeypatch.setattr(QMessageBox,'question',lambda *a,**kw:QMessageBox.No)
@@ -81,7 +81,7 @@ def test_removing_a_mark_with_a_note_requires_explicit_choice(qt_application,tmp
 
 
 def test_clear_filters_keeps_presentation_and_full_reset_is_separate(qt_application,tmp_path):
-    window=Window();window.show();load(window,tmp_path);settle(qt_application,window)
+    window=Window(require_case=False);window.show();load(window,tmp_path);settle(qt_application,window)
     try:
         window.set_view(View(groups=[0],sort_column=2,pinned_columns=[1],filters=[Filter(1,'eq','alice')],
                              format_rules=[FormatRule(Filter(0,'eq','EVTX'))]));settle(qt_application,window)
@@ -98,7 +98,7 @@ def test_clear_filters_keeps_presentation_and_full_reset_is_separate(qt_applicat
 
 
 def test_case_search_reuses_metadata_cache_and_refresh_sees_external_change(qt_application,monkeypatch):
-    window=Window();calls=[]
+    window=Window(require_case=False);calls=[]
     try:
         window.investigation_library.create('Alice')
         original=window.investigation_library.list
@@ -145,7 +145,7 @@ def test_collection_report_filters_statuses_and_keeps_exact_diagnostics(qt_appli
 
 
 def test_navigation_uses_snapshots_and_groups_collections(qt_application,tmp_path,monkeypatch):
-    window=Window();load(window,tmp_path);settle(qt_application,window)
+    window=Window(require_case=False);load(window,tmp_path);settle(qt_application,window)
     try:
         def forbidden(*a,**kw):raise AssertionError('Navigation opened a database')
         monkeypatch.setattr('fireblade.ui.workspace.Case',forbidden)
@@ -163,7 +163,7 @@ def test_navigation_uses_snapshots_and_groups_collections(qt_application,tmp_pat
 
 def test_hayabusa_is_disabled_for_text_collection_and_enabled_for_parsed_evtx(qt_application,tmp_path):
     source=tmp_path/'evidence';source.mkdir()
-    window=Window()
+    window=Window(require_case=False)
     try:
         window.collection=Collection(source,tmp_path/'work',ToolPack(tmp_path/'pack'))
         report=window.collection.report;report['status']='complete'

@@ -195,7 +195,7 @@ def settle(app, window):
 
 def test_tabs_release_inactive_database_and_restore_views_and_session(case, tmp_path):
     app = QApplication.instance() or QApplication([])
-    window = Window()
+    window = Window(require_case=False)
     errors = []
     window.error = lambda e: errors.append(str(e))
     window.attach(case)
@@ -240,7 +240,7 @@ def test_tabs_release_inactive_database_and_restore_views_and_session(case, tmp_
 
 def test_invalid_session_preserves_current_analysis(case, tmp_path):
     app = QApplication.instance() or QApplication([])
-    window = Window()
+    window = Window(require_case=False)
     window.attach(case)
     settle(app, window)
     errors = []
@@ -278,7 +278,7 @@ def test_editors_roundtrip_nested_expression_and_format_priorities(case):
 def test_bookmark_highlights_whole_row_while_retaining_rule_font(case):
     app = QApplication.instance() or QApplication([])
     case.bookmark(1, "investigate")
-    window = Window()
+    window = Window(require_case=False)
     window.attach(case)
     window.show()
     settle(app, window)
@@ -342,7 +342,7 @@ def test_graphical_rule_editor_model_persistence_and_paint(case, mode, tmp_path)
     assert RuleBook.from_bytes(encoded).rules == [rule]
     dialog = RulesDialog(case.headers, [rule]);dialog.accept()
     assert dialog.result() == 1 and dialog.rules == [rule]
-    window = Window(rule_path=tmp_path/'rules.json');window.attach(case);window.show()
+    window = Window(require_case=False, rule_path=tmp_path/'rules.json');window.attach(case);window.show()
     try:
         window.set_view(View(format_rules=[rule]));settle(app, window)
         index = window.model.index(0,2)
@@ -384,7 +384,7 @@ def test_combined_rules_and_fractional_font_survive_editor_and_model(case,tmp_pa
     rules=[FormatRule(target=1,background='#ffff00',use_foreground=False,use_font=False,stop_if_true=False),FormatRule(target=1,foreground='#0000ff',use_background=False,font_family='Consolas',font_size=14.5,bold=True)]
     dialog=RulesDialog(case.headers,rules);dialog.show();app.processEvents();dialog.accept()
     assert dialog.rules==rules
-    window=Window(rule_path=tmp_path/'rules.json');window.attach(case);window.show()
+    window=Window(require_case=False, rule_path=tmp_path/'rules.json');window.attach(case);window.show()
     try:
         window.set_view(View(format_rules=rules));settle(app,window);index=window.model.index(0,2)
         assert index.data(Qt.BackgroundRole).name()=='#ffff00' and index.data(Qt.ForegroundRole).name()=='#0000ff'

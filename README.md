@@ -15,6 +15,7 @@ Fireblade s’adresse aux analystes DFIR et aux personnes qui apprennent l’inv
 ## Ce que vous pouvez faire
 
 - **Importer des artefacts Windows** avec 13 EZ Tools embarqués, 70 plugins RECmd et des lecteurs dédiés Shellbags et WebCache.
+- **Lire les journaux Linux `/var/log/`** : fichiers et rotations compressées, syslog, audit, web, JSON, journal systemd et connexions Linux. Les limites et formats non décodés sont [documentés](docs/guides/JOURNAUX-LINUX.md).
 - **Explorer une collecte CatScale**, en dossier ou en archive, organisée en sept familles.
 - **Examiner les alertes Hayabusa** et leur contexte EVTX, avec retour à l’événement source.
 - **Filtrer, grouper et annoter** des CSV, TSV, TXT délimités, XLS et XLSX ; les requêtes portent sur le résultat complet, pas seulement la page affichée.

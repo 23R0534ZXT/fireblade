@@ -13,3 +13,7 @@ idna==3.11
 dissect.esedb==3.18
 dissect.cstruct==4.7
 dissect.util==3.24
+
+# Linux journal objects and rotated log streams.
+lz4==4.4.4
+zstandard==0.25.0

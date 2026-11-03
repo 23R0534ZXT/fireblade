@@ -11,7 +11,7 @@ ARTIFACTS = {
     'PECmd':'Prefetch', 'MFTECmd':'MFT et USN', 'RECmd':'Registre', 'LECmd':'Raccourcis LNK',
     'JLECmd':'Jump Lists', 'SrumECmd':'SRUM', 'WxTCmd':'Windows Timeline',
     'RBCmd':'Corbeille', 'RecentFileCacheParser':'RecentFileCache', 'SQLECmd':'SQLite',
-    'native':'Exports CSV', 'Shellbags':'Shellbags', 'WebCache':'WebCache',
+    'LinuxLogs':'Journaux Linux', 'native':'Exports CSV', 'Shellbags':'Shellbags', 'WebCache':'WebCache',
 }
 
 

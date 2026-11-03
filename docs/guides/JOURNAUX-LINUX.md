@@ -115,5 +115,5 @@ d’entrées : Fireblade signale la corruption ; sa récupération partielle de
 **Aucune complétude n’est affirmée pour ce fichier corrompu.**
 
 Ces mesures ne constituent pas une qualification universelle des journaux Linux.
-Les changements de la PR restent distincts de l’EXE déjà publié et de ses rapports
-historiques.
+Le lecteur est publié à partir de Fireblade 0.1.1. Les anciens rapports
+conservent leur version et leur provenance historiques.

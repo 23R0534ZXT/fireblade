@@ -1,10 +1,10 @@
 # Fireblade 0.1.1
 
-[![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
+[![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=v0.1.1)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 
 **Un espace d’investigation local pour explorer des artefacts Windows, des collectes Linux CatScale et des exports de données.**
 
-**[Télécharger Fireblade 0.7.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8/Fireblade.exe)** · [Notes et SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8) · [Pack de découverte, ~5,1 Mo](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Donner un retour](https://github.com/23R0534ZXT/fireblade/issues/6)
+**[Télécharger Fireblade 0.1.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.1.1/Fireblade.exe)** · [Notes et SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.1.1) · [Pack de découverte, ~5,1 Mo](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Donner un retour](https://github.com/23R0534ZXT/fireblade/issues/6)
 
 Fireblade s’adresse aux analystes DFIR et aux personnes qui apprennent l’investigation numérique. Il rassemble les résultats dans des dossiers d’enquête persistants : filtrer les données, retrouver les événements liés à une alerte, conserver des notes et exporter ses constatations.
 
@@ -12,7 +12,7 @@ Fireblade s’adresse aux analystes DFIR et aux personnes qui apprennent l’inv
 
 *Interface en français. Capture de l’application avec des données de démonstration, rendue sous Linux hors écran.*
 
-> **Nouvelle numérotation : 0.1.1.** Les fonctionnalités de la série 0.7 sont conservées. La nouvelle publication est en cours de qualification ; le téléchargement ci-dessus reste le précédent EXE 0.7.0 jusqu’à sa disponibilité.
+> **Nouvelle numérotation : 0.1.1.** Les fonctionnalités de la série 0.7 sont conservées.
 
 ## Ce que vous pouvez faire
 
@@ -68,7 +68,7 @@ Un compte GitHub est nécessaire pour publier un retour.
 
 ## Validation et limites
 
-L’[EXE 0.7.0 publié](https://github.com/23R0534ZXT/fireblade/actions/runs/41514474442) a réussi les contrôles Windows requis : tests sur Python 3.11/3.12/3.13, programme autonome, lecteurs embarqués, chemins longs et réseau, huit variantes visuelles, 320 analyses et un CSV de plus de 3 Gio. Ces vérifications automatisées ne remplacent pas les essais sur vos postes et vos formats d’artefacts.
+L’[EXE 0.1.1 publié](https://github.com/23R0534ZXT/fireblade/actions/runs/41652792123) a réussi les contrôles Windows requis : tests sur Python 3.11/3.12/3.13, programme autonome, lecteurs embarqués, chemins longs et réseau, huit variantes visuelles, 320 analyses et un CSV de plus de 3 Gio. Ces vérifications automatisées ne remplacent pas les essais sur vos postes et vos formats d’artefacts.
 
 - Le traitement est local ; le parcours normal n’a pas besoin de télécharger les moteurs ou les règles.
 - Fireblade lit des **artefacts collectés et des exports** ; il ne monte pas les images disque. Hayabusa s’applique aux EVTX Windows.
@@ -87,9 +87,9 @@ Le code est dans `src/fireblade`, les tests dans `tests`, les versions des moteu
 
 ## English overview
 
-Fireblade is a local Windows x64 forensic investigation workspace. Import Windows artifacts, Linux CatScale collections or CSV/TSV/XLS/XLSX exports; filter and annotate the results, investigate Hayabusa alerts with EVTX context, build timelines, hunt IOCs and export findings. The desktop interface and guides currently use French.
+Fireblade is a local Windows x64 forensic investigation workspace. Import Windows artifacts, raw Linux logs and rotations, CatScale collections or CSV/TSV/XLS/XLSX exports; filter and annotate the results, investigate Hayabusa alerts with EVTX context, build timelines, hunt IOCs and export findings. The desktop interface and guides currently use French.
 
-Download the single **Fireblade.exe** linked above and try the public sample pack. It includes a French walkthrough and expected results. Fireblade 0.7.0 is an unsigned prototype; see the linked Windows qualification, compatibility notes and limitations. Feedback is welcome in [Issues](https://github.com/23R0534ZXT/fireblade/issues).
+Download the single **Fireblade.exe** linked above and try the public sample pack. It includes a French walkthrough and expected results. Fireblade 0.1.1 is an unsigned prototype; see the linked Windows qualification, compatibility notes and limitations. Feedback is welcome in [Issues](https://github.com/23R0534ZXT/fireblade/issues).
 
 ## Licence
 

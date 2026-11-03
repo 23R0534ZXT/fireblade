@@ -44,7 +44,7 @@ def test_parser_display_keeps_other_workspace_tabs_unchanged(qt_application,tmp_
         case=Case(tmp_path/(name+'.timeline'))
         try:case.import_csv(source);paths.append((case.path,case.page(View())))
         finally:case.close()
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         window.load_case(paths[0][0]);deadline=time.monotonic()+10
         while window.jobs or window.pool.activeThreadCount() or window.model.jobs:

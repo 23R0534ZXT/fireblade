@@ -61,14 +61,31 @@ class WorkspaceMixin:
         if current:
             for context in current.report.get('contexts',[]):
                 self._analysis_labels[context['analysis']]=str(context['rule'])[:120]+' · ± '+str(context['minutes'])+' min'
-        self.navigator.refresh(self.documents,self.active_document,collections,self._analysis_labels)
+        origins = dict(getattr(self, '_analysis_origins', {}))
+        # Read saved provenance only once per collection, never open inactive databases.
+        cache = getattr(self, '_navigation_origin_cache', {})
+        for item in collections:
+            path = item['path']
+            if path not in cache:
+                try:
+                    report = Path(path)/'collection.json'
+                    if report.is_file() and report.stat().st_size < 32*1024*1024:
+                        data = json.loads(report.read_text(encoding='utf-8'))
+                        cache[path] = {d['path']: d['navigation'] for d in data.get('documents', []) if d.get('navigation')}
+                except (OSError, ValueError, KeyError):
+                    cache[path] = {}
+            origins.update(cache.get(path, {}))
+        origins.update(getattr(self, '_analysis_origins', {}))
+        self._navigation_origin_cache = cache
+        self.navigator.refresh(self.documents,self.active_document,collections,self._analysis_labels,origins,
+            getattr(getattr(self, 'preferences', None), 'navigation_grouping', 'folders'))
         self.update_navigation_visibility()
 
     def update_navigation_visibility(self, *_):
         if not hasattr(self,'navigator'):return
         preview=getattr(self,'context_preview',None)
         compact=preview is not None and preview.isVisible() and self.width()<1100
-        self.navigator.setVisible(bool(self.documents) and self.navigation_action.isChecked() and not compact)
+        self.navigator.setVisible((bool(self.documents) or getattr(self, "disk_job", None) is not None) and self.navigation_action.isChecked() and not compact)
 
     def remember_active(self):
         snapshot = self.snapshot_analysis()

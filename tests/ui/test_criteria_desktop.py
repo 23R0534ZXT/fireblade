@@ -26,7 +26,7 @@ def test_real_import_dialog_waits_for_metadata_then_advanced_filters_and_colorin
     detect=reader_detection.detect_reader
     def delayed(path):time.sleep(.04);return detect(path)
     monkeypatch.setattr(reader_detection,'detect_reader',delayed)
-    w=Window();errors=[];w.error=errors.append
+    w=Window(require_case=False);errors=[];w.error=errors.append
     try:
         accept_import_when_ready(qt_application,tmp_path/'nested.timeline',errors)
         w.import_file(source);settle(qt_application,w)

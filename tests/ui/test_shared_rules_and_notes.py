@@ -104,7 +104,7 @@ def test_store_roundtrip_stale_editor_and_failed_atomic_write(tmp_path, monkeypa
 def test_global_rules_invalid_file_is_recoverable_without_changing_analysis(qt_application, case, tmp_path):
     path = tmp_path / "global.json"
     path.write_bytes(b"invalid JSON")
-    window = Window(rule_path=path)
+    window = Window(require_case=False, rule_path=path)
     errors = []
     window.error = lambda error: errors.append(str(error))
     window.attach(case)
@@ -128,7 +128,7 @@ def test_global_rules_export_rejects_hardlink_alias_of_source(qt_application, ca
         os.link(source, alias)
     except (OSError, NotImplementedError) as exc:
         pytest.skip(f"Hard links unavailable: {exc}")
-    window = Window(rule_path=tmp_path / "global.json")
+    window = Window(require_case=False, rule_path=tmp_path / "global.json")
     errors = []
     window.error = lambda error: errors.append(str(error))
     window.attach(case)
@@ -145,7 +145,7 @@ def test_global_rules_export_rejects_hardlink_alias_of_source(qt_application, ca
 def test_global_local_precedence_and_per_view_disable_persist(qt_application, case, tmp_path):
     path = tmp_path / "global.json"
     RuleStore(path).save(RuleBook(["User"], [rule(target=0)]))
-    window = Window(rule_path=path)
+    window = Window(require_case=False, rule_path=path)
     window.attach(case)
     window.show()
     settle(qt_application, window)
@@ -180,7 +180,7 @@ def test_rule_editor_keeps_fields_for_other_artifact_types(qt_application, case,
         dialog.accept()
         return dialog.result()
     monkeypatch.setattr(ui.RulesDialog, "exec", accept)
-    window = Window(rule_path=path)
+    window = Window(require_case=False, rule_path=path)
     window.attach(case)
     settle(qt_application, window)
     window.edit_global_rules()
@@ -273,7 +273,7 @@ def test_annotation_column_names_do_not_hide_existing_evidence_columns(tmp_path)
 
 def test_selection_ignores_group_headers_and_exports_notes(qt_application, case, tmp_path, monkeypatch):
     from PySide6.QtWidgets import QFileDialog
-    window = Window()
+    window = Window(require_case=False)
     window.attach(case)
     settle(qt_application, window)
     window.set_view(View(groups=[0]))
@@ -302,7 +302,7 @@ def test_annotation_cache_is_bounded_by_loaded_pages(qt_application, tmp_path):
     case = Case(tmp_path / "many.timeline", settings=Settings(page_size=25, max_loaded_rows=50))
     case.import_csv(source)
     case.bookmark_many(list(range(1, 151)), "Long note " * 300, "replace")
-    window = Window()
+    window = Window(require_case=False)
     window.attach(case)
     settle(qt_application, window)
     assert len(window.model.notes) == 25

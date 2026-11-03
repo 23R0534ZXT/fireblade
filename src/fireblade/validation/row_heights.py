@@ -19,7 +19,7 @@ def check_auto_row_heights(parent,directory,expect,captures=None):
         writer.writerow(['\n'.join(f'line {i}' for i in range(8)),'word '*100,'1']);writer.writerow(['short','short','2'])
     case=Case(directory/'multiline-height.timeline',settings=parent.settings);case.import_csv(source)
     view=View(auto_row_height=True,layout_styles={'row':{'word_wrap':True}},pinned_columns=[0],right_pinned_columns=[2])
-    window=Window(settings=parent.settings);errors=[];window.error=errors.append
+    window=Window(require_case=False, settings=parent.settings);errors=[];window.error=errors.append
     def settle():
         deadline=time.monotonic()+15
         while time.monotonic()<deadline:

@@ -23,7 +23,7 @@ def verify_mixed_cases(app,directory,settings=None,pack=None,browser_evidence=No
         for path in Path(browser_evidence).iterdir():
             if path.name in ('UsrClass.dat','WebCacheV01.dat'):shutil.copy2(path,windows/path.name)
     originals={path:sha256(path) for root in (linux,windows) for path in root.rglob('*') if path.is_file()}
-    errors=[];window=Window(settings=settings,investigation_root=directory/'cases');window.error=lambda value:errors.append(str(value));window.show()
+    errors=[];window=Window(require_case=False, settings=settings,investigation_root=directory/'cases');window.error=lambda value:errors.append(str(value));window.show()
     def settle():
         deadline=time.monotonic()+60
         while time.monotonic()<deadline:
@@ -77,7 +77,7 @@ def verify_mixed_cases(app,directory,settings=None,pack=None,browser_evidence=No
         if not all(sha256(path)==digest for path,digest in originals.items()):raise AssertionError('Evidence changed')
         if not window.close():raise AssertionError('Case close failed')
     finally:window.close();window.deleteLater()
-    reopened=Window(settings=settings,investigation_root=directory/'cases');reopened.error=lambda value:errors.append(str(value));reopened.show()
+    reopened=Window(require_case=False, settings=settings,investigation_root=directory/'cases');reopened.error=lambda value:errors.append(str(value));reopened.show()
     try:
         if reopened.case is not None or reopened.documents or reopened.active_investigation is not None:raise AssertionError('Restart loaded old analyses')
         if reopened.cases_table.rowCount()!=2:raise AssertionError('Persistent catalogue lost cases')

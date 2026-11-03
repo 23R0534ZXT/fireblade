@@ -41,7 +41,7 @@ def window(app, tmp_path):
     source.write_text("Artifact,User,ID\nMFT,alice,001\nEVTX,bob,10\nMFT,alice,2\nEVTX,,3\n", encoding="utf-8")
     case = Case(tmp_path / "source.timeline")
     case.import_csv(source)
-    w = Window()
+    w = Window(require_case=False)
     errors = []
     w.error = errors.append
     w.attach(case)
@@ -158,7 +158,7 @@ def test_drag_drop_import_unicode_path_and_reopen(app, tmp_path, monkeypatch):
         dialog.accept()
         return dialog.result()
     monkeypatch.setattr(ImportDialog, "exec", accept_import)
-    window = Window()
+    window = Window(require_case=False)
     errors = []
     window.error = errors.append
     window.show()
@@ -364,7 +364,7 @@ def test_first_import_cancel_returns_to_welcome(app, tmp_path, monkeypatch):
         raise OperationCancelled()
     monkeypatch.setattr(ImportDialog, "exec", accept_import)
     monkeypatch.setattr(Case, "import_csv", cancel_import)
-    w = Window()
+    w = Window(require_case=False)
     errors = []
     w.error = errors.append
     w.import_file(source)
@@ -401,7 +401,7 @@ def test_restore_rejects_different_decoding_of_the_same_source(app, tmp_path):
     case_path = tmp_path / "unicode.timeline"
     original = Case(case_path)
     original.import_csv(source)
-    window = Window()
+    window = Window(require_case=False)
     window.attach(original)
     settle(app, window)
     snapshot = window.snapshot_analysis()

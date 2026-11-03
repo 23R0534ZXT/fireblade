@@ -94,7 +94,7 @@ class CollectionMixin(AlertContextMixin):
         analyze.triggered.connect(self.analyze_collection)
         menu = next(a.menu() for a in self.menuBar().actions() if a.text().replace('&', '') == 'Analyse')
         menu.addAction(analyze)
-        toolbar = self.addToolBar('Collecte')
+        toolbar = self.collection_toolbar = self.addToolBar('Collecte')
         toolbar.addAction(action)
         # Detection belongs to the EVTX step, not the global file toolbar.
         help_menu = next(a.menu() for a in self.menuBar().actions() if a.text().replace('&','')=='Aide')
@@ -215,6 +215,7 @@ class CollectionMixin(AlertContextMixin):
         self.cancel_action.setEnabled(True)
 
     def parse_collection(self):
+        if not self.require_active_case():return
         if not self.can_open_file():return
         path = QFileDialog.getExistingDirectory(self, 'Dossier contenant les artefacts forensic')
         if not path:return
@@ -236,6 +237,9 @@ class CollectionMixin(AlertContextMixin):
         if not self.can_open_file():return
         path = QFileDialog.getExistingDirectory(self, 'Dossier de travail contenant collection.json')
         if not path:return
+        if getattr(self, 'disk_job', None) is not None and Path(path).resolve() == self.disk_collection.output:
+            self.statusBar().showMessage('Cette collecte est encore en cours d’indexation.')
+            return
         try:
             self.collection = Collection.reopen(path, self.toolpack(), self.settings)
             self.collection_finished(self.collection.report)

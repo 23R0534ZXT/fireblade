@@ -1,13 +1,15 @@
-# Fireblade 0.1.1
+# Fireblade 0.2.0
 
-[![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=v0.1.1)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
+[![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 [![Forensic test pack](https://github.com/23R0534ZXT/fireblade/actions/workflows/test-pack.yml/badge.svg)](https://github.com/23R0534ZXT/fireblade/actions/workflows/test-pack.yml)
 
 **[Download Fireblade 0.1.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.1.1/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.1.1) · [Test pack](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Give feedback](https://github.com/23R0534ZXT/fireblade/issues/6)
 
 **A local forensic investigation workspace for Windows artifacts, Linux CatScale collections and existing data exports.**
 
-**Current source version: 0.1.1.** This is the new prototype numbering, retaining the features previously numbered 0.7 and adding standalone Linux log analysis. The workflow includes: persistent cases, recovery and portable archives, Shellbags and WebCache readers, graphical chronology, bulk IOC hunting, investigation reports, and collection coverage diagnostics. The version of a downloadable EXE depends on the last successful Windows release; check **Aide → À propos** and the release commit.
+**Current source version: 0.2.0.** The latest published Windows EXE remains 0.1.1. Version 0.2.0 adds a mandatory case-first workflow, background disk artifact processing with progressive results, a configurable disk/partition/folder tree and an optional startup animation. [Disk workflow and limitations](DISQUES-ET-ESPACE-DE-TRAVAIL.md).
+
+**Features retained from 0.1.1:** This is the new prototype numbering, retaining the features previously numbered 0.7 and adding standalone Linux log analysis. The workflow includes: persistent cases, recovery and portable archives, Shellbags and WebCache readers, graphical chronology, bulk IOC hunting, investigation reports, and collection coverage diagnostics. The version of a downloadable EXE depends on the last successful Windows release; check **Aide → À propos** and the release commit.
 
 ![Fireblade investigation workspace](../assets/fireblade-workspace.png)
 

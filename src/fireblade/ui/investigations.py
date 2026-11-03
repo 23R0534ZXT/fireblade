@@ -135,7 +135,7 @@ class InvestigationMixin:
         data=self.active_investigation
         self.case_badge.setText('Case : '+data['name'][:45] if data else 'Aucun case actif')
         self.case_badge.setToolTip(data['name'] if data else 'Ouvrez ou créez un dossier d’enquête dans Cases.')
-        self.welcome_title.setText('Case : '+data['name'] if data else 'Commencer une analyse')
+        self.welcome_title.setText('Case : '+data['name']+'\nQue souhaitez-vous analyser ?' if data else 'Créez ou ouvrez un case pour commencer')
         self.welcome_title.setWordWrap(True)
         if data:
             stamp = datetime.fromisoformat(data['updated']).astimezone().strftime('%H:%M:%S')
@@ -146,6 +146,7 @@ class InvestigationMixin:
         self.save_case_button.setEnabled(data is not None);self.close_case_button.setEnabled(data is not None)
         self.save_case_action.setEnabled(data is not None);self.close_case_action.setEnabled(data is not None)
         self.case_collection_panel.setVisible(data is not None)
+        self.update_case_gate()
 
     def selected_investigation(self):
         row=self.cases_table.currentRow()
@@ -194,7 +195,11 @@ class InvestigationMixin:
         self.cases_details.setText(data['name']+'\n'+(data['description'] or 'Aucune description.')+'\nDossier : '+str(self.investigation_library.folder(data['id'])) if data else 'Sélectionnez un case pour consulter sa description.')
 
     def can_switch_investigation(self):
-        if not self.can_open_file():return False
+        if (getattr(self, "disk_job", None) is not None or getattr(self, "_disk_pending", []) or
+            hasattr(self, "disk_pool") and self.disk_pool.activeThreadCount()):
+            self.statusBar().showMessage("Arrêtez ou attendez l’indexation avant de changer de case.")
+            return False
+        if not self.can_open_file(allow_without_case=True):return False
         if self.open_queue:
             self.statusBar().showMessage('Terminez ou videz la file d’ouverture avant de changer de case.')
             return False
@@ -224,6 +229,9 @@ class InvestigationMixin:
         if not self.can_open_file():return
         path=self.case_collections_combo.itemData(index)
         if not path:return
+        if getattr(self, 'disk_job', None) is not None and path == str(self.disk_collection.output):
+            self.statusBar().showMessage('Indexation en cours ; les analyses terminées sont déjà accessibles dans l’arbre.')
+            return
         from fireblade.core.collection import Collection
         try:
             candidate=Collection.reopen(path,self.toolpack(),self.settings)
@@ -266,6 +274,8 @@ class InvestigationMixin:
         return saved
 
     def clear_investigation_workspace(self):
+        self._analysis_origins = {}
+        self._navigation_origin_cache = {}
         self.detach()
         if getattr(self,'timeline_panel',None):self.timeline_panel.reset_workspace()
         if getattr(self,'ioc_panel',None):self.ioc_panel.reset_workspace()

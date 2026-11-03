@@ -1,18 +1,32 @@
-# Fireblade 0.1.1
+# Fireblade 0.2.0
 
-[![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=v0.1.1)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
+[![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 
-**Un espace d’investigation local pour explorer des artefacts Windows, des collectes Linux CatScale et des exports de données.**
+**Un espace d’investigation local pour analyser des disques, explorer des artefacts Windows et Linux et examiner des exports de données.**
 
-**[Télécharger Fireblade 0.1.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.1.1/Fireblade.exe)** · [Notes et SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.1.1) · [Pack de découverte, ~5,1 Mo](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Donner un retour](https://github.com/23R0534ZXT/fireblade/issues/6)
+**[Dernier EXE publié : Fireblade 0.1.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.1.1/Fireblade.exe)** · [Notes et SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.1.1) · [Pack de découverte, ~5,1 Mo](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Donner un retour](https://github.com/23R0534ZXT/fireblade/issues/6)
 
 Fireblade s’adresse aux analystes DFIR et aux personnes qui apprennent l’investigation numérique. Il rassemble les résultats dans des dossiers d’enquête persistants : filtrer les données, retrouver les événements liés à une alerte, conserver des notes et exporter ses constatations.
 
-![Espace d’investigation Fireblade](docs/assets/fireblade-workspace.png)
+![Fireblade 0.2 — arbre des sources et espace d’analyse](docs/assets/fireblade-02-workspace.png)
 
 *Interface en français. Capture de l’application avec des données de démonstration, rendue sous Linux hors écran.*
 
-> **Nouvelle numérotation : 0.1.1.** Les fonctionnalités de la série 0.7 sont conservées.
+> **Version des sources : 0.2.0.** Le dernier EXE publié est encore la **0.1.1** : il ne contient pas les nouveautés ci-dessous. La construction 0.2.0 doit passer les contrôles Windows avant publication.
+
+## Nouveautés de la 0.2
+
+- **Un case obligatoire au démarrage** : créez une enquête ou reprenez un case existant avant de commencer.
+- **Deux parcours depuis le case** : analyser un fichier de données ou analyser un disque logique / disque complet.
+- **Analyse de disque en arrière-plan** : volumes montés, dossiers contenant les collectes et partitions, images RAW / E01 ou chemins de périphériques physiques. Les artefacts reconnus sont copiés en lecture seule puis traités par les lecteurs existants.
+- **Résultats disponibles progressivement** : l’espace de travail s’ouvre immédiatement ; les analyses terminées s’ajoutent sans changer l’onglet consulté. Une progression en bas à droite indique l’étape en cours, avec un bouton d’arrêt.
+- **Arbre des sources** : disque → partition → dossiers → analyses, ou regroupement par type d’artefact ou en liste.
+- **Espace de travail configurable** dans **Affichage → Organiser l’espace de travail** : arbre à gauche ou à droite, panneaux visibles, position des détails et barres d’outils ; préférences enregistrées.
+- **Animation de démarrage**, désactivable depuis le menu d’organisation.
+
+Les copies d’artefacts, leur provenance et les références de l’arbre sont conservées dans les archives portables. Les lecteurs de systèmes de fichiers intégrés sont NTFS, FAT et ext ; leur qualification et celle des sources physiques/E01 sont détaillées dans le guide. Cette version ne fait ni acquisition, ni déchiffrement, ni récupération de fichiers supprimés.
+
+[Guide des disques et de l’organisation](docs/guides/DISQUES-ET-ESPACE-DE-TRAVAIL.md) · [Notes 0.2.0](docs/development/RELEASE-NOTES.md) · [Validation locale](docs/validation/reports/20261103-v02-case-disk-linux.md)
 
 ## Ce que vous pouvez faire
 
@@ -38,7 +52,7 @@ Le grand pack réunit **2,37 Go d’artefacts Windows publics** et **1,07 Go de 
 
 [Guide du grand pack brut](docs/guides/PACK-BRUT.md) · [Choisir une collecte et connaître les paramètres de validation](docs/guides/COLLECTES-PACK-BRUT.md) · [Rapport, empreinte et limites](https://github.com/23R0534ZXT/fireblade/releases/tag/raw-artifacts-v1)
 
-## Essayer en 15 minutes
+## Essayer le dernier EXE publié (0.1.1) en 15 minutes
 
 1. Téléchargez **Fireblade.exe** avec le lien ci-dessus, puis lancez-le sous **Windows x64**. Python, Excel et une installation préalable de .NET ne sont pas nécessaires.
 2. Téléchargez et décompressez le **pack de découverte** (~5,1 Mo en ZIP, ~60,6 Mo extraits). Son fichier **LIRE-MOI.md** indique les exercices et les avertissements attendus.
@@ -68,10 +82,12 @@ Un compte GitHub est nécessaire pour publier un retour.
 
 ## Validation et limites
 
+Les sources 0.2.0 ont été testées sous Linux/Qt hors écran, notamment avec un disque RAW à deux partitions et des requêtes pendant l’indexation. Ces contrôles ne qualifient pas encore le nouvel EXE Windows ni tous les formats et périphériques. [Rapport et limites de la 0.2](docs/validation/reports/20261103-v02-case-disk-linux.md).
+
 L’[EXE 0.1.1 publié](https://github.com/23R0534ZXT/fireblade/actions/runs/41652792123) a réussi les contrôles Windows requis : tests sur Python 3.11/3.12/3.13, programme autonome, lecteurs embarqués, chemins longs et réseau, huit variantes visuelles, 320 analyses et un CSV de plus de 3 Gio. Ces vérifications automatisées ne remplacent pas les essais sur vos postes et vos formats d’artefacts.
 
 - Le traitement est local ; le parcours normal n’a pas besoin de télécharger les moteurs ou les règles.
-- Fireblade lit des **artefacts collectés et des exports** ; il ne monte pas les images disque. Hayabusa s’applique aux EVTX Windows.
+- La **0.2.0** lit des volumes montés et des images disque pour extraire les artefacts pris en charge ; elle ne les monte pas dans le système hôte. L’EXE **0.1.1** reste limité aux artefacts collectés et exports. Hayabusa s’applique aux EVTX Windows.
 - Les avertissements, résultats partiels et erreurs de lecteurs restent visibles. Une alerte est une piste à examiner, pas une conclusion automatique.
 - Les analyses sont stockées dans des bases DuckDB `.timeline`. Le budget mémoire DuckDB ne plafonne pas toute la RAM du programme et de ses outils externes.
 - Les sessions référencent leurs bases et leurs sources. Pour déplacer une enquête, utilisez une archive portable ; conservez les éléments nécessaires à une nouvelle analyse des artefacts.
@@ -87,10 +103,12 @@ Le code est dans `src/fireblade`, les tests dans `tests`, les versions des moteu
 
 ## English overview
 
+Fireblade 0.2.0 adds a mandatory case-first workflow, background disk artifact analysis, progressive results, a configurable source tree and an optional startup animation. The latest published Windows executable is still 0.1.1 and does not include these additions. See the linked validation limits before using disk images or physical devices.
+
 Fireblade is a local Windows x64 forensic investigation workspace. Import Windows artifacts, raw Linux logs and rotations, CatScale collections or CSV/TSV/XLS/XLSX exports; filter and annotate the results, investigate Hayabusa alerts with EVTX context, build timelines, hunt IOCs and export findings. The desktop interface and guides currently use French.
 
 Download the single **Fireblade.exe** linked above and try the public sample pack. It includes a French walkthrough and expected results. Fireblade 0.1.1 is an unsigned prototype; see the linked Windows qualification, compatibility notes and limitations. Feedback is welcome in [Issues](https://github.com/23R0534ZXT/fireblade/issues).
 
 ## Licence
 
-Le code de Fireblade est sous [licence MIT](LICENSE). Les moteurs et dépendances conservent leurs licences, dont l’AGPL de Hayabusa. Les notices sont disponibles dans **Aide → Licences** ; les sources Hayabusa embarquées peuvent être exportées depuis le menu Aide. [Licences tierces](licenses/THIRD_PARTY.md).
+Le code de Fireblade est sous [licence MIT](LICENSE). Les moteurs et dépendances conservent leurs licences, dont l’AGPL de Hayabusa, Dissect et flow.record. Les notices sont disponibles dans **Aide → Licences** ; les sources Hayabusa embarquées peuvent être exportées depuis le menu Aide. [Licences tierces](licenses/THIRD_PARTY.md).

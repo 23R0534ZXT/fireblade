@@ -37,7 +37,7 @@ def test_argb_pixels_in_grid_pins_header_selection_and_restored_view(qt_applicat
     xml=tmp_path/'alpha.layout';xml.write_text('''<XtraSerializer><property name="Columns"><property name="Item1"><property name="FieldName">Value</property><property name="Fixed">Right</property></property></property>
       <property name="Appearance"><property name="Row"><property name="BackColor">128, 255, 0, 0</property></property><property name="HeaderPanel"><property name="BackColor">128, 0, 255, 0</property></property><property name="SelectedRow"><property name="BackColor">128, 0, 255, 0</property></property></property>
       <property name="FormatRules"><property name="Item1"><property name="RuleType">#FormatConditionRuleExpression</property><property name="Rule"><property name="Expression">[Value]='2'</property><property name="Appearance"><property name="BackColor">128, 0, 0, 255</property></property></property></property></property></XtraSerializer>''')
-    layout=read_tle_layout(xml,case.headers);window=Window();errors=[];window.error=errors.append
+    layout=read_tle_layout(xml,case.headers);window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         window.attach(case,layout.view);window.preferences.theme=theme;window.apply_preferences()
         window.show();settle(qt_application,window);window.tree.clearSelection();window.tree.clearFocus();qt_application.processEvents()
@@ -90,7 +90,7 @@ def test_transparent_panel_and_edit_controls_composite_once(qt_application,tmp_p
     source=tmp_path/'s.csv';source.write_text('Value\n1\n')
     case=Case(tmp_path/'s.timeline');case.import_csv(source)
     view=View(layout_styles={'group_panel':{'background':'#80ff0000'},'footer_panel':{'background':'#8000ff00'},'find_panel':{'background':'#800000ff'},'preview':{'background':'#8000ff00'}})
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         window.attach(case,view);window.preferences.theme=theme;window.apply_preferences();window.show();settle(qt_application,window)
         for widget,encoded in [(window.groups_label,'#80ff0000'),(window.count_label,'#8000ff00'),(window.search,'#800000ff'),(window.details.viewport(),'#8000ff00')]:

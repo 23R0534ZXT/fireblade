@@ -51,7 +51,7 @@ def verify_linux_logs(app,directory,settings=None):
     from fireblade.ui.app import Window
     directory=Path(directory);source=write_corpus(directory/'evidence')
     originals={p:sha256(p) for p in source.iterdir()}
-    errors=[];window=Window(settings=settings,investigation_root=directory/'cases')
+    errors=[];window=Window(require_case=False, settings=settings,investigation_root=directory/'cases')
     window.error=lambda value:errors.append(str(value));window.show()
     def settle():
         deadline=time.monotonic()+30

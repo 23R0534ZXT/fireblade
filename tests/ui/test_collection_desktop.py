@@ -17,7 +17,7 @@ def settle(app, window):
 def test_native_collection_opens_results_and_keeps_report(qt_application,tmp_path):
     root=tmp_path/'evidence';root.mkdir()
     (root/'users.csv').write_text('User,Value\nalice,1\nbob,2\n')
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         window.collection=Collection(root,tmp_path/'results',ToolPack(tmp_path/'missing'),window.settings)
         window.start_collection_job(window.collection.parse)
@@ -49,7 +49,7 @@ def test_collection_organization_dialog_exposes_two_choices(qt_application):
 
 def test_grouped_collection_opens_with_saved_group_by(qt_application,tmp_path,monkeypatch):
     root=tmp_path/'source';root.mkdir();(root/'users.csv').write_text('User\nalice\n')
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     automatic=[]
     monkeypatch.setattr(window,'restore_format_layout',lambda:automatic.append(True))
     try:
@@ -71,7 +71,7 @@ def test_import_prompt_applies_organization_and_cancel_does_not_start(qt_applica
     source=tmp_path/'source';source.mkdir();(source/'data.csv').write_text('ID\n001\n')
     monkeypatch.setattr(ui.QFileDialog,'getExistingDirectory',lambda *args:str(source))
     monkeypatch.setattr(ui,'user_directory',lambda:tmp_path/'profile')
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         monkeypatch.setattr(ui.CollectionOrganizationDialog,'exec',lambda self:QDialog.DialogCode.Rejected)
         window.parse_collection()

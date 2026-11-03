@@ -17,3 +17,19 @@ dissect.util==3.24
 # Linux journal objects and rotated log streams.
 lz4==4.4.4
 zstandard==0.25.0
+
+# Read-only disk images, partition tables and filesystems.
+dissect.target==3.25.1
+dissect.database==1.1
+dissect.eventlog==3.11
+dissect.evidence==3.13
+dissect.hypervisor==3.21
+dissect.ntfs==3.16
+dissect.regf==3.14
+dissect.volume==3.18
+flow.record==3.21
+defusedxml==0.7.1
+structlog==26.1.0
+msgpack==1.2.4
+dissect.fat==3.13
+dissect.extfs==3.15

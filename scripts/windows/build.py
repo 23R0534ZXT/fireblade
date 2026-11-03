@@ -44,6 +44,9 @@ def main():
                "--collect-all", "lz4", "--collect-all", "zstandard",
                "--collect-all", "dissect.esedb", "--collect-all", "dissect.cstruct", "--collect-all", "dissect.util",
                "--hidden-import", "numpy", "--hidden-import", "decimal", "--hidden-import", "uuid", "--hidden-import", "fractions"]
+    for package in ("dissect.target", "dissect.database", "dissect.eventlog", "dissect.evidence",
+                    "dissect.hypervisor", "dissect.ntfs", "dissect.regf", "dissect.volume", "dissect.fat", "dissect.extfs", "flow.record"):
+        command.extend(["--collect-all", package])
     for source, target in [(generated, "resources"), (root / "config" / "fireblade.toml", "resources/config"),
                            (root / "docs" / "guides" / "UTILISATION.md", "resources/docs/guides"),
                            (root / "docs" / "guides" / "TUTORIEL-COMPLET.md", "resources/docs/guides"),
@@ -52,6 +55,7 @@ def main():
                            (root / "docs" / "guides" / "CHASSE-IOC.md", "resources/docs/guides"),
                            (root / "docs" / "guides" / "COUVERTURE-COLLECTE.md", "resources/docs/guides"),
                            (root / "docs" / "guides" / "JOURNAUX-LINUX.md", "resources/docs/guides"),
+                           (root / "docs" / "guides" / "DISQUES-ET-ESPACE-DE-TRAVAIL.md", "resources/docs/guides"),
                            (root / "examples" / "ioc", "resources/examples/ioc"),
                            (root / "docs" / "assets" / "fireblade-timeline.png", "resources/docs/assets"),
                            (root / "docs" / "assets" / "fireblade-ioc-hunt.png", "resources/docs/assets"),

@@ -29,7 +29,7 @@ def window(qt_application, tmp_path):
     source.write_text('Artifact,User,ID,Flag,Time\nMFT,alice,001,TRUE,2026-01-01 12:00:00.1234567\nEVTX,bob,2,FALSE,2026-02-01 01:00:00\nMFT,alice,3,TRUE,2026-01-02 01:00:00\n')
     case = Case(tmp_path/'first.timeline')
     case.import_csv(source)
-    w = Window()
+    w = Window(require_case=False)
     errors = []
     w.error = errors.append
     w.attach(case)
@@ -236,7 +236,7 @@ def test_actual_visible_tab_click_switches_analysis_and_preserves_state(qt_appli
 def test_five_long_wrapped_tabs_remain_clickable_after_font_and_geometry_change(qt_application,tmp_path):
     from PySide6.QtTest import QTest
     names=['événements Windows.csv','deuxième.csv','preuve été.xlsx','colonnes réordonnées.csv','fonctions étendues.csv']
-    w=Window();errors=[];w.error=errors.append;w.show()
+    w=Window(require_case=False);errors=[];w.error=errors.append;w.show()
     try:
         paths=[]
         for i,name in enumerate(names):
@@ -316,7 +316,7 @@ def test_many_manual_expansions_keep_a_bounded_cache(qt_application,tmp_path):
     source.write_text('Group,ID\n'+'\n'.join(f'g{i//10:02},{i}' for i in range(1000))+'\n')
     settings=Settings(page_size=25,max_loaded_rows=100)
     case=Case(tmp_path/'manual.timeline',settings=settings);case.import_csv(source)
-    w=Window(settings=settings);errors=[];w.error=errors.append
+    w=Window(require_case=False, settings=settings);errors=[];w.error=errors.append
     try:
         w.attach(case,View(groups=[0]));settle(qt_application,w)
         for i in range(20):
@@ -349,7 +349,7 @@ def test_open_official_plaso_csv_applies_profile_before_showing_grid(qt_applicat
     import shutil
     fixture=Path(__file__).parents[1]/'fixtures'/'tle-exports'/'SuperTimelinePlaso.csv'
     source=tmp_path/'plaso.csv';shutil.copy2(fixture,source);before=source.read_bytes()
-    w=Window();errors=[];w.error=errors.append
+    w=Window(require_case=False);errors=[];w.error=errors.append
     target=tmp_path/'plaso.timeline'
     def accept(dialog):dialog.target.setText(str(target));dialog.accept();return dialog.result()
     monkeypatch.setattr(ImportDialog,'exec',accept)
@@ -480,7 +480,7 @@ def test_ordinary_open_detects_real_installed_reader(qt_application,tmp_path,mon
     directory=reader_directories()[0];directory.mkdir(parents=True)
     shutil.copy2(fixture,directory/Path(fixture).name)
     source=tmp_path/'new.csv';source.write_text('Text,Identifier\névidence,0001\n',encoding='utf-8')
-    before=source.read_bytes();w=Window();errors=[];w.error=errors.append
+    before=source.read_bytes();w=Window(require_case=False);errors=[];w.error=errors.append
     target=tmp_path/'automatic.timeline';dialogs=[]
     def accept(dialog):
         dialogs.append(dialog)
@@ -547,7 +547,7 @@ def test_xml_layout_export_uses_real_header_geometry_and_protects_evidence(qt_ap
 def test_scoped_default_pins_apply_only_to_the_matching_reader(qt_application,tmp_path):
     source=tmp_path/'generic.csv';source.write_text('User,Message\nalice,hello\n')
     case=Case(tmp_path/'generic.timeline');case.import_csv(source)
-    w=Window();w.preferences.pinned_columns_by_format={'GenericCsv':['Message'],'OtherReader':['User']}
+    w=Window(require_case=False);w.preferences.pinned_columns_by_format={'GenericCsv':['Message'],'OtherReader':['User']}
     errors=[];w.error=errors.append
     try:
         w.attach(case,auto_layout=False);w.show();settle(qt_application,w)

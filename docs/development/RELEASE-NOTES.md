@@ -1,37 +1,49 @@
-# Fireblade 0.1.1 — Windows x64 (prototype)
+# Fireblade 0.2.0 — cases, disques et espace de travail
 
-## Nouvelle numérotation
+## Un case avant toute analyse
 
-**0.1.1 est la nouvelle numérotation publique du prototype.** Elle reprend les fonctionnalités précédemment numérotées 0.7.0 et ajoute les améliorations ci-dessous. Ce changement de numéro ne retire pas de fonctionnalités. Les anciens rapports et packs conservent leur version, leur commit et leurs empreintes historiques.
+À l’ouverture, créez ou ouvrez un dossier d’enquête. Un nouveau case propose deux
+parcours : analyser un fichier de données (CSV, TSV, TXT, XLS ou XLSX) ou analyser
+un disque logique / disque complet. Les collectes, sessions et analyses existantes
+restent disponibles dans le menu Fichier une fois le case ouvert.
 
-## Journaux Linux et collectes
+## Analyse de disque en arrière-plan
 
-- Import hors ligne de `/var/log/` et des noms de journaux usuels ; sources et offsets conservés, diagnostics explicites pour chaque membre et fichier.
-- Syslog traditionnel/RFC5424, audit Linux, Apache/Nginx, JSON Lines, Zeek TSV, W3C extended, kernel et journaux applicatifs horodatés ; projections SSH, sudo, UFW et CEF.
-- Lecture native systemd journal standard/compact et Journal Export Format ; utmp/wtmp/btmp et lastlog glibc little-endian ; comptabilité Linux acct_v3 little/big-endian.
-- Rotations gzip, bzip2, XZ/LZMA, Zstandard et LZ4, archives TAR/ZIP, textes UTF-16/UTF-32 avec BOM. Lecture en flux, contrôle des troncatures et refus des chemins dangereux, liens et fichiers spéciaux.
-- Dates explicitement zonées ou Unix projetées en UTC avec conservation des fractions ; aucune année ni aucun fuseau inventés. Profil de couverture LinuxLogs et colonnes utilisables dans la chronologie.
+- Sources : volumes montés et dossiers de collecte, images RAW / E01, chemins de
+  périphériques physiques. Lecteurs de systèmes de fichiers : NTFS, FAT et ext.
+- Lecture seule, copie des artefacts reconnus dans le case, empreintes SHA-256 et
+  traitement par les lecteurs existants. Ce parcours ne copie pas tout le disque.
+- Accès immédiat à l’espace de travail ; chaque analyse terminée devient
+  consultable sans attendre la fin du disque ni remplacer l’onglet actif.
+- Indicateur en bas à droite : découverte, extraction et parseur actif. Bouton
+  d’arrêt avec conservation des résultats déjà produits.
+- Case protégé contre le changement d’enquête et la fermeture pendant la tâche.
+  Copies et références conservées dans les archives portables.
 
-[Formats, interprétation et limites](https://github.com/23R0534ZXT/fireblade/blob/main/docs/guides/JOURNAUX-LINUX.md).
+## Organisation et démarrage
 
-## Environnement d’investigation conservé
+- Arbre disque → partition → dossiers → analyses ; autres modes par famille
+  d’artefact ou en liste.
+- **Affichage → Organiser l’espace de travail** : côté et visibilité de l’arbre,
+  position des détails, barres d’outils, déplier/replier, préférences sauvegardées.
+- Animation vectorielle de démarrage, désactivable dans le même menu.
 
-Cases persistants, sauvegardes et archives portables vérifiées ; 13 EZ Tools et 70 plugins RECmd intégrés ; Shellbags, WebCache, CatScale ; Hayabusa avec contexte EVTX ; chronologie, corrélations, chasse IOC, annotations et rapports HTML/PDF ; exports CSV/XLSX relus et vérifiés.
+## Validation et disponibilité
 
-## Qualification et version du binaire
+Version des sources : **0.2.0**. Le dernier EXE publié reste **0.1.1** tant qu’une
+construction 0.2.0 n’a pas passé la qualification Windows puis été publiée.
+Les anciens téléchargements ne contiennent pas les nouveautés ci-dessus.
 
-La publication attend les contrôles du tag `v0.1.1` : tests Windows Python 3.11/3.12/3.13, EXE autonome, lecteurs intégrés, chemins UNC/longs, huit configurations visuelles, 320 analyses et scénario interactif sur plus de 3 Gio. Les versions de fichier et de produit Windows doivent correspondre à **0.1.1**.
+La validation Linux/Qt hors écran couvre notamment une image FAT12, un disque RAW
+MBR à deux partitions, la publication progressive, les requêtes pendant la tâche,
+l’annulation, la réouverture du case et les archives portables. Voir le
+[rapport de développement](../validation/reports/20261103-v02-case-disk-linux.md).
 
-Les mesures préalables de l’extension Linux ont vérifié une source unique de **32 Gio décompressés**, avec contrôle des enregistrements et de leur empreinte en flux (sans sérialisation CSV ni import DuckDB pour ce volet), puis **1 000 000 d’événements réellement importés et relus**. Deux journaux systemd publics sains ont été comparés à `journalctl` : 18 238 entrées avec tous les champs identiques. Les écarts sur le fichier corrompu sont explicités dans le guide.
+Les accès physiques Windows, E01, NTFS et ext demandent encore une qualification
+appropriée. Pas d’acquisition de disque, de déchiffrement, de carving ni de
+récupération des fichiers supprimés ; pas de reprise du parcours au dernier
+fichier après interruption. Les erreurs d’accès et parseurs manquants restent
+visibles. Un volume actif peut changer pendant sa lecture.
 
-## Limites
-
-Prototype non signé. Les essais automatisés ne qualifient pas tous les postes, tous les formats propriétaires ou chaque fichier endommagé. Les binaires inconnus, erreurs et lectures brutes restent signalés ; les hachages/scellements internes systemd ne sont pas vérifiés. Les archives CatScale conservent leur lecteur et leurs limites. Les lecteurs Linux ont des bornes explicites et les limites générales du nombre d’analyses restent applicables. Le budget DuckDB ne plafonne pas la RAM de tous les composants.
-
-## Télécharger et donner un retour
-
-Télécharger **Fireblade.exe** et le lancer sous Windows x64. Python, Excel et une installation préalable de .NET ne sont pas nécessaires. Interface et guides en français.
-
-[Pack de découverte](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1) · [Grand pack BRUT](https://github.com/23R0534ZXT/fireblade/releases/tag/raw-artifacts-v1) · [Retours des testeurs](https://github.com/23R0534ZXT/fireblade/issues/6) · [Signaler un problème](https://github.com/23R0534ZXT/fireblade/issues/new/choose)
-
-Le workflow ajoute le commit qualifié et le SHA-256 exact de l’EXE à ces notes lors de la publication.
+[Guide et limites](../guides/DISQUES-ET-ESPACE-DE-TRAVAIL.md) ·
+[Historique 0.1.1](../archive/RELEASE-NOTES-HISTORIQUE.md)

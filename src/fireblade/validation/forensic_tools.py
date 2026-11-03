@@ -14,7 +14,7 @@ from fireblade.runtime.resources import resource_path
 def parser_result_display(app, settings=None):
     """Render parser outputs without adding documents to other validation windows."""
     from fireblade.ui.app import Window
-    window = Window(settings=settings)
+    window = Window(require_case=False, settings=settings)
     errors = []
     window.error = errors.append
     window.show()

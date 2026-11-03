@@ -51,7 +51,7 @@ def relocate(value, mapping, key=None):
         if key in ('headers','view','filters','notes'):return copy.deepcopy(value)
         return [relocate(item,mapping,key) for item in value]
     if isinstance(value, str) and key in ('path','source','output','analysis','csv','root','file','directory',
-                                         'database','session','context','alert_analysis','source_analysis','documents','sources'):
+                                         'database','session','context','alert_analysis','source_analysis','documents','sources','extracted'):
         if value in mapping:
             return mapping[value]
         for old, new in sorted(mapping.items(), key=lambda pair: len(pair[0]), reverse=True):
@@ -300,7 +300,7 @@ def import_package(library, source):
                 finally:store.close()
             # Workspaces are JSON references; original event values stay untouched.
             for path in (destination/'collections').rglob('*') if (destination/'collections').exists() else []:
-                if path.name=='collection.json' or path.suffix=='.fireblade-session':
+                if path.name in ('collection.json', 'disk-source.json') or path.suffix=='.fireblade-session':
                     if path.stat().st_size>MAX_MANIFEST:raise ValueError('Références de collecte trop volumineuses')
                     from fireblade.core.layout import write_json
                     original_report=json.loads(path.read_text(encoding='utf-8'))

@@ -33,3 +33,14 @@ Le pack de construction `config/forensic-toolchain.json` fixe les révisions des
 Hayabusa reste un programme séparé, exécuté par sous-processus. Son texte de licence est extrait de l’archive de sources et inclus dans les notices. Les sources correspondant au tag livré sont embarquées dans `forensic-tools/Hayabusa-source.zip`, exportables par le bouton de l’onglet Collecte. Les règles restent distribuées avec leur archive officielle, sans modification automatique à l’exécution. Les empreintes et les liens de sources sont conservés dans les notices et le manifeste du pack.
 
 Le petit EVTX de qualification est un échantillon public DeepBlueCLI distribué dans `Yamato-Security/hayabusa-sample-evtx`, référencé par blob et SHA-256. Il est exclusivement utilisé pour vérifier EvtxECmd et Hayabusa dans l’EXE ; ce n’est pas une donnée utilisateur.
+
+## Lecture de disques (développement 0.2)
+
+La lecture seule des images et partitions utilise Dissect Target et les bibliothèques
+Dissect associées (NTFS, FAT, ext, volume, evidence, hypervisor, database, eventlog,
+regf), ainsi que flow.record, defusedxml, structlog et msgpack. Les composants Dissect
+et flow.record sont sous **AGPL-3.0-or-later** ; leur licence reste distincte de
+celle des fichiers propres à Fireblade. Les versions sont
+épinglées dans requirements/runtime.txt. Les notices des distributions installées
+sont collectées par scripts/windows/bundle.py et intégrées au menu Aide → Licences.
+Sources : https://github.com/fox-it/dissect.target et https://github.com/fox-it.

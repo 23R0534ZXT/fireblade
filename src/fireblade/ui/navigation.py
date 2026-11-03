@@ -35,15 +35,22 @@ class AnalysisNavigator(QWidget):
         if index is not None:
             self.activated.emit(index)
 
-    def refresh(self, documents, active, collections, labels=None):
+    def refresh(self, documents, active, collections, labels=None, origins=None, grouping="families"):
         labels=labels or {}
+        origins=origins or {}
         signature = (tuple((d.path, d.source_info['path']) for d in documents),
                      tuple((c['path'], c['name']) for c in collections),
-                     tuple(labels.get(d.path,'') for d in documents))
+                     tuple(labels.get(d.path,'') for d in documents), grouping,
+                     tuple((d.path, str(origins.get(d.path, {}))) for d in documents))
         if signature != self.signature:
             expanded = {self.key(item): item.isExpanded() for item in self.items()}
             self.tree.clear()
-            roots, families = {}, {}
+            roots, families, folders = {}, {}, {}
+            for owner in collections:
+                root_key = owner['path']
+                roots[root_key] = QTreeWidgetItem(self.tree, [owner['name']])
+                roots[root_key].setData(0, Qt.UserRole+1, root_key)
+                roots[root_key].setToolTip(0, root_key)
             for index, snapshot in enumerate(documents):
                 owner = next((c for c in collections if Path(c['path']) in Path(snapshot.path).parents), None)
                 root_key = owner['path'] if owner else ''
@@ -54,6 +61,29 @@ class AnalysisNavigator(QWidget):
                 source = Path(snapshot.source_info['path'])
                 family = ('Détection Hayabusa' if 'hayabusa' in source.stem.casefold() else
                           'Contexte EVTX' if source.stem == 'Contexte EVTX' else source.stem)
+                origin = origins.get(snapshot.path)
+                if origin and origin.get('artifact'):
+                    family = origin['artifact']
+                if grouping == 'flat' or grouping == 'folders' and origin:
+                    parent = roots[root_key]
+                    if grouping == 'folders' and origin:
+                        relative = Path(origin.get('relative', ''))
+                        components = [origin.get('partition', 'Volume'), *relative.parent.parts]
+                        key = root_key
+                        for component in components:
+                            key += '|'+component
+                            if key not in folders:
+                                folder = QTreeWidgetItem(parent, [component])
+                                folder.setData(0, Qt.UserRole+1, key)
+                                folders[key] = folder
+                            parent = folders[key]
+                        title = relative.name+' · '+family
+                    else:
+                        title = labels.get(snapshot.path) or source.name
+                    leaf = QTreeWidgetItem(parent, [title])
+                    leaf.setData(0, Qt.UserRole, index)
+                    leaf.setToolTip(0, (origin or {}).get('source', str(source))+'\n'+snapshot.path)
+                    continue
                 family_key = (root_key, family)
                 families.setdefault(family_key,[]).append((index,snapshot,source))
             for (root_key,family),members in families.items():

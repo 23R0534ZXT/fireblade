@@ -35,7 +35,7 @@ def test_row_column_header_and_selection_styles_render_and_persist(qt_applicatio
        <property name="Item1"><property name="FieldName">User</property><property name="VisibleIndex">0</property><property name="AppearanceCell"><property name="ForeColor">Green</property><property name="TextOptions"><property name="HAlignment">Far</property></property></property></property>
        <property name="Item2"><property name="FieldName">Value</property><property name="Fixed">Right</property><property name="VisibleIndex">1</property><property name="AppearanceHeader"><property name="BackColor">#654321</property><property name="Font">Arial, 18pt</property></property></property>
       </property></XtraSerializer>''')
-    layout=read_tle_layout(path,case.headers);w=Window();errors=[];w.error=errors.append
+    layout=read_tle_layout(path,case.headers);w=Window(require_case=False);errors=[];w.error=errors.append
     try:
         w.attach(case);w.apply_tle_layout(layout);w.show();settle(qt_application,w)
         first=w.model.index(0,1);second=w.model.index(1,1)
@@ -69,7 +69,7 @@ def test_conditional_presets_merge_explicit_overrides_and_gradients(tmp_path):
     assert rule.appearance==dict(background2='#000000',gradient='Vertical',horizontal='Far')
     source=tmp_path/'s.csv';source.write_text('Value\n1\n2\n')
     case=Case(tmp_path/'s.timeline');case.import_csv(source)
-    w=Window();errors=[];w.error=errors.append
+    w=Window(require_case=False);errors=[];w.error=errors.append
     try:
         w.attach(case,view);settle(QApplication.instance(),w)
         brush=w.model.index(0,1).data(Qt.BackgroundRole)
@@ -104,7 +104,7 @@ def test_embedded_images_borders_wrapping_and_panels_really_render(qt_applicatio
      <property name="Item2"><property name="FieldName">Value</property><property name="Fixed">Right</property></property>
      </property></XtraSerializer>''')
     layout=read_tle_layout(path,case.headers);assert not layout.warnings
-    w=Window();errors=[];w.error=errors.append
+    w=Window(require_case=False);errors=[];w.error=errors.append
     try:
         w.attach(case);w.apply_tle_layout(layout);w.show();settle(qt_application,w)
         panel=w.groups_label.grab().toImage()
@@ -145,7 +145,7 @@ def test_custom_named_styles_are_flattened_and_conditional_images_render(qt_appl
     rule=layout.view.format_rules[0];assert rule.foreground=='#0000ff' and rule.background=='#abcdef' and rule.appearance['image']==encoded
     dest=tmp_path/'saved.fireblade-view';write_json(dest,dict(format='fireblade-view',version=1,headers=case.headers,view=json.loads(layout.view.to_json())));sidecar.unlink()
     restored=read_layout(dest,case.headers);assert restored.format_rules[0].appearance==rule.appearance
-    w=Window();errors=[];w.error=errors.append
+    w=Window(require_case=False);errors=[];w.error=errors.append
     try:
         w.attach(case,restored);w.show();settle(qt_application,w)
         first=w.model.index(0,1);second=w.model.index(1,1)
@@ -165,7 +165,7 @@ def test_search_filters_and_detail_controls_show_panel_styles_and_reset(qt_appli
         'preview':dict(background='#654321',foreground='#fedcba',image=encoded,image_align='TopRight'),
         'filter_panel':dict(background='#334455',foreground='#ffffff',word_wrap=True),
     })
-    w=Window();errors=[];w.error=errors.append
+    w=Window(require_case=False);errors=[];w.error=errors.append
     try:
         w.attach(case,view);w.show();settle(qt_application,w)
         w.search.clearFocus();qt_application.processEvents()
@@ -187,7 +187,7 @@ def test_standalone_mixed_icon_acceptance_runs_against_real_widgets(qt_applicati
     from fireblade.validation.layout_appearance import check_mixed_icon_layout
     source=tmp_path/'s.csv';source.write_text('ID,User\n9007199254740993,alice\n1,bob\n5,alice\n')
     case=Case(tmp_path/'s.timeline');case.import_csv(source)
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     def expect(value,message):assert value,message
     try:
         window.attach(case);window.show();settle(qt_application,window)
@@ -210,7 +210,7 @@ def test_high_priority_appearance_overrides_per_property_and_resets(qt_applicati
         'header':dict(background='#123456',high_priority=True),
         'header:0':dict(background='#654321'),
     })
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     try:
         window.attach(case,view);window.show();settle(qt_application,window)
         index=window.model.index(0,1)
@@ -250,7 +250,7 @@ def test_standalone_priority_acceptance_runs_against_real_widgets(qt_application
     from fireblade.validation.layout_appearance import check_priority_layout
     source=tmp_path/'s.csv';source.write_text('ID,User\n1,alice\n2,bob\n')
     case=Case(tmp_path/'s.timeline');case.import_csv(source)
-    window=Window();errors=[];window.error=errors.append
+    window=Window(require_case=False);errors=[];window.error=errors.append
     def expect(value,message):assert value,message
     try:
         window.attach(case);window.show();settle(qt_application,window)

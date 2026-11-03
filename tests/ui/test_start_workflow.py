@@ -2,7 +2,6 @@ import threading
 import time
 
 from PySide6.QtCore import Qt
-from PySide6.QtTest import QTest
 
 from fireblade.core.disk import DiskCollection
 from fireblade.ui.app import Window
@@ -14,7 +13,11 @@ def until(app, predicate):
     while time.monotonic() < deadline:
         app.processEvents()
         if predicate(): return
-        QTest.qWait(10)
+        # QTest.qWait can retain the Python GIL on Windows. Let QRunnable
+        # callbacks execute Python between GUI event batches.
+        time.sleep(.005)
+    import faulthandler
+    faulthandler.dump_traceback()
     raise AssertionError('Timed out')
 
 
@@ -47,7 +50,7 @@ def test_progressive_disk_keeps_workspace_interactive(qt_application, tmp_path, 
     def publish(self, start, entry):
         original(self, start, entry)
         reached.set()
-        release.wait(10)
+        release.wait(30)
     monkeypatch.setattr(DiskCollection, 'publish_results', publish)
     window = Window(investigation_root=tmp_path/'cases', require_case=True)
     errors = []; window.error = errors.append
@@ -186,3 +189,19 @@ def test_rejected_source_does_not_create_disk_work_directory(qt_application, tmp
         assert errors and window.disk_job is None
     finally:
         window.close()
+
+
+def test_navigation_accepts_windows_and_portable_origin_paths(qt_application, tmp_path):
+    from fireblade.core.models import AnalysisSnapshot, View
+    from fireblade.ui.navigation import AnalysisNavigator
+    document = AnalysisSnapshot(str(tmp_path/'analysis.timeline'), {'path': str(tmp_path/'result.csv')}, View(), b'')
+    navigator = AnalysisNavigator()
+    try:
+        for relative in ('var/log/auth.log', r'var\log\auth.log'):
+            navigator.refresh([document], 0, [], origins={document.path: dict(
+                partition='partition-1', relative=relative, artifact='Journaux Linux')}, grouping='folders')
+            labels = {item.text(0) for item in navigator.items()}
+            assert {'partition-1', 'var', 'log', 'auth.log · Journaux Linux'} <= labels
+    finally:
+        navigator.close()
+        navigator.deleteLater()

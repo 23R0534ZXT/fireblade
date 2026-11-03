@@ -76,3 +76,23 @@ supprimés. Le parcours interrompu ne reprend pas encore au dernier fichier.
 Les dépendances Dissect et flow.record ajoutées sont sous AGPL-3.0-or-later ;
 les versions et notices sont déclarées dans le dépôt et la collecte de notices
 pour la construction Windows a été étendue. Aucun nouvel EXE n’est publié.
+
+## Retour de CI Windows après le premier push 0.2.0
+
+L’exécution GitHub Actions `41670725665` du commit `d44ddd4` a échoué sur
+Python 3.11, 3.12 et 3.13 : trois tests échoués, 1 164 réussis et 28 ignorés
+sur chacune des trois versions. La construction de l’EXE et ses qualifications
+ont été bloquées par ces échecs.
+
+Deux tests détectaient un chemin relatif enregistré avec les séparateurs natifs
+Windows au lieu du format portable. La sérialisation utilise désormais `/`
+sur tous les systèmes ; l’arbre accepte aussi les anciens chemins avec `\`.
+Des tests reproduisent le cas avec `PureWindowsPath` et vérifient les deux
+formes dans le navigateur.
+
+Le test de consultation pendant l’indexation utilisait une attente Qt pouvant
+retenir le GIL Python sous Windows. Son attente traite les événements Qt puis
+rend explicitement la main aux threads Python avec `time.sleep`, comme les
+helpers des autres tests de grille. Le délai d’échec reste borné et imprime
+les piles des threads en cas de dépassement. La validation native du correctif
+est à consulter dans la nouvelle exécution GitHub Actions.

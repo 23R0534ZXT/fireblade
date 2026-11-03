@@ -33,9 +33,12 @@ def main():
     shutil.copy2(root/"build/windows/plugin-fixture/Fireblade.PluginFunctionsFixture.dll",generated/"plugin-host/Fireblade.PluginFunctionsFixture.dll")
     from scripts.windows.build_forensic_tools import build as build_forensic_tools
     build_forensic_tools(root, generated)
+    from scripts.release import application_version
+    from scripts.windows.version_info import write_version_file
+    version_file=write_version_file(root/"build/windows/version-info.txt",application_version(root))
     staging = root / "build" / "windows" / "output"
     command = [str(python), "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--onefile",
-               "--name", "Fireblade", "--paths", str(root / "src"),
+               "--name", "Fireblade", "--version-file", str(version_file), "--paths", str(root / "src"),
                "--distpath", str(staging), "--workpath", str(root / "build" / "windows" / "pyinstaller"),
                "--specpath", str(root / "build" / "windows"), "--collect-all", "duckdb",
                "--collect-all", "lz4", "--collect-all", "zstandard",

@@ -1,4 +1,4 @@
-"""Capture the real 0.7 desktop workflows using synthetic evidence only."""
+"""Capture the current desktop workflows using synthetic evidence only."""
 import argparse
 import csv
 import os
@@ -32,7 +32,7 @@ def main():
             app.processEvents()
             if not (widget or window).grab().save(str(args.output/name)):raise RuntimeError('Capture failed')
         try:
-            window.create_investigation('Atlas — démonstration Fireblade 0.7',environment='mixed')
+            window.create_investigation('Atlas — démonstration Fireblade 0.1.1',environment='mixed')
             for number,name in enumerate(['Proxy — connexions','DNS — résolutions','EVTX — sessions']):
                 source=root/(name+'.csv')
                 with source.open('w',encoding='utf-8',newline='') as stream:

@@ -1,6 +1,6 @@
 # Écarts de compatibilité à traiter
 
-Référence de travail : Fireblade 0.4 et les usages documentés de Timeline Explorer ; les métadonnées de layouts déjà étudiées dans le projet proviennent de TLE 2026.10.0. Cet inventaire distingue les différences connues et les équivalences non démontrées. Il n'est pas une certification exhaustive de toutes les fonctions de DevExpress, dont certaines ne sont pas exposées dans TLE.
+Référence de travail : Fireblade (prototype actuel) et les usages documentés de Timeline Explorer ; les métadonnées de layouts déjà étudiées dans le projet proviennent de TLE 2026.10.0. Cet inventaire distingue les différences connues et les équivalences non démontrées. Il n'est pas une certification exhaustive de toutes les fonctions de DevExpress, dont certaines ne sont pas exposées dans TLE.
 
 Une ligne est terminée lorsque le comportement est implémenté et vérifié par un cas observable. Une vérification locale Qt sans écran ne constitue pas une qualification native Windows ni un essai humain. L'exécution Actions du commit doit être consultée avant d'annoncer une nouvelle qualification du fichier unique.
 

@@ -1,4 +1,4 @@
-# Fireblade 0.7
+# Fireblade 0.1.1
 
 [![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 
@@ -11,6 +11,8 @@ Fireblade s’adresse aux analystes DFIR et aux personnes qui apprennent l’inv
 ![Espace d’investigation Fireblade](docs/assets/fireblade-workspace.png)
 
 *Interface en français. Capture de l’application avec des données de démonstration, rendue sous Linux hors écran.*
+
+> **Nouvelle numérotation : 0.1.1.** Les fonctionnalités de la série 0.7 sont conservées. La nouvelle publication est en cours de qualification ; le téléchargement ci-dessus reste le précédent EXE 0.7.0 jusqu’à sa disponibilité.
 
 ## Ce que vous pouvez faire
 

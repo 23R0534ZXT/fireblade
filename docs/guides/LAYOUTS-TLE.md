@@ -1,6 +1,6 @@
 # Apparences des layouts Timeline Explorer
 
-Fireblade 0.4 importe les données XML de disposition sans installer DevExpress. Importez un `.layout`/`.layout.local` depuis le menu Fichier, ou utilisez le chargement automatique par format décrit dans le README. Les propriétés explicites complètent les styles prédéfinis et les options `Use…` peuvent les désactiver. Les vues Fireblade et les dispositions locales mémorisées conservent les valeurs importées.
+Fireblade importe les données XML de disposition sans installer DevExpress. Importez un `.layout`/`.layout.local` depuis le menu Fichier, ou utilisez le chargement automatique par format décrit dans le README. Les propriétés explicites complètent les styles prédéfinis et les options `Use…` peuvent les désactiver. Les vues Fireblade et les dispositions locales mémorisées conservent les valeurs importées.
 
 ## Éléments dessinés
 

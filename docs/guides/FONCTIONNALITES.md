@@ -1,4 +1,4 @@
-# Fireblade 0.7
+# Fireblade 0.1.1
 
 [![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 [![Forensic test pack](https://github.com/23R0534ZXT/fireblade/actions/workflows/test-pack.yml/badge.svg)](https://github.com/23R0534ZXT/fireblade/actions/workflows/test-pack.yml)
@@ -7,7 +7,7 @@
 
 **A local forensic investigation workspace for Windows artifacts, Linux CatScale collections and existing data exports.**
 
-**Current source version: 0.7.0.** Version 0.7 brings the complete workflow together: persistent cases, recovery and portable archives, Shellbags and WebCache readers, graphical chronology, bulk IOC hunting, investigation reports, and collection coverage diagnostics. The version of a downloadable EXE depends on the last successful Windows release; check **Aide → À propos** and the release commit.
+**Current source version: 0.1.1.** This is the new prototype numbering, retaining the features previously numbered 0.7 and adding standalone Linux log analysis. The workflow includes: persistent cases, recovery and portable archives, Shellbags and WebCache readers, graphical chronology, bulk IOC hunting, investigation reports, and collection coverage diagnostics. The version of a downloadable EXE depends on the last successful Windows release; check **Aide → À propos** and the release commit.
 
 ![Fireblade investigation workspace](../assets/fireblade-workspace.png)
 

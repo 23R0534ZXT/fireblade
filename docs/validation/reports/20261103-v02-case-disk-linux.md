@@ -1,7 +1,7 @@
 # Préparation 0.2 — cases, disques et organisation
 
-Date : 3 novembre 2026. Base Git : `b677791` (0.1.1). Changements locaux de
-préparation 0.2, sans publication ni reconstruction de l’EXE Windows.
+Date : 3 novembre 2026. Base Git : `b677791` (0.1.1). Rapport des contrôles locaux de préparation 0.2, puis du correctif Windows
+`43893ab` et de la publication 0.2.0 décrits dans les sections finales.
 
 ## Comportements ajoutés
 
@@ -76,7 +76,7 @@ supprimés. Le parcours interrompu ne reprend pas encore au dernier fichier.
 
 Les dépendances Dissect et flow.record ajoutées sont sous AGPL-3.0-or-later ;
 les versions et notices sont déclarées dans le dépôt et la collecte de notices
-pour la construction Windows a été étendue. Aucun nouvel EXE n’est publié.
+pour la construction Windows a été étendue. La publication ultérieure de l’EXE qualifié est décrite dans la section finale.
 
 ## Retour de CI Windows après le premier push 0.2.0
 
@@ -112,4 +112,15 @@ contrôles requis de l’[exécution 41673982489](https://github.com/23R0534ZXT/
 
 Conclusion globale GitHub Actions : **success**. Les jobs optionnels de diagnostic
 et de publication ont été ignorés conformément aux conditions du workflow.
-L’EXE 0.2.0 est disponible comme artefact de l’exécution, pas comme release publiée.
+À l’issue de cette qualification, l’EXE était disponible comme artefact. Sa publication ultérieure est décrite ci-dessous.
+
+
+## Publication de la 0.2.0
+
+La [release v0.2.0](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.0)
+a été publiée par l’[exécution 41693539099](https://github.com/23R0534ZXT/fireblade/actions/runs/41693539099),
+en réutilisant l’EXE qualifié du commit `43893ab` sans reconstruction.
+Le workflow a revérifié les neuf jobs requis, la version et l’empreinte de l’asset.
+L’empreinte retournée par GitHub pour le fichier publié correspond au rapport
+Windows : `cd0bc25997ad63c6b5cfea47c0e27f10f4e92cffe79c46575293680333df3502`.
+La release reste identifiée comme prototype / préversion, comme la 0.1.1.

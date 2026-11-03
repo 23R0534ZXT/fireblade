@@ -4,9 +4,9 @@
 
 **Un espace d’investigation local pour analyser des disques, explorer des artefacts Windows et Linux et examiner des exports de données.**
 
-**[Télécharger Fireblade 0.2.0 — Windows x64 (artefact validé)](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489/artifacts/13251681041)** · [Qualification Windows réussie](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489) · [Notes 0.2.0](docs/development/RELEASE-NOTES.md) · [Donner un retour](https://github.com/23R0534ZXT/fireblade/issues/6)
+**[Télécharger Fireblade 0.2.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.2.0/Fireblade.exe)** · [Notes et SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.0) · [Qualification Windows réussie](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489) · [Donner un retour](https://github.com/23R0534ZXT/fireblade/issues/6)
 
-Le téléchargement 0.2.0 est une archive **Fireblade-exe** : connectez-vous à GitHub, téléchargez-la puis extrayez **Fireblade.exe**. Les artefacts GitHub Actions sont temporaires. La dernière release publique reste la [0.1.1](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.1.1) ; elle ne contient pas les nouveautés de la 0.2.
+**La 0.2.0 est publiée.** Téléchargez directement **Fireblade.exe**, puis lancez-le sous Windows x64. Le fichier publié est exactement celui qui a passé les qualifications Windows. Les packs de données ci-dessous sont des téléchargements séparés.
 
 Fireblade s’adresse aux analystes DFIR et aux personnes qui apprennent l’investigation numérique. Il rassemble les résultats dans des dossiers d’enquête persistants : filtrer les données, retrouver les événements liés à une alerte, conserver des notes et exporter ses constatations.
 
@@ -56,7 +56,7 @@ Le grand pack réunit **2,37 Go d’artefacts Windows publics** et **1,07 Go de 
 
 ## Essayer Fireblade 0.2.0 en 15 minutes
 
-1. Téléchargez l’archive **Fireblade-exe** avec le lien 0.2.0 ci-dessus, extrayez-la puis lancez **Fireblade.exe** sous **Windows x64**. Python, Excel et une installation préalable de .NET ne sont pas nécessaires.
+1. Téléchargez **Fireblade.exe** avec le lien 0.2.0 ci-dessus, puis lancez-le sous **Windows x64**. Python, Excel et une installation préalable de .NET ne sont pas nécessaires.
 2. Au démarrage, **créez un case ou ouvrez une enquête existante**. Toute analyse est rattachée à ce dossier d’enquête.
 3. Téléchargez et décompressez le [pack de découverte (~5,1 Mo)](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip). Son fichier **LIRE-MOI.md** décrit les données et les avertissements attendus.
 4. Depuis l’accueil du case, choisissez **Analyser un fichier de données…** et ouvrez un CSV du dossier `03-Exports`. Filtrez une colonne, ajoutez un signet et une note.
@@ -69,7 +69,7 @@ Ce petit pack couvre des exemples de formats : il ne contient pas une collecte c
 
 **F1** ouvre le guide rapide ; **Aide → Tutoriel complet** présente les autres parcours.
 
-Le programme est encore un **prototype non signé** : Windows peut afficher un avertissement au lancement. Les rapports de qualification sont disponibles dans les artefacts de l’exécution liée ci-dessus ; les releases publiques ont leurs propres notes et empreintes SHA-256. Le premier démarrage extrait les ressources embarquées ; prévoyez de l’espace pour les analyses et leurs fichiers temporaires.
+Le programme est encore un **prototype non signé** : Windows peut afficher un avertissement au lancement. Les [notes de la release 0.2.0](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.0) donnent le commit qualifié et l’empreinte SHA-256 du téléchargement. Le premier démarrage extrait les ressources embarquées ; prévoyez de l’espace pour les analyses et leurs fichiers temporaires.
 
 [![Aperçu du parcours Fireblade](docs/assets/fireblade-demo.gif)](docs/guides/DEMONSTRATION.md)
 
@@ -110,7 +110,7 @@ Le code est dans `src/fireblade`, les tests dans `tests`, les versions des moteu
 
 ## English overview
 
-Fireblade 0.2.0 adds a mandatory case-first workflow, background disk artifact analysis, progressive results, a configurable source tree and an optional startup animation. The Windows 0.2.0 build passed its qualification, including 1,169 tests per Python version, the standalone executable, visual checks, the >3 GiB scenario and 320 analyses. Download the **Fireblade-exe** Actions artifact linked above (GitHub sign-in required), then extract and run Fireblade.exe. The latest public release remains 0.1.1. See the linked validation limits before using disk images or physical devices.
+Fireblade 0.2.0 adds a mandatory case-first workflow, background disk artifact analysis, progressive results, a configurable source tree and an optional startup animation. The Windows 0.2.0 build passed its qualification, including 1,169 tests per Python version, the standalone executable, visual checks, the >3 GiB scenario and 320 analyses. Download **Fireblade.exe** directly from the published **v0.2.0 release** linked above. The release notes include its qualified commit and SHA-256. See the linked validation limits before using disk images or physical devices.
 
 Fireblade is a local Windows x64 forensic investigation workspace. Import Windows artifacts, raw Linux logs and rotations, CatScale collections or CSV/TSV/XLS/XLSX exports; filter and annotate the results, investigate Hayabusa alerts with EVTX context, build timelines, hunt IOCs and export findings. The desktop interface and guides currently use French.
 

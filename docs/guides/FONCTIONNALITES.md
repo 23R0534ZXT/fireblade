@@ -1,9 +1,9 @@
 # Fireblade 0.1.1
 
-[![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
+[![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=v0.1.1)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 [![Forensic test pack](https://github.com/23R0534ZXT/fireblade/actions/workflows/test-pack.yml/badge.svg)](https://github.com/23R0534ZXT/fireblade/actions/workflows/test-pack.yml)
 
-**[Download Fireblade 0.7.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8) · [Test pack](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Give feedback](https://github.com/23R0534ZXT/fireblade/issues/6)
+**[Download Fireblade 0.1.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.1.1/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.1.1) · [Test pack](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Give feedback](https://github.com/23R0534ZXT/fireblade/issues/6)
 
 **A local forensic investigation workspace for Windows artifacts, Linux CatScale collections and existing data exports.**
 
@@ -22,6 +22,7 @@ Choose a collection folder, parse its artifacts, and explore the results in Fire
 | Windows artifact parsing | 13 bundled EZ Tools, their maps, and 70 RECmd registry plugins |
 | Shellbags | Dedicated offline hive reader with reconstructed paths, MRU information and raw bytes |
 | Windows WebCache | Read-only ESE reader with URLs, container metadata, exact FILETIME values and separate UTC columns |
+| Linux `/var/log/` | Standalone logs and rotations, systemd journals, Linux connection/accounting records, compressed streams and archives, explicit raw/error diagnostics; [formats and limits](JOURNAUX-LINUX.md) |
 | Linux CatScale | Extracted folders and archives organized into seven analysis families |
 | Hayabusa | Bundled EVTX rules, alert results, surrounding events and navigation to the source record |
 | Appearance | 24 theme presets, standard light/dark modes, isolated previews and custom palette colors |
@@ -40,6 +41,7 @@ Data lives in disk-backed DuckDB `.timeline` databases. The grid loads pages; fi
 - [Create and reopen investigation cases](#investigation-cases)
 - [Recover sessions and move an investigation](#automatic-recovery-and-portable-cases)
 - [Import Windows artifacts](#windows-artifacts-and-bundled-engines), [Shellbags](#shellbags) and [WebCache](#windows-webcache)
+- [Import raw Linux logs and rotations](JOURNAUX-LINUX.md)
 - [Import Linux CatScale collections](#linux-catscale-collections)
 - [Investigate Hayabusa alerts and their EVTX context](#hayabusa-alerts-and-evtx-context)
 - [Filter, group, annotate and calculate](#explore-the-results)
@@ -54,11 +56,11 @@ Data lives in disk-backed DuckDB `.timeline` databases. The grid loads pages; fi
 
 **Vous faites de la DFIR ou vous apprenez l’investigation numérique ? Vos retours sont les bienvenus.**
 
-- [Télécharger Fireblade 0.7.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8/Fireblade.exe) · [Pack de test (~5,1 Mo)](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
+- [Télécharger Fireblade 0.1.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.1.1/Fireblade.exe) · [Pack de test (~5,1 Mo)](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
 - [Parcours de test de 15 minutes et retours généraux](https://github.com/23R0534ZXT/fireblade/issues/6)
 - [Signaler un bug ou proposer une amélioration](https://github.com/23R0534ZXT/fireblade/issues/new/choose)
 
-**Fireblade 0.7.0 est publié.** [Cette release](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8) a réussi les contrôles Windows, les huit variantes visuelles, le parcours de 3 Gio et les 320 analyses. Vérifiez **Aide → À propos** et le commit de la release lorsque vous donnez un retour.
+**Fireblade 0.1.1 est publié.** [Cette release](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.1.1) a réussi les contrôles Windows, les huit variantes visuelles, le parcours de 3 Gio et les 320 analyses. Vérifiez **Aide → À propos** et le commit de la release lorsque vous donnez un retour.
 
 Commencez avec le pack public et son **LIRE-MOI.md** : ouvrez un CSV, filtrez les données, ajoutez une note ou un signet, puis sauvegardez et rouvrez votre travail. Partagez ce qui vous a aidé, ce qui vous a bloqué et ce qui manque à votre usage. Pour un bug, ouvrez une issue par problème avec les étapes de reproduction et vos versions de Windows et Fireblade. Un compte GitHub est nécessaire pour publier un retour ; masquez les informations sensibles dans vos pièces jointes.
 
@@ -68,7 +70,7 @@ Commencez avec le pack public et son **LIRE-MOI.md** : ouvrez un CSV, filtrez le
 
 | Download | Purpose |
 |---|---|
-| [**Fireblade 0.7.0 — Fireblade.exe, Windows x64**](https://github.com/23R0534ZXT/fireblade/releases/download/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8/Fireblade.exe) | Published prototype; [release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-ad1991921b615a209636f0d2c972db0002fb4fe8) |
+| [**Fireblade 0.1.1 — Fireblade.exe, Windows x64**](https://github.com/23R0534ZXT/fireblade/releases/download/v0.1.1/Fireblade.exe) | Published prototype; [release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.1.1) |
 | [**Forensic test pack v1 — ZIP, about 5.1 MB**](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) | Native Windows artifacts, synthetic CatScale examples and CSV/TSV/XLSX exercises, with a French guide |
 | [Large CSV test dataset — 3 GiB ZIP](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/Fireblade-test-3GiB.zip) | Separate load-test dataset with 2,441,216 records |
 
@@ -520,7 +522,11 @@ The DuckDB memory setting limits its buffer, not total application or external-e
 
 Allow disk space for source data, parser outputs, organized databases, timeline indexes and temporary copies. Sessions are limited to 1000 analyses and 4 MiB. A standalone session save that exceeds either limit is rejected before replacing the previous file, preserving the existing session and reporting an error. Interrupted imports cannot resume in the middle of a write; completed collection tasks are retained. Portable archives are limited to 50,000 files and 64 GiB expanded. Reports default to 2000 findings, with explicit limits for large cells and documents. Representative tests do not qualify every Windows version, artifact variant, SQLite map or damaged file.
 
-### Version 0.7 validation
+### Version 0.1.1 validation
+
+The [qualified v0.1.1 build](https://github.com/23R0534ZXT/fireblade/actions/runs/41652792123) passed the required Windows gates, including the actual single-file EXE, matching Windows file/product version resources, Linux log corpus, eight visual profiles, 320 analyses, and the >3 GiB interactive scenario. Older screenshots and reports below retain their historical provenance.
+
+### Historical version 0.7 validation
 
 The [0.7 coverage validation](../validation/reports/20261102-coverage-linux.md) records **1,005 passing tests and 28 skipped tests** in the complete Linux source suite, with additional targeted checks after the final changes. It covers real DuckDB analyses, source tampering, invalid dates, reader errors, row IDs, cancelled operations, persistent diagnostics and portable cases. An intentionally faulty XLSX writer is rejected even when it writes the expected number of rows with incorrect values.
 

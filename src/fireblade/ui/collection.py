@@ -56,7 +56,7 @@ class CollectionMixin(AlertContextMixin):
         title = QLabel('1. Importer et parser')
         title.setStyleSheet('font-size: 18px; font-weight: bold;')
         layout.addWidget(title)
-        explanation = QLabel('Choisissez un dossier d’artefacts Windows ou une collecte Linux CatScale (dossier extrait ou archives catscale_*.tar.gz). Les moteurs intégrés produisent des résultats séparés, puis Fireblade les ouvre dans une session. Hayabusa analyse uniquement les EVTX Windows inventoriés et ajoute un onglet Alertes.')
+        explanation = QLabel('Choisissez un dossier d’artefacts Windows ou un dossier Linux /var/log/ (ou son archive var-log.tar.gz), ou une collecte CatScale. Les moteurs intégrés produisent des résultats séparés, puis Fireblade les ouvre dans une session. Hayabusa analyse uniquement les EVTX Windows inventoriés et ajoute un onglet Alertes.')
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
         row = QHBoxLayout()
@@ -115,7 +115,7 @@ class CollectionMixin(AlertContextMixin):
                  'skipped':'Ignoré', 'error':'Erreur', 'cancelled':'Interrompu',
                  'attention':'À vérifier', 'no_output':'Aucune sortie', 'companion':'Journal de transaction'}
         status = lambda value: names.get(value, value)
-        lines = ['Parsers intégrés : CatScale Linux et WebCache ESE (lecture seule).', 'Moteurs Windows disponibles : '+(', '.join(ready) or 'aucun pack intégré dans cette construction')]
+        lines = ['Parsers intégrés : CatScale Linux, journaux /var/log/ et WebCache ESE (lecture seule).', 'Moteurs Windows disponibles : '+(', '.join(ready) or 'aucun pack intégré dans cette construction')]
         if report:
             organization = {'files':'Un onglet par résultat', 'artifacts':'Un onglet par artefact', 'combined':'Onglet unique regroupé par artefact'}.get(report.get('organization', 'files'), '')
             lines += ['', 'Organisation : '+organization, 'Dossier source : '+report['source'], 'Dossier de travail : '+report['output'],
@@ -130,7 +130,7 @@ class CollectionMixin(AlertContextMixin):
                 for run in entry.get('runs', []):
                     lines.append('  '+run['tool']+' : '+status(run['status'])+' '+run.get('error', ''))
                     lines.extend('    '+warning for warning in run.get('warnings', [])[:10])
-                    for member in run.get('catscale',{}).get('members',[]):
+                    for member in run.get('linux_logs', run.get('catscale',{})).get('members',[]):
                         if member['status'] in ('error','unsupported','skipped'):
                             lines.append('    '+member['status']+' · '+member['path']+' : '+member.get('reason',''))
         lines += ['', 'Un fichier non reconnu, un moteur absent ou une erreur restent dans le bilan. Une alerte est une piste à vérifier, pas une conclusion de compromission. Les résultats et journaux sont conservés dans le dossier de travail.']

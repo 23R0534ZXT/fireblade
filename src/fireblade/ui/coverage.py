@@ -19,7 +19,7 @@ class CoveragePanel(QWidget):
         self.status=QLabel('Couverture non contrôlée. Les données jamais acquises ne peuvent pas être déduites des fichiers présents.');self.status.setWordWrap(True);self.status.setTextFormat(Qt.PlainText);layout.addWidget(self.status);self.progress.connect(self.status.setText)
         bar=QHBoxLayout();layout.addLayout(bar)
         self.profile=QComboBox()
-        for title,value in [('Périmètre observé uniquement','observed'),('Familles Windows attendues','windows'),('Famille CatScale Linux attendue','linux')]:self.profile.addItem(title,value)
+        for title,value in [('Périmètre observé uniquement','observed'),('Familles Windows attendues','windows'),('Famille CatScale Linux attendue','linux'),('Journaux Linux /var/log/ attendus','linux_logs')]:self.profile.addItem(title,value)
         bar.addWidget(self.profile)
         plan=QPushButton("Ajuster les familles attendues…");plan.clicked.connect(self.configure_plan);bar.addWidget(plan)
         self.profile.currentIndexChanged.connect(lambda _:setattr(self,"expected_tools",None))
@@ -97,7 +97,7 @@ class CoveragePanel(QWidget):
         hint=QLabel('Cochez uniquement les familles prévues dans votre plan de collecte. Leur absence est un point à vérifier, pas une preuve d’absence sur la machine.');hint.setWordWrap(True);layout.addWidget(hint)
         listing=QListWidget();layout.addWidget(listing)
         selected=set(EXPECTED[self.profile.currentData()] if self.expected_tools is None else self.expected_tools)
-        for name in dict.fromkeys([*EXPECTED['windows'],*EXPECTED['linux']]):
+        for name in dict.fromkeys([*EXPECTED['windows'],*EXPECTED['linux'],*EXPECTED['linux_logs']]):
             item=QListWidgetItem(name);item.setFlags(item.flags()|Qt.ItemIsUserCheckable);item.setCheckState(Qt.Checked if name in selected else Qt.Unchecked);listing.addItem(item)
         buttons=QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Cancel);buttons.accepted.connect(dialog.accept);buttons.rejected.connect(dialog.reject);layout.addWidget(buttons)
         try:

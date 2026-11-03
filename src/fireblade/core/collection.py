@@ -59,7 +59,6 @@ def identify(path):
             with hive.open('rb') as stream:
                 if stream.read(4) == b'regf':
                     return ['companion']
-        return []
     if magic.startswith(b'ElfFile\0') or name.endswith('.evtx'):
         return ['EvtxECmd']
     if name.startswith(('amcache', 'inventory')) and (magic.startswith(b'regf') or magic.startswith(b'SQLite format 3')):
@@ -90,6 +89,9 @@ def identify(path):
     from fireblade.core.catscale import recognized, kind
     if recognized(path) and (path.suffix.casefold() not in ('.csv','.tsv') or (path.suffix.casefold()=='.csv' and kind(path)=='timeline')):
         return ['CatScale']
+    from fireblade.core.linux_logs import recognized as linux_recognized
+    if linux_recognized(path, magic):
+        return ['LinuxLogs']
     if path.suffix.casefold() in ('.csv', '.tsv'):
         return ['native']
     return []
@@ -285,6 +287,9 @@ class Collection:
                         if source.is_symlink() or self.root not in source.resolve().parents:
                             entry.update(status='skipped', error='Lien de fichier non suivi')
                             continue
+                        if not source.is_file():
+                            entry.update(status='skipped', error='Fichier spécial non lu (socket, FIFO ou périphérique)')
+                            continue
                         tools = identify(source)
                         entry['tools'] = tools
                         if not tools:
@@ -315,10 +320,14 @@ class Collection:
                                     run['webcache'] = result
                                     run['warnings'] = result['warnings']
                                     csvs = [Path(item['csv']) for item in result['outputs']]
-                                elif tool == 'CatScale':
-                                    from fireblade.core.catscale import parse
-                                    result = parse(source, output)
-                                    run['catscale'] = result
+                                elif tool in ('CatScale', 'LinuxLogs'):
+                                    if tool == 'LinuxLogs':
+                                        from fireblade.core.linux_logs import parse
+                                        result = parse(source, output, self.progress)
+                                    else:
+                                        from fireblade.core.catscale import parse
+                                        result = parse(source, output)
+                                    run['linux_logs' if tool == 'LinuxLogs' else 'catscale'] = result
                                     run['warnings'] = result['warnings']
                                     csvs = [Path(item['csv']) for item in result['outputs']]
                                     catscale_outputs = {item['csv']:item for item in result['outputs']}
@@ -332,7 +341,7 @@ class Collection:
                                     csvs = sorted(output.rglob('*.csv'))
                                 for csv in csvs:
                                     enriched = csv if tool == 'native' else self.enrich_result(csv, source, tool)
-                                    run['outputs'].append(dict(csv=str(csv), analysis=self.import_result(enriched, tool), **({'family':catscale_outputs[str(csv)]['family']} if tool=='CatScale' else {})))
+                                    run['outputs'].append(dict(csv=str(csv), analysis=self.import_result(enriched, tool), **({'family':catscale_outputs[str(csv)]['family']} if tool in ('CatScale', 'LinuxLogs') else {})))
                                 run['status'] = ('complete_with_warnings' if run.get('warnings') else 'complete') if csvs else 'no_output'
                                 log = output/'parser.log'
                                 if log.is_file():

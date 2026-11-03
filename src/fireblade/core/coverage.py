@@ -25,6 +25,7 @@ STAGES=('Collecte','Import','Analyse','Chronologie','Chasse IOC','Export','Inté
 EXPECTED={
  'observed':(),
  'windows':('EvtxECmd','RECmd','PECmd','MFTECmd','LECmd','JLECmd','AmcacheParser','AppCompatCacheParser','SrumECmd','WxTCmd','RBCmd','RecentFileCacheParser','SQLECmd','Shellbags','WebCache'),
+ 'linux_logs':('LinuxLogs',),
  'linux':('CatScale',*('CatScale:'+name for name in ('Processus et réseau','Persistance','Journaux et connexions','Système','Utilisateurs','Fichiers et chronologie'))),
 }
 REMEDIES={
@@ -237,7 +238,7 @@ def audit(reader,*,collections=(),timeline=None,hunts=(),events=(),verify_hashes
                 for warning in run.get('warnings',[]):add('Import','warning','reader_problem',path,str(run.get('tool',''))+' : '+str(warning))
                 if run.get('status') not in ('complete','complete_with_warnings'):
                     add('Import','error' if run.get('status')=='error' else 'warning','reader_problem',path,str(run.get('tool',''))+' : '+str(run.get('error') or run.get('status')))
-                for member in run.get('catscale',{}).get('members',[]):
+                for member in run.get('linux_logs', run.get('catscale',{})).get('members',[]):
                     if member.get('status') in ('error','unsupported','skipped'):add('Import','warning','reader_problem',member.get('path',path),str(member.get('reason') or member.get('status')))
                 for output in run.get('outputs',[]):
                     if output.get('family'):families.add(output['family'])

@@ -1,38 +1,37 @@
-# Fireblade 0.7.0 — Windows x64 (prototype)
+# Fireblade 0.1.1 — Windows x64 (prototype)
 
-## Nouveautés
+## Nouvelle numérotation
 
-- Dossiers d’enquête persistants : plusieurs collectes, sauvegardes automatiques, historique de récupération et archives portables vérifiées.
-- Import Windows avec 13 EZ Tools, 70 plugins RECmd, lecteurs Shellbags et WebCache ; lecture des dossiers et archives Linux CatScale en sept familles.
-- Alertes Hayabusa avec contexte EVTX et navigation vers l’événement source.
-- Chronologie graphique entre analyses, corrélations et chasse de listes d’IOC.
-- Rapports HTML/PDF avec annotations et provenance ; exports CSV/XLSX relus avec contrôle du contenu et empreinte SHA-256.
-- Diagnostics de couverture : sources, familles attendues, erreurs et avertissements des lecteurs, dates et intégrité des exports.
-- 24 palettes de thèmes, aperçu isolé, personnalisation et modes clair/sombre.
+**0.1.1 est la nouvelle numérotation publique du prototype.** Elle reprend les fonctionnalités précédemment numérotées 0.7.0 et ajoute les améliorations ci-dessous. Ce changement de numéro ne retire pas de fonctionnalités. Les anciens rapports et packs conservent leur version, leur commit et leurs empreintes historiques.
 
-## Corrections de publication
+## Journaux Linux et collectes
 
-- Les dossiers portables utilisent une copie créée par DuckDB : les bases actives restent utilisables malgré les verrous Windows.
-- Le contrôle visuel attend la disposition des réglages avancés avant de tester le défilement vers leurs commandes.
+- Import hors ligne de `/var/log/` et des noms de journaux usuels ; sources et offsets conservés, diagnostics explicites pour chaque membre et fichier.
+- Syslog traditionnel/RFC5424, audit Linux, Apache/Nginx, JSON Lines, Zeek TSV, W3C extended, kernel et journaux applicatifs horodatés ; projections SSH, sudo, UFW et CEF.
+- Lecture native systemd journal standard/compact et Journal Export Format ; utmp/wtmp/btmp et lastlog glibc little-endian ; comptabilité Linux acct_v3 little/big-endian.
+- Rotations gzip, bzip2, XZ/LZMA, Zstandard et LZ4, archives TAR/ZIP, textes UTF-16/UTF-32 avec BOM. Lecture en flux, contrôle des troncatures et refus des chemins dangereux, liens et fichiers spéciaux.
+- Dates explicitement zonées ou Unix projetées en UTC avec conservation des fractions ; aucune année ni aucun fuseau inventés. Profil de couverture LinuxLogs et colonnes utilisables dans la chronologie.
 
-## Télécharger et essayer
+[Formats, interprétation et limites](https://github.com/23R0534ZXT/fireblade/blob/main/docs/guides/JOURNAUX-LINUX.md).
 
-Télécharger **Fireblade.exe**, puis le lancer sous Windows x64. Python, Excel et une installation préalable de .NET ne sont pas nécessaires. L’interface et les guides sont en français.
+## Environnement d’investigation conservé
 
-[Pack de test (~5,1 Mo)](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Retours des testeurs](https://github.com/23R0534ZXT/fireblade/issues/6) · [Signaler un problème](https://github.com/23R0534ZXT/fireblade/issues/new/choose)
+Cases persistants, sauvegardes et archives portables vérifiées ; 13 EZ Tools et 70 plugins RECmd intégrés ; Shellbags, WebCache, CatScale ; Hayabusa avec contexte EVTX ; chronologie, corrélations, chasse IOC, annotations et rapports HTML/PDF ; exports CSV/XLSX relus et vérifiés.
 
-## Validation du binaire 0.7.0 publié
+## Qualification et version du binaire
 
-[Construction qualifiée du commit ad1991921b615a209636f0d2c972db0002fb4fe8](https://github.com/23R0534ZXT/fireblade/actions/runs/41514474442).
+La publication attend les contrôles du tag `v0.1.1` : tests Windows Python 3.11/3.12/3.13, EXE autonome, lecteurs intégrés, chemins UNC/longs, huit configurations visuelles, 320 analyses et scénario interactif sur plus de 3 Gio. Les versions de fichier et de produit Windows doivent correspondre à **0.1.1**.
 
-Tous les contrôles requis ont réussi : sources sous Python 3.11/3.12/3.13, EXE autonome, lecteurs intégrés et matrice amont, stockage Windows, huit variantes visuelles, 320 analyses et parcours sur le CSV de plus de 3 Gio. Les rapports et captures sont joints à cette exécution GitHub Actions ; leur conservation est limitée par la politique des artefacts.
+Les mesures préalables de l’extension Linux ont vérifié une source unique de **32 Gio décompressés**, avec contrôle des enregistrements et de leur empreinte en flux (sans sérialisation CSV ni import DuckDB pour ce volet), puis **1 000 000 d’événements réellement importés et relus**. Deux journaux systemd publics sains ont été comparés à `journalctl` : 18 238 entrées avec tous les champs identiques. Les écarts sur le fichier corrompu sont explicités dans le guide.
 
-## Limites connues
+## Limites
 
-Le projet reste un prototype et l’exécutable n’est pas signé. Les essais automatisés sur le runner Windows ne qualifient pas chaque poste Windows 10/11, chaque fichier endommagé ou chaque DLL tierce. Les données synthétiques et fixtures publiques ne remplacent pas vos jeux de référence.
+Prototype non signé. Les essais automatisés ne qualifient pas tous les postes, tous les formats propriétaires ou chaque fichier endommagé. Les binaires inconnus, erreurs et lectures brutes restent signalés ; les hachages/scellements internes systemd ne sont pas vérifiés. Les archives CatScale conservent leur lecteur et leurs limites. Les lecteurs Linux ont des bornes explicites et les limites générales du nombre d’analyses restent applicables. Le budget DuckDB ne plafonne pas la RAM de tous les composants.
 
-Les résultats partiels et avertissements doivent être examinés. Les alertes ne constituent pas une conclusion de compromission. La compatibilité Timeline Explorer est partielle ; le budget DuckDB ne plafonne pas la mémoire totale du processus.
+## Télécharger et donner un retour
 
-[Compatibilité et limites](https://github.com/23R0534ZXT/fireblade/blob/main/docs/development/COMPATIBILITE.md) · [Historique des lots antérieurs](https://github.com/23R0534ZXT/fireblade/blob/main/docs/archive/RELEASE-NOTES-HISTORIQUE.md)
+Télécharger **Fireblade.exe** et le lancer sous Windows x64. Python, Excel et une installation préalable de .NET ne sont pas nécessaires. Interface et guides en français.
 
-Le workflow ajoute le commit et le SHA-256 propres au binaire lors de la publication.
+[Pack de découverte](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1) · [Grand pack BRUT](https://github.com/23R0534ZXT/fireblade/releases/tag/raw-artifacts-v1) · [Retours des testeurs](https://github.com/23R0534ZXT/fireblade/issues/6) · [Signaler un problème](https://github.com/23R0534ZXT/fireblade/issues/new/choose)
+
+Le workflow ajoute le commit qualifié et le SHA-256 exact de l’EXE à ces notes lors de la publication.

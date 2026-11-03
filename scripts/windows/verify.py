@@ -16,6 +16,13 @@ def verify(executable, report_path, timeout=360):
     if not executable.is_file() or report_path.exists():
         raise ValueError("Choisissez un exécutable existant et un nouveau fichier de rapport.")
     report_path.parent.mkdir(parents=True, exist_ok=True)
+    from scripts.release import application_version
+    from scripts.windows.version_info import read_version_resource,version_tuple
+    version=application_version(Path(__file__).resolve().parents[2])
+    resource=read_version_resource(executable)
+    expected=list(version_tuple(version))
+    if resource["file_version"]!=expected or resource["product_version"]!=expected or resource["FileVersion"]!=version or resource["ProductVersion"]!=version:
+        raise ValueError("Windows PE version and application version must match")
     original_hash = hashlib.sha256(executable.read_bytes()).hexdigest()
     environment = os.environ.copy()
     environment["QT_QPA_PLATFORM"] = "windows"
@@ -61,7 +68,7 @@ def verify(executable, report_path, timeout=360):
                  and len(report.get("checks", [])) >= 23 and adjacent == [executable.name] and extraction_cleaned
                  and all(item.get("status") == "passed" for item in report.get("checks", [])))
         report["bundle_verification"] = dict(status="passed" if valid else "failed", exit_code=code,
-                                             executable_sha256=original_hash, single_file_distribution=True,
+                                             executable_sha256=original_hash, application_version=version, windows_version_resource=resource, single_file_distribution=True,
                                              adjacent_files=adjacent, extraction_cleaned=extraction_cleaned,
                                              relocated_unicode_path=True, host_python_paths_removed=True)
         if not valid:

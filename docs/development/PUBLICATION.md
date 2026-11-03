@@ -10,8 +10,8 @@ La publication nécessite un tag `vX.Y.Z`, ou un lancement manuel du workflow **
 
 1. Mettre la même nouvelle version dans `pyproject.toml` et `src/fireblade/__init__.py`.
 2. Actualiser `docs/development/RELEASE-NOTES.md` : nouveautés, corrections, limites et validations de cette version. Les anciens lots sont dans `docs/archive/RELEASE-NOTES-HISTORIQUE.md`.
-3. Intégrer les changements sur `main`. Choisir un numéro inédit : une version déjà publiée n’est pas remplacée. La 0.7.0 actuelle utilise encore son ancien tag `prototype-ad1991921b615a209636f0d2c972db0002fb4fe8` ; elle est conservée telle quelle.
-4. Créer puis pousser un tag sur le commit retenu, par exemple `git tag v0.7.1` puis `git push origin v0.7.1`.
+3. Intégrer les changements sur `main`. Choisir un numéro inédit : une version déjà publiée n’est pas remplacée. La série 0.1 utilise la nouvelle numérotation du prototype. La publication 0.7.0 appartient à l’ancienne numérotation ; ses rapports restent historiques.
+4. Créer puis pousser un tag sur le commit retenu, par exemple `git tag v0.1.2` puis `git push origin v0.1.2`.
 5. Attendre le succès de l’exécution liée au tag. La release est préparée en brouillon, avec `Fireblade.exe`, puis rendue publique après l’envoi réussi. Le titre indique la version ; les notes indiquent le commit et le SHA-256 du fichier.
 6. Vérifier le téléchargement, puis actualiser les liens du README et de l’issue des testeurs vers cette release.
 

@@ -1,8 +1,9 @@
 # Fireblade 0.2.0 — parcours case et analyse de disque
 
 Ces fonctionnalités sont dans les sources en développement. Le téléchargement
-Windows 0.1.1 publié ne les contient pas ; aucun nouvel EXE Windows n’a encore été
-qualifié ni publié pour ce changement.
+Windows 0.1.1 publié ne les contient pas ; le [nouvel EXE Windows a passé ses qualifications](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489),
+mais n’a pas encore été publié comme release. Il est disponible dans les artefacts
+de cette exécution GitHub Actions.
 
 ## Commencer
 
@@ -92,5 +93,8 @@ pas un explorateur exhaustif de tous les fichiers du disque.
 Tests automatisés sous Linux/Qt hors écran : volume de journaux, image FAT12
 valide de test, disque RAW MBR à deux partitions, publication progressive, interrogation
 pendant le traitement, annulation et conservation des résultats, réouverture du
-case et restauration de l’arbre. Ces tests ne qualifient pas l’EXE Windows, NTFS,
-ext, E01, tous les disques physiques ni les supports endommagés.
+case et restauration de l’arbre. Les tests de sources ont aussi passé sous Windows (Python 3.11/3.12/3.13),
+puis l’EXE a passé les contrôles de programme autonome, d’affichage, de charge
+supérieure à 3 Gio et de 320 analyses. [Exécution de référence](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489).
+Ces tests ne qualifient pas NTFS, ext, E01, tous les disques physiques ni les
+supports endommagés.

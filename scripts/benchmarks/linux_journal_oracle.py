@@ -39,7 +39,10 @@ def qualify(directory):
             entry['interpretation']='corruption detected; partial recovery differs from native traversal; no completeness claim'
         results.append(entry)
     assert len(results)>=3
-    return dict(format='fireblade-systemd-journal-oracle',version=1,fixtures=results)
+    return dict(format='fireblade-systemd-journal-oracle',version=1,
+                source_repository='https://github.com/fox-it/dissect.target',
+                source_revision='b2378f1504ac9dc87ea511d52bf73fe2b40b545c',
+                source_path='tests/_data/plugins/os/unix/log/journal/',fixtures=results)
 
 
 def main():

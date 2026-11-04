@@ -24,7 +24,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       REQUESTED_RUN_ID: ${{ inputs.run_id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -36,7 +36,7 @@ jobs:
       - name: Require the successful Windows workflow and every release gate
         id: qualification
         run: python -m scripts.publish_qualified inspect
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.qualification.outputs.commit }}
           path: qualified-source

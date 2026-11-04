@@ -31,7 +31,7 @@ jobs:
       QT_QPA_PLATFORM: windows
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -42,7 +42,7 @@ jobs:
         shell: pwsh
         run: |
           python -c "from scripts.test_pack.package import APP_COMMIT,APP_SHA256,APP_RELEASE; print('commit='+APP_COMMIT); print('sha256='+APP_SHA256); print('tag='+APP_RELEASE)" >> $env:GITHUB_OUTPUT
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.reference.outputs.commit }}
           path: build/reference-app

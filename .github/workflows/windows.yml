@@ -34,7 +34,7 @@ jobs:
     name: Python syntax and name checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -54,7 +54,7 @@ jobs:
       QT_QPA_PLATFORM: windows
       PYTHONUTF8: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '${{ matrix.python }}'
@@ -86,7 +86,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           name: Fireblade-exe
@@ -111,7 +111,7 @@ jobs:
       PYTHONUTF8: '1'
       FIREBLADE_TEST_SMB: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -133,7 +133,7 @@ jobs:
     env:
       PYTHONUTF8: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -164,7 +164,7 @@ jobs:
       PYTHONUTF8: '1'
       PYTHONPATH: src
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -190,7 +190,7 @@ jobs:
     env:
       PYTHONUTF8: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -216,7 +216,7 @@ jobs:
     env:
       PYTHONUTF8: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -255,7 +255,7 @@ jobs:
     env:
       PYTHONUTF8: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -284,7 +284,7 @@ jobs:
       PYTHONUTF8: '1'
       PYTHONPATH: src
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

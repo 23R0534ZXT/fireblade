@@ -1,0 +1,81 @@
+{
+  "file": "fire.gif",
+  "source": "https://commons.wikimedia.org/wiki/File:Fire.ogv",
+  "original_url": "https://upload.wikimedia.org/wikipedia/commons/8/8f/Fire.ogv",
+  "author": "Cary Bass (Bastique)",
+  "license": "Public domain, released by the copyright holder",
+  "metadata": {
+    "DateTime": {
+      "value": "2008-10-12 09:19:55",
+      "source": "mediawiki-metadata",
+      "hidden": ""
+    },
+    "ObjectName": {
+      "value": "Fire",
+      "source": "mediawiki-metadata"
+    },
+    "CommonsMetadataExtension": {
+      "value": 1.2,
+      "source": "extension",
+      "hidden": ""
+    },
+    "Categories": {
+      "value": "Campfires|Self-published work|PD-self|Video display resolution 480 x 640|Videos of 2007|Videos of fire|Media by Cary Bass-Deschênes",
+      "source": "commons-categories",
+      "hidden": ""
+    },
+    "Assessments": {
+      "value": "",
+      "source": "commons-categories",
+      "hidden": ""
+    },
+    "ImageDescription": {
+      "value": "A campfire",
+      "source": "commons-desc-page"
+    },
+    "DateTimeOriginal": {
+      "value": "2007-03-03",
+      "source": "commons-desc-page"
+    },
+    "Credit": {
+      "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+      "source": "commons-desc-page"
+    },
+    "Artist": {
+      "value": "<a href=\"//commons.wikimedia.org/wiki/User:Bastique\" title=\"User:Bastique\">Cary Bass</a>",
+      "source": "commons-desc-page"
+    },
+    "LicenseShortName": {
+      "value": "Public domain",
+      "source": "commons-desc-page",
+      "hidden": ""
+    },
+    "UsageTerms": {
+      "value": "Public domain",
+      "source": "commons-desc-page"
+    },
+    "AttributionRequired": {
+      "value": "false",
+      "source": "commons-desc-page",
+      "hidden": ""
+    },
+    "Copyrighted": {
+      "value": "False",
+      "source": "commons-desc-page",
+      "hidden": ""
+    },
+    "Restrictions": {
+      "value": "",
+      "source": "commons-desc-page",
+      "hidden": ""
+    },
+    "License": {
+      "value": "pd",
+      "source": "commons-templates",
+      "hidden": ""
+    }
+  },
+  "original_sha256": "1944cbd39abcafeba51d4a1296724de776852e8cae62dc490466bbc5716a380f",
+  "asset_sha256": "3d88b5893d490a7964b99da11da7a56a3a9ee8917789c5771242e5db26d7068f",
+  "conversion": "Audio removed; 320x426, 20 fps, 128 colours; final frame held to ten seconds. Decoder caches only its current frame."
+}

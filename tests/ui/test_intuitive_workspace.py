@@ -91,7 +91,8 @@ def test_clear_filters_keeps_presentation_and_full_reset_is_separate(qt_applicat
         assert window.view.groups==[0] and window.view.sort_column==2
         assert window.view.pinned_columns==[1] and len(window.view.format_rules)==1
         view_menu=next(a.menu() for a in window.menuBar().actions() if a.text()=='&Affichage')
-        next(a for a in view_menu.actions() if a.text()=='Réinitialiser la vue').trigger()
+        views=next(a.menu() for a in view_menu.actions() if a.text()=='Vues et dispositions')
+        next(a for a in views.actions() if a.text()=='Réinitialiser la vue').trigger()
         settle(qt_application,window)
         assert not window.view.groups and not window.view.pinned_columns
     finally:window.close()

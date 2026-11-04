@@ -1,0 +1,68 @@
+........................................................................ [  5%]
+...................sssssssssssss........................................ [ 11%]
+........................................................................ [ 17%]
+........................................................................ [ 23%]
+........................................................................ [ 29%]
+..............................................................s......... [ 35%]
+........................................................................ [ 41%]
+................ss.................................s.................... [ 47%]
+.............s.......................................................... [ 53%]
+..............sssss..................................................... [ 59%]
+........................................................................ [ 65%]
+........................................................................ [ 71%]
+........................................................................ [ 77%]
+........................................................................ [ 83%]
+....................ss.................................................. [ 89%]
+..............s......................................................... [ 95%]
+...................................................ss                    [100%]
+============================= slowest 20 durations =============================
+72.39s call     tests/ui/test_many_documents.py::test_320_real_analyses_keep_navigation_search_and_session
+32.16s call     tests/ui/test_exploration_desktop.py::test_extended_acceptance_runs_real_desktop_paths
+3.81s call     tests/core/test_disk.py::test_raw_fat_image_is_read_without_modification
+3.62s call     tests/core/test_outline.py::test_complete_outline_spills_under_a_64_mb_budget_without_path_arrays[hidden]
+3.35s call     tests/core/test_outline.py::test_complete_outline_spills_under_a_64_mb_budget_without_path_arrays[always]
+3.34s call     tests/ui/test_exploration_desktop.py::test_completion_acceptance_runs_official_fixtures_in_real_grid
+3.09s call     tests/ui/test_many_tabs.py::test_320_tabs_remain_accessible_without_covering_the_analysis
+3.01s call     tests/core/test_webcache.py::test_real_webcache_collection_import_and_filter[combined]
+2.98s call     tests/core/test_webcache.py::test_real_webcache_collection_import_and_filter[artifacts]
+2.66s call     tests/ui/test_start_workflow.py::test_progressive_disk_keeps_workspace_interactive
+2.41s call     tests/core/test_webcache.py::test_real_webcache_collection_import_and_filter[files]
+2.36s call     tests/ui/test_catscale_desktop.py::test_catscale_families_render_and_restore_in_investigation
+2.35s call     tests/ui/test_ui.py::test_async_model_nested_groups_and_window
+2.32s call     tests/ui/test_linux_logs_desktop.py::test_linux_log_desktop_import_grid_notes_and_case_restore
+2.05s call     tests/ui/test_exploration_desktop.py::test_five_long_wrapped_tabs_remain_clickable_after_font_and_geometry_change
+1.78s call     tests/ui/test_alert_context_desktop.py::test_preview_reuses_panel_and_only_kept_context_enters_saved_session
+1.78s call     tests/core/test_outline.py::test_complete_outline_matches_recursive_queries_and_pages_beyond_first_groups
+1.55s call     tests/core/test_qa_dataset.py::test_dataset_reference_matches_independent_CSV_readback
+1.51s call     tests/ui/test_start_workflow.py::test_hidden_details_preference_is_restored
+1.41s call     tests/ui/test_investigations_desktop.py::test_frozen_case_qualification_flow_uses_real_widgets_and_databases
+=========================== short test summary info ============================
+SKIPPED [1] tests/core/test_clr_objects.py:24: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:49: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:62: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:72: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:82: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:97: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:106: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:118: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:133: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:150: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:166: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:174: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_clr_objects.py:185: Real .NET helper and fixture required
+SKIPPED [1] tests/core/test_layout_appearance_assets.py:84: Image encoder unavailable; decoding remains guarded by Qt
+SKIPPED [1] tests/core/test_native_windows_storage.py:30: Native Windows long-path integration
+SKIPPED [1] tests/core/test_native_windows_storage.py:53: Requires an explicitly enabled disposable Windows SMB runner
+SKIPPED [1] tests/core/test_reader_detection.py:92: Existing 3 GiB dataset not present
+SKIPPED [1] tests/core/test_shellbags.py:34: Actual .NET Shellbags host required; frozen Windows acceptance is mandatory
+SKIPPED [1] tests/core/test_tle_plugin_host.py:10: Build the real .NET helper and QA reader first
+SKIPPED [1] tests/core/test_tle_plugin_host.py:15: Build the real .NET helper and QA reader first
+SKIPPED [1] tests/core/test_tle_plugin_host.py:35: Build the real .NET helper and QA reader first
+SKIPPED [1] tests/core/test_tle_plugin_host.py:59: Build the real .NET helper and QA reader first
+SKIPPED [1] tests/core/test_tle_plugin_host.py:79: Build the real .NET helper and QA reader first
+SKIPPED [1] tests/ui/test_browser_artifacts_desktop.py:13: Actual Shellbags host required; frozen Windows acceptance covers this workflow
+SKIPPED [1] tests/ui/test_browser_artifacts_desktop.py:30: Actual Shellbags host required; frozen acceptance covers mixed cases
+SKIPPED [1] tests/ui/test_exploration_desktop.py:479: Real .NET helper and fixture required
+SKIPPED [1] tests/windows/test_native.py:16: Windows natif requis
+SKIPPED [1] tests/windows/test_native.py:38: Windows natif requis
+1177 passed, 28 skipped in 306.62s (0:05:06)

@@ -92,12 +92,12 @@ Téléchargez le [**ZIP forensic v1 — environ 5,1 Mo**](https://github.com/23R
 
 | Votre objectif | Entrée à choisir | Commande |
 |---|---|---|
-| Tester les 13 EZ Tools | `01-Windows/01-Collecte-principale` | **Importer un dossier de collecte…** |
-| Lire une ruche Shellbags | `01-Windows/02-Shellbags` | **Importer un dossier de collecte…** |
-| Lire une base ESE WebCache | `01-Windows/03-WebCache` | **Importer un dossier de collecte…** |
-| Lire CatScale déjà extrait | `02-Linux-CatScale/01-Dossier-extrait` | **Importer un dossier de collecte…** |
-| Lire CatScale en archive | `02-Linux-CatScale/02-Archive` | Choisir ce dossier avec **Importer un dossier de collecte…** |
-| Tester une timeline CatScale plus volumineuse | `02-Linux-CatScale/03-Volume` | **Importer un dossier de collecte…** |
+| Tester les 13 EZ Tools | `01-Windows/01-Collecte-principale` | **Importer un dossier à parser…** |
+| Lire une ruche Shellbags | `01-Windows/02-Shellbags` | **Importer un dossier à parser…** |
+| Lire une base ESE WebCache | `01-Windows/03-WebCache` | **Importer un dossier à parser…** |
+| Lire CatScale déjà extrait | `02-Linux-CatScale/01-Dossier-extrait` | **Importer un dossier à parser…** |
+| Lire CatScale en archive | `02-Linux-CatScale/02-Archive` | Choisir ce dossier avec **Importer un dossier à parser…** |
+| Tester une timeline CatScale plus volumineuse | `02-Linux-CatScale/03-Volume` | **Importer un dossier à parser…** |
 | Apprendre les filtres sans parsing | Un fichier dans `03-Exports` | **Ouvrir un fichier…** |
 
 Les artefacts Windows sont dans leurs **formats natifs**, et non des CSV déjà parsés. Ils proviennent de sources publiques indépendantes : ils ne racontent pas un incident unique. La collecte CatScale est **synthétique**, au format des sorties du collecteur ; ce n’est pas une collecte d’une machine Linux réelle. Le pack couvre des entrées représentatives des lecteurs embarqués, pas toutes leurs variantes.
@@ -108,9 +108,9 @@ Commencez par un sous-dossier précis plutôt que par la racine du ZIP. Vous pou
 
 1. Dans **Cases**, créez `Formation Windows`, avec l’étiquette **Windows**. Fireblade ouvre alors **Analyses**. Le centre propose **Importer une collecte…** pour les artefacts bruts et **Ouvrir un export…** pour les fichiers déjà produits.
 2. Sélectionnez `01-Windows/01-Collecte-principale`. Gardez **Un onglet par type d’artefact ou famille CatScale**, puis **Importer et parser**.
-3. Attendez la fin et consultez **Collecte et détection**. Vérifiez le passage des 13 moteurs, leurs sorties et les éventuels avertissements. Le nombre d’onglets organisés n’est pas le nombre de fichiers source ni de CSV produits par les moteurs.
+3. Attendez la fin et consultez **Suivi des imports**. Vérifiez le passage des 13 moteurs, leurs sorties et les éventuels avertissements. Le nombre d’onglets organisés n’est pas le nombre de fichiers source ni de CSV produits par les moteurs.
 4. Dans l’onglet EVTX, effacez tout filtre pour retrouver **13 événements**. Lisez un événement dans **Détails**, puis ajoutez un signet et une note.
-5. Revenez à **Collecte et détection**, choisissez la gravité minimale **Faible** et cliquez **Analyser avec Hayabusa**. Avec les règles qualifiées du pack, au moins **deux alertes** sont attendues : effacement d’un journal et modification du démarrage du service Event Log.
+5. Revenez à **Suivi des imports**, choisissez la gravité minimale **Faible** et cliquez **Analyser avec Hayabusa**. Avec les règles qualifiées du pack, au moins **deux alertes** sont attendues : effacement d’un journal et modification du démarrage du service Event Log.
 6. Sélectionnez une alerte et cliquez **Voir le contexte de cette alerte**, avec **5 min** avant et après. Dans le panneau latéral, distinguez la référence de l’alerte des voisins temporels. Ouvrez **l’événement EVTX source**, puis **Revenir aux alertes**. Utilisez **Conserver ce contexte en onglet** si vous voulez le retrouver dans la session sauvegardée.
 7. Enregistrez le case et sa session avec **Ctrl+Alt+S**.
 
@@ -118,7 +118,7 @@ Une alerte n’est pas une preuve de compromission ; les événements voisins ne
 
 ### Étape 2 — Ajouter Shellbags et WebCache au même case
 
-Importez successivement les dossiers suivants, sans fermer `Formation Windows`. Chaque import ajoute ses analyses. Dans **Collecte et détection**, le sélecteur **Collecte du case** retrouve le bilan de chaque import.
+Importez successivement les dossiers suivants, sans fermer `Formation Windows`. Chaque import ajoute ses analyses. Dans **Suivi des imports**, le sélecteur **Collecte du case** retrouve le bilan de chaque import.
 
 | Dossier | Attendu | Vérification pratique |
 |---|---|---|
@@ -197,7 +197,7 @@ Avant de changer de case, terminez ou annulez les opérations en cours et videz 
 | Zone | Rôle et gestes |
 |---|---|
 | Barre de menus et barre d’outils | La barre d’outils donne les accès rapides à l’ouverture, l’export, l’ajout de filtre et le regroupement. Les autres commandes restent dans les menus. |
-| Analyses / Collecte et détection / Cases | Grilles d’analyse ; bilan et détection ; catalogue des enquêtes conservées sans chargement automatique. |
+| Analyses / Suivi des imports / Cases | Grilles d’analyse ; bilan et détection ; catalogue des enquêtes conservées sans chargement automatique. |
 | Onglets d’analyse | Une analyse par onglet. Utilisez le sélecteur des analyses ouvertes pour retrouver un nom ou un chemin. |
 | Recherche générale | Recherche sur les colonnes de l’analyse active ; Entrée applique le texte. |
 | Liste des filtres | Affiche les filtres simples et l’existence d’une expression. Double-cliquez un filtre simple pour le retirer ; l’entrée d’expression ouvre son éditeur. |
@@ -212,15 +212,15 @@ Avant de changer de case, terminez ou annulez les opérations en cours et videz 
 
 ## Collecte brute et détection Hayabusa
 
-**Fichier → Importer un dossier de collecte…** et la barre **Collecte** ouvrent le parcours de parsing. Dans un case actif, les imports s’ajoutent à ses analyses. Hors d’un case, le chargement d’une nouvelle collecte remplace l’espace affiché et conserve sa session précédente dans le dossier de travail (`previous-workspace.fireblade-session`). Créez un case si vous souhaitez réunir plusieurs collectes.
+**Analyse → Importer un dossier à parser…** et la barre **Ajouter des données** ouvrent le parcours de parsing. Dans un case actif, les imports s’ajoutent à ses analyses. Hors d’un case, le chargement d’une nouvelle collecte remplace l’espace affiché et conserve sa session précédente dans le dossier de travail (`previous-workspace.fireblade-session`). Créez un case si vous souhaitez réunir plusieurs collectes.
 
-Choisissez un dossier source, puis **un onglet par type d’artefact** ou **un onglet unique regroupé par artefact**. Les fichiers de même type sont réunis ; les colonnes de schémas différents restent disponibles, avec cellules vides si le champ est absent. La provenance de chaque ligne est conservée. Le choix est enregistré avec la session ; Hayabusa garde son onglet d’alertes.
+Choisissez un dossier source. Le mode recommandé ouvre chaque résultat vérifié au fur et à mesure, sans bloquer la grille. Vous pouvez aussi choisir **un onglet par type d’artefact** ou **un onglet unique regroupé par artefact** ; ces regroupements apparaissent à la fin de leur construction en arrière-plan. Les fichiers de même type sont réunis ; les colonnes de schémas différents restent disponibles, avec cellules vides si le champ est absent. La provenance de chaque ligne est conservée. Le choix est enregistré avec la session ; Hayabusa garde son onglet d’alertes.
 
-Fireblade crée un dossier de travail séparé dans le profil utilisateur et inventorie récursivement les fichiers. Les CSV/TSV déjà produits sont chargés directement ; les artefacts reconnus sont envoyés aux moteurs correspondants. Les résultats sont enregistrés dans une session de collecte et ouverts dans Fireblade. L’onglet **Collecte et détection** permet de consulter les succès, erreurs, absences de sortie et fichiers non pris en charge, puis de reprendre un dossier de travail existant.
+Fireblade crée un dossier de travail séparé dans le profil utilisateur et inventorie récursivement les fichiers. Les CSV/TSV déjà produits sont chargés directement ; les artefacts reconnus sont envoyés aux moteurs correspondants. Les résultats sont enregistrés dans une session de collecte et ouverts dans Fireblade. L’onglet **Suivi des imports** permet de consulter les succès, erreurs, absences de sortie et fichiers non pris en charge, puis de reprendre un dossier de travail existant.
 
 Le pack contient EvtxECmd, AmcacheParser, AppCompatCacheParser, PECmd, MFTECmd, RECmd avec son batch Kroll, LECmd, JLECmd, SrumECmd, WxTCmd, RBCmd, RecentFileCacheParser et SQLECmd. Les versions sources sont épinglées dans le manifeste de construction. Une reconnaissance propose un moteur ; elle ne prouve pas que le fichier sera valide pour ce moteur. Un échec reste dans le bilan, avec son journal. Les liens ne sont pas suivis.
 
-**Analyse → Analyser la collecte avec Hayabusa** traite ensemble les EVTX inventoriés et vérifiés, via des copies temporaires. Choisissez le seuil de gravité dans l’onglet Collecte ; le défaut est Faible. L’onglet **Alertes Hayabusa.csv** expose les correspondances aux règles, avec heure UTC, machine, canal, EventID, RecordID, RuleID, nom de règle, détails et chemin de l’EVTX source. Les filtres, tris, notes, signets, vues et exports Fireblade s’appliquent à cet onglet comme aux autres analyses.
+**Détection → Analyser la collecte avec Hayabusa** traite ensemble les EVTX inventoriés et vérifiés, via des copies temporaires. Choisissez le seuil de gravité dans l’onglet Détection EVTX ; le défaut est Faible. L’onglet **Alertes Hayabusa.csv** expose les correspondances aux règles, avec heure UTC, machine, canal, EventID, RecordID, RuleID, nom de règle, détails et chemin de l’EVTX source. Les filtres, tris, notes, signets, vues et exports Fireblade s’appliquent à cet onglet comme aux autres analyses.
 
 Les règles Hayabusa embarquées sont celles de la distribution 4.3.1. Cette version utilise `dfir-timeline`, le profil verbose et le mode sans assistant ; les règles ne sont pas mises à jour automatiquement pendant l’enquête. Les règles bruyantes, obsolètes ou non prises en charge ne sont pas activées par défaut. Une absence de détection ne prouve pas l’absence de compromission ; une correspondance doit être vérifiée dans les événements et leur contexte.
 
@@ -275,7 +275,7 @@ Le niveau minimal se choisit avant **Analyser avec Hayabusa**. Zéro alerte, une
 
 ## Shellbags et WebCache Windows
 
-Créez ou ouvrez un case, puis utilisez **Importer un dossier de collecte…**. Placez `UsrClass.dat`, `NTUSER.DAT` et/ou `WebCacheV01.dat` dans le dossier choisi, avec les journaux de registre `.LOG1` / `.LOG2` à côté de leur ruche. L’organisation par artefact ouvre des onglets **Shellbags** et **WebCache** ; la grille combinée les regroupe par artefact. Les analyses sont conservées dans le case, avec les filtres, signets, notes et dispositions de sa session.
+Créez ou ouvrez un case, puis utilisez **Importer un dossier à parser…**. Placez `UsrClass.dat`, `NTUSER.DAT` et/ou `WebCacheV01.dat` dans le dossier choisi, avec les journaux de registre `.LOG1` / `.LOG2` à côté de leur ruche. L’organisation par artefact ouvre des onglets **Shellbags** et **WebCache** ; la grille combinée les regroupe par artefact. Les analyses sont conservées dans le case, avec les filtres, signets, notes et dispositions de sa session.
 
 ### Lire les Shellbags
 
@@ -302,7 +302,7 @@ La lecture ne répare pas la base, ne rejoue pas les journaux ESE, ne récupère
 
 ## Importer une collecte Linux CatScale
 
-1. Créez ou ouvrez un case, puis cliquez sur **Importer un dossier de collecte…**.
+1. Créez ou ouvrez un case, puis cliquez sur **Importer un dossier à parser…**.
 2. Choisissez le dossier CatScale déjà extrait, le dossier `extracted` contenant plusieurs hôtes, ou un dossier contenant les archives d’origine `catscale_*.tar.gz` / anciennes `FSecure_*.tar.gz`.
 3. Choisissez **Un onglet par type d’artefact ou famille CatScale**, ou la grille unique regroupée par famille. Les sorties sont rangées dans le case actif ; sans case actif, elles restent dans le dossier Collectes habituel.
 4. Lisez le bilan, puis explorez les onglets avec les filtres, les groupes, les signets, les notes et les exports habituels. Enregistrez le case pour retrouver la session.
@@ -362,7 +362,7 @@ Chaque contexte conservé en onglet est une analyse enregistrée dans la collect
 
 ## Parcours guidé
 
-Pour apprendre Fireblade sur un petit fichier sans toucher aux preuves, préparez un CSV de test avec une ligne d’en-tête et quelques lignes. Ouvrez-le avec **Fichier → Ouvrir un fichier**, puis effectuez ce parcours :
+Pour apprendre Fireblade sur un petit fichier sans toucher aux preuves, préparez un CSV de test avec une ligne d’en-tête et quelques lignes. Ouvrez-le avec **Analyse → Importer un fichier de données**, puis effectuez ce parcours :
 
 1. Recherchez un terme dans la barre **Rechercher**. Essayez ensuite un clic droit sur une cellule pour filtrer sur sa valeur.
 2. Cliquez sur l’en-tête d’une date pour trier, puis utilisez **Affichage → Tri sur plusieurs colonnes** pour ajouter une seconde clé.
@@ -376,7 +376,7 @@ Les sections suivantes détaillent chaque fonction et les cas où les données s
 
 ## Ouvrir des données
 
-1. Cliquer sur **Fichier → Ouvrir un fichier** ou appuyer sur **Ctrl+O**.
+1. Cliquer sur **Analyse → Importer un fichier de données** ou appuyer sur **Ctrl+O**.
 2. Choisir un CSV, TSV, TXT, XLS ou XLSX.
 3. Confirmer le nom et l’emplacement du fichier d’analyse `.timeline`. Pour XLS/XLSX, sélectionner la feuille ; la première ligne doit contenir les noms de colonnes.
 4. Attendre la fin de l’import. La source est lue sans réécriture.
@@ -719,7 +719,7 @@ Le registre natif inclut aussi les fonctions texte `Like`, `Upper`, `Lower`, `Tr
 
 Les profils de supertimelines adaptent notamment Plaso/L2T, Psort, mactime et ForensicTimeline, avec des colonnes normalisées, catégories ou indicateurs MACB selon le profil reconnu. **Affichage → Légende des supertimelines** explique les catégories proposées. Vérifiez les valeurs : une couleur n’est pas une conclusion forensic. Les formats et variantes restent soumis aux limites de compatibilité documentées.
 
-Le catalogue embarqué contient des signatures et des noms de formats forensic issus des déclarations publiques de TLEFilePlugins. Il aide Fireblade à reconnaître les colonnes, présenter dates et booléens, réordonner les champs et proposer certaines règles. Il ne contient pas un parseur spécialisé pour chaque nom de format. Les exports déjà produits sont ouverts ; les profils de présentation ne décodent pas les artefacts bruts. Le parcours **Importer un dossier de collecte** délègue les ruches, EVTX, Prefetch et autres formats reconnus aux moteurs intégrés. Les images disque ne sont pas montées par Fireblade.
+Le catalogue embarqué contient des signatures et des noms de formats forensic issus des déclarations publiques de TLEFilePlugins. Il aide Fireblade à reconnaître les colonnes, présenter dates et booléens, réordonner les champs et proposer certaines règles. Il ne contient pas un parseur spécialisé pour chaque nom de format. Les exports déjà produits sont ouverts ; les profils de présentation ne décodent pas les artefacts bruts. Le parcours **Importer un dossier à parser** délègue les ruches, EVTX, Prefetch et autres formats reconnus aux moteurs intégrés. Les images disque ne sont pas montées par Fireblade.
 
 Un profil JSON personnel peut définir un nom, une signature, les colonnes date/booléennes, un ordre, des règles et certaines transformations déclaratives. Dans **Affichage → Profils et plugins**, installez ou retirez ces profils. Ils ne peuvent pas contenir du code. Les champs inconnus restent présents ; une reconnaissance insuffisante revient à l’import générique.
 
@@ -917,7 +917,7 @@ Cette liste sert d’index fonctionnel par menu. Les sections précédentes expl
 | Nouveau case / Cases | Créer une enquête ou retrouver le catalogue persistant. |
 | Enregistrer le case et sa session / Fermer le case | Sauvegarder le travail ou revenir au catalogue après sauvegarde. |
 | Ouvrir un fichier | Importer CSV, TSV, TXT délimité, XLS ou XLSX. Plusieurs fichiers peuvent être choisis ; les imports suivants attendent dans la file séquentielle. |
-| Importer un dossier de collecte | Choisir le dossier d’artefacts, puis l’organisation par onglets ou par groupes. |
+| Importer un dossier à parser | Choisir le dossier d’artefacts, puis l’organisation par onglets ou par groupes. |
 | Importer avec un plugin TLE (.NET) | Choisir explicitement une DLL et son lecteur `ProcessFile` / `DataList`. Pour un lecteur reconnu, l’ouverture ordinaire peut aussi le détecter selon son en-tête. |
 | Ouvrir une analyse | Reprendre un fichier `.timeline` existant. |
 | Importer les préférences Timeline Explorer | Lire `Settings/TLE_settings.xml` et appliquer les propriétés prises en charge, avec compte rendu des adaptations. |
@@ -975,7 +975,7 @@ L’éditeur ET/OU/NON construit des arbres de critères ; Expression textuelle 
 | Convertir une date | Créer une colonne UTC distincte à partir de formats standards ou d’horodatages forensic. |
 | Ajouter une colonne calculée | Créer une vue SQL persistante depuis une expression. |
 | Contrôler les colonnes dérivées | Compter les valeurs NULL produites par les conversions et expressions. |
-| Analyser la collecte avec Hayabusa | Lancer les règles EVTX du pack au niveau minimal choisi dans Collecte et détection. |
+| Analyser la collecte avec Hayabusa | Lancer les règles EVTX du pack au niveau minimal choisi dans Suivi des imports. |
 | Voir le contexte EVTX de l’alerte | Créer la chronologie liée à une alerte sélectionnée d’une collecte associée. |
 | Interrompre la requête | Annuler un import, calcul, recherche, export ou annotation lorsqu’il est encore annulable. |
 
@@ -1033,7 +1033,7 @@ Les raccourcis sont aussi disponibles depuis les menus ; les actions dépendant 
 
 Pour signaler un problème reproductible, indiquez version/commit depuis **À propos**, Windows, format d’entrée, compte attendu, commandes utilisées et message exact. Préférez un petit exemple synthétique aux données d’enquête. Les rapports Actions concernent un commit précis ; un succès d’une ancienne version ne qualifie pas automatiquement la suivante.
 
-### Collecte et détection
+### Suivi des imports
 
 | Symptôme | Vérification |
 |---|---|
@@ -1094,4 +1094,4 @@ L’onglet **Chasse IOC** recherche une liste d’IP, domaines, URL et empreinte
 
 ## Contrôler la couverture de collecte
 
-L’onglet **Couverture & diagnostics** et le bouton permanent **Couverture** présentent les erreurs, exclusions, dates inexploitables, sources manquantes et résultats partiels. Lancez le contrôle complet, ajustez les familles attendues et activez les SHA-256 si vous souhaitez revérifier les fichiers. Le journal distingue les incidents historiques du dernier contrôle. Voir **Aide → Couverture de collecte et diagnostics** ou [le guide détaillé](COUVERTURE-COLLECTE.md).
+La fenêtre **Aide → Vérifier les imports et diagnostics…** et le bouton permanent **Couverture** présentent les erreurs, exclusions, dates inexploitables, sources manquantes et résultats partiels. Lancez le contrôle complet, ajustez les familles attendues et activez les SHA-256 si vous souhaitez revérifier les fichiers. Le journal distingue les incidents historiques du dernier contrôle. Voir **Aide → Couverture de collecte et diagnostics** ou [le guide détaillé](COUVERTURE-COLLECTE.md).

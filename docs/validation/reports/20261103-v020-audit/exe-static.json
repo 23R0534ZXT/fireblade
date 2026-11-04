@@ -1,0 +1,72 @@
+{
+  "architecture": "0x8664",
+  "subsystem": 2,
+  "version": {
+    "CompanyName": "Fireblade project",
+    "FileDescription": "Fireblade forensic investigation workspace",
+    "FileVersion": "0.2.0",
+    "InternalName": "Fireblade",
+    "OriginalFilename": "Fireblade.exe",
+    "ProductName": "Fireblade",
+    "ProductVersion": "0.2.0"
+  },
+  "has_authenticode": false,
+  "archive_entries": 8449,
+  "python_dlls": [
+    "python3.dll",
+    "python312.dll"
+  ],
+  "module_checks": {
+    "fireblade.core.disk": {
+      "present": true,
+      "co_filename": "fireblade\\core\\disk.py",
+      "uses_is_junction": true
+    },
+    "fireblade.core.engine": {
+      "present": true,
+      "co_filename": "fireblade\\core\\engine.py"
+    },
+    "fireblade.core.case_package": {
+      "present": true,
+      "co_filename": "fireblade\\core\\case_package.py"
+    },
+    "dissect.target.filesystems.ntfs": {
+      "present": true,
+      "co_filename": "dissect\\target\\filesystems\\ntfs.py",
+      "entry_methods": [
+        "__init__",
+        "get",
+        "open",
+        "scandir",
+        "is_dir",
+        "is_file",
+        "is_symlink",
+        "readlink",
+        "stat",
+        "lstat",
+        "attr",
+        "lattr"
+      ]
+    },
+    "dissect.target.helpers.compat.path_common": {
+      "present": true,
+      "co_filename": "dissect\\target\\helpers\\compat\\path_common.py",
+      "junction_names": [
+        "dissect.target.filesystems.ntfs",
+        "NtfsFilesystemEntry",
+        "ImportError",
+        "get",
+        "isinstance",
+        "is_mount_point"
+      ]
+    }
+  },
+  "metadata": [
+    "dissect_target-3.25.1.dist-info\\METADATA",
+    "duckdb-1.5.6.dist-info\\METADATA",
+    "lz4-4.4.4.dist-info\\METADATA",
+    "numpy-2.3.5.dist-info\\METADATA",
+    "structlog-26.1.0.dist-info\\METADATA",
+    "zstandard-0.25.0.dist-info\\METADATA"
+  ]
+}

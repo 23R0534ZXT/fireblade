@@ -1,6 +1,7 @@
 """Offline artifact orchestration. Every input has a persisted disposition."""
 from dataclasses import dataclass
 import csv
+import copy
 import hashlib
 import json
 import os
@@ -175,6 +176,7 @@ class Collection:
         if self.output == self.root or self.root in self.output.parents:
             raise ValueError('Choisissez un dossier de travail hors de la collecte source')
         self.pack, self.settings, self.progress = pack, settings, progress
+        self.ready = lambda documents: None
         self._last_checkpoint = 0
         self._case_lock = threading.Lock()
         self._active_case = None
@@ -269,6 +271,10 @@ class Collection:
 
     def publish_results(self, start, entry):
         """Hook for immutable, closed results after source integrity checks."""
+        if entry['status'] not in ('complete', 'attention'):
+            del self.report['documents'][start:]
+        elif self.report['organization'] == 'files':
+            self.ready(copy.deepcopy(self.report['documents'][start:]))
 
     def parse(self):
         self.prepare_output()

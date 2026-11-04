@@ -1,5 +1,6 @@
 """Case-first entry and a separate worker pool for disk indexing."""
 import json
+import time
 from datetime import datetime
 from pathlib import Path
 import uuid
@@ -68,7 +69,6 @@ class StartWorkflowMixin:
         self._analysis_origins = {}
         self.disk_drain = QTimer(self); self.disk_drain.setInterval(150)
         self.disk_drain.timeout.connect(self.drain_disk_documents)
-        self.disk_drain.start()
         self.disk_status = QWidget(); row = QHBoxLayout(self.disk_status)
         row.setContentsMargins(0, 0, 0, 0)
         self.disk_label = QLabel(); self.disk_label.setTextFormat(Qt.PlainText)
@@ -96,10 +96,13 @@ class StartWorkflowMixin:
         for menu_action in self.menuBar().actions():
             menu = menu_action.menu()
             if menu is None: continue
-            if menu_action.text().replace('&', '') == 'Fichier':
-                permitted = {'Nouveau case…', 'Cases…', 'Quitter'}
+            if menu_action.text().replace('&', '') in ('Fichier', 'Case'):
+                permitted = {'Nouveau case…', 'Cases…', 'Quitter', 'Importer un case portable…'}
                 for item in menu.actions():
-                    if item.text() in permitted: continue
+                    if item.text() in permitted:
+                        if item.property('caseGateEnabled'):
+                            item.setEnabled(True); item.setProperty('caseGateEnabled', False)
+                        continue
                     if not allowed:
                         if item.isEnabled(): item.setProperty('caseGateEnabled', True)
                         item.setEnabled(False)
@@ -143,23 +146,36 @@ class StartWorkflowMixin:
             if not root.is_dir() or root == workspace or root in workspace.parents:
                 self.error('Choisissez un volume existant et stockez le case sur un autre volume.'); return False
         try:
-            collection = DiskCollection(source, workspace, self.toolpack(), self.settings,
+            from dataclasses import replace
+            settings = replace(self.settings, memory_mb=max(64, self.settings.memory_mb//2), threads=1)
+            collection = DiskCollection(source, workspace, self.toolpack(), settings,
                 ready=self.disk_signals.documents.emit, source_kind=kind)
         except Exception as exc:
             self.error(exc); return False
+        return self.start_background_collection(collection, workspace)
+
+    def start_background_collection(self, collection, workspace=None):
+        if self.disk_job is not None or self.disk_pool.activeThreadCount() or self._disk_pending:
+            return False
         job = Job(collection.parse)
         collection.progress = job.signals.progress.emit
         self.disk_collection = collection
-        self.investigation_collections.append(dict(path=str(collection.output), name=("Disque : "+str(source))[:256]))
+        label = ('Disque : '+collection.disk_source) if hasattr(collection, 'disk_source') else ('Dossier : '+str(collection.root))
+        self.investigation_collections.append(dict(path=str(collection.output), name=label[:256]))
         self.refresh_investigation_collections()
         if not self.persist_investigation():
             self.investigation_collections = [item for item in self.investigation_collections if item['path'] != str(collection.output)]
             self.refresh_investigation_collections()
             import shutil
-            shutil.rmtree(workspace)
+            if workspace is not None:shutil.rmtree(workspace)
             self.disk_collection = None
             return False
         self.disk_job = job
+        self._background_final_received = False
+        self._background_last_save = 0.0
+        self.disk_drain.start()
+        if not hasattr(collection, 'disk_source'):
+            self.collection = collection
         self.disk_progress.setRange(0, 0)
         self.disk_stop.setEnabled(True); self.disk_status.show()
         self.disk_message('Découverte et indexation…')
@@ -188,7 +204,7 @@ class StartWorkflowMixin:
 
     def drain_disk_documents(self):
         if not self._disk_pending or not self.can_open_file(): return
-        incoming, self._disk_pending = self._disk_pending, []
+        incoming, self._disk_pending = self._disk_pending[:16], self._disk_pending[16:]
         existing = {s.path for s in self.documents}
         for document in incoming:
             if document['path'] in existing: continue
@@ -205,12 +221,15 @@ class StartWorkflowMixin:
         # Never steal the current analysis when a later result arrives.
         if self.case is None and self.documents:
             self.switch_document(0)
-        self.persist_investigation(automatic=True)
+        if time.monotonic()-self._background_last_save >= 1:
+            self.persist_investigation(automatic=True)
+            self._background_last_save = time.monotonic()
 
     def disk_cancelled(self):
         report = self.disk_collection.report
         report['status'] = 'cancelled'
         try:
+            self.disk_collection.output.mkdir(parents=True, exist_ok=True)
             self.disk_collection.save()
         except OSError as exc:
             self.disk_failed('Arrêt demandé, mais le bilan n’a pas pu être enregistré : '+str(exc))
@@ -233,10 +252,18 @@ class StartWorkflowMixin:
         self.disk_progress.setValue(0 if error else 1)
         self.disk_stop.setEnabled(False)
         self.refresh_investigation_collections()
-        self.coverage_panel.record_collection(report)
+        if 'disk' not in report and not self._background_final_received:
+            # Grouped outputs are published only when their final union is closed.
+            self.receive_disk_documents(report['documents'])
+            self.show_collection_report(report)
+            self._background_final_received = True
         self.drain_disk_documents()
+        if self._disk_pending:
+            QTimer.singleShot(150, lambda: self.finish_disk(report, error))
+            return
+        self.coverage_panel.record_collection(report)
         self.persist_investigation(automatic=True)
-        errors = len(report['disk']['errors']) + sum(e['status'] in ('error', 'attention', 'unsupported', 'no_output') for e in report['files'])
+        errors = len(report.get('disk', {}).get('errors', [])) + sum(e['status'] in ('error', 'attention', 'unsupported', 'no_output') for e in report['files'])
         label = 'Interrompu' if report['status'] == 'cancelled' else 'Terminé'
         if error:
             self.disk_message('Échec : '+error)
@@ -244,6 +271,7 @@ class StartWorkflowMixin:
         else:
             self.disk_message(f"{label} · {len(report['documents'])} analyses · {errors} incidents")
         self.disk_job = None
+        self.disk_drain.stop()
         self.update_collection_controls()
 
     def setup_organization(self):

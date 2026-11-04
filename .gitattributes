@@ -1,0 +1,3 @@
+# Preserve raw validation output, including native tool CRLF and traceback spacing.
+docs/validation/reports/**/*.log -text whitespace=-trailing-space,-blank-at-eof,-blank-at-eol
+docs/validation/reports/**/*.xml -text whitespace=-trailing-space,-blank-at-eof,-blank-at-eol

@@ -44,17 +44,18 @@ class ExportCommandsMixin:
 
 
     def export_destination_is_safe(self, target):
-        protected = {Path(s.path).resolve() for s in self.documents} | {Path(s.source_info["path"]).resolve() for s in self.documents}
-        protected.add(self.rule_store.path.resolve())
-        data=getattr(self,'active_investigation',None)
-        if data:
-            folder=self.investigation_library.folder(data['id']);destination=Path(target).resolve()
-            protected.update(folder/name for name in ('case.json','timeline-state.json','coverage-state.json','coverage-last.json'))
-            if destination.is_relative_to(folder/'History') or destination.is_relative_to(folder/'IOC-hunts') or destination.parent==folder and destination.name.startswith('session-') and destination.suffix=='.fireblade-session':
-                self.error('L’export ne peut pas remplacer les fichiers de sauvegarde et de couverture du case.');return False
-        from fireblade.core.paths import protected_destination
-        if protected_destination(target,protected):
-            self.error("L’export ne peut pas écraser une source, une analyse ouverte ou les règles globales.")
+        from fireblade.core.paths import ensure_export_destination
+        data = getattr(self, 'active_investigation', None)
+        current = [collection for collection in (getattr(self,'collection',None),getattr(self,'disk_collection',None)) if collection]
+        loaded = {str(collection.output.resolve()) for collection in current}
+        directories = [entry['path'] for entry in getattr(self,'investigation_collections',[])
+                       if str(Path(entry['path']).resolve()) not in loaded]
+        try:
+            ensure_export_destination(target, documents=self.documents, rule_path=self.rule_store.path,
+                case_folder=self.investigation_library.folder(data['id']) if data else None,
+                reports=[collection.report for collection in current], collection_directories=directories)
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            self.error(str(exc))
             return False
         return True
 

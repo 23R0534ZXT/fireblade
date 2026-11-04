@@ -1,0 +1,18 @@
+SQLECmd version 2026.10.3
+
+Author: Eric Zimmerman (saericzimmerman@gmail.com)
+https://github.com/EricZimmerman/SQLECmd
+Command line: -f /workspace/scratch/fireblade-real-parsers/evidence/matrix/SQLECmd/CarsDB.db --csv /workspace/scratch/fireblade-real-parsers/collection/results/34576bab329248048e08b18c2122e468
+
+Console log: /workspace/scratch/fireblade-real-parsers/collection/results/34576bab329248048e08b18c2122e468/20261104001614_SQLECmd_2026.10.3_ConsoleLog.txt
+
+Unable to load the SQLite library: Unable to load shared library '/workspace/scratch/fireblade-extracted-tools/SQLECmd/SQLite.Interop.dll' or one of its dependencies. In order to help diagnose loading problems, consider using a tool like strace. If you're using glibc, consider setting the LD_DEBUG environment variable: 
+/workspace/scratch/fireblade-extracted-tools/SQLECmd/SQLite.Interop.dll: invalid ELF header
+. Exiting
+System.DllNotFoundException: Unable to load shared library '/workspace/scratch/fireblade-extracted-tools/SQLECmd/SQLite.Interop.dll' or one of its dependencies. In order to help diagnose loading problems, consider using a tool like strace. If you're using glibc, consider setting the LD_DEBUG environment variable: 
+/workspace/scratch/fireblade-extracted-tools/SQLECmd/SQLite.Interop.dll: invalid ELF header
+
+   at System.Runtime.InteropServices.NativeLibrary.Load(String libraryPath)
+   at SQLECmd.NativeSqlite.Setup() in /_/SQLECmd/NativeSqlite.cs:line 100
+   at SQLECmd.Program.DoWork(String f, String d, String csv, String json, String blobdir, Boolean dedupe, Boolean hunt, String maps, Boolean sync, Boolean debug, Boolean trace, Boolean noblob, Boolean ifn, String temp, Boolean co) in /_/SQLECmd/Program.cs:line 410
+

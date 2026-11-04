@@ -1,0 +1,178 @@
+{
+  "format": "fireblade-v020-independent-audit",
+  "version": 1,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "duckdb": "1.5.6",
+  "checks": [
+    {
+      "name": "differential_csv",
+      "status": "passed",
+      "details": {
+        "scenarios": 40,
+        "rows_per_scenario": 37,
+        "oracle": "stdlib csv.reader",
+        "checks": [
+          "exact cells",
+          "header quoting",
+          "forced chunk path",
+          "export",
+          "reopen",
+          "unchanged source"
+        ]
+      },
+      "seconds": 3.895
+    },
+    {
+      "name": "filter_oracle",
+      "status": "passed",
+      "details": {
+        "queries": 250,
+        "rows": 200,
+        "seed": 20261103,
+        "oracle": "Python three-valued boolean evaluator"
+      },
+      "seconds": 0.633
+    },
+    {
+      "name": "timestamp_oracle",
+      "status": "passed",
+      "details": {
+        "timestamps": 300,
+        "years": [
+          1601,
+          1969,
+          1970,
+          2026,
+          2263
+        ],
+        "fractional_digits": 9,
+        "oracle": "integer UTC epoch deltas calculated with datetime"
+      },
+      "seconds": 0.114
+    },
+    {
+      "name": "sqlite_wal",
+      "status": "finding",
+      "details": {
+        "finding": true,
+        "priority": "P1",
+        "source_rows": 1,
+        "copied_rows": 0,
+        "copied_before_read": [
+          "History"
+        ],
+        "source_files": [
+          "History",
+          "History-shm",
+          "History-wal"
+        ],
+        "errors": [],
+        "sha256_main_matches": true
+      },
+      "seconds": 0.008
+    },
+    {
+      "name": "changed_source",
+      "status": "finding",
+      "details": {
+        "finding": true,
+        "priority": "P2",
+        "collection_status": "complete",
+        "file_status": "error",
+        "diagnostic": "Source modifiée pendant le traitement ; résultats à vérifier",
+        "saved_documents": 1
+      },
+      "seconds": 0.033
+    },
+    {
+      "name": "hostile_package",
+      "status": "finding",
+      "details": {
+        "finding": true,
+        "priority": "P1",
+        "import_succeeded": true,
+        "external_marker_displayed": "SYNTHETIC-LOCAL-MARKER-ONLY",
+        "files_declared": 1,
+        "marker_in_archive": false,
+        "warning": "Synthetic marker only; no user secrets read"
+      },
+      "seconds": 0.092
+    },
+    {
+      "name": "large_oracle",
+      "status": "passed",
+      "details": {
+        "rows": 8380000,
+        "independent_export_rows": 104750,
+        "offsets": 7,
+        "source_sha256": "b440124d34192310f682617994d7382f1c14d406a00df2c22f24f4ce36b27d27"
+      },
+      "seconds": 8.223
+    },
+    {
+      "name": "disk_matrix",
+      "status": "finding",
+      "details": {
+        "finding": true,
+        "priority": "P1",
+        "results": [
+          {
+            "source": "/workspace/scratch/fireblade-disks/ext4.bin",
+            "root_entries": [
+              [
+                "lost+found",
+                "test_file",
+                "xattr_cap"
+              ]
+            ],
+            "status": "complete",
+            "extracted": 0,
+            "errors": [],
+            "source_unchanged": true
+          },
+          {
+            "source": "/workspace/scratch/fireblade-disks/ntfs.bin",
+            "root_entries": [
+              [
+                "$AttrDef",
+                "$BadClus",
+                "$Bitmap",
+                "$Boot",
+                "$Extend",
+                "$LogFile",
+                "$MFT",
+                "$MFTMirr",
+                "$RECYCLE.BIN",
+                "$Secure",
+                "$UpCase",
+                "$Volume",
+                "Directory",
+                "File.txt",
+                "Large Directory",
+                "Large.txt",
+                "Random.bin",
+                "System Volume Information"
+              ]
+            ],
+            "status": "failed",
+            "error": "AttributeError(\"'NtfsFilesystemEntry' object has no attribute 'is_mount_point'\")",
+            "traceback": "Traceback (most recent call last):\n  File \"/workspace/fireblade/scripts/benchmarks/audit_v020.py\", line 275, in disk_matrix\n    report = collector.parse()\n             ^^^^^^^^^^^^^^^^^\n  File \"/workspace/fireblade/src/fireblade/core/collection.py\", line 283, in parse\n    for directory, dirs, names in self.walk_sources(walk_error):\n                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/fireblade/src/fireblade/core/disk.py\", line 181, in walk_sources\n    if child.is_symlink() or (hasattr(child, 'is_junction') and child.is_junction()):\n                                                                ^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py\", line 928, in is_junction\n    return self._flavour.isjunction(self)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/fireblade/.venv/lib/python3.12/site-packages/dissect/target/helpers/compat/path_common.py\", line 100, in isjunction\n    return isinstance(entry, NtfsFilesystemEntry) and entry.is_mount_point()\n                                                      ^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'NtfsFilesystemEntry' object has no attribute 'is_mount_point'\n",
+            "source_unchanged": true
+          },
+          {
+            "source": "/workspace/scratch/fireblade-disks/image.E01",
+            "status": "passed",
+            "scope": "container decoding only; fixture has no filesystem"
+          }
+        ]
+      },
+      "seconds": 1.12
+    }
+  ],
+  "commit": "a968e211ccef74cc44e99a8993762ae7201d0bf7",
+  "counts": {
+    "passed": 4,
+    "finding": 4
+  }
+}

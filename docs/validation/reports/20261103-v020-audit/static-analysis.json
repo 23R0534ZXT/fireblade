@@ -1,0 +1,75 @@
+{
+  "tool": "bandit",
+  "findings": 309,
+  "metrics": {
+    "CONFIDENCE.HIGH": 240,
+    "CONFIDENCE.LOW": 25,
+    "CONFIDENCE.MEDIUM": 44,
+    "CONFIDENCE.UNDEFINED": 0,
+    "SEVERITY.HIGH": 0,
+    "SEVERITY.LOW": 224,
+    "SEVERITY.MEDIUM": 85,
+    "SEVERITY.UNDEFINED": 0,
+    "loc": 33194,
+    "nosec": 0,
+    "skipped_tests": 0
+  },
+  "by_test": [
+    {
+      "severity": "MEDIUM",
+      "test": "B608",
+      "count": 69
+    },
+    {
+      "severity": "LOW",
+      "test": "B101",
+      "count": 114
+    },
+    {
+      "severity": "LOW",
+      "test": "B404",
+      "count": 21
+    },
+    {
+      "severity": "LOW",
+      "test": "B607",
+      "count": 24
+    },
+    {
+      "severity": "LOW",
+      "test": "B603",
+      "count": 57
+    },
+    {
+      "severity": "MEDIUM",
+      "test": "B310",
+      "count": 11
+    },
+    {
+      "severity": "LOW",
+      "test": "B405",
+      "count": 6
+    },
+    {
+      "severity": "MEDIUM",
+      "test": "B314",
+      "count": 4
+    },
+    {
+      "severity": "LOW",
+      "test": "B311",
+      "count": 1
+    },
+    {
+      "severity": "LOW",
+      "test": "B408",
+      "count": 1
+    },
+    {
+      "severity": "MEDIUM",
+      "test": "B318",
+      "count": 1
+    }
+  ],
+  "caveat": "Heuristic alerts, not a vulnerability count. Parameterized SQL, subprocess argument lists, and explicit XML DTD rejection require manual context."
+}

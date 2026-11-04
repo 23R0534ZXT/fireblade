@@ -21,8 +21,10 @@ class CollectionOrganizationDialog(QDialog):
         self.resize(570, 260)
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel('Comment souhaitez-vous consulter les résultats ?'))
+        self.progressive = QRadioButton('Résultats progressifs — un onglet par résultat (recommandé)')
+        self.progressive.setChecked(True)
+        layout.addWidget(self.progressive)
         self.artifacts = QRadioButton('Un onglet par type d’artefact ou famille CatScale')
-        self.artifacts.setChecked(True)
         layout.addWidget(self.artifacts)
         separate = QLabel('Onglets : [Amcache] [EVTX] [Shellbags]…\nCatScale : [Processus et réseau] [Persistance]…\nLes résultats du même type sont réunis.')
         separate.setWordWrap(True)
@@ -40,7 +42,7 @@ class CollectionOrganizationDialog(QDialog):
         layout.addWidget(buttons)
 
     def organization(self):
-        return 'combined' if self.combined.isChecked() else 'artifacts'
+        return 'files' if self.progressive.isChecked() else ('combined' if self.combined.isChecked() else 'artifacts')
 
 
 class CollectionMixin(AlertContextMixin):
@@ -66,7 +68,9 @@ class CollectionMixin(AlertContextMixin):
             control.clicked.connect(callback)
             row.addWidget(control)
         layout.addLayout(row)
-        layout.addWidget(QLabel('2. Détecter dans les EVTX Windows'))
+        self.detection_panel = QWidget()
+        detection_layout = QVBoxLayout(self.detection_panel)
+        detection_layout.addWidget(QLabel('Détecter des activités suspectes dans les EVTX Windows importés'))
         settings = QHBoxLayout()
         settings.addWidget(QLabel('Gravité minimale Hayabusa :'))
         self.hayabusa_level = QComboBox()
@@ -78,13 +82,14 @@ class CollectionMixin(AlertContextMixin):
         self.hayabusa_button.clicked.connect(self.analyze_collection)
         settings.addWidget(self.hayabusa_button)
         settings.addStretch()
-        layout.addLayout(settings)
+        detection_layout.addLayout(settings)
         self.hayabusa_hint = QLabel();self.hayabusa_hint.setTextFormat(Qt.PlainText);self.hayabusa_hint.setWordWrap(True)
-        layout.addWidget(self.hayabusa_hint)
+        detection_layout.addWidget(self.hayabusa_hint)
+        detection_layout.addStretch()
         from fireblade.ui.collection_report import CollectionReport
         self.collection_report = CollectionReport()
         layout.addWidget(self.collection_report, 1)
-        self.workbench.addTab(panel, 'Collecte et détection')
+        self.workbench.addTab(panel, 'Suivi des imports')
         self.setCentralWidget(self.workbench)
         file_menu = self.menuBar().actions()[0].menu()
         action = QAction('Importer un dossier de collecte…', self)
@@ -145,7 +150,7 @@ class CollectionMixin(AlertContextMixin):
             (e['status'] in ('complete','complete_with_warnings') or
              e['status']=='attention' and any(run['tool']=='EvtxECmd' and run['status'] in ('complete','complete_with_warnings') and run.get('outputs')
                                              for run in e.get('runs',[]))) for e in report['files']))
-        ready=evtx and report['status'] not in ('pending','running') and not self.busy
+        ready=evtx and report['status'] not in ('pending','running') and not self.busy and getattr(self,'disk_job',None) is None
         self.hayabusa_action.setEnabled(ready);self.hayabusa_button.setEnabled(ready)
         self.hayabusa_level.setEnabled(ready)
         reason=('Attendez la fin du traitement en cours.' if self.busy else
@@ -217,6 +222,9 @@ class CollectionMixin(AlertContextMixin):
     def parse_collection(self):
         if not self.require_active_case():return
         if not self.can_open_file():return
+        if self.disk_job is not None or self.disk_pool.activeThreadCount() or self._disk_pending:
+            self.statusBar().showMessage('Un import est déjà en cours. Attendez sa fin ou arrêtez-le.')
+            return
         path = QFileDialog.getExistingDirectory(self, 'Dossier contenant les artefacts forensic')
         if not path:return
         dialog = CollectionOrganizationDialog(self)
@@ -228,13 +236,23 @@ class CollectionMixin(AlertContextMixin):
         parent.mkdir(parents=True, exist_ok=True)
         output = parent/(datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:8])
         try:
-            self.collection = Collection(path, output, self.toolpack(), self.settings, organization=organization)
-            self.start_collection_job(self.collection.parse)
+            from dataclasses import replace
+            settings = replace(self.settings, memory_mb=max(64, self.settings.memory_mb//2), threads=1)
+            collection = Collection(path, output, self.toolpack(), settings, organization=organization)
+            if self.active_investigation is not None:
+                collection.ready = self.disk_signals.documents.emit
+                self.start_background_collection(collection)
+            else:
+                self.collection = collection
+                self.start_collection_job(collection.parse)
         except (OSError, ValueError) as exc:
             self.error(exc)
 
     def reopen_collection(self):
         if not self.can_open_file():return
+        if self.disk_job is not None:
+            self.statusBar().showMessage('Attendez la fin de l’import avant de reprendre une autre collecte.')
+            return
         path = QFileDialog.getExistingDirectory(self, 'Dossier de travail contenant collection.json')
         if not path:return
         if getattr(self, 'disk_job', None) is not None and Path(path).resolve() == self.disk_collection.output:
@@ -279,7 +297,16 @@ class CollectionMixin(AlertContextMixin):
             return
         target, _ = QFileDialog.getSaveFileName(self, 'Exporter les sources Hayabusa', 'Hayabusa-source.zip', 'ZIP (*.zip)')
         if target:
+            if not self.export_destination_is_safe(target):return
+            import os
+            import tempfile
+            temporary = None
             try:
-                shutil.copyfile(source, target)
+                with tempfile.NamedTemporaryFile(dir=Path(target).parent, suffix='.partial', delete=False) as stream:
+                    temporary = Path(stream.name)
+                shutil.copyfile(source, temporary)
+                os.replace(temporary, target)
                 self.statusBar().showMessage('Sources Hayabusa exportées : '+target)
             except OSError as exc:self.error(exc)
+            finally:
+                if temporary:temporary.unlink(missing_ok=True)

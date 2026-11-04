@@ -1,0 +1,176 @@
+{
+  "format": "fireblade-v020-independent-audit",
+  "version": 1,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "duckdb": "1.5.6",
+  "checks": [
+    {
+      "name": "differential_csv",
+      "status": "passed",
+      "details": {
+        "scenarios": 40,
+        "rows_per_scenario": 37,
+        "oracle": "stdlib csv.reader",
+        "checks": [
+          "exact cells",
+          "header quoting",
+          "forced chunk path",
+          "export",
+          "reopen",
+          "unchanged source"
+        ]
+      },
+      "seconds": 12.159
+    },
+    {
+      "name": "filter_oracle",
+      "status": "passed",
+      "details": {
+        "queries": 250,
+        "rows": 200,
+        "seed": 20261103,
+        "oracle": "Python three-valued boolean evaluator"
+      },
+      "seconds": 1.093
+    },
+    {
+      "name": "timestamp_oracle",
+      "status": "passed",
+      "details": {
+        "timestamps": 300,
+        "years": [
+          1601,
+          1969,
+          1970,
+          2026,
+          2263
+        ],
+        "fractional_digits": 9,
+        "oracle": "integer UTC epoch deltas calculated with datetime"
+      },
+      "seconds": 0.149
+    },
+    {
+      "name": "sqlite_wal",
+      "status": "passed",
+      "details": {
+        "finding": false,
+        "priority": "P1",
+        "source_rows": 1,
+        "copied_rows": 1,
+        "copied_before_read": [
+          "History",
+          "History-shm",
+          "History-wal"
+        ],
+        "source_files": [
+          "History",
+          "History-shm",
+          "History-wal"
+        ],
+        "errors": [],
+        "sha256_main_matches": true
+      },
+      "seconds": 0.012
+    },
+    {
+      "name": "changed_source",
+      "status": "passed",
+      "details": {
+        "finding": false,
+        "priority": "P2",
+        "collection_status": "complete",
+        "file_status": "error",
+        "diagnostic": "Source modifiée pendant le traitement ; résultats à vérifier",
+        "saved_documents": 0
+      },
+      "seconds": 0.14
+    },
+    {
+      "name": "hostile_package",
+      "status": "passed",
+      "details": {
+        "finding": false,
+        "rejected": true,
+        "reason": "Analyse contenant des tables ou vues SQL non autorisées",
+        "no_case_published": true
+      },
+      "seconds": 0.305
+    },
+    {
+      "name": "large_oracle",
+      "status": "passed",
+      "details": {
+        "rows": 8380000,
+        "independent_export_rows": 104750,
+        "offsets": 7,
+        "source_sha256": "b440124d34192310f682617994d7382f1c14d406a00df2c22f24f4ce36b27d27"
+      },
+      "seconds": 16.393
+    },
+    {
+      "name": "disk_matrix",
+      "status": "passed",
+      "details": {
+        "finding": false,
+        "priority": "P1",
+        "results": [
+          {
+            "source": "/workspace/scratch/fireblade-disks/ext4.bin",
+            "root_entries": [
+              [
+                "lost+found",
+                "test_file",
+                "xattr_cap"
+              ]
+            ],
+            "status": "complete",
+            "extracted": 0,
+            "errors": [],
+            "source_unchanged": true
+          },
+          {
+            "source": "/workspace/scratch/fireblade-disks/ntfs.bin",
+            "root_entries": [
+              [
+                "$AttrDef",
+                "$BadClus",
+                "$Bitmap",
+                "$Boot",
+                "$Extend",
+                "$LogFile",
+                "$MFT",
+                "$MFTMirr",
+                "$RECYCLE.BIN",
+                "$Secure",
+                "$UpCase",
+                "$Volume",
+                "Directory",
+                "File.txt",
+                "Large Directory",
+                "Large.txt",
+                "Random.bin",
+                "System Volume Information"
+              ]
+            ],
+            "status": "complete",
+            "extracted": 2,
+            "errors": [],
+            "source_unchanged": true
+          },
+          {
+            "source": "/workspace/scratch/fireblade-disks/image.E01",
+            "status": "passed",
+            "scope": "container decoding only; fixture has no filesystem"
+          }
+        ]
+      },
+      "seconds": 10.113
+    }
+  ],
+  "commit": "a968e211ccef74cc44e99a8993762ae7201d0bf7",
+  "counts": {
+    "passed": 8
+  }
+}

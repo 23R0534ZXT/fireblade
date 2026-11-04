@@ -42,9 +42,10 @@ class CoveragePanel(QWidget):
         self.table.clicked.connect(self.show_details)
         for widget in (self.mode,self.level):widget.currentIndexChanged.connect(self.filter)
         self.search.textChanged.connect(self.filter)
-        self.badge=QPushButton('Couverture : non contrôlée');window.statusBar().addPermanentWidget(self.badge);self.badge.clicked.connect(self.open);self.badge.setMaximumWidth(220)
+        self.badge=QPushButton('');window.statusBar().addPermanentWidget(self.badge);self.badge.clicked.connect(self.open);self.badge.setMaximumWidth(220);self.badge.hide()
     def open(self):
-        self.ensure_context();self.filter();self.window.workbench.setCurrentWidget(self)
+        self.ensure_context();self.filter()
+        self.window.coverage_dialog.show();self.window.coverage_dialog.raise_();self.window.coverage_dialog.activateWindow()
     def state_path(self):
         data=self.window.active_investigation
         return self.window.investigation_library.folder(data['id'])/'coverage-state.json' if data else None
@@ -90,7 +91,8 @@ class CoveragePanel(QWidget):
         findings=self.report['counts'] if self.report else {}
         alerts=findings.get('error',0)+findings.get('warning',0)
         recent_incident=self.stale and self.events and self.events[-1]['severity'] in ('error','warning')
-        self.badge.setText('Couverture : incident historisé' if recent_incident else ('Couverture : à actualiser' if self.stale else f'Couverture : {alerts} alertes'))
+        self.badge.setText('Imports : incident à vérifier' if recent_incident else f'Imports : {alerts} point(s) à vérifier')
+        self.badge.setVisible(bool(recent_incident or alerts or self.persistence_error))
         self.badge.setToolTip((self.events[-1]['reason']+'\n' if recent_incident else '')+(self.persistence_error+'\n' if self.persistence_error else '')+f'{alerts} constats actuels ; {incidents} incidents historiques. Ouvrir les causes, impacts et actions de correction.')
     def configure_plan(self):
         self.ensure_context();dialog=QDialog(self);dialog.setWindowTitle('Familles attendues pour cette enquête');layout=QVBoxLayout(dialog)

@@ -1,0 +1,133 @@
+{
+  "format": "fireblade-v020-audit-fixes-validation",
+  "date": "2026-11-04",
+  "base_commit": "a968e211ccef74cc44e99a8993762ae7201d0bf7",
+  "source_state": "Modified, uncommitted checkout; the published EXE is unchanged",
+  "findings": {
+    "FB020-01": "fixed in sources",
+    "FB020-02": "fixed in sources",
+    "FB020-03": "fixed in sources",
+    "FB020-04": "fixed in sources",
+    "FB020-05": "fixed in sources",
+    "FB020-06": "fixed in sources",
+    "FB020-07": "fixed in sources",
+    "FB020-08": "fixed in sources"
+  },
+  "environment": {
+    "platform": "Linux x86-64",
+    "python": "3.12.14",
+    "duckdb": "1.5.6",
+    "PySide6": "6.12.0",
+    "dotnet_sdk": "10.0.403",
+    "dotnet_runtime": "10.0.14",
+    "Qt_platform": "offscreen"
+  },
+  "pytest": {
+    "total": 1243,
+    "passed": 1238,
+    "skipped": [
+      {
+        "id": "tests.core.test_layout_appearance_assets::test_raster_wrappers_are_canonicalized_without_following_metadata[GIF]",
+        "reason": "Image encoder unavailable; decoding remains guarded by Qt"
+      },
+      {
+        "id": "tests.core.test_native_windows_storage::test_windows_extended_long_unicode_paths",
+        "reason": "Native Windows long-path integration"
+      },
+      {
+        "id": "tests.core.test_native_windows_storage::test_actual_unc_import_export_reopen_and_source_alias_protection",
+        "reason": "Requires an explicitly enabled disposable Windows SMB runner"
+      },
+      {
+        "id": "tests.windows.test_native::test_default_case_directory_is_user_local_appdata",
+        "reason": "Windows natif requis"
+      },
+      {
+        "id": "tests.windows.test_native::test_windows_locked_export_keeps_existing_file",
+        "reason": "Windows natif requis"
+      }
+    ],
+    "failures": 0,
+    "errors": 0,
+    "duration_s": 468.06,
+    "new_regression_cases": 38,
+    "native_helpers_enabled": true
+  },
+  "independent_probes": {
+    "differential_csv": "passed",
+    "filter_oracle": "passed",
+    "timestamp_oracle": "passed",
+    "sqlite_wal": "passed",
+    "changed_source": "passed",
+    "hostile_package": "passed",
+    "large_oracle": "passed",
+    "disk_matrix": "passed"
+  },
+  "functional_probes": {
+    "menus": "passed",
+    "protection": "passed",
+    "roundtrip": "passed",
+    "source_protection": "passed",
+    "dialogs": "passed",
+    "context": "passed"
+  },
+  "dependency_audit": {
+    "known_vulnerabilities": 0,
+    "not_audited": [
+      {
+        "name": "fireblade-forensics",
+        "skip_reason": "Dependency not found on PyPI and could not be audited: fireblade-forensics (0.2.0)"
+      }
+    ]
+  },
+  "other_checks": {
+    "ruff": "passed",
+    "pip_check": "passed",
+    "git_diff_check": "passed",
+    "python_wheel": "built; analysis_storage module and idna==3.15 confirmed"
+  },
+  "source_files": {
+    "pyproject.toml": "dee2ebdca9d6043c3d1d9e97700825af0010e84f3ac5e1d330838705b78a381d",
+    "requirements/runtime.txt": "eb8286ee9af00176123aab2717e51743830d0c153377b120fe3d4e0fc85dbceb",
+    "scripts/benchmarks/audit_entrypoint.py": "d0fb7c539f71324748bcb96c47338befb58bab44e1d3339890c43de995ec4d9f",
+    "scripts/benchmarks/audit_functional.py": "557302e4c07c6492d4cc2553833c759722f44d5ff067a4a2e9a3f54463cbee90",
+    "scripts/benchmarks/audit_native_readers.py": "f16150126052803b00e67f547d9fc9979203cdc4ef347f10d5da6309a8e8157f",
+    "scripts/benchmarks/audit_v020.py": "34532af73e691cbfa6c7686d7bf931159709f669bc49fa2f6c5b0326c110d1bf",
+    "src/fireblade/core/analysis_storage.py": "0ac76cf059bcd8f3e0cd28038a03c6448d86b48628f241b67b0875e93cf0f1fa",
+    "src/fireblade/core/case_package.py": "0f1978958eccf2af34a587a84c226b2a1d745d29d1bdd4a8c0881dcc2364534f",
+    "src/fireblade/core/collection.py": "704b5a6891c481d43460c17f37aeb0a77ca45bc5cdcebe060a24e07f0e95882a",
+    "src/fireblade/core/disk.py": "8eca46b6d1d99e847f23dc63875bb2caced29eb2beb6f725c1f774d29b367803",
+    "src/fireblade/core/engine.py": "04ab53f5077fec34853b57e1f678c7fec100aadcd0e6c78af2cb00e39c5f412a",
+    "src/fireblade/core/ioc_hunt.py": "50f39bf4505eebdde5e42ff339bebe004b2fcaf202784df4a7a0e2f3321d7f58",
+    "src/fireblade/core/paths.py": "92c4c4afe23a4d7d0c50bd4b485d3da761e58e9cf91f316aba121cbabf2a851b",
+    "src/fireblade/core/timeline.py": "42c098e6f1c8bd8c236c7e4098bc00876638a784c4456ed728725e46cd3fe13e",
+    "src/fireblade/ui/collection.py": "08b1648d38441be04dd7483a5be5268bdfdcf878b61482db8e1302f969b8659e",
+    "src/fireblade/ui/exploration.py": "3ed98f0c3bdfc65b9f822ebac3c4906f3fd283f262f62e04188804e9dd638e8c",
+    "src/fireblade/ui/export_commands.py": "1870523fbe4afa47cc48903660d341a508b1b35363cb78984a95e34092ef69ee",
+    "src/fireblade/ui/shared_rules.py": "8197824d61dc4f0412830e524f574594fbee0ac9c10f084afa8ea28c6c7f26fc",
+    "src/fireblade/ui/workspace.py": "95bb649a7ce8c3684056571e9ac8ce7fc9976439f17bb92fd939c2b393487040",
+    "tests/core/test_audit_regressions.py": "647581f8320a40304efc7cc762d5978f14b712559ff93531fddc3114ec0ae14f",
+    "tests/fixtures/disks/NTFS-LICENSE.txt": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
+    "tests/fixtures/disks/SOURCES.json": "0d0d3a61b2b4ef24de1a66ddeb64aa0acd59508593c2afe929d244de3fc81875",
+    "tests/fixtures/disks/ntfs.bin.gz": "cc1b5c665a80befed008b3db817325aac1555e1efe511de63203f421c2250080",
+    "tests/ui/test_audit_export_protection.py": "bc8b10b0a38a04d455f788ee46eceb3c40a9cc873755248468a232fd0ebf4141"
+  },
+  "evidence": {
+    "dependencies.json": "14c3f3b940043eacd328e9526e7d7b21c2c5d84c6d6a2f11cb3ac79345a5aab5",
+    "dependencies.log": "15950a68a7ed99c59779717acefdceb3f69cfd31bde67d2c954f2a3cea4d7955",
+    "full-suite.log": "d7817b447680a48c9d2656e242fe547334f4f9f3b7fe1fd602779a97884f698d",
+    "full-suite.xml": "fea726792af5c73be1cd1e30cf6d2645f8ff1e4f1f1ad222c193794e3d58752f",
+    "functional.json": "7737bb69857202f091302e6cca984d3496d7d8c1d835516c7f688d3d6635aa40",
+    "functional.log": "61489f58e708e648ba3ca32965dd7473d1756edf7d6d2ce9837c8bd5e1a2bd3a",
+    "independent.json": "57504aa9f20a68b119e2a8b6abae99e50aecd364e6899932826fbd33bd26be4b",
+    "native-targeted.log": "afeece367c6d038f2ced6d0f46b8b3b3c5353b8c43bfd5fb4436a9a5ffc4726a",
+    "python-wheel.log": "8bdd2881959ce35e6c40d255eba5d32494efd0f7150edba90901380d161a0bdf",
+    "timeline-500k.json": "161190348199c3f2b6e8b4e1acd92f8a976bb523f472cf6c3c1d816ca8840db4"
+  },
+  "limits": [
+    "No execution of a rebuilt Windows EXE",
+    "Four Windows-only pytest cases and one GIF encoder case remain skipped",
+    "Windows-native SQLECmd, WxTCmd and SrumECmd limits remain documented in the previous audit",
+    "Prior coverage percentages were not remeasured"
+  ]
+}

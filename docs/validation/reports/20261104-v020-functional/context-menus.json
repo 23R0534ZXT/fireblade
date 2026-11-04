@@ -1,0 +1,650 @@
+{
+  "format": "fireblade-functional-audit",
+  "checks": [
+    {
+      "name": "context",
+      "status": "passed",
+      "details": {
+        "actions": [
+          {
+            "path": [
+              "header",
+              "Trier par ordre croissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Trier par ordre décroissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Type de tri",
+              "Texte"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Type de tri",
+              "Nombre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Type de tri",
+              "Date ISO"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Tri sur plusieurs colonnes…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Grouper par cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Ajouter au groupement"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Filtrer cette colonne…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Filtrer une date…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Valeur entière"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Année"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Trimestre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Mois"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Semaine"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Jour"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Heure"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Minute"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Seconde"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Épingler la colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Épingler à droite"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Basculer l’affichage booléen"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Masquer cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Choisir les colonnes…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Afficher la cellule / JSON…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Copier la valeur"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Filtrer sur cette valeur"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Exclure cette valeur"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Corréler dans toutes les analyses"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Ouvrir avec…"
+            ],
+            "status": "expected_non_path_diagnostic"
+          },
+          {
+            "path": [
+              "cell",
+              "Afficher dans l’Explorateur"
+            ],
+            "status": "expected_non_path_diagnostic"
+          },
+          {
+            "path": [
+              "cell",
+              "Ouvrir le dossier parent"
+            ],
+            "status": "expected_non_path_diagnostic"
+          },
+          {
+            "path": [
+              "cell",
+              "Copier les lignes sélectionnées"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Signet / note…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Marquer la sélection"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Ajouter une note à la sélection…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Retirer les signets de la sélection"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Trier par ordre croissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Trier par ordre décroissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Type de tri",
+              "Texte"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Type de tri",
+              "Nombre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Type de tri",
+              "Date ISO"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Tri sur plusieurs colonnes…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Grouper par cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Retirer du groupement"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Filtrer cette colonne…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Filtrer une date…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Valeur entière"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Année"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Trimestre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Mois"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Semaine"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Jour"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Heure"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Minute"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Seconde"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Épingler la colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Épingler à droite"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Basculer l’affichage booléen"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Masquer cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Choisir les colonnes…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Trier par ordre croissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Trier par ordre décroissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Type de tri",
+              "Texte"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Type de tri",
+              "Nombre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Type de tri",
+              "Date ISO"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Tri sur plusieurs colonnes…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Grouper par cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Ajouter au groupement"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Filtrer cette colonne…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Filtrer une date…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Valeur entière"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Année"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Trimestre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Mois"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Semaine"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Jour"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Heure"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Minute"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Seconde"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Désépingler la colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Épingler à droite"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Basculer l’affichage booléen"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Masquer cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Choisir les colonnes…"
+            ],
+            "status": "passed"
+          }
+        ],
+        "operating_system_calls_intercepted": [
+          "file:///workspace/scratch/fireblade-context-final/context",
+          "file:///workspace/scratch/fireblade-context-final/context"
+        ],
+        "scope": "context action dispatch and state changes; OS launches intercepted, modal editors cancelled"
+      },
+      "seconds": 3.207
+    }
+  ]
+}

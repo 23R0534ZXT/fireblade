@@ -12,12 +12,11 @@ import zipfile
 import re
 from contextlib import nullcontext
 
-import duckdb
-
 from fireblade.core.engine import Case
+from fireblade.core.analysis_storage import connect_analysis
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.models import AnalysisSnapshot, View
-from fireblade.core.paths import protected_destination
+from fireblade.core.paths import protected_destination, ensure_export_destination
 
 MAX_FILES = 50_000
 MAX_BYTES = 64 * 1024**3
@@ -63,6 +62,8 @@ def relocate(value, mapping, key=None):
 def export_package(library, data, documents, active, target, *, include_sources=False,
                    active_case=None, settings=None):
     target = Path(target).resolve()
+    ensure_export_destination(target, documents=documents, case_folder=library.folder(data['id']),
+                              collection_directories=[entry['path'] for entry in data['collections']])
     protected = [Path(doc.path) for doc in documents] + [Path(doc.source_info['path']) for doc in documents]
     protected.append(library.folder(data['id']) / 'case.json')
     if data['session']:protected.append(library.session_path(data))
@@ -114,7 +115,10 @@ def export_package(library, data, documents, active, target, *, include_sources=
                             raise ValueError('Analyse remplacée : ' + document.path)
                         # Copy through DuckDB: Windows locks prevent reading the
                         # live database with Python's file API, even after CHECKPOINT.
-                        with tempfile.TemporaryDirectory(dir=target.parent, prefix='.snapshot-') as scratch:
+                        # DuckDB permits its own spill directory while external
+                        # SQL access is disabled. No host-directory grant needed.
+                        spill = Path(str(case.path)+'.tmp'); spill.mkdir(exist_ok=True)
+                        with tempfile.TemporaryDirectory(dir=spill, prefix='.snapshot-') as scratch:
                             snapshot = Path(scratch) / 'analysis.timeline'
                             database = case.db.execute('SELECT current_database()').fetchone()[0]
                             quoted_database = '"' + database.replace('"', '""') + '"'
@@ -158,7 +162,7 @@ def export_package(library, data, documents, active, target, *, include_sources=
                         if str(path.resolve()) in mapping:
                             continue
                         if path.suffix.lower()=='.timeline':
-                            connection=duckdb.connect(str(path))
+                            connection=connect_analysis(path)
                             try:connection.execute('CHECKPOINT')
                             finally:connection.close()
                         if (name=='collection.json' or name.endswith('.fireblade-session')) and path.stat().st_size>MAX_MANIFEST:
@@ -286,7 +290,7 @@ def import_package(library, source):
             # Rebind each copied database, including inactive collection outputs.
             original_infos = {}
             for path in destination.rglob('*.timeline'):
-                connection = duckdb.connect(str(path))
+                connection = connect_analysis(path)
                 try:
                     info = json.loads(connection.execute("SELECT value FROM metadata WHERE key='source'").fetchone()[0])
                     original_infos[str(path)] = copy.deepcopy(info)
@@ -328,7 +332,7 @@ def import_package(library, source):
                 if member not in members or not member.startswith('analyses/'):
                     raise ValueError('Analyse non déclarée')
                 path = destination/member
-                connection = duckdb.connect(str(path))
+                connection = connect_analysis(path)
                 try:
                     info = json.loads(connection.execute("SELECT value FROM metadata WHERE key='source'").fetchone()[0])
                     if original_infos[str(path)] != document['source']:raise ValueError('Métadonnées d’analyse incohérentes')

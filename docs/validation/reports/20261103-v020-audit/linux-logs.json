@@ -1,0 +1,30 @@
+{
+  "format": "fireblade-linux-log-qualification",
+  "version": 1,
+  "time": "2026-11-03T22:46:00.933830+00:00",
+  "large_record_stream_mode": "decoded records verified and hashed; CSV serialization bypassed; no DuckDB import in this phase",
+  "large_source": {
+    "expanded_bytes": 4294967296,
+    "compressed_bytes": 348169,
+    "source_sha256": "6c0ed4d5ae47222ebcef2e250b1f69417a050f796853172280d603a86c3f2198",
+    "records_checked": 4096,
+    "decoded_bytes_hashed": 4294967296,
+    "decoded_sha256": "05e8ed0f5f7e7792a7789bc34a63f007dc8056739095ef1534f79ada5959effb",
+    "seconds": 20.928651765999973,
+    "mib_per_second": 195.71255930848983,
+    "peak_rss_bytes": 94150656
+  },
+  "persisted_collection": {
+    "records": 200000,
+    "source_bytes": 19288890,
+    "seconds": 21.78669426700003,
+    "peak_rss_bytes": 345116672,
+    "source_sha256": "42f60ffa704964dc6782c8189b20e6764305ed400c9c9296164cece3e4b2df0f",
+    "checks": [
+      "row count",
+      "distinct users",
+      "PID values",
+      "unchanged source"
+    ]
+  }
+}

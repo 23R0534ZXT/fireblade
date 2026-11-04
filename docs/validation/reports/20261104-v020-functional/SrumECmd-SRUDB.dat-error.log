@@ -1,0 +1,3 @@
+
+Non-Windows platforms not supported due to the need to load ESE specific Windows libraries! Exiting...
+

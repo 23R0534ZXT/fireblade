@@ -1,0 +1,7 @@
+{
+  "file": "ntfs.bin.gz",
+  "url": "https://media.githubusercontent.com/media/fox-it/dissect.ntfs/7f021dd1182eb6f9b6a2dbd19cf2e29143ea654d/tests/_data/ntfs.bin.gz",
+  "sha256": "cc1b5c665a80befed008b3db817325aac1555e1efe511de63203f421c2250080",
+  "license": "AGPL-3.0-or-later; see NTFS-LICENSE.txt",
+  "purpose": "Public Dissect test volume, retained to reproduce NTFS traversal regression"
+}

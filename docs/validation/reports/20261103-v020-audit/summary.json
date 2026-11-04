@@ -1,0 +1,53 @@
+{
+  "date": "2026-11-03",
+  "timezone": "Europe/Paris",
+  "source_commit": "a968e211ccef74cc44e99a8993762ae7201d0bf7",
+  "release_commit": "43893ab8b5b7a6d501bc48dfa04591f694f5c5db",
+  "python": "3.12.14",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "memory_limit_bytes": 8589934592,
+  "cpu_quota": "200000 100000",
+  "application_code_unchanged": true,
+  "pytest": {
+    "passed": 1177,
+    "skipped": 28,
+    "failed": 0,
+    "seconds": 276.47
+  },
+  "findings": [
+    {
+      "id": "FB020-01",
+      "priority": "P1",
+      "title": "NTFS image traversal aborts on missing is_mount_point"
+    },
+    {
+      "id": "FB020-02",
+      "priority": "P1",
+      "title": "SQLite WAL companion omitted from disk evidence copy"
+    },
+    {
+      "id": "FB020-03",
+      "priority": "P1",
+      "title": "Portable timeline SQL view reads local files outside archive"
+    },
+    {
+      "id": "FB020-04",
+      "priority": "P2",
+      "title": "Changed source remains in ordinary collection saved session"
+    },
+    {
+      "id": "FB020-05",
+      "priority": "P2",
+      "title": "Pinned idna 3.11 has known denial-of-service advisory",
+      "cve": "CVE-2026-45409",
+      "application_exploit_confirmed": false
+    }
+  ],
+  "toolchain_only": {
+    "package": "pip",
+    "version": "25.0.1",
+    "unique_cve_count": 6,
+    "embedded_in_exe": false
+  },
+  "no_new_native_windows_execution": true
+}

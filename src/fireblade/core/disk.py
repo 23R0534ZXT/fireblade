@@ -137,6 +137,49 @@ class DiskCollection(Collection):
             relative=PurePosixPath(*parts).as_posix(), extracted=str(target), sha256=digest.hexdigest(), size=after.st_size))
         return target
 
+    @staticmethod
+    def companion_sources(source):
+        with source.open('rb') as stream:
+            magic = stream.read(16)
+        suffixes = ('.log1', '.log2') if magic.startswith(b'regf') else (
+            ('-wal', '-shm', '-journal') if magic == b'SQLite format 3\0' else ())
+        expected = {source.name.casefold()+suffix for suffix in suffixes}
+        companions = []
+        if expected:
+            for path in source.parent.iterdir():
+                if path.name.casefold() not in expected:continue
+                if path.is_symlink() or not path.is_file():
+                    raise ValueError('Compagnon inaccessible ou lien non suivi : '+str(path))
+                companions.append(path)
+        return sorted(companions, key=lambda p: p.name.casefold())
+
+    def copy_artifact_group(self, source, partition, root):
+        """Copy SQLite/hive companions together and reject a changing group."""
+        companions = self.companion_sources(source)
+        originals = [source]+companions
+        before = [(p.stat().st_size, p.stat().st_mtime_ns) for p in originals]
+        start = len(self.disk['artifacts'])
+        try:
+            copied = [self.copy_artifact(p, partition, p.relative_to(root)) for p in originals]
+            if [p.name for p in self.companion_sources(source)] != [p.name for p in companions]:
+                raise ValueError('Compagnons modifiés pendant la copie')
+            for original, state, record in zip(originals, before, self.disk['artifacts'][start:]):
+                check_cancel()
+                digest = hashlib.sha256()
+                with original.open('rb') as incoming:
+                    while block := incoming.read(1024*1024):
+                        check_cancel(); digest.update(block)
+                after = original.stat()
+                if (after.st_size, after.st_mtime_ns) != state or digest.hexdigest() != record['sha256']:
+                    raise ValueError('Source ou compagnon modifié pendant la copie')
+            return copied[0]
+        except BaseException:
+            for record in self.disk['artifacts'][start:]:
+                Path(record['extracted']).unlink(missing_ok=True)
+            del self.disk['artifacts'][start:]
+            self.disk['extracted'] = len(self.disk['artifacts'])
+            raise
+
     def walk_sources(self, on_error):
         target = None
         try:
@@ -178,7 +221,10 @@ class DiskCollection(Collection):
                     directory = root / directory.relative_to(root) if hasattr(directory, 'relative_to') else Path(directory)
                     for name in list(dirs):
                         child = directory/name
-                        if child.is_symlink() or (hasattr(child, 'is_junction') and child.is_junction()):
+                        # Dissect's NTFS is_symlink includes mount-point reparse
+                        # tags. Its pathlib is_junction adapter is broken in 3.25.1.
+                        if child.is_symlink() or (self.source_kind == 'mounted' and
+                                hasattr(child, 'is_junction') and child.is_junction()):
                             dirs.remove(name)
                     for name in names:
                         check_cancel()
@@ -194,17 +240,16 @@ class DiskCollection(Collection):
                         try:
                             if source.is_symlink() or not source.is_file():
                                 continue
-                            relative = source.relative_to(root)
+                            # Do not parse a SQLite sidecar independently when
+                            # it is already transported with its owning database.
+                            suffix = next((s for s in ('-wal','-shm','-journal') if name.casefold().endswith(s)), None)
+                            if suffix:
+                                owner = source.with_name(name[:-len(suffix)])
+                                if owner.is_file() and not owner.is_symlink() and candidate(owner):
+                                    with owner.open('rb') as stream:
+                                        if stream.read(16) == b'SQLite format 3\0':continue
                             self.progress('Extraction en lecture seule : '+str(source))
-                            copied = self.copy_artifact(source, partition, relative)
-                            # Collected Linux folders may preserve lowercase transaction-log names.
-                            with copied.open('rb') as stream:
-                                is_hive = stream.read(4) == b'regf'
-                            if is_hive:
-                                expected = {source.name.casefold()+suffix for suffix in ('.log1', '.log2')}
-                                for companion in source.parent.iterdir():
-                                    if companion.name.casefold() in expected and companion.is_file() and not companion.is_symlink():
-                                        self.copy_artifact(companion, partition, companion.relative_to(root))
+                            copied = self.copy_artifact_group(source, partition, root)
                             yield copied.parent, [], [copied.name]
                         except Exception as exc:
                             if isinstance(exc, OperationCancelled):

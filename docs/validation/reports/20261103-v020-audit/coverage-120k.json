@@ -1,0 +1,9 @@
+{
+  "rows": 120000,
+  "analyses": 2,
+  "audit_seconds": 0.49,
+  "verified_export_rows": 6000,
+  "export_seconds": 0.16,
+  "errors": 0,
+  "warnings": 7
+}

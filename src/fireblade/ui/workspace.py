@@ -165,13 +165,10 @@ class WorkspaceMixin:
             path, _ = QFileDialog.getSaveFileName(self, "Enregistrer la session", "enquete.fireblade-session", "Session Fireblade (*.fireblade-session)")
         if not path:
             return
+        if not self.export_destination_is_safe(path):return False
         self.remember_active()
         try:
             target = Path(path).resolve()
-            protected = {Path(s.path).resolve() for s in self.documents} | {Path(s.source_info["path"]).resolve() for s in self.documents}
-            from fireblade.core.paths import protected_destination
-            if protected_destination(target,protected):
-                raise ValueError("La session ne peut pas écraser une analyse ou sa source.")
             write_session(target, self.documents, self.active_document)
             if getattr(self,'active_investigation',None) is not None:
                 if not self.persist_investigation():return False

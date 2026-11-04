@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "events": 13,
+  "references": 1,
+  "alert_row": 1,
+  "rule": "Important Log File Cleared",
+  "checks": [
+    "real parser data",
+    "side preview",
+    "no premature document registration",
+    "keep context",
+    "return-to-alerts control"
+  ]
+}

@@ -6,8 +6,8 @@ import tomllib
 
 @dataclass(frozen=True)
 class Settings:
-    memory_mb: int = 256
-    threads: int = 2
+    memory_mb: int = 128
+    threads: int = 1
     page_size: int = 250
     max_loaded_rows: int = 1000
     export_batch_rows: int = 2048

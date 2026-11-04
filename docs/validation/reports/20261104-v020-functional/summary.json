@@ -1,0 +1,119 @@
+{
+  "unique_tests": {
+    "passed": 1200,
+    "skipped": 5
+  },
+  "still_skipped": [
+    [
+      "tests.core.test_layout_appearance_assets",
+      "test_raster_wrappers_are_canonicalized_without_following_metadata[GIF]"
+    ],
+    [
+      "tests.core.test_native_windows_storage",
+      "test_windows_extended_long_unicode_paths"
+    ],
+    [
+      "tests.core.test_native_windows_storage",
+      "test_actual_unc_import_export_reopen_and_source_alias_protection"
+    ],
+    [
+      "tests.windows.test_native",
+      "test_default_case_directory_is_user_local_appdata"
+    ],
+    [
+      "tests.windows.test_native",
+      "test_windows_locked_export_keeps_existing_file"
+    ]
+  ],
+  "coverage": {
+    "__init__.py": {
+      "num_statements": 1,
+      "covered_lines": 1,
+      "num_branches": 0,
+      "covered_branches": 0,
+      "line_percent": 100.0,
+      "branch_percent": null
+    },
+    "__main__.py": {
+      "num_statements": 2,
+      "covered_lines": 0,
+      "num_branches": 0,
+      "covered_branches": 0,
+      "line_percent": 0.0,
+      "branch_percent": null
+    },
+    "core": {
+      "num_statements": 8909,
+      "covered_lines": 8097,
+      "num_branches": 4110,
+      "covered_branches": 3257,
+      "line_percent": 90.89,
+      "branch_percent": 79.25
+    },
+    "runtime": {
+      "num_statements": 115,
+      "covered_lines": 63,
+      "num_branches": 42,
+      "covered_branches": 18,
+      "line_percent": 54.78,
+      "branch_percent": 42.86
+    },
+    "ui": {
+      "num_statements": 7694,
+      "covered_lines": 6743,
+      "num_branches": 2218,
+      "covered_branches": 1619,
+      "line_percent": 87.64,
+      "branch_percent": 72.99
+    },
+    "validation": {
+      "num_statements": 2609,
+      "covered_lines": 1397,
+      "num_branches": 360,
+      "covered_branches": 142,
+      "line_percent": 53.55,
+      "branch_percent": 39.44
+    }
+  },
+  "coverage_totals": {
+    "covered_lines": 16301,
+    "num_statements": 19330,
+    "percent_covered": 81.87643898695319,
+    "percent_covered_display": "82",
+    "missing_lines": 3029,
+    "excluded_lines": 0,
+    "percent_statements_covered": 84.33005690636317,
+    "percent_statements_covered_display": "84",
+    "num_branches": 6730,
+    "num_partial_branches": 1176,
+    "covered_branches": 5036,
+    "missing_branches": 1694,
+    "percent_branches_covered": 74.82912332838039,
+    "percent_branches_covered_display": "75"
+  },
+  "date": "2026-11-04",
+  "timezone": "Europe/Paris",
+  "commit": "a968e211ccef74cc44e99a8993762ae7201d0bf7",
+  "main_menu_entries": 101,
+  "context_action_dispatches": 85,
+  "new_findings": [
+    {
+      "id": "FB020-06",
+      "priority": "P1",
+      "title": "Exports can overwrite inventoried raw collection sources"
+    },
+    {
+      "id": "FB020-07",
+      "priority": "P1",
+      "title": "Hayabusa source export bypasses evidence destination guards"
+    },
+    {
+      "id": "FB020-08",
+      "priority": "P2",
+      "title": "Session/TLE/global-rule exports can overwrite internal case files"
+    }
+  ],
+  "application_source_unchanged": true,
+  "caveat": "Merged unique pytest outcomes; extra scripted probes counted separately. Native Qt worker coverage is incomplete; no new Windows execution.",
+  "feature_families": 59
+}

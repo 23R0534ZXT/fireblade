@@ -1,54 +1,40 @@
-# Fireblade 0.2.0 — cases, disques et espace de travail
+# Fireblade 0.2.1 — imports progressifs, menus et intégrité
 
-## Un case avant toute analyse
+## Ajouter des données depuis Analyse
 
-À l’ouverture, créez ou ouvrez un dossier d’enquête. Un nouveau case propose deux
-parcours : analyser un fichier de données (CSV, TSV, TXT, XLS ou XLSX) ou analyser
-un disque logique / disque complet. Les collectes, sessions et analyses existantes
-restent disponibles dans le menu Fichier une fois le case ouvert.
+L’accueil du case et la grille proposent directement les trois entrées : fichier de données, dossier à parser et disque. Le menu **Case** gère les enquêtes et leurs sauvegardes ; **Analyse** réunit les données et les outils d’investigation ; **Détection** donne accès à Hayabusa et aux IOC ; **Exporter** rassemble les sorties. Les options d’affichage sont regroupées par colonnes, groupes, vues, couleurs et navigation.
 
-## Analyse de disque en arrière-plan
+Le bilan de parsing reste dans **Suivi des imports**. Le seuil et le lancement d’Hayabusa disposent d’un écran **Détection EVTX** distinct ; la chasse IOC conserve son propre espace. Les diagnostics se consultent à la demande dans **Aide → Vérifier les imports et diagnostics…**, sans onglet principal permanent.
 
-- Sources : volumes montés et dossiers de collecte, images RAW / E01, chemins de
-  périphériques physiques. Lecteurs de systèmes de fichiers : NTFS, FAT et ext.
-- Lecture seule, copie des artefacts reconnus dans le case, empreintes SHA-256 et
-  traitement par les lecteurs existants. Ce parcours ne copie pas tout le disque.
-- Accès immédiat à l’espace de travail ; chaque analyse terminée devient
-  consultable sans attendre la fin du disque ni remplacer l’onglet actif.
-- Indicateur en bas à droite : découverte, extraction et parseur actif. Bouton
-  d’arrêt avec conservation des résultats déjà produits.
-- Case protégé contre le changement d’enquête et la fermeture pendant la tâche.
-  Copies et références conservées dans les archives portables.
+## Dossiers traités en arrière-plan
 
-## Organisation et démarrage
+- Les dossiers utilisent le même traitement de fond que les disques. Un seul import tourne à la fois ; la grille reste utilisable et le bouton Arrêter conserve les résultats terminés.
+- Par défaut, chaque résultat fermé et vérifié apparaît progressivement, sans changer l’analyse déjà consultée.
+- Les regroupements par artefact ou dans une grille unique restent disponibles ; leurs résultats apparaissent une fois le regroupement terminé.
+- Les analyses ajoutées sont rattachées au case et retrouvent leur place à sa réouverture.
 
-- Arbre disque → partition → dossiers → analyses ; autres modes par famille
-  d’artefact ou en liste.
-- **Affichage → Organiser l’espace de travail** : côté et visibilité de l’arbre,
-  position des détails, barres d’outils, déplier/replier, préférences sauvegardées.
-- Animation vectorielle de démarrage, désactivable dans le même menu.
+## Petites machines et démarrage
 
-## Validation et disponibilité
+- Réglage par défaut : **un thread et 128 Mio par base DuckDB**. Le parsing de fond reçoit la moitié du budget configuré, avec un minimum de 64 Mio, et un thread.
+- Les résultats sont intégrés par lots de seize ; les sauvegardes intermédiaires sont espacées et le minuteur de réception s’arrête au repos.
+- Ces budgets ne plafonnent pas toute la RAM de Python, Qt ni des moteurs externes. La configuration utilisateur reste prioritaire.
+- Animation vectorielle de démarrage de **2,4 secondes**, désactivable dans les préférences d’organisation.
 
-Version de l’application et du binaire Windows : **0.2.0**. L’exécutable joint
-à cette release est celui du commit qualifié `43893ab`, sans reconstruction.
-Les anciens téléchargements 0.1.1 ne contiennent pas les nouveautés ci-dessus.
+## Huit constats d’audit corrigés
 
-La [qualification Windows du correctif 0.2.0](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489) a réussi :
-tests Python 3.11/3.12/3.13, EXE autonome, lecteurs, chemins UNC/longs, apparences,
-charge supérieure à 3 Gio et parcours à 320 analyses. Le binaire publié provient de cette exécution ; son empreinte SHA-256 a été
-comparée au rapport de vérification du programme autonome avant publication.
+- Parcours des vraies images NTFS sans l’erreur `is_junction` de l’adaptateur Dissect.
+- Copie des compagnons SQLite WAL/SHM/journal ; rejet d’un groupe de fichiers changeant pendant sa copie.
+- Analyses DuckDB reçues ouvertes sans accès SQL aux fichiers externes ; validation des objets stockés et refus des vues/métadonnées hostiles.
+- Résultats d’une source dont l’intégrité a échoué retirés des sessions de collecte publiées.
+- Mise à jour d’IDNA en **3.15** et contrôle précoce de longueur des domaines.
+- Protection commune des exports : preuves brutes, compagnons, analyses, fichiers internes du case et alias par identité de fichier.
+- Export des sources Hayabusa protégé et atomique, avec conservation de l’ancienne destination en cas d’échec.
+- Sessions Fireblade/TLE et règles globales ne peuvent plus écraser les métadonnées du case.
 
-La validation Linux/Qt hors écran couvre notamment une image FAT12, un disque RAW
-MBR à deux partitions, la publication progressive, les requêtes pendant la tâche,
-l’annulation, la réouverture du case et les archives portables. Voir le
-[rapport de développement](../validation/reports/20261103-v02-case-disk-linux.md).
+## Validation et limites
 
-Les accès physiques Windows, E01, NTFS et ext demandent encore une qualification
-appropriée. Pas d’acquisition de disque, de déchiffrement, de carving ni de
-récupération des fichiers supprimés ; pas de reprise du parcours au dernier
-fichier après interruption. Les erreurs d’accès et parseurs manquants restent
-visibles. Un volume actif peut changer pendant sa lecture.
+La publication de l’EXE est conditionnée aux tests Windows Python 3.11/3.12/3.13, à la construction et à l’exécution autonome, aux lecteurs natifs, aux chemins UNC/longs, aux contrôles visuels, au scénario supérieur à 3 Gio et aux 320 analyses. L’empreinte de l’exécutable publié et son commit figurent à la fin de ces notes.
 
-[Guide et limites](../guides/DISQUES-ET-ESPACE-DE-TRAVAIL.md) ·
-[Historique 0.1.1](../archive/RELEASE-NOTES-HISTORIQUE.md)
+Les tests Linux comprennent les régressions d’audit, les trois organisations d’import de dossier, les requêtes pendant le parsing, la réouverture du case et les parcours de menus. Un essai de dossier de 250 000 lignes a aussi conservé la source et le traitement des événements Qt, avec les budgets DuckDB de 128/64 Mio ; ses mesures ne qualifient pas toutes les machines virtuelles.
+
+Fireblade reste un prototype non signé. Les disques sont lus pour extraire les artefacts pris en charge : pas d’acquisition complète, de déchiffrement, de carving ni de récupération des fichiers supprimés. Les formats et périphériques non exercés ne sont pas qualifiés par ces résultats.

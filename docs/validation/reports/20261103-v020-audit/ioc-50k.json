@@ -1,0 +1,9 @@
+{
+  "rows": 100000,
+  "iocs": 50000,
+  "parse_seconds": 1.39,
+  "scan_seconds": 5.85,
+  "matches": 100000,
+  "stored": 1000,
+  "source_sha256": "7d8f97a4ada1dc12e1311ad09ae6ccbe54bb0158f03be81cdc487c38c474986a"
+}

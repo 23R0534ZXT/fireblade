@@ -59,7 +59,7 @@ def normalize_domain(value):
     value=unicodedata.normalize('NFC',deobfuscate(value.strip())).lower().rstrip('.')
     wildcard=value.startswith('*.')
     host=value[2:] if wildcard else value
-    if not host or len(host)>1024 or '.' not in host or any(c in host for c in '/:@*'):
+    if not host or len(host)>253 or '.' not in host or any(c in host for c in '/:@*'):
         raise ValueError('Nom de domaine invalide')
     try:ipaddress.ip_address(host)
     except ValueError:pass

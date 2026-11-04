@@ -1,0 +1,29 @@
+[
+  {
+    "repository": "dissect.extfs",
+    "commit": "24cb5825b139d7734c41a0abc777afe96546d472",
+    "url": "https://media.githubusercontent.com/media/fox-it/dissect.extfs/24cb5825b139d7734c41a0abc777afe96546d472/tests/data/ext4.bin.gz",
+    "sha256_download": "913f98e158505e6c3b1de4a70861c46c9d725ced641334fa015509a92f4682f4",
+    "path": "/workspace/scratch/fireblade-disks/ext4.bin",
+    "bytes": 2097152,
+    "sha256": "64304653b87cce3afa86d8281024bc677626928e133c7a4b53637e193c6b1cdf"
+  },
+  {
+    "repository": "dissect.ntfs",
+    "commit": "7f021dd1182eb6f9b6a2dbd19cf2e29143ea654d",
+    "url": "https://media.githubusercontent.com/media/fox-it/dissect.ntfs/7f021dd1182eb6f9b6a2dbd19cf2e29143ea654d/tests/_data/ntfs.bin.gz",
+    "sha256_download": "cc1b5c665a80befed008b3db817325aac1555e1efe511de63203f421c2250080",
+    "path": "/workspace/scratch/fireblade-disks/ntfs.bin",
+    "bytes": 10420736,
+    "sha256": "3cf887ae87b7f44f1faee71838b3d79b811097a0a1a4962e8e0fd132bc8dfbc7"
+  },
+  {
+    "repository": "dissect.evidence",
+    "commit": "b2d1ac23288a0a77b1e6158b2dfcad0c945c5d2d",
+    "url": "https://media.githubusercontent.com/media/fox-it/dissect.evidence/b2d1ac23288a0a77b1e6158b2dfcad0c945c5d2d/tests/_data/ewf/single/image.E01",
+    "sha256_download": "fbc3da213475f9692be6bf00fb68eb87adaab3195c204f21ea42efc3b2b35097",
+    "path": "/workspace/scratch/fireblade-disks/image.E01",
+    "bytes": 13344,
+    "sha256": "fbc3da213475f9692be6bf00fb68eb87adaab3195c204f21ea42efc3b2b35097"
+  }
+]

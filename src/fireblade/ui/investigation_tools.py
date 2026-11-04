@@ -127,6 +127,32 @@ class InvestigationToolsMixin:
         except Exception as exc:self.error('Récupération impossible : '+str(exc))
         finally:dialog.deleteLater()
 
+    def archive_and_release_selected(self):
+        if not self.can_switch_investigation():return
+        data=self.selected_investigation() or self.active_investigation
+        if not data:return
+        path,_=QFileDialog.getSaveFileName(self,'Archiver et libérer l’espace',data['name']+'.fireblade-case','Case (*.fireblade-case)')
+        if not path:return
+        if QMessageBox.question(self,'Libérer l’espace','Créer une archive vérifiée puis retirer les fichiers locaux du case ? Les sources externes sont conservées.',QMessageBox.Yes|QMessageBox.No,QMessageBox.No)!=QMessageBox.Yes:return
+        if self.active_investigation and self.active_investigation['id']==data['id']:
+            if not self.close_investigation():return
+        from fireblade.core.case_storage import archive_and_release
+        def done(result):
+            self.cases_archived.setChecked(True)
+            self.refresh_investigations()
+            self.statusBar().showMessage(f"Archive vérifiée · {result['removed_bytes']/1024**2:.1f} Mio de fichiers locaux retirés")
+        self.run(lambda:archive_and_release(self.investigation_library,data['id'],path,self.settings),done,exclusive=True)
+
+    def restore_storage_case(self, data):
+        from fireblade.core.case_storage import restore_archive
+        def done(result):
+            self.refresh_investigations()
+            def reopen():
+                if self.pool.activeThreadCount():QTimer.singleShot(30,reopen)
+                else:self.open_investigation(result['case']['id'])
+            QTimer.singleShot(0,reopen)
+        self.run(lambda:restore_archive(self.investigation_library,data['id']),done,exclusive=True)
+
     def export_investigation_package(self, path=None, include_sources=None):
         if not self.can_switch_investigation():return
         if self.active_investigation is None:

@@ -44,6 +44,13 @@ class InvestigationLibrary:
 
     @staticmethod
     def validate(data):
+        archive=data.get('storage_archive')
+        if archive is not None:
+            if (not isinstance(archive,dict) or not isinstance(archive.get('path'),str) or not archive['path']
+                    or len(archive['path'])>32768 or not isinstance(archive.get('sha256'),str)
+                    or not re.fullmatch(r'[0-9a-f]{64}',archive['sha256']) or type(archive.get('bytes')) is not int
+                    or not 0<archive['bytes']<=4*1024**4):
+                raise ValueError('Référence d’archive de case invalide')
         name, description = data.get('name'), data.get('description')
         if not isinstance(name, str) or not name.strip() or len(name)>120 or any(c in name for c in '\0\r\n'):
             raise ValueError('Nom de case : 1 à 120 caractères, sur une ligne')

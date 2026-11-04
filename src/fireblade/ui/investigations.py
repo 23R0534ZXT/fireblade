@@ -64,6 +64,7 @@ class InvestigationMixin:
             if label=='Ouvrir':self.open_case_button=button
             if label=='Modifier…':self.edit_case_button=button
             if label=='Archiver':self.archive_case_button=button
+        storage=QPushButton('Archiver et libérer l’espace…');storage.clicked.connect(self.archive_and_release_selected);controls.addWidget(storage)
         controls.addStretch();layout.addLayout(controls)
         filters=QHBoxLayout();self.cases_search=QLineEdit();self.cases_search.setPlaceholderText('Rechercher un nom, une description…')
         self.cases_search.textChanged.connect(lambda *_: self.refresh_investigations(reload=False))
@@ -193,6 +194,10 @@ class InvestigationMixin:
         self.archive_case_button.setEnabled(data is not None)
         self.archive_case_button.setText('Réactiver' if data and data['status']=='archived' else 'Archiver')
         self.cases_details.setText(data['name']+'\n'+(data['description'] or 'Aucune description.')+'\nDossier : '+str(self.investigation_library.folder(data['id'])) if data else 'Sélectionnez un case pour consulter sa description.')
+        self.open_case_button.setText('Restaurer' if data and data.get('storage_archive') else 'Ouvrir')
+        if data and data.get('storage_archive'):
+            archive=data['storage_archive']
+            self.cases_details.setText(data['name']+'\nArchive : '+archive['path']+f"\n{archive['bytes']/1024**2:.1f} Mio")
 
     def can_switch_investigation(self):
         if (getattr(self, "disk_job", None) is not None or getattr(self, "_disk_pending", []) or getattr(self, "_folder_queue", []) or
@@ -337,6 +342,8 @@ class InvestigationMixin:
         lease=None
         try:
             data=self.investigation_library.read(identifier)
+            if data.get('storage_archive'):
+                self.restore_storage_case(data);return None
             lease=self.investigation_library.lease(identifier);lease.__enter__()
             session=self.investigation_library.session_path(data)
             snapshots,active=self.validate_session(session) if session else ([], -1)

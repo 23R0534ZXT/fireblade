@@ -158,6 +158,10 @@ class GuiRun:
 
     def menu(self,name,action):
         bar=self.window.menuBar()
+        while isinstance(self.app.activePopupWidget(),QMenu):
+            self.app.activePopupWidget().close()
+            self.app.processEvents()
+        selected=[]
         top=next(a for a in bar.actions() if a.text().replace('&','')==name)
         menu=top.menu()
         def find_path(current):
@@ -172,7 +176,11 @@ class GuiRun:
         def select(current, remaining):
             item=remaining[0]
             if len(remaining)==1:
-                QTest.mouseClick(current,Qt.LeftButton,pos=current.actionGeometry(item).center())
+                if not current.isVisible() or not item.isEnabled():
+                    self.errors.append('Menu action is not available: '+action)
+                else:
+                    QTest.mouseClick(current,Qt.LeftButton,pos=current.actionGeometry(item).center())
+                selected.append(True)
             else:
                 current.setActiveAction(item)
                 child=item.menu()
@@ -180,7 +188,13 @@ class GuiRun:
                 QTimer.singleShot(60,lambda:select(child,remaining[1:]))
         QTimer.singleShot(60,lambda:select(menu,path))
         QTest.mouseClick(bar,Qt.LeftButton,pos=bar.actionGeometry(top).center())
-        QTest.qWait(150)
+        deadline=time.monotonic()+15
+        while not selected and time.monotonic()<deadline:
+            self.app.processEvents();time.sleep(.005)
+        if not selected:raise TimeoutError('Menu action did not run: '+action)
+        # Explicitly opened submenu popups can leave their parent menu active.
+        while isinstance(self.app.activePopupWidget(),QMenu):
+            self.app.activePopupWidget().close();self.app.processEvents()
         self.settle()
 
     def header(self,column,label):

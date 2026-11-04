@@ -28,7 +28,7 @@ def organize_commands(window):
 
     anchor = analysis.actions()[0]
     imports = move(case, analysis, ['Ouvrir un fichier…', 'Importer un dossier de collecte…', 'Analyser un disque…'], anchor)
-    labels = ['Importer un fichier de données…', 'Importer un dossier à parser…', 'Analyser un disque…']
+    labels = ['Importer un fichier…', 'Parser un dossier…', 'Analyser un disque…']
     for item, label in zip(imports, labels):item.setText(label)
     analysis.insertSeparator(anchor)
     move(case, analysis, ['Ouvrir une analyse…', 'Vider la file d’ouverture', 'Fermer l’onglet', 'Rouvrir le dernier onglet fermé'], anchor)
@@ -58,10 +58,10 @@ def organize_commands(window):
     move(analysis, opened, ['Vider la file d’ouverture', 'Fermer l’onglet', 'Rouvrir le dernier onglet fermé'])
     window.workbench.addTab(window.detection_panel, 'Détection EVTX')
     # The report describes work in progress; it is also reachable while analysing.
-    analysis.addAction('Suivi des imports', lambda: window.workbench.setCurrentIndex(1))
+    analysis.addAction('Imports', lambda: window.workbench.setCurrentIndex(1))
     window.collection_toolbar.setWindowTitle('Ajouter des données')
     window.collection_toolbar.addAction(imports[-1])
-    for text, callback in [('Ajouter un dossier…', window.parse_collection), ('Ajouter un fichier…', window.import_csv),
+    for text, callback in [('Dossier…', window.parse_collection), ('Fichier…', window.import_csv),
                            ('Analyser un disque…', window.choose_disk)]:
         button = QPushButton(text)
         button.clicked.connect(callback)

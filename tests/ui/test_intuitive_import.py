@@ -59,12 +59,12 @@ def test_commands_group_evidence_and_keep_case_gate(qt_application,tmp_path):
         menus={a.text().replace('&',''):a.menu() for a in window.menuBar().actions()}
         assert list(menus)[:3]==['Case','Analyse','Détection']
         analysis={a.text():a for a in menus['Analyse'].actions()}
-        assert 'Importer un dossier à parser…' in analysis
-        assert 'Importer un fichier de données…' in analysis
+        assert 'Parser un dossier…' in analysis
+        assert 'Importer un fichier…' in analysis
         assert not menus['Analyse'].menuAction().isEnabled()
         window.create_investigation('Menus')
-        assert menus['Analyse'].menuAction().isEnabled() and analysis['Importer un dossier à parser…'].isEnabled()
-        assert window.workbench.tabText(1)=='Suivi des imports'
+        assert menus['Analyse'].menuAction().isEnabled() and analysis['Parser un dossier…'].isEnabled()
+        assert window.workbench.tabText(1)=='Imports'
         assert window.workbench.indexOf(window.detection_panel)>=0
         assert window.workbench.indexOf(window.coverage_panel)==-1
         assert not window.coverage_dialog.isVisible()

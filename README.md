@@ -8,7 +8,7 @@ Fireblade brings Windows artifacts, Linux logs, detection results and tabular ev
 
 [Releases](https://github.com/23R0534ZXT/fireblade/releases) · [Documentation](docs/README.md) · [Report an issue](https://github.com/23R0534ZXT/fireblade/issues/new/choose) · [Release notes](docs/development/RELEASE-NOTES.md)
 
-**[Download Fireblade 0.2.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.2.1/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.1) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/41850558420)
+**[Download Fireblade 0.2.2 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.2.2/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.2) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/41889904140)
 
 The desktop interface and most user guides are currently in French.
 
@@ -27,8 +27,6 @@ Windows CI runs focused regression tests on Python 3.12, builds the standalone E
 - Highlight matching text without recoloring the whole row.
 - Set query threads, import threads and per-analysis memory in **Preferences → Resources**. Sequential background collection keeps memory bounded.
 - Create a column-specific rule directly from a cell value. Access existing rules and custom JSON profiles from the workspace toolbar, create a profile from the current artifact, or import a .NET reader through Preferences.
-
-The published download above remains the last qualified release until 0.2.2 passes Windows qualification.
 
 ## Capabilities
 

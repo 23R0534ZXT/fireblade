@@ -7,6 +7,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QDialog, QTreeView
 
 from fireblade.core.collection import Collection
+from fireblade.core.paths import same_file
 from fireblade.ui.app import Window
 from fireblade.ui.folder_picker import FolderPicker
 from tests.ui.test_start_workflow import until, idle
@@ -18,7 +19,13 @@ def test_directory_picker_accepts_ctrl_and_shift_selection(qt_application,tmp_pa
     dialog=FolderPicker();dialog.setDirectory(str(tmp_path));dialog.show()
     tree=dialog.findChild(QTreeView,'treeView')
     try:
-        until(qt_application,lambda:Path(tree.model().filePath(tree.rootIndex())).resolve()==tmp_path.resolve() and tree.model().rowCount(tree.rootIndex())==3)
+        try:
+            until(qt_application,lambda:same_file(tree.model().filePath(tree.rootIndex()),tmp_path)
+                  and all(tree.model().index(str(folder)).isValid() for folder in folders))
+        except AssertionError as exc:
+            raise AssertionError(dict(root=tree.model().filePath(tree.rootIndex()),
+                directory=dialog.directory().absolutePath(), expected=str(tmp_path),
+                items=[tree.model().index(i,0,tree.rootIndex()).data() for i in range(tree.model().rowCount(tree.rootIndex()))])) from exc
         QTest.qWait(100)
         indexes=[tree.model().index(str(folder)) for folder in folders]
         def click(index,modifiers=Qt.NoModifier):

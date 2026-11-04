@@ -20,7 +20,7 @@ Le bilan de parsing reste dans **Imports**. Le seuil et le lancement d’Hayabus
 - Réglage par défaut : **un thread et 128 Mio par base DuckDB**. Le parsing de fond reçoit la moitié du budget configuré, avec un minimum de 64 Mio, et un thread.
 - Les résultats sont intégrés par lots de seize ; les sauvegardes intermédiaires sont espacées et le minuteur de réception s’arrête au repos.
 - Ces budgets ne plafonnent pas toute la RAM de Python, Qt ni des moteurs externes. La configuration utilisateur reste prioritaire.
-- Animation vectorielle de démarrage de **10 secondes**, avec braises, allumage progressif, flammes, fumée et transition vers le logo, désactivable dans les préférences d’organisation.
+- Animation de démarrage de **10 secondes** : feu réel sur fond sombre, allumage progressif et apparition du logo, désactivable dans les préférences d’organisation. La lecture reste locale et silencieuse, sans cache de toutes les images.
 
 ## Huit constats d’audit corrigés
 

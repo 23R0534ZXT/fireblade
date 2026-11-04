@@ -93,6 +93,8 @@ def test_progressive_disk_keeps_workspace_interactive(qt_application, tmp_path, 
 
 def test_animation_finishes_without_sleeping_ui(qt_application):
     splash = StartupAnimation(); finished = []
+    assert splash.animation.duration() == 10000
+    assert splash.movie.isValid() and splash.movie.frameCount() >= 190
     splash.finished.connect(lambda: finished.append(True))
     splash.show(); splash.animation.start()
     until(qt_application, lambda: bool(finished))

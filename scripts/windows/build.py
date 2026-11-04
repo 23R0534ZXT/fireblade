@@ -48,6 +48,7 @@ def main():
                     "dissect.hypervisor", "dissect.ntfs", "dissect.regf", "dissect.volume", "dissect.fat", "dissect.extfs", "flow.record"):
         command.extend(["--collect-all", package])
     for source, target in [(generated, "resources"), (root / "config" / "fireblade.toml", "resources/config"),
+                           (root / "assets" / "startup", "resources/assets/startup"),
                            (root / "docs" / "guides" / "UTILISATION.md", "resources/docs/guides"),
                            (root / "docs" / "guides" / "TUTORIEL-COMPLET.md", "resources/docs/guides"),
                            (root / "docs" / "guides" / "LAYOUTS-TLE.md", "resources/docs/guides"),

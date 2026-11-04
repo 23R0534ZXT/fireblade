@@ -111,7 +111,21 @@ class GridDelegate(QStyledItemDelegate):
             content=qtstyle.subElementRect(QStyle.SE_ItemViewItemText,prepared,widget).adjusted(2,0,-2,0)
             paint_text(painter,content,label,appearance,prepared.displayAlignment)
             painter.restore()
-        else:super().paint(painter, option, index)
+        else:
+            from fireblade.ui.text_matches import match_ranges, paint_matches
+            view = index.model().view
+            terms = [view.highlight, view.search]
+            text = str(index.data(Qt.DisplayRole) or '')
+            if index.column() > 0 and not index.model().node(index).group and match_ranges(text, terms):
+                prepared = QStyleOptionViewItem(option);self.initStyleOption(prepared,index)
+                prepared.text = ''
+                widget = prepared.widget or self.parent()
+                style = widget.style() if widget else QApplication.style()
+                style.drawControl(QStyle.CE_ItemViewItem, prepared, painter, widget)
+                rect = style.subElementRect(QStyle.SE_ItemViewItemText, prepared, widget).adjusted(2, 0, -2, 0)
+                foreground = prepared.palette.color(QPalette.HighlightedText if prepared.state & QStyle.State_Selected else QPalette.Text)
+                paint_matches(painter, rect, text, prepared.font, foreground, prepared.displayAlignment, terms)
+            else:super().paint(painter, option, index)
         painter.save()
         graphic = index.data(VISUAL_ROLE)
         if graphic:
@@ -462,9 +476,6 @@ class GridModel(QAbstractItemModel):
                     if rule.font_size:font.setPointSizeF(rule.font_size)
                     font.setBold(rule.bold);font.setItalic(rule.italic);font.setUnderline(rule.underline);font.setStrikeOut(rule.strikeout)
                     return font
-        if role == Qt.BackgroundRole and not node.group and self.view.highlight:
-            if any(self.view.highlight.casefold() in str(v).casefold() for v in node.values[1:] if v is not None):
-                return QColor("#674242" if self.dark else "#fce2e2")
 
         if not node.group:
             from fireblade.ui.layout_styles import cell_style,role_value

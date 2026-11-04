@@ -2,24 +2,31 @@
 from pathlib import Path, PurePosixPath
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QLineEdit, QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 
 
 class AnalysisNavigator(QWidget):
     activated = Signal(int)
     close_requested = Signal()
+    grouping_changed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.signature = None
+        self.family_cache = {}
         self.setMinimumWidth(140)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 4, 0)
-        heading=QHBoxLayout();heading.addWidget(QLabel('Collectes et analyses'),1)
+        heading=QHBoxLayout();heading.addWidget(QLabel('Artefacts'),1)
         close=QToolButton();close.setText('×');close.setToolTip('Masquer la navigation ; la retrouver dans Affichage.')
         close.clicked.connect(self.close_requested.emit);heading.addWidget(close);layout.addLayout(heading)
+        self.grouping = QComboBox()
+        for label, value in [('Par artefact', 'families'), ('Par dossier source', 'folders'), ('Liste simple', 'flat')]:
+            self.grouping.addItem(label, value)
+        self.grouping.currentIndexChanged.connect(lambda _: self.grouping_changed.emit(self.grouping.currentData()))
+        layout.addWidget(self.grouping)
         self.search = QLineEdit()
-        self.search.setPlaceholderText('Trouver une analyse…')
+        self.search.setPlaceholderText('Filtrer les noms d’artefacts…')
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self.filter)
         layout.addWidget(self.search)
@@ -36,6 +43,9 @@ class AnalysisNavigator(QWidget):
             self.activated.emit(index)
 
     def refresh(self, documents, active, collections, labels=None, origins=None, grouping="families"):
+        blocked = self.grouping.blockSignals(True)
+        self.grouping.setCurrentIndex(self.grouping.findData(grouping))
+        self.grouping.blockSignals(blocked)
         labels=labels or {}
         origins=origins or {}
         signature = (tuple((d.path, d.source_info['path']) for d in documents),
@@ -44,6 +54,7 @@ class AnalysisNavigator(QWidget):
                      tuple((d.path, str(origins.get(d.path, {}))) for d in documents))
         if signature != self.signature:
             expanded = {self.key(item): item.isExpanded() for item in self.items()}
+            self.family_cache = {d.path:self.family_cache[d.path] for d in documents if d.path in self.family_cache}
             self.tree.clear()
             roots, families, folders = {}, {}, {}
             for owner in collections:
@@ -59,8 +70,10 @@ class AnalysisNavigator(QWidget):
                     roots[root_key].setData(0, Qt.UserRole+1, root_key)
                     roots[root_key].setToolTip(0, root_key)
                 source = Path(snapshot.source_info['path'])
+                if snapshot.path not in self.family_cache:
+                    self.family_cache[snapshot.path] = artifact_family(snapshot.source_info, source)
                 family = ('Détection Hayabusa' if 'hayabusa' in source.stem.casefold() else
-                          'Contexte EVTX' if source.stem == 'Contexte EVTX' else source.stem)
+                          'Contexte EVTX' if source.stem == 'Contexte EVTX' else self.family_cache[snapshot.path])
                 origin = origins.get(snapshot.path)
                 if origin and origin.get('artifact'):
                     family = origin['artifact']
@@ -88,11 +101,11 @@ class AnalysisNavigator(QWidget):
                 families.setdefault(family_key,[]).append((index,snapshot,source))
             for (root_key,family),members in families.items():
                 parent=roots[root_key]
-                if root_key and len(members)>1:
-                    parent=QTreeWidgetItem(parent,[family])
+                if grouping == "families":
+                    parent=QTreeWidgetItem(parent,[f"{family} ({len(members)})"])
                     parent.setData(0,Qt.UserRole+1,root_key+'|'+family)
                 for index,snapshot,source in members:
-                    title=labels.get(snapshot.path) or (family if root_key and len(members)==1 else source.name)
+                    title=labels.get(snapshot.path) or source.name
                     leaf = QTreeWidgetItem(parent, [title])
                     leaf.setData(0, Qt.UserRole, index)
                     leaf.setToolTip(0, source.name+'\n'+snapshot.path)
@@ -127,3 +140,16 @@ class AnalysisNavigator(QWidget):
             if query and children and visible:item.setExpanded(True)
             return visible
         for i in range(self.tree.topLevelItemCount()):visit(self.tree.topLevelItem(i))
+
+
+def artifact_family(info, source):
+    from fireblade.core.profiles import detect_profile
+    profile = detect_profile(info.get('headers', []))
+    if profile is not None:return profile.name
+    import re
+    stem = re.sub(r'^\d{8,14}[_ -]*', '', source.stem)
+    for family, needles in [('Journaux Windows', ('evtx', 'eventlog')), ('Registre', ('registry', 'regcmd', 'system', 'software', 'ntuser')),
+                            ('Système de fichiers', ('mft', 'usn', 'file', 'recycle')), ('Exécution', ('prefetch', 'amcache', 'shimcache', 'appcompat', 'pecmd')),
+                            ('Navigateurs', ('webcache', 'chrome', 'firefox', 'history')), ('Journaux Linux', ('linux', 'syslog', 'auth.log', 'journal'))]:
+        if any(word in stem.casefold() for word in needles):return family
+    return stem or 'Autres artefacts'

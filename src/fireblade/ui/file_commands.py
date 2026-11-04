@@ -104,18 +104,22 @@ class FileCommandsMixin:
             self.error(message)
 
         def importing():
-            if tle_plugin is not None:
-                from fireblade.core.tle_plugins import import_plugin
-                import_plugin(candidate,path,*tle_plugin,progress.progress.emit)
-                fields=candidate.info['plugin']['columns']
-                view=View(boolean_columns=[i for i,c in enumerate(fields) if 'System.Boolean' in (c.get('type') or '')],timestamp_columns=[i for i,c in enumerate(fields) if 'System.DateTime' in (c.get('type') or '')])
-                return ('Plugin TLE',view,None)
-            if path.suffix.lower() in (".xlsx", ".xls"):
-                candidate.import_excel(path, sheet, progress.progress.emit)
-            else:
-                candidate.import_csv(path, delimiter, encoding, progress.progress.emit)
-            from fireblade.core.profiles import prepare_case_profile
-            return prepare_case_profile(candidate,self.preferences.auto_profiles)
+            candidate.db.execute(f'SET threads={self.preferences.parsing_threads}')
+            try:
+                if tle_plugin is not None:
+                    from fireblade.core.tle_plugins import import_plugin
+                    import_plugin(candidate,path,*tle_plugin,progress.progress.emit)
+                    fields=candidate.info['plugin']['columns']
+                    view=View(boolean_columns=[i for i,c in enumerate(fields) if 'System.Boolean' in (c.get('type') or '')],timestamp_columns=[i for i,c in enumerate(fields) if 'System.DateTime' in (c.get('type') or '')])
+                    return ('Plugin TLE',view,None)
+                if path.suffix.lower() in (".xlsx", ".xls"):
+                    candidate.import_excel(path, sheet, progress.progress.emit)
+                else:
+                    candidate.import_csv(path, delimiter, encoding, progress.progress.emit)
+                from fireblade.core.profiles import prepare_case_profile
+                return prepare_case_profile(candidate,self.preferences.auto_profiles)
+            finally:
+                candidate.db.execute(f'SET threads={self.settings.threads}')
         def imported(result):
             self.coverage_notice("Import","warning" if not candidate.info["rows"] else "info",f"Import terminé : {candidate.info['rows']} lignes ; empreinte vérifiée avant et après lecture.",str(path),analysis=str(candidate.path),source_info=candidate.info)
             name,view,order=result

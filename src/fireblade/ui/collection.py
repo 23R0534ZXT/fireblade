@@ -6,7 +6,7 @@ import uuid
 
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QAction, QPalette
-from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.ui.alert_context import AlertContextMixin
@@ -50,7 +50,8 @@ class CollectionMixin(AlertContextMixin):
     def setup_collection(self):
         self.collection = None
         self._folder_queue = []
-        self.workbench = QTabWidget()
+        from fireblade.ui.modular_workspace import Workbench
+        self.workbench = Workbench(self)
         workspace = self.takeCentralWidget()
         workspace.setAutoFillBackground(True)
         workspace.setBackgroundRole(QPalette.Window)
@@ -256,7 +257,7 @@ class CollectionMixin(AlertContextMixin):
         output = parent/(datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:8])
         try:
             from dataclasses import replace
-            settings = replace(self.settings, memory_mb=max(64, self.settings.memory_mb//2), threads=1)
+            settings = replace(self.settings, memory_mb=max(64, self.settings.memory_mb//2), threads=self.preferences.parsing_threads)
             collection = Collection(path, output, self.toolpack(), settings, organization=organization)
             if self.active_investigation is not None:
                 collection.ready = self.disk_signals.documents.emit

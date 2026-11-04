@@ -69,7 +69,7 @@ def test_gallery_accept_override_and_mode_change_keep_consistent_saved_choice(qt
 def test_preferences_small_window_scroll_keeps_confirmation_accessible(qt_application):
     dialog=PreferencesDialog(Preferences());dialog.resize(560,420);dialog.show();qt_application.processEvents()
     try:
-        assert dialog.pages.count()==4
+        assert dialog.pages.count()==5
         dialog.pages.setCurrentIndex(1);scroll=dialog.page_scrolls[1]
         scroll.ensureWidgetVisible(dialog.pins);qt_application.processEvents()
         buttons=dialog.findChild(QDialogButtonBox)

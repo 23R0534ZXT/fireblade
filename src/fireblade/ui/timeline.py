@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog,
     QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QPushButton, QScrollArea, QFileDialog,
     QSplitter, QTableView, QTableWidget, QTableWidgetItem, QTextBrowser, QToolTip, QVBoxLayout, QWidget)
 
+from fireblade.ui.flow_layout import FlowLayout
 from fireblade.core.layout import write_json
 from fireblade.core.models import Filter, View
 from fireblade.core.timeline import KINDS, TimelineStore, field_kind, guess_time_column, utc_label
@@ -52,7 +53,7 @@ class TimelineCanvas(QWidget):
     sourceSelected = Signal(int)
     LEFT = 190
     TOP = 114
-    LANE = 38
+    LANE = 48
 
     def __init__(self):
         super().__init__();self.setMouseTracking(True);self.setMinimumWidth(520)
@@ -62,7 +63,7 @@ class TimelineCanvas(QWidget):
 
     def display(self, histogram, sources):
         self.histogram=histogram;self.sources=sources;self.drag=None
-        self.setMinimumHeight(max(210,self.TOP+len(sources)*self.LANE+46));self.update()
+        self.setMinimumHeight(max(290,self.TOP+len(sources)*self.LANE+46));self.update()
 
     def position_time(self,x):
         data=self.histogram
@@ -198,14 +199,18 @@ class TimelinePanel(QWidget):
         self.documents=[];self.columns={};self.loading=False;self.bounds=None;self.full_bounds=None;self.pending_job=None
         self.back_stack=[];self.offset=0;self.source_filter=None;self.saved_bounds=None;self.saved_sources=None;self.applied_filters={};self.built_respect=False;self.state_loaded=False
         layout=QVBoxLayout(self)
-        title=QLabel('Chronologie & corrélations');title.setStyleSheet('font-size:20px;font-weight:bold;');layout.addWidget(title)
+        heading=QHBoxLayout();title=QLabel('Chronologie');title.setStyleSheet('font-size:20px;font-weight:bold;');heading.addWidget(title);heading.addStretch()
+        self.events_visible=QCheckBox('Événements');self.events_visible.setChecked(True);heading.addWidget(self.events_visible)
+        self.details_visible=QCheckBox('Détails');self.details_visible.setChecked(True);heading.addWidget(self.details_visible)
+        self.focus_button=QPushButton('Agrandir');self.focus_button.clicked.connect(lambda: self.window.workspace_layout.leave_focus() if self.window.workspace_layout.focused else self.window.workspace_layout.timeline());heading.addWidget(self.focus_button)
+        layout.addLayout(heading)
         intro=QLabel('Reliez les utilisateurs, IP, chemins et empreintes entre analyses. Glissez sur le graphique pour isoler une période ; la molette zoome autour du pointeur.')
-        intro.setWordWrap(True);layout.addWidget(intro)
-        controls=QHBoxLayout();self.build_button=QPushButton('Construire / actualiser');self.configure_button=QPushButton('Sources et dates…')
+        intro.setWordWrap(True);self.setToolTip(intro.text());intro.deleteLater()
+        controls=FlowLayout();self.build_button=QPushButton('Actualiser');self.configure_button=QPushButton('Sources et dates…')
         self.build_button.clicked.connect(self.rebuild);self.configure_button.clicked.connect(self.configure)
         self.respect=QCheckBox('Appliquer les filtres des analyses');controls.addWidget(self.build_button);controls.addWidget(self.configure_button);controls.addWidget(self.respect)
         self.stop=QPushButton('Interrompre');self.stop.clicked.connect(self.interrupt);self.stop.setEnabled(False);controls.addWidget(self.stop);controls.addStretch();layout.addLayout(controls)
-        query=QHBoxLayout();self.kind=QComboBox()
+        query=FlowLayout();self.kind=QComboBox()
         for value,label in KINDS.items():self.kind.addItem(label,value)
         self.query=QLineEdit();self.query.setPlaceholderText('Utilisateur, IP, chemin, empreinte ou texte…')
         self.query.setClearButtonEnabled(True)
@@ -216,33 +221,40 @@ class TimelinePanel(QWidget):
         self.apply_button=QPushButton('Corréler');self.apply_button.clicked.connect(self.apply_query);self.query.returnPressed.connect(self.apply_query)
         for widget in (self.kind,self.query,self.exact,self.bookmarks,self.undated,self.apply_button):query.addWidget(widget,1 if widget==self.query else 0)
         layout.addLayout(query)
-        nav=QHBoxLayout()
+        nav=FlowLayout()
         for label,callback in [('Vue globale',self.fit),('Retour',self.back),('−',lambda:self.zoom(2)),('+',lambda:self.zoom(.5)),('←',lambda:self.pan(-.5)),('→',lambda:self.pan(.5)),('Toutes les pistes',self.all_sources)]:
             button=QPushButton(label);button.clicked.connect(callback);nav.addWidget(button)
+        self.period = QComboBox()
+        for label, seconds in [('Durée…', 0), ('15 minutes', 900), ('1 heure', 3600), ('24 heures', 86400), ('7 jours', 604800)]:self.period.addItem(label, seconds)
+        self.period.activated.connect(lambda _: self.select_duration(self.period.currentData()))
+        nav.addWidget(self.period)
+        dates_toggle = QPushButton('Dates…');dates_toggle.setCheckable(True);nav.addWidget(dates_toggle)
         nav.addStretch();layout.addLayout(nav)
-        nav=QHBoxLayout()
+        self.date_controls = QWidget();nav=FlowLayout(self.date_controls);nav.setContentsMargins(0,0,0,0)
+        dates_toggle.toggled.connect(self.date_controls.setVisible)
         self.start=QLineEdit();self.start.setPlaceholderText('Début ISO UTC');self.end=QLineEdit();self.end.setPlaceholderText('Fin ISO UTC')
         self.start.setMinimumWidth(150);self.end.setMinimumWidth(150);nav.addWidget(self.start,1);nav.addWidget(self.end,1)
-        range_button=QPushButton('Période');range_button.clicked.connect(self.apply_dates);nav.addWidget(range_button);layout.addLayout(nav)
-        self.stats=QLabel('Aucun index construit. Les données sources restent intactes.');self.stats.setTextFormat(Qt.PlainText);self.stats.setWordWrap(True);layout.addWidget(self.stats)
+        range_button=QPushButton('Période');range_button.clicked.connect(self.apply_dates);nav.addWidget(range_button);layout.addWidget(self.date_controls);self.date_controls.hide()
+        self.stats=QLabel('Choisissez les sources, puis actualisez la chronologie.');self.stats.setTextFormat(Qt.PlainText);self.stats.setWordWrap(True);layout.addWidget(self.stats)
         self.progress.connect(self.stats.setText)
-        self.overview=TimelineOverview();self.overview.centered.connect(self.center_on);layout.addWidget(self.overview)
+        self.overview=TimelineOverview();self.overview.setFixedHeight(58);self.overview.centered.connect(self.center_on);layout.addWidget(self.overview)
         self.splitter=QSplitter(Qt.Vertical)
         scroll=QScrollArea();scroll.setWidgetResizable(True);self.canvas=TimelineCanvas();scroll.setWidget(self.canvas);self.splitter.addWidget(scroll)
         bottom=QSplitter(Qt.Horizontal);self.table=QTableView();self.model=TimelineModel(self);self.table.setModel(self.model)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows);self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers);self.table.setAlternatingRowColors(True);self.table.setWordWrap(False)
-        self.table.verticalHeader().hide();self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.verticalHeader().hide();self.table.horizontalHeader().setSectionsMovable(True);self.table.horizontalHeader().setStretchLastSection(True)
         for column,width in enumerate((230,170,95,330,160)):self.table.setColumnWidth(column,width)
-        bottom.addWidget(self.table);self.details=QTextBrowser();bottom.addWidget(self.details);bottom.setSizes([900,260]);self.splitter.addWidget(bottom)
-        self.splitter.setSizes([290,240]);layout.addWidget(self.splitter,1)
-        footer=QHBoxLayout();self.previous=QPushButton('Précédent');self.next=QPushButton('Suivant');self.open_button=QPushButton('Ouvrir la ligne source')
+        bottom.addWidget(self.table);self.details=QTextBrowser();bottom.addWidget(self.details);
+        self.events_visible.toggled.connect(bottom.setVisible);self.details_visible.toggled.connect(self.details.setVisible);bottom.setSizes([900,260]);self.splitter.addWidget(bottom)
+        self.splitter.setChildrenCollapsible(True);self.splitter.setStretchFactor(0,3);self.splitter.setStretchFactor(1,1);self.splitter.setSizes([460,180]);layout.addWidget(self.splitter,1)
+        footer=FlowLayout();self.previous=QPushButton('Précédent');self.next=QPushButton('Suivant');self.open_button=QPushButton('Ouvrir la ligne source')
         self.page_label=QLabel();self.previous.clicked.connect(lambda:self.move_page(-1));self.next.clicked.connect(lambda:self.move_page(1));self.open_button.clicked.connect(self.open_source)
         for widget in (self.previous,self.next,self.page_label,self.open_button):footer.addWidget(widget)
         export_button=QPushButton('Exporter la chronologie…');export_button.clicked.connect(self.export_csv);footer.addWidget(export_button)
         footer.addStretch();layout.addLayout(footer)
         self.notice=QLabel('Triangles : signets · Instantané à actualiser après modification des analyses. * Date sans fuseau : position UTC supposée, à vérifier. Résumés limités à 1000 caractères ; la ligne source conserve les valeurs complètes.')
-        self.notice.setWordWrap(True);layout.addWidget(self.notice)
+        self.notice.setWordWrap(True);self.canvas.setToolTip(self.canvas.toolTip()+"\n"+self.notice.text());self.notice.hide()
         self.canvas.rangeSelected.connect(self.select_range);self.canvas.zoomRequested.connect(self.zoom);self.canvas.sourceSelected.connect(self.isolate)
         self.table.doubleClicked.connect(lambda *_:self.open_source());self.table.selectionModel().currentChanged.connect(self.show_details)
         self.open_button.setEnabled(False);self.previous.setEnabled(False);self.next.setEnabled(False)
@@ -418,6 +430,12 @@ class TimelinePanel(QWidget):
         if self.store and [(d.path,d.source_info) for d in self.documents] == [(d.path,d.source_info) for d in self.window.documents]:self.refresh(fit=True)
         else:self.rebuild()
 
+    def select_duration(self, seconds):
+        if not seconds or not self.bounds or self.loading:return
+        center = self.canvas.selected_time if self.canvas.selected_time is not None else sum(self.bounds)//2
+        half = seconds*1_000_000_000//2
+        self.select_range(center-half, center+half)
+
     def fit(self):
         if not self.loading:self.offset=0;self.back_stack=[];self.refresh(fit=True)
     def select_range(self,start,end):
@@ -519,7 +537,10 @@ class TimelineMixin:
         self.timeline_return_action.triggered.connect(self.return_to_timeline)
         self.timeline_return_action.setVisible(False);self.main_toolbar.addAction(self.timeline_return_action)
 
-    def show_timeline(self):self.workbench.setCurrentIndex(self.timeline_tab_index)
+    def show_timeline(self):
+        self.workbench.setCurrentIndex(self.timeline_tab_index)
+        if not getattr(self, '_closing_workspace', False) and self.documents and not self.timeline_panel.store and not self.timeline_panel.loading:
+            self.timeline_panel.rebuild()
 
     def restore_timeline_origin(self,refresh=True):
         origin=self._timeline_origin

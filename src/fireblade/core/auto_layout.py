@@ -39,6 +39,8 @@ def layout_directories():
 
 def candidates(headers, info, local_directory=None):
     yield local_path(headers, info, local_directory)
+    if local_directory is not None:
+        yield local_path(headers, info)
     reader = info.get('plugin', {}).get('type')
     profile = detect_profile(headers)
     names = [reader, reader.rsplit('.', 1)[-1] if reader else None,

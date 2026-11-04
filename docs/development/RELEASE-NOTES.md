@@ -1,3 +1,14 @@
+# Fireblade 0.2.2 — espace d’analyse modulable
+
+- Arbre des artefacts : choix direct famille / dossier / liste, familles reconnues et nombre d’analyses.
+- Recherche globale par défaut dans les artefacts ouverts ; panneau de résultats, masquage des résultats vides et saut à la source.
+- Panneaux détachables, ancrables et redimensionnables ; dispositions Analyse, Chronologie seule et côte à côte ; enregistrement local de la disposition.
+- Ordre et largeur des colonnes mémorisés automatiquement par format après déplacement des en-têtes.
+- Surlignage des occurrences uniquement ; prise en charge des caractères Unicode hors BMP.
+- Chronologie agrandie, commandes compactes, périodes rapides et détection des colonnes Time / Horodatage ; construction à l’ouverture.
+- Ressources persistantes : mémoire, threads de requête et threads d’import/parsing. Les collectes restent séquentielles ; les moteurs externes conservent leurs propres options.
+- Création de règles ciblant une cellule depuis le clic droit. Règles accessibles depuis la barre d’espace de travail ; création de profils JSON personnalisés à partir de l’artefact courant ; accès aux lecteurs .NET.
+
 # Fireblade 0.2.1 — imports progressifs, menus et intégrité
 
 ## Ajouter des données depuis Analyse

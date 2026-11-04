@@ -18,6 +18,7 @@ from fireblade.ui.theme import apply_theme
 
 class ExplorationMixin:
     def setup_exploration(self):
+        self._resource_defaults = self.settings
         self.workspace_search = None
         self.open_queue = []
         self.open_queue_timer_active = False
@@ -44,6 +45,15 @@ class ExplorationMixin:
 
     def apply_preferences(self):
         p = self.preferences
+        from dataclasses import replace
+        self.settings = replace(self._resource_defaults,
+            memory_mb=p.resource_memory_mb or self._resource_defaults.memory_mb,
+            threads=p.query_threads or self._resource_defaults.threads)
+        if self.case and not self.busy and not self.pool.activeThreadCount():
+            with self.case.lock:
+                self.case.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
+                self.case.db.execute(f'SET threads={self.settings.threads}')
+                self.case.settings = self.settings
         if hasattr(self,'autosave_action'):
             self.autosave_action.blockSignals(True);self.autosave_action.setChecked(p.case_autosave);self.autosave_action.blockSignals(False)
         from fireblade.core.themes import effective_palette
@@ -51,9 +61,14 @@ class ExplorationMixin:
         font = QFont(p.font_family) if p.font_family else QApplication.font()
         font.setPointSizeF(p.font_size)
         QApplication.instance().setFont(font)
-        self.splitter.setOrientation(Qt.Horizontal if p.details_position == "right" else Qt.Vertical)
-        self.splitter.insertWidget(0,self.details if p.details_position=='top' else self.tree)
-        self.splitter.setSizes([125,570] if p.details_position=='top' else [570,125])
+        workspace = getattr(self, 'workspace_layout', None)
+        if workspace and 'details' in workspace.auxiliary:
+            self.addDockWidget(Qt.RightDockWidgetArea if p.details_position == 'right' else Qt.TopDockWidgetArea if p.details_position == 'top' else Qt.BottomDockWidgetArea,
+                               workspace.auxiliary['details'][0])
+        else:
+            self.splitter.setOrientation(Qt.Horizontal if p.details_position == "right" else Qt.Vertical)
+            self.splitter.insertWidget(0,self.details if p.details_position=='top' else self.tree)
+            self.splitter.setSizes([125,570] if p.details_position=='top' else [570,125])
         self.tabs.set_multiline(p.multiline_tabs)
         if self.model:
             self.model.date_format = p.date_format
@@ -220,10 +235,24 @@ class ExplorationMixin:
     def find_workspace(self):
         if not self.documents or not self.can_open_file():
             return
-        dialog = SearchDialog(self)
-        dialog.exec()
-        self.workspace_search = None
-        dialog.deleteLater()
+        from PySide6.QtWidgets import QDockWidget
+        if not hasattr(self, 'search_dock'):
+            self.search_dock = QDockWidget('Recherche · tous les artefacts', self)
+            self.search_dock.setObjectName('global-search')
+            self.search_panel = SearchDialog(self)
+            self.search_panel.setWindowFlags(Qt.Widget)
+            self.search_dock.setWidget(self.search_panel)
+            self.search_panel.rejected.connect(self.search_dock.hide)
+            self.search_panel.accepted.connect(self.search_dock.hide)
+            self.addDockWidget(Qt.BottomDockWidgetArea, self.search_dock)
+        self.search_panel.show();self.search_dock.show();self.search_dock.raise_()
+        if self.search.text().strip():self.search_panel.text.setText(self.search.text())
+        self.search_panel.text.setFocus()
+        if self.search_panel.text.text().strip():self.search_panel.start()
+
+    def search_workspace_or_active(self):
+        if self.search_scope.currentData() == 'all':self.find_workspace()
+        else:self.apply()
 
     def choose_document(self):
         if not self.documents:
@@ -418,7 +447,15 @@ class ExplorationMixin:
             view.header_state=base64.b64encode(self.tree.header().saveState()).decode('ascii')
             self.case.validate_view(view)
             directory=self.investigation_data_directory('Layouts/Local') if getattr(self,'active_investigation',None) is not None else None
-            if directory:save_auto_layout(self.case.headers,self.case.info,view,directory)
+            if directory:
+                save_auto_layout(self.case.headers,self.case.info,view,directory)
+                # Across cases retain presentation, never an old case's search,
+                # filters or evidence-specific rules.
+                from fireblade.core.models import View
+                columns_only = View(header_state=view.header_state,
+                    pinned_columns=list(view.pinned_columns),right_pinned_columns=list(view.right_pinned_columns),
+                    pinned_widths=dict(view.pinned_widths))
+                save_auto_layout(self.case.headers,self.case.info,columns_only)
             else:save_auto_layout(self.case.headers,self.case.info,view)
         except (OSError,ValueError,TypeError) as exc:
             self.statusBar().showMessage('Disposition locale non enregistrée : '+str(exc))
@@ -437,6 +474,19 @@ class ExplorationMixin:
             self.apply()
         except (ValueError, TypeError) as exc:
             self.error(exc)
+
+    def rule_from_value(self, column, value):
+        if not self.case or self.busy or value is None:return
+        from fireblade.core.models import FilterGroup, FormatRule
+        from fireblade.ui.advanced_dialogs import RulesDialog
+        rule = FormatRule(condition=FilterGroup('and',[Filter(column,'eq',str(value))]),
+                          target=column,background='#fff0b3',bold=True)
+        dialog = RulesDialog(self.case.headers,[*self.view.format_rules,rule],self)
+        dialog.listing.setCurrentRow(len(dialog.rules)-1)
+        if dialog.exec():
+            view = copy.deepcopy(self.view);view.format_rules=dialog.rules
+            self.set_view(view)
+        dialog.deleteLater()
 
     def manage_plugins(self):
         from fireblade.core.profiles import all_profiles
@@ -475,6 +525,32 @@ class ExplorationMixin:
                 refresh()
             except (ValueError, TypeError, OSError) as exc:
                 message.setText(str(exc))
+        def create_profile():
+            if not self.case:return
+            name, accepted = QInputDialog.getText(dialog, 'Nouveau profil', 'Nom du profil')
+            if not accepted or not name.strip():return
+            headers = self.case.headers
+            from fireblade.core.timeline import guess_time_column
+            timestamp = guess_time_column(headers)
+            payload = dict(name=name.strip(), signature=headers[:min(3,len(headers))],
+                           columns=[headers[i] for i in self.visible_columns()],
+                           timestamp=[headers[timestamp]] if timestamp is not None else [], booleans=[], transforms=[])
+            editor = QDialog(dialog);editor.setWindowTitle('Profil JSON');editor.resize(650, 480)
+            form = QVBoxLayout(editor);text = QPlainTextEdit(json.dumps(payload,ensure_ascii=False,indent=2));form.addWidget(text)
+            message = QLabel();message.setWordWrap(True);form.addWidget(message)
+            buttons = QDialogButtonBox(QDialogButtonBox.Save|QDialogButtonBox.Cancel);form.addWidget(buttons)
+            def save():
+                try:
+                    data = validate_plugin(json.loads(text.toPlainText()))
+                    import hashlib
+                    directory = plugin_path();directory.mkdir(parents=True, exist_ok=True)
+                    write_json(directory/(hashlib.sha256(data['name'].encode()).hexdigest()[:24]+'.json'), data)
+                    editor.accept();refresh()
+                except (ValueError,TypeError,OSError) as exc:message.setText(str(exc))
+            buttons.accepted.connect(save);buttons.rejected.connect(editor.reject)
+            editor.exec();editor.deleteLater()
+        create_button = QPushButton('Créer un profil…');create_button.setEnabled(self.case is not None)
+        create_button.clicked.connect(create_profile);layout.addWidget(create_button)
         row = QHBoxLayout()
         install_button = QPushButton("Installer un profil JSON…")
         install_button.clicked.connect(install)

@@ -68,7 +68,7 @@ jobs:
           if ('${{ inputs.full_validation }}' -eq 'true') {
             python -m pytest -q --junitxml=artifacts/windows-source-tests.xml
           } else {
-            python -m pytest -q tests/core/test_engine.py tests/core/test_low_memory_import.py tests/core/test_low_memory_export.py tests/core/test_coverage.py tests/core/test_ordering.py tests/core/test_case_storage.py tests/core/test_settings.py tests/ui/test_appearance.py tests/ui/test_case_storage_desktop.py tests/test_release.py tests/test_update_release_readme.py tests/test_publish_qualified.py --junitxml=artifacts/windows-source-tests.xml
+            python -m pytest -q tests/core/test_engine.py tests/core/test_low_memory_import.py tests/core/test_low_memory_export.py tests/core/test_coverage.py tests/core/test_ordering.py tests/core/test_case_storage.py tests/core/test_settings.py tests/ui/test_appearance.py tests/ui/test_modular_workspace.py tests/ui/test_case_storage_desktop.py tests/core/test_timeline.py tests/test_release.py tests/test_update_release_readme.py tests/test_publish_qualified.py --junitxml=artifacts/windows-source-tests.xml
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4

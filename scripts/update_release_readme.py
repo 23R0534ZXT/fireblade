@@ -16,11 +16,13 @@ def promote(text, release, version, digest, commit, run_url):
     if len(assets)!=1 or assets[0]['name']!='Fireblade.exe' or assets[0].get('digest')!='sha256:'+digest:
         raise ValueError('Published executable hash differs from the qualified binary')
     banner='> Download the Windows x64 executable from [GitHub Releases]'
-    lines=text.splitlines()
+    lines=[line for line in text.splitlines() if line != 'The desktop interface and most user guides are currently in French.'
+           and not line.startswith('The published download above remains the last qualified release until ')]
     replacement=f"**[Download Fireblade {version} — Windows x64]({assets[0]['browser_download_url']})** · [Release notes and SHA-256]({release['html_url']}) · [Windows qualification]({run_url})"
     index=next(i for i,line in enumerate(lines) if line.startswith(banner) or line.startswith('**[Download Fireblade '))
     lines[index]=replacement+'\n\nThe desktop interface and most user guides are currently in French.'
-    return '\n'.join(lines)+'\n'
+    import re
+    return re.sub(r'\n{3,}', '\n\n', '\n'.join(lines))+'\n'
 
 
 def main():

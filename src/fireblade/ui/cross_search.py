@@ -91,6 +91,8 @@ class SearchDialog(QDialog):
         layout.addLayout(row)
         self.filters = QCheckBox("Respecter les filtres et signets de chaque analyse")
         layout.addWidget(self.filters)
+        self.only_matches = QCheckBox('Correspondances uniquement');self.only_matches.setChecked(True)
+        self.only_matches.toggled.connect(self.filter_results);layout.addWidget(self.only_matches)
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Fichier", "Correspondances", "État"])
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -136,11 +138,16 @@ class SearchDialog(QDialog):
                     item = QTableWidgetItem(value)
                     item.setToolTip(result.path if col == 0 else result.error)
                     self.table.setItem(row, col, item)
-            self.message.setText("Double-cliquez un résultat pour ouvrir l’analyse filtrée.")
+            self.filter_results()
+            self.message.setText(f"{sum(r.count or 0 for r in results)} correspondances · {len(results)} artefacts parcourus")
         def failed(message="Recherche interrompue"):
             self.finished()
             self.message.setText(message)
         self.window.run(lambda: task.find(self.query, self.respect), done, on_cancel=failed, on_error=failed)
+
+    def filter_results(self):
+        for row, result in enumerate(self.results):
+            self.table.setRowHidden(row, self.only_matches.isChecked() and result.count == 0 and not result.error)
 
     def open_result(self, row, _column):
         if self.task or not 0 <= row < len(self.results) or not self.window.can_open_file():

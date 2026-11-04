@@ -11,7 +11,10 @@ from fireblade.runtime.windows_paths import user_directory
 
 @dataclass
 class Preferences:
-    navigation_grouping: str = "folders"
+    navigation_grouping: str = "families"
+    resource_memory_mb: int = 0
+    query_threads: int = 0
+    parsing_threads: int = 1
     navigation_visible: bool = True
     navigation_position: str = "left"
     workspace_details_visible: bool = True
@@ -35,6 +38,10 @@ class Preferences:
     pinned_columns_by_format: dict[str,list[str]] = field(default_factory=dict)
 
     def validate(self):
+        for name, low, high in (("resource_memory_mb", 0, 16384), ("query_threads", 0, 32), ("parsing_threads", 1, 32)):
+            value = getattr(self, name)
+            if type(value) is not int or not low <= value <= high or name == "resource_memory_mb" and 0 < value < 64:
+                raise ValueError("Ressources invalides : " + name)
         if self.navigation_grouping not in ("folders", "families", "flat") or self.navigation_position not in ("left", "right"):
             raise ValueError("Organisation de navigation invalide")
         if any(type(getattr(self, name)) is not bool for name in ("navigation_visible", "startup_animation", "workspace_details_visible", "main_toolbar_visible", "collection_toolbar_visible")):

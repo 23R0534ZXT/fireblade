@@ -1,7 +1,7 @@
 import copy
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QCheckBox,
+    QCheckBox, QSpinBox,
     QPushButton,
     QColorDialog,
     QComboBox,
@@ -25,7 +25,7 @@ class PreferencesDialog(QDialog):
         root=QVBoxLayout(self)
         self.pages=QTabWidget();root.addWidget(self.pages,1)
         self.page_scrolls=[];forms=[]
-        for title in ('Apparence','Grille et copie','Dates','Compatibilité'):
+        for title in ('Apparence','Grille et copie','Dates','Ressources','Plugins'):
             scroll=QScrollArea();scroll.setWidgetResizable(True)
             content=QWidget();page_form=QFormLayout(content)
             page_form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
@@ -33,7 +33,18 @@ class PreferencesDialog(QDialog):
             scroll.setWidget(content);self.pages.addTab(scroll,title)
             self.page_scrolls.append(scroll);forms.append(page_form)
         self.scroll=self.page_scrolls[0]
-        form,grid,dates,compatibility=forms
+        form,grid,dates,resources,compatibility=forms
+        self.memory = QSpinBox();self.memory.setRange(0, 16384);self.memory.setSpecialValueText('Configuration actuelle');self.memory.setSuffix(' Mo');self.memory.setValue(preferences.resource_memory_mb)
+        self.query_threads = QSpinBox();self.query_threads.setRange(0, 32);self.query_threads.setSpecialValueText('Configuration actuelle');self.query_threads.setValue(preferences.query_threads)
+        self.parsing_threads = QSpinBox();self.parsing_threads.setRange(1, 32);self.parsing_threads.setValue(preferences.parsing_threads)
+        resources.addRow('Mémoire par analyse', self.memory)
+        resources.addRow('Threads · recherche et requêtes', self.query_threads)
+        resources.addRow('Threads · import et parsing', self.parsing_threads)
+        hint = QLabel('Enregistré pour les prochains lancements. Les tâches en cours gardent leurs ressources. Les collectes restent séquentielles pour limiter la RAM. Les moteurs externes gardent leurs propres options.')
+        hint.setWordWrap(True);resources.addRow(hint)
+        if parent is not None and hasattr(parent, 'manage_plugins'):
+            for label, callback in [('Profils et plugins JSON…', parent.manage_plugins), ('Lecteurs .NET…', parent.import_with_tle_plugin)]:
+                button = QPushButton(label);button.clicked.connect(callback);compatibility.addRow(button)
         self.theme = QComboBox()
         self.theme.addItem("Clair", "light")
         self.theme.addItem("Sombre", "dark")
@@ -172,6 +183,9 @@ class PreferencesDialog(QDialog):
 
     def accept(self):
         p = self.preferences
+        p.resource_memory_mb = self.memory.value()
+        p.query_threads = self.query_threads.value()
+        p.parsing_threads = self.parsing_threads.value()
         p.theme_palette=dict(self.palette)
         p.theme_preset=self.skin.currentData()
         p.theme, p.font_family, p.font_size = (

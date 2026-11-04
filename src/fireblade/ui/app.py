@@ -11,7 +11,7 @@ from pathlib import Path
 from PySide6.QtCore import QModelIndex, QThreadPool, QTimer, Qt, QEventLoop
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
-    QDialogButtonBox, QFormLayout, QHBoxLayout, QHeaderView,
+    QDialogButtonBox, QDockWidget, QFormLayout, QHBoxLayout, QHeaderView,
     QInputDialog, QLabel, QLineEdit, QListWidget, QMainWindow, QMessageBox,
     QPlainTextEdit, QPushButton, QSplitter, QStackedWidget, QStyle, QToolButton,
     QTreeView, QVBoxLayout, QWidget)
@@ -85,6 +85,8 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         self.setup_start_workflow(require_case)
         from fireblade.ui.command_layout import organize_commands
         organize_commands(self)
+        from fireblade.ui.modular_workspace import WorkspaceLayout
+        self.workspace_layout = WorkspaceLayout(self)
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -246,9 +248,13 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         row = QHBoxLayout()
         row.addWidget(QLabel("Rechercher :"))
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Toutes les colonnes · Entrée pour appliquer")
+        self.search.setPlaceholderText("Texte, IP, chemin, empreinte… · Entrée pour rechercher")
         self.search.setClearButtonEnabled(True)
-        self.search.returnPressed.connect(self.apply)
+        self.search.returnPressed.connect(self.search_workspace_or_active)
+        self.search_scope = QComboBox()
+        self.search_scope.addItem('Tous les artefacts', 'all')
+        self.search_scope.addItem('Artefact actif', 'active')
+        row.addWidget(self.search_scope)
         row.addWidget(self.search, 1)
         clear = QPushButton("Effacer les filtres")
         clear.setToolTip("Retirer les recherches et filtres sans modifier les groupes, le tri ou les couleurs.")
@@ -305,6 +311,8 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         self.tree.setAnimated(False)
         self.tree.setIndentation(16)
         self.tree.header().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.tree.header().setToolTip("Glissez les en-têtes pour réordonner ; clic droit pour les options. Ordre et largeurs mémorisés par artefact.")
+        self.tree.header().setFirstSectionMovable(False)
         self.tree.header().setMinimumHeight(max(26, self.fontMetrics().height() + 8))
         self.tree.doubleClicked.connect(self.toggle_bookmark)
         self.tree.expanded.connect(lambda index: self.model.fetchMore(index) if self.model and not self.model.node(index).children else None)
@@ -392,6 +400,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         if exclusive:
             self.busy = True
             self.centralWidget().setEnabled(False)
+            for dock in self.findChildren(QDockWidget):dock.setEnabled(False)
             self.set_file_actions(False)
             self.cancel_action.setEnabled(True)
         coverage_path=coverage_context or (str(self.case.path) if self.case else "")
@@ -410,6 +419,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
             if exclusive:
                 self.busy = False
                 self.centralWidget().setEnabled(True)
+                for dock in self.findChildren(QDockWidget):dock.setEnabled(True)
                 self.set_file_actions(self.model is not None)
             return True
 
@@ -754,13 +764,19 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         if not self.case:
             return
         dialog = QDialog(self)
-        dialog.setWindowTitle("Colonnes visibles")
+        dialog.setWindowTitle("Colonnes · ordre et visibilité")
         layout = QVBoxLayout(dialog)
         checks = []
+        layout.addWidget(QLabel('Glissez pour réordonner. Cochez pour afficher.'))
         listing = QListWidget()
+        from PySide6.QtWidgets import QAbstractItemView
+        listing.setDragDropMode(QAbstractItemView.InternalMove)
         from PySide6.QtWidgets import QListWidgetItem
-        for i, label in enumerate(self.case.headers, 1):
-            item = QListWidgetItem(label)
+        header = self.tree.header()
+        sections = [header.logicalIndex(position) for position in range(header.count()) if header.logicalIndex(position) > 0]
+        for i in sections:
+            item = QListWidgetItem(self.case.headers[i-1])
+            item.setData(Qt.UserRole, i)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Unchecked if self.tree.isColumnHidden(i) and i - 1 not in self.view.pinned_columns + self.view.right_pinned_columns else Qt.Checked)
             listing.addItem(item)
@@ -771,11 +787,20 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
         if dialog.exec():
-            for i, item in enumerate(checks, 1):
+            ordered = [listing.item(position).data(Qt.UserRole) for position in range(listing.count())]
+            for position, section in enumerate(ordered, 1):
+                header.moveSection(header.visualIndex(section),position)
+            self.view.pinned_columns = [section-1 for section in ordered if section-1 in self.view.pinned_columns]
+            self.view.right_pinned_columns = [section-1 for section in ordered if section-1 in self.view.right_pinned_columns]
+            self.restore_pins()
+            for item in checks:
+                i = item.data(Qt.UserRole)
                 if item.checkState() != Qt.Checked:
                     self.hide_column(i - 1)
                 elif i - 1 not in self.view.pinned_columns + self.view.right_pinned_columns:
                     self.tree.setColumnHidden(i, False)
+            self.save_format_layout()
+        dialog.deleteLater()
 
     def show_header_menu(self, position):
         header = self.tree.header()
@@ -1086,7 +1111,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
     def highlight(self):
         if not self.case or self.busy:
             return
-        value, ok = QInputDialog.getText(self, "Coloration conditionnelle", "Colorer les lignes contenant ce texte (vide = désactiver)", text=self.view.highlight)
+        value, ok = QInputDialog.getText(self, "Coloration conditionnelle", "Surligner les occurrences (vide = désactiver)", text=self.view.highlight)
         if ok:
             self.view.highlight = value
             self.apply()
@@ -1124,6 +1149,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
             if not self.persist_investigation():
                 event.ignore()
                 return
+        self._closing_workspace = True
         self.detach()
         if getattr(self,'timeline_panel',None):self.timeline_panel.reset_workspace()
         if getattr(self,'ioc_panel',None):self.ioc_panel.reset_workspace()
@@ -1132,6 +1158,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
             self.clear_context_preview()
             self.release_investigation_lease()
             self.active_investigation=None
+        self.workspace_layout.save()
         event.accept()
 
     def resizeEvent(self,event):

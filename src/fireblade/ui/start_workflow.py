@@ -115,6 +115,11 @@ class StartWorkflowMixin:
             QTimer.singleShot(0, lambda: self.open_path(source))
         self.main_toolbar.setEnabled(allowed)
         if hasattr(self, 'collection_toolbar'): self.collection_toolbar.setEnabled(allowed)
+        workspace = getattr(self, 'workspace_layout', None)
+        if workspace:
+            workspace.toolbar.setEnabled(allowed)
+            for _page, dock, *_rest in self.workbench.panels.values():dock.setEnabled(allowed)
+            if allowed and workspace.pending_restore:workspace.restore()
 
     def require_active_case(self):
         if getattr(self, 'require_case', False) and self.active_investigation is None:
@@ -147,7 +152,7 @@ class StartWorkflowMixin:
                 self.error('Choisissez un volume existant et stockez le case sur un autre volume.'); return False
         try:
             from dataclasses import replace
-            settings = replace(self.settings, memory_mb=max(64, self.settings.memory_mb//2), threads=1)
+            settings = replace(self.settings, memory_mb=max(64, self.settings.memory_mb//2), threads=self.preferences.parsing_threads)
             collection = DiskCollection(source, workspace, self.toolpack(), settings,
                 ready=self.disk_signals.documents.emit, source_kind=kind)
         except Exception as exc:
@@ -327,6 +332,11 @@ class StartWorkflowMixin:
 
     def apply_navigation_organization(self):
         if not hasattr(self, 'navigator'): return
+        workspace = getattr(self, 'workspace_layout', None)
+        if workspace and 'artifacts' in workspace.auxiliary:
+            self.addDockWidget(Qt.LeftDockWidgetArea if self.preferences.navigation_position == 'left' else Qt.RightDockWidgetArea,
+                               workspace.auxiliary['artifacts'][0])
+            self.refresh_navigation();return
         sizes = self.workspace_splitter.sizes()
         old_index = self.workspace_splitter.indexOf(self.navigator)
         width = sizes[old_index] if sizes and old_index >= 0 else 230

@@ -12,11 +12,23 @@ Fireblade brings Windows artifacts, Linux logs, detection results and tabular ev
 
 The desktop interface and most user guides are currently in French.
 
-![Fireblade investigation workspace](docs/assets/fireblade-02-workspace.png)
+![Fireblade investigation workspace](docs/assets/fireblade-workspace-v022.png)
 
-*Investigation workspace with demonstration data. The screenshot predates the revised 0.2.1 menus.*
+*Fireblade 0.2.2 workspace with synthetic demonstration data.*
 
 Windows CI runs focused regression tests on Python 3.12, builds the standalone EXE in parallel, then checks its appearance, 320-analysis workspace and 3-GiB import/export workflow. The full Python 3.11–3.13 test matrix remains available through the workflow’s **full_validation** option.
+
+## Version 0.2.2 · workspace update
+
+- Group artifacts by family, source folder or a simple list directly from the navigator.
+- Search all loaded artifacts from the main search field; inspect matches in a docked panel and open the original source row.
+- Detach, dock and resize workbench panels. Switch to **Analysis**, **Timeline only**, or **Analysis + timeline**, and save your workspace layout.
+- Drag column headers into your preferred order. Column order and widths are saved automatically per artifact format.
+- Highlight matching text without recoloring the whole row.
+- Set query threads, import threads and per-analysis memory in **Preferences → Resources**. Sequential background collection keeps memory bounded.
+- Create a column-specific rule directly from a cell value. Access existing rules and custom JSON profiles from the workspace toolbar, create a profile from the current artifact, or import a .NET reader through Preferences.
+
+The published download above remains the last qualified release until 0.2.2 passes Windows qualification.
 
 ## Capabilities
 
@@ -42,7 +54,7 @@ Windows parsing integrates EZ Tools, RECmd, Shellbags and WebCache readers. Linu
 
 For a first evaluation, use the sample data below. The application remains an **unsigned prototype**; Windows may display a SmartScreen prompt. Release notes identify the qualified source commit and the executable's SHA-256.
 
-## Version 0.2.1
+## Previous release · 0.2.1
 
 - Revised menus separate case management, analysis, detection and exports.
 - Multiple folders are queued and parsed sequentially in the background.
@@ -88,7 +100,7 @@ export_batch_rows = 2048
 
 ## Validation and scope
 
-The Windows pipeline covers Python 3.11/3.12/3.13, the standalone executable, native readers, UNC and long paths, display scaling, a CSV larger than 3 GiB and a workspace containing 320 analyses. Version-specific results are linked from each release and the validation reports.
+The default Windows pipeline runs focused Python 3.12 checks (the full Python 3.11–3.13 matrix is optional), the standalone executable, native readers, UNC and long paths, display scaling, a CSV larger than 3 GiB and a workspace containing 320 analyses. Version-specific results are linked from each release and the validation reports.
 
 Fireblade is an analysis workspace, not a disk-acquisition or deleted-file-recovery tool. It does not provide decryption or carving. Reader errors, unsupported files and partial results remain explicit. Alerts require analyst review; automated checks do not establish complete acquisition coverage or prove the absence of malicious activity.
 

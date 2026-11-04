@@ -63,8 +63,12 @@ def cell_menu(window, index):
         menu.addAction("Copier la valeur", lambda: QApplication.clipboard().setText("" if value is None else str(value)))
         menu.addAction("Filtrer sur cette valeur", lambda: window.filter_value(column, value))
         menu.addAction("Exclure cette valeur", lambda: window.filter_value(column, value, exclude=True))
+        def search_all():
+            window.search.setText('' if value is None else str(value));window.find_workspace()
+        menu.addAction('Rechercher dans tous les artefacts', search_all)
         menu.addAction("Corréler dans toutes les analyses", lambda: window.correlate_value(column, value))
         if value is not None:
+            menu.addAction("Créer une règle pour cette valeur…", lambda: window.rule_from_value(column, value))
             menu.addAction("Ouvrir avec…", lambda: window.open_with(str(value)))
             menu.addAction("Afficher dans l’Explorateur", lambda: window.open_external(str(value)))
             menu.addAction("Ouvrir le dossier parent", lambda: window.open_external(str(value), directory=True))

@@ -36,6 +36,7 @@ class WorkspaceMixin:
         from fireblade.ui.navigation import AnalysisNavigator
         self.navigator = AnalysisNavigator()
         self.navigator.activated.connect(self.switch_document)
+        self.navigator.grouping_changed.connect(lambda value: self.set_navigation_option("navigation_grouping", value))
         self.workspace_splitter = QSplitter(Qt.Horizontal)
         self.workspace_splitter.addWidget(self.navigator)
         self.workspace_splitter.addWidget(body)

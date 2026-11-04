@@ -2,6 +2,7 @@
 
 | Besoin | Document |
 |---|---|
+| Personnaliser les panneaux, colonnes, recherches et ressources | [Espace de travail 0.2.2](guides/ESPACE-DE-TRAVAIL.md) |
 | Parser le grand pack d’artefacts bruts | [Exercice brut](guides/PACK-BRUT.md) et [choix des collectes](guides/COLLECTES-PACK-BRUT.md) |
 | Choisir entre petit pack, gros CSV et fichiers bruts | [Jeux de test](guides/JEUX-DE-TEST.md) |
 | Installer le programme et découvrir le dépôt | [README principal](../README.md) |

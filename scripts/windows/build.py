@@ -50,6 +50,7 @@ def main():
     for source, target in [(generated, "resources"), (root / "config" / "fireblade.toml", "resources/config"),
                            (root / "assets" / "startup", "resources/assets/startup"),
                            (root / "docs" / "guides" / "UTILISATION.md", "resources/docs/guides"),
+                           (root / "docs" / "guides" / "ESPACE-DE-TRAVAIL.md", "resources/docs/guides"),
                            (root / "docs" / "guides" / "TUTORIEL-COMPLET.md", "resources/docs/guides"),
                            (root / "docs" / "guides" / "LAYOUTS-TLE.md", "resources/docs/guides"),
                            (root / "docs" / "guides" / "CHRONOLOGIE-ET-SAUVEGARDES.md", "resources/docs/guides"),

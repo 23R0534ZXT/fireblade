@@ -36,7 +36,7 @@ def guess_time_column(headers, preferred=()):
     for index in preferred:
         if type(index) is int and 0 <= index < len(headers):return index
     normalized = [re.sub(r'[^a-z0-9]', '', name.casefold()) for name in headers]
-    for name in ('timestamputc', 'timecreatedutc', 'datetimeutc', 'timestamp', 'timecreated', 'datetime', 'eventtime', 'date', 'lastwritetimestamp', 'lastwritetime', 'creationtime'):
+    for name in ('timestamputc', 'timecreatedutc', 'datetimeutc', 'timestamp', 'timecreated', 'datetime', 'eventtime', 'date', 'time', 'horodatage', 'dateheure', 'lastwritetimestamp', 'lastwritetime', 'creationtime'):
         if name in normalized:return normalized.index(name)
     return next((i for i, name in enumerate(normalized) if name.endswith('utc')), None)
 

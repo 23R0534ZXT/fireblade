@@ -154,6 +154,7 @@ def run_stress(app,spec_path,report_path):
 
         def search():
             reset()
+            run.choose(run.window.search_scope,run.window.search_scope.findData('active'))
             run.text(run.window.search,'Enregistrement 137,')
             QTest.keyClick(run.window.search,Qt.Key_Return);run.settle()
             expect(count(run.window.view)==1,'Global search has wrong result count')

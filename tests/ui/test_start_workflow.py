@@ -54,6 +54,7 @@ def test_progressive_disk_keeps_workspace_interactive(qt_application, tmp_path, 
     monkeypatch.setattr(DiskCollection, 'publish_results', publish)
     window = Window(investigation_root=tmp_path/'cases', require_case=True)
     errors = []; window.error = errors.append
+    window.set_navigation_option('navigation_grouping', 'folders')
     case = window.create_investigation('Disk case')
     try:
         assert window.start_disk_analysis(root)

@@ -7,16 +7,36 @@
   },
   "method": "Full run followed by targeted rerun after updating GUI driver and test menu paths; distinct testcase IDs, latest result retained",
   "evidence_sha256": {
+    "full-suite.log": "f091a63af39d299634fc8b7d3c64aa2e58095dae4f55d80c20656a5251db19d6",
     "diagnostics.log": "cc10132a25cc8747b6fd1d2e59419acf91f17ab259b9948fcdeb6dbeea92a729",
     "release-guards.log": "ca996134af7c8ce7ed728b3fc5922c9e82c4add5cae159cc2a6da9397dc609b4",
     "full-suite-before-menu-driver.xml": "d8ccc30525a22bbd6ff46f863a18959391c5910cc1d0ccf38829f731fb9d3e58",
+    "fire-0.95.png": "e088e7695b19f1640c50f71b9d514685e5866b9bc8d58df5817dbda76dc5b8b4",
+    "fire-0.55.png": "d91cfc97aada7e0efa6070b9af791f835b0a2478e31a940ff2bbf424ff779419",
+    "multiple-folders.xml": "8b7f524e0255dca8191a1d301e8279ae81c26ff3f4299bcc4635bda595087fe2",
     "charge-250k.json": "6cf6cff2ca2723ccad1255d107b0ded62f4691cdc57a4b8d8b6804edf6fac451",
     "full-suite-before-menu-driver.log": "9e46eff637bfeba43c40b27ccd286f58f59cd224a187bef44112de7ca957e590",
     "menus.json": "0263b951bf6fc63b9bb851c0476269a0ccc53f9c3e10de960638954270ce90e2",
     "diagnostics.png": "ed69518ef2ad7539f89a119f8e47f08c3b5bc2719ef56608eb994bd5b7c9956f",
+    "full-suite.xml": "6dfa613b936ba37e3b6747ece05424633eacc151137cfd5f4165abef7fb4ecb8",
+    "polish.log": "e4f2a40efaf415af6f349413c910862ff8372d259a3b1e667fd91211dfae052c",
+    "multiple-folders.log": "b6b8d2257e32cdbf740fb77b8e39d7b6726d3522f38f3c29462443d0e78916bd",
     "latest-ui.xml": "ce232d57b1afc20da65c6e8f3cc9488343232701730fe87988d09df79591b5b3",
-    "home.png": "9938741ca73ce03a1c3e04baace1560cd60960938877d2deb7ed96fd7744d60a",
+    "fire-0.05.png": "b16cdf6634121b612aa105c09dc693b89be0804e2bb51f6b231d6dc1eec6c7b3",
+    "home.png": "9c2080957b52ff8f4b2f9df3917f3cd641cf871521d658b9ed1bdea94c19af33",
     "latest-ui.log": "de4642c8b95bceb818f13176e2a8ce0a0e1d2c35a0961b89edee47d87126774a",
-    "splash.png": "afd0a3cef6d3f543db537179e8c84d658b6aac3367d2c756449f4117f4cb113d"
+    "fire-0.25.png": "21eecb3b73f6ada33b947dcb2117a4f88189ae45040bd9626ce52583832f9495",
+    "splash.png": "f8035c5c1c65dc2d6a1e384c82fd9d78078f381ffa321ff5330513ae24ebb7a0"
+  },
+  "full_suite_before_copy_polish": {
+    "passed": 1242,
+    "skipped": 5,
+    "failed": 0,
+    "seconds": 410.15
+  },
+  "multiple_folder_and_animation_tests": {
+    "passed": 22,
+    "failed": 0,
+    "duration_s": 24.67
   }
 }

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QRadioButton
 
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.ui.alert_context import AlertContextMixin
+from fireblade.ui.folder_picker import choose_collection_directories
 from fireblade.runtime.resources import resource_path
 from fireblade.runtime.windows_paths import user_directory
 
@@ -48,6 +49,7 @@ class CollectionOrganizationDialog(QDialog):
 class CollectionMixin(AlertContextMixin):
     def setup_collection(self):
         self.collection = None
+        self._folder_queue = []
         self.workbench = QTabWidget()
         workspace = self.takeCentralWidget()
         workspace.setAutoFillBackground(True)
@@ -222,16 +224,33 @@ class CollectionMixin(AlertContextMixin):
     def parse_collection(self):
         if not self.require_active_case():return
         if not self.can_open_file():return
-        if self.disk_job is not None or self.disk_pool.activeThreadCount() or self._disk_pending:
+        if self.disk_job is not None or self.disk_pool.activeThreadCount() or self._disk_pending or self._folder_queue:
             self.statusBar().showMessage('Un import est déjà en cours. Attendez sa fin ou arrêtez-le.')
             return
-        path = QFileDialog.getExistingDirectory(self, 'Dossier contenant les artefacts forensic')
-        if not path:return
+        paths = choose_collection_directories(self)
+        if not paths:return
+        try:
+            paths = list(dict.fromkeys(str(Path(path).resolve(strict=True)) for path in paths))
+            if len(paths)>1000 or any(not Path(path).is_dir() for path in paths):
+                raise ValueError('Sélectionnez au plus 1000 dossiers existants.')
+        except (OSError, ValueError) as exc:
+            self.error(exc); return
+        if len(paths)>1 and self.active_investigation is None:
+            self.error('Ouvrez un case pour importer plusieurs dossiers.'); return
         dialog = CollectionOrganizationDialog(self)
         accepted = dialog.exec()
         organization = dialog.organization()
         dialog.deleteLater()
         if accepted != QDialog.DialogCode.Accepted:return
+        self._folder_queue = [(path, organization) for path in paths]
+        self.start_next_folder()
+
+    def start_next_folder(self):
+        if not self._folder_queue:return
+        if self.disk_job is not None or self.disk_pool.activeThreadCount() or not self.can_open_file():
+            QTimer.singleShot(150, self.start_next_folder)
+            return
+        path, organization = self._folder_queue.pop(0)
         parent = self.investigation_data_directory('Collectes') or user_directory()/'Collectes'
         parent.mkdir(parents=True, exist_ok=True)
         output = parent/(datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:8])
@@ -241,16 +260,17 @@ class CollectionMixin(AlertContextMixin):
             collection = Collection(path, output, self.toolpack(), settings, organization=organization)
             if self.active_investigation is not None:
                 collection.ready = self.disk_signals.documents.emit
-                self.start_background_collection(collection)
+                if not self.start_background_collection(collection):self._folder_queue.clear()
             else:
                 self.collection = collection
                 self.start_collection_job(collection.parse)
         except (OSError, ValueError) as exc:
             self.error(exc)
+            self._folder_queue.clear()
 
     def reopen_collection(self):
         if not self.can_open_file():return
-        if self.disk_job is not None:
+        if self.disk_job is not None or self._folder_queue:
             self.statusBar().showMessage('Attendez la fin de l’import avant de reprendre une autre collecte.')
             return
         path = QFileDialog.getExistingDirectory(self, 'Dossier de travail contenant collection.json')

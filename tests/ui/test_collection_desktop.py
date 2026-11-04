@@ -69,7 +69,7 @@ def test_import_prompt_applies_organization_and_cancel_does_not_start(qt_applica
     import fireblade.ui.collection as ui
     from PySide6.QtWidgets import QDialog
     source=tmp_path/'source';source.mkdir();(source/'data.csv').write_text('ID\n001\n')
-    monkeypatch.setattr(ui.QFileDialog,'getExistingDirectory',lambda *args:str(source))
+    monkeypatch.setattr(ui,'choose_collection_directories',lambda *args:[str(source)])
     monkeypatch.setattr(ui,'user_directory',lambda:tmp_path/'profile')
     window=Window(require_case=False);errors=[];window.error=errors.append
     try:

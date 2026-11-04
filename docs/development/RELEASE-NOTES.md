@@ -8,6 +8,8 @@ Le bilan de parsing reste dans **Imports**. Le seuil et le lancement d’Hayabus
 
 ## Dossiers traités en arrière-plan
 
+- Sélection de plusieurs dossiers avec **Ctrl/Shift** dans le sélecteur. Ils sont traités successivement dans le même case ; Arrêter annule aussi les dossiers encore en attente.
+
 - Les dossiers utilisent le même traitement de fond que les disques. Un seul import tourne à la fois ; la grille reste utilisable et le bouton Arrêter conserve les résultats terminés.
 - Par défaut, chaque résultat fermé et vérifié apparaît progressivement, sans changer l’analyse déjà consultée.
 - Les regroupements par artefact ou dans une grille unique restent disponibles ; leurs résultats apparaissent une fois le regroupement terminé.
@@ -18,7 +20,7 @@ Le bilan de parsing reste dans **Imports**. Le seuil et le lancement d’Hayabus
 - Réglage par défaut : **un thread et 128 Mio par base DuckDB**. Le parsing de fond reçoit la moitié du budget configuré, avec un minimum de 64 Mio, et un thread.
 - Les résultats sont intégrés par lots de seize ; les sauvegardes intermédiaires sont espacées et le minuteur de réception s’arrête au repos.
 - Ces budgets ne plafonnent pas toute la RAM de Python, Qt ni des moteurs externes. La configuration utilisateur reste prioritaire.
-- Animation vectorielle de démarrage de **4,8 secondes**, désactivable dans les préférences d’organisation.
+- Animation vectorielle de démarrage de **10 secondes**, avec braises, allumage progressif, flammes, fumée et transition vers le logo, désactivable dans les préférences d’organisation.
 
 ## Huit constats d’audit corrigés
 

@@ -1108,7 +1108,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         QApplication.clipboard().setText(out.getvalue())
 
     def closeEvent(self, event):
-        if getattr(self, "disk_job", None) is not None or self.disk_pool.activeThreadCount() or self._disk_pending:
+        if getattr(self, "disk_job", None) is not None or self.disk_pool.activeThreadCount() or self._disk_pending or self._folder_queue:
             self.statusBar().showMessage("Arrêtez ou attendez l’indexation du disque avant de fermer.")
             event.ignore()
             return

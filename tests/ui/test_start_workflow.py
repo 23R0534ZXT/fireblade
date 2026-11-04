@@ -36,7 +36,7 @@ def test_case_gate_and_two_choices(qt_application, tmp_path):
         assert window.can_open_file(allow_without_case=True)
         data = window.create_investigation('First case')
         assert data and window.workbench.isTabEnabled(0)
-        assert 'Que souhaitez-vous analyser' in window.welcome_title.text()
+        assert window.welcome_title.text() == 'First case'
         assert window.close_investigation()
         assert not window.workbench.isTabEnabled(0)
     finally: window.close()

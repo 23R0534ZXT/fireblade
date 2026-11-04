@@ -36,7 +36,7 @@ def test_empty_case_has_both_entry_points_and_permanent_save(qt_application):
         assert window.workbench.currentIndex()==0
         assert 'Enquête intuitive' in window.welcome_title.text()
         labels={b.text() for b in window.findChildren(QPushButton) if b.isVisible()}
-        assert {'Analyser un disque logique ou un disque complet…','Analyser un fichier de données…'}<=labels
+        assert {'Analyser un disque…','Importer un fichier…'}<=labels
         assert window.save_case_action in window.main_toolbar.actions()
         window.save_case_action.trigger()
         assert window.last_case_save.text().startswith('Case enregistré à ')

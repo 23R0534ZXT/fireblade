@@ -135,7 +135,7 @@ class InvestigationMixin:
         data=self.active_investigation
         self.case_badge.setText('Case : '+data['name'][:45] if data else 'Aucun case actif')
         self.case_badge.setToolTip(data['name'] if data else 'Ouvrez ou créez un dossier d’enquête dans Cases.')
-        self.welcome_title.setText('Case : '+data['name']+'\nQue souhaitez-vous analyser ?' if data else 'Créez ou ouvrez un case pour commencer')
+        self.welcome_title.setText(data['name'] if data else 'Ouvrir ou créer un case')
         self.welcome_title.setWordWrap(True)
         if data:
             stamp = datetime.fromisoformat(data['updated']).astimezone().strftime('%H:%M:%S')

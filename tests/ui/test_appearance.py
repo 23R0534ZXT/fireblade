@@ -89,3 +89,28 @@ def test_GUI_driver_sort_editor_and_note_dialog(qt_application,tmp_path):
     finally:
         code=run.finish(error)
         if error is None:assert code==0
+
+
+def test_GUI_driver_applies_successive_nested_sort_commands(qt_application,tmp_path):
+    from fireblade.ui.advanced_dialogs import SortDialog
+    source=tmp_path/'sorts.csv'
+    source.write_text('Timestamp,Kind,Number\n2026-01-02,B,2\n2026-01-01,A,1\n2026-01-03,A,3\n')
+    run=GuiRun(qt_application,tmp_path/'qa/report.json','successive menu commands')
+    error=None
+    try:
+        run.import_csv(source,tmp_path/'sorts.timeline')
+        for column,kind,descending,wanted in [(2,'number',True,3),(1,'text',False,2),(0,'timestamp',False,2),(0,'timestamp',True,3)]:
+            def edit(dialog):
+                assert isinstance(dialog,SortDialog)
+                while dialog.table.rowCount():
+                    dialog.table.setCurrentCell(0,0)
+                    QTest.mouseClick(next(b for b in dialog.findChildren(QPushButton) if b.text()=='Retirer'),Qt.LeftButton)
+                QTest.mouseClick(next(b for b in dialog.findChildren(QPushButton) if b.text()=='Ajouter'),Qt.LeftButton)
+                run.choose(dialog.table.cellWidget(0,0),column)
+                combo=dialog.table.cellWidget(0,1);run.choose(combo,combo.findData(kind))
+                run.choose(dialog.table.cellWidget(0,2),int(descending));run.accept(dialog)
+            run.modal(edit);run.menu('Affichage','Tri sur plusieurs colonnes…')
+            assert run.window.view.sorts[0].kind==kind
+            assert run.window.model.node(run.window.model.index(0,0)).values[0]==wanted
+    except Exception as exc:error=exc;raise
+    finally:run.finish(error)

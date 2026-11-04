@@ -85,6 +85,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REQUESTED_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: python -m scripts.release --exe dist/Fireblade.exe
+      - name: Update README with the verified published release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python -m scripts.update_release_readme
 
   native_storage:
     name: Native Windows UNC and long paths

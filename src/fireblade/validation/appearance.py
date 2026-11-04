@@ -56,12 +56,14 @@ def run_appearance(app,report_path):
         assert app.platformName()=='windows' and run.report['frozen']
         run.report['scale_factor']=run.window.devicePixelRatioF()
         def welcome():
+            run.window.workbench.setCurrentIndex(0)
+            run.app.processEvents()
             bar=run.window.menuBar()
             first=bar.actionGeometry(bar.actions()[0]).adjusted(4,2,-4,-2)
             result={'menu':rendered_contrast(bar,first)}
-            button=next(b for b in run.window.findChildren(QPushButton) if b.isVisible() and 'Ouvrir' in b.text())
+            button=next(b for b in run.window.findChildren(QPushButton) if b.isVisible() and 'Importer un fichier' in b.text())
             result['open_button']=rendered_contrast(button,button.rect().adjusted(30,3,-5,-3))
-            tools=[b for b in run.window.findChildren(QToolButton) if b.isVisible() and 'Ouvrir' in b.text()]
+            tools=[b for b in run.window.findChildren(QToolButton) if b.isVisible() and 'Importer un fichier' in b.text()]
             result['toolbar']=rendered_contrast(tools[0],tools[0].rect().adjusted(28,3,-4,-3))
             disabled=next(b for b in run.window.findChildren(QToolButton) if b.isVisible() and 'Exporter' in b.text())
             assert not disabled.isEnabled()

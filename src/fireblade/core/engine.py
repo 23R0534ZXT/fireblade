@@ -240,42 +240,63 @@ class Case:
                     incoming = self.utf8_input(source, encoding)
                 with incoming as input_path:
                     self.check_cancelled()
-                    relation = self.db.read_csv(str(input_path), **options)
-                    headers = relation.columns
-                    if not headers:
-                        raise ValueError("Aucune colonne dans le CSV")
-                    if delimiter is None and len(headers) == 1:
-                        self.validate_single_column_header(input_path)
-                    projections = [f'"{h.replace(chr(34), chr(34)*2)}" AS "c{i}"' for i, h in enumerate(headers)]
-                    progress("Écriture des enregistrements sur disque…")
-                    self.check_cancelled()
-                    chunk_bytes = min(csv_chunks.CHUNK_BYTES, self.settings.memory_mb * 1024 * 1024 // 16)
-                    if input_path.stat().st_size <= chunk_bytes:
-                        relation.project('row_number() OVER () AS "__row_id", ' + ", ".join(projections)).create("events")
-                    else:
-                        # Release the original reader's sample buffers before the
-                        # bounded queries. Explicit IDs preserve source order.
-                        del relation
-                        separator = delimiter or self.db.execute(
-                            'SELECT Delimiter FROM sniff_csv(?, header=true, skip=0, comment=\'\', '
-                            'quote=\'"\', escape=\'"\', sample_size=20480)', [str(input_path)]).fetchone()[0]
-                        written = 0
-                        self.db.execute('CREATE TABLE events (__row_id BIGINT, ' +
-                                        ', '.join(f'"c{i}" VARCHAR' for i in range(len(headers))) + ')')
-                        chunks = csv_chunks.csv_chunks(input_path, headers, separator, self.path.parent,
-                                                       chunk_bytes, self.check_cancelled)
-                        try:
-                            for chunk, records in chunks:
-                                self.check_cancelled()
-                                batch_options = dict(options, delimiter=',')
-                                batch = self.db.read_csv(str(chunk), **batch_options)
-                                batch = batch.project(f'row_number() OVER () + {written} AS "__row_id", ' + ", ".join(projections))
-                                batch.insert_into('events')
-                                del batch
-                                written += records
-                                progress(f'Import sur disque · {written:,} enregistrements écrits…')
-                        finally:
-                            chunks.close()
+                    headers = None
+                    relation = batch = None
+                    try:
+                        relation = self.db.read_csv(str(input_path), **options)
+                        headers = relation.columns
+                        if not headers:
+                            raise ValueError("Aucune colonne dans le CSV")
+                        if delimiter is None and len(headers) == 1:
+                            self.validate_single_column_header(input_path)
+                        projections = [f'"{h.replace(chr(34), chr(34)*2)}" AS "c{i}"' for i, h in enumerate(headers)]
+                        progress("Écriture des enregistrements sur disque…")
+                        self.check_cancelled()
+                        chunk_bytes = min(csv_chunks.CHUNK_BYTES, self.settings.memory_mb * 1024 * 1024 // 16)
+                        if input_path.stat().st_size <= chunk_bytes:
+                            relation.project('row_number() OVER () AS "__row_id", ' + ", ".join(projections)).create("events")
+                        else:
+                            # Release the original reader's sample buffers before the
+                            # bounded queries. Explicit IDs preserve source order.
+                            del relation
+                            separator = delimiter or self.db.execute(
+                                'SELECT Delimiter FROM sniff_csv(?, header=true, skip=0, comment=\'\', '
+                                'quote=\'"\', escape=\'"\', sample_size=20480)', [str(input_path)]).fetchone()[0]
+                            written = 0
+                            self.db.execute('CREATE TABLE events (__row_id BIGINT, ' +
+                                            ', '.join(f'"c{i}" VARCHAR' for i in range(len(headers))) + ')')
+                            chunks = csv_chunks.csv_chunks(input_path, headers, separator, self.path.parent,
+                                                           chunk_bytes, self.check_cancelled)
+                            try:
+                                for chunk, records in chunks:
+                                    self.check_cancelled()
+                                    batch_options = dict(options, delimiter=',')
+                                    batch = self.db.read_csv(str(chunk), **batch_options)
+                                    batch = batch.project(f'row_number() OVER () + {written} AS "__row_id", ' + ", ".join(projections))
+                                    batch.insert_into('events')
+                                    del batch
+                                    written += records
+                                    progress(f'Import sur disque · {written:,} enregistrements écrits…')
+                            finally:
+                                chunks.close()
+                    except duckdb.OutOfMemoryException:
+                        # Wide parser exports can exhaust native CSV vectors even
+                        # for small files. Retry using bounded, parameter-bound rows.
+                        if not headers:
+                            with input_path.open(encoding='utf-8-sig',newline='') as probe:
+                                if not delimiter:
+                                    sample=probe.read(65536);probe.seek(0)
+                                    try:delimiter=csv.Sniffer().sniff(sample,delimiters=',;\t|').delimiter
+                                    except csv.Error:delimiter=','
+                                headers=next((row for row in csv.reader(probe,delimiter=delimiter,strict=True) if row),None)
+                            # Avoid guessing native renaming for ambiguous headers.
+                            if not headers or any(not h for h in headers) or len({h.casefold() for h in headers})!=len(headers):raise
+                        relation = batch = None
+                        self.db.execute('ROLLBACK')
+                        self.check_cancelled()
+                        self.db.execute('BEGIN')
+                        progress('Import à mémoire réduite…')
+                        self._import_csv_rows(input_path, headers, delimiter, progress)
                 count = self.db.execute("SELECT count(*) FROM events").fetchone()[0]
                 progress("Vérification de l’intégrité de la source…")
                 after_sha = digest()
@@ -307,6 +328,34 @@ class Case:
                         # BEGIN may itself have failed; preserve the original error.
                         pass
                 raise
+
+    def _import_csv_rows(self, source, headers, delimiter, progress):
+        """Atomic low-memory fallback; preserve original cells and explicit row IDs."""
+        csv.field_size_limit(max(csv.field_size_limit(), 16*1024*1024))
+        self.db.execute('CREATE TABLE events (__row_id BIGINT, '+
+                        ', '.join(f'"c{i}" VARCHAR' for i in range(len(headers)))+')')
+        statement = 'INSERT INTO events VALUES ('+','.join('?' for _ in range(len(headers)+1))+')'
+        with source.open(encoding='utf-8-sig', newline='') as incoming:
+            if not delimiter:
+                sample = incoming.read(65536); incoming.seek(0)
+                delimiter = csv.Sniffer().sniff(sample, delimiters=',;\t|').delimiter
+            reader = csv.reader(incoming, delimiter=delimiter, strict=True)
+            next((row for row in reader if row), None)
+            pending, size, written = [], 0, 0
+            for row in reader:
+                self.check_cancelled()
+                if not row:continue
+                if len(row) != len(headers):
+                    raise ValueError(f'CSV incohérent à la ligne {reader.line_num}')
+                written += 1
+                # DuckDB's default null string is the empty CSV field, quoted or not.
+                pending.append([written]+[value if value else None for value in row])
+                size += sum(len(value) for value in row)
+                if len(pending)>=64 or size>=1024*1024:
+                    self.db.executemany(statement, pending)
+                    pending, size = [], 0
+                    progress(f'Import sur disque · {written:,} enregistrements écrits…')
+            if pending:self.db.executemany(statement, pending)
 
     def add_derived_columns(self, definitions):
         """Add declarative columns atomically; source metadata/bytes stay intact."""
@@ -536,11 +585,33 @@ class Case:
             else:
                 order = self.order(view)
                 key = (where, tuple(args), order, self._bookmark_revision)
-                if (self.settings.cache_sorted_pages
+                if (self.settings.cache_sorted_pages and not getattr(self, '_wide_pages', False)
                         and (offset >= self.settings.max_loaded_rows or self._page_cache_key == key)):
                     return self.sorted_page(where, args, order, key, offset, limit)
                 sql = f"SELECT * FROM events{where}{order} LIMIT ? OFFSET ?"
-            return self.db.execute(sql, args + [limit, offset]).fetchall()
+            if len(path) >= len(view.groups) and getattr(self, '_wide_pages', False):
+                return self._page_columns(view, where, args, offset, limit)
+            try:
+                return self.db.execute(sql, args + [limit, offset]).fetchall()
+            except duckdb.OutOfMemoryException:
+                if len(path) < len(view.groups):raise
+                self._wide_pages = True
+                return self._page_columns(view, where, args, offset, limit)
+
+    def _page_columns(self, view, where, args, offset, limit):
+        """Read a wide page in column batches without raising the DB memory budget."""
+        ids = [row[0] for row in self.db.execute('SELECT __row_id FROM events'+where+
+               self.order(view)+' LIMIT ? OFFSET ?', args+[limit,offset]).fetchall()]
+        if not ids:return []
+        rows = {row_id:[row_id]+[None]*len(self.headers) for row_id in ids}
+        placeholders = ','.join('?' for _ in ids)
+        for start in range(0,len(self.headers),32):
+            self.check_cancelled()
+            end = min(start+32,len(self.headers))
+            columns = ','.join(self.column(i) for i in range(start,end))
+            for record in self.db.execute(f'SELECT __row_id,{columns} FROM events WHERE __row_id IN ({placeholders})',ids).fetchall():
+                rows[record[0]][start+1:end+1] = record[1:]
+        return [tuple(rows[row_id]) for row_id in ids]
 
     def outline_page(self, view, offset=0, limit=None, progress=lambda _: None):
         from fireblade.core.outline import outline_page

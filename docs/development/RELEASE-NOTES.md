@@ -40,3 +40,10 @@ La publication de l’EXE est conditionnée aux tests Windows Python 3.11/3.12/3
 Les tests Linux comprennent les régressions d’audit, les trois organisations d’import de dossier, les requêtes pendant le parsing, la réouverture du case et les parcours de menus. Un essai de dossier de 250 000 lignes a aussi conservé la source et le traitement des événements Qt, avec les budgets DuckDB de 128/64 Mio ; ses mesures ne qualifient pas toutes les machines virtuelles.
 
 Fireblade reste un prototype non signé. Les disques sont lus pour extraire les artefacts pris en charge : pas d’acquisition complète, de déchiffrement, de carving ni de récupération des fichiers supprimés. Les formats et périphériques non exercés ne sont pas qualifiés par ces résultats.
+
+## Mémoire et stockage
+
+- Si le lecteur CSV natif atteint son budget, l’import reprend dans une transaction neuve avec des lots de lignes liés par paramètres. Les pages larges sont lues par lots de colonnes. Le budget mémoire n’est pas augmenté automatiquement.
+- **Cases → Archiver et libérer l’espace** crée une archive portable vérifiée, garde une référence dans le catalogue, puis retire les fichiers locaux. Les preuves externes restent intactes. La restauration se lance depuis le catalogue.
+- Les bases fermées sont archivées directement après checkpoint, sans seconde copie intégrale sur le disque. Les fichiers complémentaires du case sont conservés dans l’archive.
+- Le README est désormais en anglais et présente les capacités, les limites et les procédures de manière structurée.

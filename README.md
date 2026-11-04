@@ -1,131 +1,112 @@
-# Fireblade 0.2.1
+# Fireblade
 
-[![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
+[![Windows validation](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 
-**Un espace d’investigation local pour analyser des disques, explorer des artefacts Windows et Linux et examiner des exports de données.**
+**A local DFIR workspace for forensic artifact analysis and case management.**
 
-**[Télécharger Fireblade 0.2.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.2.0/Fireblade.exe)** · [Notes et SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.0) · [Qualification Windows réussie](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489) · [Donner un retour](https://github.com/23R0534ZXT/fireblade/issues/6)
+Fireblade brings Windows artifacts, Linux logs, detection results and tabular evidence into a single desktop investigation workspace. Parse collected data, investigate timelines, annotate findings and export reproducible results while retaining source references and integrity information.
 
-**La 0.2.1 est en préparation et qualification.** Le téléchargement disponible ci-dessus reste la 0.2.0.
+[Releases](https://github.com/23R0534ZXT/fireblade/releases) · [Documentation](docs/README.md) · [Report an issue](https://github.com/23R0534ZXT/fireblade/issues/new/choose) · [Release notes](docs/development/RELEASE-NOTES.md)
 
-**La 0.2.0 est publiée.** Téléchargez directement **Fireblade.exe**, puis lancez-le sous Windows x64. Le fichier publié est exactement celui qui a passé les qualifications Windows. Les packs de données ci-dessous sont des téléchargements séparés.
+> Download the Windows x64 executable from [GitHub Releases](https://github.com/23R0534ZXT/fireblade/releases). Each published build identifies its qualified commit and SHA-256. The desktop interface and most user guides are currently in French.
 
-Fireblade s’adresse aux analystes DFIR et aux personnes qui apprennent l’investigation numérique. Il rassemble les résultats dans des dossiers d’enquête persistants : filtrer les données, retrouver les événements liés à une alerte, conserver des notes et exporter ses constatations.
+![Fireblade investigation workspace](docs/assets/fireblade-02-workspace.png)
 
-![Fireblade 0.2 — arbre des sources et espace d’analyse](docs/assets/fireblade-02-workspace.png)
+*Investigation workspace with demonstration data. The screenshot predates the revised 0.2.1 menus.*
 
-*Interface en français. Capture de l’application avec des données de démonstration, rendue sous Linux hors écran.*
+## Capabilities
 
-> **Fireblade 0.2.0 a passé les contrôles Windows** : 1 169 tests réussis sur chacune des versions Python 3.11, 3.12 et 3.13, EXE autonome, lecteurs, chemins UNC/longs, apparences, scénario de plus de 3 Gio et parcours à 320 analyses. [Résultats et artefacts](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489).
+| Area | Features |
+|---|---|
+| Evidence intake | Windows artifacts, raw Linux logs and rotations, CatScale collections, CSV/TSV/TXT and XLS/XLSX exports |
+| Disk triage | Read-only extraction of supported artifacts from mounted volumes, RAW/E01 images and physical-device paths |
+| Analysis | Filtering, grouping, sorting, calculated columns, bookmarks, notes and source provenance |
+| Detection | Embedded Hayabusa rules, EVTX alert context and bulk IOC searches |
+| Timelines | Cross-analysis chronology, date normalization and event correlation |
+| Case management | Persistent workspaces, recovery history, verified portable archives and cold storage |
+| Reporting | CSV/XLSX exports, annotations and HTML/PDF investigation reports |
 
-## Nouveautés de la 0.2
+Windows parsing integrates EZ Tools, RECmd, Shellbags and WebCache readers. Linux support covers common `/var/log/` formats and CatScale output. See the [feature reference](docs/guides/FONCTIONNALITES.md) and [format compatibility](docs/development/COMPATIBILITE.md) for supported inputs and limitations.
 
-- **Un case obligatoire au démarrage** : créez une enquête ou reprenez un case existant avant de commencer.
-- **Deux parcours depuis le case** : analyser un fichier de données ou analyser un disque logique / disque complet.
-- **Analyse de disque en arrière-plan** : volumes montés, dossiers contenant les collectes et partitions, images RAW / E01 ou chemins de périphériques physiques. Les artefacts reconnus sont copiés en lecture seule puis traités par les lecteurs existants.
-- **Résultats disponibles progressivement** : l’espace de travail s’ouvre immédiatement ; les analyses terminées s’ajoutent sans changer l’onglet consulté. Une progression en bas à droite indique l’étape en cours, avec un bouton d’arrêt.
-- **Arbre des sources** : disque → partition → dossiers → analyses, ou regroupement par type d’artefact ou en liste.
-- **Espace de travail configurable** dans **Affichage → Organiser l’espace de travail** : arbre à gauche ou à droite, panneaux visibles, position des détails et barres d’outils ; préférences enregistrées.
-- **Animation de démarrage**, désactivable depuis le menu d’organisation.
+## Getting started
 
-Les copies d’artefacts, leur provenance et les références de l’arbre sont conservées dans les archives portables. Les lecteurs de systèmes de fichiers intégrés sont NTFS, FAT et ext ; leur qualification et celle des sources physiques/E01 sont détaillées dans le guide. Cette version ne fait ni acquisition, ni déchiffrement, ni récupération de fichiers supprimés.
+1. Download **Fireblade.exe** from a published [Windows x64 release](https://github.com/23R0534ZXT/fireblade/releases). Python, Excel and a separate .NET installation are not required.
+2. Create or open a case.
+3. Add evidence from **Analyse**: **Importer un fichier**, **Parser un dossier** or **Analyser un disque**. Folder selection supports **Ctrl/Shift**.
+4. Explore completed analyses as background parsing continues. Filter records, add notes and investigate related events.
+5. Save the case, export findings or create a verified portable archive.
 
-[Guide des disques et de l’organisation](docs/guides/DISQUES-ET-ESPACE-DE-TRAVAIL.md) · [Notes 0.2.0](docs/development/RELEASE-NOTES.md) · [Validation locale](docs/validation/reports/20261103-v02-case-disk-linux.md)
+For a first evaluation, use the sample data below. The application remains an **unsigned prototype**; Windows may display a SmartScreen prompt. Release notes identify the qualified source commit and the executable's SHA-256.
 
-## Ce que vous pouvez faire
+## Version 0.2.1
 
-- **Importer des artefacts Windows** avec 13 EZ Tools embarqués, 70 plugins RECmd et des lecteurs dédiés Shellbags et WebCache.
-- **Lire les journaux Linux `/var/log/`** : fichiers et rotations compressées, syslog, audit, web, JSON, journal systemd et connexions Linux. Les limites et formats non décodés sont [documentés](docs/guides/JOURNAUX-LINUX.md).
-- **Explorer une collecte CatScale**, en dossier ou en archive, organisée en sept familles.
-- **Examiner les alertes Hayabusa** et leur contexte EVTX, avec retour à l’événement source.
-- **Filtrer, grouper et annoter** des CSV, TSV, TXT délimités, XLS et XLSX ; les requêtes portent sur le résultat complet, pas seulement la page affichée.
-- **Construire une chronologie et chercher des IOC**, puis produire un rapport HTML/PDF ou un export CSV/XLSX vérifié.
-- **Reprendre et transporter une enquête** avec les sauvegardes de session et les archives de dossiers portables.
+- Revised menus separate case management, analysis, detection and exports.
+- Multiple folders are queued and parsed sequentially in the background.
+- Verified results appear progressively without replacing the active analysis.
+- Import diagnostics are available on demand from **Aide**, rather than a permanent primary tab.
+- Wide CSV imports can fall back to bounded row insertion; wide pages are read in column batches when the native query exceeds its memory budget.
+- **Archiver et libérer l’espace** creates and verifies an archive before removing local case work files. Original evidence outside the case is retained; the archive remains available for restoration.
+- NTFS traversal, SQLite companion journals, analysis-file validation and export destination protection include the audit fixes.
+- The optional ten-second startup sequence uses locally bundled footage and bounded frame decoding.
 
-[Référence complète : fonctionnalités, captures et limites](docs/guides/FONCTIONNALITES.md) · [Compatibilité Timeline Explorer](docs/development/COMPATIBILITE.md)
+[Implementation and validation report](docs/validation/reports/20261104-v021-ergonomie.md) · [Audit fixes](docs/validation/reports/20261104-v020-correctifs.md)
 
-## Choisir un jeu d’essai
+## Resource and storage management
 
-| Jeu | Taille | Usage |
-|---|---|---|
-| [Découverte v1](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) | ~5,1 Mo ZIP, ~60,6 Mo extraits | Premier essai des formats et de l’interface |
-| [**Grand pack BRUT v1**](https://github.com/23R0534ZXT/fireblade/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip) | **~521 Mo ZIP, 3,44 Go de données brutes extraites** | Parser des MFT, ruches, EVTX, Prefetch, LNK et autres artefacts natifs ; scénario Linux en journaux bruts, aucun CSV d’analyse |
-| [CSV de charge](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/Fireblade-test-3GiB.zip) | 3 Gio de CSV | Tester le volume de la grille, des filtres et des exports ; ce n’est pas une collecte native |
+Fireblade uses disk-backed DuckDB databases and paged views. The default database budget is **128 MB with one thread**; background parsing receives half that budget, with a 64 MB minimum. Existing user configuration takes precedence.
 
-Le grand pack réunit **2,37 Go d’artefacts Windows publics** et **1,07 Go de journaux Linux synthétiques**. Les collections Windows restent indépendantes. Son contrôle Windows a soumis 2 795 fichiers au parsing et vérifié exactement 7 585 912 lignes Linux. **16 refus de lecteurs** et 48 diagnostics d’avertissement ou de sortie vide sont consignés dans le rapport ; ils ne sont pas comptés comme des réussites.
+These settings limit DuckDB, **not total application memory**. Qt, Python and external parsers have separate overhead. Wide tables and expensive queries may require additional resources. The low-memory import path prioritizes bounded memory over speed.
 
-[Guide du grand pack brut](docs/guides/PACK-BRUT.md) · [Choisir une collecte et connaître les paramètres de validation](docs/guides/COLLECTES-PACK-BRUT.md) · [Rapport, empreinte et limites](https://github.com/23R0534ZXT/fireblade/releases/tag/raw-artifacts-v1)
+Parsed results, source CSVs and analysis databases consume disk space. Closing a case or marking it archived does not remove these files. Use **Archiver et libérer l’espace** to create verified cold storage, preferably on another volume. The operation streams closed databases without creating a second full database copy. Enough space is still required for the compressed archive itself. Retain original acquisitions independently.
 
-## Nouveautés de la 0.2.1 (qualification en cours)
+Example configuration:
 
-Les sources de développement proposent désormais **Analyse → Parser un dossier…**, directement depuis l’accueil et la grille. Fichiers, dossiers et disques sont réunis dans Analyse ; la gestion des enquêtes reste dans Case, les recherches dans Détection et les sorties dans Exporter. Le suivi des imports et la détection EVTX ont chacun leur écran. Les vérifications d’intégrité et de couverture se consultent à la demande dans **Aide → Vérifier les imports et diagnostics…**, sans onglet principal permanent.
+```toml
+[resources]
+memory_mb = 128
+threads = 1
+page_size = 250
+max_loaded_rows = 1000
+export_batch_rows = 2048
+```
 
-Le sélecteur accepte plusieurs dossiers avec Ctrl/Shift. Le parsing des dossiers utilise le traitement de fond des disques : un seul import à la fois, arrêt possible, résultats vérifiés affichés progressivement par défaut. Les regroupements par artefact ou dans une seule grille se construisent en arrière-plan et s’ouvrent une fois terminés. Les réglages par défaut passent à un thread et 128 Mio par base DuckDB ; le parsing de fond utilise 64 Mio avec ces réglages. Il s’agit de budgets de base de données, pas d’une limite de RAM de tout le processus ni des moteurs externes. L’animation cinématographique dure 10 secondes et reste désactivable.
+[Disk-analysis guide](docs/guides/DISQUES-ET-ESPACE-DE-TRAVAIL.md) · [Cases, backups and portable archives](docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md)
 
-Ces changements et les correctifs d’audit ne sont pas encore inclus dans l’EXE 0.2.0 téléchargeable ci-dessus.
+## Sample datasets
 
-## Essayer Fireblade 0.2.0 en 15 minutes
+| Dataset | Purpose |
+|---|---|
+| [Discovery pack](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) | Small examples for learning the interface and supported formats |
+| [Raw artifact pack](https://github.com/23R0534ZXT/fireblade/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip) | Windows artifacts and synthetic Linux logs for exercising parsers |
+| [3 GiB CSV](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/Fireblade-test-3GiB.zip) | Large-table import, querying and export validation |
 
-1. Téléchargez **Fireblade.exe** avec le lien 0.2.0 ci-dessus, puis lancez-le sous **Windows x64**. Python, Excel et une installation préalable de .NET ne sont pas nécessaires.
-2. Au démarrage, **créez un case ou ouvrez une enquête existante**. Toute analyse est rattachée à ce dossier d’enquête.
-3. Téléchargez et décompressez le [pack de découverte (~5,1 Mo)](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip). Son fichier **LIRE-MOI.md** décrit les données et les avertissements attendus.
-4. Depuis l’accueil du case, choisissez **Analyser un fichier de données…** et ouvrez un CSV du dossier `03-Exports`. Filtrez une colonne, ajoutez un signet et une note.
-5. Pour explorer un dossier d’artefacts sauvegardés, choisissez **Analyser un disque logique ou un disque complet… → Disque logique / volume monté**. Sélectionnez le dossier source et conservez le case hors de ce dossier. Les analyses terminées apparaissent progressivement dans l’arbre ; l’indicateur en bas à droite suit le traitement. Pour une image RAW/E01, choisissez le type de source correspondant et consultez les [limites des lecteurs](docs/guides/DISQUES-ET-ESPACE-DE-TRAVAIL.md).
-6. Personnalisez les panneaux avec **Affichage → Organiser l’espace de travail**, enregistrez le case, fermez-le puis rouvrez-le. Partagez vos impressions dans [l’issue des testeurs](https://github.com/23R0534ZXT/fireblade/issues/6).
+[Dataset provenance and limitations](docs/guides/JEUX-DE-TEST.md) · [Raw-pack guide](docs/guides/PACK-BRUT.md)
 
-L’import de collecte classique reste disponible via **Fichier → Importer un dossier de collecte…**.
+## Validation and scope
 
-Ce petit pack couvre des exemples de formats : il ne contient pas une collecte complète de poste ni un incident unique. Le [CSV de 3 Gio](docs/guides/TESTER-3GIB.md) sert au test de charge. [Comprendre les deux jeux et leurs limites](docs/guides/JEUX-DE-TEST.md).
+The Windows pipeline covers Python 3.11/3.12/3.13, the standalone executable, native readers, UNC and long paths, display scaling, a CSV larger than 3 GiB and a workspace containing 320 analyses. Version-specific results are linked from each release and the validation reports.
 
-**F1** ouvre le guide rapide ; **Aide → Tutoriel complet** présente les autres parcours.
+Fireblade is an analysis workspace, not a disk-acquisition or deleted-file-recovery tool. It does not provide decryption or carving. Reader errors, unsupported files and partial results remain explicit. Alerts require analyst review; automated checks do not establish complete acquisition coverage or prove the absence of malicious activity.
 
-Le programme est encore un **prototype non signé** : Windows peut afficher un avertissement au lancement. Les [notes de la release 0.2.0](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.0) donnent le commit qualifié et l’empreinte SHA-256 du téléchargement. Le premier démarrage extrait les ressources embarquées ; prévoyez de l’espace pour les analyses et leurs fichiers temporaires.
+Optional .NET plugins run with the user's permissions. Use trusted assemblies and consult their compatibility and licensing requirements.
 
-[![Aperçu du parcours Fireblade](docs/assets/fireblade-demo.gif)](docs/guides/DEMONSTRATION.md)
+## Development
 
-[Voir la démonstration commentée de 75 secondes](docs/assets/fireblade-demo.mp4) · [Contexte et reproduction](docs/guides/DEMONSTRATION.md)
+```bash
+python -m venv .venv
+# Activate the environment for your platform.
+python -m pip install -e '.[dev]'
+python -m pytest -q
+python -m ruff check src scripts tests
+fireblade
+```
 
-*Cette démonstration présente le parcours d’analyse antérieur à la 0.2 ; le nouvel accueil impose désormais un case.*
+Source execution supports development and testing; the distributable application targets Windows x64. Native Windows qualification is required before publication.
 
-## Retours et problèmes
+[Contributing](CONTRIBUTING.md) · [Architecture](docs/development/ARCHITECTURE.md) · [Build and publication](docs/development/PUBLICATION.md) · [User guide](docs/guides/UTILISATION.md)
 
-Les premiers retours de testeurs francophones sont les bienvenus, y compris de débutants.
+## License
 
-- **Impressions et questions sur le premier essai** : [commenter l’issue d’accueil](https://github.com/23R0534ZXT/fireblade/issues/6).
-- **Bug précis ou amélioration** : [ouvrir une issue avec le formulaire adapté](https://github.com/23R0534ZXT/fireblade/issues/new/choose). Vérifiez si le problème existe déjà ; un problème par issue facilite son suivi.
-- Indiquez **Aide → À propos**, le tag de la release, votre version de Windows et les étapes du problème. Utilisez le pack public pour les exemples et masquez les informations sensibles.
+Fireblade's code is licensed under [MIT](LICENSE). Embedded tools and dependencies retain their own licenses, including AGPL components. Notices are available in **Aide → Licences**, and Hayabusa sources can be exported from the Help menu. The startup footage is public domain and credited in [its provenance record](assets/startup/SOURCES.json).
 
-Un compte GitHub est nécessaire pour publier un retour.
-
-## Validation et limites
-
-La [0.2.0 corrigée sous Windows](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489) a passé les tests Python 3.11/3.12/3.13 (1 169 tests réussis par version), la construction de l’EXE autonome, les lecteurs, les chemins UNC/longs, les contrôles visuels, le scénario de plus de 3 Gio et les 320 analyses. Les essais Linux couvrent aussi un disque RAW à deux partitions et les requêtes pendant l’indexation. Ces contrôles ne qualifient pas tous les formats d’image ni les périphériques physiques. [Rapport et limites de la 0.2](docs/validation/reports/20261103-v02-case-disk-linux.md).
-
-Les essais automatisés ne remplacent pas les essais sur vos postes et vos formats d’artefacts. Les [résultats historiques de la 0.1.1](https://github.com/23R0534ZXT/fireblade/actions/runs/41652792123) restent consultables séparément.
-
-- Le traitement est local ; le parcours normal n’a pas besoin de télécharger les moteurs ou les règles.
-- La **0.2.0** lit des volumes montés et des images disque pour extraire les artefacts pris en charge ; elle ne les monte pas dans le système hôte. L’EXE **0.1.1** reste limité aux artefacts collectés et exports. Hayabusa s’applique aux EVTX Windows.
-- Les avertissements, résultats partiels et erreurs de lecteurs restent visibles. Une alerte est une piste à examiner, pas une conclusion automatique.
-- Les analyses sont stockées dans des bases DuckDB `.timeline`. Le budget mémoire DuckDB ne plafonne pas toute la RAM du programme et de ses outils externes.
-- Les sessions référencent leurs bases et leurs sources. Pour déplacer une enquête, utilisez une archive portable ; conservez les éléments nécessaires à une nouvelle analyse des artefacts.
-- Les DLL optionnelles s’exécutent avec les permissions de l’utilisateur et leur compatibilité doit être vérifiée.
-
-[Validation détaillée et mesures](docs/guides/FONCTIONNALITES.md#validation-and-known-limitations) · [Données de charge de 3 Gio](docs/guides/TESTER-3GIB.md) · [Sauvegardes et dossiers portables](docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md)
-
-## Documentation et contribution
-
-[Guide utilisateur](docs/guides/UTILISATION.md) · [Tutoriel complet](docs/guides/TUTORIEL-COMPLET.md) · [Index des guides](docs/README.md) · [Contribuer](CONTRIBUTING.md) · [Architecture](docs/development/ARCHITECTURE.md) · [Publier une version](docs/development/PUBLICATION.md)
-
-Le code est dans `src/fireblade`, les tests dans `tests`, les versions des moteurs dans `config` et les scripts de construction dans `scripts/windows`. Les contrôles s’exécutent automatiquement ; une nouvelle release de l’application nécessite une publication explicite.
-
-## English overview
-
-Fireblade 0.2.0 adds a mandatory case-first workflow, background disk artifact analysis, progressive results, a configurable source tree and an optional startup animation. The Windows 0.2.0 build passed its qualification, including 1,169 tests per Python version, the standalone executable, visual checks, the >3 GiB scenario and 320 analyses. Download **Fireblade.exe** directly from the published **v0.2.0 release** linked above. The release notes include its qualified commit and SHA-256. See the linked validation limits before using disk images or physical devices.
-
-Fireblade is a local Windows x64 forensic investigation workspace. Import Windows artifacts, raw Linux logs and rotations, CatScale collections or CSV/TSV/XLS/XLSX exports; filter and annotate the results, investigate Hayabusa alerts with EVTX context, build timelines, hunt IOCs and export findings. The desktop interface and guides currently use French.
-
-Create or open a case at startup, then choose a data file or disk analysis. Try the public sample pack for a French walkthrough and expected results. Fireblade remains an unsigned prototype; see the linked Windows qualification, compatibility notes and limitations. Feedback is welcome in [Issues](https://github.com/23R0534ZXT/fireblade/issues).
-
-## Licence
-
-Le code de Fireblade est sous [licence MIT](LICENSE). Les moteurs et dépendances conservent leurs licences, dont l’AGPL de Hayabusa, Dissect et flow.record. Les notices sont disponibles dans **Aide → Licences** ; les sources Hayabusa embarquées peuvent être exportées depuis le menu Aide. [Licences tierces](licenses/THIRD_PARTY.md).
+[Third-party licenses](licenses/THIRD_PARTY.md)

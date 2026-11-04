@@ -1,0 +1,8 @@
+{
+  "duration_s": 10.03,
+  "cpu_seconds": 0.7,
+  "peak_process_rss_mib": 44.5,
+  "displayed_frames": 199,
+  "cache_mode": "CacheMode.CacheNone",
+  "scope": "Linux offscreen, startup widget only; no GPU video runtime"
+}

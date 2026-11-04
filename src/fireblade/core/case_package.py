@@ -60,7 +60,8 @@ def relocate(value, mapping, key=None):
 
 
 def export_package(library, data, documents, active, target, *, include_sources=False,
-                   active_case=None, settings=None):
+                   active_case=None, settings=None, include_case_files=False, max_bytes=None):
+    max_bytes = MAX_BYTES if max_bytes is None else max_bytes
     target = Path(target).resolve()
     ensure_export_destination(target, documents=documents, case_folder=library.folder(data['id']),
                               collection_directories=[entry['path'] for entry in data['collections']])
@@ -85,7 +86,7 @@ def export_package(library, data, documents, active, target, *, include_sources=
             raise ValueError('Un fichier à transporter est un lien : ' + str(source))
         member = safe_member(member)
         before = source.stat()
-        if len(files) >= MAX_FILES or total_bytes + before.st_size > MAX_BYTES:
+        if len(files) >= MAX_FILES or total_bytes + before.st_size > max_bytes:
             raise ValueError('Archive limitée à 50000 fichiers et 64 Gio')
         sha = hashlib.sha256()
         with source.open('rb') as incoming, archive.open(member, 'w', force_zip64=True) as outgoing:
@@ -107,35 +108,48 @@ def export_package(library, data, documents, active, target, *, include_sources=
             packed = []
             for number, document in enumerate(documents):
                 check_cancelled()
-                own = active_case is None or str(active_case.path) != document.path
-                case = Case(document.path, settings=settings) if own else active_case
-                try:
-                    with case.operation():
-                        if case.info != document.source_info:
-                            raise ValueError('Analyse remplacée : ' + document.path)
-                        # Copy through DuckDB: Windows locks prevent reading the
-                        # live database with Python's file API, even after CHECKPOINT.
-                        # DuckDB permits its own spill directory while external
-                        # SQL access is disabled. No host-directory grant needed.
-                        spill = Path(str(case.path)+'.tmp'); spill.mkdir(exist_ok=True)
-                        with tempfile.TemporaryDirectory(dir=spill, prefix='.snapshot-') as scratch:
-                            snapshot = Path(scratch) / 'analysis.timeline'
-                            database = case.db.execute('SELECT current_database()').fetchone()[0]
-                            quoted_database = '"' + database.replace('"', '""') + '"'
-                            quoted_path = "'" + str(snapshot).replace("'", "''") + "'"
-                            case.db.execute(f'ATTACH {quoted_path} AS __fireblade_portable_snapshot')
-                            try:
-                                case.db.execute(f'COPY FROM DATABASE {quoted_database} TO __fireblade_portable_snapshot')
-                            finally:
-                                case.db.execute('DETACH __fireblade_portable_snapshot')
-                            member = add(archive, snapshot, f'analyses/{number:04}.timeline')
-                            mapping.pop(str(snapshot.resolve()))
-                            mapping[str(case.path.resolve())] = member
-                    packed.append(dict(database=member, source=copy.deepcopy(case.info),
-                                       view=json.loads(document.view.to_json()),
+                if include_case_files:
+                    # Cold-storage cases are closed and leased. Stream the
+                    # checkpointed database directly, without a second disk copy.
+                    case = Case(document.path, settings=settings)
+                    try:
+                        if case.info != document.source_info:raise ValueError('Analyse remplacée : '+document.path)
+                        case.db.execute('CHECKPOINT')
+                        info = copy.deepcopy(case.info)
+                    finally:case.close()
+                    member = add(archive, document.path, f'analyses/{number:04}.timeline')
+                    packed.append(dict(database=member, source=info,view=json.loads(document.view.to_json()),
                                        header=base64.b64encode(document.header_state).decode('ascii')))
-                finally:
-                    if own:case.close()
+                else:
+                    own = active_case is None or str(active_case.path) != document.path
+                    case = Case(document.path, settings=settings) if own else active_case
+                    try:
+                        with case.operation():
+                            if case.info != document.source_info:
+                                raise ValueError('Analyse remplacée : ' + document.path)
+                            # Copy through DuckDB: Windows locks prevent reading the
+                            # live database with Python's file API, even after CHECKPOINT.
+                            # DuckDB permits its own spill directory while external
+                            # SQL access is disabled. No host-directory grant needed.
+                            spill = Path(str(case.path)+'.tmp'); spill.mkdir(exist_ok=True)
+                            with tempfile.TemporaryDirectory(dir=spill, prefix='.snapshot-') as scratch:
+                                snapshot = Path(scratch) / 'analysis.timeline'
+                                database = case.db.execute('SELECT current_database()').fetchone()[0]
+                                quoted_database = '"' + database.replace('"', '""') + '"'
+                                quoted_path = "'" + str(snapshot).replace("'", "''") + "'"
+                                case.db.execute(f'ATTACH {quoted_path} AS __fireblade_portable_snapshot')
+                                try:
+                                    case.db.execute(f'COPY FROM DATABASE {quoted_database} TO __fireblade_portable_snapshot')
+                                finally:
+                                    case.db.execute('DETACH __fireblade_portable_snapshot')
+                                member = add(archive, snapshot, f'analyses/{number:04}.timeline')
+                                mapping.pop(str(snapshot.resolve()))
+                                mapping[str(case.path.resolve())] = member
+                        packed.append(dict(database=member, source=copy.deepcopy(case.info),
+                                           view=json.loads(document.view.to_json()),
+                                           header=base64.b64encode(document.header_state).decode('ascii')))
+                    finally:
+                        if own:case.close()
                 source = Path(document.source_info['path'])
                 if include_sources and source.is_file():
                     if str(source.resolve()) not in mapping:
@@ -193,6 +207,14 @@ def export_package(library, data, documents, active, target, *, include_sources=
                 load_report(coverage_last);add(archive,coverage_last,'coverage-last.json')
             state = library.folder(data['id']) / 'timeline-state.json'
             if state.is_file():add(archive, state, 'timeline-state.json')
+            if include_case_files:
+                folder=library.folder(data['id'])
+                for extra in folder.rglob('*'):
+                    check_cancelled()
+                    if extra.is_symlink() or (hasattr(extra,'is_junction') and extra.is_junction()):raise ValueError('Lien dans le dossier du case : '+str(extra))
+                    if not extra.is_file() or extra.name in ('case.json','case.lock','case.active.lock'):continue
+                    if str(extra.resolve()) not in mapping:
+                        add(archive,extra,'case-extra/'+extra.relative_to(folder).as_posix())
             by_member={item['path']:item for item in files}
             for document in documents:
                 member=mapping.get(str(Path(document.source_info['path']).resolve()))
@@ -205,7 +227,7 @@ def export_package(library, data, documents, active, target, *, include_sources=
             encoded = json.dumps(manifest, ensure_ascii=False, indent=2).encode('utf-8')
             if len(encoded) > MAX_MANIFEST:raise ValueError('Manifeste limité à 16 Mio')
             archive.writestr('manifest.json', encoded)
-        verify_package(temporary)
+        verify_package(temporary, max_bytes=max_bytes)
         check_cancelled()
         os.replace(temporary, target)
         return dict(path=str(target), files=len(files), missing_sources=manifest['missing_sources'])
@@ -213,8 +235,9 @@ def export_package(library, data, documents, active, target, *, include_sources=
         if temporary:temporary.unlink(missing_ok=True)
 
 
-def verify_package(source, staging=None):
+def verify_package(source, staging=None, max_bytes=None):
     """Read back hashes and ZIP CRCs, optionally extracting into private staging."""
+    max_bytes = MAX_BYTES if max_bytes is None else max_bytes
     with zipfile.ZipFile(source) as archive:
         infos = archive.infolist()
         if len(infos) > MAX_FILES + 1 or len({i.filename.casefold() for i in infos}) != len(infos):
@@ -244,7 +267,7 @@ def verify_package(source, staging=None):
             if type(item['size']) is not int or info.file_size != item['size'] or info.file_size < 0:
                 raise ValueError('Taille de fichier incohérente')
             total += info.file_size
-            if total > MAX_BYTES:raise ValueError('Archive décompressée limitée à 64 Gio')
+            if total > max_bytes:raise ValueError('Archive décompressée limitée à 64 Gio')
             if staging is not None:
                 path = staging / item['path'];path.parent.mkdir(parents=True, exist_ok=True)
             sha = hashlib.sha256();written = 0
@@ -259,7 +282,7 @@ def verify_package(source, staging=None):
     return manifest
 
 
-def import_package(library, source):
+def import_package(library, source, *, max_bytes=None):
     """Verify every byte before publishing a new case; never overwrite a case."""
     source = Path(source)
     library.root.mkdir(parents=True, exist_ok=True)
@@ -267,7 +290,7 @@ def import_package(library, source):
     try:
         with tempfile.TemporaryDirectory(prefix='.import-', dir=library.root) as scratch:
             staging = Path(scratch)
-            manifest = verify_package(source, staging)
+            manifest = verify_package(source, staging, max_bytes=max_bytes)
             files = manifest['files'];members = {item['path'] for item in files}
             documents = manifest['documents']
             if not isinstance(documents, list) or len(documents) > 1000:

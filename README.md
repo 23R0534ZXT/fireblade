@@ -14,6 +14,8 @@ Fireblade brings Windows artifacts, Linux logs, detection results and tabular ev
 
 *Investigation workspace with demonstration data. The screenshot predates the revised 0.2.1 menus.*
 
+Windows CI runs focused regression tests on Python 3.12, builds the standalone EXE in parallel, then checks its appearance, 320-analysis workspace and 3-GiB import/export workflow. The full Python 3.11–3.13 test matrix remains available through the workflow’s **full_validation** option.
+
 ## Capabilities
 
 | Area | Features |

@@ -156,7 +156,14 @@ def run_check(app, report_path):
 
         def embedded_resources():
             from fireblade.core.settings import load_settings
-            expect(load_settings(default_config()).memory_mb == 256, "La configuration intégrée n’a pas été lue.")
+            expect(load_settings(default_config()).memory_mb == 128, "La configuration intégrée n’a pas été lue.")
+            from PySide6.QtGui import QMovie
+            film = resource_path('assets/startup/fire.gif')
+            provenance = json.loads(resource_path('assets/startup/SOURCES.json').read_text(encoding='utf-8'))
+            import hashlib
+            expect(hashlib.sha256(film.read_bytes()).hexdigest() == provenance['asset_sha256'], 'Animation intégrée altérée.')
+            movie = QMovie(str(film))
+            expect(movie.isValid() and movie.frameCount() >= 190, 'Le décodeur de l’animation intégrée est absent.')
             expect("Fireblade" in resource_path("docs/guides/UTILISATION.md").read_text(encoding="utf-8"), "Le guide intégré est absent.")
             tutorial = resource_path("docs/guides/TUTORIEL-COMPLET.md")
             expect(tutorial.is_file() and "Tutoriel complet" in tutorial.read_text(encoding="utf-8"),

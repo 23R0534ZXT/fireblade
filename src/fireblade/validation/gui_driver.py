@@ -160,9 +160,25 @@ class GuiRun:
         bar=self.window.menuBar()
         top=next(a for a in bar.actions() if a.text().replace('&','')==name)
         menu=top.menu()
-        item=next(a for a in menu.actions() if a.text()==action)
-        def select():QTest.mouseClick(menu,Qt.LeftButton,pos=menu.actionGeometry(item).center())
-        QTimer.singleShot(60,select)
+        def find_path(current):
+            for item in current.actions():
+                if item.text()==action:return [item]
+                if item.menu():
+                    nested=find_path(item.menu())
+                    if nested:return [item]+nested
+            return None
+        path=find_path(menu)
+        if path is None:raise ValueError('GUI command unavailable: '+name+' → '+action)
+        def select(current, remaining):
+            item=remaining[0]
+            if len(remaining)==1:
+                QTest.mouseClick(current,Qt.LeftButton,pos=current.actionGeometry(item).center())
+            else:
+                current.setActiveAction(item)
+                child=item.menu()
+                child.popup(current.mapToGlobal(current.actionGeometry(item).topRight()))
+                QTimer.singleShot(60,lambda:select(child,remaining[1:]))
+        QTimer.singleShot(60,lambda:select(menu,path))
         QTest.mouseClick(bar,Qt.LeftButton,pos=bar.actionGeometry(top).center())
         QTest.qWait(150)
         self.settle()

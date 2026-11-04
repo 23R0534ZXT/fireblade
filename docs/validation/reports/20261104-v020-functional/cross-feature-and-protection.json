@@ -1,0 +1,1171 @@
+{
+  "format": "fireblade-functional-audit",
+  "checks": [
+    {
+      "name": "menus",
+      "status": "passed",
+      "details": {
+        "actions": [
+          {
+            "path": [
+              "&Fichier",
+              "Nouveau case…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Cases…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Enregistrer le case"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Fermer le case"
+            ],
+            "status": "separate_lifecycle_test"
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Ouvrir un fichier…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Importer un dossier de collecte…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Compatibilité Timeline Explorer",
+              "Importer avec un plugin TLE (.NET)…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Compatibilité Timeline Explorer",
+              "Importer les préférences Timeline Explorer…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Compatibilité Timeline Explorer",
+              "Importer une session Timeline Explorer…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Compatibilité Timeline Explorer",
+              "Exporter une session TLE (sources et signets)…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Ouvrir une analyse…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Ouvrir une session…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Enregistrer la session…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Fermer l’onglet"
+            ],
+            "status": "separate_lifecycle_test"
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Vider la file d’ouverture"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Rouvrir le dernier onglet fermé"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Exporter…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Exporter les signets et notes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Quitter"
+            ],
+            "status": "separate_lifecycle_test"
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Historique et récupération du case…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Exporter le case portable…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Importer un case portable…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Créer un rapport HTML / PDF…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Sauvegarde automatique du case (2 min)"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Fichier",
+              "Analyser un disque…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Copier les lignes"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Signet / note…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Marquer la sélection"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Ajouter une note à la sélection…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Remplacer les notes de la sélection…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Retirer les signets de la sélection"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Regrouper…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Colonnes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Hauteur des lignes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Réinitialiser les largeurs"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Résumés et tri des groupes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Déplier tous les groupes (vue paginée)"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Replier tous les groupes"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Analyses ouvertes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Messages…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Préférences…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Options de tri"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Détails de la ligne"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Onglet suivant"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Onglet précédent"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Appliquer le profil détecté"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Profils et compatibilité",
+              "Profils et plugins…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Profils et compatibilité",
+              "Légende des supertimelines…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Tri sur plusieurs colonnes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Réinitialiser la vue"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Navigation des analyses"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Regrouper l’arbre par",
+              "Disque → partition → dossiers"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Regrouper l’arbre par",
+              "Collecte → type d’artefact"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Regrouper l’arbre par",
+              "Liste des analyses par collecte"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Position de l’arbre",
+              "À gauche"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Position de l’arbre",
+              "À droite"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Navigation des analyses"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Détails de la ligne"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Position des détails de ligne",
+              "En bas"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Position des détails de ligne",
+              "À droite"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Position des détails de ligne",
+              "En haut"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Déplier tout l’arbre"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Replier tout l’arbre"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Barres d’outils",
+              "Fichier"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Barres d’outils",
+              "Collecte"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Animation au démarrage"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Expression textuelle…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Éditeur ET / OU / NON…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Filtrer sur la cellule active"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Ajouter un filtre…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Effacer les filtres"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Rechercher dans toutes les analyses…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Enregistrer la vue…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Charger une vue…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Dispositions de la grille",
+              "Exporter la disposition…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Dispositions de la grille",
+              "Importer une disposition…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Règles de coloration…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Calculs et conversions",
+              "Charger des fonctions .NET…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Calculs et conversions",
+              "Convertir une date…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Calculs et conversions",
+              "Ajouter une colonne calculée…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Calculs et conversions",
+              "Contrôler les colonnes dérivées…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Règles globales",
+              "Modifier…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Règles globales",
+              "Recharger depuis le disque"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Règles globales",
+              "Importer et remplacer…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Règles globales",
+              "Exporter…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Règles globales",
+              "Appliquer à cette vue"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Surligner un texte…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Afficher la cellule / JSON…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Provenance et SHA-256…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Interrompre la requête"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Analyser la collecte avec Hayabusa"
+            ],
+            "status": "disabled_in_current_context"
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Voir le contexte EVTX de l’alerte"
+            ],
+            "status": "disabled_in_current_context"
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Chronologie & corrélations"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Tutoriel complet — toutes les fonctionnalités"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Couverture de collecte et diagnostics"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Chasse IOC en masse"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Chronologie, sauvegardes et rapports"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Guide d’utilisation"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Licences"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "À propos de Fireblade"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Exporter les sources Hayabusa…"
+            ],
+            "status": "expected_source_checkout_diagnostic",
+            "errors": [
+              "Sources Hayabusa absentes de cette construction."
+            ]
+          }
+        ],
+        "modals": [
+          {
+            "title": "Nouveau case",
+            "text_length": null
+          },
+          {
+            "title": "Historique et récupération",
+            "text_length": null
+          },
+          {
+            "title": "Transporter un case",
+            "text_length": null
+          },
+          {
+            "title": "Rapport d’investigation",
+            "text_length": null
+          },
+          {
+            "title": "Analyser un disque",
+            "text_length": null
+          },
+          {
+            "title": "Regrouper · ordre des niveaux de haut en bas",
+            "text_length": null
+          },
+          {
+            "title": "Colonnes visibles",
+            "text_length": null
+          },
+          {
+            "title": "Hauteur des lignes",
+            "text_length": null
+          },
+          {
+            "title": "Résumés et tri des groupes",
+            "text_length": null
+          },
+          {
+            "title": "Analyses ouvertes",
+            "text_length": null
+          },
+          {
+            "title": "Messages",
+            "text_length": null
+          },
+          {
+            "title": "Préférences",
+            "text_length": null
+          },
+          {
+            "title": "Profils et plugins de présentation",
+            "text_length": null
+          },
+          {
+            "title": "Légende des supertimelines",
+            "text_length": null
+          },
+          {
+            "title": "Tri sur plusieurs colonnes · priorité de haut en bas",
+            "text_length": null
+          },
+          {
+            "title": "Expression de filtre",
+            "text_length": null
+          },
+          {
+            "title": "Éditeur de filtres · ET / OU / NON",
+            "text_length": null
+          },
+          {
+            "title": "Ajouter un filtre · ET logique",
+            "text_length": null
+          },
+          {
+            "title": "Rechercher dans toutes les analyses",
+            "text_length": null
+          },
+          {
+            "title": "Règles de coloration · première règle correspondante prioritaire",
+            "text_length": null
+          },
+          {
+            "title": "Conversion temporelle",
+            "text_length": null
+          },
+          {
+            "title": "Colonne calculée",
+            "text_length": null
+          },
+          {
+            "title": "Contrôle des colonnes dérivées",
+            "text_length": null
+          },
+          {
+            "title": "Règles globales · colonnes absentes = règle non appliquée",
+            "text_length": null
+          },
+          {
+            "title": "Provenance de l’import",
+            "text_length": null
+          },
+          {
+            "title": "Tutoriel complet · Fireblade",
+            "text_length": 108246
+          },
+          {
+            "title": "Couverture de collecte et diagnostics · Fireblade",
+            "text_length": 8236
+          },
+          {
+            "title": "Chasse IOC en masse · Fireblade",
+            "text_length": 3790
+          },
+          {
+            "title": "Chronologie, sauvegardes et rapports · Fireblade",
+            "text_length": 9184
+          },
+          {
+            "title": "Guide d’utilisation · Fireblade",
+            "text_length": 41008
+          },
+          {
+            "title": "Licences · Fireblade",
+            "text_length": 72947
+          },
+          {
+            "title": "À propos de Fireblade",
+            "text_length": 157
+          }
+        ],
+        "lifecycle": "close/reopen tab and case passed",
+        "scope": "actual QAction dispatch; file pickers cancelled; dialogs opened and cancelled"
+      },
+      "seconds": 2.955
+    },
+    {
+      "name": "protection",
+      "status": "finding",
+      "details": {
+        "finding": true,
+        "priority": "P2",
+        "cases": [
+          {
+            "writer": "csv",
+            "target": "case",
+            "preserved": true,
+            "errors": [
+              "L’export ne peut pas écraser une source, une analyse ouverte ou les règles globales."
+            ],
+            "replacement_format": "fireblade-case"
+          },
+          {
+            "writer": "csv",
+            "target": "coverage",
+            "preserved": true,
+            "errors": [
+              "L’export ne peut pas écraser une source, une analyse ouverte ou les règles globales."
+            ],
+            "replacement_format": null
+          },
+          {
+            "writer": "csv",
+            "target": "timeline",
+            "preserved": true,
+            "errors": [
+              "L’export ne peut pas écraser une source, une analyse ouverte ou les règles globales."
+            ],
+            "replacement_format": null
+          },
+          {
+            "writer": "csv",
+            "target": "global_rules",
+            "preserved": true,
+            "errors": [
+              "L’export ne peut pas écraser une source, une analyse ouverte ou les règles globales."
+            ],
+            "replacement_format": "fireblade-global-rules"
+          },
+          {
+            "writer": "session",
+            "target": "case",
+            "preserved": false,
+            "errors": [
+              "Le case n’a pas été enregistré : Fiche de case invalide"
+            ],
+            "replacement_format": "fireblade-session"
+          },
+          {
+            "writer": "session",
+            "target": "coverage",
+            "preserved": false,
+            "errors": [],
+            "replacement_format": "fireblade-session"
+          },
+          {
+            "writer": "session",
+            "target": "timeline",
+            "preserved": false,
+            "errors": [],
+            "replacement_format": "fireblade-session"
+          },
+          {
+            "writer": "session",
+            "target": "global_rules",
+            "preserved": false,
+            "errors": [],
+            "replacement_format": "fireblade-session"
+          },
+          {
+            "writer": "tle_session",
+            "target": "case",
+            "preserved": false,
+            "errors": [],
+            "replacement_format": null
+          },
+          {
+            "writer": "tle_session",
+            "target": "coverage",
+            "preserved": false,
+            "errors": [],
+            "replacement_format": null
+          },
+          {
+            "writer": "tle_session",
+            "target": "timeline",
+            "preserved": false,
+            "errors": [],
+            "replacement_format": null
+          },
+          {
+            "writer": "tle_session",
+            "target": "global_rules",
+            "preserved": false,
+            "errors": [],
+            "replacement_format": null
+          },
+          {
+            "writer": "global_rules",
+            "target": "case",
+            "preserved": false,
+            "errors": [],
+            "replacement_format": "fireblade-global-rules"
+          },
+          {
+            "writer": "global_rules",
+            "target": "coverage",
+            "preserved": false,
+            "errors": [],
+            "replacement_format": "fireblade-global-rules"
+          },
+          {
+            "writer": "global_rules",
+            "target": "timeline",
+            "preserved": false,
+            "errors": [],
+            "replacement_format": "fireblade-global-rules"
+          },
+          {
+            "writer": "global_rules",
+            "target": "global_rules",
+            "preserved": true,
+            "errors": [
+              "Choisissez un fichier distinct de la configuration, des sources et des analyses"
+            ],
+            "replacement_format": "fireblade-global-rules"
+          }
+        ],
+        "trigger": "explicitly selecting an internal metadata/configuration filename as an export destination"
+      },
+      "seconds": 39.569
+    },
+    {
+      "name": "roundtrip",
+      "status": "passed",
+      "details": {
+        "status": "passed",
+        "checks": [
+          "derived column",
+          "combined filter",
+          "pins both sides",
+          "auto row heights",
+          "notes escaping",
+          "saved IOC CSV/XLSX",
+          "coverage",
+          "HTML/PDF",
+          "portable archive",
+          "restored view and notes",
+          "IOC relocation",
+          "timeline rebuilt after import"
+        ]
+      },
+      "seconds": 10.831
+    },
+    {
+      "name": "source_protection",
+      "status": "finding",
+      "details": {
+        "finding": true,
+        "priority": "P1",
+        "hayabusa_source_export": {
+          "source_overwritten": true,
+          "source_became_zip": true,
+          "errors": []
+        },
+        "raw_collection_export": {
+          "source_overwritten": true,
+          "accepted_by_guard": true,
+          "original_in_inventory": true
+        },
+        "trigger": "explicitly choosing an existing evidence source as output; all originals here are disposable"
+      },
+      "seconds": 6.173
+    }
+  ]
+}

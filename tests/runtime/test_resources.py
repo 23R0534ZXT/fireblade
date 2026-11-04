@@ -16,7 +16,7 @@ def test_source_resources_and_user_configuration_priority(tmp_path):
     assert resources.resource_path("docs/guides/UTILISATION.md").is_file()
     assert resources.resource_path("docs/guides/TUTORIEL-COMPLET.md").is_file()
     assert resources.resource_path('docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md').is_file()
-    assert load_settings(resources.default_config()).memory_mb == 256
+    assert load_settings(resources.default_config()).memory_mb == 128
     from fireblade.runtime.windows_paths import user_directory
     custom = user_directory() / "fireblade.toml"
     custom.parent.mkdir(parents=True)

@@ -1,0 +1,152 @@
+........................................................................ [  5%]
+........................................................................ [ 11%]
+........................................................................ [ 17%]
+........................................................................ [ 23%]
+........................................................................ [ 28%]
+........................................................................ [ 34%]
+.s...................................................................... [ 40%]
+...........................ss........................................... [ 46%]
+........................................................................ [ 51%]
+........................................................................ [ 57%]
+........................................................................ [ 63%]
+........................................................................ [ 69%]
+........................................................................ [ 75%]
+........................................................................ [ 80%]
+..................FF.................................................... [ 86%]
+..................................................................F..... [ 92%]
+........................................................................ [ 98%]
+.....................ss                                                  [100%]
+=================================== FAILURES ===================================
+____________ test_GUI_driver_uses_visible_import_and_context_menus _____________
+
+qt_application = <PySide6.QtWidgets.QApplication(0x34f6ac40) at 0x7f9532a29a80>
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-20/test_GUI_driver_uses_visible_i0')
+
+    def test_GUI_driver_uses_visible_import_and_context_menus(qt_application,tmp_path):
+        source=tmp_path/'source.csv';source.write_text('Artifact,User,ID\nMFT,alice,001\nEVTX,bob,002\nMFT,alice,003\n')
+        run=GuiRun(qt_application,tmp_path/'qa/report.json','driver smoke, not Windows qualification')
+        error=None
+        try:
+            run.import_csv(source,tmp_path/'case.timeline')
+            assert run.window.model.rowCount()==3
+            run.header(0,'Grouper par cette colonne')
+            assert run.window.view.groups==[0]
+            run.header(1,'Ajouter au groupement')
+            assert run.window.view.groups==[0,1]
+            index=run.window.model.index(0,0)
+            run.window.tree.setCurrentIndex(index)
+            QTest.keyClick(run.window.tree,Qt.Key_Right);run.settle()
+            assert run.window.model.rowCount(index)==1
+>           run.menu('Affichage','Réinitialiser la vue')
+
+tests/ui/test_appearance.py:55: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <fireblade.validation.gui_driver.GuiRun object at 0x7f951e5ac200>
+name = 'Affichage', action = 'Réinitialiser la vue'
+
+    def menu(self,name,action):
+        bar=self.window.menuBar()
+        top=next(a for a in bar.actions() if a.text().replace('&','')==name)
+        menu=top.menu()
+>       item=next(a for a in menu.actions() if a.text()==action)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       StopIteration
+
+src/fireblade/validation/gui_driver.py:163: StopIteration
+----------------------------- Captured stderr call -----------------------------
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support raise()
+This plugin does not support grabbing the keyboard
+This plugin does not support raise()
+This plugin does not support grabbing the keyboard
+_________________ test_GUI_driver_sort_editor_and_note_dialog __________________
+
+qt_application = <PySide6.QtWidgets.QApplication(0x34f6ac40) at 0x7f9532a29a80>
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-20/test_GUI_driver_sort_editor_an0')
+
+    def test_GUI_driver_sort_editor_and_note_dialog(qt_application,tmp_path):
+        from PySide6.QtWidgets import QPlainTextEdit
+        from fireblade.ui.advanced_dialogs import SortDialog
+        source=tmp_path/'source.csv';source.write_text('User,ID\nalice,10\nbob,0002\nalice,1\n')
+        run=GuiRun(qt_application,tmp_path/'qa/report.json','driver smoke, not Windows qualification')
+        error=None
+        try:
+            run.import_csv(source,tmp_path/'case.timeline')
+            def edit(dialog):
+                assert isinstance(dialog,SortDialog)
+                QTest.mouseClick(next(b for b in dialog.findChildren(QPushButton) if b.text()=='Ajouter'),Qt.LeftButton)
+                run.choose(dialog.table.cellWidget(0,0),1)
+                run.choose(dialog.table.cellWidget(0,1),1)
+                run.accept(dialog)
+>           run.modal(edit);run.menu('Affichage','Tri sur plusieurs colonnes…')
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/ui/test_appearance.py:78: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <fireblade.validation.gui_driver.GuiRun object at 0x7f951d890440>
+name = 'Affichage', action = 'Tri sur plusieurs colonnes…'
+
+    def menu(self,name,action):
+        bar=self.window.menuBar()
+        top=next(a for a in bar.actions() if a.text().replace('&','')==name)
+        menu=top.menu()
+>       item=next(a for a in menu.actions() if a.text()==action)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       StopIteration
+
+src/fireblade/validation/gui_driver.py:163: StopIteration
+----------------------------- Captured stderr call -----------------------------
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+_______ test_clear_filters_keeps_presentation_and_full_reset_is_separate _______
+
+qt_application = <PySide6.QtWidgets.QApplication(0x34f6ac40) at 0x7f9532a29a80>
+tmp_path = PosixPath('/tmp/pytest-of-agent/pytest-20/test_clear_filters_keeps_prese0')
+
+    def test_clear_filters_keeps_presentation_and_full_reset_is_separate(qt_application,tmp_path):
+        window=Window(require_case=False);window.show();load(window,tmp_path);settle(qt_application,window)
+        try:
+            window.set_view(View(groups=[0],sort_column=2,pinned_columns=[1],filters=[Filter(1,'eq','alice')],
+                                 format_rules=[FormatRule(Filter(0,'eq','EVTX'))]));settle(qt_application,window)
+            next(b for b in window.findChildren(QPushButton) if b.text()=='Effacer les filtres').click()
+            settle(qt_application,window)
+            assert not window.view.filters
+            assert window.view.groups==[0] and window.view.sort_column==2
+            assert window.view.pinned_columns==[1] and len(window.view.format_rules)==1
+            view_menu=next(a.menu() for a in window.menuBar().actions() if a.text()=='&Affichage')
+>           next(a for a in view_menu.actions() if a.text()=='Réinitialiser la vue').trigger()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           StopIteration
+
+tests/ui/test_intuitive_workspace.py:94: StopIteration
+----------------------------- Captured stderr call -----------------------------
+This plugin does not support propagateSizeHints()
+============================= slowest 15 durations =============================
+88.91s call     tests/ui/test_many_documents.py::test_320_real_analyses_keep_navigation_search_and_session
+28.45s call     tests/ui/test_exploration_desktop.py::test_extended_acceptance_runs_real_desktop_paths
+18.04s call     tests/ui/test_browser_artifacts_desktop.py::test_mixed_linux_windows_collections_survive_repeated_case_switches
+10.18s call     tests/ui/test_browser_artifacts_desktop.py::test_actual_shellbags_and_webcache_render_and_restore_in_case
+7.12s call     tests/core/test_audit_regressions.py::test_actual_ntfs_image_traverses_and_copies_mft
+5.69s call     tests/core/test_clr_objects.py::test_nested_object_results_do_not_require_a_reader_or_accumulate_handles
+5.12s call     tests/core/test_webcache.py::test_real_webcache_collection_import_and_filter[combined]
+4.65s call     tests/core/test_webcache.py::test_real_webcache_collection_import_and_filter[artifacts]
+4.22s call     tests/ui/test_catscale_desktop.py::test_catscale_families_render_and_restore_in_investigation
+3.85s call     tests/ui/test_linux_logs_desktop.py::test_linux_log_desktop_import_grid_notes_and_case_restore
+3.61s call     tests/core/test_outline.py::test_complete_outline_spills_under_a_64_mb_budget_without_path_arrays[hidden]
+3.28s call     tests/core/test_webcache.py::test_real_webcache_collection_import_and_filter[files]
+3.10s call     tests/core/test_outline.py::test_complete_outline_spills_under_a_64_mb_budget_without_path_arrays[always]
+2.89s call     tests/ui/test_many_tabs.py::test_320_tabs_remain_accessible_without_covering_the_analysis
+2.88s call     tests/ui/test_exploration_desktop.py::test_completion_acceptance_runs_official_fixtures_in_real_grid
+=========================== short test summary info ============================
+SKIPPED [1] tests/core/test_layout_appearance_assets.py:84: Image encoder unavailable; decoding remains guarded by Qt
+SKIPPED [1] tests/core/test_native_windows_storage.py:30: Native Windows long-path integration
+SKIPPED [1] tests/core/test_native_windows_storage.py:53: Requires an explicitly enabled disposable Windows SMB runner
+SKIPPED [1] tests/windows/test_native.py:16: Windows natif requis
+SKIPPED [1] tests/windows/test_native.py:38: Windows natif requis
+FAILED tests/ui/test_appearance.py::test_GUI_driver_uses_visible_import_and_context_menus
+FAILED tests/ui/test_appearance.py::test_GUI_driver_sort_editor_and_note_dialog
+FAILED tests/ui/test_intuitive_workspace.py::test_clear_filters_keeps_presentation_and_full_reset_is_separate
+3 failed, 1239 passed, 5 skipped in 410.25s (0:06:50)

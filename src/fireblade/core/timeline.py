@@ -119,7 +119,12 @@ class TimelineStore:
                                      ' FROM events' + where)
                             from fireblade.core.coverage import analysis_fingerprint
                             source['analysis_fingerprint']=analysis_fingerprint(case,reader.check)
-                            bridge = self.root/'bridge.csv'
+                            # The analysis connection can write only inside its
+                            # own spill space; do not grant access to the host's
+                            # timeline directory just to transfer query results.
+                            spill = Path(str(case.path)+'.tmp'); spill.mkdir(exist_ok=True)
+                            transfer = tempfile.TemporaryDirectory(dir=spill, prefix='.timeline-')
+                            bridge = Path(transfer.name)/'bridge.csv'
                             try:
                                 location = str(bridge).replace("'", "''")
                                 case.db.execute(f"COPY ({query}) TO '{location}' (FORMAT CSV, HEADER)", args)
@@ -139,7 +144,9 @@ class TimelineStore:
                                         written+=records
                                         progress(f'Chronologie · analyse {number+1}/{len(reader.documents)} · {written:,} événements indexés')
                                 finally:chunks.close()
-                            finally:bridge.unlink(missing_ok=True)
+                            finally:
+                                bridge.unlink(missing_ok=True)
+                                transfer.cleanup()
                         stats = self.db.execute("SELECT count(*),count(time_ns),count(*) FILTER(WHERE naive),count(*) FILTER(WHERE time_ns IS NULL AND (source_time IS NULL OR trim(source_time)='')),count(*) FILTER(WHERE time_ns IS NULL AND source_time IS NOT NULL AND trim(source_time)<>'') FROM events WHERE source=?", [number]).fetchone()
                         source.update(rows=stats[0], dated=stats[1], undated=stats[0]-stats[1], naive=stats[2],empty_dates=stats[3],invalid_dates=stats[4])
                         if stats[4]:source['invalid_examples']=[dict(row_id=r[0],value=r[1]) for r in self.db.execute("SELECT row_id,left(source_time,200) FROM events WHERE source=? AND time_ns IS NULL AND source_time IS NOT NULL AND trim(source_time)<>'' ORDER BY row_id LIMIT 5",[number]).fetchall()]

@@ -1,0 +1,21 @@
+{
+  "exe_sha256": "cd0bc25997ad63c6b5cfea47c0e27f10f4e92cffe79c46575293680333df3502",
+  "sdk": "10.0.403",
+  "runtimes": "Microsoft.AspNetCore.App 10.0.14 [/workspace/scratch/fireblade-dotnet/shared/Microsoft.AspNetCore.App]\nMicrosoft.NETCore.App 10.0.14 [/workspace/scratch/fireblade-dotnet/shared/Microsoft.NETCore.App]\n",
+  "assemblies": {
+    "AppCompatCacheParser": "e82edf6861bb9c0c5a1c936a92e1ffa87dc587ea2138d76603df097c1b01977f",
+    "RECmd": "cba714a89fb4461a1a7951ddb17e338664bc70024b622a81c24ef9346954475b",
+    "EvtxECmd": "c554d464f5326136500be0df0c4bdd908e2c3eca6cfee37c226c857b578732f7",
+    "Shellbags": "5c8d2acfb9ce78796b9f2a0777b5b2e88cc1a93136ef98865a966b160a734b87",
+    "LECmd": "14b3333148cd2b9244f248bdcfd8ba12745c9b9a943f3c525fa40bb6c703263d",
+    "PECmd": "c740512512f996e4539739da2460d41b736ea87a79d466d75c881b6c8e047908",
+    "JLECmd": "d8fb20a917dbd979cff7fefe844bbdfdfca6227493c25f8936e8e81cb575422c",
+    "RecentFileCacheParser": "05ba4ffa237f2cf868b004a12207b2c3ab00ad2b06988d369664c296f3f85165",
+    "SQLECmd": "d0938e82414c7d5b0f6cfd967ed942268acc928e0ab2381bb122f17f111f8f88",
+    "WxTCmd": "041e5f1cb93edd6c58501bdcd717150f5916a0de533fde8ea1f525850c9fae98",
+    "SrumECmd": "ea52937910973dea33ab57f408942a7ff3af58b45ca4f33bf0b4287c5a8e1180",
+    "AmcacheParser": "69dba9939d786d93f2dd54399e820bebb9968acb29bc69bc6c06f5a01372e39e",
+    "MFTECmd": "34a5fadf4d86c1ce4dc7c1ef3d8bc168ada1d4532d3d4d9a506223ec750856aa",
+    "RBCmd": "156009fb39ec818375124bba9ef94bf8587071aee33bfdd6c86edf3f09ee6415"
+  }
+}

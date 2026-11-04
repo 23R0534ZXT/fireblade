@@ -1,0 +1,14 @@
+{
+  "hostile_package": {
+    "case_opened": true,
+    "displayed": "SYNTHETIC-LOCAL-MARKER-ONLY",
+    "errors": []
+  },
+  "ntfs_image": {
+    "started": true,
+    "status": "error",
+    "documents": 0,
+    "message": "\u00c9chec : 'NtfsFilesystemEntry' object has no attribute 'is_mount_point'",
+    "errors": []
+  }
+}

@@ -54,13 +54,15 @@ class Case:
         self._plugin_functions={}
         self._saved_function_types={}
         self.plugin_restore_errors=[]
-        self.db = duckdb.connect(str(self.path), read_only=read_only)
+        from fireblade.core.analysis_storage import connect_analysis
+        self.db = connect_analysis(self.path, read_only=read_only, allow_empty_import=True)
         self.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
         self.db.execute(f"SET threads={self.settings.threads}")
         self.db.execute("SET enable_progress_bar=false")
         self.db.execute("SET TimeZone='UTC'")
         self.db.execute("SET preserve_insertion_order=true")
-        self.db.execute("SET temp_directory=?", [str(self.path) + ".tmp"])
+        # DuckDB defaults to <database>.tmp, which remains available after
+        # revoking external access on an existing analysis.
         self._plugin_udf=False
         self.headers: list[str] = []
         if self.db.execute("SELECT count(*) FROM information_schema.tables WHERE table_name='metadata'").fetchone()[0]:
@@ -294,6 +296,7 @@ class Case:
                 with self.finalizing_transaction():
                     self.check_cancelled()
                     self.db.execute("COMMIT")
+                    self.db.execute('SET enable_external_access=false')
                 self.info, self.headers = info, headers
                 return info
             except BaseException:

@@ -1,10 +1,12 @@
-# Fireblade 0.2.0
+# Fireblade 0.2.1
 
 [![Windows tests and executable](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 
 **Un espace d’investigation local pour analyser des disques, explorer des artefacts Windows et Linux et examiner des exports de données.**
 
 **[Télécharger Fireblade 0.2.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.2.0/Fireblade.exe)** · [Notes et SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.0) · [Qualification Windows réussie](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489) · [Donner un retour](https://github.com/23R0534ZXT/fireblade/issues/6)
+
+**La 0.2.1 est en préparation et qualification.** Le téléchargement disponible ci-dessus reste la 0.2.0.
 
 **La 0.2.0 est publiée.** Téléchargez directement **Fireblade.exe**, puis lancez-le sous Windows x64. Le fichier publié est exactement celui qui a passé les qualifications Windows. Les packs de données ci-dessous sont des téléchargements séparés.
 
@@ -53,6 +55,14 @@ Les copies d’artefacts, leur provenance et les références de l’arbre sont 
 Le grand pack réunit **2,37 Go d’artefacts Windows publics** et **1,07 Go de journaux Linux synthétiques**. Les collections Windows restent indépendantes. Son contrôle Windows a soumis 2 795 fichiers au parsing et vérifié exactement 7 585 912 lignes Linux. **16 refus de lecteurs** et 48 diagnostics d’avertissement ou de sortie vide sont consignés dans le rapport ; ils ne sont pas comptés comme des réussites.
 
 [Guide du grand pack brut](docs/guides/PACK-BRUT.md) · [Choisir une collecte et connaître les paramètres de validation](docs/guides/COLLECTES-PACK-BRUT.md) · [Rapport, empreinte et limites](https://github.com/23R0534ZXT/fireblade/releases/tag/raw-artifacts-v1)
+
+## Nouveautés de la 0.2.1 (qualification en cours)
+
+Les sources de développement proposent désormais **Analyse → Importer un dossier à parser…**, directement depuis l’accueil et la grille. Fichiers, dossiers et disques sont réunis dans Analyse ; la gestion des enquêtes reste dans Case, les recherches dans Détection et les sorties dans Exporter. Le suivi des imports et la détection EVTX ont chacun leur écran. Les vérifications d’intégrité et de couverture se consultent à la demande dans **Aide → Vérifier les imports et diagnostics…**, sans onglet principal permanent.
+
+Le parsing des dossiers utilise le traitement de fond des disques : un seul import à la fois, arrêt possible, résultats vérifiés affichés progressivement par défaut. Les regroupements par artefact ou dans une seule grille se construisent en arrière-plan et s’ouvrent une fois terminés. Les réglages par défaut passent à un thread et 128 Mio par base DuckDB ; le parsing de fond utilise 64 Mio avec ces réglages. Il s’agit de budgets de base de données, pas d’une limite de RAM de tout le processus ni des moteurs externes. L’animation de démarrage dure 2,4 secondes et reste désactivable.
+
+Ces changements et les correctifs d’audit ne sont pas encore inclus dans l’EXE 0.2.0 téléchargeable ci-dessus.
 
 ## Essayer Fireblade 0.2.0 en 15 minutes
 

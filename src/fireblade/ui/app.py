@@ -78,9 +78,13 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         self.workbench.addTab(self.ioc_panel, "Chasse IOC")
         from fireblade.ui.coverage import CoveragePanel
         self.coverage_panel=CoveragePanel(self)
-        self.workbench.addTab(self.coverage_panel, "Couverture & diagnostics")
-        self.workbench.currentChanged.connect(lambda _:self.coverage_panel.open() if self.workbench.currentWidget() is self.coverage_panel else None)
+        self.coverage_dialog=QDialog(self)
+        self.coverage_dialog.setWindowTitle('Vérification des imports et diagnostics')
+        self.coverage_dialog.resize(950, 650)
+        QVBoxLayout(self.coverage_dialog).addWidget(self.coverage_panel)
         self.setup_start_workflow(require_case)
+        from fireblade.ui.command_layout import organize_commands
+        organize_commands(self)
         self.setAcceptDrops(True)
 
     def build_ui(self):
@@ -207,6 +211,10 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         message = self.welcome_title = QLabel("Commencer une analyse")
         message.setAlignment(Qt.AlignCenter)
         welcome_layout.addWidget(message)
+        folder_button = QPushButton('Importer un dossier à parser…')
+        folder_button.setToolTip('Artefacts Windows, journaux Linux ou collecte CatScale. Traitement en arrière-plan.')
+        folder_button.clicked.connect(self.parse_collection)
+        welcome_layout.addWidget(folder_button, 0, Qt.AlignHCenter)
         disk_button = QPushButton("Analyser un disque logique ou un disque complet…")
         disk_button.clicked.connect(self.choose_disk)
         welcome_layout.addWidget(disk_button, 0, Qt.AlignHCenter)
@@ -224,6 +232,11 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         layout = QVBoxLayout(body)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(4)
+        self.analysis_add_bar = QWidget()
+        add_layout = QHBoxLayout(self.analysis_add_bar)
+        add_layout.setContentsMargins(0, 0, 0, 0)
+        add_layout.addWidget(QLabel('Ajouter des données :'))
+        layout.addWidget(self.analysis_add_bar)
         self.source = QLabel()
         self.source.setMaximumWidth(240)
         self.statusBar().addPermanentWidget(self.source)

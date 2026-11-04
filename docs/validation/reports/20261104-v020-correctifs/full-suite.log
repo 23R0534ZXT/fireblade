@@ -1,0 +1,46 @@
+........................................................................ [  5%]
+........................................................................ [ 11%]
+........................................................................ [ 17%]
+........................................................................ [ 23%]
+........................................................................ [ 28%]
+........................................................................ [ 34%]
+.s...................................................................... [ 40%]
+...........................ss........................................... [ 46%]
+........................................................................ [ 52%]
+........................................................................ [ 57%]
+........................................................................ [ 63%]
+........................................................................ [ 69%]
+........................................................................ [ 75%]
+........................................................................ [ 81%]
+........................................................................ [ 86%]
+........................................................................ [ 92%]
+........................................................................ [ 98%]
+.................ss                                                      [100%]
+============================= slowest 20 durations =============================
+87.37s call     tests/ui/test_many_documents.py::test_320_real_analyses_keep_navigation_search_and_session
+28.44s call     tests/ui/test_exploration_desktop.py::test_extended_acceptance_runs_real_desktop_paths
+18.30s call     tests/core/test_clr_objects.py::test_nested_object_results_do_not_require_a_reader_or_accumulate_handles
+16.84s call     tests/ui/test_browser_artifacts_desktop.py::test_mixed_linux_windows_collections_survive_repeated_case_switches
+10.88s call     tests/core/test_audit_regressions.py::test_actual_ntfs_image_traverses_and_copies_mft
+10.68s call     tests/ui/test_browser_artifacts_desktop.py::test_actual_shellbags_and_webcache_render_and_restore_in_case
+5.83s call     tests/core/test_webcache.py::test_real_webcache_collection_import_and_filter[combined]
+5.61s call     tests/core/test_webcache.py::test_real_webcache_collection_import_and_filter[artifacts]
+3.68s call     tests/core/test_webcache.py::test_real_webcache_collection_import_and_filter[files]
+3.64s call     tests/ui/test_catscale_desktop.py::test_catscale_families_render_and_restore_in_investigation
+3.28s call     tests/core/test_alert_context.py::test_portable_case_keeps_context_links_without_rewriting_evidence
+3.20s call     tests/ui/test_linux_logs_desktop.py::test_linux_log_desktop_import_grid_notes_and_case_restore
+3.15s call     tests/core/test_outline.py::test_complete_outline_spills_under_a_64_mb_budget_without_path_arrays[hidden]
+3.13s call     tests/core/test_outline.py::test_complete_outline_spills_under_a_64_mb_budget_without_path_arrays[always]
+2.98s call     tests/ui/test_many_tabs.py::test_320_tabs_remain_accessible_without_covering_the_analysis
+2.84s call     tests/ui/test_exploration_desktop.py::test_completion_acceptance_runs_official_fixtures_in_real_grid
+2.74s call     tests/core/test_clr_objects.py::test_derived_columns_and_reopening_restore_native_arguments_lazily
+2.61s call     tests/ui/test_catscale_desktop.py::test_folder_picker_imports_catscale_in_case_and_hayabusa_explains_evtx_requirement
+2.58s call     tests/core/test_tle_plugin_host.py::test_real_helper_preserves_source_and_evaluates_custom_functions
+2.58s call     tests/core/test_catscale.py::test_actual_collection_imports_groups_and_preserves_sources[artifacts-4]
+=========================== short test summary info ============================
+SKIPPED [1] tests/core/test_layout_appearance_assets.py:84: Image encoder unavailable; decoding remains guarded by Qt
+SKIPPED [1] tests/core/test_native_windows_storage.py:30: Native Windows long-path integration
+SKIPPED [1] tests/core/test_native_windows_storage.py:53: Requires an explicitly enabled disposable Windows SMB runner
+SKIPPED [1] tests/windows/test_native.py:16: Windows natif requis
+SKIPPED [1] tests/windows/test_native.py:38: Windows natif requis
+1238 passed, 5 skipped in 468.06s (0:07:48)

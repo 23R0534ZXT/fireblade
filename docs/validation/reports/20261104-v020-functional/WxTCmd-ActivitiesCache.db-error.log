@@ -1,0 +1,39 @@
+WxTCmd version 2026.10.1
+
+Author: Eric Zimmerman (saericzimmerman@gmail.com)
+https://github.com/EricZimmerman/WxTCmd
+
+Command line: -f /workspace/scratch/fireblade-real-parsers/evidence/matrix/WxTCmd/ActivitiesCache.db --csv /workspace/scratch/fireblade-real-parsers/collection/results/504cbd9924ef4496a23e98e81d70b5fa
+
+Console log: /workspace/scratch/fireblade-real-parsers/collection/results/504cbd9924ef4496a23e98e81d70b5fa/20261104001614_WxTCmd_2026.10.1_ConsoleLog.txt
+
+Error processing database: The type initializer for 'Microsoft.Data.Sqlite.SqliteConnection' threw an exception.
+System.TypeInitializationException: The type initializer for 'Microsoft.Data.Sqlite.SqliteConnection' threw an exception.
+ ---> System.Reflection.TargetInvocationException: Exception has been thrown by the target of an invocation.
+ ---> System.DllNotFoundException: Unable to load shared library 'e_sqlite3' or one of its dependencies. In order to help diagnose loading problems, consider using a tool like strace. If you're using glibc, consider setting the LD_DEBUG environment variable: 
+/workspace/scratch/fireblade-extracted-tools/WxTCmd/e_sqlite3.so: cannot open shared object file: No such file or directory
+/workspace/scratch/fireblade-dotnet/shared/Microsoft.NETCore.App/10.0.14/e_sqlite3.so: cannot open shared object file: No such file or directory
+/workspace/scratch/fireblade-extracted-tools/WxTCmd/libe_sqlite3.so: cannot open shared object file: No such file or directory
+/workspace/scratch/fireblade-dotnet/shared/Microsoft.NETCore.App/10.0.14/libe_sqlite3.so: cannot open shared object file: No such file or directory
+/workspace/scratch/fireblade-extracted-tools/WxTCmd/e_sqlite3: cannot open shared object file: No such file or directory
+/workspace/scratch/fireblade-dotnet/shared/Microsoft.NETCore.App/10.0.14/e_sqlite3: cannot open shared object file: No such file or directory
+/workspace/scratch/fireblade-extracted-tools/WxTCmd/libe_sqlite3: cannot open shared object file: No such file or directory
+/workspace/scratch/fireblade-dotnet/shared/Microsoft.NETCore.App/10.0.14/libe_sqlite3: cannot open shared object file: No such file or directory
+
+   at SQLitePCL.SQLite3Provider_e_sqlite3.NativeMethods.sqlite3_libversion_number()
+   at SQLitePCL.SQLite3Provider_e_sqlite3.NativeMethods.sqlite3_libversion_number()
+   at SQLitePCL.SQLite3Provider_e_sqlite3.SQLitePCL.ISQLite3Provider.sqlite3_libversion_number()
+   at SQLitePCL.raw.SetProvider(ISQLite3Provider imp)
+   at SQLitePCL.Batteries_V2.Init()
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+   --- End of inner exception stack trace ---
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at Microsoft.Data.Sqlite.SqliteConnection..cctor()
+   --- End of inner exception stack trace ---
+   at Microsoft.Data.Sqlite.SqliteConnection..ctor(String connectionString)
+   at WxTCmd.Classes.SqliteCopy.Open(String path, String tempFolder) in /_/WxTCmd/Classes/SqliteCopy.cs:line 42
+   at WxTCmd.Classes.ActivitiesCache.Read(String path, String tempFolder) in /_/WxTCmd/Classes/ActivitiesCache.cs:line 57
+   at WxTCmd.Program.DoWork(String f, String csv, String dt, String temp, Boolean debug, Boolean trace, Boolean co) in /_/WxTCmd/Program.cs:line 265
+

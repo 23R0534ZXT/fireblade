@@ -1,0 +1,1714 @@
+{
+  "format": "fireblade-functional-audit",
+  "checks": [
+    {
+      "name": "menus",
+      "status": "passed",
+      "details": {
+        "actions": [
+          {
+            "path": [
+              "&Case",
+              "Nouveau case…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Cases…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Enregistrer le case"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Fermer le case"
+            ],
+            "status": "separate_lifecycle_test"
+          },
+          {
+            "path": [
+              "&Case",
+              "Historique et récupération du case…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Importer un case portable…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Sauvegarde automatique du case (2 min)"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Sessions et compatibilité",
+              "Ouvrir une session…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Sessions et compatibilité",
+              "Enregistrer la session…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Sessions et compatibilité",
+              "Compatibilité Timeline Explorer",
+              "Importer avec un plugin TLE (.NET)…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Sessions et compatibilité",
+              "Compatibilité Timeline Explorer",
+              "Importer les préférences Timeline Explorer…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Sessions et compatibilité",
+              "Compatibilité Timeline Explorer",
+              "Importer une session Timeline Explorer…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Sessions et compatibilité",
+              "Compatibilité Timeline Explorer",
+              "Exporter une session TLE (sources et signets)…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Case",
+              "Quitter"
+            ],
+            "status": "separate_lifecycle_test"
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Importer un fichier de données…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Importer un dossier à parser…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Analyser un disque…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Ouvrir une analyse…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Calculs et conversions",
+              "Charger des fonctions .NET…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Calculs et conversions",
+              "Convertir une date…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Calculs et conversions",
+              "Ajouter une colonne calculée…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Calculs et conversions",
+              "Contrôler les colonnes dérivées…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Afficher la cellule / JSON…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Provenance et SHA-256…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Interrompre la requête"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Chronologie & corrélations"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Gérer les analyses ouvertes",
+              "Vider la file d’ouverture"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Gérer les analyses ouvertes",
+              "Fermer l’onglet"
+            ],
+            "status": "separate_lifecycle_test"
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Gérer les analyses ouvertes",
+              "Rouvrir le dernier onglet fermé"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&nalyse",
+              "Suivi des imports"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Détection",
+              "Analyser la collecte avec Hayabusa"
+            ],
+            "status": "disabled_in_current_context"
+          },
+          {
+            "path": [
+              "&Détection",
+              "Voir le contexte EVTX de l’alerte"
+            ],
+            "status": "disabled_in_current_context"
+          },
+          {
+            "path": [
+              "&Détection",
+              "Ouvrir la détection EVTX"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Détection",
+              "Rechercher des IOC"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Copier les lignes"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Signet / note…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Marquer la sélection"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Ajouter une note à la sélection…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Remplacer les notes de la sélection…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Édition",
+              "Retirer les signets de la sélection"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Messages…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Préférences…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Profils et compatibilité",
+              "Profils et plugins…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Profils et compatibilité",
+              "Légende des supertimelines…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Regrouper l’arbre par",
+              "Disque → partition → dossiers"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Regrouper l’arbre par",
+              "Collecte → type d’artefact"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Regrouper l’arbre par",
+              "Liste des analyses par collecte"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Position de l’arbre",
+              "À gauche"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Position de l’arbre",
+              "À droite"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Navigation des analyses"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Détails de la ligne"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Position des détails de ligne",
+              "En bas"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Position des détails de ligne",
+              "À droite"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Position des détails de ligne",
+              "En haut"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Déplier tout l’arbre"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Replier tout l’arbre"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Barres d’outils",
+              "Fichier"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Barres d’outils",
+              "Ajouter des données"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Organiser l’espace de travail",
+              "Animation au démarrage"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Colonnes et tri",
+              "Colonnes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Colonnes et tri",
+              "Hauteur des lignes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Colonnes et tri",
+              "Réinitialiser les largeurs"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Colonnes et tri",
+              "Tri sur plusieurs colonnes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Colonnes et tri",
+              "Options de tri"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Groupes",
+              "Regrouper…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Groupes",
+              "Résumés et tri des groupes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Groupes",
+              "Déplier tous les groupes (vue paginée)"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Groupes",
+              "Replier tous les groupes"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Vues et dispositions",
+              "Enregistrer la vue…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Vues et dispositions",
+              "Charger une vue…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Vues et dispositions",
+              "Dispositions de la grille",
+              "Exporter la disposition…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Vues et dispositions",
+              "Dispositions de la grille",
+              "Importer une disposition…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Vues et dispositions",
+              "Appliquer le profil détecté"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Vues et dispositions",
+              "Réinitialiser la vue"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Couleurs et règles",
+              "Règles de coloration…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Couleurs et règles",
+              "Règles globales",
+              "Modifier…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Couleurs et règles",
+              "Règles globales",
+              "Recharger depuis le disque"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Couleurs et règles",
+              "Règles globales",
+              "Importer et remplacer…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Couleurs et règles",
+              "Règles globales",
+              "Exporter…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Couleurs et règles",
+              "Règles globales",
+              "Appliquer à cette vue"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Couleurs et règles",
+              "Surligner un texte…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Navigation",
+              "Analyses ouvertes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Navigation",
+              "Onglet suivant"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Navigation",
+              "Onglet précédent"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Navigation",
+              "Navigation des analyses"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "&Affichage",
+              "Navigation",
+              "Détails de la ligne"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Expression textuelle…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Éditeur ET / OU / NON…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Filtrer sur la cellule active"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Ajouter un filtre…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Effacer les filtres"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "Fi&ltres",
+              "Rechercher dans toutes les analyses…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "E&xporter",
+              "Exporter…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "E&xporter",
+              "Exporter les signets et notes…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "E&xporter",
+              "Exporter le case portable…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "E&xporter",
+              "Créer un rapport HTML / PDF…"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Tutoriel complet — toutes les fonctionnalités"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Couverture de collecte et diagnostics"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Chasse IOC en masse"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Chronologie, sauvegardes et rapports"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Guide d’utilisation"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Licences"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "À propos de Fireblade"
+            ],
+            "status": "passed",
+            "errors": []
+          },
+          {
+            "path": [
+              "A&ide",
+              "Exporter les sources Hayabusa…"
+            ],
+            "status": "expected_source_checkout_diagnostic",
+            "errors": [
+              "Sources Hayabusa absentes de cette construction."
+            ]
+          }
+        ],
+        "modals": [
+          {
+            "title": "Nouveau case",
+            "text_length": null
+          },
+          {
+            "title": "Historique et récupération",
+            "text_length": null
+          },
+          {
+            "title": "Analyser un disque",
+            "text_length": null
+          },
+          {
+            "title": "Conversion temporelle",
+            "text_length": null
+          },
+          {
+            "title": "Colonne calculée",
+            "text_length": null
+          },
+          {
+            "title": "Contrôle des colonnes dérivées",
+            "text_length": null
+          },
+          {
+            "title": "Timestamp",
+            "text_length": null
+          },
+          {
+            "title": "Provenance de l’import",
+            "text_length": null
+          },
+          {
+            "title": "Signet / note",
+            "text_length": null
+          },
+          {
+            "title": "Note sur la sélection",
+            "text_length": null
+          },
+          {
+            "title": "Note sur la sélection",
+            "text_length": null
+          },
+          {
+            "title": "Messages",
+            "text_length": null
+          },
+          {
+            "title": "Préférences",
+            "text_length": null
+          },
+          {
+            "title": "Profils et plugins de présentation",
+            "text_length": null
+          },
+          {
+            "title": "Légende des supertimelines",
+            "text_length": null
+          },
+          {
+            "title": "Colonnes visibles",
+            "text_length": null
+          },
+          {
+            "title": "Hauteur des lignes",
+            "text_length": null
+          },
+          {
+            "title": "Tri sur plusieurs colonnes · priorité de haut en bas",
+            "text_length": null
+          },
+          {
+            "title": "Regrouper · ordre des niveaux de haut en bas",
+            "text_length": null
+          },
+          {
+            "title": "Résumés et tri des groupes",
+            "text_length": null
+          },
+          {
+            "title": "Règles de coloration · première règle correspondante prioritaire",
+            "text_length": null
+          },
+          {
+            "title": "Règles globales · colonnes absentes = règle non appliquée",
+            "text_length": null
+          },
+          {
+            "title": "Analyses ouvertes",
+            "text_length": null
+          },
+          {
+            "title": "Expression de filtre",
+            "text_length": null
+          },
+          {
+            "title": "Éditeur de filtres · ET / OU / NON",
+            "text_length": null
+          },
+          {
+            "title": "Ajouter un filtre · ET logique",
+            "text_length": null
+          },
+          {
+            "title": "Rechercher dans toutes les analyses",
+            "text_length": null
+          },
+          {
+            "title": "Transporter un case",
+            "text_length": null
+          },
+          {
+            "title": "Rapport d’investigation",
+            "text_length": null
+          },
+          {
+            "title": "Tutoriel complet · Fireblade",
+            "text_length": 108246
+          },
+          {
+            "title": "Couverture de collecte et diagnostics · Fireblade",
+            "text_length": 8236
+          },
+          {
+            "title": "Chasse IOC en masse · Fireblade",
+            "text_length": 3790
+          },
+          {
+            "title": "Chronologie, sauvegardes et rapports · Fireblade",
+            "text_length": 9184
+          },
+          {
+            "title": "Guide d’utilisation · Fireblade",
+            "text_length": 41008
+          },
+          {
+            "title": "Licences · Fireblade",
+            "text_length": 72947
+          },
+          {
+            "title": "À propos de Fireblade",
+            "text_length": 157
+          }
+        ],
+        "lifecycle": "close/reopen tab and case passed",
+        "scope": "actual QAction dispatch; file pickers cancelled; dialogs opened and cancelled"
+      },
+      "seconds": 3.599
+    },
+    {
+      "name": "context",
+      "status": "passed",
+      "details": {
+        "actions": [
+          {
+            "path": [
+              "header",
+              "Trier par ordre croissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Trier par ordre décroissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Type de tri",
+              "Texte"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Type de tri",
+              "Nombre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Type de tri",
+              "Date ISO"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Tri sur plusieurs colonnes…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Grouper par cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Ajouter au groupement"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Filtrer cette colonne…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Filtrer une date…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Valeur entière"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Année"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Trimestre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Mois"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Semaine"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Jour"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Heure"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Minute"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Regrouper les dates par",
+              "Seconde"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Épingler la colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Épingler à droite"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Basculer l’affichage booléen"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Masquer cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "header",
+              "Choisir les colonnes…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Afficher la cellule / JSON…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Copier la valeur"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Filtrer sur cette valeur"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Exclure cette valeur"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Corréler dans toutes les analyses"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Ouvrir avec…"
+            ],
+            "status": "expected_non_path_diagnostic"
+          },
+          {
+            "path": [
+              "cell",
+              "Afficher dans l’Explorateur"
+            ],
+            "status": "expected_non_path_diagnostic"
+          },
+          {
+            "path": [
+              "cell",
+              "Ouvrir le dossier parent"
+            ],
+            "status": "expected_non_path_diagnostic"
+          },
+          {
+            "path": [
+              "cell",
+              "Copier les lignes sélectionnées"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Signet / note…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Marquer la sélection"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Ajouter une note à la sélection…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "cell",
+              "Retirer les signets de la sélection"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Trier par ordre croissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Trier par ordre décroissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Type de tri",
+              "Texte"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Type de tri",
+              "Nombre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Type de tri",
+              "Date ISO"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Tri sur plusieurs colonnes…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Grouper par cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Retirer du groupement"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Filtrer cette colonne…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Filtrer une date…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Valeur entière"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Année"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Trimestre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Mois"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Semaine"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Jour"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Heure"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Minute"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Regrouper les dates par",
+              "Seconde"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Épingler la colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Épingler à droite"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Basculer l’affichage booléen"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Masquer cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "grouped_header",
+              "Choisir les colonnes…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Trier par ordre croissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Trier par ordre décroissant"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Type de tri",
+              "Texte"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Type de tri",
+              "Nombre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Type de tri",
+              "Date ISO"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Tri sur plusieurs colonnes…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Grouper par cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Ajouter au groupement"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Filtrer cette colonne…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Filtrer une date…"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Valeur entière"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Année"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Trimestre"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Mois"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Semaine"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Jour"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Heure"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Minute"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Regrouper les dates par",
+              "Seconde"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Désépingler la colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Épingler à droite"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Basculer l’affichage booléen"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Masquer cette colonne"
+            ],
+            "status": "passed"
+          },
+          {
+            "path": [
+              "pinned_header",
+              "Choisir les colonnes…"
+            ],
+            "status": "passed"
+          }
+        ],
+        "operating_system_calls_intercepted": [
+          "file:///workspace/scratch/fireblade-ux-menus/context",
+          "file:///workspace/scratch/fireblade-ux-menus/context"
+        ],
+        "scope": "context action dispatch and state changes; OS launches intercepted, modal editors cancelled"
+      },
+      "seconds": 2.972
+    }
+  ]
+}

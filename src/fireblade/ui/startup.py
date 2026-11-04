@@ -16,8 +16,8 @@ class StartupAnimation(QWidget):
         self.phase = 0.0
         self.animation = QVariantAnimation(self)
         self.animation.setStartValue(0.0); self.animation.setEndValue(1.0)
-        self.animation.setDuration(650)
-        self.animation.setEasingCurve(QEasingCurve.OutCubic)
+        self.animation.setDuration(2400)
+        self.animation.setEasingCurve(QEasingCurve.Linear)
         self.animation.valueChanged.connect(self.advance)
         self.animation.finished.connect(self.finished.emit)
         screen = self.screen().availableGeometry()
@@ -51,7 +51,9 @@ class StartupAnimation(QWidget):
         painter.setPen(QColor('#f2f6ff')); painter.setFont(QFont('Segoe UI', 28, QFont.Bold))
         painter.drawText(0, 155, 560, 50, Qt.AlignCenter, 'FIREBLADE')
         painter.setFont(QFont('Segoe UI', 10)); painter.setPen(QColor('#a6b8d3'))
-        painter.drawText(0, 207, 560, 28, Qt.AlignCenter, 'Votre espace d’investigation')
+        stage = ('Préparation de votre espace…' if self.phase < .4 else
+                 'Fichiers · dossiers · disques' if self.phase < .8 else 'Prêt à enquêter')
+        painter.drawText(0, 207, 560, 28, Qt.AlignCenter, stage)
         painter.setPen(Qt.NoPen); painter.setBrush(QColor('#243047'))
         painter.drawRoundedRect(180, 260, 200, 3, 1.5, 1.5)
         painter.setBrush(QColor('#ff9c5b'))

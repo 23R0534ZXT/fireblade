@@ -263,7 +263,7 @@ def run_stress(app,spec_path,report_path):
 
         def save_and_reopen():
             def fill(dialog):run.text(dialog.findChild(QLineEdit),'triage 3GiB');run.accept(dialog)
-            run.modal(fill);run.menu('Analyse','Enregistrer la vue…')
+            run.modal(fill);run.menu('Affichage','Enregistrer la vue…')
             saved=run.work(run.window.case.views)['triage 3GiB']
             run.window.tree.setColumnHidden(14,True)
             session=run.out/'session.fireblade-session'
@@ -280,7 +280,7 @@ def run_stress(app,spec_path,report_path):
             expect(run.window.case.path==full_case and run.window.tree.isColumnHidden(14),'Session restore failed')
             expect(len(run.window.case.bookmarks())==2,'Persisted notes lost')
             run.modal(lambda dialog:run.accept(dialog))
-            run.menu('Analyse','Charger une vue…')
+            run.menu('Affichage','Charger une vue…')
             expect(run.window.view==saved,'Named view did not restore filters, sort, colors and column layout')
             run.window.tree.setColumnHidden(14,True)
             run.capture('08-session')

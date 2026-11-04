@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "rows": 250000,
+  "bytes": 8863908,
+  "seconds": 1.019,
+  "peak_process_rss_mib": 139.2,
+  "gui_timer_ticks": 20,
+  "max_gui_tick_gap_ms": 98.3,
+  "query_memory_mb": 128,
+  "parser_memory_mb": 64,
+  "threads_per_database": 1,
+  "source_unchanged": true,
+  "scope": "Linux offscreen; concurrent full pytest run; process RSS includes Qt and Python, external native tools absent"
+}

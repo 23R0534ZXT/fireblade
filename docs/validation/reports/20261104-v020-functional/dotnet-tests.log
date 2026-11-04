@@ -1,0 +1,4 @@
+...............................s............                             [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/core/test_reader_detection.py:92: Existing 3 GiB dataset not present
+43 passed, 1 skipped in 20.35s

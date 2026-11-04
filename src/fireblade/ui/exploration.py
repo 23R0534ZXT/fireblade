@@ -515,6 +515,7 @@ class ExplorationMixin:
         if not path:
             path,_=QFileDialog.getSaveFileName(self,'Exporter une session TLE · sources et signets uniquement','','Session Timeline Explorer (*.tle_sess)')
         if not path:return
+        if not self.export_destination_is_safe(path):return
         self.remember_active()
         from fireblade.core.tle_session_export import TleSessionExport
         task=TleSessionExport(self.documents,self.settings,self.case)

@@ -38,7 +38,7 @@ def test_collection_organization_dialog_exposes_two_choices(qt_application):
     from PySide6.QtWidgets import QDialogButtonBox
     dialog=CollectionOrganizationDialog()
     try:
-        assert dialog.organization()=='artifacts'
+        assert dialog.organization()=='files'
         dialog.combined.click()
         assert dialog.organization()=='combined'
         assert not dialog.artifacts.isChecked()

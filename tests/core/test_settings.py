@@ -42,5 +42,5 @@ def test_default_settings_and_partial_config(tmp_path):
     assert load_settings() == Settings()
     config = tmp_path / 'partial.toml'
     config.write_text('[resources]\nthreads=1')
-    assert load_settings(config).memory_mb == 256
+    assert load_settings(config).memory_mb == 128
     assert load_settings(config).threads == 1

@@ -1,0 +1,21 @@
+{
+  "python": "3.12.14",
+  "duckdb": "1.5.6",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "cpu_count": 3,
+  "csv_bytes": 3275068297,
+  "rows": 8380000,
+  "database_bytes": 100151296,
+  "peak_process_rss_mib": 324.1,
+  "duckdb_memory_limit_mib": 256,
+  "threads": 2,
+  "filtered_count": 698892,
+  "timings": {
+    "import_with_two_sha256_passes_s": 125.239,
+    "first_page_s": 0.007,
+    "group_two_columns_s": 0.02,
+    "numeric_sort_first_page_s": 1.036,
+    "filtered_count_s": 0.011
+  },
+  "caveat": "Synthetic repetitive data; warm filesystem cache; not a comparison with Timeline Explorer."
+}

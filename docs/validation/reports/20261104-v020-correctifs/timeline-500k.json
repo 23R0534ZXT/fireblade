@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "rows": 500000,
+  "source_bytes": 102129611,
+  "source_sha256": "6aabedfaaa65780748ee64572685d64e450f4983222fd48c37a66d942ace6c18",
+  "memory_limit_mb_per_database": 64,
+  "peak_process_rss_mib": 204.8,
+  "entity_matches": 4951,
+  "timings": {
+    "source_import_s": 14.31,
+    "index_s": 41.153,
+    "entity_query_s": 1.348,
+    "last_page_s": 0.772,
+    "histogram_s": 0.802,
+    "filtered_export_s": 2.207
+  },
+  "checks": [
+    "source_integrity",
+    "full_count",
+    "last_page_independent_oracle",
+    "entity_count_independent_oracle",
+    "histogram_count",
+    "every_filtered_export_row_id"
+  ],
+  "caveat": "Synthetic repeated entities; Linux source engine. Memory budgets are per DuckDB database, not total process RSS."
+}

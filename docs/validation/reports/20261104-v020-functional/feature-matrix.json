@@ -1,0 +1,638 @@
+[
+  {
+    "id": 1,
+    "feature": "Démarrage et animation",
+    "status": "Exercé",
+    "scope": "Bootstrap réel, animation activée et désactivée, fichier différé après création du case",
+    "evidence": "startup-animation.json",
+    "tests": [
+      "tests/ui/test_start_workflow.py"
+    ]
+  },
+  {
+    "id": 2,
+    "feature": "CSV, TSV et texte délimité",
+    "status": "Exercé",
+    "scope": "Séparateurs, encodages, BOM, préambules PowerShell, guillemets, multilignes et import par lots",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_engine.py",
+      "tests/core/test_csv_chunks.py",
+      "tests/core/test_csv_preamble.py"
+    ]
+  },
+  {
+    "id": 3,
+    "feature": "Classeur XLSX",
+    "status": "Exercé",
+    "scope": "Choix de feuille, formules comme texte, Unicode, cellules longues et exports",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_engine.py",
+      "tests/ui/test_desktop.py"
+    ]
+  },
+  {
+    "id": 4,
+    "feature": "Classeur XLS",
+    "status": "Exercé",
+    "scope": "Vrai classeur BIFF à deux feuilles et valeurs mémorisées",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_exploration_features.py"
+    ]
+  },
+  {
+    "id": 5,
+    "feature": "Provenance et intégrité",
+    "status": "Exercé avec défaut",
+    "scope": "SHA-256 avant/après, mutations, rollback ; FB020-04 et nouveaux défauts d’export",
+    "evidence": "source-protection.json",
+    "tests": [
+      "tests/core/test_import_transactions.py",
+      "tests/core/test_collection.py"
+    ]
+  },
+  {
+    "id": 6,
+    "feature": "Collecte classique",
+    "status": "Exercé",
+    "scope": "Dossier récursif, dispositions des fichiers, organisation par artefact et combinaison",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_collection.py",
+      "tests/ui/test_collection_desktop.py"
+    ]
+  },
+  {
+    "id": 7,
+    "feature": "Disque monté et résultats progressifs",
+    "status": "Exercé",
+    "scope": "Extraction, provenance, requêtes simultanées, arrêt et sauvegarde des résultats terminés",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_disk.py",
+      "tests/ui/test_start_workflow.py"
+    ]
+  },
+  {
+    "id": 8,
+    "feature": "Images FAT et disque MBR RAW",
+    "status": "Exercé",
+    "scope": "FAT12 réel synthétique et deux partitions ; empreinte inchangée",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_disk.py"
+    ]
+  },
+  {
+    "id": 9,
+    "feature": "Image ext4",
+    "status": "Partiel",
+    "scope": "Petite image publique parcourue lors de la première passe ; aucun artefact sélectionné",
+    "evidence": "Rapport précédent",
+    "tests": [
+      "tests/core/test_disk.py"
+    ]
+  },
+  {
+    "id": 10,
+    "feature": "Image NTFS",
+    "status": "Défaut confirmé",
+    "scope": "FB020-01 : arrêt du parcours sur is_mount_point absent",
+    "evidence": "Rapport précédent",
+    "tests": [
+      "tests/core/test_disk.py"
+    ]
+  },
+  {
+    "id": 11,
+    "feature": "Image E01",
+    "status": "Partiel",
+    "scope": "Conteneur public décodé ; pas de qualification d’un système de fichiers dans E01",
+    "evidence": "Rapport précédent",
+    "tests": [
+      "tests/core/test_disk.py"
+    ]
+  },
+  {
+    "id": 12,
+    "feature": "Disque physique",
+    "status": "Partiel",
+    "scope": "Flux RAW synthétique et protections de destination ; pas de vrai périphérique",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_disk.py"
+    ]
+  },
+  {
+    "id": 13,
+    "feature": "Compagnons SQLite WAL",
+    "status": "Défaut confirmé",
+    "scope": "FB020-02 : transaction validée omise de la copie d’une base SQLite",
+    "evidence": "Rapport précédent",
+    "tests": [
+      "tests/core/test_disk.py"
+    ]
+  },
+  {
+    "id": 14,
+    "feature": "EVTX et Hayabusa",
+    "status": "Exercé",
+    "scope": "Vrai EvtxECmd, 13 événements, deux alertes du vrai Hayabusa Linux et règles embarquées",
+    "evidence": "native-readers.json",
+    "tests": [
+      "tests/core/test_collection.py"
+    ]
+  },
+  {
+    "id": 15,
+    "feature": "Contexte d’alerte et retour source",
+    "status": "Exercé",
+    "scope": "13 événements liés, aperçu latéral, conservation explicite du contexte et retour aux alertes",
+    "evidence": "native-context-ui.json",
+    "tests": [
+      "tests/ui/test_alert_context_desktop.py",
+      "tests/core/test_alert_context.py"
+    ]
+  },
+  {
+    "id": 16,
+    "feature": "Amcache et AppCompatCache",
+    "status": "Exercé",
+    "scope": "Assemblies du binaire publié sur les hives de qualification, résultats non vides",
+    "evidence": "native-readers.json",
+    "tests": [
+      "tests/runtime/test_forensic_matrix.py"
+    ]
+  },
+  {
+    "id": 17,
+    "feature": "Prefetch, MFT et Corbeille",
+    "status": "Exercé",
+    "scope": "Vrais PECmd, MFTECmd et RBCmd sur les artefacts du pack",
+    "evidence": "native-readers.json",
+    "tests": [
+      "tests/runtime/test_forensic_matrix.py"
+    ]
+  },
+  {
+    "id": 18,
+    "feature": "LNK, Jump Lists et RecentFileCache",
+    "status": "Exercé",
+    "scope": "Vrais LECmd, JLECmd et RecentFileCacheParser sur les artefacts du pack",
+    "evidence": "native-readers.json",
+    "tests": [
+      "tests/runtime/test_forensic_matrix.py"
+    ]
+  },
+  {
+    "id": 19,
+    "feature": "RECmd et plugins registre",
+    "status": "Exercé avec refus attendu",
+    "scope": "Deux SYSTEM parsés ; UsrClass sale sans journaux refusé et diagnostiqué",
+    "evidence": "native-readers.json",
+    "tests": [
+      "tests/core/test_collection.py"
+    ]
+  },
+  {
+    "id": 20,
+    "feature": "SRUM, Windows Timeline, SQLite natif",
+    "status": "Limité sous Linux",
+    "scope": "SRUM exige Windows ; WxTCmd et SQLECmd manquent des bibliothèques natives Linux compatibles",
+    "evidence": "native-readers.json",
+    "tests": [
+      "tests/runtime/test_forensic_matrix.py"
+    ]
+  },
+  {
+    "id": 21,
+    "feature": "Shellbags",
+    "status": "Exercé",
+    "scope": "Vraie ruche, vrai lecteur .NET, 523 lignes, avertissement attendu et source inchangée",
+    "evidence": "browser-tests.xml",
+    "tests": [
+      "tests/core/test_shellbags.py",
+      "tests/ui/test_browser_artifacts_desktop.py"
+    ]
+  },
+  {
+    "id": 22,
+    "feature": "WebCache",
+    "status": "Exercé",
+    "scope": "Vraie base ESE, 1 612 lignes, grille et restauration de case",
+    "evidence": "browser-tests.xml",
+    "tests": [
+      "tests/core/test_webcache.py",
+      "tests/ui/test_browser_artifacts_desktop.py"
+    ]
+  },
+  {
+    "id": 23,
+    "feature": "CatScale",
+    "status": "Exercé",
+    "scope": "Familles, dossiers, archives, rotations et conservation des sources",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_catscale.py",
+      "tests/ui/test_catscale_desktop.py"
+    ]
+  },
+  {
+    "id": 24,
+    "feature": "Journaux Linux",
+    "status": "Exercé",
+    "scope": "Formats structurés/bruts, archives, compressions, journaux binaires et diagnostics",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_linux_logs.py",
+      "tests/ui/test_linux_logs_desktop.py"
+    ]
+  },
+  {
+    "id": 25,
+    "feature": "Recherche simple et par colonne",
+    "status": "Exercé",
+    "scope": "Recherche globale, filtres d’en-tête et reset sans perdre la disposition",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/ui/test_intuitive_workspace.py",
+      "tests/ui/test_exploration_desktop.py"
+    ]
+  },
+  {
+    "id": 26,
+    "feature": "Filtres imbriqués et expressions",
+    "status": "Exercé",
+    "scope": "Éditeur ET/OU/NON, texte, DevExpress, regex, NULL et erreurs récupérables",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_devexpress_criteria.py",
+      "tests/core/test_expressions_advanced.py",
+      "tests/ui/test_condition_cards.py"
+    ]
+  },
+  {
+    "id": 27,
+    "feature": "Tri simple et multicolonnes",
+    "status": "Exercé",
+    "scope": "Texte, grands nombres, dates à la nanoseconde, pages profondes et cache",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_ordering.py",
+      "tests/ui/test_exploration_desktop.py"
+    ]
+  },
+  {
+    "id": 28,
+    "feature": "Groupements et résumés",
+    "status": "Exercé",
+    "scope": "Groupes imbriqués, résumés, dates, tris et exports groupés",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_group_export.py",
+      "tests/core/test_exploration_features.py"
+    ]
+  },
+  {
+    "id": 29,
+    "feature": "Dépliage complet et pagination",
+    "status": "Exercé",
+    "scope": "Index borné, positions profondes, rétraction et budget mémoire",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_outline.py",
+      "tests/ui/test_exploration_desktop.py"
+    ]
+  },
+  {
+    "id": 30,
+    "feature": "Pieds de groupes et pied global",
+    "status": "Exercé",
+    "scope": "Modes visibles, totaux et dispositions persistées",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_group_footers.py",
+      "tests/ui/test_group_footers_desktop.py"
+    ]
+  },
+  {
+    "id": 31,
+    "feature": "Colonnes, épinglage et dimensions",
+    "status": "Exercé",
+    "scope": "Deux côtés, masquage, ordre, largeurs, hauteurs automatiques et entêtes",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/ui/test_auto_row_heights.py",
+      "tests/ui/test_exploration_desktop.py"
+    ]
+  },
+  {
+    "id": 32,
+    "feature": "Signets et notes",
+    "status": "Exercé",
+    "scope": "Sélection, ajout/remplacement/retrait, persistance et export",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/ui/test_shared_rules_and_notes.py",
+      "tests/core/test_engine.py"
+    ]
+  },
+  {
+    "id": 33,
+    "feature": "Règles locales et globales",
+    "status": "Exercé avec défaut d’export",
+    "scope": "Priorité, portée, noms de colonnes, partage et import/export ; FB020-08",
+    "evidence": "cross-feature-and-protection.json",
+    "tests": [
+      "tests/core/test_statistical_rules.py",
+      "tests/ui/test_shared_rules_and_notes.py"
+    ]
+  },
+  {
+    "id": 34,
+    "feature": "Barres, échelles, icônes et images",
+    "status": "Exercé",
+    "scope": "Statistiques, percentiles, seuils mixtes, alpha et images bornées",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_mixed_icon_thresholds.py",
+      "tests/ui/test_tle_appearance_desktop.py",
+      "tests/ui/test_layout_alpha_desktop.py"
+    ]
+  },
+  {
+    "id": 35,
+    "feature": "Dates et colonnes UTC",
+    "status": "Exercé",
+    "scope": "Formats d’époques, fuseaux Windows/IANA, offsets, précision et qualité",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_derived_columns.py",
+      "tests/core/test_date_ranges.py"
+    ]
+  },
+  {
+    "id": 36,
+    "feature": "Calculs, catégories et MACB",
+    "status": "Exercé",
+    "scope": "Expressions persistantes, transformations, comparaison et réouverture",
+    "evidence": "cross-feature-and-protection.json",
+    "tests": [
+      "tests/core/test_derived_columns.py",
+      "tests/core/test_expressions_advanced.py"
+    ]
+  },
+  {
+    "id": 37,
+    "feature": "Vues nommées",
+    "status": "Exercé",
+    "scope": "Sauvegarde et restauration des filtres, groupes, règles et colonnes",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_engine.py",
+      "tests/ui/test_advanced.py"
+    ]
+  },
+  {
+    "id": 38,
+    "feature": "Dispositions locales et TLE",
+    "status": "Exercé",
+    "scope": "Import/export XML, autosauvegarde locale et migration de dispositions",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_tle_layout_export.py",
+      "tests/core/test_auto_layout.py",
+      "tests/ui/test_layout_alpha_desktop.py"
+    ]
+  },
+  {
+    "id": 39,
+    "feature": "Préférences et thèmes",
+    "status": "Exercé",
+    "scope": "24 préréglages et modes standard ; captures/contraste supplémentaires à 125 et 200 %",
+    "evidence": "themes-200.json",
+    "tests": [
+      "tests/ui/test_theme_gallery.py",
+      "tests/ui/test_theme_palette.py"
+    ]
+  },
+  {
+    "id": 40,
+    "feature": "Profils déclaratifs",
+    "status": "Exercé",
+    "scope": "Reconnaissance, catalogue, validation JSON, ordre des colonnes et interface de gestion",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_exploration_features.py",
+      "tests/ui/test_exploration_desktop.py"
+    ]
+  },
+  {
+    "id": 41,
+    "feature": "Plugins .NET modernes",
+    "status": "Exercé",
+    "scope": "Lecteurs, types CLR, fonctions, instances privées, approbation, hash, arrêt et restauration",
+    "evidence": "dotnet-tests.xml",
+    "tests": [
+      "tests/core/test_clr_objects.py",
+      "tests/core/test_tle_plugin_host.py"
+    ]
+  },
+  {
+    "id": 42,
+    "feature": "Détection automatique des lecteurs",
+    "status": "Exercé",
+    "scope": "En-têtes complets, ambiguïtés, gros fichier lu par préfixes et import UI réel",
+    "evidence": "dotnet-tests.xml",
+    "tests": [
+      "tests/core/test_reader_detection.py",
+      "tests/ui/test_exploration_desktop.py"
+    ]
+  },
+  {
+    "id": 43,
+    "feature": "Plugins CLR4 historiques",
+    "status": "Partiel",
+    "scope": "Qualification Windows historique ; pas de nouveau runtime .NET Framework ici",
+    "evidence": "Rapport précédent",
+    "tests": [
+      "tests/runtime/test_resources.py"
+    ]
+  },
+  {
+    "id": 44,
+    "feature": "Chronologie et corrélations",
+    "status": "Exercé",
+    "scope": "Sources/dates, zoom, sélection, entités, sans date, signets, navigation, export et persistance",
+    "evidence": "menus-and-dialogs.json",
+    "tests": [
+      "tests/core/test_timeline.py",
+      "tests/ui/test_investigation_tools.py"
+    ]
+  },
+  {
+    "id": 45,
+    "feature": "Chasse IOC",
+    "status": "Exercé",
+    "scope": "Types, normalisation, limites, comptages, pages, filtres, retour source, CSV/XLSX et historique",
+    "evidence": "cross-feature-and-protection.json",
+    "tests": [
+      "tests/core/test_ioc_hunt.py",
+      "tests/ui/test_ioc_hunt_panel.py"
+    ]
+  },
+  {
+    "id": 46,
+    "feature": "Couverture et diagnostics",
+    "status": "Exercé",
+    "scope": "Inventaires, sources, dates, champs vides, fraîcheur, incidents et reçus d’exports",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_coverage.py",
+      "tests/ui/test_coverage_panel.py"
+    ]
+  },
+  {
+    "id": 47,
+    "feature": "Rapports HTML et PDF",
+    "status": "Exercé",
+    "scope": "Notes échappées, sélection, limites, chronologie, couverture et génération PDF réelle",
+    "evidence": "cross-feature-and-protection.json",
+    "tests": [
+      "tests/core/test_investigation_report.py",
+      "tests/ui/test_investigation_tools.py"
+    ]
+  },
+  {
+    "id": 48,
+    "feature": "Exports CSV et XLSX",
+    "status": "Exercé avec défaut",
+    "scope": "Contenu relu et vérifié, annotations, projection, groupes ; FB020-06 sur les sources brutes",
+    "evidence": "source-protection.json",
+    "tests": [
+      "tests/core/test_coverage.py",
+      "tests/core/test_group_export.py"
+    ]
+  },
+  {
+    "id": 49,
+    "feature": "Sessions Fireblade et TLE",
+    "status": "Exercé avec défaut",
+    "scope": "1000 analyses, taille, filtres, tags, source feuille Excel ; FB020-08 sur les destinations internes",
+    "evidence": "cross-feature-and-protection.json",
+    "tests": [
+      "tests/core/test_sessions.py",
+      "tests/core/test_tle_session_export.py"
+    ]
+  },
+  {
+    "id": 50,
+    "feature": "Catalogue et vie des cases",
+    "status": "Exercé",
+    "scope": "Créer, ouvrir, modifier, trier, chercher, archiver/réactiver, verrou et isolation",
+    "evidence": "menus-and-dialogs.json",
+    "tests": [
+      "tests/core/test_investigations.py",
+      "tests/ui/test_investigations_desktop.py"
+    ]
+  },
+  {
+    "id": 51,
+    "feature": "Sauvegarde et récupération",
+    "status": "Exercé",
+    "scope": "Sauvegarde auto, historique, restauration UI d’une vue en conservant les annotations actuelles",
+    "evidence": "menus-and-dialogs.json",
+    "tests": [
+      "tests/core/test_case_recovery.py",
+      "tests/ui/test_investigation_tools.py"
+    ]
+  },
+  {
+    "id": 52,
+    "feature": "Case portable",
+    "status": "Exercé avec défaut",
+    "scope": "Transport des bases, vues, dérivées, IOC et provenance ; FB020-03 sur base hostile",
+    "evidence": "cross-feature-and-protection.json",
+    "tests": [
+      "tests/core/test_case_package.py",
+      "tests/core/test_disk.py"
+    ]
+  },
+  {
+    "id": 53,
+    "feature": "Nombreux onglets et analyses",
+    "status": "Exercé",
+    "scope": "320 bases réelles, recherche, navigation, fermeture/réouverture et session",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/ui/test_many_documents.py",
+      "tests/ui/test_many_tabs.py"
+    ]
+  },
+  {
+    "id": 54,
+    "feature": "Annulation et erreurs",
+    "status": "Exercé",
+    "scope": "Imports/exports/requêtes/disques et processus .NET ; transaction réutilisable après arrêt",
+    "evidence": "dotnet-tests.xml",
+    "tests": [
+      "tests/core/test_cancellation.py",
+      "tests/core/test_import_transactions.py",
+      "tests/ui/test_start_workflow.py"
+    ]
+  },
+  {
+    "id": 55,
+    "feature": "Menus et commandes contextuelles",
+    "status": "Exercé",
+    "scope": "101 entrées principales inventoriées ; 85 déclenchements contextuels, éditeurs ouverts et annulés",
+    "evidence": "context-menus.json",
+    "tests": [
+      "tests/ui/test_exploration_desktop.py"
+    ]
+  },
+  {
+    "id": 56,
+    "feature": "Aides, licences et sources Hayabusa",
+    "status": "Exercé avec défaut",
+    "scope": "Textes d’aide et À propos ouverts ; FB020-07 sur export des sources Hayabusa",
+    "evidence": "source-protection.json",
+    "tests": [
+      "tests/runtime/test_resources.py"
+    ]
+  },
+  {
+    "id": 57,
+    "feature": "Ouverture externe et presse-papiers",
+    "status": "Partiel",
+    "scope": "Copie réelle ; fichiers inexistants diagnostiqués ; lancements OS interceptés sans exécuter la preuve",
+    "evidence": "context-menus.json",
+    "tests": [
+      "tests/ui/test_exploration_desktop.py"
+    ]
+  },
+  {
+    "id": 58,
+    "feature": "Chemins Windows/UNC et verrouillages",
+    "status": "Limité sous Linux",
+    "scope": "Quatre tests ignorés ici ; résultats Windows historiques conservés",
+    "evidence": "full-suite.xml",
+    "tests": [
+      "tests/core/test_native_windows_storage.py",
+      "tests/windows/test_native.py"
+    ]
+  },
+  {
+    "id": 59,
+    "feature": "Binaire autonome et publication",
+    "status": "Partiel",
+    "scope": "EXE publié haché/inspecté et parseurs extraits exécutés ; pas de nouvelle exécution de l’EXE Windows",
+    "evidence": "native-provenance.json",
+    "tests": [
+      "tests/test_release.py",
+      "tests/test_publish_qualified.py"
+    ]
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "name": "hayabusa-4.3.1-lin-x64-gnu.zip",
+  "size": 48806738,
+  "digest": "sha256:a4fbdae9b13a5fe0f3b3d98981dd18775f50e5402cf3dee3ba85d4ecd252370e",
+  "browser_download_url": "https://github.com/Yamato-Security/hayabusa/releases/download/v4.3.1/hayabusa-4.3.1-lin-x64-gnu.zip",
+  "calculated_sha256": "a4fbdae9b13a5fe0f3b3d98981dd18775f50e5402cf3dee3ba85d4ecd252370e",
+  "used_rules": "Rules extracted unchanged from verified Fireblade 0.2.0 EXE"
+}

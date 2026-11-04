@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.111" timestamp="2026-11-04T00:16:56.880594+00:00" hostname="8922138a3254"><testcase classname="tests.core.test_reader_detection" name="test_probe_reads_only_header_prefix" time="0.020" /></testsuite></testsuites>

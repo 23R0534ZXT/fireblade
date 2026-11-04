@@ -1,0 +1,20 @@
+RECmd version 2026.10.3
+
+Author: Eric Zimmerman (saericzimmerman@gmail.com)
+https://github.com/EricZimmerman/RECmd
+
+Note: Enclose all strings containing spaces (and all RegEx) with double quotes
+
+Command line: -f /workspace/scratch/fireblade-real-parsers/evidence/browser/Shellbags/UsrClass.dat --csv /workspace/scratch/fireblade-real-parsers/collection/results/19f1436c1bc943f1bba54cf61c6c3ca5 --bn /workspace/scratch/fireblade-extracted-tools/RECmd/BatchExamples/Kroll_Batch.reb
+
+Console log: /workspace/scratch/fireblade-real-parsers/collection/results/19f1436c1bc943f1bba54cf61c6c3ca5/20261104001611_RECmd_2026.10.3_ConsoleLog.txt
+
+
+Processing hive /workspace/scratch/fireblade-real-parsers/evidence/browser/Shellbags/UsrClass.dat
+Registry hive is dirty and no transaction logs were found in the same directory! LOGs should have same base name as the hive. Aborting!!
+
+Found 0 key/value pairs across 1 file
+Total search time: 0.015 seconds
+
+1 hive(s) could not be processed
+

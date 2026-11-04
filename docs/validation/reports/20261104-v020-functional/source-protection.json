@@ -1,0 +1,31 @@
+{
+  "format": "fireblade-functional-audit",
+  "checks": [
+    {
+      "name": "source_protection",
+      "status": "finding",
+      "details": {
+        "finding": true,
+        "priority": "P1",
+        "hayabusa_source_export": {
+          "source_overwritten": true,
+          "source_became_zip": true,
+          "errors": [],
+          "sha256_before": "e0f2755f4377e8c4557c57f741b61306e056be30e369ab5e7646afb0ea792e28",
+          "sha256_after": "12d9d21d25fdf2c9ac91fc11ac4943a1ab439d008af1dc3d18e280674d87e90e",
+          "status_message": "Sources Hayabusa exportées : /workspace/scratch/fireblade-source-proof/source_protection/source.csv"
+        },
+        "raw_collection_export": {
+          "source_overwritten": true,
+          "accepted_by_guard": true,
+          "original_in_inventory": true,
+          "sha256_before": "ee4e43334b27a04e345f0e055f60d518e27829ab6d0d38bcedaa183d632b8a3b",
+          "sha256_after": "5dd933d02a8112f3b7894c6c11527152a8a191916037dfd56de4461ca1f1fbd2",
+          "status_message": "Export vérifié : 1 lignes · /workspace/scratch/fireblade-source-proof/source_protection/raw/var-log.zip"
+        },
+        "trigger": "explicitly choosing an existing evidence source as output; all originals here are disposable"
+      },
+      "seconds": 0.865
+    }
+  ]
+}

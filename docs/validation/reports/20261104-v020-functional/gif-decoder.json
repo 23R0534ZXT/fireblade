@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "source_format": "GIF89a",
+  "size": [
+    1,
+    1
+  ],
+  "canonical_format": "PNG",
+  "untrusted_envelope_removed": true,
+  "note": "Known GIF bytes exercise the decoder without the unavailable Qt GIF encoder; original parameterized test still skipped."
+}

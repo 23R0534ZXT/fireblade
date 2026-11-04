@@ -1,0 +1,13 @@
+Processing ./.
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: fireblade-forensics
+  Building wheel for fireblade-forensics (pyproject.toml): started
+  Building wheel for fireblade-forensics (pyproject.toml): finished with status 'done'
+  Created wheel for fireblade-forensics: filename=fireblade_forensics-0.2.0-py3-none-any.whl size=445065 sha256=c0106cfcf95c362000169879263cfabed5c459350ec7c2188438cc6ab62c29d0
+  Stored in directory: /tmp/pip-ephem-wheel-cache-lwv5uhbt/wheels/3d/7b/89/687b396bc2a1a325799201245681ae193b15564157f825c7fa
+Successfully built fireblade-forensics

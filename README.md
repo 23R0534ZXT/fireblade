@@ -8,7 +8,9 @@ Fireblade brings Windows artifacts, Linux logs, detection results and tabular ev
 
 [Releases](https://github.com/23R0534ZXT/fireblade/releases) · [Documentation](docs/README.md) · [Report an issue](https://github.com/23R0534ZXT/fireblade/issues/new/choose) · [Release notes](docs/development/RELEASE-NOTES.md)
 
-> Download the Windows x64 executable from [GitHub Releases](https://github.com/23R0534ZXT/fireblade/releases). Each published build identifies its qualified commit and SHA-256. The desktop interface and most user guides are currently in French.
+**[Download Fireblade 0.2.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.2.1/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.1) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/41850558420)
+
+The desktop interface and most user guides are currently in French.
 
 ![Fireblade investigation workspace](docs/assets/fireblade-02-workspace.png)
 

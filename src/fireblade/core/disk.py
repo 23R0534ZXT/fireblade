@@ -218,7 +218,9 @@ class DiskCollection(Collection):
                     walker = root.walk(on_error=failed, follow_symlinks=False)
                 for directory, dirs, names in walker:
                     check_cancel()
-                    directory = root / directory.relative_to(root) if hasattr(directory, 'relative_to') else Path(directory)
+                    # Dissect paths are POSIX even on Windows; joining another
+                    # TargetPath can mix pathlib flavours on Python 3.11.
+                    directory = root / directory.relative_to(root).as_posix() if hasattr(directory, 'relative_to') else Path(directory)
                     for name in list(dirs):
                         child = directory/name
                         # Dissect's NTFS is_symlink includes mount-point reparse

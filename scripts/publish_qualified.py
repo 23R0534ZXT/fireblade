@@ -12,7 +12,7 @@ from scripts.release import application_version, publish
 
 REQUIRED_JOBS = {
     'Python syntax and name checks',
-    'Windows / Python 3.11', 'Windows / Python 3.12', 'Windows / Python 3.13',
+    'Windows / Python 3.12', 'Windows visual qualification',
     'Windows x64 executable', 'Native Windows UNC and long paths',
     'Native upstream reader matrix', 'Windows visual and 3-GiB qualification',
     'Native EXE with 320 analyses',

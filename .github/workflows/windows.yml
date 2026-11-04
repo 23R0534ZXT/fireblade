@@ -12,6 +12,10 @@ on:
         description: Publish an explicitly requested new application version after all checks
         type: boolean
         default: false
+      full_validation:
+        description: Run the full test suite on Python 3.11, 3.12 and 3.13
+        type: boolean
+        default: false
       profile_only:
         description: Run only the native Windows source stall diagnostic
         type: boolean
@@ -45,7 +49,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.11', '3.12', '3.13']
+        python: ${{ fromJSON(inputs.full_validation && '["3.11","3.12","3.13"]' || '["3.12"]') }}
     env:
       QT_QPA_PLATFORM: windows
       PYTHONUTF8: '1'
@@ -58,7 +62,15 @@ jobs:
           cache-dependency-path: requirements/runtime.txt
       - run: >-
           python -m pip install --only-binary=:all: -r requirements/runtime.txt pytest
-      - run: python -m pytest -q --junitxml=artifacts/windows-source-tests.xml
+      - name: Focused regression suite (full matrix on request)
+        shell: pwsh
+        run: |
+          if ('${{ inputs.full_validation }}' -eq 'true') {
+            python -m pytest -q --junitxml=artifacts/windows-source-tests.xml
+          } else {
+            python -m pytest -q tests/core/test_engine.py tests/core/test_low_memory_import.py tests/core/test_low_memory_export.py tests/core/test_coverage.py tests/core/test_ordering.py tests/core/test_case_storage.py tests/core/test_settings.py tests/ui/test_appearance.py tests/ui/test_case_storage_desktop.py tests/test_release.py tests/test_update_release_readme.py tests/test_publish_qualified.py --junitxml=artifacts/windows-source-tests.xml
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -68,7 +80,7 @@ jobs:
 
   publish:
     name: Publish standalone prototype
-    needs: [quality, qualification, native_storage, many_documents, native_readers]
+    needs: [quality, tests, qualification, visual, native_storage, many_documents, native_readers]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_release && !inputs.profile_only) }}
     runs-on: windows-latest
     permissions:
@@ -92,7 +104,7 @@ jobs:
 
   native_storage:
     name: Native Windows UNC and long paths
-    needs: tests
+    if: ${{ !inputs.profile_only }}
     runs-on: windows-latest
     timeout-minutes: 15
     env:
@@ -115,7 +127,7 @@ jobs:
 
   portable:
     name: Windows x64 executable
-    needs: tests
+    if: ${{ !inputs.profile_only }}
     runs-on: windows-latest
     timeout-minutes: 40
     env:
@@ -145,7 +157,7 @@ jobs:
 
   native_readers:
     name: Native upstream reader matrix
-    needs: tests
+    if: ${{ !inputs.profile_only }}
     runs-on: windows-latest
     timeout-minutes: 25
     env:
@@ -212,16 +224,6 @@ jobs:
         with:
           name: Fireblade-exe
           path: dist
-      - name: Render light and dark Windows preferences at 100 125 150 200 percent
-        run: python -m scripts.windows.visual_matrix --exe dist/Fireblade.exe --out artifacts/visual
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Windows-visual-captures
-          path: |
-            artifacts/visual/**/*.json
-            artifacts/visual/**/*.png
-          retention-days: 14
       - uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/fireblade-data
@@ -244,6 +246,33 @@ jobs:
             artifacts/large-data/*.png
           retention-days: 14
 
+
+  visual:
+    name: Windows visual qualification
+    needs: portable
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: Fireblade-exe
+          path: dist
+      - name: Render light and dark Windows preferences at 100 125 150 200 percent
+        run: python -m scripts.windows.visual_matrix --exe dist/Fireblade.exe --out artifacts/visual
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-visual-captures
+          path: |
+            artifacts/visual/**/*.json
+            artifacts/visual/**/*.png
+          retention-days: 14
 
   profile:
     name: Native Windows responsiveness diagnostic

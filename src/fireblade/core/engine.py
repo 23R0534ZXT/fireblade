@@ -771,7 +771,14 @@ class Case:
             try:
                 expected=self.db.execute('SELECT count(*) FROM ('+sql+') AS export_coverage',args).fetchone()[0]
                 from fireblade.core.coverage import ExportCursor,verify_export
-                cursor = ExportCursor(self.db.execute(sql, args))
+                try:
+                    native_cursor = self.db.execute(sql, args)
+                except duckdb.OutOfMemoryException:
+                    if grouped or view.sorts or view.sort_column is not None:
+                        raise
+                    from fireblade.core.export_rows import SourceOrderCursor
+                    native_cursor = SourceOrderCursor(self, cols, where, args)
+                cursor = ExportCursor(native_cursor)
                 if target.suffix.lower() == ".xlsx":
                     from fireblade.core.spreadsheets import write_xlsx
                     with temporary.open("xb"):

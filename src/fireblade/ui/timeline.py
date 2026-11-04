@@ -8,7 +8,7 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPointF, QRectF, Qt
 from PySide6.QtGui import QAction, QColor, QFont, QPainter, QPen, QPalette, QPolygonF
 from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog, QDialogButtonBox,
     QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QPushButton, QScrollArea, QFileDialog,
-    QSplitter, QTableView, QTableWidget, QTableWidgetItem, QTextBrowser, QToolTip, QVBoxLayout, QWidget)
+    QSplitter, QStyle, QTableView, QTableWidget, QTableWidgetItem, QTextBrowser, QToolTip, QVBoxLayout, QWidget)
 
 from fireblade.ui.flow_layout import FlowLayout
 from fireblade.core.layout import write_json
@@ -528,6 +528,10 @@ class TimelineMixin:
         self.timeline_panel=TimelinePanel(self)
         self.timeline_host=QScrollArea();self.timeline_host.setWidgetResizable(True)
         self.timeline_host.setFrameShape(QScrollArea.NoFrame);self.timeline_host.setWidget(self.timeline_panel)
+        # Reserve native scrollbar width too: Windows may need a vertical bar
+        # after wrapping tools, which must not clip the graph horizontally.
+        minimum = max(540,self.timeline_panel.minimumSizeHint().width())
+        self.timeline_host.setMinimumWidth(minimum+self.timeline_host.style().pixelMetric(QStyle.PM_ScrollBarExtent))
         self.timeline_tab_index=self.workbench.addTab(self.timeline_host,'Chronologie & corrélations')
         self.workbench.currentChanged.connect(lambda index:self.timeline_panel.load_state() if index==self.timeline_tab_index and not self.timeline_panel.state_loaded else None)
         menu=next(a.menu() for a in self.menuBar().actions() if a.text().replace('&','')=='Analyse')

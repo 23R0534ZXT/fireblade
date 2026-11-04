@@ -125,7 +125,7 @@ class StartWorkflowMixin:
 
     def choose_disk(self):
         if not self.require_active_case() or not self.can_open_file(): return
-        if self.disk_job is not None:
+        if self.disk_job is not None or self._folder_queue:
             self.statusBar().showMessage('Une indexation de disque est déjà en cours.'); return
         dialog = DiskSourceDialog(self)
         try:
@@ -135,7 +135,7 @@ class StartWorkflowMixin:
             dialog.deleteLater()
 
     def start_disk_analysis(self, source, kind='mounted'):
-        if not self.require_active_case() or self.active_investigation is None or self.disk_job is not None or self.disk_pool.activeThreadCount() or self._disk_pending:
+        if not self.require_active_case() or self.active_investigation is None or self.disk_job is not None or self.disk_pool.activeThreadCount() or self._disk_pending or self._folder_queue:
             return False
         from fireblade.core.disk import DiskCollection
         # Validate the destination before creating any disk-work directory.
@@ -193,6 +193,7 @@ class StartWorkflowMixin:
         self.disk_status.setToolTip(message)
 
     def cancel_disk(self):
+        self._folder_queue.clear()
         if self.disk_job:
             self.disk_job.cancel()
             self.disk_collection.interrupt()
@@ -273,6 +274,9 @@ class StartWorkflowMixin:
         self.disk_job = None
         self.disk_drain.stop()
         self.update_collection_controls()
+        if self._folder_queue:
+            if error or report['status'] == 'cancelled':self._folder_queue.clear()
+            else:QTimer.singleShot(150, self.start_next_folder)
 
     def setup_organization(self):
         from PySide6.QtGui import QAction, QActionGroup

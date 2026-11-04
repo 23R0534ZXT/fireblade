@@ -195,7 +195,7 @@ class InvestigationMixin:
         self.cases_details.setText(data['name']+'\n'+(data['description'] or 'Aucune description.')+'\nDossier : '+str(self.investigation_library.folder(data['id'])) if data else 'Sélectionnez un case pour consulter sa description.')
 
     def can_switch_investigation(self):
-        if (getattr(self, "disk_job", None) is not None or getattr(self, "_disk_pending", []) or
+        if (getattr(self, "disk_job", None) is not None or getattr(self, "_disk_pending", []) or getattr(self, "_folder_queue", []) or
             hasattr(self, "disk_pool") and self.disk_pool.activeThreadCount()):
             self.statusBar().showMessage("Arrêtez ou attendez l’indexation avant de changer de case.")
             return False

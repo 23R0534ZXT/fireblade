@@ -19,7 +19,7 @@ def test_folder_import_background_and_case_restore(qt_application, tmp_path, mon
     def pause(self, start, entry):
         original(self,start,entry);entered.set();release.wait(20)
     monkeypatch.setattr(Collection,'publish_results',pause)
-    monkeypatch.setattr(ui.QFileDialog,'getExistingDirectory',lambda *a:str(source))
+    monkeypatch.setattr(ui,'choose_collection_directories',lambda *a:[str(source)])
     def accept(dialog):
         {'files':dialog.progressive,'artifacts':dialog.artifacts,'combined':dialog.combined}[organization].setChecked(True)
         return QDialog.Accepted

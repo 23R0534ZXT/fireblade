@@ -41,13 +41,13 @@ jobs:
           ref: ${{ steps.qualification.outputs.commit }}
           path: qualified-source
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: Fireblade-exe
           path: artifacts/executable
           run-id: ${{ inputs.run_id }}
           github-token: ${{ github.token }}
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: Windows-single-file-verification
           path: artifacts/verification

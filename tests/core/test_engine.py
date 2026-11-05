@@ -93,6 +93,29 @@ def test_export_roundtrip(case, tmp_path):
         case.export(case.info['path'], View())
 
 
+def test_group_path_deeper_than_the_grouping_is_rejected(case):
+    with pytest.raises(ValueError, match='Chemin de groupe'):
+        case.page(View(groups=[1]), path=('MFT', 'extra'))
+
+
+def test_interrupted_export_leaves_no_temporary_file(case, tmp_path, monkeypatch):
+    """A Ctrl-C during verification must not block every later export."""
+    import fireblade.core.coverage as coverage
+    target = tmp_path / 'interrupted.csv'
+
+    def interrupt(*_args, **_kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(coverage, 'verify_export', interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        case.export(target, View())
+    assert not target.exists()
+    assert not target.with_name(target.name + '.partial').exists()
+    monkeypatch.undo()
+    case.export(target, View())
+    assert target.is_file()
+
+
 def test_paging(tmp_path):
     source = tmp_path / 'many.csv'
     source.write_text('ID,Type\n' + ''.join(f'{i},A\n' for i in range(650)))

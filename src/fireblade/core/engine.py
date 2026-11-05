@@ -427,6 +427,8 @@ class Case:
             sql, values = self.condition(view.expression)
             clauses.append("(" + sql + ")")
             args.extend(values)
+        if len(path) > len(view.groups):
+            raise ValueError("Chemin de groupe plus profond que les regroupements de la vue")
         for i, val in enumerate(path):
             clauses.append(f"{group_expression(self, view, view.groups[i])} IS NOT DISTINCT FROM ?")
             args.append(val)
@@ -799,7 +801,7 @@ class Case:
                 self.check_cancelled();os.replace(temporary, target)
                 return dict(path=str(target),expected=expected,written=cursor.written,sha256=sha,content_sha256=verified['content_sha256'],verified_rows=verified['verified_rows'],analysis=str(self.path),source=self.info['path'],
                             source_rows=self.info['rows'],available_columns=len(self.headers),view=json.loads(view.to_json()),columns=headers,grouped=bool(grouped and view.groups))
-            except Exception:
+            except BaseException:
                 if owns_temporary:
                     temporary.unlink(missing_ok=True)
                 raise

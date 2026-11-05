@@ -1,3 +1,12 @@
+# Fireblade 0.2.3 — chronologie fiable et récupération
+
+- **Colonne de date** : une colonne UTC explicite (`Horodatage UTC`, `TimestampUtc`) l’emporte désormais sur la colonne brute dont elle est issue. Les journaux Linux, dont l’horodatage syslog n’a ni année ni fuseau, ne sont plus indexés sur la mauvaise colonne.
+- **Fuseau de l’index** : les dates sans fuseau sont lues comme **UTC** dans la chronologie, comme à l’import. Le même dossier produit donc le même ordre chronologique d’un poste à l’autre ; seuls les modèles de test ou les réglages d’horloge ne peuvent plus le déplacer.
+- **Colonnes calculées** : la date proposée est résolue contre le schéma réel de l’analyse, colonnes dérivées comprises. Une colonne UTC calculée est donc utilisable automatiquement, et un index deviné n’est plus mémorisé comme un choix : les réglages de chronologie enregistrés par la 0.2.2 sont réinitialisés une fois.
+- **Dates de profil** : une déclaration `VisitTime` reconnaît un export `Visit Time`. Les analyses concernées n’ouvrent plus sans colonne temporelle.
+- **Export interrompu** : une interruption pendant la vérification retire le fichier temporaire. Un nouvel export vers la même cible n’est plus refusé définitivement.
+- **Robustesse** : un chemin de groupe plus profond que les regroupements de la vue produit un message explicite, et une ligne vide terminale d’un CSV de parseur n’annule plus tout le fichier.
+
 # Fireblade 0.2.2 — espace d’analyse modulable
 
 - Arbre des artefacts : choix direct famille / dossier / liste, familles reconnues et nombre d’analyses.

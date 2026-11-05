@@ -7,7 +7,9 @@ on:
     paths:
       - 'src/fireblade/core/linux*.py'
       - 'src/fireblade/core/collection*.py'
+      - 'src/fireblade/core/timeline.py'
       - 'tests/core/test_linux_logs.py'
+      - 'tests/core/test_timeline.py'
       - 'scripts/benchmarks/linux*.py'
       - '.github/workflows/linux-logs.yml'
 

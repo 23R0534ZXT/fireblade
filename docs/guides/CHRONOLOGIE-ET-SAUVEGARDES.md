@@ -64,8 +64,13 @@ annulation conserve la destination précédente et nettoie les fichiers temporai
 
 1. Ouvrez les analyses de l’enquête, puis l’onglet **Chronologie & corrélations**.
 2. Dans **Sources et dates…**, vérifiez la colonne temporelle de chaque analyse.
-   Les dates sont proposées d’après les noms des colonnes et les profils ; vous
-   pouvez choisir une autre colonne, y compris une colonne UTC calculée.
+   Les dates sont proposées d’après les noms des colonnes et les profils, une
+   colonne UTC explicite (`Horodatage UTC`, `TimestampUtc`) l’emportant sur la
+   colonne brute dont elle est issue ; vous pouvez choisir une autre colonne,
+   y compris une colonne UTC calculée.
+   Une date **sans fuseau** est lue comme **UTC**, sur toutes les machines : la
+   chronologie reste identique d’un poste à l’autre. Les lignes concernées sont
+   comptées à part et signalées comme telles dans l’index et dans l’export.
 3. Cliquez sur **Construire / actualiser**. Une progression indique les analyses
    lues et les événements indexés. **Interrompre** conserve l’index précédent.
 4. Examinez la densité globale et les pistes par analyse. Les triangles

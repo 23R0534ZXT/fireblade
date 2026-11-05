@@ -143,6 +143,16 @@ def test_naive_dates_are_indexed_as_utc_whatever_the_host_timezone(tmp_path):
     finally:store.close();case.close()
 
 
+def test_saved_timeline_state_drops_pre_023_column_choices():
+    from fireblade.core.timeline import saved_columns
+    # 0.2.2 could persist an index guessed from the source headers.
+    assert saved_columns({'columns':{'a.timeline':2}}) == {}
+    assert saved_columns({'version':2,'columns':{'a.timeline':2}}) == {'a.timeline':2}
+    assert saved_columns({'version':2,'columns':{'a.timeline':None}}) == {'a.timeline':None}
+    with pytest.raises(ValueError):
+        saved_columns({'version':2,'columns':{'a.timeline':'2'}})
+
+
 def test_explicit_no_date_choice_is_respected(tmp_path):
     source=tmp_path/'nodate.csv';source.write_text('Timestamp,User\n2026-01-02T00:00:00Z,a\n')
     case=Case(tmp_path/'nodate.timeline');case.import_csv(source)

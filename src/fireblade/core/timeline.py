@@ -46,6 +46,21 @@ def guess_time_column(headers, preferred=()):
     return next((i for i, name in enumerate(normalized) if name.endswith('utc')), None)
 
 
+def saved_columns(state):
+    """Validated per-analysis date columns from a saved timeline state.
+
+    Settings written before 0.2.3 may hold an index guessed from the source
+    headers, which could point at the wrong column: those are dropped once and
+    rebuilt from the analysis schema.
+    """
+    columns = state.get('columns', {})
+    if not isinstance(columns, dict) or len(columns) > 1000 or any(
+            not isinstance(key, str) or (value is not None and (type(value) is not int or not 0 <= value < 10000))
+            for key, value in columns.items()):
+        raise ValueError('Colonnes temporelles invalides')
+    return {} if state.get('version') != 2 else columns
+
+
 def utc_label(ns):
     if ns is None:return 'Sans date'
     seconds, fraction = divmod(int(ns), 1_000_000_000)

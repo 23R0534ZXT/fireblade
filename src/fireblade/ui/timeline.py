@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog,
 from fireblade.ui.flow_layout import FlowLayout
 from fireblade.core.layout import write_json
 from fireblade.core.models import Filter, View
-from fireblade.core.timeline import KINDS, TimelineStore, field_kind, guess_time_column, utc_label
+from fireblade.core.timeline import KINDS, TimelineStore, field_kind, guess_time_column, saved_columns, utc_label
 from fireblade.core.workspace_reader import WorkspaceReader
 
 COLORS = ['#2d9cdb','#e6a23c','#27ae82','#bb6bd9','#eb6577','#56bfc4','#9fa8da','#b4a34a']
@@ -266,7 +266,7 @@ class TimelinePanel(QWidget):
     def save_state(self):
         path=self.state_path()
         if path:
-            try:write_json(path,dict(columns=self.columns,query=self.query.text(),kind=self.kind.currentData(),exact=self.exact.isChecked(),bookmarks=self.bookmarks.isChecked(),respect=self.respect.isChecked(),undated=self.undated.isChecked(),bounds=self.bounds,
+            try:write_json(path,dict(version=2,columns=self.columns,query=self.query.text(),kind=self.kind.currentData(),exact=self.exact.isChecked(),bookmarks=self.bookmarks.isChecked(),respect=self.respect.isChecked(),undated=self.undated.isChecked(),bounds=self.bounds,
                                     sources=[self.documents[i].path for i in self.source_filter] if self.source_filter is not None else None))
             except OSError as exc:self.window.statusBar().showMessage('Réglages de chronologie non enregistrés : '+str(exc))
 
@@ -278,9 +278,7 @@ class TimelinePanel(QWidget):
                 if path.stat().st_size>1024*1024:raise ValueError('Réglages trop volumineux')
                 data=json.loads(path.read_text(encoding='utf-8'))
                 if not isinstance(data,dict):raise ValueError('Réglages invalides')
-                columns=data.get('columns',{})
-                if not isinstance(columns,dict) or len(columns)>1000 or any(not isinstance(k,str) or v is not None and (type(v) is not int or not 0<=v<10000) for k,v in columns.items()):
-                    raise ValueError('Colonnes temporelles invalides')
+                columns=saved_columns(data)
                 self.columns=columns;self.query.setText(str(data.get('query',''))[:10000])
                 index=self.kind.findData(data.get('kind','text'));self.kind.setCurrentIndex(max(0,index))
                 self.exact.setChecked(bool(data.get('exact')));self.bookmarks.setChecked(bool(data.get('bookmarks')));self.respect.setChecked(bool(data.get('respect')))

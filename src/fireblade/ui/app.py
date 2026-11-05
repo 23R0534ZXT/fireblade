@@ -854,14 +854,26 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
             descending = not self.view.descending if self.view.sort_column == column else False
             self.set_sort(column, descending)
 
-    def group_column(self, column, append=False, remove=False):
-        if not self.case or self.busy or not 0 <= column < len(self.case.headers):
+    def group_column(self, column, append=False, remove=False, clear=False, position=None):
+        if not self.case or self.busy:
+            return
+        if clear:
+            self.view.groups = []
+            self.apply()
+            return
+        if not 0 <= column < len(self.case.headers):
             return
         if remove:
             self.view.groups = [i for i in self.view.groups if i != column]
         elif append:
-            if column not in self.view.groups:
+            # Dropping an existing level moves it; dropping a new one inserts it
+            # where the analyst released it.
+            if column in self.view.groups:
+                self.view.groups.remove(column)
+            if position is None or not 0 <= position <= len(self.view.groups):
                 self.view.groups.append(column)
+            else:
+                self.view.groups.insert(position, column)
         else:
             self.view.groups = [column]
         self.apply()

@@ -160,7 +160,34 @@ class GroupHeader(QHeaderView):
         super().mouseReleaseEvent(event)
 
 
+class GroupSeparator(QLabel):
+    """Insertion point between two grouping levels; accepts a column drop."""
+
+    def __init__(self, bar, position):
+        super().__init__("\u203a", bar)
+        self.bar, self.position = bar, position
+        self.setAcceptDrops(True)
+        self.setToolTip("Déposer ici pour insérer un niveau à cette position")
+
+    def dragEnterEvent(self, event):
+        self.bar.dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasFormat(MIME):
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        self.bar.drop_at(event, self.position)
+
+
 class GroupBar(QLabel):
+    """Grouping bar: numbered levels, per-level removal and one clear-all action.
+
+    Headers are dragged from the grid header onto the bar (append) or between two
+    levels (insert at that position), which is the ordering gesture analysts
+    already know from spreadsheet tools.
+    """
+
     def __init__(self, callback, parent=None):
         super().__init__("Glissez un en-tête ici pour regrouper", parent)
         self.callback = callback
@@ -169,24 +196,45 @@ class GroupBar(QLabel):
         self.chips.setSpacing(6)
         self.setAcceptDrops(True)
         self.setMinimumHeight(30)
+        self.clear_button = QToolButton(self)
+        self.clear_button.setText("Tout supprimer")
+        self.clear_button.setToolTip("Retirer tous les niveaux de regroupement")
+        self.clear_button.setAutoRaise(True)
+        self.clear_button.setVisible(False)
+        self.clear_button.clicked.connect(lambda: self.callback(-1, clear=True))
         self.setToolTip("Glissez plusieurs en-têtes pour imbriquer les groupes. Regrouper… permet de modifier leur ordre.")
 
-    def set_groups(self, headers, groups):
+    def _reset(self):
         while self.chips.count():
             item = self.chips.takeAt(0)
-            if item.widget():
-                item.widget().hide()
-                item.widget().deleteLater()
-        self.setText("" if groups else "Glissez un en-tête ici pour regrouper les résultats")
+            widget = item.widget()
+            # The clear button survives rebuilds: it is reused, not recreated.
+            if widget is not None and widget is not self.clear_button:
+                widget.hide()
+                widget.deleteLater()
+
+    def set_groups(self, headers, groups):
+        self._reset()
+        self.clear_button.setVisible(bool(groups))
+        if not groups:
+            self.setText("Glissez un en-tête ici pour regrouper les résultats")
+            return
+        self.setText("")
         for level, column in enumerate(groups):
             if level:
-                self.chips.addWidget(QLabel("›"))
+                self.chips.addWidget(GroupSeparator(self, level))
             button = QToolButton(self)
-            button.setText(f"{level+1} · {headers[column]}  ×")
+            button.setText(f"{level+1}  {headers[column]}  \u00d7")
             button.setToolTip("Retirer ce niveau de regroupement")
+            button.setAutoRaise(True)
             button.clicked.connect(lambda checked=False, c=column: self.callback(c, remove=True))
             self.chips.addWidget(button)
+        hint = GroupSeparator(self, len(groups))
+        hint.setText("+")
+        hint.setToolTip("Déposer un en-tête ici pour ajouter un niveau à la fin")
+        self.chips.addWidget(hint)
         self.chips.addStretch()
+        self.chips.addWidget(self.clear_button)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasFormat(MIME):
@@ -194,11 +242,18 @@ class GroupBar(QLabel):
         else:
             event.ignore()
 
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasFormat(MIME):
+            event.acceptProposedAction()
+
     def dropEvent(self, event):
+        self.drop_at(event, None)
+
+    def drop_at(self, event, position):
         try:
             value = int(bytes(event.mimeData().data(MIME)).decode("ascii"))
         except (ValueError, UnicodeError):
             event.ignore()
             return
-        self.callback(value, append=True)
+        self.callback(value, append=True, position=position)
         event.acceptProposedAction()

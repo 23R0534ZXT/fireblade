@@ -505,11 +505,39 @@ def test_group_chips_remove_one_level(app, window):
     window.group_column(1, append=True)
     settle(app, window)
     chips = window.groups_label.findChildren(QToolButton)
-    chips = [chip for chip in chips if chip.isVisible()]
-    assert [chip.text() for chip in chips] == ["1 · Artifact  ×", "2 · User  ×"]
+    chips = [chip for chip in chips if chip.isVisible() and chip is not window.groups_label.clear_button]
+    assert [chip.text() for chip in chips] == ["1  Artifact  ×", "2  User  ×"]
     QTest.mouseClick(chips[0], Qt.LeftButton)
     settle(app, window)
     assert window.view.groups == [1]
+
+
+def test_group_bar_clears_every_level(app, window):
+    from PySide6.QtTest import QTest
+    window.group_column(0)
+    window.group_column(1, append=True)
+    window.group_column(2, append=True)
+    settle(app, window)
+    assert window.view.groups == [0, 1, 2]
+    assert not window.groups_label.clear_button.isHidden()
+    QTest.mouseClick(window.groups_label.clear_button, Qt.LeftButton)
+    settle(app, window)
+    assert window.view.groups == []
+    assert window.groups_label.clear_button.isHidden()
+
+
+def test_group_drop_inserts_where_the_level_is_released(app, window):
+    window.group_column(0)
+    window.group_column(1, append=True)
+    settle(app, window)
+    # Moving an existing level to the end keeps it once, at that position.
+    window.group_column(0, append=True, position=2)
+    settle(app, window)
+    assert window.view.groups == [1, 0]
+    # A new level dropped between two others is inserted, not appended.
+    window.group_column(2, append=True, position=1)
+    settle(app, window)
+    assert window.view.groups == [1, 2, 0]
 
 
 def test_boolean_cards_invert_preserves_nested_siblings(app):

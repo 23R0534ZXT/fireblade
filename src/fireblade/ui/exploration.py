@@ -45,6 +45,17 @@ class ExplorationMixin:
 
     def apply_preferences(self):
         p = self.preferences
+        from fireblade.core.i18n import fallback_language, set_language
+        code = getattr(p, 'language', fallback_language())
+        try:
+            set_language(code)
+        except ValueError:
+            set_language(fallback_language())
+        if getattr(self, '_ui_ready', False):
+            # Only after the window is fully built: several modules find their menu
+            # by its French name while the interface is being assembled.
+            from fireblade.ui.language import apply_language
+            apply_language(self)
         from dataclasses import replace
         self.settings = replace(self._resource_defaults,
             memory_mb=p.resource_memory_mb or self._resource_defaults.memory_mb,

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QFileDialog
     QVBoxLayout, QWidget)
 
 from fireblade.core.models import AnalysisSnapshot, View
+from fireblade.ui.language import source_text
 from fireblade.ui.workers import Job
 
 
@@ -96,7 +97,7 @@ class StartWorkflowMixin:
         for menu_action in self.menuBar().actions():
             menu = menu_action.menu()
             if menu is None: continue
-            if menu_action.text().replace('&', '') in ('Fichier', 'Case'):
+            if source_text(menu_action).replace('&', '') in ('Fichier', 'Case'):
                 permitted = {'Nouveau case…', 'Cases…', 'Quitter', 'Importer un case portable…'}
                 for item in menu.actions():
                     if item.text() in permitted:
@@ -108,7 +109,7 @@ class StartWorkflowMixin:
                         item.setEnabled(False)
                     elif item.property('caseGateEnabled'):
                         item.setEnabled(True); item.setProperty('caseGateEnabled', False)
-            elif menu_action.text().replace('&', '') not in ('Aide', 'Affichage'):
+            elif source_text(menu_action).replace('&', '') not in ('Aide', 'Affichage'):
                 menu_action.setEnabled(allowed)
         if allowed and getattr(self, '_startup_file', None) is not None:
             source, self._startup_file = self._startup_file, None
@@ -285,7 +286,8 @@ class StartWorkflowMixin:
 
     def setup_organization(self):
         from PySide6.QtGui import QAction, QActionGroup
-        menu = next(a.menu() for a in self.menuBar().actions() if a.text().replace('&', '') == 'Affichage')
+        menu = next(a.menu() for a in self.menuBar().actions()
+                    if source_text(a).replace('&', '') == 'Affichage')
         organize = menu.addMenu('Organiser l’espace de travail')
         grouping = organize.addMenu('Regrouper l’arbre par')
         group = QActionGroup(self)

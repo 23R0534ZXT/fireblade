@@ -32,6 +32,7 @@ class Preferences:
     multiline_tabs: bool = False
     case_autosave: bool = True
     date_format: str = "source"
+    language: str = field(default_factory=lambda: os.environ.get("FIREBLADE_LANGUAGE", "en"))
     details_position: str = "bottom"
     custom_date_format: str = "yyyy-MM-dd HH:mm:ss.fffffffK"
     first_pinned_columns: list[str] = field(default_factory=list)
@@ -53,6 +54,8 @@ class Preferences:
             "custom",
         ):
             raise ValueError("Thème ou format de date invalide")
+        if self.language not in ("en", "fr"):
+            raise ValueError("Langue invalide")
         from fireblade.core.themes import THEMES
         if not isinstance(self.theme_preset,str) or self.theme_preset and self.theme_preset not in THEMES:
             raise ValueError('Thème de galerie inconnu')

@@ -3,6 +3,10 @@ import os
 import sys
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# The suite and the checks assert on the French labels the code is written with,
+# while the application now opens in English. A fresh profile picks its language
+# from this variable, so the tests keep a stable, French interface.
+os.environ.setdefault("FIREBLADE_LANGUAGE", "fr")
 
 import pytest
 from PySide6.QtWidgets import QApplication

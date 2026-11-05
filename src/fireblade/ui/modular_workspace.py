@@ -6,6 +6,7 @@ from PySide6.QtCore import QByteArray, Qt, QTimer
 from PySide6.QtWidgets import (QDockWidget, QHBoxLayout, QLabel, QMenu, QPushButton,
                              QTabWidget, QToolButton, QVBoxLayout, QWidget)
 from fireblade.core.layout import write_json
+from fireblade.ui.language import source_text
 from fireblade.runtime.windows_paths import user_directory
 
 
@@ -94,7 +95,7 @@ class WorkspaceLayout:
         window.collection_toolbar.setMovable(True)
         window.collection_toolbar.setObjectName("collection-toolbar")
         self.path = user_directory() / 'workspace-layout.json'
-        menus = {a.text().replace('&', ''): a.menu() for a in window.menuBar().actions()}
+        menus = {source_text(a).replace('&', ''): a.menu() for a in window.menuBar().actions()}
         menu = menus['Affichage'].addMenu('Espace de travail')
         for title, function in [('Analyse', self.analysis), ('Chronologie seule', self.timeline),
                                 ('Analyse + chronologie', self.side_by_side),

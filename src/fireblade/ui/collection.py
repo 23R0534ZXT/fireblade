@@ -9,6 +9,7 @@ from PySide6.QtGui import QAction, QPalette
 from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from fireblade.core.collection import Collection, ToolPack
+from fireblade.ui.language import source_text
 from fireblade.ui.alert_context import AlertContextMixin
 from fireblade.ui.folder_picker import choose_collection_directories
 from fireblade.runtime.resources import resource_path
@@ -100,7 +101,8 @@ class CollectionMixin(AlertContextMixin):
         file_menu.insertAction(file_menu.actions()[1], action)
         analyze = self.hayabusa_action = QAction('Analyser la collecte avec Hayabusa', self)
         analyze.triggered.connect(self.analyze_collection)
-        menu = next(a.menu() for a in self.menuBar().actions() if a.text().replace('&', '') == 'Analyse')
+        menu = next(a.menu() for a in self.menuBar().actions()
+                    if source_text(a).replace('&', '') == 'Analyse')
         menu.addAction(analyze)
         toolbar = self.collection_toolbar = self.addToolBar('Collecte')
         toolbar.addAction(action)

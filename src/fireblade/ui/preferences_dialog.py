@@ -34,6 +34,11 @@ class PreferencesDialog(QDialog):
             self.page_scrolls.append(scroll);forms.append(page_form)
         self.scroll=self.page_scrolls[0]
         form,grid,dates,resources,compatibility=forms
+        self.language = QComboBox()
+        for code, label in (('en', 'English'), ('fr', 'Français')):
+            self.language.addItem(label, code)
+        self.language.setCurrentIndex(max(0, self.language.findData(getattr(preferences, 'language', 'en'))))
+        form.insertRow(0, 'Langue / Language', self.language)
         self.memory = QSpinBox();self.memory.setRange(0, 16384);self.memory.setSpecialValueText('Configuration actuelle');self.memory.setSuffix(' Mo');self.memory.setValue(preferences.resource_memory_mb)
         self.query_threads = QSpinBox();self.query_threads.setRange(0, 32);self.query_threads.setSpecialValueText('Configuration actuelle');self.query_threads.setValue(preferences.query_threads)
         self.parsing_threads = QSpinBox();self.parsing_threads.setRange(1, 32);self.parsing_threads.setValue(preferences.parsing_threads)
@@ -183,6 +188,7 @@ class PreferencesDialog(QDialog):
 
     def accept(self):
         p = self.preferences
+        p.language = self.language.currentData()
         p.resource_memory_mb = self.memory.value()
         p.query_threads = self.query_threads.value()
         p.parsing_threads = self.parsing_threads.value()

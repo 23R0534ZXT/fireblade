@@ -1,10 +1,11 @@
 """Arrange commands around adding evidence, investigating and exporting."""
 from PySide6.QtWidgets import QPushButton
+from fireblade.ui.language import source_text
 
 
 def organize_commands(window):
     bar = window.menuBar()
-    menus = {a.text().replace('&', ''): a.menu() for a in bar.actions()}
+    menus = {source_text(a).replace('&', ''): a.menu() for a in bar.actions()}
     case, analysis, view = menus['Fichier'], menus['Analyse'], menus['Affichage']
     case.setTitle('&Case')
     detection = bar.addMenu('&Détection')
@@ -16,7 +17,7 @@ def organize_commands(window):
     def move(source, target, labels, anchor=None):
         moved = []
         for label in labels:
-            item = next((a for a in source.actions() if a.text() == label), None)
+            item = next((a for a in source.actions() if source_text(a) == label), None)
             if item is None:continue
             source.removeAction(item)
             if item.property('caseGateEnabled'):

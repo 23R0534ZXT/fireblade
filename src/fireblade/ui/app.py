@@ -88,6 +88,9 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         from fireblade.ui.modular_workspace import WorkspaceLayout
         self.workspace_layout = WorkspaceLayout(self)
         self.setAcceptDrops(True)
+        from fireblade.ui.language import apply_language
+        apply_language(self)
+        self._ui_ready = True
 
     def build_ui(self):
         file_menu = self.menuBar().addMenu("&Fichier")

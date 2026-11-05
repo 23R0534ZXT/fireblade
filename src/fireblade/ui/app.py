@@ -90,6 +90,9 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         self.setAcceptDrops(True)
         from fireblade.ui.language import apply_language
         apply_language(self)
+        # Toolbars and panels built after this point must be translated too; the
+        # deferred pass runs once the window is on screen.
+        QTimer.singleShot(0, lambda: apply_language(self))
         self._ui_ready = True
 
     def build_ui(self):

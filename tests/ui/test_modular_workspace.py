@@ -53,7 +53,7 @@ def test_focus_gives_timeline_space_and_restores_analysis(qt_application, tmp_pa
         assert window.timeline_panel.store.page()['count'] == 1
         assert window.timeline_panel.store.sources[0]['dated'] == 1
         assert window.workbench.tabBar().isHidden()
-        assert window.main_toolbar.isHidden()
+        assert not window.main_toolbar.isHidden()   # actions stay reachable in focus
         assert window.timeline_panel.canvas.height() >= 290
         window.workspace_layout.analysis();settle(qt_application,window)
         assert not window.workbench.tabBar().isHidden() and window.workbench.currentIndex() == 0
@@ -63,6 +63,20 @@ def test_focus_gives_timeline_space_and_restores_analysis(qt_application, tmp_pa
         assert window.case.count(window.view) == 1
         window.workspace_layout.reset()
     finally:settle(qt_application,window);window.close()
+
+
+def test_entering_the_timeline_twice_still_restores_the_toolbars(qt_application, tmp_path):
+    window = Window(require_case=False);window.show()
+    try:
+        add_case(window, tmp_path, 'EVTX');settle(qt_application, window)
+        window.workspace_layout.timeline();settle(qt_application, window)
+        window.workspace_layout.timeline();settle(qt_application, window)
+        window.workspace_layout.analysis();settle(qt_application, window)
+        assert not window.main_toolbar.isHidden()
+        assert not window.workbench.tabBar().isHidden()
+        assert not window.statusBar().isHidden()
+    finally:
+        window.close()
 
 
 def test_global_search_reaches_inactive_artifacts_and_opens_source(qt_application,tmp_path):

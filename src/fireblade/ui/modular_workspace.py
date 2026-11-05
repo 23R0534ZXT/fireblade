@@ -186,12 +186,14 @@ class WorkspaceLayout:
         self.leave_focus();self.window.workbench.setCurrentIndex(0)
 
     def timeline(self):
+        # Restore first: entering this mode twice used to record an already hidden
+        # state, and leaving it then restored nothing — the toolbars stayed gone.
         self.leave_focus()
         window = self.window
         if not window.workbench.isTabEnabled(window.timeline_tab_index):return
         window.workbench.attach_panel(window.timeline_tab_index)
         window.show_timeline()
-        widgets = [window.main_toolbar, window.collection_toolbar, window.statusBar()]
+        widgets = [window.collection_toolbar, window.statusBar()]
         self.previous_visibility = [(w, not w.isHidden()) for w in widgets]
         for widget, _visible in self.previous_visibility:widget.hide()
         for dock in window.findChildren(QDockWidget):

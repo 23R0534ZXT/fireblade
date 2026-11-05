@@ -10,6 +10,8 @@ Fireblade brings Windows artifacts, Linux logs, detection results and tabular ev
 
 **[Download Fireblade 0.2.2 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.2.2/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.2) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/41889904140)
 
+The published download above remains the last qualified release until the 0.2.3 build passes every Windows check.
+
 The desktop interface and most user guides are currently in French.
 
 ![Fireblade investigation workspace](docs/assets/fireblade-workspace-v022.png)
@@ -18,7 +20,17 @@ The desktop interface and most user guides are currently in French.
 
 Windows CI runs focused regression tests on Python 3.12, builds the standalone EXE in parallel, then checks its appearance, 320-analysis workspace and 3-GiB import/export workflow. The full Python 3.11–3.13 test matrix remains available through the workflow’s **full_validation** option.
 
-## Version 0.2.2 · workspace update
+## Version 0.2.3 · reliable chronology
+
+- The timeline indexes an explicit UTC column (`Horodatage UTC`, `TimestampUtc`) instead of the raw column it was derived from, so Linux journals are no longer read through a syslog stamp without a year or a timezone.
+- Dates without a timezone are read as **UTC** in the chronology, as they already were on import. A case keeps the same chronological order on every machine.
+- The date column is resolved against the analysis itself, calculated UTC columns included. A guessed index is no longer saved as an analyst choice; timeline settings written by 0.2.2 are reset once.
+- A source that stores `date` and `time` in two columns (IIS, W3C, some timelines) is indexed on both, instead of stopping at midnight.
+- Artifact detection keeps the most specific profile: eighteen catalogue entries that were never selected — Hayabusa verbose and super-verbose, Chainsaw persistence, nine RECmd profiles — now match, and a declaration recorded on one tab-joined line is split into columns.
+- Profile rules survive category colours, so Hayabusa severity colours are no longer overwritten.
+- An interrupted export removes its temporary file, so the next export to the same target is no longer refused.
+
+## Previous release · 0.2.2
 
 - Group artifacts by family, source folder or a simple list directly from the navigator.
 - Search all loaded artifacts from the main search field; inspect matches in a docked panel and open the original source row.
@@ -52,7 +64,7 @@ Windows parsing integrates EZ Tools, RECmd, Shellbags and WebCache readers. Linu
 
 For a first evaluation, use the sample data below. The application remains an **unsigned prototype**; Windows may display a SmartScreen prompt. Release notes identify the qualified source commit and the executable's SHA-256.
 
-## Previous release · 0.2.1
+## Earlier release · 0.2.1
 
 - Revised menus separate case management, analysis, detection and exports.
 - Multiple folders are queued and parsed sequentially in the background.

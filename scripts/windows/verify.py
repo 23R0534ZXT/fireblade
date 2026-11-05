@@ -62,10 +62,13 @@ def verify(executable, report_path, timeout=360):
             report = dict(status="failed", error="Le processus n’a pas produit de rapport.")
         adjacent = sorted(p.name for p in copied.iterdir())
         extraction_cleaned = not list(extraction.glob("_MEI*"))
+        # The executable runs 47 checks. The threshold is a floor, not the count:
+        # it must stay high enough that removing a whole check family (the ten
+        # completion checks, which run the .NET hosts for real) fails the build.
         valid = (code == 0 and report.get("status") == "passed" and report.get("frozen") is True
                  and report.get("platform") == "win32" and report.get("pointer_bits") == 64
                  and report.get("qt_platform") == "windows" and report.get("packaging") == "onefile"
-                 and len(report.get("checks", [])) >= 23 and adjacent == [executable.name] and extraction_cleaned
+                 and len(report.get("checks", [])) >= 40 and adjacent == [executable.name] and extraction_cleaned
                  and all(item.get("status") == "passed" for item in report.get("checks", [])))
         report["bundle_verification"] = dict(status="passed" if valid else "failed", exit_code=code,
                                              executable_sha256=original_hash, application_version=version, windows_version_resource=resource, single_file_distribution=True,

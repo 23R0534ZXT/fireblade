@@ -21,6 +21,19 @@ def summarize(row, limit=SAMPLE_WIDTH):
     return (' · '.join(values))[:limit]
 
 
+def sample_text(result):
+    """What the panel shows under the table for one artifact."""
+    if result.error:
+        return result.error
+    if not result.sample:
+        return 'Aucune correspondance dans cet artefact.'
+    lines = [f'• {line}' for line in result.sample]
+    more = (result.count or 0) - len(result.sample)
+    if more > 0:
+        lines.append(f'… et {more} autres correspondances')
+    return '\n'.join(lines)
+
+
 @dataclass
 class SearchHit:
     path: str
@@ -178,21 +191,8 @@ class SearchDialog(QDialog):
     def show_sample(self):
         """Show a few real matching rows for the selected artifact."""
         row = self.table.currentRow()
-        if not 0 <= row < len(self.results):
-            self.details.setText("")
-            return
-        result = self.results[row]
-        if result.error:
-            self.details.setText(result.error)
-            return
-        if not result.sample:
-            self.details.setText("Aucune correspondance dans cet artefact.")
-            return
-        lines = [f"• {line}" for line in result.sample]
-        more = (result.count or 0) - len(result.sample)
-        if more > 0:
-            lines.append(f"… et {more:,} autres correspondances".replace(",", " "))
-        self.details.setText("\n".join(lines))
+        text = sample_text(self.results[row]) if 0 <= row < len(self.results) else ""
+        self.details.setText(text)
 
     def open_result(self, row, _column):
         if self.task or not 0 <= row < len(self.results) or not self.window.can_open_file():

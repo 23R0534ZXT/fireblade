@@ -779,9 +779,13 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
             result = dialog.state()
         finally:
             dialog.deleteLater()
-        for position, column in enumerate(result['order'], 1):
-            section = column + 1
-            if section < header.count():
+        # Move from the last slot backwards: placing a section that is already
+        # correct would otherwise push the earlier ones out of place.
+        for position in range(len(result['order']), 0, -1):
+            section = result['order'][position - 1] + 1
+            if section >= header.count():
+                continue
+            if header.visualIndex(section) != position:
                 header.moveSection(header.visualIndex(section), position)
         self.view.pinned_columns = result['left']
         self.view.right_pinned_columns = result['right']

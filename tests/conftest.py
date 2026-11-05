@@ -1,5 +1,6 @@
 """Keep one QApplication alive for the entire test process, including teardown."""
 import os
+import sys
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -16,6 +17,32 @@ def qt_application():
     apply_theme(application)
     yield application
     application.processEvents()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def no_blocking_dialog(qt_application):
+    """Reject any modal window a test leaves open.
+
+    A dialog in exec() waits for a human who is not there: the suite freezes with
+    no output and no CPU use, and the run looks like a hang. The watchdog lives in
+    the same thread, so the nested event loop of exec() processes it; the dialog is
+    rejected and the test fails on its own assertions instead of never returning.
+    """
+    from PySide6.QtCore import QTimer
+
+    def reject_stray():
+        widget = QApplication.activeModalWidget()
+        if isinstance(widget, QDialog):
+            print(f"\n[warn] modal window rejected by the test watchdog: {widget.windowTitle()!r}",
+                  file=sys.stderr, flush=True)
+            widget.reject()
+
+    timer = QTimer(qt_application)
+    timer.setInterval(1500)
+    timer.timeout.connect(reject_stray)
+    timer.start()
+    yield
+    timer.stop()
 
 
 @pytest.fixture(autouse=True)

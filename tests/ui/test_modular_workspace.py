@@ -133,19 +133,21 @@ def test_navigation_groups_artifacts_without_reading_databases(qt_application,tm
 
 def test_columns_dialog_reorders_hides_and_saves(qt_application,tmp_path):
     from PySide6.QtCore import QTimer
-    from PySide6.QtWidgets import QApplication, QListWidget, QDialogButtonBox
+    from PySide6.QtWidgets import QApplication
     window = Window(require_case=False)
     try:
         add_case(window,tmp_path,'EVTX');settle(qt_application,window)
         def edit():
             dialog = QApplication.activeModalWidget()
-            listing = dialog.findChild(QListWidget)
-            listing.insertItem(0,listing.takeItem(3))
-            listing.item(2).setCheckState(Qt.Unchecked)
-            QTest.mouseClick(dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Ok),Qt.LeftButton)
+            assert dialog is not None and dialog.windowTitle() == 'Colonnes'
+            dialog.move_column(3, 0)            # quatrième colonne en tête
+            dialog.hide_column(1)
+            dialog.set_width(3, 222)
+            dialog.accept()
         QTimer.singleShot(50,edit);window.columns()
         assert window.tree.header().visualIndex(4) == 1
         assert window.tree.isColumnHidden(2)
+        assert window.tree.columnWidth(4) == 222
         add_case(window,tmp_path,'AnotherEVTX');settle(qt_application,window)
         assert window.tree.header().visualIndex(4) == 1 and window.tree.isColumnHidden(2)
     finally:window.close()

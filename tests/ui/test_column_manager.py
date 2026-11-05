@@ -40,6 +40,19 @@ def test_a_column_can_be_inserted_at_a_given_position():
         dialog.deleteLater()
 
 
+def test_a_column_can_be_moved_inside_the_visible_list():
+    dialog = build(order=[0, 1, 2])
+    try:
+        dialog.move_column(2, 0)
+        assert dialog.showing == [2, 0, 1]
+        dialog.move_column(2, 99)          # clamp instead of raising
+        assert dialog.showing == [0, 1, 2]
+        dialog.move_column(9, 0)           # unknown column: ignored
+        assert dialog.showing == [0, 1, 2]
+    finally:
+        dialog.deleteLater()
+
+
 def test_width_and_pinning_are_reported_for_visible_columns_only():
     dialog = build(order=[0, 1, 2], hidden=[3, 4])
     try:

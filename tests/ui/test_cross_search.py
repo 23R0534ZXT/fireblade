@@ -63,28 +63,12 @@ def test_summarize_skips_empty_values_and_truncates():
     assert summarize((1, "x" * 300), limit=160) == "x" * 160
 
 
-def test_the_panel_shows_a_sample_and_the_remaining_count():
-    from PySide6.QtWidgets import QTableWidgetItem, QWidget
+def test_the_panel_text_shows_a_sample_and_the_remaining_count():
+    from fireblade.ui.cross_search import SearchHit, sample_text
 
-    from fireblade.ui.cross_search import SearchDialog, SearchHit
-
-    class Window(QWidget):
-        documents = []
-        settings = None
-        case = None
-
-    dialog = SearchDialog(Window())
-    try:
-        dialog.results = [SearchHit("p", "x.csv", 12, sample=["a", "b"])]
-        dialog.table.setRowCount(1)
-        dialog.table.setItem(0, 0, QTableWidgetItem("x.csv"))
-        dialog.table.setCurrentCell(0, 0)
-        dialog.show_sample()
-        text = dialog.details.text()
-        assert "• a" in text and "• b" in text
-        assert "10" in text
-        dialog.results = [SearchHit("p", "x.csv", 0)]
-        dialog.show_sample()
-        assert "Aucune correspondance" in dialog.details.text()
-    finally:
-        dialog.deleteLater()
+    hit = SearchHit("p", "x.csv", 12, sample=["a", "b"])
+    text = sample_text(hit)
+    assert "• a" in text and "• b" in text
+    assert "10" in text
+    assert sample_text(SearchHit("p", "x.csv", 0)) == "Aucune correspondance dans cet artefact."
+    assert sample_text(SearchHit("p", "x.csv", None, error="fichier illisible")) == "fichier illisible"

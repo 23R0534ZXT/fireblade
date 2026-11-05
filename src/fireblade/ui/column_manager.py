@@ -148,6 +148,15 @@ class ColumnManager(QDialog):
         self.refresh()
         self._select(self.right, self.showing[min(index, len(self.showing) - 1)] if self.showing else None)
 
+    def move_column(self, column, position):
+        """Reorder a visible column; the pane order is the truth."""
+        if column not in self.showing:
+            return
+        self.showing.remove(column)
+        self.showing.insert(max(0, min(position, len(self.showing))), column)
+        self.refresh()
+        self._select(self.right, column)
+
     def set_width(self, column, pixels):
         self.widths[column] = max(24, int(pixels))
 

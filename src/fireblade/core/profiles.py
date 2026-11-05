@@ -1,8 +1,18 @@
 """Small, editable display presets. They never transform source evidence."""
 
 from dataclasses import dataclass
+import re
 
 from fireblade.core.models import Filter, FilterGroup, FormatRule, View
+
+
+def field_key(name):
+    """Compare declared profile fields with real headers.
+
+    Parser exports and the catalogue disagree on punctuation: 'Visit Time' in
+    the CSV, 'VisitTime' in the profile. Case alone is not enough.
+    """
+    return re.sub(r"[^a-z0-9]", "", str(name).casefold())
 
 
 @dataclass(frozen=True)
@@ -133,10 +143,20 @@ def detect_profile(headers):
 
 def profile_view(profile, headers):
     lookup = {h.casefold(): i for i, h in enumerate(headers)}
+    # Tolerant index for declared timestamps only: the display order and the
+    # boolean mapping stay strictly name-based.
+    tolerant = {}
+    for index, header in enumerate(headers):
+        tolerant.setdefault(field_key(header), index)
     timestamp = next(
         (lookup[h.casefold()] for h in profile.timestamp if h.casefold() in lookup),
         None,
     )
+    if timestamp is None:
+        timestamp = next(
+            (tolerant[field_key(h)] for h in profile.timestamp if field_key(h) in tolerant),
+            None,
+        )
     view = View(
         sort_column=timestamp,
         sort_type="timestamp" if timestamp is not None else "text",
@@ -144,6 +164,10 @@ def profile_view(profile, headers):
     view.timestamp_columns = [
         lookup[h.casefold()] for h in profile.timestamp if h.casefold() in lookup
     ]
+    if not view.timestamp_columns:
+        view.timestamp_columns = [
+            tolerant[field_key(h)] for h in profile.timestamp if field_key(h) in tolerant
+        ]
     view.boolean_columns = [
         lookup[h.casefold()] for h in profile.booleans if h.casefold() in lookup
     ]
@@ -206,7 +230,7 @@ def profile_view(profile, headers):
     normalized += [
         i
         for i, h in enumerate(headers)
-        if (h.startswith("Fireblade_UTC_") or h in profile.timestamp)
+        if (h.startswith("Fireblade_UTC_") or h.casefold() in {name.casefold() for name in profile.timestamp} or field_key(h) in {field_key(name) for name in profile.timestamp})
         and i not in normalized
     ]
     view.timestamp_columns = list(dict.fromkeys(normalized + view.timestamp_columns))

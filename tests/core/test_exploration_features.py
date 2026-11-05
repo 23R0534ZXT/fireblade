@@ -175,3 +175,13 @@ def test_powershell_type_metadata_only_skips_first_line(tmp_path,encoding):
         assert case.page(View())==[(1,'alice','Get-Process'),(2,'#TYPE kept','Get-Date')]
         assert source.read_bytes()==original
     finally:case.close()
+
+
+def test_profile_timestamp_columns_match_case_insensitively():
+    """'Visit Time' must still be recognised when the profile declares 'VisitTime'."""
+    from fireblade.core.profiles import Profile, profile_view
+    profile=Profile('BrowsingHistoryView',('URL',),('VisitTime',),('URL','Visit Time'))
+    view,order=profile_view(profile,['URL','Visit Time'])
+    assert view.timestamp_columns==[1]
+    assert view.sort_column==1 and view.sort_type=='timestamp'
+    assert order==[0,1]

@@ -258,6 +258,7 @@ class Collection:
             writer.writerow(headers+names)
             for row in reader:
                 check_cancel()
+                if not row:continue  # Blank trailing line: same tolerance as the chunked importer.
                 if len(row) != len(headers):
                     raise ValueError('CSV du parseur : largeur de ligne incohérente')
                 writer.writerow(row+[str(artifact), tool])

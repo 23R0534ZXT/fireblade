@@ -39,6 +39,16 @@ def fake_execute(command, cwd, log, timeout=3600):
         target.write_text('Level,RuleTitle,RecordID,EvtxFile\nhigh,Test detection,12,'+str(source)+'\n')
 
 
+def test_parser_csv_tolerates_a_blank_trailing_line(collection, tmp_path):
+    """A trailing blank line must not reject the whole parser output."""
+    source = tmp_path/'parser.csv'
+    source.write_bytes(b'EventID,Computer\r\n4624,PC01\r\n\r\n')
+    target = collection.enrich_result(source, 'Security.evtx', 'EvtxECmd')
+    rows = target.read_text(encoding='utf-8').splitlines()
+    assert rows[0] == 'EventID,Computer,Fireblade_ArtifactSource,Fireblade_Parser'
+    assert len(rows) == 2 and rows[1].startswith('4624,PC01,')
+
+
 def test_collect_parse_session_and_alerts(collection, monkeypatch):
     monkeypatch.setattr('fireblade.core.collection.execute', fake_execute)
     before = sha256(collection.root/'Security.evtx')

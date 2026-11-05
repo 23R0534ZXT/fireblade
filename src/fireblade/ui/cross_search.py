@@ -1,14 +1,24 @@
 """Sequential cross-document search, one extra disk connection at most."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import copy
 import threading
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout)
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.models import View
+
+SAMPLE_ROWS = 4
+SAMPLE_WIDTH = 160
+
+
+def summarize(row, limit=SAMPLE_WIDTH):
+    """One readable line for a matching row, enough to recognise the event."""
+    values = [str(value) for value in row[1:] if value not in (None, '')]
+    return (' · '.join(values))[:limit]
 
 
 @dataclass
@@ -17,6 +27,7 @@ class SearchHit:
     name: str
     count: int | None
     error: str = ""
+    sample: list = field(default_factory=list)
 
 
 class WorkspaceSearch:
@@ -55,7 +66,11 @@ class WorkspaceSearch:
                 view = copy.deepcopy(document.view) if respect_filters else View()
                 view.search = text
                 count = case.count(view)
-                results.append(SearchHit(document.path, Path(document.source_info['path']).name, count))
+                sample = []
+                if count:
+                    # A few real rows, so the panel shows events and not a number.
+                    sample = [summarize(row) for row in case.page(view, limit=SAMPLE_ROWS)]
+                results.append(SearchHit(document.path, Path(document.source_info['path']).name, count, sample=sample))
             except OperationCancelled:
                 raise
             except Exception as exc:
@@ -99,6 +114,14 @@ class SearchDialog(QDialog):
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.cellDoubleClicked.connect(self.open_result)
         layout.addWidget(self.table)
+        from PySide6.QtGui import QFontDatabase
+        self.details = QLabel()
+        self.details.setWordWrap(True)
+        self.details.setFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
+        self.details.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.details.setMinimumHeight(56)
+        self.table.currentCellChanged.connect(lambda *_args: self.show_sample())
+        layout.addWidget(self.details)
         self.message = QLabel("Double-cliquez un résultat pour ouvrir l’analyse filtrée.")
         layout.addWidget(self.message)
         close = QDialogButtonBox(QDialogButtonBox.Close)
@@ -140,6 +163,9 @@ class SearchDialog(QDialog):
                     self.table.setItem(row, col, item)
             self.filter_results()
             self.message.setText(f"{sum(r.count or 0 for r in results)} correspondances · {len(results)} artefacts parcourus")
+            if results:
+                self.table.setCurrentCell(0, 0)
+            self.show_sample()
         def failed(message="Recherche interrompue"):
             self.finished()
             self.message.setText(message)
@@ -148,6 +174,25 @@ class SearchDialog(QDialog):
     def filter_results(self):
         for row, result in enumerate(self.results):
             self.table.setRowHidden(row, self.only_matches.isChecked() and result.count == 0 and not result.error)
+
+    def show_sample(self):
+        """Show a few real matching rows for the selected artifact."""
+        row = self.table.currentRow()
+        if not 0 <= row < len(self.results):
+            self.details.setText("")
+            return
+        result = self.results[row]
+        if result.error:
+            self.details.setText(result.error)
+            return
+        if not result.sample:
+            self.details.setText("Aucune correspondance dans cet artefact.")
+            return
+        lines = [f"• {line}" for line in result.sample]
+        more = (result.count or 0) - len(result.sample)
+        if more > 0:
+            lines.append(f"… et {more:,} autres correspondances".replace(",", " "))
+        self.details.setText("\n".join(lines))
 
     def open_result(self, row, _column):
         if self.task or not 0 <= row < len(self.results) or not self.window.can_open_file():

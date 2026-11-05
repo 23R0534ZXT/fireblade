@@ -764,44 +764,43 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
     def columns(self):
         if not self.case:
             return
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Colonnes · ordre et visibilité")
-        layout = QVBoxLayout(dialog)
-        checks = []
-        layout.addWidget(QLabel('Glissez pour réordonner. Cochez pour afficher.'))
-        listing = QListWidget()
-        from PySide6.QtWidgets import QAbstractItemView
-        listing.setDragDropMode(QAbstractItemView.InternalMove)
-        from PySide6.QtWidgets import QListWidgetItem
+        from fireblade.ui.column_manager import ColumnManager
         header = self.tree.header()
         sections = [header.logicalIndex(position) for position in range(header.count()) if header.logicalIndex(position) > 0]
-        for i in sections:
-            item = QListWidgetItem(self.case.headers[i-1])
-            item.setData(Qt.UserRole, i)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Unchecked if self.tree.isColumnHidden(i) and i - 1 not in self.view.pinned_columns + self.view.right_pinned_columns else Qt.Checked)
-            listing.addItem(item)
-            checks.append(item)
-        layout.addWidget(listing)
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-        layout.addWidget(buttons)
-        if dialog.exec():
-            ordered = [listing.item(position).data(Qt.UserRole) for position in range(listing.count())]
-            for position, section in enumerate(ordered, 1):
-                header.moveSection(header.visualIndex(section),position)
-            self.view.pinned_columns = [section-1 for section in ordered if section-1 in self.view.pinned_columns]
-            self.view.right_pinned_columns = [section-1 for section in ordered if section-1 in self.view.right_pinned_columns]
-            self.restore_pins()
-            for item in checks:
-                i = item.data(Qt.UserRole)
-                if item.checkState() != Qt.Checked:
-                    self.hide_column(i - 1)
-                elif i - 1 not in self.view.pinned_columns + self.view.right_pinned_columns:
-                    self.tree.setColumnHidden(i, False)
-            self.save_format_layout()
-        dialog.deleteLater()
+        order = [section - 1 for section in sections]
+        state = dict(order=order,
+                     hidden=[column for column in order if self.tree.isColumnHidden(column + 1)],
+                     left=list(self.view.pinned_columns), right=list(self.view.right_pinned_columns),
+                     widths={column: self.tree.columnWidth(column + 1) for column in order})
+        dialog = ColumnManager(self.case.headers, state, self)
+        try:
+            if dialog.exec() != QDialog.Accepted:
+                return
+            result = dialog.state()
+        finally:
+            dialog.deleteLater()
+        for position, column in enumerate(result['order'], 1):
+            section = column + 1
+            if section < header.count():
+                header.moveSection(header.visualIndex(section), position)
+        self.view.pinned_columns = result['left']
+        self.view.right_pinned_columns = result['right']
+        self.restore_pins()
+        for column in range(len(self.case.headers)):
+            section = column + 1
+            hidden = column in result['hidden']
+            self.tree.setColumnHidden(section, hidden)
+            if hidden:
+                continue
+            width = result['widths'].get(column)
+            if width is None:
+                continue
+            if column in result['left'] + result['right']:
+                self.view.pinned_widths[str(column)] = width
+            else:
+                self.tree.setColumnWidth(section, width)
+        self.capture_pin_widths()
+        self.save_format_layout()
 
     def show_header_menu(self, position):
         header = self.tree.header()

@@ -118,3 +118,39 @@ def test_cancellation_after_inserted_batch_rolls_back_and_cleans_chunks(evidence
     with pytest.raises(OperationCancelled):store.build(reader,{d.path:0 for d in documents},progress=progress)
     assert seen and store.page()['count']==8
     assert not list(store.root.glob('.fireblade-import-*'))
+
+
+def test_utc_suffix_wins_over_the_raw_column_it_was_derived_from():
+    # A normalized analysis column must beat the raw column it came from,
+    # even though both exist and the raw one is listed first.
+    assert guess_time_column(['Horodatage','Hôte','Horodatage UTC'])==2
+    assert guess_time_column(['DateHeure','DateHeure UTC'])==1
+    assert guess_time_column(['EventId','CreatedOnUtc'])==1
+    # Unchanged for a lone raw column and for a split date/time pair.
+    assert guess_time_column(['date','time'])==0
+
+
+def test_naive_dates_are_indexed_as_utc_whatever_the_host_timezone(tmp_path):
+    source=tmp_path/'naive.csv';source.write_text('Timestamp,User\n2026-01-02 00:00:00,a\n')
+    case=Case(tmp_path/'naive.timeline');case.import_csv(source)
+    document=AnalysisSnapshot(str(case.path),case.info,View(),b'');store=TimelineStore(memory_mb=64)
+    try:
+        assert store.db.execute("select current_setting('TimeZone')").fetchone()[0]=='UTC'
+        # No explicit choice: the column is resolved against the analysis schema.
+        sources=store.build(WorkspaceReader([document],active=case),{})
+        assert sources[0]['column_name']=='Timestamp' and sources[0]['naive']==1
+        assert utc_label(store.page()['rows'][0][2])=='2026-01-02 00:00:00 UTC'
+    finally:store.close();case.close()
+
+
+def test_explicit_no_date_choice_is_respected(tmp_path):
+    source=tmp_path/'nodate.csv';source.write_text('Timestamp,User\n2026-01-02T00:00:00Z,a\n')
+    case=Case(tmp_path/'nodate.timeline');case.import_csv(source)
+    document=AnalysisSnapshot(str(case.path),case.info,View(),b'');store=TimelineStore(memory_mb=64)
+    try:
+        sources=store.build(WorkspaceReader([document],active=case),{document.path:None})
+        assert sources[0]['column'] is None and sources[0]['undated']==1
+        # Still searchable, but outside every dated window.
+        assert store.page()['count']==1
+        assert store.page(start=-10**30,end=10**30)['count']==0
+    finally:store.close();case.close()

@@ -36,7 +36,12 @@ def guess_time_column(headers, preferred=()):
     for index in preferred:
         if type(index) is int and 0 <= index < len(headers):return index
     normalized = [re.sub(r'[^a-z0-9]', '', name.casefold()) for name in headers]
-    for name in ('timestamputc', 'timecreatedutc', 'datetimeutc', 'timestamp', 'timecreated', 'datetime', 'eventtime', 'date', 'time', 'horodatage', 'dateheure', 'lastwritetimestamp', 'lastwritetime', 'creationtime'):
+    # An explicit UTC suffix is authoritative: a normalized column
+    # (Horodatage UTC, TimestampUtc) must win over the raw column it was
+    # derived from (Horodatage, Timestamp), even when both are present.
+    for name in ('timestamputc', 'timecreatedutc', 'datetimeutc', 'horodatageutc', 'dateheureutc'):
+        if name in normalized:return normalized.index(name)
+    for name in ('timestamp', 'timecreated', 'datetime', 'eventtime', 'date', 'time', 'horodatage', 'dateheure', 'lastwritetimestamp', 'lastwritetime', 'creationtime'):
         if name in normalized:return normalized.index(name)
     return next((i for i, name in enumerate(normalized) if name.endswith('utc')), None)
 
@@ -60,6 +65,11 @@ class TimelineStore:
         self.db.execute('SET threads=1')
         self.db.execute('SET preserve_insertion_order=false')
         self.db.execute('SET enable_progress_bar=false')
+        # Naive source dates are read as UTC, exactly like Case does when it
+        # imports and filters. DuckDB would otherwise use the analyst's
+        # timezone, so the same case would produce a different chronology on
+        # another machine.
+        self.db.execute("SET TimeZone='UTC'")
         self.lock = threading.RLock()
         self.reader = None
         self.sources = []
@@ -91,13 +101,18 @@ class TimelineStore:
                     source = dict(id=number, path=document.path, name=Path(document.source_info['path']).name,
                                   original=document.source_info['path'],
                                   sha256=document.source_info.get('sha256',''),
-                                  rows=0, dated=0, undated=0, naive=0, error='', column=columns.get(document.path))
+                                  rows=0, dated=0, undated=0, naive=0, error='', column=None)
                     stage = 'reading'
                     try:
                         with reader.open(document) as case:
-                            index = columns.get(document.path)
-                            source['column_name']=case.headers[index] if index is not None and type(index) is int and 0<=index<len(case.headers) else ''
-                            time = case.column(index) if index is not None else 'NULL::VARCHAR'
+                            # A chosen column (None included) wins. Otherwise the
+                            # date column is resolved against this analysis's own
+                            # headers, which is the only list the view indices
+                            # refer to: a snapshot does not carry derived columns.
+                            index = columns[document.path] if document.path in columns else guess_time_column(case.headers, document.view.timestamp_columns)
+                            source['column'] = index
+                            source['column_name']=case.headers[index] if type(index) is int and 0<=index<len(case.headers) else ''
+                            time = case.column(index) if type(index) is int and 0<=index<len(case.headers) else 'NULL::VARCHAR'
                             key = timestamp_key(time)
                             fields = {kind: [case.column(i) for i, header in enumerate(case.headers) if field_kind(header) == kind]
                                       for kind in ('user', 'ip', 'path', 'hash')}

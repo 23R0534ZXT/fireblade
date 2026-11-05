@@ -350,7 +350,10 @@ class TimelinePanel(QWidget):
         if not self.state_loaded:self.load_state()
         if [d.path for d in self.documents] != [d.path for d in documents]:
             self.source_filter=[i for i,d in enumerate(documents) if d.path in self.saved_sources] if self.saved_sources is not None else None
-        columns={doc.path:self.columns.get(doc.path,guess_time_column(doc.source_info['headers'],doc.view.timestamp_columns)) for doc in documents}
+        # Only explicit analyst choices are kept: an implicit guess is resolved
+        # against the analysis schema at build time and must never be persisted,
+        # otherwise a stale index survives a schema or profile change.
+        columns={doc.path:self.columns[doc.path] for doc in documents if doc.path in self.columns}
         reader=WorkspaceReader(documents,self.window.settings,self.window.case);self.reader=reader
         filters=self.filters(False);respect=self.respect.isChecked();wanted_bounds=self.bounds if self.store else self.saved_bounds
         self.busy(True);self.stats.setText('Construction de l’index sur disque… Les événements sources ne sont pas modifiés.')

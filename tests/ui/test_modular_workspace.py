@@ -65,6 +65,19 @@ def test_focus_gives_timeline_space_and_restores_analysis(qt_application, tmp_pa
     finally:settle(qt_application,window);window.close()
 
 
+def test_opening_a_case_brings_back_the_data_toolbar(qt_application, tmp_path):
+    window = Window(require_case=False)
+    try:
+        window.show()
+        add_case(window, tmp_path, 'EVTX');settle(qt_application, window)
+        assert not window.main_toolbar.isHidden()
+        assert not window.collection_toolbar.isHidden()
+        labels = [action.text() for action in window.collection_toolbar.actions() if action.text()]
+        assert any('Parser' in label or 'Parse' in label for label in labels)
+    finally:
+        window.close()
+
+
 def test_entering_the_timeline_twice_still_restores_the_toolbars(qt_application, tmp_path):
     window = Window(require_case=False);window.show()
     try:

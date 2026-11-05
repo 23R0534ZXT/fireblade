@@ -116,6 +116,12 @@ class StartWorkflowMixin:
             QTimer.singleShot(0, lambda: self.open_path(source))
         self.main_toolbar.setEnabled(allowed)
         if hasattr(self, 'collection_toolbar'): self.collection_toolbar.setEnabled(allowed)
+        if allowed:
+            # The start screen hid these bars; opening a case must bring them back
+            # according to the preferences, not leave "Parse a folder" invisible.
+            self.main_toolbar.setVisible(self.preferences.main_toolbar_visible)
+            if hasattr(self, 'collection_toolbar'):
+                self.collection_toolbar.setVisible(self.preferences.collection_toolbar_visible)
         workspace = getattr(self, 'workspace_layout', None)
         if workspace:
             workspace.toolbar.setEnabled(allowed)

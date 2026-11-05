@@ -540,6 +540,13 @@ def test_group_drop_inserts_where_the_level_is_released(app, window):
     assert window.view.groups == [1, 2, 0]
 
 
+def test_the_version_is_shown_in_the_status_bar_and_on_the_start_screen(app, window):
+    from fireblade import __version__
+    expected = f'Fireblade {__version__}'
+    assert window.version_label.text() == expected
+    assert window.welcome_version.text() == expected
+
+
 def test_command_palette_lists_and_filters_menu_commands(app, window):
     from fireblade.ui.command_palette import CommandPalette, flatten_actions
     entries = flatten_actions(window.menuBar())

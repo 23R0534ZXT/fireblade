@@ -95,6 +95,10 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         QTimer.singleShot(0, lambda: apply_language(self))
         self._ui_ready = True
 
+    def version_text(self):
+        from fireblade import __version__
+        return f"Fireblade {__version__}"
+
     def build_ui(self):
         file_menu = self.menuBar().addMenu("&Fichier")
         edit_menu = self.menuBar().addMenu("&Édition")
@@ -211,6 +215,10 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         toolbar.addAction(open_csv)
         toolbar.addAction(export)
+        # The version stays visible bottom right for bug reports and screenshots.
+        self.version_label = QLabel(self.version_text())
+        self.version_label.setObjectName('version-label')
+        self.statusBar().addPermanentWidget(self.version_label)
         # Column filters and the grouping bar already expose these operations.
 
         self.content_stack = QStackedWidget()
@@ -235,6 +243,10 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         hint.setAlignment(Qt.AlignCenter)
         welcome_layout.addWidget(hint)
         welcome_layout.addStretch()
+        self.welcome_version = QLabel(self.version_text())
+        self.welcome_version.setAlignment(Qt.AlignRight)
+        self.welcome_version.setStyleSheet("color: palette(mid); padding: 6px;")
+        welcome_layout.addWidget(self.welcome_version)
         self.content_stack.addWidget(welcome)
 
         body = QWidget()

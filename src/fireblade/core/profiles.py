@@ -112,13 +112,20 @@ def all_profiles():
 
     custom, _errors = load_plugins()
 
+    def tokens(values):
+        """Some declarations were recorded as one tab-joined line; split them."""
+        result = []
+        for value in values:
+            result.extend(part for part in str(value).split("\t") if part)
+        return tuple(result)
+
     def profile(data):
         return Profile(
             data["name"],
-            tuple(data["signature"]),
-            tuple(data.get("timestamp", [])),
-            tuple(data.get("columns", [])),
-            tuple(data.get("booleans", [])),
+            tokens(data["signature"]),
+            tokens(data.get("timestamp", [])),
+            tokens(data.get("columns", [])),
+            tokens(data.get("booleans", [])),
             tuple(data.get("transforms", [])),
         )
 
@@ -131,14 +138,18 @@ def all_profiles():
 
 def detect_profile(headers):
     present = {h.casefold() for h in headers}
-    return next(
-        (
-            p
-            for p in all_profiles()
-            if all(h.casefold() in present for h in p.signature)
-        ),
-        None,
-    )
+    best = None
+    for profile in all_profiles():
+        if not profile.signature:
+            continue
+        if not all(h.casefold() in present for h in profile.signature):
+            continue
+        # The most specific match wins. A subset test alone let a narrow profile
+        # swallow a detailed export: Hayabusa verbose columns were read as the
+        # standard profile, Chainsaw persistence as indicator removal, and so on.
+        if best is None or len(profile.signature) > len(best.signature):
+            best = profile
+    return best
 
 
 def profile_view(profile, headers):
@@ -237,12 +248,14 @@ def profile_view(profile, headers):
     if normalized:
         view.sort_column, view.sort_type = normalized[0], "timestamp"
     category = lookup.get("fireblade_category")
-    if category is not None:
+    if category is not None and not view.format_rules:
+        # Category colours are a fallback presentation only: an explicit profile
+        # rule (Hayabusa crit/high/med severity) must not be replaced by them.
         from fireblade.core.timeline_categories import COLORS
 
         view.format_rules = [
             FormatRule(FilterGroup("and", [Filter(category, "eq", name)]), color)
-            for name, color in COLORS.items()
+            for name, color in list(COLORS.items())[:32]
         ]
     view.boolean_columns += [
         i

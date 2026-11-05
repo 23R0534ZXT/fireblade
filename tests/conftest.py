@@ -42,7 +42,9 @@ def no_blocking_dialog(qt_application):
             widget.reject()
 
     timer = QTimer(qt_application)
-    timer.setInterval(1500)
+    # Long enough for a test that drives a dialog to fill it in and click OK even on
+    # a loaded machine; a dialog nobody drives still costs 15 s instead of forever.
+    timer.setInterval(15000)
     timer.timeout.connect(reject_stray)
     timer.start()
     yield

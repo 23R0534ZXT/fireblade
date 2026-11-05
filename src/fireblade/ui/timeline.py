@@ -72,6 +72,12 @@ class TimelineCanvas(QWidget):
         ratio=max(0.,min(1.,(x-self.LEFT)/max(1,self.width()-self.LEFT-24)))
         return data['start']+int(ratio*max(1,data['end']-data['start']))
 
+    def lane_height(self):
+        """Lanes share the free height: one source must not sit in a thin strip."""
+        lanes = max(1, len(self.sources))
+        free = self.height() - self.TOP - 46
+        return max(48, min(240, free // lanes))
+
     def paintEvent(self,event):
         painter=QPainter(self);painter.setRenderHint(QPainter.Antialiasing)
         palette=self.palette();painter.fillRect(self.rect(),palette.color(QPalette.Base))
@@ -108,22 +114,26 @@ class TimelineCanvas(QWidget):
             else:label=label[11:]
             painter.setPen(muted);painter.drawText(QRectF(max(left,min(left+width-180,x-90)),96,180,18),Qt.AlignCenter,label)
         for lane,source in enumerate(self.sources):
-            y=self.TOP+lane*self.LANE
-            if lane%2==0:painter.fillRect(QRectF(0,y,self.width(),self.LANE),palette.color(QPalette.AlternateBase))
+            lane_h=self.lane_height()
+            y=self.TOP+lane*lane_h
+            if lane%2==0:painter.fillRect(QRectF(0,y,self.width(),lane_h),palette.color(QPalette.AlternateBase))
             color=QColor(COLORS[source['id']%len(COLORS)])
             painter.fillRect(QRectF(12,y+10,4,18),color);painter.setPen(text)
             label=painter.fontMetrics().elidedText(source['name'],Qt.ElideMiddle,self.LEFT-35)
-            painter.drawText(24,y+16,label);painter.setPen(muted)
-            painter.drawText(24,y+31,f"{source['dated']:,} datés".replace(',',' '))
+            painter.drawText(24,y+lane_h//2-4,label);painter.setPen(muted)
+            painter.drawText(24,y+lane_h//2+12,f"{source['dated']:,} datés".replace(',',' '))
             peak=max((count for (s,b),count in counts.items() if s==source['id']),default=1)
             for (s,bucket),count in counts.items():
                 if s!=source['id']:continue
-                opacity=.3+.7*math.log1p(count)/math.log1p(peak);fill=QColor(color);fill.setAlphaF(opacity)
-                painter.fillRect(QRectF(left+bucket*bar_width,y+7,max(2,bar_width-1),24),fill)
+                share=math.log1p(count)/math.log1p(peak)
+                fill=QColor(color);fill.setAlphaF(.35+.65*share)
+                # Height carries the volume: the shape of the day is readable at a glance.
+                height=max(3,(lane_h-16)*share)
+                painter.fillRect(QRectF(left+bucket*bar_width,y+lane_h-7-height,max(2,bar_width-1),height),fill)
                 if (s,bucket) in marks:
                     x=left+(bucket+.5)*bar_width
                     painter.setPen(QPen(QColor('#7a5900'),1));painter.setBrush(QColor('#f7cf55'))
-                    painter.drawPolygon(QPolygonF([QPointF(x,y+3),QPointF(x-4,y+10),QPointF(x+4,y+10)]))
+                    painter.drawPolygon(QPolygonF([QPointF(x,y+lane_h-11),QPointF(x-4,y+lane_h-4),QPointF(x+4,y+lane_h-4)]))
         painter.setPen(muted)
         painter.drawText(QRectF(left,self.height()-26,width,22),Qt.AlignLeft,utc_label(data['start']))
         painter.drawText(QRectF(left,self.height()-26,width,22),Qt.AlignRight,utc_label(data['end']))
@@ -133,7 +143,7 @@ class TimelineCanvas(QWidget):
             for lane,source in enumerate(self.sources):
                 if source['id']==self.selected_source:
                     painter.setBrush(palette.color(QPalette.Base));painter.setPen(QPen(QColor(COLORS[source['id']%len(COLORS)]),2))
-                    painter.drawEllipse(QPointF(x,self.TOP+lane*self.LANE+19),5,5)
+                    painter.drawEllipse(QPointF(x,self.TOP+lane*self.lane_height()+19),5,5)
         if self.drag is not None and self.cursor is not None:
             x1=max(left,min(self.drag,self.cursor));x2=min(self.width()-24,max(self.drag,self.cursor))
             color=QColor(COLORS[0]);color.setAlpha(65)
@@ -149,14 +159,14 @@ class TimelineCanvas(QWidget):
     def mousePressEvent(self,event):
         if event.button()==Qt.LeftButton and self.histogram:
             if event.position().x()<self.LEFT:
-                lane=int((event.position().y()-self.TOP)//self.LANE)
+                lane=int((event.position().y()-self.TOP)//self.lane_height())
                 if 0<=lane<len(self.sources):self.sourceSelected.emit(self.sources[lane]['id'])
             else:self.drag=event.position().x();self.cursor=self.drag;self.update()
 
     def mouseMoveEvent(self,event):
         if self.drag is not None:self.cursor=event.position().x();self.update();return
         if not self.histogram:return
-        lane=int((event.position().y()-self.TOP)//self.LANE)
+        lane=int((event.position().y()-self.TOP)//self.lane_height())
         time=self.position_time(event.position().x())
         if event.position().x()>=self.LEFT and 0<=lane<len(self.sources):
             bucket=(time-self.histogram['start'])//self.histogram['width']

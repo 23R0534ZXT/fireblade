@@ -540,6 +540,24 @@ def test_group_drop_inserts_where_the_level_is_released(app, window):
     assert window.view.groups == [1, 2, 0]
 
 
+def test_command_palette_lists_and_filters_menu_commands(app, window):
+    from fireblade.ui.command_palette import CommandPalette, flatten_actions
+    entries = flatten_actions(window.menuBar())
+    labels = [label for label, _action in entries]
+    assert len(labels) > 20
+    assert any('Colonnes' in label for label in labels)
+    palette = CommandPalette(window)
+    try:
+        total = palette.listing.count()
+        assert total == len(entries)
+        palette.filter('colonnes')
+        assert 0 < palette.listing.count() < total
+        palette.filter('')
+        assert palette.listing.count() == total
+    finally:
+        palette.deleteLater()
+
+
 def test_boolean_cards_invert_preserves_nested_siblings(app):
     from fireblade.ui.advanced_dialogs import ExpressionEditor
     from fireblade.core.models import FilterGroup

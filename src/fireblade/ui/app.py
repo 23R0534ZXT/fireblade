@@ -135,6 +135,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         action(edit_menu, "Remplacer les notes de la sélection…", lambda: self.annotate_selection("replace"))
         action(edit_menu, "Retirer les signets de la sélection", lambda: self.annotate_selection("remove"), "Ctrl+Shift+M")
         grouping = action(view_menu, "Regrouper…", self.group_by)
+        action(view_menu, "Palette de commandes…", self.command_palette, "Ctrl+Shift+K", False)
         action(view_menu, "Colonnes…", self.columns)
         action(view_menu, "Hauteur des lignes…", self.edit_row_heights)
         action(view_menu, "Réinitialiser les largeurs", self.reset_widths, "Ctrl+R")
@@ -1119,6 +1120,15 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         layout.addWidget(buttons)
         dialog.exec()
         dialog.deleteLater()
+
+    def command_palette(self):
+        """Every menu command behind one field, for actions without a visible button."""
+        from fireblade.ui.command_palette import CommandPalette
+        dialog = CommandPalette(self)
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()
 
     def highlight(self):
         if not self.case or self.busy:

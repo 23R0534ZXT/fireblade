@@ -8,7 +8,7 @@ import pytest
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled
 from fireblade.core.models import AnalysisSnapshot, Filter, View
-from fireblade.core.timeline import TimelineStore, guess_time_column, utc_label
+from fireblade.core.timeline import TimelineStore, guess_time_column, guess_time_columns, utc_label
 from fireblade.core.workspace_reader import WorkspaceReader
 
 
@@ -151,6 +151,24 @@ def test_saved_timeline_state_drops_pre_023_column_choices():
     assert saved_columns({'version':2,'columns':{'a.timeline':None}}) == {'a.timeline':None}
     with pytest.raises(ValueError):
         saved_columns({'version':2,'columns':{'a.timeline':'2'}})
+
+
+def test_split_date_and_time_columns_are_combined(tmp_path):
+    source=tmp_path/'iis.csv';source.write_text('date,time,cs-uri-stem\n2026-01-02,12:34:56,/index\n')
+    case=Case(tmp_path/'iis.timeline');case.import_csv(source)
+    document=AnalysisSnapshot(str(case.path),case.info,View(),b'');store=TimelineStore(memory_mb=64)
+    try:
+        # No explicit choice: the pair is detected and concatenated.
+        sources=store.build(WorkspaceReader([document],active=case),{})
+        assert sources[0]['combined'] and sources[0]['column_name']=='date + time'
+        assert utc_label(store.page()['rows'][0][2])=='2026-01-02 12:34:56 UTC'
+        # A real combined column still wins over the pair.
+        assert guess_time_columns(['date','time','Timestamp'])==2
+        assert guess_time_columns(['date','time'])==(0,1)
+        # A chosen pair on a source without one falls back to no date.
+        sources=store.build(WorkspaceReader([document],active=case),{document.path:None})
+        assert sources[0]['column'] is None and not sources[0]['combined']
+    finally:store.close();case.close()
 
 
 def test_explicit_no_date_choice_is_respected(tmp_path):

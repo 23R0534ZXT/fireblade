@@ -13,7 +13,8 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog,
 from fireblade.ui.flow_layout import FlowLayout
 from fireblade.core.layout import write_json
 from fireblade.core.models import Filter, View
-from fireblade.core.timeline import KINDS, TimelineStore, field_kind, guess_time_column, saved_columns, utc_label
+from fireblade.core.timeline import (KINDS, DATE_TIME, TimelineStore, field_kind, guess_time_column,
+                                     guess_time_columns, saved_columns, split_date_time, utc_label)
 from fireblade.core.workspace_reader import WorkspaceReader
 
 COLORS = ['#2d9cdb','#e6a23c','#27ae82','#bb6bd9','#eb6577','#56bfc4','#9fa8da','#b4a34a']
@@ -318,8 +319,11 @@ class TimelinePanel(QWidget):
             item=QTableWidgetItem(Path(document.source_info['path']).name);item.setFlags(item.flags()&~Qt.ItemIsEditable);item.setToolTip(document.path);table.setItem(i,0,item)
             combo=QComboBox();combo.addItem('Sans date / corrélation uniquement',None)
             headers=actual_headers[document.path]
+            if split_date_time(headers):combo.addItem('Date + heure (colonnes séparées)',DATE_TIME)
             for index,header in enumerate(headers):combo.addItem(header,index)
-            value=self.columns.get(document.path,guess_time_column(headers,document.view.timestamp_columns))
+            guess=guess_time_columns(headers,document.view.timestamp_columns)
+            default=DATE_TIME if type(guess) is tuple else guess
+            value=self.columns.get(document.path,default)
             combo.setCurrentIndex(max(0,combo.findData(value)));table.setCellWidget(i,1,combo);combos.append(combo)
             source=next((s for s in self.store.sources if s['path']==document.path),None) if self.store else None
             status=source['error'] or f"{source['dated']} datés · {source['undated']} sans date" if source else 'Non indexé'

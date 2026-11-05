@@ -4,6 +4,9 @@
 - **Fuseau de l’index** : les dates sans fuseau sont lues comme **UTC** dans la chronologie, comme à l’import. Le même dossier produit donc le même ordre chronologique d’un poste à l’autre ; seuls les modèles de test ou les réglages d’horloge ne peuvent plus le déplacer.
 - **Colonnes calculées** : la date proposée est résolue contre le schéma réel de l’analyse, colonnes dérivées comprises. Une colonne UTC calculée est donc utilisable automatiquement, et un index deviné n’est plus mémorisé comme un choix : les réglages de chronologie enregistrés par la 0.2.2 sont réinitialisés une fois.
 - **Dates de profil** : une déclaration `VisitTime` reconnaît un export `Visit Time`. Les analyses concernées n’ouvrent plus sans colonne temporelle.
+- **Date et heure séparées** : un export qui écrit `date` et `time` dans deux colonnes (IIS, W3C, certaines timelines) est désormais indexé sur les deux colonnes combinées, et non sur la date seule à minuit. Le choix reste modifiable dans **Sources et dates…**.
+- **Détection d’artefact** : le profil le plus spécifique l’emporte sur un profil plus étroit qu’il englobe. 18 entrées du catalogue — dont `HayabusaVerbose`, `HayabusaSuperVerbose`, `ChainsawPersistence` et neuf profils RECmd — n’étaient jamais sélectionnées et le sont maintenant. Une déclaration enregistrée sur une seule ligne tabulée (`MsftMft`) est découpée en colonnes.
+- **Règles de profil** : les couleurs de catégories ne remplacent plus les règles du profil. Les seuils de sévérité Hayabusa retrouvent leurs couleurs.
 - **Export interrompu** : une interruption pendant la vérification retire le fichier temporaire. Un nouvel export vers la même cible n’est plus refusé définitivement.
 - **Robustesse** : un chemin de groupe plus profond que les regroupements de la vue produit un message explicite, et une ligne vide terminale d’un CSV de parseur n’annule plus tout le fichier.
 

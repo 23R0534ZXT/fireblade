@@ -32,18 +32,58 @@ def field_kind(header):
     return None
 
 
-def guess_time_column(headers, preferred=()):
+DATE_TIME = 'date+time'
+UTC_NAMES = ('timestamputc', 'timecreatedutc', 'datetimeutc', 'horodatageutc', 'dateheureutc')
+COMBINED_NAMES = ('timestamp', 'timecreated', 'datetime', 'eventtime', 'lastwritetimestamp',
+                  'lastwritetime', 'creationtime', 'createdon', 'lastrun')
+SPLIT_NAMES = (('date', 'time'), ('logdate', 'logtime'), ('jour', 'heure'))
+SINGLE_NAMES = ('date', 'time', 'horodatage', 'dateheure')
+
+
+def normalized_headers(headers):
+    return [re.sub(r'[^a-z0-9]', '', name.casefold()) for name in headers]
+
+
+def split_date_time(headers):
+    """The (date, time) columns of a source that stores them separately.
+
+    IIS and W3C exports write `date` and `time` in two columns; indexing the
+    date alone silently sets every event to midnight.
+    """
+    normalized = normalized_headers(headers)
+    for date_name, time_name in SPLIT_NAMES:
+        if date_name in normalized and time_name in normalized:
+            return (normalized.index(date_name), normalized.index(time_name))
+    return None
+
+
+def guess_time_columns(headers, preferred=()):
+    """Date column to index: an int, a (date, time) pair, or None.
+
+    Order: an explicit analyst choice, then an explicit UTC column, then a
+    combined date column, then the date+time pair, then a lone date-ish column.
+    """
     for index in preferred:
         if type(index) is int and 0 <= index < len(headers):return index
-    normalized = [re.sub(r'[^a-z0-9]', '', name.casefold()) for name in headers]
+    normalized = normalized_headers(headers)
     # An explicit UTC suffix is authoritative: a normalized column
     # (Horodatage UTC, TimestampUtc) must win over the raw column it was
     # derived from (Horodatage, Timestamp), even when both are present.
-    for name in ('timestamputc', 'timecreatedutc', 'datetimeutc', 'horodatageutc', 'dateheureutc'):
+    for name in UTC_NAMES:
         if name in normalized:return normalized.index(name)
-    for name in ('timestamp', 'timecreated', 'datetime', 'eventtime', 'date', 'time', 'horodatage', 'dateheure', 'lastwritetimestamp', 'lastwritetime', 'creationtime'):
+    for name in COMBINED_NAMES:
+        if name in normalized:return normalized.index(name)
+    pair = split_date_time(headers)
+    if pair is not None:return pair
+    for name in SINGLE_NAMES:
         if name in normalized:return normalized.index(name)
     return next((i for i, name in enumerate(normalized) if name.endswith('utc')), None)
+
+
+def guess_time_column(headers, preferred=()):
+    """Single-column guess, for callers that present one column per analysis."""
+    guess = guess_time_columns(headers, preferred)
+    return guess[0] if type(guess) is tuple else guess
 
 
 def saved_columns(state):
@@ -55,7 +95,7 @@ def saved_columns(state):
     """
     columns = state.get('columns', {})
     if not isinstance(columns, dict) or len(columns) > 1000 or any(
-            not isinstance(key, str) or (value is not None and (type(value) is not int or not 0 <= value < 10000))
+            not isinstance(key, str) or (value is not None and value != DATE_TIME and (type(value) is not int or not 0 <= value < 10000))
             for key, value in columns.items()):
         raise ValueError('Colonnes temporelles invalides')
     return {} if state.get('version') != 2 else columns
@@ -124,10 +164,21 @@ class TimelineStore:
                             # date column is resolved against this analysis's own
                             # headers, which is the only list the view indices
                             # refer to: a snapshot does not carry derived columns.
-                            index = columns[document.path] if document.path in columns else guess_time_column(case.headers, document.view.timestamp_columns)
+                            spec = columns[document.path] if document.path in columns else guess_time_columns(case.headers, document.view.timestamp_columns)
+                            if spec == DATE_TIME:
+                                spec = split_date_time(case.headers)
+                            pair = spec if type(spec) is tuple else None
+                            if pair and not all(type(part) is int and 0 <= part < len(case.headers) for part in pair):
+                                pair = None
+                            index = pair[0] if pair else (spec if type(spec) is int else None)
                             source['column'] = index
-                            source['column_name']=case.headers[index] if type(index) is int and 0<=index<len(case.headers) else ''
-                            time = case.column(index) if type(index) is int and 0<=index<len(case.headers) else 'NULL::VARCHAR'
+                            source['combined'] = bool(pair)
+                            if pair:
+                                source['column_name'] = case.headers[pair[0]] + ' + ' + case.headers[pair[1]]
+                                time = f"concat_ws(' ', {case.column(pair[0])}, {case.column(pair[1])})"
+                            else:
+                                source['column_name']=case.headers[index] if type(index) is int and 0<=index<len(case.headers) else ''
+                                time = case.column(index) if type(index) is int and 0<=index<len(case.headers) else 'NULL::VARCHAR'
                             key = timestamp_key(time)
                             fields = {kind: [case.column(i) for i, header in enumerate(case.headers) if field_kind(header) == kind]
                                       for kind in ('user', 'ip', 'path', 'hash')}

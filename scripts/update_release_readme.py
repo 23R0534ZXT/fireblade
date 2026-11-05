@@ -36,8 +36,10 @@ def main():
     head=subprocess.check_output(['git','rev-parse','origin/main'],text=True).strip()
     if head!=commit:raise ValueError('Main changed during qualification; refusing to overwrite it')
     path.write_text(updated,encoding='utf-8')
-    subprocess.run(['git','config','user.name','github-actions[bot]'],check=True)
-    subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'],check=True)
+    # Commit as the maintainer, not as a bot: the contributor list is public and
+    # should only show the person who actually owns the repository.
+    subprocess.run(['git','config','user.name',os.environ.get('MAINTAINER_NAME','23R0534ZXT')],check=True)
+    subprocess.run(['git','config','user.email',os.environ.get('MAINTAINER_EMAIL','112427500+23R0534ZXT@users.noreply.github.com')],check=True)
     subprocess.run(['git','add','README.md'],check=True)
     subprocess.run(['git','commit','-m',f'Docs: link qualified Fireblade {version} release'],check=True)
     subprocess.run(['git','push','origin','HEAD:main'],check=True)

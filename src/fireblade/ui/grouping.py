@@ -255,5 +255,8 @@ class GroupBar(QLabel):
         except (ValueError, UnicodeError):
             event.ignore()
             return
-        self.callback(value, append=True, position=position)
         event.acceptProposedAction()
+        # Grouping rebuilds the grid inside dropEvent, which destroys the drag
+        # source and leaves its pixmap on screen until something repaints the
+        # header. Let the drag finish before touching the view.
+        QTimer.singleShot(0, lambda: self.callback(value, append=True, position=position))

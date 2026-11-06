@@ -540,6 +540,38 @@ def test_group_drop_inserts_where_the_level_is_released(app, window):
     assert window.view.groups == [1, 2, 0]
 
 
+def test_a_drop_on_the_group_bar_waits_for_the_drag_to_end(app, window):
+    from PySide6.QtCore import QCoreApplication, QEvent as QtEvent, QMimeData
+    from fireblade.ui.grouping import MIME, GroupBar
+
+    calls = []
+    bar = GroupBar(lambda *args, **kwargs: calls.append((args, kwargs)))
+    try:
+        mime = QMimeData()
+        mime.setData(MIME, b'3')
+
+        class Drop:
+            accepted = False
+
+            def mimeData(self):
+                return mime
+
+            def acceptProposedAction(self):
+                self.accepted = True
+
+        event = Drop()
+        bar.drop_at(event, 1)
+        assert event.accepted
+        assert calls == []          # the view is untouched while the drag runs
+        app.processEvents()
+        assert calls == [((3,), {'append': True, 'position': 1})]
+    finally:
+        bar.close()
+        bar.setParent(None)
+        bar.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QtEvent.DeferredDelete)
+
+
 def test_the_version_is_shown_in_the_status_bar_and_on_the_start_screen(app, window):
     from fireblade import __version__
     expected = f'Fireblade {__version__}'

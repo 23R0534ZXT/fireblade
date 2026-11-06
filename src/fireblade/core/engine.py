@@ -71,6 +71,7 @@ class Case:
             row = self.db.execute("SELECT value FROM metadata WHERE key='derived'").fetchone()
             self.derived = json.loads(row[0]) if row else []
             self.headers += [d['name'] for d in self.derived]
+            self.migrate_bookmarks()
             from fireblade.core.plugin_registry import restore_functions
             try:restore_functions(self)
             except BaseException:
@@ -311,7 +312,7 @@ class Case:
                     info.update(format=source.suffix.lower().lstrip("."), sheet=sheet)
                 self.db.execute("CREATE TABLE metadata (key VARCHAR PRIMARY KEY, value VARCHAR)")
                 self.db.execute("INSERT INTO metadata VALUES ('source', ?)", [json.dumps(info)])
-                self.db.execute("CREATE TABLE bookmarks (row_id BIGINT PRIMARY KEY, note VARCHAR)")
+                self.db.execute("CREATE TABLE bookmarks (row_id BIGINT, column_id INTEGER, note VARCHAR, PRIMARY KEY (row_id, column_id))")
                 self.db.execute("CREATE TABLE views (name VARCHAR PRIMARY KEY, value VARCHAR)")
                 progress("Validation de l’analyse…")
                 with self.finalizing_transaction():
@@ -664,8 +665,83 @@ class Case:
             where, args = self.where(view)
             return self.db.execute("SELECT count(*) FROM events" + where, args).fetchone()[0]
 
-    def bookmark(self, row_id, note):
-        return self.bookmark_many([row_id], note, "remove" if note is None else "replace")
+    ROW_NOTE = -1        # column_id of a note that belongs to the whole row
+
+    def migrate_bookmarks(self):
+        """Give an analysis written before cell notes a column_id to write into."""
+        if self._read_only:
+            return
+        columns = [row[0] for row in self.db.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name='bookmarks'").fetchall()]
+        if not columns:
+            self.db.execute("CREATE TABLE bookmarks (row_id BIGINT, column_id INTEGER, note VARCHAR, "
+                            "PRIMARY KEY (row_id, column_id))")
+            return
+        if "column_id" in columns:
+            return
+        with self.operation():
+            self.db.execute("BEGIN")
+            try:
+                self.db.execute("CREATE TABLE bookmarks_cell (row_id BIGINT, column_id INTEGER, note VARCHAR, "
+                                "PRIMARY KEY (row_id, column_id))")
+                self.db.execute(f"INSERT INTO bookmarks_cell SELECT row_id, {self.ROW_NOTE}, note FROM bookmarks")
+                self.db.execute("DROP TABLE bookmarks")
+                self.db.execute("ALTER TABLE bookmarks_cell RENAME TO bookmarks")
+                self.db.execute("COMMIT")
+            except BaseException:
+                try:
+                    self.db.execute("ROLLBACK")
+                except duckdb.TransactionException:
+                    pass
+                raise
+
+    def bookmark(self, row_id, note, column=None):
+        """A note on one cell, or on the whole row when `column` is None."""
+        if column is None:
+            return self.bookmark_many([row_id], note, "remove" if note is None else "replace")
+        self.set_cell_note(row_id, column, note)
+
+    def set_cell_note(self, row_id, column, note):
+        """Store the note of one cell; `None` removes it."""
+        if type(row_id) is not int or not 1 <= row_id <= self.info.get("rows", 0):
+            raise ValueError("Identifiant d’enregistrement invalide")
+        if type(column) is not int or column < 0:
+            raise ValueError("Identifiant de colonne invalide")
+        if note is not None and not isinstance(note, str):
+            raise ValueError("La note doit être du texte")
+        with self.operation(final_check=False):
+            self.db.execute("BEGIN")
+            try:
+                if note is None:
+                    self.db.execute("DELETE FROM bookmarks WHERE row_id=? AND column_id=?", [row_id, column])
+                else:
+                    self.db.execute("INSERT INTO bookmarks (row_id, column_id, note) VALUES (?, ?, ?) "
+                                    "ON CONFLICT (row_id, column_id) DO UPDATE SET note=excluded.note",
+                                    [row_id, column, note])
+                with self.finalizing_transaction():
+                    self.check_cancelled()
+                    self.db.execute("COMMIT")
+                self._bookmark_revision += 1
+                return 1
+            except BaseException:
+                with self.finalizing_transaction():
+                    try:
+                        self.db.execute("ROLLBACK")
+                    except duckdb.TransactionException:
+                        pass
+                raise
+
+    def cell_notes(self, row_ids=None):
+        """{(row_id, column): note} for the notes attached to single cells."""
+        if row_ids is not None and not row_ids:
+            return {}
+        with self.operation():
+            sql = "SELECT row_id, column_id, note FROM bookmarks WHERE column_id <> ?"
+            args = [self.ROW_NOTE]
+            if row_ids is not None:
+                sql += " AND row_id IN (SELECT unnest(?::BIGINT[]))"
+                args.append(list(row_ids))
+            return {(row_id, column): note for row_id, column, note in self.db.execute(sql, args).fetchall()}
 
     def bookmark_many(self, row_ids, note="", mode="mark"):
         """One transaction for an explicit selection, never all rows in a group."""
@@ -688,12 +764,16 @@ class Case:
             try:
                 self.db.execute("BEGIN")
                 if mode == "remove":
-                    self.db.execute("DELETE FROM bookmarks WHERE row_id IN (SELECT unnest(?::BIGINT[]))", [ids])
+                    # Only the note of the whole row: a cell note is a different record.
+                    self.db.execute("DELETE FROM bookmarks WHERE column_id=? AND row_id IN (SELECT unnest(?::BIGINT[]))",
+                                    [self.ROW_NOTE, ids])
                 else:
                     conflict = {"mark": "DO NOTHING", "replace": "DO UPDATE SET note=excluded.note",
                                 "append": "DO UPDATE SET note=CASE WHEN bookmarks.note='' THEN excluded.note WHEN excluded.note='' THEN bookmarks.note ELSE bookmarks.note || chr(10) || excluded.note END"}[mode]
-                    self.db.execute("INSERT INTO bookmarks SELECT row_id, ? FROM unnest(?::BIGINT[]) AS chosen(row_id) "
-                                    "ON CONFLICT (row_id) " + conflict, ["" if mode == "mark" else note, ids])
+                    self.db.execute("INSERT INTO bookmarks (row_id, column_id, note) "
+                                    "SELECT row_id, ?, ? FROM unnest(?::BIGINT[]) AS chosen(row_id) "
+                                    "ON CONFLICT (row_id, column_id) " + conflict,
+                                    [self.ROW_NOTE, "" if mode == "mark" else note, ids])
                 with self.finalizing_transaction():
                     self.check_cancelled()
                     self.db.execute("COMMIT")
@@ -711,11 +791,11 @@ class Case:
         if row_ids is not None and not row_ids:
             return {}
         with self.operation():
-            sql = "SELECT * FROM bookmarks"
-            args = []
+            sql = "SELECT row_id, note FROM bookmarks WHERE column_id = ?"
+            args = [self.ROW_NOTE]
             if row_ids is not None:
-                sql += " WHERE row_id IN (SELECT unnest(?::BIGINT[]))"
-                args = [list(row_ids)]
+                sql += " AND row_id IN (SELECT unnest(?::BIGINT[]))"
+                args.append(list(row_ids))
             return dict(self.db.execute(sql, args).fetchall())
 
     def save_view(self, name, view):
@@ -758,7 +838,9 @@ class Case:
                 headers = [self.headers[i] for i in view.groups] + ["Count"] + [f"{s.operation}({self.headers[s.column]})" for s in view.summaries]
             else:
                 if include_annotations:
-                    cols += ", __row_id, EXISTS(SELECT 1 FROM bookmarks b WHERE b.row_id=events.__row_id), (SELECT b.note FROM bookmarks b WHERE b.row_id=events.__row_id)"
+                    # Row-level notes only: a row can now carry several cell notes.
+                    cols += (", __row_id, EXISTS(SELECT 1 FROM bookmarks b WHERE b.row_id=events.__row_id AND b.column_id=-1), "
+                             "(SELECT b.note FROM bookmarks b WHERE b.row_id=events.__row_id AND b.column_id=-1)")
                     headers = headers.copy()
                     existing = {h.casefold() for h in headers}
                     for name in ("Fireblade_SourceRecord", "Fireblade_Bookmarked", "Fireblade_Note"):

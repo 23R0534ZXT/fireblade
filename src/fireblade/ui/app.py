@@ -992,14 +992,35 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
             return
         self.edit_bookmark(node.values[0])
 
-    def edit_bookmark(self, row_id):
+    def note_of(self, row_id, column=None):
+        """The note already written for this row, or for this cell of it."""
+        if self.model is None:
+            return None
+        if column is None:
+            return self.model.notes.get(row_id)
+        return self.model.cell_notes.get((row_id, column))
+
+    def edit_bookmark(self, row_id, column=None):
+        """Write or edit the note of the row, or of one cell of it."""
         if not self.model or self.busy:
             return
-        old = self.model.notes.get(row_id)
-        note, ok = QInputDialog.getMultiLineText(self, "Signet / note", "Note (vide = retirer le signet)", old if old is not None else "À examiner")
-        if ok:
-            case = self.case
+        existing = self.note_of(row_id, column)
+        if column is None:
+            title, prompt = "Signet / note", "Note (vide = retirer le signet)"
+        else:
+            header = self.case.headers[column] if 0 <= column < len(self.case.headers) else ""
+            title, prompt = "Note de la cellule", f"Note de la cellule « {header} » (vide = retirer la note)"
+        note, ok = QInputDialog.getMultiLineText(self, title, prompt, existing or "")
+        if not ok:
+            return
+        case = self.case
+        if column is None:
             self.run(lambda: case.bookmark(row_id, note or None), lambda _: self.apply(), exclusive=True)
+            return
+        def saved(_result):
+            self.model.update_cell_note(row_id, column, note or None)
+            self.statusBar().showMessage("Note de cellule enregistrée" if note else "Note de cellule retirée")
+        self.run(lambda: case.bookmark(row_id, note or None, column=column), saved, exclusive=True)
 
     def annotate_selection(self, mode, note=None):
         if not self.model or self.busy:

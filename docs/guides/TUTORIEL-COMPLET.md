@@ -545,7 +545,7 @@ Capture de données synthétiques, rendu Qt hors écran sous Linux.
 
 ## Signets et notes
 
-Un clic dans la première colonne surligne toute la ligne et l’ajoute aux signets. Le repère est conservé dans la base et retrouvé après réouverture. Un nouveau clic retire le signet ; si une note existe, Fireblade demande confirmation avant de la supprimer. Un double-clic sur une cellule de données affiche la cellule en texte, JSON ou XML. Le signet et sa note s'ouvrent depuis le menu Édition.
+Un clic dans la première colonne surligne toute la ligne et l’ajoute aux signets. Le repère est conservé dans la base et retrouvé après réouverture. Un nouveau clic retire le signet ; si une note existe, Fireblade demande confirmation avant de la supprimer. Un clic droit sur une valeur propose **Ajouter une note à la cellule…** ; une fois la note écrite, l'entrée devient **Éditer la note de la cellule…** et la cellule prend un fond vert. Un double-clic sur une cellule de données affiche la cellule en texte, JSON ou XML. Le signet et sa note s'ouvrent depuis le menu Édition.
 
 Pour plusieurs lignes, utiliser Ctrl/clic ou Maj/clic, puis le menu **Édition** :
 

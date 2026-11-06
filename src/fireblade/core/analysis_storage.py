@@ -60,7 +60,11 @@ def connect_analysis(path, *, read_only=False, allow_empty_import=False):
         if tables != {'metadata','bookmarks','views',base} or views != ({'events'} if derived else set()):
             raise ValueError('Analyse contenant des tables ou vues SQL non autorisées')
         expected = [('__row_id','BIGINT')]+[(f'c{i}','VARCHAR') for i in range(len(headers))]
-        if (schema.get(base) != expected or schema.get('bookmarks') != [('row_id','BIGINT'),('note','VARCHAR')]
+        # Analyses written before 0.3.1 keep their row-level notes only; the
+        # per-cell table is created when such a file is opened and migrated.
+        notes_schemas = ([('row_id','BIGINT'),('note','VARCHAR')],
+                         [('row_id','BIGINT'),('column_id','INTEGER'),('note','VARCHAR')])
+        if (schema.get(base) != expected or schema.get('bookmarks') not in notes_schemas
                 or schema.get('views') != [('name','VARCHAR'),('value','VARCHAR')]):
             raise ValueError('Schéma des tables d’analyse invalide')
         # Derived views may use approved .NET UDFs restored by Case after opening.

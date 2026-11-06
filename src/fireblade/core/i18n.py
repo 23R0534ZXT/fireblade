@@ -1199,6 +1199,20 @@ EN = {
     "Monter": "Move up",
     "Retirer": "Remove",
     "Supprimer": "Delete",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    "Ajouter une note à la cellule…": "Add a note to the cell…",
+    "Note de cellule enregistrée": "Cell note saved",
+    "Note de cellule retirée": "Cell note removed",
+    "Note de la cellule": "Cell note",
+    "Note de la cellule « {} » (vide = retirer la note)": "Note of the cell « {} » (empty removes the note)",
+    "Éditer la note de la cellule…": "Edit the cell note…",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    "Note (vide = retirer le signet)": "Note (empty removes the bookmark)",
+    "Signet / note": "Bookmark / note",
 }
 
 LANGUAGES = ("en", "fr")

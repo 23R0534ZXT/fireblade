@@ -545,7 +545,7 @@ Capture of synthetic data, Qt offscreen rendering under Linux.
 
 ## Bookmarks and notes
 
-A click in the first column highlights the whole row and adds it to the bookmarks. The marker is kept in the database and found again after reopening. A new click removes the bookmark; if a note exists, Fireblade asks for confirmation before deleting it. A double-click on a data cell shows the cell as text, JSON or XML. The bookmark and its note are opened from the Edit menu.
+A click in the first column highlights the whole row and adds it to the bookmarks. The marker is kept in the database and found again after reopening. A new click removes the bookmark; if a note exists, Fireblade asks for confirmation before deleting it. A right click on a value offers **Add a note to the cell…**; once the note is written the entry becomes **Edit the cell note…** and the cell is tinted green. A double-click on a data cell shows the cell as text, JSON or XML. The bookmark and its note are opened from the Edit menu.
 
 For several rows, use Ctrl/click or Shift/click, then the **Edit** menu:
 

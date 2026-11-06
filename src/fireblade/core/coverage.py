@@ -383,7 +383,7 @@ def verify_export(path,expected,headers,content_sha256,*,xlsx=False,checker=chec
 
 def analysis_fingerprint(case,checker=check):
     rows=RowDigest();rows.update([json.dumps(dict(headers=case.headers,derived=getattr(case,'derived',[])),ensure_ascii=False,sort_keys=True)])
-    cursor=case.db.execute('SELECT row_id,note FROM bookmarks ORDER BY row_id')
+    cursor=case.db.execute('SELECT row_id,note FROM bookmarks WHERE column_id=-1 ORDER BY row_id')
     while batch:=cursor.fetchmany(1024):
         checker()
         for row in batch:rows.update(row)

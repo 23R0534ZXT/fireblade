@@ -46,6 +46,15 @@ class GridDelegate(QStyledItemDelegate):
                 if foreground is None:option.palette.setBrush(QPalette.Text,option.palette.brush(QPalette.HighlightedText))
                 option.state &= ~QStyle.State_Selected
         node = index.model().node(index)
+        cell_note = node.cell_notes.get(index.column() - 1) if index.column() > 0 else None
+        if cell_note is not None and not node.group and not node.footer:
+            # A cell note is green: it marks one value, the yellow row note marks the line.
+            color = QColor("#2f5138" if index.model().dark else "#d8f0d0")
+            option.backgroundBrush = QBrush(color)
+            option.palette.setColor(QPalette.Text, contrast_color(color))
+            if selected:
+                option.palette.setBrush(QPalette.Highlight, QBrush(color))
+                option.palette.setColor(QPalette.HighlightedText, contrast_color(color))
         if node.note is not None and not node.group and not node.footer:
             color = QColor("#665c27" if index.model().dark else "#fff4c2")
             option.backgroundBrush = QBrush(color)
@@ -179,6 +188,7 @@ class Node:
     job: Job | None = None
     styles: tuple = ()
     note: str | None = None
+    cell_notes: dict = field(default_factory=dict)   # column -> note
     used: int = 0
     footer: bool = False
     window_size: int = 0
@@ -219,6 +229,32 @@ class GridModel(QAbstractItemModel):
             if not node.group and node.note is not None:
                 notes[node.values[0]] = node.note
         return notes
+
+    @property
+    def cell_notes(self):
+        """{(row_id, column): note} for the cells of the loaded nodes."""
+        notes, pending = {}, [self.root]
+        while pending:
+            node = pending.pop()
+            pending.extend(node.children)
+            if not node.group and not node.footer:
+                for column, note in node.cell_notes.items():
+                    notes[(node.values[0], column)] = note
+        return notes
+
+    def update_cell_note(self, row_id, column, note):
+        pending = [self.root]
+        while pending:
+            parent = pending.pop()
+            pending.extend(parent.children)
+            for row, node in enumerate(parent.children):
+                if not node.group and not node.footer and node.values[0] == row_id:
+                    if note is None:
+                        node.cell_notes.pop(column, None)
+                    else:
+                        node.cell_notes[column] = note
+                    index = self.createIndex(row, column + 1, node)
+                    self.dataChanged.emit(index, index)
 
     def update_bookmark(self, row_id, note):
         """Repaint loaded occurrences without losing selection or open groups."""
@@ -428,7 +464,10 @@ class GridModel(QAbstractItemModel):
             if value in ("true", "false", "0", "1"):
                 return Qt.Checked if value in ("true", "1") else Qt.Unchecked
         if role == Qt.ToolTipRole and not node.group:
-            return ("Clic : surligner / retirer le signet de toute la ligne.\n" + (node.note or "")) if col == 0 else str(node.values[col])[:4000]
+            if col == 0:
+                return "Clic : surligner / retirer le signet de toute la ligne.\n" + (node.note or "")
+            note = node.cell_notes.get(col - 1)
+            return (note + "\n" if note else "") + str(node.values[col])[:4000]
         if node.group:
             from fireblade.ui.layout_styles import role_value
             styled=role_value(self.view.layout_styles.get('group_row',{}),role)
@@ -530,12 +569,14 @@ class GridModel(QAbstractItemModel):
                 rows = [r['values'] for r in records if not r['group']]
                 styles = self.case.page_styles(view,rows,global_rules)
                 notes = self.case.bookmarks([r[0] for r in rows])
-                return records,styles,notes,render_rules
+                cells = self.case.cell_notes([r[0] for r in rows])
+                return records,styles,notes,cells,render_rules
             rows = self.case.page(view, path, offset)
             leaves = len(path) >= len(view.groups)
             styles = self.case.page_styles(view, rows, global_rules) if leaves else {}
             notes = self.case.bookmarks([row[0] for row in rows]) if leaves else {}
-            return rows, styles, notes,render_rules
+            cells = self.case.cell_notes([row[0] for row in rows]) if leaves else {}
+            return rows, styles, notes, cells, render_rules
         job = Job(read_page)
         node.job = job
         self.jobs.add(job)
@@ -550,7 +591,10 @@ class GridModel(QAbstractItemModel):
                 node.job = None
 
         def complete(result):
-            rows, styles, notes, render_rules = result
+            rows, styles, notes, cells, render_rules = result
+            by_row = {}
+            for (row_id, column), note in cells.items():
+                by_row.setdefault(row_id, {})[column] = note
             release()
             if generation != self.generation or revision != node.revision or not self.attached(node):
                 return
@@ -562,12 +606,14 @@ class GridModel(QAbstractItemModel):
             if outline:
                 additions=[Node(node,r['path'],r['values'],r['group'],more=False,
                     styles=styles.get(r['values'][0],()) if not r['group'] else (),
-                    note=notes.get(r['values'][0]) if not r['group'] else None,footer=r.get('footer',False)) for r in rows]
+                    note=notes.get(r['values'][0]) if not r['group'] else None,
+                    cell_notes=by_row.get(r['values'][0], {}),footer=r.get('footer',False)) for r in rows]
             else:
                 for r in rows:
                     child_path=path+(r[0],) if groups else path
                     additions.append(Node(node,child_path,r,groups,more=groups,
-                        styles=styles.get(r[0],()),note=notes.get(r[0]) if not groups else None))
+                        styles=styles.get(r[0],()),note=notes.get(r[0]) if not groups else None,
+                        cell_notes=by_row.get(r[0], {})))
                     if groups and view.group_footer_mode=='always':
                         additions.append(Node(node,child_path,r,True,more=False,footer=True))
                 if path and view.group_footer_mode=='expanded' and not node.more:

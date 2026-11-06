@@ -115,10 +115,19 @@ class StartWorkflowMixin:
             source, self._startup_file = self._startup_file, None
             QTimer.singleShot(0, lambda: self.open_path(source))
         self.main_toolbar.setEnabled(allowed)
-        # Adding data is how a session starts: this bar stays visible and usable
-        # even before a case exists, otherwise "Parse a folder" is invisible.
+        # Adding data requires a case. The bar stays visible so the entry points
+        # are discoverable, but they stay greyed out until a case is opened.
+        if not hasattr(self, '_data_action_tooltips'):
+            self._data_action_tooltips = {}
+        for action in getattr(self, 'data_actions', []):
+            if allowed:
+                action.setEnabled(True)
+                action.setToolTip(self._data_action_tooltips.get(id(action), ''))
+            else:
+                self._data_action_tooltips.setdefault(id(action), action.toolTip())
+                action.setEnabled(False)
+                action.setToolTip('Open or create a case first.')
         if hasattr(self, 'collection_toolbar'):
-            self.collection_toolbar.setEnabled(True)
             self.collection_toolbar.setVisible(self.preferences.collection_toolbar_visible)
         self.main_toolbar.setVisible(self.preferences.main_toolbar_visible and (allowed or not self.require_case))
         workspace = getattr(self, 'workspace_layout', None)

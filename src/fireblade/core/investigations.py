@@ -1,6 +1,6 @@
 """Persistent investigation catalogue. Listing cases never opens an analysis."""
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
@@ -16,8 +16,22 @@ STATUSES = {'open': 'En cours', 'closed': 'Terminé', 'archived': 'Archivé'}
 HISTORY_LIMIT = 10
 
 
+_LAST_STAMP = [None]
+
+
 def now():
-    return datetime.now(timezone.utc).isoformat()
+    """Wall-clock UTC, strictly increasing within a process.
+
+    Two saves in a tight loop can share a microsecond; if ``updated`` ties, the
+    history sort falls back to the random ``revision`` and the oldest retained
+    version becomes non-deterministic. Nudge the clock by one microsecond so
+    ``updated`` always reflects save order.
+    """
+    stamp = datetime.now(timezone.utc)
+    if _LAST_STAMP[0] is not None and stamp <= _LAST_STAMP[0]:
+        stamp = _LAST_STAMP[0] + timedelta(microseconds=1)
+    _LAST_STAMP[0] = stamp
+    return stamp.isoformat()
 
 
 class InvestigationLibrary:

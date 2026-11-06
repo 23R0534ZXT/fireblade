@@ -57,11 +57,15 @@ Dernière mise à jour : 6 novembre 2026, après la publication de la 0.3.1.
   reliquats ne peut que diminuer. Un troisième test lit la vraie fenêtre en
   anglais et échoue sur tout mot français visible.
 
-## Ce qui reste — plan de la 0.3.2
+## Plan de la 0.4.0
 
-1. « Parser un dossier » sans case : créer le case au passage (recommandé) ou
-   griser le bouton avec une infobulle. Décision toujours en attente.
-2. Chronologie : table en bandeau, vue d'ensemble.
+1. « Parser un dossier » exige un case : **décidé**. Les points d'entrée d'ajout
+   de données (« Parser un dossier… », « Analyser un disque… », « Importer un
+   fichier… ») restent visibles mais **grisés** tant qu'aucun case n'est ouvert,
+   avec l'infobulle « Open or create a case first. ». La création automatique du
+   case au passage est écartée.
+2. Chronologie : table + bandeau d'ensemble + vue graphique — **déjà en place**
+   (`TimelinePanel`, `TimelineOverview`, `TimelineModel`) ; l'item est clos.
 3. Tests de l'exe publié et du pont .NET, reportés depuis la 0.2.x.
 4. Couverture CI réelle (les qualifications Windows empruntent encore des
    chemins choisis).

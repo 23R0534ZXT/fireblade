@@ -31,6 +31,8 @@ def organize_commands(window):
     imports = move(case, analysis, ['Ouvrir un fichier…', 'Importer un dossier de collecte…', 'Analyser un disque…'], anchor)
     labels = ['Importer un fichier…', 'Parser un dossier…', 'Analyser un disque…']
     for item, label in zip(imports, labels):item.setText(label)
+    # These need an open case; the case gate greys them out before one exists.
+    window.data_actions = list(imports)
     analysis.insertSeparator(anchor)
     move(case, analysis, ['Ouvrir une analyse…', 'Vider la file d’ouverture', 'Fermer l’onglet', 'Rouvrir le dernier onglet fermé'], anchor)
     move(analysis, view, ['Enregistrer la vue…', 'Charger une vue…', 'Dispositions de la grille',

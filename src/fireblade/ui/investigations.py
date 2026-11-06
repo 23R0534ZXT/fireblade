@@ -331,7 +331,12 @@ class InvestigationMixin:
 
     def open_selected_investigation(self):
         data=self.selected_investigation()
-        if data:self.open_investigation(data['id'])
+        if not data:return
+        before=self.statusBar().currentMessage()
+        # The gates above already explain the precise blocker; only speak when one
+        # refused without saying anything, so the button never looks dead.
+        if self.open_investigation(data['id']) is False and self.statusBar().currentMessage()==before:
+            self.statusBar().showMessage('Ce case ne peut pas être ouvert maintenant : une tâche est en cours.')
 
     def open_investigation(self, identifier):
         if not self.can_switch_investigation():return False

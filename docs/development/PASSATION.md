@@ -76,6 +76,13 @@ Dernière mise à jour : 6 novembre 2026, après la préparation de la 0.3.1.
   expressions TLE) : les traduire serait faux.
 - **Deux langues seulement** : anglais (référence) et français. La table reste
   une paire de dictionnaires ; une troisième langue ne demanderait pas de refonte.
+- **À partir de la 0.3.2, on ne travaille plus que l'anglais.** Les nouveaux
+  libellés s'écrivent directement en anglais dans le code. Le français déjà
+  traduit reste affichable et ne casse rien, mais il n'est plus maintenu : une
+  nouvelle chaîne n'a pas à recevoir d'entrée française, et la couverture du
+  français n'est plus vérifiée. La mesure de couverture et les tests de garde
+  restent utiles pour l'anglais seul (aucun texte codé en dur ne doit s'afficher
+  brut dans une fenêtre anglaise).
 
 ## Pièges connus
 
@@ -98,7 +105,8 @@ Dernière mise à jour : 6 novembre 2026, après la préparation de la 0.3.1.
 
 Premier message d'une nouvelle session, suffisant pour repartir :
 
-> Fireblade 0.3.2, la 0.3.1 est publiée, `main` est à jour. Charge le skill
+> Fireblade 0.3.2, la 0.3.1 est publiée, `main` est à jour. À partir de
+> maintenant on ne travaille qu'en anglais. Charge le skill
 > `fireblade-verification` et lis `docs/development/PASSATION.md`.
 
 Le reste — historique, décisions, conventions — se trouve dans le dépôt et dans

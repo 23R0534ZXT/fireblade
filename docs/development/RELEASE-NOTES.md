@@ -8,6 +8,7 @@
 - **Les textes calculés à l'affichage** passent par la même table : compteurs (« 2 case(s) affiché(s) »), fins de tâche, erreurs affichées, message d'archive vérifiée. La table accepte des gabarits (`Analyse absente : {}`) dont les valeurs sont réinsérées au moment de l'affichage, et l'entrée la plus précise l'emporte toujours.
 - La traduction s'applique **à l'ouverture de chaque fenêtre** et **au moment où le code écrit le texte** : une liste remplie après coup, un compteur rafraîchi ou une erreur tardive sont couverts, sans toucher au code de chaque fenêtre.
 - Le **français reste complet** : les libellés d'origine sont mémorisés par la couche de langue, et le retour au français se fait sans perte, y compris quand un texte avait été remplacé entre-temps.
+- **À partir de la 0.3.2, on ne travaille plus que l'anglais** : les nouveaux libellés s'écrivent directement en anglais et le français déjà traduit n'est plus maintenu (il reste affichable, sans garantie de suivi).
 - Six chaînes restent volontairement telles quelles : des noms de fichiers d'exemple (`évidence.csv`, `résumés.csv`, `fonctions étendues.csv`) et deux expressions TLE synthétiques. Ce sont des données, pas de l'interface.
 
 ## Corrections

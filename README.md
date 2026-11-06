@@ -10,7 +10,7 @@ Fireblade brings Windows artifacts, Linux logs, detection results and tabular ev
 
 **[Download Fireblade 0.3.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.3.1/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.3.1) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 
-The interface is fully translated: it opens in English, French is one click away in **Preferences → Language**, and the choice is saved. User guides are still in French.
+The interface is in English, and English is the reference from now on: new labels are written directly in English. French stays available in **Preferences → Language** for what has already been translated, but it is no longer maintained. User guides are still in French.
 
 ![Fireblade investigation workspace](docs/assets/fireblade-workspace-v022.png)
 

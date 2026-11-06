@@ -13,7 +13,7 @@ Dernière mise à jour : 6 novembre 2026, après la préparation de la 0.3.1.
 - **0.3.1** : prête sur la branche `hermes/0.3.1-full-translation` — version
   incrémentée, notes de version et README à jour, porte verte. **Pas encore
   poussée** : le mainteneur veut essayer l'application avant.
-- **Vérification de référence** : 1 312 tests passés, 31 ignorés, plateforme Qt
+- **Vérification de référence** : 1 315 tests passés, 31 ignorés, plateforme Qt
   Windows, via `python -m scripts.dev_check` (7 min 19).
 
 ## Ce qui a été livré dans la 0.3.1
@@ -28,6 +28,7 @@ Dernière mise à jour : 6 novembre 2026, après la préparation de la 0.3.1.
   de widgets) et **au moment où le code écrit le texte** (accroches sur les
   setters Qt : `setText`, `setPlaceholderText`, `addItem`, `setTabText`,
   `setHorizontalHeaderLabels`, `showMessage`, `setWindowTitle`…).
+- **Double-clic sur une cellule = afficher la cellule** (texte, JSON, XML), plus jamais la note : demande explicite du mainteneur. La note et le signet passent par le menu Édition ou un clic dans la première colonne. Les guides (fr et en) ont été mis à jour en conséquence.
 - Les **cinq guides intégrés** existent en anglais (`*-en.md` à côté de l'original) et `guide_path()` choisit selon la langue ; `tests/test_guides.py` vérifie que chaque guide a sa version anglaise et garde la même structure.
 - Le français reste intégral : chaque libellé source est mémorisé, le retour au
   français restitue le texte d'origine.

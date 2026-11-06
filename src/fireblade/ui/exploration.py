@@ -35,7 +35,7 @@ class ExplorationMixin:
         for panel in self.tree.frozen_views:
             panel.setContextMenuPolicy(Qt.CustomContextMenu)
             panel.customContextMenuRequested.connect(lambda pos, p=panel: self.frozen_menu(pos, p))
-            panel.doubleClicked.connect(self.toggle_bookmark)
+            panel.doubleClicked.connect(self.cell_double_clicked)
             panel.header().sectionResized.connect(lambda *_: self.capture_pin_widths())
             panel.header().setContextMenuPolicy(Qt.CustomContextMenu)
             panel.header().customContextMenuRequested.connect(lambda pos, p=panel: self.frozen_header_menu(pos, p))

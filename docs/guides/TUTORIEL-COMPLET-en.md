@@ -545,7 +545,7 @@ Capture of synthetic data, Qt offscreen rendering under Linux.
 
 ## Bookmarks and notes
 
-A click in the first column highlights the whole row and adds it to the bookmarks. The marker is kept in the database and found again after reopening. A new click removes the bookmark; if a note exists, Fireblade asks for confirmation before deleting it. A double-click on a data cell opens the bookmark and its note. In this individual dialogue, an empty note removes the bookmark.
+A click in the first column highlights the whole row and adds it to the bookmarks. The marker is kept in the database and found again after reopening. A new click removes the bookmark; if a note exists, Fireblade asks for confirmation before deleting it. A double-click on a data cell shows the cell as text, JSON or XML. The bookmark and its note are opened from the Edit menu.
 
 For several rows, use Ctrl/click or Shift/click, then the **Edit** menu:
 
@@ -562,14 +562,14 @@ The notes are kept in the analysis. The grid only loads the annotations of the l
 
 The menu of a header allows pinning a column to the left or to the right, moving it aside or unpinning it. The two panes share the same model and the same selection; they do not load another copy of the data. The copies and exports order the pinned columns on the left, the visible central columns, then the pinned columns on the right. Hiding a pinned column also removes it from its pane. **Ctrl+R** resets the widths.
 
-The checkbox of the Row/group column marks a row without asking for a note; the notes remain accessible by double-click and by the Edit menu. A source column recognised as Boolean can be displayed as checkboxes without becoming editable. The header menu also allows toggling this display.
+The checkbox of the Row/group column marks a row without asking for a note; the notes remain accessible from the Edit menu. A source column recognised as Boolean can be displayed as checkboxes without becoming editable. The header menu also allows toggling this display.
 
 ### Gestures and navigation
 
 - Moving a header changes the order of the columns; dragging its separator changes its width. **Columns…** sets their visibility; the copies and exports follow the visible order.
 - Dragging a header to the groups bar creates a level; the moving of the levels is set in **Group…**.
 - Expanding a group loads its children on demand. Collapsing it releases the descendants; pagination remains necessary for the large populations.
-- Clicking the checkbox of an event in **Row / group** marks the row; double-clicking opens the note dialogue. A Boolean checkbox coming from the source is a presentation and does not modify its value.
+- Clicking the checkbox of an event in **Row / group** marks the row; double-clicking opens the cell viewer. A Boolean checkbox coming from the source is a presentation and does not modify its value.
 - Ctrl+click adds or removes a row from the selection; Shift+click selects a loaded range. The selection of a group does not mean the selection of all its rows on disk.
 - **Copy the rows** places the selected events in the clipboard, separated by tabs. The groups are ignored. For a complete filtered set exceeding the loaded selection, use the export.
 - In **Details**, the menu of a field allows copy, filter and exclusion on its value. In the cell window, the raw text keeps the full content and the JSON/XML formatting remains a reading aid.

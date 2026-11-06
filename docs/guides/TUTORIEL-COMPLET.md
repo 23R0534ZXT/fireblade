@@ -545,7 +545,7 @@ Capture de données synthétiques, rendu Qt hors écran sous Linux.
 
 ## Signets et notes
 
-Un clic dans la première colonne surligne toute la ligne et l’ajoute aux signets. Le repère est conservé dans la base et retrouvé après réouverture. Un nouveau clic retire le signet ; si une note existe, Fireblade demande confirmation avant de la supprimer. Un double-clic sur une cellule de données ouvre le signet et sa note. Dans ce dialogue individuel, une note vide retire le signet.
+Un clic dans la première colonne surligne toute la ligne et l’ajoute aux signets. Le repère est conservé dans la base et retrouvé après réouverture. Un nouveau clic retire le signet ; si une note existe, Fireblade demande confirmation avant de la supprimer. Un double-clic sur une cellule de données affiche la cellule en texte, JSON ou XML. Le signet et sa note s'ouvrent depuis le menu Édition.
 
 Pour plusieurs lignes, utiliser Ctrl/clic ou Maj/clic, puis le menu **Édition** :
 
@@ -562,14 +562,14 @@ Les notes sont conservées dans l’analyse. La grille charge seulement les anno
 
 Le menu d’un en-tête permet d’épingler une colonne à gauche ou à droite, de la déplacer de côté ou de la désépingler. Les deux volets partagent le même modèle et la même sélection ; ils ne chargent pas une autre copie des données. Les copies et exports ordonnent les colonnes épinglées à gauche, les colonnes centrales visibles, puis les colonnes épinglées à droite. Masquer une colonne épinglée la retire également de son volet. **Ctrl+R** réinitialise les largeurs.
 
-La case à cocher de la colonne Ligne/groupe marque une ligne sans demander de note ; les notes restent accessibles par double-clic et par le menu Édition. Une colonne source reconnue comme booléenne peut s’afficher en cases sans devenir éditable. Le menu de l’en-tête permet aussi de basculer cet affichage.
+La case à cocher de la colonne Ligne/groupe marque une ligne sans demander de note ; les notes restent accessibles par le menu Édition. Une colonne source reconnue comme booléenne peut s’afficher en cases sans devenir éditable. Le menu de l’en-tête permet aussi de basculer cet affichage.
 
 ### Gestes et navigation
 
 - Déplacer un en-tête change l’ordre des colonnes ; tirer sa séparation change sa largeur. **Colonnes…** règle leur visibilité ; les copies et exports suivent l’ordre visible.
 - Glisser un en-tête vers la barre des groupes crée un niveau ; le déplacement des niveaux se règle dans **Regrouper…**.
 - Déplier un groupe charge ses enfants à la demande. Le replier libère les descendants ; la pagination reste nécessaire pour les grandes populations.
-- Cliquer la case d’un événement dans **Ligne / groupe** marque la ligne ; double-cliquer ouvre le dialogue de note. Une case booléenne issue de la source est une présentation et ne modifie pas sa valeur.
+- Cliquer la case d’un événement dans **Ligne / groupe** marque la ligne ; double-cliquer affiche la cellule. Une case booléenne issue de la source est une présentation et ne modifie pas sa valeur.
 - Ctrl+clic ajoute ou retire une ligne à la sélection ; Maj+clic sélectionne une plage chargée. La sélection d’un groupe ne signifie pas la sélection de toutes ses lignes sur disque.
 - **Copier les lignes** place les événements sélectionnés dans le presse-papiers, séparés par tabulations. Les groupes sont ignorés. Pour un ensemble filtré complet dépassant la sélection chargée, utilisez l’export.
 - Dans **Détails**, le menu d’un champ permet copie, filtre et exclusion sur sa valeur. Dans la fenêtre de cellule, le texte brut garde le contenu complet et le formatage JSON/XML reste une aide de lecture.

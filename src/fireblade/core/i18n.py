@@ -1190,6 +1190,15 @@ EN = {
     "Protocole": "Protocol",
     "Utilisateur": "User",
     "Valeur": "Value",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    "Ajouter": "Add",
+    "Clic dans la première colonne : surligner la ligne / signet. Double-clic sur une donnée : afficher la cellule / JSON.": "Click in the first column: highlight the row / bookmark. Double-click a data value: show the cell / JSON.",
+    "Descendre": "Move down",
+    "Monter": "Move up",
+    "Retirer": "Remove",
+    "Supprimer": "Delete",
 }
 
 LANGUAGES = ("en", "fr")

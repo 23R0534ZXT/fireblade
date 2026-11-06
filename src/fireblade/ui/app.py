@@ -339,7 +339,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         self.tree.header().setToolTip("Glissez les en-têtes pour réordonner ; clic droit pour les options. Ordre et largeurs mémorisés par artefact.")
         self.tree.header().setFirstSectionMovable(False)
         self.tree.header().setMinimumHeight(max(26, self.fontMetrics().height() + 8))
-        self.tree.doubleClicked.connect(self.toggle_bookmark)
+        self.tree.doubleClicked.connect(self.cell_double_clicked)
         self.tree.expanded.connect(lambda index: self.model.fetchMore(index) if self.model and not self.model.node(index).children else None)
         self.tree.collapsed.connect(lambda index: self.model.unload(index) if self.model else None)
         self.tree.header().sectionClicked.connect(self.header_sort)
@@ -352,7 +352,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         self.tree.header().customContextMenuRequested.connect(self.show_header_menu)
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.show_cell_menu)
-        self.tree.setToolTip("Clic dans la première colonne : surligner la ligne / signet. Double-clic sur une donnée : modifier la note.")
+        self.tree.setToolTip("Clic dans la première colonne : surligner la ligne / signet. Double-clic sur une donnée : afficher la cellule / JSON.")
         splitter.addWidget(self.tree)
         from fireblade.ui.layout_styles import AppearanceTextEdit
         self.details = AppearanceTextEdit()
@@ -1117,10 +1117,19 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         else:
             finish()
 
-    def cell_details(self):
+    def cell_double_clicked(self, index):
+        """A double-click reads the cell (text, JSON, XML), it no longer edits a note."""
+        if not self.model or not index.isValid():
+            return
+        node = self.model.node(index)
+        if node.group or node.footer or index.column() == 0:
+            return
+        self.cell_details(index)
+
+    def cell_details(self, index=None):
         if not self.model or self.busy:
             return
-        index = self.tree.currentIndex()
+        index = index if index is not None and index.isValid() else self.tree.currentIndex()
         if not index.isValid() or self.model.node(index).group or index.column() == 0:
             self.statusBar().showMessage("Sélectionnez une cellule de données")
             return

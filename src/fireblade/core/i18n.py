@@ -1137,6 +1137,59 @@ EN = {
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Lecture annulée. Vous pouvez réessayer avec Suivant.": "Reading stopped. You can try again with Next.",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    " ET ": " AND ",
+    " OU ": " OR ",
+    "+ Condition": "+ Condition",
+    "Chasse IOC en masse": "Bulk IOC hunting",
+    "Chronologie, sauvegardes et rapports": "Timeline, backups and reports",
+    "Colonne": "Column",
+    "Commence par": "Starts with",
+    "Contient": "Contains",
+    "ET": "AND",
+    "Finit par": "Ends with",
+    "Guide d’utilisation": "User guide",
+    "Licences": "Licences",
+    "NON": "NOT",
+    "NON (": "NOT (",
+    "Nombre <": "Number <",
+    "Nombre >": "Number >",
+    "Nombre ≤": "Number ≤",
+    "Nombre ≥": "Number ≥",
+    "Non vide": "Not empty",
+    "OU": "OR",
+    "Replier": "Collapse",
+    "Sous-groupe": "Subgroup",
+    "Vide / NULL": "Empty / NULL",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    "Chasse IOC en masse · Fireblade": "Bulk IOC hunting · Fireblade",
+    "Chronologie, sauvegardes et rapports · Fireblade": "Timeline, backups and reports · Fireblade",
+    "Couverture de collecte et diagnostics · Fireblade": "Collection coverage and diagnostics · Fireblade",
+    "Guide d’utilisation · Fireblade": "User guide · Fireblade",
+    "Tutoriel complet · Fireblade": "Full tutorial · Fireblade",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    "Adresse distante": "Remote address",
+    "Adresse locale": "Local address",
+    "Brute": "Raw",
+    "Chemin": "Path",
+    "Cible": "Target",
+    "Commande": "Command",
+    "Famille": "Family",
+    "Horodatage": "Timestamp",
+    "Lecture": "Read type",
+    "Ligne": "Row",
+    "Planification": "Schedule",
+    "Port distant": "Remote port",
+    "Port local": "Local port",
+    "Protocole": "Protocol",
+    "Utilisateur": "User",
+    "Valeur": "Value",
 }
 
 LANGUAGES = ("en", "fr")

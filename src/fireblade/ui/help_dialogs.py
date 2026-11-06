@@ -46,7 +46,7 @@ def show_text(parent, title, content, markdown=False, base_url=None):
                 from pathlib import Path
                 path=Path(target.toLocalFile()).resolve()
                 if path.suffix=='.md' and path.is_relative_to(resource_path('docs').resolve()) and path.is_file():
-                    show_text(dialog,path.stem,path.read_text(encoding='utf-8'),markdown=True,base_url=path)
+                    show_text(dialog,path.stem.removesuffix('-en').replace('-', ' ').title(),path.read_text(encoding='utf-8'),markdown=True,base_url=path)
                     return
             QDesktopServices.openUrl(target)
 
@@ -63,28 +63,39 @@ def show_text(parent, title, content, markdown=False, base_url=None):
     dialog.deleteLater()
 
 
+def guide_path(name):
+    """The English guide when the interface is English, the French one otherwise."""
+    from fireblade.core.i18n import SOURCE_LANGUAGE, current_language
+    french = resource_path(f"docs/guides/{name}.md")
+    if current_language() != SOURCE_LANGUAGE:
+        english = french.with_name(f"{name}-en.md")
+        if english.is_file():
+            return english
+    return french
+
+
 def show_guide(parent):
-    path = resource_path("docs/guides/UTILISATION.md")
+    path = guide_path("UTILISATION")
     show_text(parent, "Guide d’utilisation · Fireblade", path.read_text(encoding="utf-8"), markdown=True, base_url=path)
 
 
 def show_tutorial(parent):
-    path = resource_path("docs/guides/TUTORIEL-COMPLET.md")
+    path = guide_path("TUTORIEL-COMPLET")
     show_text(parent, "Tutoriel complet · Fireblade", path.read_text(encoding="utf-8"), markdown=True, base_url=path)
 
 
 def show_investigation_guide(parent):
-    path=resource_path('docs/guides/CHRONOLOGIE-ET-SAUVEGARDES.md')
+    path=guide_path('CHRONOLOGIE-ET-SAUVEGARDES')
     show_text(parent,'Chronologie, sauvegardes et rapports · Fireblade',path.read_text(encoding='utf-8'),markdown=True,base_url=path)
 
 
 def show_ioc_guide(parent):
-    path=resource_path('docs/guides/CHASSE-IOC.md')
+    path=guide_path('CHASSE-IOC')
     show_text(parent,'Chasse IOC en masse · Fireblade',path.read_text(encoding='utf-8'),markdown=True,base_url=path)
 
 
 def show_coverage_guide(parent):
-    path=resource_path('docs/guides/COUVERTURE-COLLECTE.md')
+    path=guide_path('COUVERTURE-COLLECTE')
     show_text(parent,'Couverture de collecte et diagnostics · Fireblade',path.read_text(encoding='utf-8'),markdown=True,base_url=path)
 
 

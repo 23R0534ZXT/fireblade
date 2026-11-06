@@ -235,7 +235,8 @@ def translate_tree(root):
             apply_to_action(action)
             if action.menu() is not None:
                 apply_to_menu(action.menu())
-    for menu in root.findChildren(QMenu):
+    # A popup menu is its own root: findChildren never returns it.
+    for menu in ([root] if isinstance(root, QMenu) else []) + root.findChildren(QMenu):
         apply_to_menu(menu)
     for toolbar in root.findChildren(QToolBar):
         for action in toolbar.actions():

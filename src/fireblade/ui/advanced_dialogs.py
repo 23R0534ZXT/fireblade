@@ -94,15 +94,16 @@ class ExpressionEditor(QWidget):
                     update(child)
         update(self.root)
         def describe(value):
+            from fireblade.core.i18n import translate
             if isinstance(value, Filter):
-                label = dict((code, label) for label, code in OPERATORS).get(value.operator, value.operator).lower()
-                column = self.headers[value.column] if 0 <= value.column < len(self.headers) else "Colonne"
+                label = translate(dict((code, label) for label, code in OPERATORS).get(value.operator, value.operator)).lower()
+                column = self.headers[value.column] if 0 <= value.column < len(self.headers) else translate("Colonne")
                 return f"{column} {label}" + (f" « {value.value} »" if value.value and value.operator not in ("empty", "not_empty") else "")
             if not value.children:
-                return "toutes les lignes" if value.logic == "and" else "aucune ligne"
+                return translate("toutes les lignes") if value.logic == "and" else translate("aucune ligne")
             if value.logic == "not":
-                return "NON (" + describe(value.children[0]) + ")"
-            return "(" + (" ET " if value.logic == "and" else " OU ").join(describe(child) for child in value.children) + ")"
+                return translate("NON (") + describe(value.children[0]) + ")"
+            return "(" + translate(" ET " if value.logic == "and" else " OU ").join(describe(child) for child in value.children) + ")"
         try:
             text = describe(self.value())
             self.preview.setText("Lecture du filtre : " + (text[:497] + "…" if len(text) > 500 else text))

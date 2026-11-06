@@ -31,7 +31,9 @@ class DerivedDialog(QDialog):
             layout.addRow("Expression", self.expression)
         else:
             self.source = QComboBox()
-            self.source.addItems(headers)
+            # Column headers are data: the definition must name the real column.
+            for header in headers:
+                self.source.addItem(header, header)
             layout.addRow("Colonne source", self.source)
             self.time = QComboBox()
             self.time.addItem("(date et heure dans la même colonne)", None)
@@ -63,7 +65,7 @@ class DerivedDialog(QDialog):
                 operation="expression",
                 expression=self.expression.toPlainText(),
             )
-        columns = [self.source.currentText()]
+        columns = [self.source.currentData() or self.source.currentText()]
         if self.time.currentData():
             columns.append(self.time.currentData())
         return dict(

@@ -134,7 +134,7 @@ class FileCommandsMixin:
                 return
             if tle_plugin is not None:self.statusBar().showMessage('Plugin TLE exécuté ; source originale conservée et transformations tracées')
             elif name:self.statusBar().showMessage(f'Profil {name} détecté et appliqué ; valeurs sources intactes')
-        sheet = dialog.sheet.currentText() if dialog.sheet is not None else None
+        sheet = dialog.sheet.currentData() if dialog.sheet is not None else None
         dialog.deleteLater()
         self.run(importing,imported,exclusive=True,on_cancel=cancelled,on_error=failed,coverage_stage="Import",coverage_context=str(path))
 

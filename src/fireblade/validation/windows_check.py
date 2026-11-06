@@ -42,7 +42,14 @@ def accept_import_when_ready(app,target,errors,sheet=None,timeout=30):
             if isinstance(dialog,QDialog):dialog.reject()
             return
         dialog.target.setText(str(target))
-        if sheet is not None:dialog.sheet.setCurrentText(sheet)
+        if sheet is not None:
+            # The sheet name is data: select it by value, never by the displayed
+            # text, which depends on the interface language.
+            index = dialog.sheet.findData(sheet)
+            if index < 0:
+                index = dialog.sheet.findText(sheet)
+            if index >= 0:
+                dialog.sheet.setCurrentIndex(index)
         dialog.accept()
     QTimer.singleShot(0,attempt)
 

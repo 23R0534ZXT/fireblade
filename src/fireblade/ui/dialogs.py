@@ -45,7 +45,10 @@ class ImportDialog(QDialog):
             if source.suffix.lower() == ".xls":
                 from fireblade.core.legacy_excel import sheet_names
             self.sheet = QComboBox()
-            self.sheet.addItems(sheet_names(source))
+            # A sheet name is data: it is displayed as written and read back
+            # unchanged, even when a translation exists for that word.
+            for name in sheet_names(source):
+                self.sheet.addItem(name, name)
             form.addRow("Feuille Excel :", self.sheet)
             layout.addWidget(QLabel("XLSX : formules comme texte. XLS : résultats mémorisés. Styles et macros non importés."))
         options = QCheckBox("Options du CSV")

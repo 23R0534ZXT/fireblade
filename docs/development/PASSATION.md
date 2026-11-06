@@ -4,15 +4,15 @@ Document de reprise, mis à jour en fin de session. Il dit où en est le code, c
 qui a été décidé, et ce qui reste. Le détail technique vit dans le skill
 `fireblade-verification` ; ce fichier est la vue d'ensemble.
 
-Dernière mise à jour : 6 novembre 2026, après la préparation de la 0.3.1.
+Dernière mise à jour : 6 novembre 2026, après la publication de la 0.3.1.
 
 ## Où en est le projet
 
-- **Version publiée** : 0.3.0 — `Fireblade.exe`, 280 356 023 octets,
+- **Version publiée** : 0.3.1 — `Fireblade.exe`, 280 508 600 octets,
+  SHA-256 `0b4f94676861da3ed15d65291f20f37ff781a2b8d0d7517ced725e42d2203a1a`,
+  publiée le 6 novembre 2026. Branche `main`, CI verte, 7 jobs sur 7.
+- La 0.3.0 reste téléchargeable : `Fireblade.exe`, 280 356 023 octets,
   SHA-256 `e5198510bdb42211f79bcc9880f522330c558f5ed4fb50d624669c3f85c65aac`.
-- **0.3.1** : prête sur la branche `hermes/0.3.1-full-translation` — version
-  incrémentée, notes de version et README à jour, porte verte. **Pas encore
-  poussée** : le mainteneur veut essayer l'application avant.
 - **Vérification de référence** : 1 327 tests passés, 31 ignorés, plateforme Qt
   Windows, via `python -m scripts.dev_check` (7 min 19).
 

@@ -1129,6 +1129,14 @@ EN = {
     "Case : {}": "Case: {}",
     "En cours": "Open",
     "{} · ouvert": "{} · current",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    "{} éléments chargés dans ce niveau": "{} items loaded in this level",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    "Lecture annulée. Vous pouvez réessayer avec Suivant.": "Reading stopped. You can try again with Next.",
 }
 
 LANGUAGES = ("en", "fr")

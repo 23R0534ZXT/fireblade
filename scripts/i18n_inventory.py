@@ -50,6 +50,7 @@ SURFACE_CALLS = {
     "getExistingDirectoryUrl",
     # our own helpers that end up on a surface
     "action", "notify", "status", "label", "button", "message", "note", "hint",
+    "emit", "emit_status", "setStatusTip", "setWindowFilePath",
     # models built with their column titles
     "Rows", "RowModel", "TableModel", "Model", "QStandardItemModel", "Columns",
     "setHeaderLabels", "addToolBar", "addDockWidget", "setTabBar", "setTitle",
@@ -157,6 +158,10 @@ def strings_in(path):
     found = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) in docstrings:
+            continue
+        # A literal piece of an f-string is not a label of its own: the whole
+        # f-string is handled below, as a template with {} holes.
+        if isinstance(node, ast.Constant) and isinstance(parents.get(node), ast.JoinedStr):
             continue
         text = _text_of(node)
         if text is None and isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):

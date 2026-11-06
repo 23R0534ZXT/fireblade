@@ -253,6 +253,11 @@ class WorkspaceLayout:
             for name, widget in [('workspace',self.window.workspace_splitter),('details',self.window.splitter),('timeline',self.window.timeline_panel.splitter)]:
                 value = data.get('splitters', {}).get(name)
                 if isinstance(value, str):widget.restoreState(QByteArray.fromBase64(value.encode('ascii')))
+            # restoreState also restores toolbar visibility: a layout saved while a
+            # bar was hidden used to keep "Parse a folder" invisible at every start.
+            self.window.main_toolbar.setVisible(self.window.preferences.main_toolbar_visible)
+            if hasattr(self.window, 'collection_toolbar'):
+                self.window.collection_toolbar.setVisible(self.window.preferences.collection_toolbar_visible)
             value = data.get('timeline_header')
             if isinstance(value, str):self.window.timeline_panel.table.horizontalHeader().restoreState(QByteArray.fromBase64(value.encode('ascii')))
             for key, widget in [('events', self.window.timeline_panel.events_visible), ('details', self.window.timeline_panel.details_visible)]:

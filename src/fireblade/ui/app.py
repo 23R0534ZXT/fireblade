@@ -94,6 +94,12 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         # deferred pass runs once the window is on screen.
         QTimer.singleShot(0, lambda: apply_language(self))
         self._ui_ready = True
+        # Last word on the bars: several paths touch toolbar visibility while the
+        # window is assembled, and a stale layout or an early gate could leave the
+        # data bar hidden. The preferences decide.
+        self.main_toolbar.setVisible(self.preferences.main_toolbar_visible)
+        if hasattr(self, 'collection_toolbar'):
+            self.collection_toolbar.setVisible(self.preferences.collection_toolbar_visible)
 
     def version_text(self):
         from fireblade import __version__

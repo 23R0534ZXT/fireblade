@@ -8,7 +8,8 @@ Dernière mise à jour : 6 novembre 2026, après la publication de la 0.3.1.
 
 ## Où en est le projet
 
-- **Version publiée** : 0.3.1 — `Fireblade.exe`, 280 508 600 octets,
+- **Version publiée** : 0.3.1 — release publiée **sous le compte du mainteneur**
+  (`23R0534ZXT`), pas sous `github-actions[bot]` — `Fireblade.exe`, 280 508 600 octets,
   SHA-256 `0b4f94676861da3ed15d65291f20f37ff781a2b8d0d7517ced725e42d2203a1a`,
   publiée le 6 novembre 2026. Branche `main`, CI verte, 7 jobs sur 7.
 - La 0.3.0 reste téléchargeable : `Fireblade.exe`, 280 356 023 octets,
@@ -64,6 +65,25 @@ Dernière mise à jour : 6 novembre 2026, après la publication de la 0.3.1.
 3. Tests de l'exe publié et du pont .NET, reportés depuis la 0.2.x.
 4. Couverture CI réelle (les qualifications Windows empruntent encore des
    chemins choisis).
+
+## Publication des releases
+
+Le mainteneur veut que la release soit publiée **avec son compte**, pas avec le
+bot de la CI. Deux façons, dans cet ordre :
+
+1. Ajouter un secret `RELEASE_TOKEN` (jeton personnel, portée `contents: write`)
+   au dépôt : le job `publish` l'utilise en priorité, et la release suivante est
+   signée à son nom sans rien faire de plus.
+2. Sans ce jeton, la CI publie en `github-actions[bot]`. On corrige après coup :
+
+```bash
+gh release view vX.Y.Z --json body -q .body > body.md
+gh release delete vX.Y.Z --yes              # le tag est conservé
+gh release create vX.Y.Z --title "<titre>" --notes-file body.md "<exe vérifié>#Fireblade.exe"
+```
+
+   L'exe doit être celui déjà vérifié (même SHA-256) : on réutilise le fichier
+   téléchargé, jamais une reconstruction.
 
 ## Décisions prises, à ne pas rouvrir
 

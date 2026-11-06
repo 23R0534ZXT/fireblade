@@ -29,13 +29,24 @@ Dernière mise à jour : 6 novembre 2026, après la publication de la 0.3.0.
 - Corrections : fenêtre vide au lancement, barre « Parser un dossier » invisible,
   fantôme de glisser, refus silencieux du bouton Ouvrir, `&` dans les onglets.
 
-## Ce qui reste pour la 0.4
+## Ce qui reste — plan de la 0.3.1
 
-1. **Traduction complète** : les textes calculés à l'affichage restent en français
-   (compteurs, « aucun case actif », messages d'état).
-2. **« Parser un dossier » sans case ouvert** : décider entre créer le case au
-   passage (recommandé) et griser le bouton avec une infobulle.
-3. **Chronologie** : reste du travail graphique au-delà des barres et des pistes.
+Le chantier de traduction, mesuré : **602 libellés français distincts** dans
+`src/`, dont environ 120 déjà couverts. **~480 restent à traduire**, surtout dans
+les fenêtres de dialogue, les messages d'état et les erreurs.
+
+1. **Packs de langues** : une table par langue, sélecteur affichant les noms
+   natifs, repli sur l'anglais puis sur le texte source. Langues visées :
+   anglais (référence), français, espagnol, allemand, italien, portugais.
+2. **Traduction automatique des dialogues** : un filtre sur l'affichage traduit
+   l'arbre de widgets à l'ouverture, sans toucher au code de chaque fenêtre.
+3. **Textes dynamiques** : compteurs, messages d'état et erreurs routés par la
+   table au moment où ils s'affichent.
+4. Décision en attente : « Parser un dossier » sans case — créer le case au
+   passage (recommandé) ou griser le bouton avec une infobulle.
+
+Puis, hors traduction : chronologie (table en bandeau, vue d'ensemble), tests de
+l'exe et du pont .NET reportés depuis la 0.2.x, couverture CI réelle.
 
 ## Décisions prises, à ne pas rouvrir
 

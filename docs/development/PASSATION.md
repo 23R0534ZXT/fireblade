@@ -66,9 +66,14 @@ Dernière mise à jour : 6 novembre 2026, après la publication de la 0.3.1.
    case au passage est écartée.
 2. Chronologie : table + bandeau d'ensemble + vue graphique — **déjà en place**
    (`TimelinePanel`, `TimelineOverview`, `TimelineModel`) ; l'item est clos.
-3. Tests de l'exe publié et du pont .NET, reportés depuis la 0.2.x.
-4. Couverture CI réelle (les qualifications Windows empruntent encore des
-   chemins choisis).
+3. Tests de l'exe publié et du pont .NET — **en place** : l'exe passe 47 contrôles
+   isolés (`scripts/windows/verify.py`) ; l'hôte .NET est vérifié à chaque build
+   (self-test + `plugin_checks` + `legacy_plugin_checks` + lecteur TLE public
+   épinglé + matrice de lecteurs amont). Non exécutable localement (pas de SDK
+   .NET sur le poste) : c'est la CI qui les fait tourner.
+4. Couverture CI — **étendue** : le job `tests` lance désormais la suite complète
+   (au lieu de 15 fichiers). Reste hors de portée du poste : Q01/Q04–Q08
+   (comparaison et essais avec une vraie Timeline Explorer + essais humains).
 
 ## Publication des releases
 

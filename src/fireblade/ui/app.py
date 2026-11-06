@@ -1022,17 +1022,41 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
             self.statusBar().showMessage("Note de cellule enregistrée" if note else "Note de cellule retirée")
         self.run(lambda: case.bookmark(row_id, note or None, column=column), saved, exclusive=True)
 
+    def selection_ids(self):
+        """The data rows of the current selection, group headers left out."""
+        selection = self.tree.selectionModel() if self.model else None
+        if selection is None:
+            return []
+        return [self.model.node(index).values[0] for index in selection.selectedRows()
+                if not self.model.node(index).group]
+
+    def selection_note(self):
+        """(how many selected rows already carry a note, the note they share if any)."""
+        ids = self.selection_ids()
+        notes = [self.model.notes.get(row_id) or "" for row_id in ids]
+        written = [note for note in notes if note]
+        if not written:
+            return 0, ""
+        common = written[0] if len(written) == len(notes) and len(set(written)) == 1 else ""
+        return len(written), common
+
     def annotate_selection(self, mode, note=None):
         if not self.model or self.busy:
             return
-        ids = [self.model.node(index).values[0] for index in self.tree.selectionModel().selectedRows()
-               if not self.model.node(index).group]
+        ids = self.selection_ids()
         if not ids:
             self.statusBar().showMessage("Sélectionnez des lignes de données ; les en-têtes de groupes sont ignorés")
             return
         if mode in ("append", "replace") and note is None:
-            note, accepted = QInputDialog.getMultiLineText(self, "Note sur la sélection",
-                f"{len(ids)} enregistrement(s) · " + ("ajouter à la suite des notes existantes" if mode == "append" else "remplacer les notes existantes"))
+            written, common = self.selection_note()
+            if mode == "append":
+                title, prompt, default = "Note sur la sélection", f"{len(ids)} enregistrement(s) · ajouter à la suite des notes existantes", ""
+            else:
+                title = "Éditer la note de la sélection" if written else "Note sur la sélection"
+                prompt = (f"{len(ids)} enregistrement(s) · remplacer les notes existantes"
+                          + (" — la note commune est pré-remplie" if common else ""))
+                default = common
+            note, accepted = QInputDialog.getMultiLineText(self, title, prompt, default)
             if not accepted:
                 return
         case = self.case

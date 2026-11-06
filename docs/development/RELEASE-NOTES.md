@@ -6,6 +6,7 @@
 - Les **en-têtes de modèles** (tableaux de couverture, règles, chasse IOC, résultats), les **nœuds d'arbre** de la navigation, les **cellules** de tableau et les **noms de thèmes** sont traduits eux aussi : ce ne sont pas des widgets, ils ont leur propre passage.
 - Les **guides intégrés** (tutoriel complet, guide d'utilisation, chronologie et sauvegardes, chasse IOC, couverture) existent en anglais et s'ouvrent selon la langue choisie, ainsi que les titres des fenêtres d'aide.
 - **Cartes de condition et filtre ET / OU / NON** : opérateurs (« Contient », « Commence par », « Nombre ≥ », « Date égale »…), connecteurs, boutons (« Toutes les conditions », « Au moins une », « + Condition », « Replier/Déplier ») et la phrase de lecture du filtre sont traduits.
+- **Notes de la sélection** : sur une sélection de lignes, le menu propose « Ajouter une note à la sélection… » tant qu'aucune n'en porte, puis « Éditer la note de la sélection… ». La fenêtre s'ouvre pré-remplie quand toutes les lignes partagent la même note, et le remplacement est explicite.
 - **Notes de cellule** : un clic droit sur une valeur propose « Ajouter une note à la cellule… », puis « Éditer la note de la cellule… » une fois la note écrite. La cellule prend un fond vert, la note se relit dans la fenêtre et dans l'infobulle. Une note de ligne (signet) et des notes de cellule cohabitent ; retirer le signet ne supprime pas les notes de cellule. Les analyses ouvertes avant cette version sont migrées à l'ouverture, sans perte.
 - **Double-clic sur une cellule** : il affiche la valeur en texte, JSON ou XML (choix dans la fenêtre), au lieu d'ouvrir l'éditeur de note. Le signet et sa note restent accessibles par le menu Édition et par un clic dans la première colonne. Les boutons des fenêtres de règles de coloration et de tri (« Ajouter », « Supprimer », « Monter », « Descendre ») sont traduits.
 - Un **menu ouvert en popup** est désormais traduit : son arbre n'était jamais parcouru.
@@ -27,7 +28,7 @@
 - Deux tests de garde : une nouvelle chaîne non traduite fait échouer la suite, et la liste des reliquats ne peut que diminuer.
 - Un test construit la vraie fenêtre en anglais et vérifie qu'aucun mot français n'y reste visible.
 - Un balayage de la fenêtre réelle et de onze fenêtres de dialogue en anglais ne trouve **plus aucun texte français**.
-- Suite complète : **1 324 tests passés**, 31 ignorés, aucune erreur, plateforme Qt Windows.
+- Suite complète : **1 328 tests passés**, 31 ignorés, aucune erreur, plateforme Qt Windows.
 
 # Fireblade 0.3.0 — interface anglaise, regroupement et chronologie lisible
 

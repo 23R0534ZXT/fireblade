@@ -92,6 +92,9 @@ def cell_menu(window, index):
     menu.addAction("Signet / note…", lambda: window.edit_bookmark(row_id))
     menu.addSeparator()
     menu.addAction("Marquer la sélection", lambda: window.annotate_selection("mark"))
-    menu.addAction("Ajouter une note à la sélection…", lambda: window.annotate_selection("append"))
+    if window.selection_note()[0]:
+        menu.addAction("Éditer la note de la sélection…", lambda: window.annotate_selection("replace"))
+    else:
+        menu.addAction("Ajouter une note à la sélection…", lambda: window.annotate_selection("append"))
     menu.addAction("Retirer les signets de la sélection", lambda: window.annotate_selection("remove"))
     return menu

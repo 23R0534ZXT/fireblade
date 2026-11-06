@@ -1213,6 +1213,19 @@ EN = {
     # the application can display.
     "Note (vide = retirer le signet)": "Note (empty removes the bookmark)",
     "Signet / note": "Bookmark / note",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    "Note sur la sélection": "Note on the selection",
+    "{} enregistrement(s) · ajouter à la suite des notes existantes": "{} record(s) · append to the existing notes",
+    "{} enregistrement(s) · remplacer les notes existantes": "{} record(s) · replace the existing notes",
+    "{} enregistrement(s) · remplacer les notes existantes — la note commune est pré-remplie": "{} record(s) · replace the existing notes — the common note is pre-filled",
+    "Éditer la note de la sélection": "Edit the selection note",
+    "Éditer la note de la sélection…": "Edit the selection note…",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    "— la note commune est pré-remplie": "— the common note is pre-filled",
 }
 
 LANGUAGES = ("en", "fr")

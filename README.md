@@ -25,12 +25,13 @@ Windows CI runs focused regression tests on Python 3.12, builds the standalone E
 - **Text built at run time** goes through the same table: counters, task results, visible errors. Entries can be templates (`Analyse absente : {}`) whose values are put back at display time, and the most specific entry always wins.
 - Translation applies when a window opens and again when the code writes the text, so a list filled after the fact, a refreshed counter or a late error is covered without touching each window.
 - French stays complete: the source labels are remembered, and switching back loses nothing even when a text had been replaced in between.
+- **Selection notes**: on a row selection the menu offers to add a note, then to edit it; the dialog pre-fills the note the rows share.
 - **Cell notes**: right-click a value to add a note to that cell, then to edit it; the cell is tinted and the note is read back in the dialog and the tooltip. A row bookmark and cell notes live side by side, and analyses written before this version are migrated when opened.
 - **Double-click a cell** now shows its value as text, JSON or XML instead of opening the note editor; bookmarks and notes stay in the Edit menu and on the first column. The colour-rules and sort dialogs are translated too.
 - The built-in guides — full tutorial, user guide, timeline and backups, IOC hunting, coverage — are translated and opened in the chosen language, condition cards and filter operators included.
 - Six strings are deliberately left as they are — sample file names (`évidence.csv`, `résumés.csv`) and two synthetic TLE expressions — because they are data, not interface.
 - Fixed: a tab title accumulated ampersand escapes across language switches (`Timeline &&&& correlations`), and a language pass near a loaded workspace rewrote every tab title for no reason.
-- Verification: **1,324 passed, 31 skipped** on the Windows Qt platform; a sweep of the real window and of eleven dialogs in English finds no French text left. An inventory script measures the coverage, two guard tests stop untranslated text from coming back, and a test reads the real English window to prove nothing French is left on screen.
+- Verification: **1,328 passed, 31 skipped** on the Windows Qt platform; a sweep of the real window and of eleven dialogs in English finds no French text left. An inventory script measures the coverage, two guard tests stop untranslated text from coming back, and a test reads the real English window to prove nothing French is left on screen.
 
 ## Previous release · 0.3.0
 

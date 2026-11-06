@@ -106,3 +106,173 @@ def test_preferences_reject_an_unknown_language():
         preferences.validate()
     Preferences(language='en').validate()
     Preferences(language='fr').validate()
+
+
+
+def test_a_template_translates_a_message_built_at_run_time(monkeypatch):
+    from fireblade.core.i18n import EN, templates
+    monkeypatch.setitem(EN, "Analyse absente : {}", "Missing analysis: {}")
+    templates.cache_clear()
+    try:
+        set_language('en')
+        assert translate("Analyse absente : foo.duckdb") == "Missing analysis: foo.duckdb"
+        # An exact entry still wins over a template.
+        monkeypatch.setitem(EN, "Analyse absente : bar.duckdb", "Exact hit")
+        assert translate("Analyse absente : bar.duckdb") == "Exact hit"
+    finally:
+        set_language('fr')
+        templates.cache_clear()
+
+
+def test_the_most_specific_template_wins(monkeypatch):
+    from fireblade.core.i18n import EN, templates
+    monkeypatch.setitem(EN, "{} en erreur", "{} in error")
+    monkeypatch.setitem(EN, "Analyse en erreur : {}", "Analysis in error: {}")
+    templates.cache_clear()
+    try:
+        set_language('en')
+        assert translate("Analyse en erreur : 3") == "Analysis in error: 3"
+        assert translate("Collecte en erreur") == "Collecte in error"
+    finally:
+        set_language('fr')
+        templates.cache_clear()
+
+
+def test_a_dialog_is_translated_when_it_appears(qt_application, monkeypatch):
+    from PySide6.QtWidgets import QDialog, QLabel, QPushButton, QTableWidget
+    from fireblade.ui.language import install
+    from fireblade.core.i18n import EN, templates
+    monkeypatch.setitem(EN, "Colonne", "Column")
+    templates.cache_clear()
+
+    install(qt_application)
+    set_language('en')
+    dialog = QDialog()
+    label = QLabel("Colonnes…", dialog)
+    button = QPushButton("Appliquer à cette vue", dialog)
+    table = QTableWidget(0, 1, dialog)
+    table.setHorizontalHeaderLabels(["Colonne"])
+    try:
+        dialog.show()
+        qt_application.processEvents()
+        assert label.text() == "Columns…"
+        assert button.text() == "Apply to this view"
+        assert table.horizontalHeaderItem(0).text() == "Column"
+        # Back to French, the source label is restored from what was recorded.
+        set_language('fr')
+        from fireblade.ui.language import translate_tree
+        translate_tree(dialog)
+        assert label.text() == "Colonnes…"
+        assert button.text() == "Appliquer à cette vue"
+        assert table.horizontalHeaderItem(0).text() == "Colonne"
+    finally:
+        set_language('fr')
+        templates.cache_clear()
+        dialog.close()
+        dialog.setParent(None)
+        dialog.deleteLater()
+        from PySide6.QtCore import QCoreApplication, QEvent
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+def test_a_dynamic_label_keeps_its_new_text_across_a_language_switch(qt_application):
+    from PySide6.QtWidgets import QLabel
+    from fireblade.ui.language import translate_tree
+
+    label = QLabel("3 analyses")
+    try:
+        set_language('en')
+        translate_tree(label)
+        label.setText("5 analyses")          # the code replaces the counter
+        translate_tree(label)
+        assert label.text() == "5 analyses"
+        set_language('fr')
+        translate_tree(label)
+        assert label.text() == "5 analyses"  # not the stale "3 analyses"
+    finally:
+        set_language('fr')
+        label.setParent(None)
+        label.deleteLater()
+        from PySide6.QtCore import QCoreApplication, QEvent
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+def test_a_status_message_is_translated_where_it_is_set(qt_application):
+    from PySide6.QtWidgets import QMainWindow
+    from fireblade.ui.language import install
+
+    install(qt_application)
+    window = QMainWindow()
+    try:
+        set_language('en')
+        window.statusBar().showMessage("Colonnes…")
+        assert window.statusBar().currentMessage() == "Columns…"
+        set_language('fr')
+        window.statusBar().showMessage("Colonnes…")
+        assert window.statusBar().currentMessage() == "Colonnes…"
+    finally:
+        set_language('fr')
+        window.close()
+        window.setParent(None)
+        window.deleteLater()
+        from PySide6.QtCore import QCoreApplication, QEvent
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+def test_a_text_written_after_the_window_appeared_is_translated(qt_application):
+    """A counter, an error or a combo filled once a case loads, not before."""
+    from PySide6.QtWidgets import QComboBox, QLabel
+    from fireblade.ui.language import apply_to_items, install
+
+    install(qt_application)
+    label, combo = QLabel(), QComboBox()
+    try:
+        set_language('en')
+        label.setText("Colonnes…")
+        assert label.text() == "Columns…"
+        combo.addItem("Appliquer à cette vue")
+        combo.addItem("Rechercher :")
+        assert [combo.itemText(index) for index in range(combo.count())] == \
+            ["Apply to this view", "Search:"]
+        # French again: the stored source comes back, not the English label.
+        set_language('fr')
+        from fireblade.ui.language import translate_tree
+        translate_tree(label)
+        apply_to_items(combo)
+        assert label.text() == "Colonnes…"
+        assert combo.itemText(0) == "Appliquer à cette vue"
+    finally:
+        set_language('fr')
+        for widget in (label, combo):
+            widget.setParent(None)
+            widget.deleteLater()
+        from PySide6.QtCore import QCoreApplication, QEvent
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+def test_tab_titles_do_not_accumulate_ampersands(qt_application):
+    """A tab title is escaped once, not once per language pass."""
+    from PySide6.QtWidgets import QTabBar
+    from fireblade.ui.language import translate_tree
+
+    bar = QTabBar()
+    bar.addTab("Chronologie & corrélations")
+    try:
+        set_language('fr')
+        translate_tree(bar)
+        first = bar.tabText(0)
+        translate_tree(bar)
+        translate_tree(bar)
+        assert bar.tabText(0) == first
+        assert '&&&&' not in bar.tabText(0)
+        set_language('en')
+        translate_tree(bar)
+        assert bar.tabText(0) == 'Timeline && correlations'
+        translate_tree(bar)
+        assert bar.tabText(0) == 'Timeline && correlations'
+    finally:
+        set_language('fr')
+        bar.setParent(None)
+        bar.deleteLater()
+        from PySide6.QtCore import QCoreApplication, QEvent
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)

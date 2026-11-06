@@ -8,11 +8,9 @@ Fireblade brings Windows artifacts, Linux logs, detection results and tabular ev
 
 [Releases](https://github.com/23R0534ZXT/fireblade/releases) · [Documentation](docs/README.md) · [Report an issue](https://github.com/23R0534ZXT/fireblade/issues/new/choose) · [Release notes](docs/development/RELEASE-NOTES.md)
 
-**[Download Fireblade 0.3.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.3.0/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.3.0) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/42142324564)
+**[Download Fireblade 0.3.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.3.1/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.3.1) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 
-The desktop interface and most user guides are currently in French.
-
-The interface now opens in English; French is one click away in **Preferences → Language**. User guides are still in French.
+The interface is fully translated: it opens in English, French is one click away in **Preferences → Language**, and the choice is saved. User guides are still in French.
 
 ![Fireblade investigation workspace](docs/assets/fireblade-workspace-v022.png)
 
@@ -20,7 +18,17 @@ The interface now opens in English; French is one click away in **Preferences �
 
 Windows CI runs focused regression tests on Python 3.12, builds the standalone EXE in parallel, then checks its appearance, 320-analysis workspace and 3-GiB import/export workflow. The full Python 3.11–3.13 test matrix remains available through the workflow’s **full_validation** option.
 
-## Version 0.3.0 · English interface, grouping and a readable timeline
+## Version 0.3.1 · The whole interface in English and French
+
+- Every window is translated, not only the menus and toolbars: dialogs, column manager, preferences, IOC hunting, coverage, timeline, table headers, drop-down lists, tooltips, input placeholders and status messages.
+- **Text built at run time** goes through the same table: counters, task results, visible errors. Entries can be templates (`Analyse absente : {}`) whose values are put back at display time, and the most specific entry always wins.
+- Translation applies when a window opens and again when the code writes the text, so a list filled after the fact, a refreshed counter or a late error is covered without touching each window.
+- French stays complete: the source labels are remembered, and switching back loses nothing even when a text had been replaced in between.
+- Six strings are deliberately left as they are — sample file names (`évidence.csv`, `résumés.csv`) and two synthetic TLE expressions — because they are data, not interface.
+- Fixed: a tab title accumulated ampersand escapes across language switches (`Timeline &&&& correlations`), and a language pass near a loaded workspace rewrote every tab title for no reason.
+- Verification: **1,298 passed, 31 skipped** on the Windows Qt platform. An inventory script measures the coverage, two guard tests stop untranslated text from coming back, and a test reads the real English window to prove nothing French is left on screen.
+
+## Previous release · 0.3.0
 
 - The interface opens **in English**; **French** stays available in **Preferences → Language** and the choice is saved. Menus, toolbars, tabs, buttons, headers, filters and input fields are translated; text computed at display time (counters, "no active case") is still French.
 - **Grouping bar** rebuilt: numbered levels, drop a header at the exact position, one `×` per level, and a single **Remove all** button.

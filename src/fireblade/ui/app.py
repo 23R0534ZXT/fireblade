@@ -1250,6 +1250,8 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Fireblade")
     apply_theme(app)
+    from fireblade.ui.language import install as install_language_filter
+    install_language_filter(app)
     if args.workspace_report is not None:
         from fireblade.validation.workspace import run_workspace
         raise SystemExit(run_workspace(app,args.workspace_report))

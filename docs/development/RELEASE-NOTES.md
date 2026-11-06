@@ -1,3 +1,25 @@
+# Fireblade 0.3.1 — toute l'interface en anglais et en français
+
+## Langue
+
+- L'interface est traduite **en entier**, et plus seulement les menus et les barres d'outils : fenêtres de dialogue, gestionnaire de colonnes, préférences, chasse IOC, couverture, chronologie, en-têtes de tableaux, listes déroulantes, infobulles, textes de saisie et messages d'état.
+- **Les textes calculés à l'affichage** passent par la même table : compteurs (« 2 case(s) affiché(s) »), fins de tâche, erreurs affichées, message d'archive vérifiée. La table accepte des gabarits (`Analyse absente : {}`) dont les valeurs sont réinsérées au moment de l'affichage, et l'entrée la plus précise l'emporte toujours.
+- La traduction s'applique **à l'ouverture de chaque fenêtre** et **au moment où le code écrit le texte** : une liste remplie après coup, un compteur rafraîchi ou une erreur tardive sont couverts, sans toucher au code de chaque fenêtre.
+- Le **français reste complet** : les libellés d'origine sont mémorisés par la couche de langue, et le retour au français se fait sans perte, y compris quand un texte avait été remplacé entre-temps.
+- Six chaînes restent volontairement telles quelles : des noms de fichiers d'exemple (`évidence.csv`, `résumés.csv`, `fonctions étendues.csv`) et deux expressions TLE synthétiques. Ce sont des données, pas de l'interface.
+
+## Corrections
+
+- Un titre d'onglet n'accumule plus les esperluettes d'échappement d'un changement de langue à l'autre : `Chronologie & corrélations` finissait par s'afficher `Timeline &&&& correlations`.
+- Un passage de langue ne réécrit plus les titres d'onglets quand le texte n'a pas changé, ce qui provoquait un ralentissement net sur un espace de travail chargé.
+
+## Vérification
+
+- Couverture mesurée : `scripts/i18n_inventory.py` liste toute chaîne française capable d'atteindre un écran. **771 sur 777 sont traduites**, les six restantes sont des données.
+- Deux tests de garde : une nouvelle chaîne non traduite fait échouer la suite, et la liste des reliquats ne peut que diminuer.
+- Un test construit la vraie fenêtre en anglais et vérifie qu'aucun mot français n'y reste visible.
+- Suite complète : **1 298 tests passés**, 31 ignorés, aucune erreur, plateforme Qt Windows.
+
 # Fireblade 0.3.0 — interface anglaise, regroupement et chronologie lisible
 
 ## Langue

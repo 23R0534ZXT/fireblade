@@ -1,0 +1,6 @@
+"PluginText('FixtureEcho', 'évidence') = 'évidence'"
+"[Details.Name] = 'évidence' And [Details.Children].Sum([Amount]) = 10"
+"fonctions étendues.csv"
+"résumés.csv"
+"évidence\n0001"
+"évidence.csv"

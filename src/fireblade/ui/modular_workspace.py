@@ -263,6 +263,9 @@ class WorkspaceLayout:
             for key, widget in [('events', self.window.timeline_panel.events_visible), ('details', self.window.timeline_panel.details_visible)]:
                 value = data.get('timeline_widgets', {}).get(key)
                 if type(value) is bool:widget.setChecked(value)
-            if data.get('focus'):self.timeline()
+            # The saved layout may say the session was left in timeline focus. Replaying
+            # it at launch hid the tab bar and the toolbars before any case existed,
+            # leaving an empty window: the mode needs a case, and the analyst can enter
+            # it again from the Workspace menu.
         except (OSError, ValueError, TypeError, KeyError, AttributeError):
             self.window.statusBar().showMessage('Disposition ignorée ; utilisez Affichage → Espace de travail.')

@@ -192,10 +192,12 @@ def test_pinned_column_order_and_focus_survive_restart(qt_application,tmp_path):
     assert not window.jobs and not window.pool.activeThreadCount()
     restarted = Window(require_case=False);restarted.show()
     try:
-        assert restarted.workspace_layout.focused
-        restarted.workspace_layout.analysis()
+        # A launch comes back to the workspace: replaying timeline focus hid the tab
+        # bar and the toolbars before any case existed, leaving an empty window.
+        assert not restarted.workspace_layout.focused
+        assert not restarted.workbench.tabBar().isHidden()
         assert not restarted.main_toolbar.isHidden()
-        assert restarted.workbench.currentIndex() == 0
+        assert restarted.workbench.currentIndex() == restarted.cases_tab_index
     finally:restarted.close()
 
 

@@ -35,15 +35,18 @@ Le chantier de traduction, mesuré : **602 libellés français distincts** dans
 `src/`, dont environ 120 déjà couverts. **~480 restent à traduire**, surtout dans
 les fenêtres de dialogue, les messages d'état et les erreurs.
 
-1. **Packs de langues** : une table par langue, sélecteur affichant les noms
-   natifs, repli sur l'anglais puis sur le texte source. Langues visées :
-   anglais (référence), français, espagnol, allemand, italien, portugais.
+1. **Deux langues seulement** : anglais (référence) et français. Pas de packs
+   supplémentaires pour l'instant — la table reste une paire de dictionnaires, et
+   en ajouter une troisième restera possible plus tard sans refonte.
 2. **Traduction automatique des dialogues** : un filtre sur l'affichage traduit
    l'arbre de widgets à l'ouverture, sans toucher au code de chaque fenêtre.
 3. **Textes dynamiques** : compteurs, messages d'état et erreurs routés par la
    table au moment où ils s'affichent.
 4. Décision en attente : « Parser un dossier » sans case — créer le case au
    passage (recommandé) ou griser le bouton avec une infobulle.
+
+Estimation : une à deux sessions, lots séparés, avec la porte de vérification
+entre chaque lot.
 
 Puis, hors traduction : chronologie (table en bandeau, vue d'ensemble), tests de
 l'exe et du pont .NET reportés depuis la 0.2.x, couverture CI réelle.

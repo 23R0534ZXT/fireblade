@@ -1030,7 +1030,7 @@ EN = {
     # the application can display.
     "Artefact actif": "Active artifact",
     "Fond actif": "Active background",
-    "· ouvert": "· open",
+    "· ouvert": "· current",
 
     # Added for the full English interface: one entry per French label
     # the application can display.
@@ -1123,6 +1123,12 @@ EN = {
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Import : {} · {} analyses · Source : {}": "Import: {} · {} analyses · Source: {}",
+
+    # Added for the full English interface: one entry per French label
+    # the application can display.
+    "Case : {}": "Case: {}",
+    "En cours": "Open",
+    "{} · ouvert": "{} · current",
 }
 
 LANGUAGES = ("en", "fr")

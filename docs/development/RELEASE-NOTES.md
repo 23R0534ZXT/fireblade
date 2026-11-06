@@ -4,6 +4,9 @@
 
 - L'interface est traduite **en entier**, et plus seulement les menus et les barres d'outils : fenêtres de dialogue, gestionnaire de colonnes, préférences, chasse IOC, couverture, chronologie, en-têtes de tableaux, listes déroulantes, infobulles, textes de saisie et messages d'état.
 - Les **en-têtes de modèles** (tableaux de couverture, règles, chasse IOC, résultats), les **nœuds d'arbre** de la navigation, les **cellules** de tableau et les **noms de thèmes** sont traduits eux aussi : ce ne sont pas des widgets, ils ont leur propre passage.
+- Les **guides intégrés** (tutoriel complet, guide d'utilisation, chronologie et sauvegardes, chasse IOC, couverture) existent en anglais et s'ouvrent selon la langue choisie, ainsi que les titres des fenêtres d'aide.
+- **Cartes de condition et filtre ET / OU / NON** : opérateurs (« Contient », « Commence par », « Nombre ≥ », « Date égale »…), connecteurs, boutons (« Toutes les conditions », « Au moins une », « + Condition », « Replier/Déplier ») et la phrase de lecture du filtre sont traduits.
+- Un **menu ouvert en popup** est désormais traduit : son arbre n'était jamais parcouru.
 - Les messages **assemblés par concaténation** (`"Lecture du filtre : " + valeur`) sont traités comme des gabarits : le texte fixe et la valeur sont traduits séparément, puis recomposés.
 - **Les textes calculés à l'affichage** passent par la même table : compteurs (« 2 case(s) affiché(s) »), fins de tâche, erreurs affichées, message d'archive vérifiée. La table accepte des gabarits (`Analyse absente : {}`) dont les valeurs sont réinsérées au moment de l'affichage, et l'entrée la plus précise l'emporte toujours.
 - La traduction s'applique **à l'ouverture de chaque fenêtre** et **au moment où le code écrit le texte** : une liste remplie après coup, un compteur rafraîchi ou une erreur tardive sont couverts, sans toucher au code de chaque fenêtre.
@@ -22,7 +25,7 @@
 - Deux tests de garde : une nouvelle chaîne non traduite fait échouer la suite, et la liste des reliquats ne peut que diminuer.
 - Un test construit la vraie fenêtre en anglais et vérifie qu'aucun mot français n'y reste visible.
 - Un balayage de la fenêtre réelle et de onze fenêtres de dialogue en anglais ne trouve **plus aucun texte français**.
-- Suite complète : **1 301 tests passés**, 31 ignorés, aucune erreur, plateforme Qt Windows.
+- Suite complète : **1 312 tests passés**, 31 ignorés, aucune erreur, plateforme Qt Windows.
 
 # Fireblade 0.3.0 — interface anglaise, regroupement et chronologie lisible
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fireblade-forensics"
-version = "0.2.3"
+version = "0.3.0"
 description = "Local forensic investigation workspace for Windows artifacts, CatScale collections and exports"
 readme = "README.md"
 license = "MIT"

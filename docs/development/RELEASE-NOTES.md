@@ -1,3 +1,41 @@
+# Fireblade 0.3.0 — interface anglaise, regroupement et chronologie lisible
+
+## Langue
+
+- L’interface s’ouvre **en anglais** ; le **français** reste disponible dans **Préférences → Langue**. Le choix est enregistré.
+- La traduction couvre les menus, les barres d’outils, les onglets, les boutons, les en-têtes, les filtres et les textes de saisie. Les textes calculés à l’affichage (compteurs, « aucun case actif ») restent en français pour l’instant.
+- Un libellé non traduit s’affiche tel quel, jamais vide ni remplacé par une clé technique.
+
+## Organisation de l’analyse
+
+- **Barre de regroupement** repensée : niveaux numérotés, dépôt d’un en-tête à la position exacte, un `×` par niveau, et un bouton **Tout supprimer**.
+- **Gestionnaire de colonnes** en deux volets : colonnes masquées à gauche, ordre à droite, plus la largeur et l’épinglage de la colonne choisie. L’ensemble est mémorisé par format d’artefact.
+- **Palette de commandes** (`Ctrl+Shift+K`) : toutes les entrées de menus derrière un champ, y compris celles qui n’ont pas de bouton.
+
+## Recherche
+
+- La recherche inter-artefacts affiche désormais **les événements trouvés** — quatre lignes réelles sous le tableau — et le reste du volume, au lieu d’un simple compteur par fichier.
+
+## Chronologie
+
+- Les barres portent le **volume** : leur hauteur traduit le nombre d’événements de la tranche horaire.
+- Les **pistes remplissent la hauteur** disponible au lieu de flotter dans un bandeau, et l’étiquette de la source est centrée.
+- La barre d’actions reste visible en mode **Chronologie seule**.
+
+## Corrections
+
+- **Fenêtre vide au lancement** : la disposition enregistrée rejouait le mode chronologie avant qu’un case existe, masquant onglets et barres. Ce mode n’est plus rejoué au démarrage.
+- **Barre « Parser un dossier »** : elle restait masquée jusqu’à un passage par Workspace → Analyse ; elle est visible et utilisable dès l’écran de lancement.
+- **Fantôme après un glisser** : le regroupement s’applique après la fin du glisser, et l’en-tête reçoit le relâchement du bouton ; plus de colonne grisée qui reste affichée.
+- **Bouton Ouvrir** : un changement de case refusé affiche maintenant sa raison au lieu de ne rien faire.
+- **Onglets** : un `&` dans un titre ne s’affiche plus comme un souligné.
+- La version est affichée en bas à droite de la barre d’état et de l’écran de lancement.
+
+## Vérification
+
+- Suite complète : **1 287 tests passés**, 31 ignorés, aucune erreur, plateforme Qt Windows.
+- La suite ne peut plus se figer sur une fenêtre modale : un garde-fou rejette toute boîte laissée ouverte et la nomme.
+
 # Fireblade 0.2.3 — chronologie fiable et récupération
 
 - **Colonne de date** : une colonne UTC explicite (`Horodatage UTC`, `TimestampUtc`) l’emporte désormais sur la colonne brute dont elle est issue. Les journaux Linux, dont l’horodatage syslog n’a ni année ni fuseau, ne sont plus indexés sur la mauvaise colonne.

@@ -8,9 +8,9 @@ Fireblade brings Windows artifacts, Linux logs, detection results and tabular ev
 
 [Releases](https://github.com/23R0534ZXT/fireblade/releases) · [Documentation](docs/README.md) · [Report an issue](https://github.com/23R0534ZXT/fireblade/issues/new/choose) · [Release notes](docs/development/RELEASE-NOTES.md)
 
-**[Download Fireblade 0.2.3 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.2.3/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.3) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/42027390507)
+**[Download Fireblade 0.3.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.3.0/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.3.0)
 
-The desktop interface and most user guides are currently in French.
+The interface now opens in English; French is one click away in **Preferences → Language**. User guides are still in French.
 
 ![Fireblade investigation workspace](docs/assets/fireblade-workspace-v022.png)
 
@@ -18,7 +18,18 @@ The desktop interface and most user guides are currently in French.
 
 Windows CI runs focused regression tests on Python 3.12, builds the standalone EXE in parallel, then checks its appearance, 320-analysis workspace and 3-GiB import/export workflow. The full Python 3.11–3.13 test matrix remains available through the workflow’s **full_validation** option.
 
-## Version 0.2.3 · reliable chronology
+## Version 0.3.0 · English interface, grouping and a readable timeline
+
+- The interface opens **in English**; **French** stays available in **Preferences → Language** and the choice is saved. Menus, toolbars, tabs, buttons, headers, filters and input fields are translated; text computed at display time (counters, "no active case") is still French.
+- **Grouping bar** rebuilt: numbered levels, drop a header at the exact position, one `×` per level, and a single **Remove all** button.
+- **Column manager** in two panes: hidden columns on the left, display order on the right, plus width and pinning for the selected column. Everything is remembered per artifact format.
+- **Command palette** (`Ctrl+Shift+K`) exposes every menu entry through one field, including the commands that have no button.
+- Cross-artifact search now shows **the matching events** — four real rows under the table — and the remaining volume, instead of a count per file.
+- **Timeline**: bars carry the volume (their height is the number of events in the time bucket), lanes fill the available height, and the source label is centred.
+- Fixed: a launch could replay the saved timeline focus and open as an empty window; the data toolbar stayed hidden until Workspace → Analysis; a dragged column left a grey ghost behind; a refused case switch said nothing; an `&` in a tab title showed as an underscore.
+- The version is displayed in the status bar and on the start screen.
+
+## Previous release · 0.2.3
 
 - The timeline indexes an explicit UTC column (`Horodatage UTC`, `TimestampUtc`) instead of the raw column it was derived from, so Linux journals are no longer read through a syslog stamp without a year or a timezone.
 - Dates without a timezone are read as **UTC** in the chronology, as they already were on import. A case keeps the same chronological order on every machine.

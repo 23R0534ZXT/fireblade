@@ -17,6 +17,9 @@ def environment(base,scale,profile):
         env.pop(key,None)
     system=Path(env.get('SystemRoot',r'C:\Windows'))
     env.update(QT_QPA_PLATFORM='windows',QT_SCALE_FACTOR=str(scale),PYTHONUTF8='1',PYTHONNOUSERSITE='1',
+               # The qualification checks describe the French interface; a fresh profile
+               # would otherwise open in English, the new default.
+               FIREBLADE_LANGUAGE='fr',
                LOCALAPPDATA=str(profile),PATH=os.pathsep.join(map(str,[system/'System32',system])))
     return env
 

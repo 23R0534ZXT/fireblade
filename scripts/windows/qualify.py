@@ -33,6 +33,8 @@ def main():
             for key in ('PYTHONPATH','PYTHONHOME','QT_PLUGIN_PATH','QT_QPA_PLATFORM_PLUGIN_PATH'):env.pop(key,None)
             system=Path(env.get('SystemRoot',r'C:\Windows'))
             env.update(QT_QPA_PLATFORM='windows',PYTHONUTF8='1',PYTHONNOUSERSITE='1',
+                       # This qualification drives the French labels the checks are written for.
+                       FIREBLADE_LANGUAGE='fr',
                        LOCALAPPDATA=str(root/'Profil utilisateur'),PATH=os.pathsep.join(map(str,[system/'System32',system])))
             report=args.out/'stress.json'
             code=run_executable([str(exe),'--stress-spec',str(spec),'--stress-report',str(report)],cwd=root,env=env,timeout=2700)

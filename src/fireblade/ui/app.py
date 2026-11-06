@@ -905,6 +905,23 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         else:
             self.view.groups = [column]
         self.apply()
+        self.release_header_press()
+
+    def release_header_press(self):
+        """A drop on the group bar ends the drag, so the header never receives the
+        mouse release and keeps the dragged section painted as pressed — the grey
+        block that stays until another click. Deliver the release ourselves."""
+        tree = getattr(self, 'tree', None)
+        if tree is None:
+            return
+        header = tree.header()
+        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+        from PySide6.QtWidgets import QApplication
+        release = QMouseEvent(QEvent.MouseButtonRelease, QPointF(-1, -1),
+                              Qt.LeftButton, Qt.NoButton, Qt.NoModifier)
+        QApplication.sendEvent(header.viewport(), release)
+        header.viewport().update()
 
     def filter_current_cell(self):
         """Use the stored value, not a formatted/truncated display string."""

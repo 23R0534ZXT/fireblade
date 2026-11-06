@@ -18,7 +18,9 @@ class PreviewModel(QAbstractTableModel):
     def rowCount(self,parent=QModelIndex()):return 0 if parent.isValid() else len(self.rows)
     def columnCount(self,parent=QModelIndex()):return len(self.visible)
     def headerData(self,section,orientation,role=Qt.DisplayRole):
-        if role==Qt.DisplayRole and orientation==Qt.Horizontal:return self.headers[self.visible[section]]
+        if role==Qt.DisplayRole and orientation==Qt.Horizontal:
+            from fireblade.core.i18n import translate
+            return translate(self.headers[self.visible[section]])
 
     def data(self,index,role=Qt.DisplayRole):
         if not index.isValid():return None

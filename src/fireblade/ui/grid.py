@@ -344,7 +344,8 @@ class GridModel(QAbstractItemModel):
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return "Ligne / groupe" if section == 0 else self.headers[section - 1] if 0<section<=len(self.headers) else None
+            from fireblade.core.i18n import translate
+            return translate("Ligne / groupe") if section == 0 else translate(self.headers[section - 1]) if 0<section<=len(self.headers) else None
         if orientation==Qt.Horizontal:
             from fireblade.ui.layout_styles import role_value,merge_styles
             style=merge_styles(self.view.layout_styles.get('header',{}),self.view.layout_styles.get(f'header:{section-1}',{}))

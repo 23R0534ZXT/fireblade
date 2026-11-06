@@ -21,12 +21,13 @@ Windows CI runs focused regression tests on Python 3.12, builds the standalone E
 ## Version 0.3.1 · The whole interface in English and French
 
 - Every window is translated, not only the menus and toolbars: dialogs, column manager, preferences, IOC hunting, coverage, timeline, table headers, drop-down lists, tooltips, input placeholders and status messages.
+- Model headers (coverage, rules, IOC results), navigation tree nodes, table cells and theme names are translated as well, and a message assembled by concatenation is treated as a template: the fixed text and the value are translated, then put back together.
 - **Text built at run time** goes through the same table: counters, task results, visible errors. Entries can be templates (`Analyse absente : {}`) whose values are put back at display time, and the most specific entry always wins.
 - Translation applies when a window opens and again when the code writes the text, so a list filled after the fact, a refreshed counter or a late error is covered without touching each window.
 - French stays complete: the source labels are remembered, and switching back loses nothing even when a text had been replaced in between.
 - Six strings are deliberately left as they are — sample file names (`évidence.csv`, `résumés.csv`) and two synthetic TLE expressions — because they are data, not interface.
 - Fixed: a tab title accumulated ampersand escapes across language switches (`Timeline &&&& correlations`), and a language pass near a loaded workspace rewrote every tab title for no reason.
-- Verification: **1,298 passed, 31 skipped** on the Windows Qt platform. An inventory script measures the coverage, two guard tests stop untranslated text from coming back, and a test reads the real English window to prove nothing French is left on screen.
+- Verification: **1,301 passed, 31 skipped** on the Windows Qt platform; a sweep of the real window and of eleven dialogs in English finds no French text left. An inventory script measures the coverage, two guard tests stop untranslated text from coming back, and a test reads the real English window to prove nothing French is left on screen.
 
 ## Previous release · 0.3.0
 

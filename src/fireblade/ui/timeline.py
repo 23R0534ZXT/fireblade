@@ -192,7 +192,9 @@ class TimelineModel(QAbstractTableModel):
     def rowCount(self,parent=QModelIndex()):return 0 if parent.isValid() else len(self.rows)
     def columnCount(self,parent=QModelIndex()):return len(self.HEADERS)
     def headerData(self,section,orientation,role=Qt.DisplayRole):
-        if orientation==Qt.Horizontal and role==Qt.DisplayRole:return self.HEADERS[section]
+        if orientation==Qt.Horizontal and role==Qt.DisplayRole:
+            from fireblade.core.i18n import translate
+            return translate(self.HEADERS[section])
     def data(self,index,role=Qt.DisplayRole):
         if not index.isValid():return None
         row=self.rows[index.row()]

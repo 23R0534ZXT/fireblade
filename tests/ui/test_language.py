@@ -276,3 +276,56 @@ def test_tab_titles_do_not_accumulate_ampersands(qt_application):
         bar.deleteLater()
         from PySide6.QtCore import QCoreApplication, QEvent
         QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+def test_a_table_cell_and_a_tree_node_are_translated(qt_application):
+    """Items are not widgets: their label is caught where the code writes it."""
+    from PySide6.QtWidgets import QTableWidgetItem, QTreeWidgetItem
+    from fireblade.ui.language import install
+
+    install(qt_application)
+    try:
+        set_language('en')
+        cell = QTableWidgetItem("Non précisé")
+        node = QTreeWidgetItem(["Analyses hors collecte"])
+        assert cell.text() == "Not specified"
+        assert node.text(0) == "Analyses outside a collection"
+        cell.setText("Sans date")
+        assert cell.text() == "Undated"
+        # French again: the source stored on the item comes back.
+        set_language('fr')
+        from fireblade.ui.language import _recall
+        cell.setText(_recall(cell))
+        node.setText(0, _recall(node, 0))
+        assert cell.text() == "Sans date"
+        assert node.text(0) == "Analyses hors collecte"
+    finally:
+        set_language('fr')
+        from PySide6.QtCore import QCoreApplication, QEvent
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+def test_a_model_header_is_translated(qt_application):
+    from fireblade.ui.ioc_hunt import Rows
+    from fireblade.ui.language import install
+    from PySide6.QtCore import Qt
+
+    install(qt_application)
+    model = Rows(["Étape", "Gravité", "Fichier / périmètre"])
+    try:
+        set_language('en')
+        labels = [model.headerData(column, Qt.Horizontal, Qt.DisplayRole) for column in range(3)]
+        assert labels == ["Stage", "Severity", "File / scope"]
+        set_language('fr')
+        assert model.headerData(0, Qt.Horizontal, Qt.DisplayRole) == "Étape"
+    finally:
+        set_language('fr')
+
+
+def test_a_message_built_by_concatenation_is_translated():
+    """`"Lecture du filtre : " + value` is a template, value included."""
+    try:
+        set_language('en')
+        assert translate("Lecture du filtre : toutes les lignes") == "Filter reading: all the rows"
+    finally:
+        set_language('fr')

@@ -50,6 +50,9 @@ SURFACE_CALLS = {
     "getExistingDirectoryUrl",
     # our own helpers that end up on a surface
     "action", "notify", "status", "label", "button", "message", "note", "hint",
+    # models built with their column titles
+    "Rows", "RowModel", "TableModel", "Model", "QStandardItemModel", "Columns",
+    "setHeaderLabels", "addToolBar", "addDockWidget", "setTabBar", "setTitle",
 }
 
 # Calls that write text nobody reads in the interface.
@@ -60,24 +63,52 @@ INTERNAL_CALLS = {
 }
 
 ACCENTS = re.compile(r"[éèêàçùôîïûœÉÈÊÀÇÙÔÎÏÛŒ]")
-FRENCH_WORDS = re.compile(
-    r"\b(le|la|les|un|une|des|du|de|au|aux|pour|avec|dans|sur|par|et|ou|aucun|aucune|"
-    r"tous|toutes|tout|cette|ce|cet|qui|que|qu|est|sont|ne|pas|plus|sans|vers|entre|"
-    r"nous|vous|il|elle|on|être|avoir|fait|faire|dossier|fichier|analyse|collecte|"
-    r"recherche|erreur|impossible|échec|déjà|attention|voulez|choisir|choisissez|"
-    r"importer|exporter|enregistrer|ouvrir|fermer|supprimer|ajouter|rechercher)\b",
-    re.I,
-)
+
+# Words that exist in French and not in English. A word both languages share
+# (source, note, date, type, version, analyse) is no evidence either way, so it
+# stays out: a label identical in both languages needs no entry in the table.
+FRENCH_ONLY = {
+    "nom", "noms", "prénom", "statut", "état", "états", "hôte", "hôtes", "ligne",
+    "lignes", "texte", "textes", "famille", "familles", "collecte", "collectes",
+    "gravité", "étape", "étapes", "résumé", "résumés",
+    "détail", "détails", "valeur", "valeurs", "règle", "règles", "libellé",
+    "conséquence", "correction", "taille", "durée", "chemin", "empreinte",
+    "langue", "thème", "police", "recherche", "colonne", "colonnes", "tri",
+    "vue", "vues", "groupe", "groupes", "période", "début", "heure",
+    "fichier", "fichiers", "dossier", "dossiers", "lecteur", "lecteurs",
+    "sortie", "sorties", "résultat", "résultats", "signet", "signets",
+    "horodatage", "poids", "incident", "incidents", "alerte", "alertes",
+    "détection", "préférence", "préférences", "onglet", "onglets",
+    "barre", "barres", "panneau", "panneaux", "espace", "profil", "profils",
+    "dépendance", "dépendances", "éléments", "élément", "aucun", "aucune",
+    "toutes", "tous", "depuis", "dans", "pour", "avec", "entre", "vers",
+    "être", "avoir", "fait", "faire", "impossible", "échec", "déjà",
+    "ouvert", "ouverte", "ouverts", "fermé", "fermée", "fermés", "actif",
+    "attention", "voulez", "choisir", "choisissez", "importer", "exporter",
+    "enregistrer", "ouvrir", "fermer", "supprimer", "ajouter", "rechercher",
+    "niveau", "niveaux", "largeur", "hauteur", "couleur", "couleurs", "police",
+    "précisé", "précisée", "ignoré", "ignorés", "reconnu", "reconnus", "réussi",
+    "réussis", "élevée", "moyenne", "faible", "vérifier", "vérifiés", "créé",
+    "créés", "modifié", "dernière", "premier", "première", "suivant", "précédent",
+}
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
+# Database expressions, file filters and paths are not interface text.
+CODE_LIKE = re.compile(r"CASE WHEN|\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b"
+                       r"|regexp_|try_cast|::|\bFROM\b|\bWHERE\b|\*/")
+FILE_LIKE = re.compile(r"\*\.[A-Za-z]|^[.\\/]|[A-Za-z]:\\")
 
 
 def looks_french(text):
+    """French enough to need a translation: an accent, or a French-only word."""
     text = text.strip()
     if len(text) < 2 or IDENTIFIER.match(text):
         return False
+    if CODE_LIKE.search(text) or FILE_LIKE.search(text):
+        return False
     if ACCENTS.search(text):
         return True
-    return " " in text and len(FRENCH_WORDS.findall(text)) >= 2
+    words = re.findall(r"[a-zà-ÿ]+", text.lower())
+    return any(word in FRENCH_ONLY for word in words)
 
 
 def _call_name(node):
@@ -128,6 +159,13 @@ def strings_in(path):
         if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) in docstrings:
             continue
         text = _text_of(node)
+        if text is None and isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            # `"Lecture du filtre : " + value` is a template with a hole.
+            pieces = []
+            for side in (node.left, node.right):
+                piece = _text_of(side)
+                pieces.append(piece if piece is not None else "{}")
+            text = "".join(pieces)
         if text is None:
             continue
         text = text.strip()

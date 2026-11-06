@@ -13,12 +13,14 @@ guard a language switch would restore a stale label.
 same treatment as the main window, and `install(app)` makes the application
 translate every window the moment it appears.
 """
-from PySide6.QtCore import QEvent, QObject
+from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QGroupBox, QLabel, QLineEdit,
-                               QListWidget, QMenu, QMenuBar, QPlainTextEdit,
-                               QPushButton, QRadioButton, QStatusBar, QTableWidget,
-                               QTabBar, QTextEdit, QToolBar, QToolButton, QWidget)
+                               QListWidget, QListWidgetItem, QMenu, QMenuBar,
+                               QPlainTextEdit, QPushButton, QRadioButton, QStatusBar,
+                               QTableWidget, QTableWidgetItem, QTabBar, QTextEdit,
+                               QToolBar, QToolButton, QTreeWidget, QTreeWidgetItem,
+                               QWidget)
 
 from fireblade.core.i18n import SOURCE_LANGUAGE, current_language, english, translate
 
@@ -226,6 +228,8 @@ def translate_tree(root):
             apply_to_headers(widget)
     for bar in ([root] if isinstance(root, QTabBar) else []) + root.findChildren(QTabBar):
         apply_to_tabbar(bar)
+    for tree in ([root] if isinstance(root, QTreeWidget) else []) + root.findChildren(QTreeWidget):
+        translate_items(tree)
     for menu_bar in root.findChildren(QMenuBar):
         for action in menu_bar.actions():
             apply_to_action(action)
@@ -290,6 +294,115 @@ def install(app):
     app.installEventFilter(language_filter)
     setattr(app, FILTER, language_filter)
     return language_filter
+
+
+ITEM_SOURCE = Qt.UserRole + 901      # the French label an item was built with
+ITEM_HOOKED = set()
+_ITEM_BUSY = [False]                 # an item setter calling another one
+
+
+def _remember(item, text, column=None):
+    if column is None:
+        item.setData(ITEM_SOURCE, text)
+    else:
+        item.setData(column, ITEM_SOURCE, text)
+
+
+def _recall(item, column=None):
+    return item.data(ITEM_SOURCE) if column is None else item.data(column, ITEM_SOURCE)
+
+
+def _hook_item_class(cls, tree_item):
+    """Items built with their label, or given one later, are translated too.
+
+    A tree node, a table cell or a list entry is not a widget: no event reaches
+    it. Its label is captured where the code writes it, and the French source is
+    kept on the item so switching back restores it.
+    """
+    if cls in ITEM_HOOKED:
+        return
+    ITEM_HOOKED.add(cls)
+    original_init = cls.__init__
+    original_set_text = cls.setText
+
+    def init(self, *args):
+        if _ITEM_BUSY[0]:
+            return original_init(self, *args)
+        for index, arg in enumerate(args):
+            if isinstance(arg, str):
+                forwarded = list(args)
+                forwarded[index] = translate(arg)
+                original_init(self, *forwarded)
+                _remember(self, arg)
+                return
+            if isinstance(arg, (list, tuple)) and arg and all(isinstance(value, str) for value in arg):
+                forwarded = list(args)
+                forwarded[index] = [translate(value) for value in arg]
+                original_init(self, *forwarded)
+                for column, text in enumerate(arg):
+                    _remember(self, text, column if tree_item else None)
+                return
+        original_init(self, *args)
+
+    def set_text(self, *args):
+        if _ITEM_BUSY[0]:
+            return original_set_text(self, *args)
+        _ITEM_BUSY[0] = True
+        try:
+            if tree_item:
+                column, text = args[0], args[1]
+                if isinstance(text, str):
+                    _remember(self, text, column)
+                    return original_set_text(self, column, translate(text))
+            else:
+                text = args[0]
+                if isinstance(text, str):
+                    _remember(self, text)
+                    return original_set_text(self, translate(text))
+            return original_set_text(self, *args)
+        finally:
+            _ITEM_BUSY[0] = False
+
+    original_set_data = cls.setData
+
+    def set_data(self, *args):
+        # Some tables write the label through the display role, not the text.
+        if _ITEM_BUSY[0]:
+            return original_set_data(self, *args)
+        wants = (tree_item and len(args) == 3 and args[1] == Qt.DisplayRole and isinstance(args[2], str)) \
+            or (not tree_item and len(args) == 2 and args[0] == Qt.DisplayRole and isinstance(args[1], str))
+        if not wants:
+            return original_set_data(self, *args)
+        _ITEM_BUSY[0] = True
+        try:
+            if tree_item:
+                _remember(self, args[2], args[0])
+                return original_set_data(self, args[0], args[1], translate(args[2]))
+            _remember(self, args[1])
+            return original_set_data(self, args[0], translate(args[1]))
+        finally:
+            _ITEM_BUSY[0] = False
+
+    cls.__init__ = init
+    cls.setText = set_text
+    cls.setData = set_data
+
+
+def translate_items(tree):
+    """Re-apply the stored source to every item under a tree widget."""
+    def walk(item):
+        for column in range(tree.columnCount()):
+            source = _recall(item, column)
+            if source is None:
+                continue
+            displayed = translate(source)
+            if item.text(column) != displayed:
+                item.setText(column, displayed)
+        for index in range(item.childCount()):
+            walk(item.child(index))
+
+    for index in range(tree.topLevelItemCount()):
+        walk(tree.topLevelItem(index))
 
 
 HOOKED = {}
@@ -419,3 +532,5 @@ def install_hooks():
     _hook(QListWidget, "addItem", _translated_item)
     _hook(QListWidget, "addItems", _translated_add_items)
     _hook(QTableWidget, "setHorizontalHeaderLabels", _translated_headers)
+    for cls in (QTreeWidgetItem, QTableWidgetItem, QListWidgetItem):
+        _hook_item_class(cls, tree_item=cls is QTreeWidgetItem)

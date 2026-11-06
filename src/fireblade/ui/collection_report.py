@@ -32,7 +32,8 @@ class OutcomeModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation==Qt.Horizontal and role==Qt.DisplayRole:
-            return ['État','Fichier','Lecteurs','Sorties'][section]
+            from fireblade.core.i18n import translate
+            return translate(['État','Fichier','Lecteurs','Sorties'][section])
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():return None
@@ -100,8 +101,11 @@ class CollectionReport(QWidget):
         self.open_folder.setEnabled(report is not None)
         if report:
             counts=Counter(outcome(e) for e in self.model.entries)
-            self.summary.setText(f"{len(self.model.entries)} fichiers · {counts['complete']} réussis · {counts['warnings']} à vérifier · {counts['errors']} erreurs/interrompus · {counts['unsupported']} non reconnus/ignorés · {counts['other']} autres/compagnons\n"+
-                'Import : '+STATUSES.get(report['status'],report['status'])+' · '+str(len(report.get('documents',[])))+' analyses · Source : '+report['source'])
+            from fireblade.core.i18n import translate
+            head = f"{len(self.model.entries)} fichiers · {counts['complete']} réussis · {counts['warnings']} à vérifier · {counts['errors']} erreurs/interrompus · {counts['unsupported']} non reconnus/ignorés · {counts['other']} autres/compagnons"
+            tail = translate('Import : {} · {} analyses · Source : {}').format(
+                STATUSES.get(report['status'], report['status']), len(report.get('documents', [])), report['source'])
+            self.summary.setText(translate(head) + '\n' + tail)
         else:self.summary.setText('Aucune collecte ouverte. Importez un dossier ou reprenez une collecte existante.')
         self.details.setPlainText('Sélectionnez un fichier pour lire ses avertissements, sa provenance et ses sorties. « Bilan complet » affiche les informations de la collecte.' if report else text)
         self.filter()

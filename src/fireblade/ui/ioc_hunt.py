@@ -20,7 +20,9 @@ class Rows(QAbstractTableModel):
     def data(self,index,role=Qt.DisplayRole):
         if index.isValid() and role in (Qt.DisplayRole,Qt.ToolTipRole):return str(self.rows[index.row()][index.column()])
     def headerData(self,section,orientation,role=Qt.DisplayRole):
-        if role==Qt.DisplayRole:return self.headers[section] if orientation==Qt.Horizontal else str(section+1)
+        if role==Qt.DisplayRole:
+            from fireblade.core.i18n import translate
+            return translate(self.headers[section]) if orientation==Qt.Horizontal else str(section+1)
     def display(self,rows):
         self.beginResetModel();self.rows=rows;self.endResetModel()
 

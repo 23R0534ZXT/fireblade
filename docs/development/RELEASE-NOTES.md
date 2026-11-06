@@ -28,7 +28,7 @@
 - Deux tests de garde : une nouvelle chaîne non traduite fait échouer la suite, et la liste des reliquats ne peut que diminuer.
 - Un test construit la vraie fenêtre en anglais et vérifie qu'aucun mot français n'y reste visible.
 - Un balayage de la fenêtre réelle et de onze fenêtres de dialogue en anglais ne trouve **plus aucun texte français**.
-- Suite complète : **1 328 tests passés**, 31 ignorés, aucune erreur, plateforme Qt Windows.
+- Suite complète : **1 327 tests passés**, 31 ignorés, aucune erreur, plateforme Qt Windows.
 
 # Fireblade 0.3.0 — interface anglaise, regroupement et chronologie lisible
 

@@ -31,7 +31,7 @@ Windows CI runs focused regression tests on Python 3.12, builds the standalone E
 - The built-in guides — full tutorial, user guide, timeline and backups, IOC hunting, coverage — are translated and opened in the chosen language, condition cards and filter operators included.
 - Six strings are deliberately left as they are — sample file names (`évidence.csv`, `résumés.csv`) and two synthetic TLE expressions — because they are data, not interface.
 - Fixed: a tab title accumulated ampersand escapes across language switches (`Timeline &&&& correlations`), and a language pass near a loaded workspace rewrote every tab title for no reason.
-- Verification: **1,328 passed, 31 skipped** on the Windows Qt platform; a sweep of the real window and of eleven dialogs in English finds no French text left. An inventory script measures the coverage, two guard tests stop untranslated text from coming back, and a test reads the real English window to prove nothing French is left on screen.
+- Verification: **1,327 passed, 31 skipped** on the Windows Qt platform; a sweep of the real window and of eleven dialogs in English finds no French text left. An inventory script measures the coverage, two guard tests stop untranslated text from coming back, and a test reads the real English window to prove nothing French is left on screen.
 
 ## Previous release · 0.3.0
 

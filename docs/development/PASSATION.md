@@ -13,7 +13,7 @@ Dernière mise à jour : 6 novembre 2026, après la préparation de la 0.3.1.
 - **0.3.1** : prête sur la branche `hermes/0.3.1-full-translation` — version
   incrémentée, notes de version et README à jour, porte verte. **Pas encore
   poussée** : le mainteneur veut essayer l'application avant.
-- **Vérification de référence** : 1 328 tests passés, 31 ignorés, plateforme Qt
+- **Vérification de référence** : 1 327 tests passés, 31 ignorés, plateforme Qt
   Windows, via `python -m scripts.dev_check` (7 min 19).
 
 ## Ce qui a été livré dans la 0.3.1

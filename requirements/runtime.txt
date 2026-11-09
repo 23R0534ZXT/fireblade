@@ -15,7 +15,7 @@ dissect.cstruct==4.7
 dissect.util==3.24
 
 # Linux journal objects and rotated log streams.
-lz4==4.4.4
+lz4==4.4.5
 zstandard==0.25.0
 
 # Read-only disk images, partition tables and filesystems.

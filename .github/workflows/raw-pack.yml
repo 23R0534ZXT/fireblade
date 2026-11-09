@@ -81,7 +81,7 @@ jobs:
           $arguments = @('-m', 'scripts.raw_pack.finalize', '--directory', "$env:RUNNER_TEMP/fireblade-raw-pack")
           if ('${{ inputs.publish_pack }}' -eq 'true') { $arguments += '--publish' }
           python @arguments
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Raw-pack-validation

@@ -44,7 +44,7 @@ jobs:
           }
           gh release upload test-data-3gib artifacts/test-data/Fireblade-test-3GiB.zip artifacts/test-data/dataset.json artifacts/test-data/publication.json artifacts/test-data/SHA256SUMS.txt --clobber --repo $env:GITHUB_REPOSITORY
           if ($LASTEXITCODE -ne 0) { throw 'Dataset asset upload failed' }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Test-data-publication-metadata

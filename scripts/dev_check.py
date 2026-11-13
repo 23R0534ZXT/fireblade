@@ -18,6 +18,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# La suite et le smoke écrivent leurs fichiers de test sans préciser d'encodage :
+# sous Windows le défaut est la page de code locale (cp1252), et les caractères
+# accentués sortent dans un autre encodage que celui que le code lit. La CI est en
+# UTF-8, donc le forcer ici fait tourner la porte locale dans les mêmes conditions.
+UTF8_ENV = {"PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
+
 
 def run(command, env=None):
     print("$ " + " ".join(command), flush=True)
@@ -57,12 +63,38 @@ def check_smoke():
         "window.close()\n"
         "print('fenêtre principale construite')\n"
     )
-    run([sys.executable, "-c", code], env=dict(os.environ, QT_QPA_PLATFORM="offscreen"))
+    run([sys.executable, "-c", code],
+        env=dict(os.environ, QT_QPA_PLATFORM="offscreen", **UTF8_ENV))
+
+
+def purge_stale_pytest_tmp():
+    """Supprime un dossier temporaire pytest dont l'orthographe a dérivé.
+
+    pytest nomme son dossier temporaire d'après le nom d'utilisateur en minuscules.
+    Windows ne distingue pas la casse : si un dossier du même nom mais écrit autrement
+    existe déjà (ancien compte, ancienne version), pytest le réutilise sans corriger son
+    orthographe. Or resolve() renvoie la casse réelle du disque : les chemins ne
+    correspondent plus aux chaînes attendues et des dizaines de tests échouent sur une
+    majuscule, avec des messages qui n'ont aucun rapport avec la cause.
+    """
+    import getpass
+    import re
+    import shutil
+    import tempfile
+
+    user = re.sub(r"[^A-Za-z0-9_.-]", "_", getpass.getuser()).lower()
+    expected = f"pytest-of-{user}"
+    for path in Path(tempfile.gettempdir()).glob("pytest-of-*"):
+        if path.is_dir() and path.name != expected:
+            print(f"dossier temporaire pytest obsolète supprimé : {path.name}", flush=True)
+            shutil.rmtree(path, ignore_errors=True)
 
 
 def check_tests(platform):
+    purge_stale_pytest_tmp()
     print(f"suite complète, plateforme Qt = {platform}", flush=True)
-    run([sys.executable, "-m", "pytest", "-q"], env=dict(os.environ, QT_QPA_PLATFORM=platform))
+    run([sys.executable, "-m", "pytest", "-q"],
+        env=dict(os.environ, QT_QPA_PLATFORM=platform, **UTF8_ENV))
 
 
 def main(argv=None):

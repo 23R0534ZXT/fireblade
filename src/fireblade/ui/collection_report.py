@@ -1,26 +1,62 @@
-"""Filterable collection outcome table, with complete diagnostics on demand."""
+"""Filterable collection outcome table, with actions on what could not be read."""
 from collections import Counter
 from pathlib import Path
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QSplitter, QTableView, QTextBrowser, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QFileDialog, QHBoxLayout, QLabel,
+    QLineEdit, QMessageBox, QPushButton, QSplitter, QTableView, QTextBrowser, QVBoxLayout, QWidget)
+
+from fireblade.core import report_actions as actions
+from fireblade.core.i18n import translate
 
 STATUSES = {'pending':'En attente', 'running':'En cours', 'complete':'Terminé',
     'complete_with_warnings':'Terminé avec avertissements', 'unsupported':'Non reconnu',
     'skipped':'Ignoré', 'error':'Erreur', 'cancelled':'Interrompu', 'attention':'À vérifier',
-    'no_output':'Aucune sortie', 'companion':'Journal de transaction'}
+    'no_output':'Aucune sortie', 'companion':'Journal de transaction', 'deleted':'Supprimé'}
+
+PREVIEW_LIMIT = 64 * 1024
 
 
 def outcome(entry):
     state=entry['status']
+    # An entry parked by the examiner keeps its state, but leaves the working counts.
+    if entry.get('ignored'):return 'ignored'
     # A file can be "attention" because one of several readers failed.
     # Keep that failure discoverable in the error filter and counters.
     if state in ('error','cancelled') or any(run['status'] in ('error','cancelled') for run in entry.get('runs',[])):return 'errors'
     if state in ('complete_with_warnings','attention','no_output'):return 'warnings'
-    if state in ('unsupported','skipped'):return 'unsupported'
+    if state in ('unsupported','skipped','deleted'):return 'unsupported'
     return 'complete' if state=='complete' else 'other'
+
+
+def preview_text(path, limit=PREVIEW_LIMIT):
+    """Readable preview of any file: text when it decodes, bytes otherwise.
+
+    The point is to recognise a file without opening another tool, so the preview
+    must never fail: an unreadable file comes back as a message, and a binary file
+    is shown as bytes rather than as mojibake.
+    """
+    path=Path(path)
+    try:
+        with path.open('rb') as stream:data=stream.read(limit)
+        size=path.stat().st_size
+    except OSError as error:return translate('Fichier illisible : ')+str(error)
+    if not data:return translate('Fichier vide (0 octet).')
+    controls=sum(1 for byte in data if byte<9 or 13<byte<32)
+    try:
+        text=data.decode('utf-8')
+    except UnicodeDecodeError:
+        if b'\0' in data or controls>max(8,len(data)//20):
+            rows=[]
+            for offset in range(0,len(data),16):
+                block=data[offset:offset+16]
+                printable=''.join(chr(b) if 32<=b<127 else '.' for b in block)
+                rows.append(f'{offset:08x}  '+' '.join(f'{b:02x}' for b in block).ljust(47)+'  '+printable)
+            text='\n'.join(rows)
+        else:text=data.decode('cp1252','replace')
+    if size>len(data):text+='\n\n'+translate('Aperçu tronqué : {} premiers octets sur {}.').format(len(data),size)
+    return text
 
 
 class OutcomeModel(QAbstractTableModel):
@@ -28,12 +64,11 @@ class OutcomeModel(QAbstractTableModel):
         super().__init__(parent);self.entries=[]
 
     def rowCount(self, parent=QModelIndex()):return 0 if parent.isValid() else len(self.entries)
-    def columnCount(self, parent=QModelIndex()):return 4
+    def columnCount(self, parent=QModelIndex()):return 5
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation==Qt.Horizontal and role==Qt.DisplayRole:
-            from fireblade.core.i18n import translate
-            return translate(['État','Fichier','Lecteurs','Sorties'][section])
+            return translate(['État','Fichier','Lecteurs','Motif','Sorties'][section])
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():return None
@@ -42,8 +77,10 @@ class OutcomeModel(QAbstractTableModel):
         if role==Qt.DisplayRole:
             status=STATUSES.get(entry['status'],entry['status'])
             if outcome(entry)=='errors' and entry['status']=='attention':status+=' · erreur de lecteur'
+            if entry.get('ignored'):status+=' · écarté'
             return [status,str(entry.get('path','')),
                     ', '.join(entry.get('tools',[])),
+                    str(entry.get('error','')),
                     sum(len(run.get('outputs',[])) for run in entry.get('runs',[]))][index.column()]
 
 
@@ -60,23 +97,31 @@ class OutcomeFilter(QSortFilterProxyModel):
 class CollectionReport(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._text='';self.report=None
+        self._text='';self.report=None;self.on_changed=None
         layout=QVBoxLayout(self);layout.setContentsMargins(0,0,0,0)
         self.summary=QLabel();self.summary.setTextFormat(Qt.PlainText);self.summary.setWordWrap(True)
         layout.addWidget(self.summary)
         row=QHBoxLayout()
         self.status=QComboBox()
         for label,value in [('Tous les fichiers',''),('Réussis','complete'),('Avertissements / à vérifier','warnings'),
-                            ('Erreurs / interrompus','errors'),('Non reconnus / ignorés','unsupported')]:
+                            ('Erreurs / interrompus','errors'),('Non reconnus / ignorés','unsupported'),
+                            ('Écartés du bilan','ignored')]:
             self.status.addItem(label,value)
         self.search=QLineEdit();self.search.setPlaceholderText('Chercher un fichier ou un lecteur…');self.search.setClearButtonEnabled(True)
         row.addWidget(self.status);row.addWidget(self.search,1)
-        self.open_folder=QPushButton('Ouvrir les résultats')
-        self.open_folder.clicked.connect(self.open_results)
         layout.addLayout(row)
-        actions=QHBoxLayout();actions.addWidget(self.open_folder)
+        self.preview=QPushButton('Voir le fichier');self.preview.clicked.connect(self.show_preview)
+        self.copy_button=QPushButton('Copier les non traités…');self.copy_button.clicked.connect(self.copy_unprocessed)
+        self.export_button=QPushButton('Exporter la liste…');self.export_button.clicked.connect(self.export_list)
+        self.ignore_button=QPushButton('Écarter du bilan');self.ignore_button.clicked.connect(self.toggle_ignored)
+        self.remove_button=QPushButton('Supprimer…');self.remove_button.clicked.connect(self.remove_current)
+        self.open_folder=QPushButton('Ouvrir les résultats');self.open_folder.clicked.connect(self.open_results)
+        buttons=QHBoxLayout()
+        for button in (self.preview,self.copy_button,self.export_button,self.ignore_button,self.remove_button):
+            buttons.addWidget(button)
+        buttons.addStretch();buttons.addWidget(self.open_folder);layout.addLayout(buttons)
         complete=QPushButton('Bilan complet');complete.clicked.connect(lambda:self.details.setPlainText(self._text))
-        actions.addWidget(complete);actions.addStretch();layout.addLayout(actions)
+        tail=QHBoxLayout();tail.addWidget(complete);tail.addStretch();layout.addLayout(tail)
         self.splitter=QSplitter(Qt.Vertical)
         self.table=QTableView();self.model=OutcomeModel(self)
         self.proxy=OutcomeFilter(self);self.proxy.setSourceModel(self.model)
@@ -86,38 +131,63 @@ class CollectionReport(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True);self.table.setWordWrap(False)
         self.table.verticalHeader().hide()
-        self.table.setColumnWidth(0,190);self.table.setColumnWidth(1,390);self.table.setColumnWidth(2,140)
-        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setColumnWidth(0,190);self.table.setColumnWidth(1,330);self.table.setColumnWidth(2,130)
+        self.table.setColumnWidth(3,230);self.table.horizontalHeader().setStretchLastSection(True)
         self.details=QTextBrowser();self.details.setOpenExternalLinks(False)
         self.splitter.addWidget(self.table);self.splitter.addWidget(self.details)
-        self.splitter.setSizes([380,120]);layout.addWidget(self.splitter,1)
+        self.splitter.setSizes([380,160]);layout.addWidget(self.splitter,1)
         self.status.currentIndexChanged.connect(self.filter)
         self.search.textChanged.connect(self.filter)
         self.table.selectionModel().currentChanged.connect(self.show_entry)
+        self.table.doubleClicked.connect(lambda *_:self.show_preview())
+        self.refresh_buttons()
 
     def set_report(self, report, text):
         self.report=report;self._text=text
         self.model.beginResetModel();self.model.entries=report.get('files',[]) if report else [];self.model.endResetModel()
         self.open_folder.setEnabled(report is not None)
+        self.copy_button.setEnabled(report is not None)
+        self.export_button.setEnabled(report is not None)
+        self.refresh_buttons()
         if report:
             counts=Counter(outcome(e) for e in self.model.entries)
-            from fireblade.core.i18n import translate
-            head = f"{len(self.model.entries)} fichiers · {counts['complete']} réussis · {counts['warnings']} à vérifier · {counts['errors']} erreurs/interrompus · {counts['unsupported']} non reconnus/ignorés · {counts['other']} autres/compagnons"
-            tail = translate('Import : {} · {} analyses · Source : {}').format(
-                STATUSES.get(report['status'], report['status']), len(report.get('documents', [])), report['source'])
-            self.summary.setText(translate(head) + '\n' + tail)
+            head=(f"{len(self.model.entries)} fichiers · {counts['complete']} réussis · {counts['warnings']} à vérifier · "
+                  f"{counts['errors']} erreurs/interrompus · {counts['unsupported']} non reconnus/ignorés · "
+                  f"{counts['other']} autres/compagnons · {counts['ignored']} écartés")
+            tail=translate('Import : {} · {} analyses · Source : {}').format(
+                STATUSES.get(report['status'],report['status']),len(report.get('documents',[])),report['source'])
+            self.summary.setText(translate(head)+'\n'+tail)
         else:self.summary.setText('Aucune collecte ouverte. Importez un dossier ou reprenez une collecte existante.')
-        self.details.setPlainText('Sélectionnez un fichier pour lire ses avertissements, sa provenance et ses sorties. « Bilan complet » affiche les informations de la collecte.' if report else text)
+        self.details.setPlainText('Sélectionnez un fichier pour lire ses avertissements, sa provenance et ses sorties. '
+            '« Voir le fichier » affiche un aperçu de son contenu, sans jamais modifier la preuve.' if report else text)
         self.filter()
 
     def filter(self, *_):
         self.proxy.status=self.status.currentData();self.proxy.query=self.search.text().strip().casefold()
         self.proxy.invalidate()
 
+    def current_entry(self):
+        current=self.table.currentIndex()
+        if not current.isValid():return None
+        return self.model.entries[self.proxy.mapToSource(current).row()]
+
+    def refresh_buttons(self):
+        entry=self.current_entry()
+        usable=entry is not None and entry.get('status')!='deleted'
+        self.preview.setEnabled(usable)
+        self.ignore_button.setEnabled(usable)
+        self.remove_button.setEnabled(usable)
+        self.ignore_button.setText('Réintégrer au bilan' if entry and entry.get('ignored') else 'Écarter du bilan')
+
+    def notify(self):
+        if callable(self.on_changed):self.on_changed()
+
     def show_entry(self, current, *_):
+        self.refresh_buttons()
         if not current.isValid():return
         entry=self.model.entries[self.proxy.mapToSource(current).row()]
         lines=[str(entry.get('path','')), 'État : '+STATUSES.get(entry['status'],entry['status'])]
+        if entry.get('ignored'):lines+=['Écarté du bilan : décision de l\'analyste, le fichier reste décrit ici.']
         if entry.get('sha256'):lines+=['SHA-256 : '+entry['sha256']]
         if entry.get('error'):lines+=[entry['error']]
         for run in entry.get('runs',[]):
@@ -129,6 +199,57 @@ class CollectionReport(QWidget):
             for output in run.get('outputs',[]):
                 lines+=['Sortie : '+str(output.get('csv',''))]
         self.details.setPlainText('\n'.join(lines))
+
+    def show_preview(self):
+        entry=self.current_entry()
+        if not entry:return
+        self.details.setPlainText(str(entry.get('path',''))+'\n\n'+preview_text(entry.get('path','')))
+
+    def copy_unprocessed(self):
+        if not self.report:return
+        pending=[e for e in self.model.entries if outcome(e) in ('unsupported','errors')]
+        if not pending:
+            QMessageBox.information(self,'Rien à copier','Tous les fichiers ont été traités.')
+            return
+        destination=QFileDialog.getExistingDirectory(self,'Dossier de destination des fichiers non traités')
+        if not destination:return
+        result=actions.copy_unprocessed(pending,destination,self.report.get('source'))
+        QMessageBox.information(self,'Copie terminée',translate(
+            "{} fichiers copiés, {} déjà présents, {} échecs.\n\nDossier : {}").format(
+            len(result['copied']),len(result['skipped']),len(result['failed']),result['destination']))
+        if result['failed']:
+            self.details.setPlainText('\n'.join(f'{path} : {reason}' for path,reason in result['failed']))
+
+    def export_list(self):
+        if not self.report:return
+        target,_=QFileDialog.getSaveFileName(self,'Exporter la liste des fichiers','bilan-import.csv','CSV (*.csv)')
+        if not target:return
+        visible=[self.model.entries[self.proxy.mapToSource(self.proxy.index(row,0)).row()]
+                 for row in range(self.proxy.rowCount())]
+        actions.export_rows(visible,target,translate)
+        QMessageBox.information(self,'Liste exportée',target)
+
+    def toggle_ignored(self):
+        entry=self.current_entry()
+        if not entry:return
+        actions.set_ignored(entry,not entry.get('ignored'))
+        self.refresh_buttons();self.show_entry(self.table.currentIndex());self.notify()
+
+    def remove_current(self):
+        entry=self.current_entry()
+        if not entry:return
+        path=str(entry.get('path',''))
+        answer=QMessageBox.warning(self,translate('Supprimer le fichier ?'),translate(
+            "%s\n\nLe fichier sera supprimé du disque. Son empreinte SHA-256 restera dans le bilan, et la "
+            "suppression est refusée si le fichier a changé depuis la collecte.\n\nContinuer ?")%path,
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer!=QMessageBox.Yes:return
+        try:
+            record=actions.remove_source(entry)
+        except (OSError, ValueError) as error:
+            QMessageBox.warning(self,'Suppression impossible',str(error));return
+        entry.update(record)
+        self.model.layoutChanged.emit();self.show_entry(self.table.currentIndex());self.notify()
 
     def open_results(self):
         if self.report:QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(self.report['output']))))

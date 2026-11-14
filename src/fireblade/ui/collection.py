@@ -92,6 +92,7 @@ class CollectionMixin(AlertContextMixin):
         detection_layout.addStretch()
         from fireblade.ui.collection_report import CollectionReport
         self.collection_report = CollectionReport()
+        self.collection_report.on_changed = self.save_collection_report
         layout.addWidget(self.collection_report, 1)
         self.workbench.addTab(panel, 'Imports')
         self.setCentralWidget(self.workbench)
@@ -115,6 +116,12 @@ class CollectionMixin(AlertContextMixin):
 
     def toolpack(self):
         return ToolPack(resource_path('forensic-tools'))
+
+    def save_collection_report(self):
+        """Persist the examiner's decisions with the collection they belong to."""
+        collection = getattr(self, 'collection', None)
+        if collection is not None:
+            collection.save()
 
     def show_collection_report(self, report=None):
         pack = self.toolpack()

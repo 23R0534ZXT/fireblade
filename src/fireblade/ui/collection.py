@@ -6,7 +6,7 @@ import uuid
 
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QAction, QPalette
-from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.ui.language import source_text
@@ -17,34 +17,72 @@ from fireblade.runtime.windows_paths import user_directory
 
 
 class CollectionOrganizationDialog(QDialog):
+    """Two decisions, stated separately: do I wait, and what do I get at the end.
+
+    They used to be three options in one list, which is why no label could say what
+    each one did: "progressive results" is about staying usable during the parse, while
+    "by artifact" and "unified view" are about how the results are laid out.
+    """
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle('Présentation des résultats')
-        self.resize(570, 260)
+        self.setWindowTitle("Collection results")
+        self.resize(630, 450)
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel('Organisation'))
-        self.progressive = QRadioButton('Résultats progressifs (recommandé)')
+        layout.setSpacing(8)
+        intro = QLabel("Fireblade reads every file of the folder. Choose whether you wait for the parse; the results layout applies when you do.")
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+        self.progressive = QCheckBox("Keep working while the folder is parsed")
         self.progressive.setChecked(True)
         layout.addWidget(self.progressive)
-        self.artifacts = QRadioButton('Par artefact')
+        self.progressive_hint = QLabel()
+        self.progressive_hint.setWordWrap(True)
+        self.progressive_hint.setIndent(22)
+        layout.addWidget(self.progressive_hint)
+        section = QLabel("Results layout")
+        section.setStyleSheet("font-weight: 600; margin-top: 6px;")
+        layout.addWidget(section)
+        self.artifacts = QRadioButton("By artifact — recommended")
+        self.artifacts.setChecked(True)
         layout.addWidget(self.artifacts)
-        separate = QLabel('Résultats réunis par famille, disponibles en fin de traitement.')
-        separate.setWordWrap(True)
-        layout.addWidget(separate)
-        self.combined = QRadioButton('Vue unifiée')
+        self.artifacts_hint = QLabel("One tab per artifact family, all of them listed in the navigation tree, and each grid keeps its own columns and filters.")
+        self.artifacts_hint.setWordWrap(True)
+        self.artifacts_hint.setIndent(22)
+        layout.addWidget(self.artifacts_hint)
+        self.combined = QRadioButton("Unified view")
         layout.addWidget(self.combined)
-        merged = QLabel('Une grille regroupée par artefact, avec provenance conservée.')
-        merged.setWordWrap(True)
-        layout.addWidget(merged)
+        self.combined_hint = QLabel("A single grid holding every artifact, grouped by artifact. The grouping is fixed — it cannot be removed — and the columns of all sources are merged.")
+        self.combined_hint.setWordWrap(True)
+        self.combined_hint.setIndent(22)
+        layout.addWidget(self.combined_hint)
+        self.layout_hint = QLabel("A merged layout needs the whole folder: uncheck the box above to choose one.")
+        self.layout_hint.setWordWrap(True)
+        layout.addWidget(self.layout_hint)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.button(QDialogButtonBox.Ok).setText('Démarrer')
-        buttons.button(QDialogButtonBox.Cancel).setText('Annuler')
+        buttons.button(QDialogButtonBox.Ok).setText("Start parsing")
+        buttons.button(QDialogButtonBox.Cancel).setText("Cancel")
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        self.progressive.toggled.connect(self.sync_state)
+        self.sync_state()
+
+    def sync_state(self):
+        """The layout choice only exists when the parse is allowed to finish first."""
+        waiting = not self.progressive.isChecked()
+        for widget in (self.artifacts, self.combined, self.artifacts_hint, self.combined_hint):
+            widget.setEnabled(waiting)
+        self.progressive_hint.setText(
+            "Each analysed file opens in its own grid as it is parsed, and you can keep working on what is already open."
+            if self.progressive.isChecked() else
+            "Fireblade stays on this parse, then opens the results in the layout chosen below.")
+        self.layout_hint.setVisible(not waiting)
 
     def organization(self):
-        return 'files' if self.progressive.isChecked() else ('combined' if self.combined.isChecked() else 'artifacts')
+        if self.progressive.isChecked():
+            return "files"
+        return "combined" if self.combined.isChecked() else "artifacts"
 
 
 class CollectionMixin(AlertContextMixin):

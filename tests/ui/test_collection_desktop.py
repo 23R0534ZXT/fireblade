@@ -33,18 +33,41 @@ def test_native_collection_opens_results_and_keeps_report(qt_application,tmp_pat
         window.close()
 
 
-def test_collection_organization_dialog_exposes_two_choices(qt_application):
+def test_the_collection_dialog_separates_waiting_from_layout(qt_application):
+    """Two decisions, stated separately: the report asked for exactly that."""
     from fireblade.ui.collection import CollectionOrganizationDialog
     from PySide6.QtWidgets import QDialogButtonBox
-    dialog=CollectionOrganizationDialog()
+    dialog = CollectionOrganizationDialog()
     try:
-        assert dialog.organization()=='files'
-        dialog.combined.click()
-        assert dialog.organization()=='combined'
-        assert not dialog.artifacts.isChecked()
+        # Working while the folder is parsed: one grid per result, no merged layout.
+        assert dialog.organization() == 'files'
+        assert dialog.progressive.isChecked()
+        assert not dialog.artifacts.isEnabled() and not dialog.combined.isEnabled()
+        assert dialog.layout_hint.isVisibleTo(dialog)
+
+        dialog.progressive.setChecked(False)
+        assert dialog.artifacts.isEnabled() and dialog.combined.isEnabled()
+        assert dialog.artifacts.isChecked(), "by artifact is the recommended default"
+        assert dialog.organization() == 'artifacts'
+
+        dialog.combined.setChecked(True)
+        assert dialog.organization() == 'combined'
+
+        dialog.progressive.setChecked(True)
+        assert dialog.organization() == 'files', "waiting rules out a merged layout"
+
+        # Every option says what it does: the whole point of the rework.
+        texts = [dialog.artifacts.text(), dialog.artifacts_hint.text(),
+                 dialog.combined.text(), dialog.combined_hint.text()]
+        assert 'recommended' in texts[0]
+        assert 'navigation tree' in texts[1] and 'own columns' in texts[1]
+        assert 'cannot be removed' in texts[3]
+        assert not [text for text in texts if not text.strip()]
+
         dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Ok).click()
-        assert dialog.result()==1
-    finally:dialog.close()
+        assert dialog.result() == 1
+    finally:
+        dialog.close()
 
 
 def test_grouped_collection_opens_with_saved_group_by(qt_application,tmp_path,monkeypatch):
@@ -77,6 +100,8 @@ def test_import_prompt_applies_organization_and_cancel_does_not_start(qt_applica
         window.parse_collection()
         assert window.collection is None and not window.jobs
         def accept_combined(dialog):
+            # A merged layout needs the parse to finish first: uncheck, then choose.
+            dialog.progressive.setChecked(False)
             dialog.combined.setChecked(True)
             return QDialog.DialogCode.Accepted
         monkeypatch.setattr(ui.CollectionOrganizationDialog,'exec',accept_combined)

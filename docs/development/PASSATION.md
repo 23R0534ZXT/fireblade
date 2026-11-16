@@ -189,7 +189,7 @@ gh release create vX.Y.Z --title "<titre>" --notes-file body.md "<exe vérifié>
 
 ## Vérification
 
-- Dernier passage de la porte pour la 0.4.0 : **1 395 tests passés, 28 ignorés**,
+- Dernier passage de la porte pour la 0.4.0 : **1 406 tests passés, 28 ignorés**,
   plateforme Qt Windows, fenêtre réelle construite, ruff propre — via
   `powershell -File C:\Users\23R\run_gate.ps1` (voir plus haut pour l'interpréteur).
 - Sondes hors suite, sur fichiers réels : 46 contrôles (texte UTF-8/cp1252/UTF-16/BOM,

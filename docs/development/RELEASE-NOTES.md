@@ -88,7 +88,7 @@ analyse qui paraît complète.
 
 ## Vérification
 
-- Suite complète : **1 395 passés, 28 ignorés**, plateforme Qt Windows, fenêtre réelle construite, ruff propre.
+- Suite complète : **1 406 passés, 28 ignorés**, plateforme Qt Windows, fenêtre réelle construite, ruff propre.
 - Sondes sur fichiers réels : 46 contrôles sur texte, page HTML, PDF (dont un de trois pages et un
   chiffré) et arborescence de collecte — 46 sur 46 ; journal de 100 000 lignes importé en 1,5 s.
 - Aucun échec restant. Les familles d'échecs rencontrées venaient de la porte et de son garde-fou de

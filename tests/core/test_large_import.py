@@ -8,6 +8,8 @@ than the configured budget, which is how the failure was met in the field.
 import csv
 import os
 
+import pytest
+
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.settings import Settings
 
@@ -81,6 +83,45 @@ def test_a_file_past_the_threshold_is_committed_chunk_by_chunk(tmp_path, monkeyp
         assert case.db.execute('SELECT count(*) FROM events WHERE __row_id IS NULL').fetchone()[0] == 0
         assert case.streaming_chunks > 1, 'le fichier est commité par tranches, pas d’un bloc'
     finally:
+        case.close()
+
+
+def test_a_file_within_the_threshold_is_read_in_one_pass(tmp_path):
+    """A file that fits one transaction is read once, not through temporary chunks."""
+    from fireblade.core.engine import Case
+
+    source = tmp_path/'big.log'
+    write_big_log(source, rows=60000, columns=12)
+    case = Case(tmp_path/'direct.timeline', settings=Settings(memory_mb=64, threads=1))
+    try:
+        info = case.import_csv(source)
+        assert info['rows'] == 60000
+        assert case.single_pass_used, 'sous le seuil, le fichier doit etre lu d\'un seul passage'
+        assert case.streaming_chunks == 0
+        assert case.db.execute('SELECT "c1" FROM events WHERE __row_id = 60000').fetchone()[0] == 'valeur 59999-0'
+        assert case.db.execute('SELECT count(*) FROM events WHERE __row_id IS NULL').fetchone()[0] == 0
+        assert not list(tmp_path.glob('.fireblade-import-*'))
+    finally:
+        case.close()
+
+
+def test_a_cancel_during_the_single_pass_ends_cancelled_and_leaves_no_table(tmp_path):
+    """An interrupt inside the one-pass read must surface as a cancellation."""
+    import threading
+    from fireblade.core.engine import Case
+    from fireblade.core.errors import OperationCancelled
+
+    source = tmp_path/'big.log'
+    write_big_log(source, rows=300000, columns=20)
+    case = Case(tmp_path/'direct.timeline', settings=Settings(memory_mb=256, threads=1))
+    timer = threading.Timer(0.2, case.interrupt)
+    try:
+        timer.start()
+        with pytest.raises(OperationCancelled):
+            case.import_csv(source)
+        assert case.db.execute('SHOW TABLES').fetchall() == []
+    finally:
+        timer.cancel()
         case.close()
 
 

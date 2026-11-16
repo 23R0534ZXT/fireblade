@@ -32,6 +32,8 @@ def test_wide_unicode_records_are_flushed_without_accumulating_hundreds_of_rows(
 @pytest.mark.parametrize('delimiter', [',', ';', '\t', '|'])
 def test_chunked_import_preserves_dialect_duplicates_multiline_and_record_order(tmp_path, monkeypatch, delimiter):
     monkeypatch.setattr(csv_chunks, 'CHUNK_BYTES', 8192)
+    # These tests exercise the chunked path; the one-pass path has its own.
+    monkeypatch.setattr(Case, 'single_pass_limit', lambda self: 0)
     source = tmp_path / 'source.csv'
     values = [[str(i), f'"élève"{delimiter}日本語\r\nseconde ligne {i}', '', '0009007199254740993'] for i in range(1300)]
     with source.open('w', encoding='cp1252', newline='', errors='xmlcharrefreplace') as out:
@@ -61,6 +63,8 @@ def test_chunked_import_preserves_dialect_duplicates_multiline_and_record_order(
 
 def test_cancel_after_written_batch_rolls_back_and_cleans_up(tmp_path, monkeypatch):
     monkeypatch.setattr(csv_chunks, 'CHUNK_BYTES', 8192)
+    # These tests exercise the chunked path; the one-pass path has its own.
+    monkeypatch.setattr(Case, 'single_pass_limit', lambda self: 0)
     source = tmp_path / 'source.csv'
     source.write_text('A,B\n' + ''.join(f'{i},value-{i}\n' for i in range(5000)), encoding='utf-8')
     digest = hashlib.sha256(source.read_bytes()).digest()
@@ -85,6 +89,8 @@ def test_cancel_after_written_batch_rolls_back_and_cleans_up(tmp_path, monkeypat
 
 def test_late_invalid_width_rolls_back_all_batches(tmp_path, monkeypatch):
     monkeypatch.setattr(csv_chunks, 'CHUNK_BYTES', 8192)
+    # These tests exercise the chunked path; the one-pass path has its own.
+    monkeypatch.setattr(Case, 'single_pass_limit', lambda self: 0)
     source = tmp_path / 'source.csv'
     # The invalid record is beyond the native 20,480-record sniff sample.
     source.write_text('A,B\n' + 'valid,value\n'*24000 + 'invalid,value,extra\n', encoding='utf-8')

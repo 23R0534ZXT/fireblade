@@ -24,6 +24,7 @@ Windows CI runs focused regression tests on Python 3.12, builds the standalone E
 - **Read again with a reader…** analyses the selected file with the reader you choose — **text**, **saved HTML page** (visible text and links, no browser), **PDF (text layer)**, **CSV/TSV table** — imports the result like any other source and opens the new analysis. The file is only read; the hash taken at that read is the reference, and a later read is refused if the file changed.
 - **PDF**: the text layer is extracted page by page, one row per line with its page number. No OCR, and that is a decision: a PDF with no text layer is reported as such and counted with the warnings, instead of producing empty rows that would look like an analysis. `pypdf` ships with the executable and stays an optional extra for a source install; without it the PDF reader is greyed out with the reason.
 - A binary file is never read as text, a page that fails does not lose its neighbours, and every reader feeds the same timeline, search and reports. Text is decoded the way Windows writes it: UTF-16 with a byte-order mark (redirected PowerShell output, "Unicode" Notepad files), UTF-8 with a BOM, or the French code page for a saved page — and a file read in part says so.
+- **Imports got faster where it matters**: a CSV is read in one pass instead of one temporary chunk every few megabytes — 3.65 GB in 69 s instead of 148 s, at the same memory budget — and a folder's files are parsed on several workers, merged back in file order. The measured comparison with Timeline Explorer is in `docs/development/BENCHMARK-0.4.0.md`.
 - Fixed in the verification gate itself: the suite ran in the local code page while the code reads UTF-8 (25 failures that were not product bugs), a stale `%TEMP%\pytest-of-…` folder made paths differ by one capital letter (the last 7), and the "core does not load Qt" check now keeps the interpreter's packages instead of failing on an environment detail.
 
 ## Previous release · 0.3.1
@@ -102,7 +103,7 @@ For a first evaluation, use the sample data below. The application remains an **
 - Multiple folders are queued and parsed sequentially in the background.
 - Verified results appear progressively without replacing the active analysis.
 - Import diagnostics are available on demand from **Aide**, rather than a permanent primary tab.
-- Wide CSV imports can fall back to bounded row insertion; wide pages are read in column batches when the native query exceeds its memory budget.
+- A CSV that fits one transaction (about 2 GiB, or eight times the budget) is read in a single pass; above that, imports commit chunk by chunk, and a very wide file can still fall back to bounded row insertion. Wide pages are read in column batches when the native query exceeds its memory budget.
 - **Archiver et libérer l’espace** creates and verifies an archive before removing local case work files. Original evidence outside the case is retained; the archive remains available for restoration.
 - NTFS traversal, SQLite companion journals, analysis-file validation and export destination protection include the audit fixes.
 - The optional ten-second startup sequence uses locally bundled footage and bounded frame decoding.

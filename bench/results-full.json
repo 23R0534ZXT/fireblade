@@ -4,104 +4,104 @@
     "size_mb": 28.0,
     "budget_mb": 1024,
     "threads": 4,
-    "import_seconds": 1.23,
+    "import_seconds": 0.75,
     "peak_mb": 0.0,
-    "throughput_mb_s": 22.8,
+    "throughput_mb_s": 37.3,
     "verify": {
       "ok": true,
       "problems": [],
       "rows": 250000,
-      "verify_seconds": 0.39
+      "verify_seconds": 0.44
     },
     "search": {
-      "seconds": 0.05,
-      "hits": 250085,
+      "seconds": 0.03,
+      "hits": 250000,
       "host_rows": 6757
     },
-    "at": "2026-11-16 11:47:25"
+    "at": "2026-11-16 15:12:15"
   },
   {
     "rows": 1000000,
     "size_mb": 112.4,
     "budget_mb": 1024,
     "threads": 4,
-    "import_seconds": 5.11,
+    "import_seconds": 2.38,
     "peak_mb": 0.0,
-    "throughput_mb_s": 22.0,
+    "throughput_mb_s": 47.2,
     "verify": {
       "ok": true,
       "problems": [],
       "rows": 1000000,
-      "verify_seconds": 1.44
+      "verify_seconds": 2.33
     },
     "search": {
       "seconds": 0.17,
-      "hits": 1000425,
+      "hits": 1000000,
       "host_rows": 27027
     },
-    "at": "2026-11-16 11:47:35"
+    "at": "2026-11-16 15:12:20"
   },
   {
     "rows": 4000000,
     "size_mb": 453.0,
     "budget_mb": 1024,
     "threads": 4,
-    "import_seconds": 19.67,
+    "import_seconds": 7.89,
     "peak_mb": 0.0,
-    "throughput_mb_s": 23.0,
+    "throughput_mb_s": 57.4,
     "verify": {
       "ok": true,
       "problems": [],
       "rows": 4000000,
-      "verify_seconds": 5.56
+      "verify_seconds": 5.8
     },
     "search": {
-      "seconds": 0.69,
-      "hits": 4001704,
+      "seconds": 0.45,
+      "hits": 4000000,
       "host_rows": 108108
     },
-    "at": "2026-11-16 11:48:12"
+    "at": "2026-11-16 15:12:34"
   },
   {
     "rows": 16000000,
     "size_mb": 1821.3,
     "budget_mb": 1024,
     "threads": 4,
-    "import_seconds": 74.33,
+    "import_seconds": 33.36,
     "peak_mb": 0.0,
-    "throughput_mb_s": 24.5,
+    "throughput_mb_s": 54.6,
     "verify": {
       "ok": true,
       "problems": [],
       "rows": 16000000,
-      "verify_seconds": 22.44
+      "verify_seconds": 29.75
     },
     "search": {
-      "seconds": 2.86,
-      "hits": 16008818,
+      "seconds": 1.74,
+      "hits": 16000000,
       "host_rows": 432433
     },
-    "at": "2026-11-16 11:50:35"
+    "at": "2026-11-16 15:13:39"
   },
   {
     "rows": 32000000,
     "size_mb": 3653.7,
     "budget_mb": 1024,
     "threads": 4,
-    "import_seconds": 147.83,
+    "import_seconds": 69.11,
     "peak_mb": 0.0,
-    "throughput_mb_s": 24.7,
+    "throughput_mb_s": 52.9,
     "verify": {
       "ok": true,
       "problems": [],
       "rows": 32000000,
-      "verify_seconds": 44.58
+      "verify_seconds": 58.64
     },
     "search": {
-      "seconds": 5.69,
-      "hits": 32016639,
+      "seconds": 5.83,
+      "hits": 32000000,
       "host_rows": 864865
     },
-    "at": "2026-11-16 11:55:21"
+    "at": "2026-11-16 15:15:53"
   }
 ]

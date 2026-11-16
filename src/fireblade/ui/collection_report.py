@@ -65,16 +65,18 @@ class ReaderDialog(QDialog):
 
     READERS = (('text', 'Texte', 'Une ligne par ligne ; un horodatage est gardé seulement s\'il ouvre la ligne.'),
                ('html', 'Page HTML enregistrée', 'Texte visible et liens, sans navigateur ni dépendance.'),
+               ('pdf', 'PDF (couche texte)', 'Le texte du document, page par page ; un scan reste non lu.'),
                ('csv', 'Tableau CSV / TSV', 'Colonnes importées telles quelles, sans réinterprétation.'))
 
     def __init__(self, path, parent=None):
         super().__init__(parent)
         self.setWindowTitle(translate('Relancer avec un lecteur'))
-        self.resize(580, 280)
+        self.resize(580, 330)
         layout = QVBoxLayout(self)
         name = QLabel(str(path))
         name.setWordWrap(True)
         layout.addWidget(name)
+        from fireblade.core import pdfreader
         self._choices = []
         for code, label, hint in self.READERS:
             choice = QRadioButton(translate(label))
@@ -85,6 +87,10 @@ class ReaderDialog(QDialog):
             reason.setWordWrap(True)
             reason.setIndent(24)
             layout.addWidget(reason)
+            if code == 'pdf' and not pdfreader.available():
+                # Never offer a reader that cannot read: say what is missing instead.
+                choice.setEnabled(False)
+                reason.setText(translate("Extension pypdf absente : installez-la pour lire un PDF."))
         self._choices[0].setChecked(True)
         note = QLabel(translate("Le fichier est lu, jamais modifié. Son empreinte SHA-256 est relevée, et une "
                                 "lecture ultérieure sera refusée si le fichier change."))

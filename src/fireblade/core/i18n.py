@@ -1265,6 +1265,9 @@ EN = {
     "Analyser": "Analyse",
     "Annuler": "Cancel",
     "Importez ou reprenez une collecte avant de relancer un fichier.": "Import or reopen a collection before reading a file again.",
+    "PDF (couche texte)": "PDF (text layer)",
+    "Le texte du document, page par page ; un scan reste non lu.": "The document text, page by page; a scan stays unread.",
+    "Extension pypdf absente : installez-la pour lire un PDF.": "pypdf is not installed: add it to read a PDF.",
 }
 
 LANGUAGES = ("en", "fr")

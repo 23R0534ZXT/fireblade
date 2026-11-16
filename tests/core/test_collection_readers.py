@@ -123,3 +123,42 @@ def test_a_file_the_collection_never_saw_still_gets_a_line_in_the_report(collect
 
     assert entry['status'] == 'complete'
     assert entries(collection.report)['ajoutée après la collecte.txt'] is entry
+
+
+def test_a_pdf_read_on_request_becomes_an_analysis(collection):
+    pytest.importorskip('pypdf')
+    from pdf_sample import build_pdf
+    collection.parse()
+    document = collection.root/'contrat.pdf'
+    document.write_bytes(build_pdf('Signé le 14/11/2026 par la direction'))
+
+    entry = collection.analyse_single(document, 'pdf')
+
+    assert entry['status'] == 'complete' and entry['tools'] == ['PDFReader']
+    assert Path(entry['runs'][-1]['outputs'][0]['analysis']).is_file()
+
+
+def test_a_scanned_pdf_is_reported_rather_than_read_invented(collection):
+    pytest.importorskip('pypdf')
+    from pdf_sample import build_pdf
+    collection.parse()
+    scan = collection.root/'scan.pdf'
+    scan.write_bytes(build_pdf(None))
+
+    entry = collection.analyse_single(scan, 'pdf')
+
+    assert entry['status'] == 'no_output'
+    assert 'sans couche texte' in entry['error']
+    assert collection.report['documents'] == []
+
+
+def test_a_pdf_without_the_extension_is_refused_before_reading(collection, monkeypatch):
+    from fireblade.core import pdfreader
+    monkeypatch.setattr(pdfreader, 'backend', lambda: None)
+    collection.parse()
+    document = collection.root/'facture.pdf'
+    document.write_bytes(b'%PDF-1.4\n')
+
+    entry = collection.analyse_single(document, 'pdf')
+
+    assert entry['status'] == 'error' and 'pypdf' in entry['error']

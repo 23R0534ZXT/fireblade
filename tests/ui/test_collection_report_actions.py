@@ -70,7 +70,21 @@ def test_the_reader_dialog_offers_every_reader_and_starts_on_text(qt_application
         dialog._choices[1].setChecked(True)
         assert dialog.reader() == 'html'
         dialog._choices[2].setChecked(True)
+        assert dialog.reader() == 'pdf'
+        dialog._choices[3].setChecked(True)
         assert dialog.reader() == 'csv'
+    finally:
+        dialog.deleteLater()
+
+
+def test_the_pdf_reader_is_not_offered_without_its_extension(qt_application, monkeypatch):
+    from fireblade.core import pdfreader
+    monkeypatch.setattr(pdfreader, 'backend', lambda: None)
+    dialog = report.ReaderDialog('C:/preuves/note.bin')
+    try:
+        assert dialog._choices[2].property('reader') == 'pdf'
+        assert not dialog._choices[2].isEnabled()
+        assert dialog._choices[0].isEnabled() and dialog._choices[3].isEnabled()
     finally:
         dialog.deleteLater()
 

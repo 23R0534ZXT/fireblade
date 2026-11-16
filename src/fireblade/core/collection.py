@@ -254,7 +254,7 @@ class Collection:
         report next to the hash it was made on, so the decision can be reviewed and
         the outcome reproduced. The source is read, never modified.
         """
-        if reader not in ('text', 'html', 'csv'):
+        if reader not in ('text', 'html', 'csv', 'pdf'):
             raise ValueError('Lecteur inconnu : '+str(reader))
         path = Path(path).resolve()
         if not path.is_file():
@@ -266,7 +266,7 @@ class Collection:
         if entry.get('sha256') and entry['sha256'] != digest:
             raise ValueError('Le fichier a changé depuis la collecte ; analyse refusée')
         entry['sha256'] = digest
-        tool = 'native' if reader == 'csv' else 'TextReader'
+        tool = 'native' if reader == 'csv' else ('PDFReader' if reader == 'pdf' else 'TextReader')
         run = dict(tool=tool, status='running', outputs=[], reader=reader)
         entry.setdefault('runs', []).append(run)
         folder = self.output/'results'/uuid.uuid4().hex
@@ -274,6 +274,22 @@ class Collection:
         try:
             if reader == 'csv':
                 csvs = [path]
+            elif reader == 'pdf':
+                from fireblade.core import pdfreader
+                if not pdfreader.available():
+                    raise ValueError("Lecteur PDF indisponible : installez l’extension pypdf")
+                target = folder/(uuid.uuid4().hex+'.csv')
+                result = pdfreader.write_csv(path, target)
+                run['pdf'] = result
+                entry['tools'] = sorted(set(entry.get('tools', [])) | {tool})
+                if result['status'] == 'scanned':
+                    # A scan is a finding, not a failure: it is reported as no output.
+                    run.update(status='no_output', error='PDF sans couche texte : un scan ne se lit pas sans OCR')
+                    entry.update(status='no_output', error=run['error'])
+                    return entry
+                if not result['rows']:
+                    raise ValueError('Aucune ligne lisible dans ce fichier')
+                csvs = [target]
             else:
                 from fireblade.core import textreader
                 target = folder/(uuid.uuid4().hex+'.csv')

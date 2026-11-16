@@ -180,9 +180,13 @@ def fireblade_operations(case_path, total):
     try:
         # Columns are positional: c0 timestamp, c1 host, c2 user, c3 process,
         # c4 event id, c5 source, c6 message, c7 path.
+        # Two shapes, both worth measuring: the column an analyst targets, and the
+        # across-everything scan a search box performs (which is what the other tool does).
         timed('search_session', 'SELECT count(*) FROM events WHERE "c6" LIKE ?', ['%session%'])
         timed('search_error', 'SELECT count(*) FROM events WHERE "c6" LIKE ?', ['%error%'])
-        timed('search_net', 'SELECT count(*) FROM events WHERE "c6" LIKE ?', ['%192.168.%'])
+        any_column = ' OR '.join('"%s" LIKE ?' % ('c%d' % index) for index in range(8))
+        timed('search_any_host07', 'SELECT count(*) FROM events WHERE ' + any_column, ['%host07%'] * 8)
+        timed('search_any_error', 'SELECT count(*) FROM events WHERE ' + any_column, ['%error%'] * 8)
         timed('filter_eventid', 'SELECT count(*) FROM events WHERE "c4" = ?', ['4625'])
         timed('filter_host', 'SELECT count(*) FROM events WHERE "c1" = ?', ['host07'])
         hosts = timed('group_host', 'SELECT "c1", count(*) FROM events GROUP BY 1 ORDER BY 2 DESC')

@@ -203,12 +203,18 @@ gh release create vX.Y.Z --title "<titre>" --notes-file body.md "<exe vérifié>
   valeur « automatique » doit être résolue avant le moteur, en un seul endroit.
 - **`duckdb.InterruptException`** est ce que lève une lecture interrompue : sans
   conversion en `OperationCancelled`, une collecte annulée se termine en `complete`.
-- **Le lanceur `.venv\Scripts\python.exe` démarre de nouveau** sur la tour (la jonction
-  `%APPDATA%\uv\python\…` a été reconstruite), et la porte passe par
-  `powershell -File C:\Users\23R\gate.ps1` — `dev_check --quick` pour le rapide, `-Full`
-  pour la suite entière. S'il cesse de démarrer (`os error 448`, trampoline uv), c'est la
-  jonction : la reconstruire, pas contourner. Traiter les scripts `.ps1` comme
-  ASCII seulement, et ne jamais piper un long run (écrire dans un journal et le relire).
+- **Le lanceur `.venv\Scripts\python.exe` est bloqué par intermittence** par la politique
+  Device Guard de la tour (« a été bloqué par la stratégie Device Guard ») : il marchait en
+  début de session, il était bloqué deux heures plus tard. `C:\Users\23R\gate.ps1` teste le
+  lanceur et retombe tout seul sur l'interpréteur de base avec `PYTHONPATH=src;.venv\Lib\site-packages`
+  et `.venv\Scripts` dans `PATH` pour ruff — c'est ce repli qui a mesuré toute la campagne.
+  Ne jamais conclure « le venv est cassé » : réessayer au lancement suivant.
+- **Écrire les scripts `.ps1` en ASCII** (PowerShell 5.1 les lit en ANSI) et **ne jamais
+  nommer une fonction `Filter`** : c'est un mot réservé, le script ne compile pas et rien
+  ne se lance, sans message.
+- **Ne jamais piper un long run** : écrire dans un journal, le relire. Une charge utile
+  lancée par tâche planifiée doit écrire son journal elle aussi, sinon un échec de syntaxe
+  est un silence.
 
 ## Vérification
 
@@ -217,8 +223,14 @@ gh release create vX.Y.Z --title "<titre>" --notes-file body.md "<exe vérifié>
   `powershell -File C:\Users\23R\gate.ps1 -Full`, sur l'arbre exact du dernier commit
   de la branche (deux passages verts de plus en cours de route : 1 431, puis 1 434).
 - Mesures de la 0.4.0 sur le fichier de 3,65 Go (i7-12700K, budget 1 Go) : import
-  **69 s** (59 s à chaud), pic mémoire **1 077 Mo** mesuré de l'extérieur, 32 millions
-  de lignes relues et identiques, recherche de cinq motifs en 5,8 s.
+  **56,6 s** (58,8 s à chaud ; 56,6 à 69,1 s selon le cache disque), pic mémoire
+  **1 077 Mo** mesuré de l'extérieur, 32 millions de lignes relues et identiques.
+- Campagne comparée sur les **cinq tailles, les deux outils**, import et opérations
+  répétées : sur 3,65 Go, recherche toutes colonnes 2,42 s contre 149,94 s, group by
+  0,12 s contre 134,29 s, tri 0,64 s contre 8,54 s. Résultats identiques vérifiés des deux
+  côtés (864 865 lignes pour host07, 37 groupes). Détail dans
+  `docs/development/BENCHMARK-0.4.0.md`, brut dans `bench/results-full.json` et
+  `bench/tle-ops.jsonl`.
 - Sondes hors suite, sur fichiers réels : 46 contrôles (texte UTF-8/cp1252/UTF-16/BOM,
   page HTML cp1252 et déclarée, PDF d'une et trois pages, PDF chiffré, PDF tronqué,
   arborescence de collecte complète) — 46 sur 46. Journal de 100 000 lignes importé en 1,5 s.

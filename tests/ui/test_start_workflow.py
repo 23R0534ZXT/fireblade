@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt
 
 from fireblade.core.disk import DiskCollection
 from fireblade.ui.app import Window
-from fireblade.ui.startup import StartupAnimation
+from fireblade.ui.startup import DURATION, StartupAnimation
 
 
 def until(app, predicate):
@@ -94,8 +94,8 @@ def test_progressive_disk_keeps_workspace_interactive(qt_application, tmp_path, 
 
 def test_animation_finishes_without_sleeping_ui(qt_application):
     splash = StartupAnimation(); finished = []
-    assert splash.animation.duration() == 10000
-    assert splash.movie.isValid() and splash.movie.frameCount() >= 190
+    assert splash.animation.duration() == DURATION
+    assert DURATION <= 6000, "un ident ne doit pas retenir le lancement"
     splash.finished.connect(lambda: finished.append(True))
     splash.show(); splash.animation.start()
     until(qt_application, lambda: bool(finished))

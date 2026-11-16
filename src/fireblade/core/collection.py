@@ -1,5 +1,5 @@
 """Offline artifact orchestration. Every input has a persisted disposition."""
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import csv
 import copy
 import hashlib
@@ -16,7 +16,9 @@ import uuid
 
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
+import duckdb
 from fireblade.core.i18n import translate
+from fireblade.core.settings import Settings, grown_memory
 from fireblade.core.models import View
 
 
@@ -208,8 +210,24 @@ class Collection:
         check_cancel()
         if register and len(self.report['documents']) >= 1000:
             raise ValueError('Limite de 1000 analyses atteinte ; résultat conservé sur disque')
+        # A bulk insert cannot spill to disk, so a budget too small for the file fails
+        # whatever the free space: grow the budget once before giving up. The ceiling
+        # is half the machine, so a huge export slows the import instead of the desktop.
+        budget, attempt = self.settings, 0
+        while True:
+            try:
+                return self._import_once(csv, kind, view, register, budget)
+            except duckdb.OutOfMemoryException:
+                bigger = grown_memory(getattr(budget, 'memory_mb', 128))
+                if attempt or not bigger:
+                    raise
+                attempt += 1
+                budget = replace(budget, memory_mb=bigger) if budget else Settings(memory_mb=bigger)
+                self.progress('Mémoire insuffisante : nouvel essai avec %d Mo…' % bigger)
+
+    def _import_once(self, csv, kind, view, register, budget):
         target = self.output/'analyses'/(uuid.uuid4().hex+'.timeline')
-        case = Case(target, settings=self.settings)
+        case = Case(target, settings=budget)
         with self._case_lock:
             self._active_case = case
         failed = False

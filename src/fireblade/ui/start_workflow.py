@@ -167,7 +167,9 @@ class StartWorkflowMixin:
                 self.error('Choisissez un volume existant et stockez le case sur un autre volume.'); return False
         try:
             from dataclasses import replace
-            settings = replace(self.settings, memory_mb=max(64, self.settings.memory_mb//2), threads=self.preferences.parsing_threads)
+            # The collection gets the whole budget: halving it was what made a 3 GiB export
+            # fail at 64 MB. An import that still runs out grows once instead of dying.
+            settings = replace(self.settings, threads=self.preferences.parsing_threads)
             collection = DiskCollection(source, workspace, self.toolpack(), settings,
                 ready=self.disk_signals.documents.emit, source_kind=kind)
         except Exception as exc:

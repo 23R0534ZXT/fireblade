@@ -308,7 +308,9 @@ class CollectionMixin(AlertContextMixin):
         output = parent/(datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:8])
         try:
             from dataclasses import replace
-            settings = replace(self.settings, memory_mb=max(64, self.settings.memory_mb//2), threads=self.preferences.parsing_threads)
+            # The collection gets the whole budget: halving it was what made a 3 GiB export
+            # fail at 64 MB. An import that still runs out grows once instead of dying.
+            settings = replace(self.settings, threads=self.preferences.parsing_threads)
             collection = Collection(path, output, self.toolpack(), settings, organization=organization)
             if self.active_investigation is not None:
                 collection.ready = self.disk_signals.documents.emit

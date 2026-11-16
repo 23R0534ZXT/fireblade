@@ -42,5 +42,18 @@ def test_default_settings_and_partial_config(tmp_path):
     assert load_settings() == Settings()
     config = tmp_path / 'partial.toml'
     config.write_text('[resources]\nthreads=1')
-    assert load_settings(config).memory_mb == 128
+    assert load_settings(config).memory_mb == 1024
     assert load_settings(config).threads == 1
+
+
+def test_a_budget_that_cannot_spill_grows_but_never_eats_the_machine():
+    from fireblade.core.settings import grown_memory
+    assert grown_memory(128, ceiling_mb=2048) == 640
+    assert grown_memory(1024, ceiling_mb=2048) == 2048
+    assert grown_memory(2048, ceiling_mb=2048) is None, "plus de place : le dire au lieu de forcer"
+    assert grown_memory(0, ceiling_mb=2048) == 512
+
+
+def test_the_shipped_default_leaves_room_for_a_real_export():
+    from fireblade.core.settings import Settings
+    assert Settings().memory_mb >= 1024, "128 Mo ne suffit pas à un export de collecte"

@@ -212,3 +212,25 @@ def test_an_encrypted_pdf_is_reported_with_its_reason(collection):
 
     assert entry['status'] == 'no_output' and 'chiffré' in entry['error']
     assert collection.report['documents'] == []
+
+
+def test_an_import_that_runs_out_of_memory_is_retried_with_more(collection, monkeypatch):
+    import duckdb
+    budgets = []
+    original = Collection._import_once
+
+    def once(self, csv, kind, view, register, budget):
+        budgets.append(getattr(budget, 'memory_mb', None))
+        if len(budgets) == 1:
+            raise duckdb.OutOfMemoryException('Out of Memory Error: failed to pin block')
+        return original(self, csv, kind, view, register, budget)
+
+    monkeypatch.setattr(Collection, '_import_once', once)
+    source = collection.root / 'note.txt'
+    source.write_bytes('une ligne\n'.encode('utf-8'))
+
+    document = collection.import_result(str(source), 'native', register=False)
+
+    assert len(budgets) == 2, "un second essai, pas trois"
+    assert budgets[1] and budgets[1] >= 512, "le second essai demande plus de mémoire"
+    assert Path(document['path']).is_file()

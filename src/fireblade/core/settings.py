@@ -1,4 +1,5 @@
 """Small, validated resource settings; TOML support is in Python's standard library."""
+import os
 from dataclasses import dataclass
 from pathlib import Path
 import tomllib
@@ -6,7 +7,7 @@ import tomllib
 
 @dataclass(frozen=True)
 class Settings:
-    memory_mb: int = 128
+    memory_mb: int = 1024
     threads: int = 1
     page_size: int = 250
     max_loaded_rows: int = 1000
@@ -43,3 +44,40 @@ def load_settings(path: str | Path | None = None) -> Settings:
     if unknown:
         raise ValueError("Paramètres inconnus : " + ", ".join(sorted(unknown)))
     return Settings(**resources)
+
+
+def physical_memory_mb():
+    """Total RAM in megabytes, without pulling in a dependency."""
+    try:
+        if os.name == 'nt':
+            import ctypes
+
+            class Status(ctypes.Structure):
+                _fields_ = [('length', ctypes.c_ulong), ('load', ctypes.c_ulong),
+                            ('total_physical', ctypes.c_ulonglong), ('available_physical', ctypes.c_ulonglong),
+                            ('total_page_file', ctypes.c_ulonglong), ('available_page_file', ctypes.c_ulonglong),
+                            ('total_virtual', ctypes.c_ulonglong), ('available_virtual', ctypes.c_ulonglong),
+                            ('available_extended', ctypes.c_ulonglong)]
+
+            status = Status()
+            status.length = ctypes.sizeof(Status)
+            ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status))
+            return max(512, int(status.total_physical // (1024 * 1024)))
+        return max(512, int(os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE') // (1024 * 1024)))
+    except Exception:
+        return 4096
+
+
+def grown_memory(current, factor=4, ceiling_mb=None):
+    """A larger budget for a step that cannot spill, bounded by the machine itself.
+
+    DuckDB can spill sorts and joins to disk, but a bulk CSV insert has to hold its
+    vectors: when the budget is too small for the file, more memory is the only cure.
+    The ceiling is half the physical RAM, so a huge import cannot swap the analyst's
+    whole desktop out; None means "no room left, report the failure".
+    """
+    current = int(current or 0)
+    ceiling = int(ceiling_mb or max(1024, physical_memory_mb() // 2))
+    target = min(ceiling, max(current * factor, current + 512), 16384)
+    return target if target > current else None
+

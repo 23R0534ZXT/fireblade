@@ -4,13 +4,15 @@ Document de reprise, mis à jour en fin de session. Il dit où en est le code, c
 qui a été décidé, et ce qui reste. Le détail technique vit dans le skill
 `fireblade-verification` ; ce fichier est la vue d'ensemble.
 
-Dernière mise à jour : 16 novembre 2026, après la préparation de la 0.4.0.
+Dernière mise à jour : 16 novembre 2026. La 0.4.0 est prête à publier.
 
 ## Où en est le projet
 
-- **Version 0.4.0** : le lot est empilé sur la branche `hermes/0.4.0` (11 commits),
-  puis fusionné sur `main` et tagué `v0.4.0`. L'exe est construit et vérifié par la
-  CI Windows, puis publié par `publish-qualified` avec le compte du mainteneur.
+- **Version 0.4.0, prête à publier** : le lot est empilé sur la branche `hermes/0.4.0`
+  (26 commits devant `main`), porte verte sur l'arbre exact. `main` local est à
+  `5f6f5c9`, `origin/main` à `6c05c22` : **rien n'est poussé**. La fusion, le tag
+  `v0.4.0` et le push attendent l'accord explicite du mainteneur ; ensuite la CI
+  construit et vérifie l'exe, et `publish-qualified` le publie avec son compte.
 - La **0.3.1** reste téléchargeable : `Fireblade.exe`, 280 508 600 octets,
   SHA-256 `0b4f94676861da3ed15d65291f20f37ff781a2b8d0d7517ced725e42d2203a1a`,
   publiée le 6 novembre 2026.
@@ -42,6 +44,18 @@ Dernière mise à jour : 16 novembre 2026, après la préparation de la 0.4.0.
 - **Porte** : suite lancée en UTF-8 (les fixtures écrivaient en page de code locale),
   purge des dossiers `%TEMP%\pytest-of-…` périmés (casse du chemin), et le test
   « le cœur ne charge pas Qt » garde désormais les paquets de l'interpréteur.
+- **Dossiers en parallèle** : un dossier est analysé sur plusieurs fichiers à la fois,
+  fusionnés dans l'ordre du fichier ; les ouvriers voient l'annulation par copie du
+  contexte, et le thread qui tient le bilan l'honore aussi entre deux fichiers.
+- **Import en un passage** : lecture du fichier entier tant qu'il tient dans une
+  transaction — 3,65 Go en 69 s au lieu de 148 s, 59 s à chaud, mémoire inchangée
+  (pic 1 077 Mo pour un budget de 1 Go), repli en tranches au-delà du seuil et sur
+  manque de mémoire.
+- **Threads automatiques par défaut** : la sentinelle `0` est résolue avant le moteur,
+  libellé « Automatique » dans Préférences → Ressources, aide mise à jour.
+- **Comparatif Timeline Explorer** re-mesuré sur les cinq tailles :
+  `docs/development/BENCHMARK-0.4.0.md` — Fireblade passe devant à toutes les tailles
+  tout en restant à son budget.
 
 ## Ce qui a été livré dans la 0.3.1
 
@@ -180,18 +194,31 @@ gh release create vX.Y.Z --title "<titre>" --notes-file body.md "<exe vérifié>
 - **La suite doit tourner en UTF-8** (`PYTHONUTF8=1`, `PYTHONIOENCODING=utf-8`) :
   beaucoup de fixtures écrivent leurs CSV sans `encoding=`, donc en page de code
   locale sous Windows, alors que le code lit en UTF-8 et que la CI est en UTF-8.
-- **Smart App Control bloque `.venv\Scripts\python.exe`** sur la tour : aucune
-  modification du lanceur ne le débloque, et le désactiver ne se défait pas sans
-  réinstaller Windows. La porte tourne donc avec le Python de base
-  (`C:\Users\23R\run_gate.ps1`), `PYTHONPATH` sur `src` + `.venv\Lib\site-packages`
-  et `.venv\Scripts` dans `PATH` pour ruff. Un test qui relance `sys.executable` avec
-  un `PYTHONPATH` réduit échoue pour cette raison, pas pour un bug produit.
+- **Une annulation demandée pendant une collecte parallèle** peut arriver alors que
+  l'ouvrier a déjà fini : aucun `OperationCancelled` n'est levé, et la collecte finit en
+  `complete`. Le thread qui fusionne doit vérifier l'arrêt avant de publier le fichier
+  suivant (sans quoi un run sur dix passe et le suivant échoue). Une course se prouve par
+  25 répétitions, jamais par un run vert.
+- **`SET threads=0` est refusé par DuckDB** et l'import échoue alors sans message : toute
+  valeur « automatique » doit être résolue avant le moteur, en un seul endroit.
+- **`duckdb.InterruptException`** est ce que lève une lecture interrompue : sans
+  conversion en `OperationCancelled`, une collecte annulée se termine en `complete`.
+- **Le lanceur `.venv\Scripts\python.exe` démarre de nouveau** sur la tour (la jonction
+  `%APPDATA%\uv\python\…` a été reconstruite), et la porte passe par
+  `powershell -File C:\Users\23R\gate.ps1` — `dev_check --quick` pour le rapide, `-Full`
+  pour la suite entière. S'il cesse de démarrer (`os error 448`, trampoline uv), c'est la
+  jonction : la reconstruire, pas contourner. Traiter les scripts `.ps1` comme
+  ASCII seulement, et ne jamais piper un long run (écrire dans un journal et le relire).
 
 ## Vérification
 
-- Dernier passage de la porte pour la 0.4.0 : **1 406 tests passés, 28 ignorés**,
+- Dernier passage de la porte pour la 0.4.0 : **1 434 tests passés, 28 ignorés**,
   plateforme Qt Windows, fenêtre réelle construite, ruff propre — via
-  `powershell -File C:\Users\23R\run_gate.ps1` (voir plus haut pour l'interpréteur).
+  `powershell -File C:\Users\23R\gate.ps1 -Full`, sur l'arbre exact du dernier commit
+  de la branche (deux passages verts de plus en cours de route : 1 431, puis 1 434).
+- Mesures de la 0.4.0 sur le fichier de 3,65 Go (i7-12700K, budget 1 Go) : import
+  **69 s** (59 s à chaud), pic mémoire **1 077 Mo** mesuré de l'extérieur, 32 millions
+  de lignes relues et identiques, recherche de cinq motifs en 5,8 s.
 - Sondes hors suite, sur fichiers réels : 46 contrôles (texte UTF-8/cp1252/UTF-16/BOM,
   page HTML cp1252 et déclarée, PDF d'une et trois pages, PDF chiffré, PDF tronqué,
   arborescence de collecte complète) — 46 sur 46. Journal de 100 000 lignes importé en 1,5 s.
@@ -204,11 +231,11 @@ gh release create vX.Y.Z --title "<titre>" --notes-file body.md "<exe vérifié>
 
 Premier message d'une nouvelle session, suffisant pour repartir :
 
-> Fireblade 0.4.0, la 0.3.1 reste publiée, `main` porte la 0.4.0. On ne travaille
-> qu'en anglais. Charge le skill `fireblade-verification` et lis
-> `docs/development/PASSATION.md` ; la tour Windows est en SSH sur `23R@192.168.1.167`
-> et la porte tourne par `C:\Users\23R\run_gate.ps1` (Smart App Control bloque le
-> Python du venv).
+> Fireblade 0.4.0, branche `hermes/0.4.0` prête et verte, rien de poussé. On ne
+> travaille qu'en anglais. Charge le skill `fireblade-verification` et lis
+> `docs/development/PASSATION.md` ; la tour Windows est en SSH sur `23R@192.168.1.167`,
+> le dépôt dans `C:\Users\23R\dev\fireblade`, et la porte tourne par
+> `powershell -File C:\Users\23R\gate.ps1 -Full` (compte ~8 min, `TOUT EST VERT`).
 
 Le reste — historique, décisions, conventions — se trouve dans le dépôt et dans
 la mémoire persistante.

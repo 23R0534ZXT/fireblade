@@ -101,6 +101,39 @@ Mesuré sur les vrais lecteurs :
 - 4 Go, 30 colonnes, budget de 128 Mo : **223 s**, 2,6 millions de lignes, dernière ligne
   intacte.
 
+## Import : un seul passage sur le fichier
+
+Un fichier plus gros que le pas de lecture était découpé en tranches temporaires de
+quelques mégaoctets, chacune relue puis insérée. Il est maintenant lu **d'une seule
+passe** tant qu'il tient dans une transaction, les colonnes étant nommées par position
+(`c0`, `c1`, …) comme partout ailleurs dans l'application. Au-delà du seuil de
+transaction, et si la mémoire manque, le chemin par tranches reprend la main.
+
+- Mesuré sur le même fichier de 3,65 Go / 32 millions de lignes, budget de 1 Go :
+  **69 s au lieu de 148 s**, et **59 s** rejoué à chaud (62 Mo/s contre 24).
+- Les autres tailles suivent : 0,8 s au lieu de 1,2 s (28 Mo), 2,4 au lieu de 5,1
+  (112 Mo), 7,9 au lieu de 19,7 (453 Mo), 33,4 au lieu de 74,3 (1,82 Go).
+- La mémoire ne bouge pas : pic de **1 077 Mo** mesuré de l'extérieur, budget à 1 Go.
+- L'annulation reste honorée pendant la lecture : l'interruption de DuckDB est convertie
+  en annulation, et un test coupe au milieu du passage pour le vérifier.
+
+## Threads : automatique par défaut
+
+Les deux réglages de threads de Préférences → Ressources acceptent **Automatique**, et
+c'est la valeur livrée.
+
+- « Automatique » veut dire la machine, plafonnée à **huit fichiers à la fois** — le point
+  où le disque partagé cesse de payer (48 fichiers : 3,4 s à un thread, 1,2 s à quatre,
+  1,0 s à huit).
+- La valeur est résolue **avant** d'atteindre le moteur : DuckDB refuse `SET threads=0`,
+  et un import qui le recevait échouait sans message visible. Un seul endroit décide,
+  et chaque appel qui parle au moteur y passe.
+- Choisir un niveau d'effort écrit toujours des valeurs explicites : le curseur continue
+  de décrire ce qu'il fait.
+- Quand un dossier est annulé, ce qui était déjà terminé est publié : l'arrêt est
+  constaté par le thread qui tient le bilan, pas seulement par les ouvriers — un fichier
+  fini avant la demande ne lève jamais d'exception.
+
 ## Effort : un curseur calculé pour la machine
 
 L'onglet Imports porte un seul réglage : quatre niveaux, une barre qui grandit avec ce que

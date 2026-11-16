@@ -1,0 +1,107 @@
+[
+  {
+    "rows": 250000,
+    "size_mb": 28.0,
+    "budget_mb": 1024,
+    "threads": 4,
+    "import_seconds": 1.23,
+    "peak_mb": 0.0,
+    "throughput_mb_s": 22.8,
+    "verify": {
+      "ok": true,
+      "problems": [],
+      "rows": 250000,
+      "verify_seconds": 0.39
+    },
+    "search": {
+      "seconds": 0.05,
+      "hits": 250085,
+      "host_rows": 6757
+    },
+    "at": "2026-11-16 11:47:25"
+  },
+  {
+    "rows": 1000000,
+    "size_mb": 112.4,
+    "budget_mb": 1024,
+    "threads": 4,
+    "import_seconds": 5.11,
+    "peak_mb": 0.0,
+    "throughput_mb_s": 22.0,
+    "verify": {
+      "ok": true,
+      "problems": [],
+      "rows": 1000000,
+      "verify_seconds": 1.44
+    },
+    "search": {
+      "seconds": 0.17,
+      "hits": 1000425,
+      "host_rows": 27027
+    },
+    "at": "2026-11-16 11:47:35"
+  },
+  {
+    "rows": 4000000,
+    "size_mb": 453.0,
+    "budget_mb": 1024,
+    "threads": 4,
+    "import_seconds": 19.67,
+    "peak_mb": 0.0,
+    "throughput_mb_s": 23.0,
+    "verify": {
+      "ok": true,
+      "problems": [],
+      "rows": 4000000,
+      "verify_seconds": 5.56
+    },
+    "search": {
+      "seconds": 0.69,
+      "hits": 4001704,
+      "host_rows": 108108
+    },
+    "at": "2026-11-16 11:48:12"
+  },
+  {
+    "rows": 16000000,
+    "size_mb": 1821.3,
+    "budget_mb": 1024,
+    "threads": 4,
+    "import_seconds": 74.33,
+    "peak_mb": 0.0,
+    "throughput_mb_s": 24.5,
+    "verify": {
+      "ok": true,
+      "problems": [],
+      "rows": 16000000,
+      "verify_seconds": 22.44
+    },
+    "search": {
+      "seconds": 2.86,
+      "hits": 16008818,
+      "host_rows": 432433
+    },
+    "at": "2026-11-16 11:50:35"
+  },
+  {
+    "rows": 32000000,
+    "size_mb": 3653.7,
+    "budget_mb": 1024,
+    "threads": 4,
+    "import_seconds": 147.83,
+    "peak_mb": 0.0,
+    "throughput_mb_s": 24.7,
+    "verify": {
+      "ok": true,
+      "problems": [],
+      "rows": 32000000,
+      "verify_seconds": 44.58
+    },
+    "search": {
+      "seconds": 5.69,
+      "hits": 32016639,
+      "host_rows": 864865
+    },
+    "at": "2026-11-16 11:55:21"
+  }
+]

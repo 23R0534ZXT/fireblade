@@ -117,6 +117,30 @@ l'import prend et passe du vert à l'orange puis au rouge, et une phrase lisible
   le budget mémoire : parse et analyse cessent de se contredire, et le choix survit au
   redémarrage.
 
+## Comparé à Timeline Explorer, mesuré sur la même machine
+
+Timeline Explorer 2026.10.0 installé, les deux outils mesurés sur les mêmes fichiers, du
+28 Mo au 3,65 Go (32 millions de lignes), sur un Core i7-12700K avec 31,8 Go de RAM.
+
+| Fichier | Fireblade | Timeline Explorer | Mémoire Fireblade | Mémoire TLE |
+| --- | --- | --- | --- | --- |
+| 28 Mo | **1,2 s** | 10,9 s | ≤ 1,1 Go | 0,37 Go |
+| 453 Mo | 19,7 s | **17,1 s** | ≤ 1,1 Go | 2,2 Go |
+| 1,82 Go | 74,3 s | **51,8 s** | ≤ 1,1 Go | 7,6 Go |
+| 3,65 Go | 147,8 s | **108,3 s** | 1,1 Go | **15,3 Go** |
+
+Timeline Explorer est plus rapide de 1,4× sur les gros fichiers — c'est vrai et ce n'est pas
+l'axe qui compte ici. Il charge le fichier entier en mémoire, à **4,2 fois sa taille** :
+15,3 Go pour un fichier de 3,65 Go, et sa propre fenêtre prévient que la limite annoncée est
+de 14 Go, soit près de 60 Go de RAM. Sur une VM de 8 Go, le plafond pratique est un fichier
+d'un peu moins de 2 Go, quel que soit le temps qu'on lui laisse.
+
+Fireblade reste à **son budget** (1,1 Go mesurés, 2,2 Go quand on le règle à 8 Go) et
+importe sans changer de comportement, ce qui est le sujet de cette version.
+
+Le détail, la méthode, les chiffres bruts et les limites du comparatif sont dans
+`docs/development/BENCHMARK-0.4.0.md` ; les scripts de mesure sont dans `bench/`.
+
 ## Porte de vérification
 
 - La suite tourne en **UTF-8** : les fixtures écrivaient leurs CSV sans `encoding=`, donc dans la page de code locale, alors que le code lit en UTF-8 et que la CI est en UTF-8. C'était 25 échecs sur 25 sans rapport avec le produit.

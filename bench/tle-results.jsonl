@@ -1,0 +1,60 @@
+=== 1000000 rows (limit 900s) ===
+{
+    "file":  "C:\\Users\\23R\\fb-bench\\size-1000000-1\\auth.log.csv",
+    "file_mb":  107.2,
+    "seconds":  9.8,
+    "state":  "loaded",
+    "window":  true,
+    "title":  "Timeline Explorer v2026.10.0",
+    "peak_mb":  747.3,
+    "cpu_seconds":  6.1,
+    "screenshot":  "C:\\Users\\23R\\fb-bench\\tle-1000000.png",
+    "at":  "2026-11-16 12:09:09"
+}
+
+
+=== 4000000 rows (limit 900s) ===
+{
+    "file":  "C:\\Users\\23R\\fb-bench\\size-4000000-1\\auth.log.csv",
+    "file_mb":  432,
+    "seconds":  17.1,
+    "state":  "loaded",
+    "window":  true,
+    "title":  "Timeline Explorer v2026.10.0",
+    "peak_mb":  2142.4,
+    "cpu_seconds":  14.6,
+    "screenshot":  "C:\\Users\\23R\\fb-bench\\tle-4000000.png",
+    "at":  "2026-11-16 12:09:31"
+}
+
+
+=== 16000000 rows (limit 1800s) ===
+{
+    "file":  "C:\\Users\\23R\\fb-bench\\size-16000000-1\\auth.log.csv",
+    "file_mb":  1736.9,
+    "seconds":  51.8,
+    "state":  "loaded",
+    "window":  true,
+    "title":  "Messages",
+    "peak_mb":  7291.3,
+    "cpu_seconds":  50.3,
+    "screenshot":  "C:\\Users\\23R\\fb-bench\\tle-16000000.png",
+    "at":  "2026-11-16 12:10:26"
+}
+
+
+=== 32000000 rows (limit 1800s) ===
+{
+    "file":  "C:\\Users\\23R\\fb-bench\\size-32000000-1\\auth.log.csv",
+    "file_mb":  3484.5,
+    "seconds":  108.3,
+    "state":  "loaded",
+    "window":  true,
+    "title":  "Messages",
+    "peak_mb":  14632.6,
+    "cpu_seconds":  103.6,
+    "screenshot":  "C:\\Users\\23R\\fb-bench\\tle-32000000.png",
+    "at":  "2026-11-16 12:12:20"
+}
+
+

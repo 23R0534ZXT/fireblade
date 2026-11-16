@@ -254,7 +254,14 @@ class Case:
                         progress("Écriture des enregistrements sur disque…")
                         self.check_cancelled()
                         chunk_bytes = min(csv_chunks.CHUNK_BYTES, self.settings.memory_mb * 1024 * 1024 // 16)
-                        if input_path.stat().st_size <= chunk_bytes:
+                        size = input_path.stat().st_size
+                        # A single transaction cannot scale past the budget: DuckDB
+                        # keeps uncommitted rows out of the checkpoint, so a 100 GB
+                        # export dies whatever the memory. A huge file is committed
+                        # chunk by chunk instead, which returns the memory as it goes.
+                        streaming = size > self.huge_threshold()
+                        self.streaming_chunks = 0
+                        if size <= chunk_bytes:
                             relation.project('row_number() OVER () AS "__row_id", ' + ", ".join(projections)).create("events")
                         else:
                             # Release the original reader's sample buffers before the
@@ -277,6 +284,14 @@ class Case:
                                     batch.insert_into('events')
                                     del batch
                                     written += records
+                                    if streaming:
+                                        self.streaming_chunks += 1
+                                        # Committed rows leave the buffer manager:
+                                        # the memory this import needs stops growing
+                                        # with the file. Interruption rebuilds it.
+                                        self.db.execute('COMMIT')
+                                        self.check_cancelled()
+                                        self.db.execute('BEGIN')
                                     progress(f'Import sur disque · {written:,} enregistrements écrits…')
                             finally:
                                 chunks.close()
@@ -329,6 +344,11 @@ class Case:
                         # BEGIN may itself have failed; preserve the original error.
                         pass
                 raise
+
+    def huge_threshold(self):
+        """Above this, one transaction stops being the right promise."""
+        budget = (getattr(self.settings, 'memory_mb', None) or 1024) * 1024 * 1024
+        return max(2 * 1024**3, 8 * budget)
 
     def _import_csv_rows(self, source, headers, delimiter, progress):
         """Atomic low-memory fallback; preserve original cells and explicit row IDs.

@@ -62,3 +62,33 @@ def test_the_retry_grows_the_budget_until_there_is_no_room(tmp_path):
         budget = bigger
     assert steps[0] == max(64 * 4, 64 + 512) and steps[-1] == 2048
     assert steps == sorted(steps) and len(steps) < 10, 'la progression doit être courte et monotone'
+
+
+def test_a_file_past_the_threshold_is_committed_chunk_by_chunk(tmp_path, monkeypatch):
+    """A 100 GB export cannot commit once: past the threshold, chunks are committed."""
+    from fireblade.core.engine import Case
+
+    source = tmp_path/'big.log'
+    # Larger than the per-chunk budget, so the import is chunked, not created in one go.
+    write_big_log(source, rows=60000, columns=12)
+    monkeypatch.setattr(Case, 'huge_threshold', lambda self: 1)
+    case = Case(tmp_path/'direct.timeline', settings=Settings(memory_mb=64, threads=1))
+    try:
+        info = case.import_csv(source)
+        assert info['rows'] == 60000
+        # c0 is the timestamp column; the values start at c1.
+        assert case.db.execute('SELECT "c1" FROM events WHERE __row_id = 60000').fetchone()[0] == 'valeur 59999-0'
+        assert case.db.execute('SELECT count(*) FROM events WHERE __row_id IS NULL').fetchone()[0] == 0
+        assert case.streaming_chunks > 1, 'le fichier est commité par tranches, pas d’un bloc'
+    finally:
+        case.close()
+
+
+def test_the_threshold_scales_with_the_budget_and_never_bites_small_files():
+    from fireblade.core.engine import Case
+    small = Case.__new__(Case)
+    small.settings = Settings(memory_mb=64)
+    large = Case.__new__(Case)
+    large.settings = Settings(memory_mb=4096)
+    assert small.huge_threshold() >= 2 * 1024**3, 'jamais de bascule pour un fichier ordinaire'
+    assert large.huge_threshold() > small.huge_threshold()

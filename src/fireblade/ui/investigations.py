@@ -101,6 +101,10 @@ class InvestigationMixin:
         self.cases_tab_index=self.workbench.addTab(self.cases_panel,'Cases')
         self.case_badge=QLabel();self.case_badge.setTextFormat(Qt.PlainText)
         self.case_badge.setMaximumWidth(230);self.case_badge.setMinimumWidth(0)
+        # The badge sat flush against the window edge: the gap belongs to the label,
+        # not to the text, so a long case name still breaks cleanly against it.
+        self.case_badge.setContentsMargins(12,0,24,0)
+        self.case_badge.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
         self.workbench.setCornerWidget(self.case_badge,Qt.TopRightCorner)
         self.case_collection_panel=QWidget();row=QHBoxLayout(self.case_collection_panel);row.setContentsMargins(0,0,0,0)
         row.addWidget(QLabel('Collecte du case :'))

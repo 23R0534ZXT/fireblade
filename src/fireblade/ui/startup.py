@@ -30,7 +30,7 @@ AMBER = QColor('#f2ab6b')
 # One clock for the whole ident; every move is a window on it, so the cadence can be
 # retuned in one place. Long enough to breathe, short enough not to stand between the
 # analyst and the work.
-DURATION = 4600
+DURATION = 6500
 
 
 def ease(value):

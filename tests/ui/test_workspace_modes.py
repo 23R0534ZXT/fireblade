@@ -78,6 +78,7 @@ def test_timeline_only_hides_the_panels_and_gives_them_back(qt_application, tmp_
 
         layout.timeline()
         assert wait_visible(qt_application, dock, want=False), "les panneaux doivent être masqués"
+        assert not window.workbench.tabBar().isHidden(), "les onglets restent : c'est le chemin du retour"
 
         layout.analysis()
         assert wait_visible(qt_application, dock), "les panneaux doivent revenir"
@@ -155,5 +156,28 @@ def test_saving_a_focused_workspace_keeps_the_mode_and_leaves_nothing_hidden(qt_
         assert all(hidden for _name, hidden in docks(window))
         layout.analysis()
         assert not any(hidden for _name, hidden in docks(window))
+    finally:
+        window.close()
+
+
+def test_timeline_only_keeps_every_tab_visible(qt_application, tmp_path):
+    """Reports came in as "les onglets disparaissent": the strip is the way back."""
+    window = Window(require_case=False)
+    window.show()
+    try:
+        add_case(window, tmp_path, 'tabs')
+        settle(qt_application, window)
+        layout = window.workspace_layout
+        layout.analysis()
+        titles = [window.workbench.tabText(index) for index in range(window.workbench.count())]
+        assert window.workbench.tabBar().isVisible()
+        layout.timeline()
+        assert window.workbench.tabBar().isVisible()
+        assert [window.workbench.tabText(index) for index in range(window.workbench.count())] == titles
+        # Using a tab leaves the mode, so the window is never left half stripped.
+        window.workbench.setCurrentIndex(0)
+        assert not layout.focused
+        layout.analysis()
+        assert [window.workbench.tabText(index) for index in range(window.workbench.count())] == titles
     finally:
         window.close()

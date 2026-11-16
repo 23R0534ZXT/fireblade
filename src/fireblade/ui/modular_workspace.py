@@ -124,6 +124,7 @@ class WorkspaceLayout:
             show_text(window, 'Espace de travail', path.read_text(encoding='utf-8'), markdown=True, base_url=path)
         menu.addSeparator();menu.addAction('Guide de l’espace de travail', help_workspace)
         self.toolbar = toolbar
+        window.workbench.currentChanged.connect(self.tab_changed)
         window.tree.header().sectionMoved.connect(self.schedule_columns)
         window.tree.header().sectionResized.connect(self.schedule_columns)
         for panel in window.tree.frozen_views:
@@ -175,6 +176,11 @@ class WorkspaceLayout:
         if window.model and not window.busy and getattr(window, '_layout_save_enabled', False):
             self.column_timer.start()
 
+    def tab_changed(self, index):
+        """Picking another tab leaves the focused mode: the chrome comes back with it."""
+        if self.focused and index != self.window.timeline_tab_index:
+            self.leave_focus()
+
     def leave_focus(self):
         if not self.focused:return
         for widget, visible in self.previous_visibility:
@@ -204,13 +210,13 @@ class WorkspaceLayout:
         if not window.workbench.isTabEnabled(window.timeline_tab_index):return
         window.workbench.attach_panel(window.timeline_tab_index)
         window.show_timeline()
-        # Only what takes space goes: the docks and the tab bar. The top bars stay
-        # exactly as they are in Analysis, because a mode that hides a toolbar makes
-        # the analyst hunt for the action they were just using.
+        # Only what takes space goes: the docks. Every top bar and the tab strip stay
+        # exactly as they are in Analysis — a mode that hides a button, or the tab
+        # that leads back, makes the analyst hunt for what they were just using.
         self.previous_visibility = []
         for dock in window.findChildren(QDockWidget):
             self.previous_visibility.append((dock, not dock.isHidden()));dock.hide()
-        window.workbench.tabBar().hide();self.focused = True
+        self.focused = True
         window.timeline_panel.focus_button.setText("Rétablir")
 
     def side_by_side(self):

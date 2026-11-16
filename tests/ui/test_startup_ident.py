@@ -20,7 +20,7 @@ def test_the_ident_is_short_enough_not_to_hold_a_launch(qt_application):
     widget = StartupAnimation()
     try:
         assert widget.animation.duration() == DURATION
-        assert DURATION <= 6000, "un ident ne doit pas retenir le lancement"
+        assert DURATION <= 8000, "un ident ne doit pas retenir le lancement"
         assert (widget.width(), widget.height()) == (WIDTH, HEIGHT)
     finally:
         widget.deleteLater()

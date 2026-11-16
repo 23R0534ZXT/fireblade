@@ -52,8 +52,11 @@ def test_focus_gives_timeline_space_and_restores_analysis(qt_application, tmp_pa
         window.workspace_layout.timeline();settle(qt_application,window)
         assert window.timeline_panel.store.page()['count'] == 1
         assert window.timeline_panel.store.sources[0]['dated'] == 1
-        assert window.workbench.tabBar().isHidden()
-        assert not window.main_toolbar.isHidden()   # actions stay reachable in focus
+        # Measured decision (0.4.0): the tab strip stays, because it is the way back
+        # and the analyst reads it as part of the top panel. Space is given by the
+        # panels, not by removing buttons.
+        assert not window.workbench.tabBar().isHidden()
+        assert not window.main_toolbar.isHidden() and not window.collection_toolbar.isHidden()
         assert window.timeline_panel.canvas.height() >= 290
         window.workspace_layout.analysis();settle(qt_application,window)
         assert not window.workbench.tabBar().isHidden() and window.workbench.currentIndex() == 0

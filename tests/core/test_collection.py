@@ -273,3 +273,14 @@ def test_files_are_parsed_in_parallel_and_merged_in_file_order(tmp_path):
     assert values(parallel) == values(single) == [1] * 6
     files = lambda item: [Path(entry['path']).name for entry in item.report['files']]
     assert files(parallel) == files(single) == sorted(files(single))
+
+def test_a_folder_parses_on_the_machines_threads_when_left_automatic(tmp_path):
+    import os
+    from fireblade.core.settings import Settings, auto_threads
+
+    root = tmp_path/'evidence'; root.mkdir()
+    pack = tmp_path/'pack'; (pack/'dotnet').mkdir(parents=True)
+    automatic = Collection(root, tmp_path/'w1', ToolPack(pack), settings=Settings(threads=0))
+    explicit = Collection(root, tmp_path/'w2', ToolPack(pack), settings=Settings(threads=3))
+    assert automatic.workers() == auto_threads()
+    assert explicit.workers() == min(3, os.cpu_count() or 1)

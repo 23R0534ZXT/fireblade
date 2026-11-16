@@ -14,7 +14,7 @@ class Preferences:
     navigation_grouping: str = "families"
     resource_memory_mb: int = 0
     query_threads: int = 0
-    parsing_threads: int = 1
+    parsing_threads: int = 0   # 0 = automatic, resolved when the engine is built
     effort_level: str = "balanced"
     navigation_visible: bool = True
     navigation_position: str = "left"
@@ -40,7 +40,7 @@ class Preferences:
     pinned_columns_by_format: dict[str,list[str]] = field(default_factory=dict)
 
     def validate(self):
-        for name, low, high in (("resource_memory_mb", 0, 16384), ("query_threads", 0, 32), ("parsing_threads", 1, 32)):
+        for name, low, high in (("resource_memory_mb", 0, 16384), ("query_threads", 0, 32), ("parsing_threads", 0, 32)):
             value = getattr(self, name)
             if type(value) is not int or not low <= value <= high or name == "resource_memory_mb" and 0 < value < 64:
                 raise ValueError("Ressources invalides : " + name)

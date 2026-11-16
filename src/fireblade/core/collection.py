@@ -18,7 +18,7 @@ from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
 import duckdb
 from fireblade.core.i18n import translate
-from fireblade.core.settings import Settings, grown_memory
+from fireblade.core.settings import Settings, auto_threads, grown_memory
 from fireblade.core.models import View
 
 
@@ -402,7 +402,7 @@ class Collection:
         """
         threads = int(getattr(self.settings, 'threads', 0) or 0)
         if threads <= 0:
-            threads = min(8, os.cpu_count() or 1)
+            threads = auto_threads()
         return max(1, min(threads, 8, os.cpu_count() or 1))
 
     def _parse_entry(self, source, entry):

@@ -70,7 +70,7 @@ Windows CI runs focused regression tests on Python 3.12, builds the standalone E
 - Detach, dock and resize workbench panels. Switch to **Analysis**, **Timeline only**, or **Analysis + timeline**, and save your workspace layout.
 - Drag column headers into your preferred order. Column order and widths are saved automatically per artifact format.
 - Highlight matching text without recoloring the whole row.
-- Set query threads, import threads and per-analysis memory in **Preferences → Resources**. Sequential background collection keeps memory bounded.
+- Set query threads, import threads and per-analysis memory in **Preferences → Resources**. Both thread counts accept **Automatic**, which is the default: it resolves to the machine (up to eight files parsed at once, where the shared disk stops paying).
 - Create a column-specific rule directly from a cell value. Access existing rules and custom JSON profiles from the workspace toolbar, create a profile from the current artifact, or import a .NET reader through Preferences.
 
 ## Capabilities
@@ -112,7 +112,7 @@ For a first evaluation, use the sample data below. The application remains an **
 
 ## Resource and storage management
 
-Fireblade uses disk-backed DuckDB databases and paged views. The default database budget is **128 MB with one thread**; background parsing receives half that budget, with a 64 MB minimum. Existing user configuration takes precedence.
+Fireblade uses disk-backed DuckDB databases and paged views. The default database budget is **128 MB with one thread**; background parsing receives half that budget, with a 64 MB minimum. Thread counts left on **Automatic** are resolved before they reach DuckDB — a setting of zero is never handed to the engine, which refuses it. Existing user configuration takes precedence.
 
 These settings limit DuckDB, **not total application memory**. Qt, Python and external parsers have separate overhead. Wide tables and expensive queries may require additional resources. The low-memory import path prioritizes bounded memory over speed.
 

@@ -8,7 +8,7 @@ means half of a 4-core VM and half of a 32-core server.
 import os
 from dataclasses import dataclass
 
-from fireblade.core.settings import physical_memory_mb
+from fireblade.core.settings import auto_threads, physical_memory_mb
 
 LEVELS = ('light', 'balanced', 'fast', 'maximum')
 
@@ -72,7 +72,7 @@ def from_settings(threads, memory, cpu=None, ram=None):
     """Describe an explicit choice (a hand-edited thread count) with the same colour."""
     cpu = cpu or cores()
     ram = ram or memory_mb()
-    threads = int(threads or max(1, cpu // 2))
+    threads = int(threads or auto_threads(cpu))
     memory = int(memory or min(2048, max(512, ram // 3)))
     threads, memory = _fit(threads, memory, cpu, ram)
     share = max(threads / cpu, memory / max(1, ram))

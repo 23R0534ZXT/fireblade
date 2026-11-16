@@ -63,7 +63,7 @@ class ExplorationMixin:
         if self.case and not self.busy and not self.pool.activeThreadCount():
             with self.case.lock:
                 self.case.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
-                self.case.db.execute(f'SET threads={self.settings.threads}')
+                self.case.db.execute(f'SET threads={self.settings.effective_threads}')
                 self.case.settings = self.settings
         if hasattr(self,'autosave_action'):
             self.autosave_action.blockSignals(True);self.autosave_action.setChecked(p.case_autosave);self.autosave_action.blockSignals(False)

@@ -57,7 +57,7 @@ class Case:
         from fireblade.core.analysis_storage import connect_analysis
         self.db = connect_analysis(self.path, read_only=read_only, allow_empty_import=True)
         self.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
-        self.db.execute(f"SET threads={self.settings.threads}")
+        self.db.execute(f"SET threads={self.settings.effective_threads}")
         self.db.execute("SET enable_progress_bar=false")
         self.db.execute("SET TimeZone='UTC'")
         self.db.execute("SET preserve_insertion_order=true")
@@ -121,7 +121,7 @@ class Case:
             yield
         finally:
             with self.finalizing_transaction():
-                self.db.execute(f'SET threads={self.settings.threads}')
+                self.db.execute(f'SET threads={self.settings.effective_threads}')
 
     @contextmanager
     def operation(self, final_check=True):

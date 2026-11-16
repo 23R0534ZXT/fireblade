@@ -32,7 +32,7 @@ def test_folder_import_background_and_case_restore(qt_application, tmp_path, mon
         until(qt_application,lambda:entered.is_set())
         assert window.disk_job is not None and not window.busy
         assert window.centralWidget().isEnabled()
-        assert window.collection.settings.threads==1
+        assert window.collection.settings.threads==window.preferences.parsing_threads
         assert window.collection.settings.memory_mb==window.settings.memory_mb, "la collecte garde tout le budget"
         assert not window.close_investigation()
         if organization=='files':

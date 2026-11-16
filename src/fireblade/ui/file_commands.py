@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QFileDialog
 
 from fireblade.core.engine import Case
 from fireblade.core.models import AnalysisSnapshot, View
+from fireblade.core.settings import auto_threads
 from fireblade.ui.dialogs import ImportDialog
 from fireblade.ui.workers import Signals
 
@@ -104,7 +105,9 @@ class FileCommandsMixin:
             self.error(message)
 
         def importing():
-            candidate.db.execute(f'SET threads={self.preferences.parsing_threads}')
+            # The preference may say "automatic": resolve it before DuckDB sees it,
+            # because SET threads=0 is refused and the import then fails silently.
+            candidate.db.execute(f'SET threads={self.preferences.parsing_threads or auto_threads()}')
             try:
                 if tle_plugin is not None:
                     from fireblade.core.tle_plugins import import_plugin

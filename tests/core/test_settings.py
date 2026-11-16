@@ -57,3 +57,29 @@ def test_a_budget_that_cannot_spill_grows_but_never_eats_the_machine():
 def test_the_shipped_default_leaves_room_for_a_real_export():
     from fireblade.core.settings import Settings
     assert Settings().memory_mb >= 1024, "128 Mo ne suffit pas à un export de collecte"
+
+def test_automatic_threads_are_resolved_before_the_engine_sees_them(tmp_path):
+    from fireblade.core.settings import auto_threads
+
+    assert auto_threads(cpu=20) == 8, 'le genou mesure : huit fichiers a la fois'
+    assert auto_threads(cpu=2) == 2 and auto_threads(cpu=1) == 1
+    assert Settings(threads=0).effective_threads == auto_threads()
+    assert Settings(threads=4).effective_threads == 4
+    # A setting of zero must never reach DuckDB: it refuses it and the import dies
+    # without a visible error.
+    source = tmp_path/'sample.csv'
+    source.write_text('ID,Artifact\n' + ''.join(f'{index},MFT\n' for index in range(40)))
+    case = Case(tmp_path/'automatic.timeline', settings=Settings(threads=0, memory_mb=256))
+    try:
+        case.import_csv(source)
+        assert case.db.execute("SELECT current_setting('threads')").fetchone()[0] == auto_threads()
+        assert case.info['rows'] == 40
+    finally:
+        case.close()
+
+
+def test_parsing_threads_ship_on_automatic():
+    from fireblade.core.preferences import Preferences
+    preferences = Preferences()
+    assert preferences.parsing_threads == 0
+    preferences.validate()

@@ -41,11 +41,11 @@ class PreferencesDialog(QDialog):
         form.insertRow(0, 'Langue / Language', self.language)
         self.memory = QSpinBox();self.memory.setRange(0, 16384);self.memory.setSpecialValueText('Configuration actuelle');self.memory.setSuffix(' Mo');self.memory.setValue(preferences.resource_memory_mb)
         self.query_threads = QSpinBox();self.query_threads.setRange(0, 32);self.query_threads.setSpecialValueText('Configuration actuelle');self.query_threads.setValue(preferences.query_threads)
-        self.parsing_threads = QSpinBox();self.parsing_threads.setRange(1, 32);self.parsing_threads.setValue(preferences.parsing_threads)
+        self.parsing_threads = QSpinBox();self.parsing_threads.setRange(0, 32);self.parsing_threads.setSpecialValueText('Automatique');self.parsing_threads.setValue(preferences.parsing_threads)
         resources.addRow('Mémoire par analyse', self.memory)
         resources.addRow('Threads · recherche et requêtes', self.query_threads)
         resources.addRow('Threads · import et parsing', self.parsing_threads)
-        hint = QLabel('Enregistré pour les prochains lancements. Les tâches en cours gardent leurs ressources. Les collectes restent séquentielles pour limiter la RAM. Les moteurs externes gardent leurs propres options.')
+        hint = QLabel('Enregistré pour les prochains lancements. Les tâches en cours gardent leurs ressources. Un dossier est analysé sur plusieurs fichiers à la fois, dans la limite des threads ci-dessus. Les moteurs externes gardent leurs propres options.')
         hint.setWordWrap(True);resources.addRow(hint)
         if parent is not None and hasattr(parent, 'manage_plugins'):
             for label, callback in [('Profils et plugins JSON…', parent.manage_plugins), ('Lecteurs .NET…', parent.import_with_tle_plugin)]:

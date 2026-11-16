@@ -177,13 +177,24 @@ class WorkspaceLayout:
 
     def leave_focus(self):
         if not self.focused:return
-        for widget, visible in self.previous_visibility:widget.setVisible(visible)
+        for widget, visible in self.previous_visibility:
+            # A panel can be gone by the time the mode is left: restoring visibility
+            # on a deleted widget is how a mode switch used to raise.
+            try:
+                widget.setVisible(visible)
+            except RuntimeError:
+                pass
+        self.previous_visibility = []
         self.window.workbench.tabBar().show()
         self.focused = False
         self.window.timeline_panel.focus_button.setText("Agrandir")
 
     def analysis(self):
-        self.leave_focus();self.window.workbench.setCurrentIndex(0)
+        # Modes are exclusive: a timeline detached by "Analyse + chronologie" must
+        # come back as a tab, or the next mode switch works on a layout nobody sees.
+        self.leave_focus()
+        self.window.workbench.attach_panel(self.window.timeline_tab_index)
+        self.window.workbench.setCurrentIndex(0)
 
     def timeline(self):
         # Restore first: entering this mode twice used to record an already hidden
@@ -193,9 +204,10 @@ class WorkspaceLayout:
         if not window.workbench.isTabEnabled(window.timeline_tab_index):return
         window.workbench.attach_panel(window.timeline_tab_index)
         window.show_timeline()
-        widgets = [window.collection_toolbar, window.statusBar()]
-        self.previous_visibility = [(w, not w.isHidden()) for w in widgets]
-        for widget, _visible in self.previous_visibility:widget.hide()
+        # Only what takes space goes: the docks and the tab bar. The top bars stay
+        # exactly as they are in Analysis, because a mode that hides a toolbar makes
+        # the analyst hunt for the action they were just using.
+        self.previous_visibility = []
         for dock in window.findChildren(QDockWidget):
             self.previous_visibility.append((dock, not dock.isHidden()));dock.hide()
         window.workbench.tabBar().hide();self.focused = True
@@ -213,6 +225,7 @@ class WorkspaceLayout:
         for name in list(self.auxiliary):self.attach_auxiliary(name)
         for index in list(self.window.workbench.panels):self.window.workbench.attach_panel(index)
         self.window.workbench.setCurrentIndex(0)
+        self.window.workbench.tabBar().show()
         self.window.main_toolbar.show();self.window.collection_toolbar.show()
         self.window.statusBar().show()
 

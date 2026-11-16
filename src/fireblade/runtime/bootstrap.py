@@ -64,6 +64,12 @@ def notify_failure(log_path):
 
 
 def main():
+    # A parsing child re-launches this same executable: answer before Qt, DuckDB
+    # or any window is loaded, so a frozen build reads logs like a source run.
+    if '--parse-worker' in sys.argv[1:]:
+        from fireblade.core.linux_worker import main as worker_main
+        worker_main()
+        return
     report = report_argument(sys.argv[1:])
     log_path, log = open_log() if os.name == "nt" else (None, None)
     no_console = sys.stderr is None

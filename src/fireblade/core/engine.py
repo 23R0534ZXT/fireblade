@@ -243,6 +243,9 @@ class Case:
                     self.check_cancelled()
                     headers = None
                     relation = batch = None
+                    # Declared before the read: the memory fallback below runs even
+                    # when the reader itself failed, before any provenance is built.
+                    extras, extra_names = [], []
                     try:
                         relation = self.db.read_csv(str(input_path), **options)
                         headers = relation.columns
@@ -251,6 +254,19 @@ class Case:
                         if delimiter is None and len(headers) == 1:
                             self.validate_single_column_header(input_path)
                         projections = [f'"{h.replace(chr(34), chr(34)*2)}" AS "c{i}"' for i, h in enumerate(headers)]
+                        # Provenance used to cost a second Python pass over the whole CSV.
+                        # Two constants added by the import give the same columns for free:
+                        # the file is read once and never copied.
+                        # The events table is addressed by position (c0..cN) and checked
+                        # as such, so provenance joins it as two more positions.
+                        if provenance:
+                            for index, (key, column) in enumerate((('artifact', 'Fireblade_ArtifactSource'),
+                                                                   ('parser', 'Fireblade_Parser'))):
+                                value = provenance.get(key)
+                                if value:
+                                    extras.append("'%s' AS \"c%d\"" % (str(value).replace("'", "''"),
+                                                                       len(headers)+index))
+                                    extra_names.append(column)
                         progress("Écriture des enregistrements sur disque…")
                         self.check_cancelled()
                         chunk_bytes = min(csv_chunks.CHUNK_BYTES, self.settings.memory_mb * 1024 * 1024 // 16)
@@ -263,7 +279,7 @@ class Case:
                         self.streaming_chunks = 0
                         self.single_pass_used = False
                         if size <= chunk_bytes:
-                            relation.project('row_number() OVER () AS "__row_id", ' + ", ".join(projections)).create("events")
+                            relation.project('row_number() OVER () AS "__row_id", ' + ", ".join(projections+extras)).create("events")
                         else:
                             # Release the original reader's sample buffers before the
                             # bounded queries. Explicit IDs preserve source order.
@@ -274,9 +290,9 @@ class Case:
                             # One pass over the file is three times faster than one import
                             # per temporary chunk; a file past the transaction threshold
                             # keeps the chunked path, which is what keeps memory flat.
-                            if not self._import_single_pass(input_path, headers, options, size, progress):
+                            if not self._import_single_pass(input_path, headers, options, size, progress, extras):
                                 self._import_chunks(input_path, headers, options, projections,
-                                                    separator, size, progress)
+                                                    separator, size, progress, extras, extra_names)
                     except (duckdb.OutOfMemoryException, MemoryError):
                         # Wide parser exports can exhaust native CSV vectors even
                         # for small files. Retry using bounded, parameter-bound rows.
@@ -294,7 +310,10 @@ class Case:
                         self.check_cancelled()
                         self.db.execute('BEGIN')
                         progress('Import à mémoire réduite…')
-                        self._import_csv_rows(input_path, headers, delimiter, progress)
+                        self._import_csv_rows(input_path, headers, delimiter, progress,
+                                              [(name, str(provenance.get(key, '')))
+                                               for key, name in zip(('artifact', 'parser'), extra_names)])
+                headers = list(headers) + extra_names
                 count = self.db.execute("SELECT count(*) FROM events").fetchone()[0]
                 progress("Vérification de l’intégrité de la source…")
                 after_sha = digest()
@@ -340,7 +359,7 @@ class Case:
         """
         return self.huge_threshold()
 
-    def _import_single_pass(self, input_path, headers, options, size, progress):
+    def _import_single_pass(self, input_path, headers, options, size, progress, extras=()):
         """Read the whole file once, with the columns named by position.
 
         DuckDB names them c0..cN when ``names`` is given, which is the addressing every
@@ -359,7 +378,7 @@ class Case:
             relation = self.db.read_csv(str(input_path), **dict(options, names=values))
             try:
                 relation.project('row_number() OVER () AS "__row_id", ' +
-                                 ", ".join(f'"{value}"' for value in values)).create('events')
+                                 ", ".join([f'"{value}"' for value in values] + list(extras))).create('events')
             finally:
                 del relation
             self.single_pass_used = True
@@ -374,14 +393,14 @@ class Case:
             self.db.execute('BEGIN')
             return False
 
-    def _import_chunks(self, input_path, headers, options, projections, separator, size, progress):
+    def _import_chunks(self, input_path, headers, options, projections, separator, size, progress, extras=(), extra_names=()):
         """One temporary chunk at a time, committed as it goes past the threshold."""
         chunk_bytes = min(csv_chunks.CHUNK_BYTES, self.settings.memory_mb * 1024 * 1024 // 16)
         streaming = size > self.huge_threshold()
         self.streaming_chunks = 0
         written = 0
         self.db.execute('CREATE TABLE events (__row_id BIGINT, ' +
-                        ', '.join(f'"c{index}" VARCHAR' for index in range(len(headers))) + ')')
+                        ', '.join(f'"c{index}" VARCHAR' for index in range(len(headers)+len(extras))) + ')')
         chunks = csv_chunks.csv_chunks(input_path, headers, separator, self.path.parent,
                                        chunk_bytes, self.check_cancelled)
         try:
@@ -389,7 +408,7 @@ class Case:
                 self.check_cancelled()
                 batch_options = dict(options, delimiter=',')
                 batch = self.db.read_csv(str(chunk), **batch_options)
-                batch = batch.project(f'row_number() OVER () + {written} AS "__row_id", ' + ", ".join(projections))
+                batch = batch.project(f'row_number() OVER () + {written} AS "__row_id", ' + ", ".join(projections+list(extras)))
                 batch.insert_into('events')
                 del batch
                 written += records
@@ -404,7 +423,7 @@ class Case:
         finally:
             chunks.close()
 
-    def _import_csv_rows(self, source, headers, delimiter, progress):
+    def _import_csv_rows(self, source, headers, delimiter, progress, extras=()):
         """Atomic low-memory fallback; preserve original cells and explicit row IDs.
 
         This is the path that must survive any machine: it is the one a collection
@@ -414,8 +433,8 @@ class Case:
         """
         csv.field_size_limit(max(csv.field_size_limit(), 16*1024*1024))
         self.db.execute('CREATE TABLE events (__row_id BIGINT, '+
-                        ', '.join(f'"c{i}" VARCHAR' for i in range(len(headers)))+')')
-        statement = 'INSERT INTO events VALUES ('+','.join('?' for _ in range(len(headers)+1))+')'
+                        ', '.join(f'"c{i}" VARCHAR' for i in range(len(headers)+len(extras)))+')')
+        statement = 'INSERT INTO events VALUES ('+','.join('?' for _ in range(len(headers)+len(extras)+1))+')'
         with source.open(encoding='utf-8-sig', newline='') as incoming:
             if not delimiter:
                 sample = incoming.read(65536); incoming.seek(0)
@@ -430,7 +449,8 @@ class Case:
                     raise ValueError(f'CSV incohérent à la ligne {reader.line_num}')
                 written += 1
                 # DuckDB's default null string is the empty CSV field, quoted or not.
-                pending.append([written]+[value if value else None for value in row])
+                pending.append([written]+[value if value else None for value in row]
+                               +[value for _name, value in extras])
                 size += sum(len(value) for value in row)
                 if len(pending)>=64 or size>=1024*1024:
                     try:

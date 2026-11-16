@@ -43,10 +43,17 @@ def test_parser_csv_tolerates_a_blank_trailing_line(collection, tmp_path):
     """A trailing blank line must not reject the whole parser output."""
     source = tmp_path/'parser.csv'
     source.write_bytes(b'EventID,Computer\r\n4624,PC01\r\n\r\n')
-    target = collection.enrich_result(source, 'Security.evtx', 'EvtxECmd')
-    rows = target.read_text(encoding='utf-8').splitlines()
-    assert rows[0] == 'EventID,Computer,Fireblade_ArtifactSource,Fireblade_Parser'
-    assert len(rows) == 2 and rows[1].startswith('4624,PC01,')
+    document = collection.import_result(source, 'EvtxECmd', register=False, evidence=dict(
+        path='Security.evtx', artifact='Security.evtx', parser='EvtxECmd'))
+    from fireblade.core.engine import Case
+    case = Case(document['path'], read_only=True)
+    try:
+        # Provenance is carried by the import itself, as two more positions.
+        assert case.headers[-2:] == ['Fireblade_ArtifactSource', 'Fireblade_Parser']
+        rows = case.db.execute('SELECT count(*) FROM events').fetchone()[0]
+        assert rows == 1
+    finally:
+        case.close()
 
 
 def test_collect_parse_session_and_alerts(collection, monkeypatch):

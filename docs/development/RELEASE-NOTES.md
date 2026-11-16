@@ -1,3 +1,58 @@
+# Fireblade 0.4.2 — huit fois moins de temps sur la même collecte
+
+La recette de la 0.4.1 a mesuré ce que coûte une collecte Linux : 50 min 49 s pour
+9,74 Gio. Le même dossier est maintenant lu en **6 min 0 s**, avec les mêmes 246
+analyses et la même répartition des statuts. Rien n'a été ajouté « pour aller
+plus vite » : les trois causes ont d'abord été mesurées, puis supprimées.
+
+## Le lecteur lisait dans un seul cœur, sans le dire
+
+- Huit fils d'import ne donnaient pas huit cœurs : le lecteur de journaux est du
+  Python pur, et le GIL les sérialise. Mesuré sur deux journaux de 250 Mo :
+  **28,3 s pour le premier, 50,8 s pour les deux menés en parallèle, soit ×1,11**.
+- Chaque fichier est désormais lu **dans son propre processus** (huit interpréteurs
+  qui se partagent la file) : quatre fichiers de 250 Mo passent de 11,7 à
+  **34,7 Mo/s**. Dans l'exécutable figé, le binaire se relance lui-même avec
+  `--parse-worker` avant de charger Qt, donc le gain vaut aussi pour la version
+  installée.
+- Si le bassin ne démarre pas — machine à bout, binaire amputé — la collecte
+  continue dans le processus courant et le dit, au lieu d'échouer.
+
+## La provenance ne recopie plus chaque CSV
+
+- Chaque CSV de parseur était **recopié ligne à ligne en Python** pour y ajouter
+  deux colonnes de provenance : sur cette collecte, une quinzaine de gigaoctets
+  réécrits à la main.
+- Ces colonnes sont maintenant ajoutées **par l'import lui-même**, à la lecture :
+  même résultat, un seul passage, plus de fichier intermédiaire.
+
+## Neuf expressions régulières par ligne, pour rien
+
+- Le format ne change pas d'un bout à l'autre d'un journal, et pourtant chaque ligne
+  essayait neuf formats avant de trouver le bon. Des tests de sous-chaîne écartent
+  maintenant les branches impossibles, et l'écriture passe par `csv.writer` au lieu
+  d'un `DictWriter` reconstruit à chaque ligne : **8,8 → 11,7 Mo/s par cœur** sur le
+  même fichier, sans changer une colonne ni une valeur.
+
+## Ce que ça donne
+
+- Collecte 9,74 Gio / 259 fichiers : **50 min 49 s → 6 min 0 s**.
+- Débit : **3,3 → 27,6 Mo/s**.
+- Résultat identique : 246 analyses, 224 fichiers complets, 31 à vérifier, 4 non
+  pris en charge, aucun fichier manquant.
+- Une collecte de 100 Go passe donc d'environ huit heures à environ une heure. Ce
+  qui reste : un **fichier unique** très gros n'utilise qu'un processus ; le
+  découper en tranches est le prochain levier, et il sera mesuré avant d'être
+  annoncé.
+
+## Vérification
+
+- Nouveaux tests : lecture dans un processus séparé, repli sur le processus courant
+  quand le bassin ne démarre pas, provenance portée par l'import.
+- Suite complète exécutée sur l'arbre publié, ruff compris.
+- Mesure de bout en bout sur la même collecte que la 0.4.1, même machine, mêmes
+  fichiers de référence.
+
 # Fireblade 0.4.1 — une recette sur 10 Gio, et ce qu'elle a trouvé
 
 Cette version ne vient pas d'une idée : elle vient de la recette finale de la 0.4.0 sur une

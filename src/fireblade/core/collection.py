@@ -389,8 +389,11 @@ class Collection:
                 csvs = [target]
             for csv_path in csvs:
                 check_cancel()
-                enriched = csv_path if reader == 'csv' else self.enrich_result(csv_path, path, tool)
-                run['outputs'].append(dict(csv=str(csv_path), analysis=self.import_result(enriched, tool)))
+                evidence = None if reader == 'csv' else dict(
+                    path=str(path), size=path.stat().st_size, sha256=entry.get('sha256', ''),
+                    label=self.label_for(path), artifact=str(path), parser=tool)
+                run['outputs'].append(dict(csv=str(csv_path),
+                                           analysis=self.import_result(csv_path, tool, evidence=evidence)))
             run['status'] = 'complete_with_warnings' if run.get('warnings') else 'complete'
         except OperationCancelled:
             run['status'] = 'cancelled'
@@ -407,34 +410,6 @@ class Collection:
         finally:
             self.save()
         return entry
-
-    def enrich_result(self, source, artifact, tool):
-        """Keep upstream CSV and append raw-artifact provenance to a separate copy."""
-        target = source.with_name(source.stem+'-fireblade.csv')
-        if target.exists():
-            target = source.with_name(source.stem+'-fireblade-'+uuid.uuid4().hex+'.csv')
-        csv.field_size_limit(2**31-1)
-        with source.open(encoding='utf-8-sig', newline='') as incoming, target.open('x', encoding='utf-8', newline='') as outgoing:
-            reader = csv.reader(incoming)
-            headers = next(reader, None)
-            if not headers:
-                raise ValueError('CSV du parseur vide ou sans en-tête')
-            names = []
-            for base in ('Fireblade_ArtifactSource', 'Fireblade_Parser'):
-                name, suffix = base, 2
-                while name in headers+names:
-                    name = base+'_'+str(suffix)
-                    suffix += 1
-                names.append(name)
-            writer = csv.writer(outgoing)
-            writer.writerow(headers+names)
-            for row in reader:
-                check_cancel()
-                if not row:continue  # Blank trailing line: same tolerance as the chunked importer.
-                if len(row) != len(headers):
-                    raise ValueError('CSV du parseur : largeur de ligne incohérente')
-                writer.writerow(row+[str(artifact), tool])
-        return target
 
     def label_for(self, source):
         """The shortest name that still tells two analysed logs apart."""
@@ -455,6 +430,34 @@ class Collection:
             del self.report['documents'][start:]
         elif self.report['organization'] == 'files':
             self.ready(copy.deepcopy(self.report['documents'][start:]))
+
+    def parse_linux(self, source, output):
+        """Read one Linux log in a child process, and never lose the ability to read it.
+
+        A pool that cannot start (a frozen build without the flag, a machine out
+        of processes) must cost speed, not the collection: the first failure falls
+        back on this process for the rest of the run and says so once.
+        """
+        pool = self.parser_pool()
+        if pool is not None:
+            try:
+                return pool.run(source, output)
+            except Exception as exc:  # noqa: BLE001 - a speed path may not fail a collection
+                self.progress('Reading in this process: ' + str(exc))
+                pool.close()
+                self._parse_pool = None
+                self._parse_pool_failed = True
+        from fireblade.core.linux_logs import parse
+        return parse(source, output, self.progress)
+
+    def parser_pool(self):
+        """The processes that read Linux logs, started on first use."""
+        if getattr(self, '_parse_pool_failed', False):
+            return None
+        if getattr(self, '_parse_pool', None) is None:
+            from fireblade.core.parse_pool import ParsePool
+            self._parse_pool = ParsePool(self.workers()).start()
+        return self._parse_pool
 
     def workers(self):
         """How many files at once: the effort level, one per thread, capped at eight.
@@ -516,8 +519,7 @@ class Collection:
                         csvs = [Path(item['csv']) for item in result['outputs']]
                     elif tool in ('CatScale', 'LinuxLogs'):
                         if tool == 'LinuxLogs':
-                            from fireblade.core.linux_logs import parse
-                            result = parse(source, output, self.progress)
+                            result = self.parse_linux(source, output)
                         else:
                             from fireblade.core.catscale import parse
                             result = parse(source, output)
@@ -534,11 +536,13 @@ class Collection:
                         execute(command, str(Path(self.pack.root)/tool), output/'parser.log')
                         csvs = sorted(output.rglob('*.csv'))
                     for csv in csvs:
-                        enriched = csv if tool == 'native' else self.enrich_result(csv, source, tool)
+                        # The provenance travels with the import: the parser CSV is
+                        # read once, and no enriched copy is written beside it.
                         evidence = None if tool == 'native' else dict(
                             path=str(source), size=source.stat().st_size,
-                            sha256=entry.get('sha256', ''), label=self.label_for(source))
-                        document = self.import_result(enriched, tool, register=False, evidence=evidence)
+                            sha256=entry.get('sha256', ''), label=self.label_for(source),
+                            artifact=str(source), parser=tool)
+                        document = self.import_result(csv, tool, register=False, evidence=evidence)
                         documents.append(document)
                         run['outputs'].append(dict(csv=str(csv), analysis=document['path'], **({'family':catscale_outputs[str(csv)]['family']} if tool in ('CatScale', 'LinuxLogs') else {})))
                     run['status'] = ('complete_with_warnings' if run.get('warnings') else 'complete') if csvs else 'no_output'
@@ -650,6 +654,10 @@ class Collection:
             raise
         finally:
             self.save()
+            pool = getattr(self, '_parse_pool', None)
+            if pool is not None:
+                pool.close()
+                self._parse_pool = None
         return self.report
 
     def analyze(self, min_level='low'):

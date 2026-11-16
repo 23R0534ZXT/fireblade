@@ -66,6 +66,15 @@ def encoded(value):
     return json.dumps(value, ensure_ascii=False, separators=(',', ':'))
 
 
+MONTHS = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+
+
+def _syslog_shape(text):
+    """True when a syslog line can start here: a month name or an ISO date, after any <pri>."""
+    head = text[text.index('>')+1:] if text.startswith('<') and '>' in text[:6] else text
+    return head[:3] in MONTHS or (head[4:5] == '-' and head[7:8] == '-')
+
+
 def text_fields(text, path=''):
     """Decode one physical line without guessing a year, timezone or custom schema."""
     stripped = text.strip()
@@ -88,7 +97,8 @@ def text_fields(text, path=''):
                             fields[target] = encoded(obj[key]) if isinstance(obj[key], (dict, list)) else str(obj[key])
                             break
                 return fields
-    audit = re.match(r'(?:node=(\S+)\s+)?type=(\S+)\s+msg=audit\(([^:]+):(\d+)\):\s*(.*)', stripped)
+    audit = re.match(r'(?:node=(\S+)\s+)?type=(\S+)\s+msg=audit\(([^:]+):(\d+)\):\s*(.*)', stripped) \
+        if 'msg=audit(' in stripped else None
     if audit:
         fields = {'Format': 'Linux audit', 'Hôte': audit[1] or '', 'Horodatage': audit[3],
                   'Événement': audit[4], 'Détail': audit[5]}
@@ -100,7 +110,8 @@ def text_fields(text, path=''):
                 fields[target] = pairs[key].strip('"')
         # Each audit record keeps its event serial; no adjacency-based merging.
         return fields
-    rfc5424 = re.match(r'^<(\d{1,3})>([1-9]\d*) (\S+) (\S+) (\S+) (\S+) (\S+) (.*)$', stripped)
+    rfc5424 = re.match(r'^<(\d{1,3})>([1-9]\d*) (\S+) (\S+) (\S+) (\S+) (\S+) (.*)$', stripped) \
+        if stripped.startswith('<') else None
     if rfc5424:
         from fireblade.core.linux_log_formats import rfc5424_body
         body = rfc5424_body(rfc5424[8])
@@ -111,28 +122,34 @@ def text_fields(text, path=''):
                 'Processus': rfc5424[5], 'PID': rfc5424[6], 'Événement': rfc5424[7],
                 'Détail': message, 'Champs': encoded({'priority': rfc5424[1], 'version': rfc5424[2],
                                                     'structured_data': structured_data})}
-    syslog = re.match(r'^(?:<\d{1,3}>)?(\w{3}\s+\d{1,2}\s+\d\d:\d\d:\d\d|'
-                      r'\d{4}-\d\d-\d\d[T ]\d\d:\d\d:\d\d\S*)\s+(\S+)\s+'
-                      r'([^\s:\[]+)(?:\[(\d+)\])?:\s?(.*)$', stripped)
+    if _syslog_shape(stripped):
+        syslog = re.match(r'^(?:<\d{1,3}>)?(\w{3}\s+\d{1,2}\s+\d\d:\d\d:\d\d|'
+                          r'\d{4}-\d\d-\d\d[T ]\d\d:\d\d:\d\d\S*)\s+(\S+)\s+'
+                          r'([^\s:\[]+)(?:\[(\d+)\])?:\s?(.*)$', stripped)
+    else:
+        syslog = None
     if syslog:
         return {'Format': 'Syslog', 'Horodatage': syslog[1], 'Hôte': syslog[2],
                 'Processus': syslog[3], 'PID': syslog[4] or '', 'Détail': syslog[5]}
-    web = re.match(r'^(\S+) (\S+) (\S+) \[([^\]]+)\] "([^"\n]*)" (\d{3}|-) (\d+|-)(.*)$', stripped)
+    web = re.match(r'^(\S+) (\S+) (\S+) \[([^\]]+)\] "([^"\n]*)" (\d{3}|-) (\d+|-)(.*)$', stripped) \
+        if '] "' in stripped else None
     if web:
         request = web[5].split(' ', 2)
         return {'Format': 'HTTP access', 'Horodatage': web[4], 'Adresse distante': web[1],
                 'Utilisateur': web[3], 'Méthode': request[0], 'Chemin': request[1] if len(request)>1 else '',
                 'Statut': web[6], 'Octets': web[7], 'Détail': web[8]}
-    kernel = re.match(r'^\[\s*(\d+(?:\.\d+)?)\]\s*(.*)', stripped)
+    kernel = re.match(r'^\[\s*(\d+(?:\.\d+)?)\]\s*(.*)', stripped) if stripped.startswith('[') else None
     if kernel:
         return {'Format': 'Kernel monotonic', 'Horodatage': kernel[1], 'Détail': kernel[2]}
-    dated = re.match(r'^(\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d(?:[.,]\d+)?(?:Z|[+-]\d\d:?\d\d)?)\s+(.*)', stripped)
+    dated = re.match(r'^(\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d(?:[.,]\d+)?(?:Z|[+-]\d\d:?\d\d)?)\s+(.*)', stripped) \
+        if stripped[4:5] == '-' and stripped[7:8] == '-' else None
     if dated:
         return {'Format': 'Application timestamp', 'Horodatage': dated[1], 'Détail': dated[2]}
-    nginx = re.match(r'^(\d{4}/\d\d/\d\d \d\d:\d\d:\d\d) \[([^\]]+)\] (\d+)#\d+: (.*)', stripped)
+    nginx = re.match(r'^(\d{4}/\d\d/\d\d \d\d:\d\d:\d\d) \[([^\]]+)\] (\d+)#\d+: (.*)', stripped) \
+        if stripped[4:5] == '/' and stripped[7:8] == '/' else None
     if nginx:
         return {'Format': 'Nginx error', 'Horodatage': nginx[1], 'Statut': nginx[2], 'PID': nginx[3], 'Détail': nginx[4]}
-    apache = re.match(r'^\[([^\]]+)\]\s+\[([^\]]+)\](.*)', stripped)
+    apache = re.match(r'^\[([^\]]+)\]\s+\[([^\]]+)\](.*)', stripped) if stripped.startswith('[') else None
     if apache and re.search(r'\d\d:\d\d:\d\d', apache[1]):
         return {'Format': 'Apache error', 'Horodatage': apache[1], 'Statut': apache[2], 'Détail': apache[3]}
     return {}
@@ -478,14 +495,14 @@ def parse(source, output, progress=lambda _: None):
         nonlocal total, structured, raw_count, handle, writer
         if writer is None:
             handle = target.open('x', encoding='utf-8', newline='')
-            writer = csv.DictWriter(handle, HEADERS)
-            writer.writeheader()
+            writer = csv.writer(handle)
+            writer.writerow(HEADERS)
         from fireblade.core.linux_log_formats import enrich, utc_time
         row.update(enrich(row, row.get('Texte brut','')))
         if row.get('Format') == 'Zeek TSV':
             row['Horodatage UTC'] = utc_time(row.get('Horodatage',''), epoch=True)
         row['Source'] = path
-        writer.writerow(row)
+        writer.writerow([row.get(name, '') for name in HEADERS])
         total += 1
         is_raw = row.get('Lecture') == 'Brute'
         raw_count += is_raw

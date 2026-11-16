@@ -17,6 +17,47 @@
 - Le fichier n'est que lu, jamais modifié. L'empreinte relevée à la lecture devient la référence : une lecture ultérieure est refusée si le fichier a changé. Un fichier absent de la collecte ajoute sa ligne au bilan au lieu d'être refusé.
 - Un binaire n'est jamais lu comme du texte, et un fichier sans ligne lisible dit pourquoi au lieu de produire une analyse vide.
 
+## Fenêtre de collecte : deux questions, pas trois
+
+L'écran qui s'ouvre avant un parsing proposait trois choix mélangés : « résultats
+progressifs », « par artefact » et « vue unifiée ». Les deux premiers ne répondaient pas à
+la même question, et le choix recommandé était le moins explicite.
+
+Il pose maintenant les deux questions séparément, en anglais comme le reste de
+l'interface : une case **« Keep working while the folder is parsed »** — on continue à
+travailler pendant que le dossier est lu, chaque fichier analysé s'ouvrant dans sa propre
+grille — puis le **résultat**, avec **« By artifact — recommended »** (un onglet par famille
+d'artefact, tous listés dans l'arbre de navigation, chaque grille gardant ses colonnes) et
+**« Unified view »** (une seule grille, groupée par artefact, groupement fixe).
+
+Une vue fusionnée a besoin du dossier entier : le choix de disposition est donc grisé tant
+que la case est cochée, avec la raison écrite dessous.
+
+## Espace de travail : les mêmes barres dans tous les modes
+
+- **Chronologie seule** ne cache plus que les panneaux détachables. Les barres du haut et
+  la barre d'onglets (Analyses, Imports, Cases, Chronologie, IOC, EVTX) restent en place :
+  c'était le chemin du retour, et il disparaissait avec le mode.
+- Choisir un autre onglet sort du mode, au lieu de laisser la fenêtre à moitié déshabillée.
+- **Analyse** rattache une chronologie détachée par « Analyse + chronologie » : les modes
+  ne se mélangent plus.
+- Sortir d'un mode ne casse plus si un panneau a été supprimé entre-temps ; « Rétablir les
+  panneaux » remet aussi la barre d'onglets.
+- Le badge du case, en haut à droite, respire : 12 px à gauche, 24 à droite, aligné à
+  droite, pour qu'un nom long ne touche plus le bord de la fenêtre.
+
+## Générique de démarrage : redessiné
+
+- L'ancien générique collait une vidéo 320×426 dans la moitié droite et masquait ses
+  coutures par des dégradés : mou, pixelisé, plus lourd que l'application qu'il annonce.
+- Le nouveau est entièrement dessiné : mot centré sur un axe, nappe de lumière chaude,
+  filet ambre, signature, version, ligne de progression et poussière qui dérive —
+  déterministe, identique à chaque lancement.
+- Il dure 6,5 s au lieu de 10 : de quoi respirer sans retenir le lancement.
+- Quatre tests le regardent comme le ferait un œil : la fenêtre s'éclaire, les pixels
+  allumés sont équilibrés autour du centre, le dernier cadre revient au noir, et la durée
+  reste bornée.
+
 ## PDF : la couche texte, et rien d'autre
 
 - Texte extrait page par page via `pypdf`, dans la même forme que les autres sources : une ligne par ligne, avec le numéro de page ; l'horodatage n'est retenu que s'il ouvre la ligne.

@@ -33,6 +33,12 @@ Dernière mise à jour : 16 novembre 2026, après la préparation de la 0.4.0.
 - **`core/pdfreader.py`** : couche texte seulement, page par page, via `pypdf`
   (extra optionnel, épinglé dans `requirements/runtime.txt` pour l'exe). Pas d'OCR :
   un PDF sans couche texte est signalé et compté avec les avertissements.
+- **Générique de démarrage** redessiné (`ui/startup.py`) : plus de GIF, tout est peint,
+  6,5 s, déterministe ; quatre tests de rendu le vérifient.
+- **Espace de travail** : les trois modes gardent les mêmes barres et la barre d'onglets,
+  les panneaux détachables reviennent dans le même état, et un onglet cliqué sort du mode.
+- **Fenêtre de collecte** : deux questions séparées (travailler pendant le parsing, puis
+  disposition par artefact ou vue unifiée), libellés en anglais, chaque option expliquée.
 - **Porte** : suite lancée en UTF-8 (les fixtures écrivaient en page de code locale),
   purge des dossiers `%TEMP%\pytest-of-…` périmés (casse du chemin), et le test
   « le cœur ne charge pas Qt » garde désormais les paquets de l'interpréteur.

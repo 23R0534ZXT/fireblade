@@ -179,6 +179,8 @@ class CollectionMixin(AlertContextMixin):
                       'Analyses chargées : '+str(len(report['documents']))]
             if report.get('detection'):
                 lines += ['Hayabusa : '+status(report['detection']['status']), str(report['detection'].get('error', ''))]
+            for failure in report.get('organization_failures', []):
+                lines += ['Organisation : '+str(failure.get('artifact',''))+' non fusionné ; résultats laissés séparés · '+str(failure.get('reason',''))[:300]]
             for entry in report['files']:
                 lines.append(f"{status(entry['status'])} · {entry['path']}")
                 if entry.get('sha256'):lines.append('  SHA-256 : '+entry['sha256'])

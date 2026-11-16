@@ -1,5 +1,6 @@
 """Stream heterogeneous collection results into artifact tabs or one grouped table."""
 import csv
+import duckdb
 from pathlib import Path
 import uuid
 
@@ -58,6 +59,7 @@ def organize(collection):
     folder = collection.output/'results'/('organisation-'+uuid.uuid4().hex)
     folder.mkdir()
     documents = []
+    failures = []
     try:
         for title, sources in groups.items():
             check_cancel()
@@ -114,10 +116,21 @@ def organize(collection):
                             case.close()
             temporary.replace(target)
             view = View(groups=[0]) if mode == 'combined' else View()
-            document = collection.import_result(target, 'organized', view=view, register=False)
+            try:
+                document = collection.import_result(target, 'organized', view=view, register=False)
+            except duckdb.OutOfMemoryException as exc:
+                # A merged family can need more memory than the collection's budget.
+                # Keep this family as its original analyses rather than losing the
+                # whole collection on the last step, and record why.
+                target.unlink(missing_ok=True)
+                failures.append(dict(artifact=title, reason=str(exc)))
+                documents.extend(document for document, _origin in sources)
+                continue
             documents.append(document)
         collection.report['raw_documents'] = originals
         collection.report['documents'] = documents
+        if failures:
+            collection.report['organization_failures'] = failures
     except BaseException:
         # Originals remain the active session until the complete organization succeeds.
         for document in documents:

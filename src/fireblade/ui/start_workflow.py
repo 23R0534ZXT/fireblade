@@ -6,7 +6,7 @@ from pathlib import Path
 import uuid
 
 from PySide6.QtCore import QObject, QThreadPool, QTimer, Qt, Signal
-from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QFileDialog,
+from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QFileDialog, QMessageBox,
     QFormLayout, QHBoxLayout, QLabel, QLineEdit, QProgressBar, QPushButton,
     QVBoxLayout, QWidget)
 
@@ -263,6 +263,22 @@ class StartWorkflowMixin:
     def disk_failed(self, message):
         self.finish_disk(self.disk_collection.report, message)
 
+    def report_collection_failure(self, error):
+        """Say why, in a window: a status bar shows forty characters of a five-line error."""
+        from fireblade.core.errors import explain_failure
+        settings = getattr(self, "disk_collection", None)
+        memory = getattr(getattr(settings, "settings", None), "memory_mb", None)
+        explained = explain_failure(error, memory)
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("Collecte interrompue")
+        text = explained["summary"]
+        if explained["advice"]:
+            text += "\n\n" + "\n".join("• " + line for line in explained["advice"])
+        box.setText(text)
+        box.setDetailedText(explained["detail"])
+        box.exec()
+
     def finish_disk(self, report, error=None):
         # A disk may finish while a grid query or an exclusive import is active.
         # Wait for the workspace instead of saving/re-enabling controls mid-query.
@@ -289,6 +305,7 @@ class StartWorkflowMixin:
         if error:
             self.disk_message('Échec : '+error)
             self.coverage_notice('Disque', 'error', error, '')
+            self.report_collection_failure(error)
         else:
             self.disk_message(f"{label} · {len(report['documents'])} analyses · {errors} incidents")
         self.disk_job = None

@@ -24,3 +24,31 @@ def job_cancelled():
 class OperationCancelled(RuntimeError):
     def __init__(self, message="Opération annulée"):
         super().__init__(message)
+
+
+
+def explain_failure(error, memory_mb=None):
+    """A failure a person can act on: a sentence, the remedies, and the raw text.
+
+    DuckDB reports an out-of-memory as a five-line block that ends in a documentation
+    link; the status bar shows forty characters of it, which is how a collection can
+    die without ever saying why. The two families met in practice — memory and a file
+    modified during the import — get a plain sentence and a next step; everything else
+    keeps its first line and the detail.
+    """
+    text = str(error)
+    lowered = text.casefold()
+    if 'out of memory' in lowered or 'cannot allocate' in lowered or 'failed to pin block' in lowered:
+        limit = (' : %d Mo disponibles' % memory_mb) if memory_mb else ''
+        return dict(kind='memory',
+                    summary="Mémoire insuffisante pour cette étape%s." % limit,
+                    advice=["Augmentez la mémoire dans Préférences → Ressources, puis relancez.",
+                            "Ou traitez le dossier en lots plus petits."],
+                    detail=text)
+    if 'a changé pendant' in lowered or 'changed during' in lowered:
+        return dict(kind='source_changed',
+                    summary="Le fichier source a changé pendant l'import ; le résultat est refusé.",
+                    advice=["Fermez l'application qui écrit dans ce dossier, puis relancez."],
+                    detail=text)
+    first = next((line for line in text.splitlines() if line.strip()), text)
+    return dict(kind='other', summary=first.strip()[:300], advice=[], detail=text)

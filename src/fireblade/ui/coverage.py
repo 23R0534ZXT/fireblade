@@ -44,7 +44,11 @@ class CoveragePanel(QWidget):
         self.search.textChanged.connect(self.filter)
         self.badge=QPushButton('');window.statusBar().addPermanentWidget(self.badge);self.badge.clicked.connect(self.open);self.badge.setMaximumWidth(220);self.badge.hide()
     def open(self):
-        self.ensure_context();self.filter()
+        self.ensure_context()
+        # An incident recorded after the last check is what the analyst opened this for:
+        # landing on an empty "findings" tab hides the very reason there is a badge.
+        if not self.report or (self.events and self.stale):self.mode.setCurrentIndex(1)
+        self.filter()
         self.window.coverage_dialog.show();self.window.coverage_dialog.raise_();self.window.coverage_dialog.activateWindow()
     def state_path(self):
         data=self.window.active_investigation

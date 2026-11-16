@@ -223,7 +223,7 @@ class Collection:
                     raise
                 attempt += 1
                 budget = replace(budget, memory_mb=bigger) if budget else Settings(memory_mb=bigger)
-                self.progress('Mémoire insuffisante : nouvel essai avec %d Mo…' % bigger)
+                self.progress('Not enough memory: retrying with %d MB…' % bigger)
 
     def _import_once(self, csv, kind, view, register, budget):
         target = self.output/'analyses'/(uuid.uuid4().hex+'.timeline')

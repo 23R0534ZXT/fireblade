@@ -11,6 +11,7 @@ have nothing to do with the change.
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -48,7 +49,17 @@ def check_version():
 
 
 def check_lint():
-    run([sys.executable, "-m", "ruff", "check", "src", "scripts", "tests"])
+    """ruff as an executable when one is installed, otherwise through the interpreter.
+
+    `python -m ruff` only works when ruff sits in that interpreter's own environment:
+    it resolves ruff.exe next to the running python. A gate that dies on a missing
+    shim lint nothing at all, so the executable is looked up first, on PATH and next
+    to the interpreter.
+    """
+    executable = (shutil.which("ruff")
+                  or shutil.which("ruff", path=str(Path(sys.executable).parent)))
+    command = [executable] if executable else [sys.executable, "-m", "ruff"]
+    run([*command, "check", "src", "scripts", "tests"])
 
 
 def check_smoke():

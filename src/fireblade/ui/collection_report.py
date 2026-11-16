@@ -77,7 +77,7 @@ class OutcomeModel(QAbstractTableModel):
         if role==Qt.DisplayRole:
             status=STATUSES.get(entry['status'],entry['status'])
             if outcome(entry)=='errors' and entry['status']=='attention':status+=' · erreur de lecteur'
-            if entry.get('ignored'):status+=' · écarté'
+            if entry.get('ignored'):status+=translate(' · écarté')
             return [status,str(entry.get('path','')),
                     ', '.join(entry.get('tools',[])),
                     str(entry.get('error','')),
@@ -151,12 +151,15 @@ class CollectionReport(QWidget):
         self.refresh_buttons()
         if report:
             counts=Counter(outcome(e) for e in self.model.entries)
-            head=(f"{len(self.model.entries)} fichiers · {counts['complete']} réussis · {counts['warnings']} à vérifier · "
-                  f"{counts['errors']} erreurs/interrompus · {counts['unsupported']} non reconnus/ignorés · "
-                  f"{counts['other']} autres/compagnons · {counts['ignored']} écartés")
+            # The template is translated before formatting, so the English entry can
+            # be found: a formatted string never matches a table entry.
+            head=translate("{} fichiers · {} réussis · {} à vérifier · {} erreurs/interrompus · "
+                           "{} non reconnus/ignorés · {} autres/compagnons · {} écartés").format(
+                len(self.model.entries),counts['complete'],counts['warnings'],counts['errors'],
+                counts['unsupported'],counts['other'],counts['ignored'])
             tail=translate('Import : {} · {} analyses · Source : {}').format(
                 STATUSES.get(report['status'],report['status']),len(report.get('documents',[])),report['source'])
-            self.summary.setText(translate(head)+'\n'+tail)
+            self.summary.setText(head+'\n'+tail)
         else:self.summary.setText('Aucune collecte ouverte. Importez un dossier ou reprenez une collecte existante.')
         self.details.setPlainText('Sélectionnez un fichier pour lire ses avertissements, sa provenance et ses sorties. '
             '« Voir le fichier » affiche un aperçu de son contenu, sans jamais modifier la preuve.' if report else text)

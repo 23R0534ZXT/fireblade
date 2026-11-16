@@ -1226,6 +1226,33 @@ EN = {
     # Added for the full English interface: one entry per French label
     # the application can display.
     "— la note commune est pré-remplie": "— the common note is pre-filled",
+
+    # Import report: the actions an examiner takes on what could not be read.
+    "Voir le fichier": "View file",
+    "Copier les non traités…": "Copy unprocessed files…",
+    "Dossier de destination des fichiers non traités": "Destination folder for unprocessed files",
+    "Exporter la liste…": "Export list…",
+    "Exporter la liste des fichiers": "Export the file list",
+    "Liste exportée": "List exported",
+    "Copie terminée": "Copy finished",
+    "Rien à copier": "Nothing to copy",
+    "Tous les fichiers ont été traités.": "Every file has been processed.",
+    "Écarter du bilan": "Park from the report",
+    "Réintégrer au bilan": "Restore to the report",
+    "Écartés du bilan": "Parked from the report",
+    "Écarté du bilan : décision de l'analyste, le fichier reste décrit ici.": "Parked from the report: the analyst decided so; the file stays described here.",
+    "· écarté": "· parked",
+    " · écarté": " · parked",
+    "Supprimer…": "Delete…",
+    "Supprimé": "Deleted",
+    "Supprimer le fichier ?": "Delete this file?",
+    "Suppression impossible": "Deletion refused",
+    "Fichier illisible : ": "Unreadable file: ",
+    "Fichier vide (0 octet).": "Empty file (0 byte).",
+    "Aperçu tronqué : {} premiers octets sur {}.": "Preview truncated: first {} bytes of {}.",
+    "{} fichiers copiés, {} déjà présents, {} échecs.\n\nDossier : {}": "{} files copied, {} already present, {} failures.\n\nFolder: {}",
+    "%s\n\nLe fichier sera supprimé du disque. Son empreinte SHA-256 restera dans le bilan, et la suppression est refusée si le fichier a changé depuis la collecte.\n\nContinuer ?": "%s\n\nThe file will be deleted from disk. Its SHA-256 stays in the report, and deletion is refused if the file changed since collection.\n\nContinue?",
+    "{} fichiers · {} réussis · {} à vérifier · {} erreurs/interrompus · {} non reconnus/ignorés · {} autres/compagnons · {} écartés": "{} files · {} processed · {} to check · {} errors/interrupted · {} unrecognised/ignored · {} other/companions · {} parked",
 }
 
 LANGUAGES = ("en", "fr")

@@ -12,11 +12,11 @@ def test_a_family_too_big_for_memory_stays_separate_and_says_why(tmp_path, monke
     collection = Collection(root, tmp_path/'work', ToolPack(tmp_path/'pack'), organization='artifacts')
     original = Collection.import_result
 
-    def out_of_memory(self, csv, kind, view=None, register=True):
+    def out_of_memory(self, csv, kind, view=None, register=True, evidence=None):
         if kind == 'organized':
             raise duckdb.OutOfMemoryException(
                 'Out of Memory Error: failed to pin block of size 256.0 KiB (60.8 MiB/61.0 MiB used)')
-        return original(self, csv, kind, view=view, register=register)
+        return original(self, csv, kind, view=view, register=register, evidence=evidence)
 
     monkeypatch.setattr(Collection, 'import_result', out_of_memory)
     report = collection.parse()

@@ -219,11 +219,11 @@ def test_an_import_that_runs_out_of_memory_is_retried_with_more(collection, monk
     budgets = []
     original = Collection._import_once
 
-    def once(self, csv, kind, view, register, budget):
+    def once(self, csv, kind, view, register, budget, evidence=None):
         budgets.append(getattr(budget, 'memory_mb', None))
         if len(budgets) == 1:
             raise duckdb.OutOfMemoryException('Out of Memory Error: failed to pin block')
-        return original(self, csv, kind, view, register, budget)
+        return original(self, csv, kind, view, register, budget, evidence)
 
     monkeypatch.setattr(Collection, '_import_once', once)
     source = collection.root / 'note.txt'

@@ -91,7 +91,10 @@ class AnalysisNavigator(QWidget):
                                 folder.setData(0, Qt.UserRole+1, key)
                                 folders[key] = folder
                             parent = folders[key]
-                        title = analysis_label(snapshot.source_info)+' · '+family
+                        # The folders above already spell the path out; the leaf
+                        # keeps the file name, or the label when the origin has none.
+                        title = (relative.name or PurePosixPath(
+                            analysis_label(snapshot.source_info)).name)+' · '+family
                     else:
                         title = labels.get(snapshot.path) or analysis_label(snapshot.source_info)
                     leaf = QTreeWidgetItem(parent, [title])

@@ -400,7 +400,9 @@ class Collection:
         The parsers are external processes and the disk is shared, so past a handful
         of workers the run gets slower, not faster. Eight is the measured knee.
         """
-        threads = int(getattr(self.settings, 'threads', 1) or 1)
+        threads = int(getattr(self.settings, 'threads', 0) or 0)
+        if threads <= 0:
+            threads = min(8, os.cpu_count() or 1)
         return max(1, min(threads, 8, os.cpu_count() or 1))
 
     def _parse_entry(self, source, entry):
@@ -411,6 +413,7 @@ class Collection:
         collection keeps file order whatever order the workers finish in.
         """
         documents = []
+        check_cancel()
         self.progress('Collecte : '+str(source.relative_to(self.root)))
         try:
             if source.is_symlink() or self.root not in source.resolve().parents:
@@ -522,13 +525,30 @@ class Collection:
             return
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='fireblade-parse') as pool:
-            futures = [pool.submit(self._parse_entry, source, entry) for source, entry in pending]
+            # The cancellation flag lives in a ContextVar, and a fresh thread starts
+            # with an empty context: without this copy, a worker never sees the stop.
+            import contextvars
+            context = contextvars.copy_context()
+            futures = [pool.submit(context.copy().run, self._parse_entry, source, entry)
+                       for source, entry in pending]
+            merged = 0
             try:
-                for (source, entry), future in zip(pending, futures):
+                for index, ((source, entry), future) in enumerate(zip(pending, futures)):
+                    # A worker sees the stop through its copied context, but a file that
+                    # finished before the request never raises: before publishing the next
+                    # one, this thread honours the stop itself. What is already merged stays.
+                    if index:
+                        check_cancel()
                     self._merge(entry, future.result())
+                    merged += 1
             except OperationCancelled:
                 for future in futures:
                     future.cancel()
+                # A cancelled collection keeps what it had already finished: the files
+                # that completed are published, in file order, before the stop is reported.
+                for (source, entry), future in list(zip(pending, futures))[merged:]:
+                    if future.done() and not future.cancelled() and future.exception() is None:
+                        self._merge(entry, future.result())
                 raise
 
     def parse(self):

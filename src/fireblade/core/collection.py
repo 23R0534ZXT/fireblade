@@ -441,6 +441,10 @@ class Collection:
         pool = self.parser_pool()
         if pool is not None:
             try:
+                from fireblade.core.linux_slices import plan, read_in_slices
+                spans = plan(source, pool.size)
+                if spans:
+                    return read_in_slices(pool, source, output, spans, self.progress)
                 return pool.run(source, output)
             except Exception as exc:  # noqa: BLE001 - a speed path may not fail a collection
                 self.progress('Reading in this process: ' + str(exc))

@@ -3,6 +3,12 @@
 Every Linux log is read by a child interpreter: the reader is Python, and threads
 that share a GIL cannot use a second core. The pool is long-lived, so a collection
 pays the interpreter start once, and it can be terminated when the analyst stops.
+
+A single file larger than the rest is split by `linux_slices` into ranges that are
+read together: `run_many` exists for that case, because a batch that waits for
+several workers while holding some of them deadlocks against a second batch doing
+the same. A batch therefore takes every worker at once, and one batch runs at a
+time.
 """
 import json
 import os
@@ -15,6 +21,7 @@ class ParsePool:
     def __init__(self, workers=1):
         self.size = max(1, min(int(workers or 1), 8))
         self._mutex = threading.Lock()
+        self._batch = threading.Lock()
         self._free = []
         self._idle = threading.Semaphore(0)
         self._closed = False
@@ -41,38 +48,128 @@ class ParsePool:
             self._idle.release(len(self._free))
         return self
 
-    def run(self, source, output):
+    def run(self, source, output, span=None):
         """Parse one file in a child process and return its report."""
         self.start()
         self._idle.acquire()
         with self._mutex:
             worker = self._free.pop() if self._free else None
         if worker is None:
+            self._idle.release()
             raise RuntimeError('Bassin de lecture fermé')
+        job = dict(source=str(source), output=str(output), span=span)
         try:
-            worker.stdin.write(json.dumps(dict(source=str(source), output=str(output))) + '\n')
+            result = self._send(worker, job)
+        except BaseException:
+            self._replace(worker)
+            raise
+        self._release(worker)
+        return result
+
+    def run_many(self, jobs):
+        """Read several ranges of one file at once, answering in the order given.
+
+        The caller hands every job the same file with a different span. The batch
+        waits for the whole pool, holds it, then runs one job per worker: taking the
+        pool in one gesture is what keeps two big files from each holding half of it
+        and waiting for ever.
+        """
+        jobs = list(jobs)
+        if not jobs:
+            return []
+        with self._batch:
+            workers = self._take_all()
+            if not workers:
+                raise RuntimeError('Aucun processus de lecture disponible')
+            broken = set()
+            try:
+                return self._dispatch(workers, jobs, broken)
+            finally:
+                for worker in workers:
+                    if worker in broken:
+                        self._replace(worker)
+                    else:
+                        self._release(worker)
+
+    def _send(self, worker, job):
+        """One job on one worker: the result, or the reason it failed."""
+        try:
+            worker.stdin.write(json.dumps(job) + '\n')
             worker.stdin.flush()
             answer = worker.stdout.readline()
         except (OSError, ValueError) as exc:
-            worker = self._replace(worker)
             raise RuntimeError('Lecture interrompue : %s' % exc) from exc
         if not answer:
-            self._replace(worker)
-            raise RuntimeError('Le processus de lecture s\'est arrêté')
-        with self._mutex:
-            if not self._closed:
-                self._free.append(worker)
-        self._idle.release()
+            raise RuntimeError("Le processus de lecture s'est arrêté")
         payload = json.loads(answer)
         if payload.get('status') != 'ok':
             raise RuntimeError(payload.get('error') or 'Lecture échouée')
         return payload['result']
 
-    def _replace(self, worker):
+    def _take_all(self):
+        """Every free worker at once, waiting for the busy ones to finish."""
+        self.start()
+        taken = []
+        for _ in range(self.size):
+            if not self._idle.acquire(timeout=120):
+                break
+            with self._mutex:
+                worker = self._free.pop() if self._free else None
+            if worker is None:
+                self._idle.release()
+                break
+            taken.append(worker)
+        return taken
+
+    def _dispatch(self, workers, jobs, broken):
+        results = [None] * len(jobs)
+        pending = list(range(len(jobs)))
+        lock = threading.Lock()
+        failures = []
+
+        def work(worker):
+            while True:
+                with lock:
+                    if not pending or failures:
+                        return
+                    index = pending.pop(0)
+                try:
+                    results[index] = self._send(worker, jobs[index])
+                except BaseException as exc:  # noqa: BLE001 - reported to the caller
+                    with lock:
+                        failures.append(exc)
+                        broken.add(worker)
+                        pending.clear()
+                    return
+
+        threads = [threading.Thread(target=work, args=(worker,), daemon=True)
+                   for worker in workers[:len(jobs)]]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        if failures:
+            raise failures[0]
+        if any(result is None for result in results):
+            raise RuntimeError('Tranches inachevées')
+        return results
+
+    def _release(self, worker):
+        with self._mutex:
+            if not self._closed:
+                self._free.append(worker)
+                self._idle.release()
+                return
+        self._kill(worker)
+
+    def _kill(self, worker):
         try:
             worker.kill()
         except OSError:
             pass
+
+    def _replace(self, worker):
+        self._kill(worker)
         replacement = None
         if not self._closed:
             try:
@@ -80,10 +177,7 @@ class ParsePool:
             except OSError:
                 replacement = None
         if replacement is not None:
-            with self._mutex:
-                self._free.append(replacement)
-            self._idle.release()
-        return replacement
+            self._release(replacement)
 
     def close(self):
         with self._mutex:

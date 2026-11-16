@@ -38,14 +38,38 @@ were first measured, then removed.
 - Throughput: **3.3 to 27.6 MB/s**.
 - Identical result: 246 analyses, 224 complete files, 31 to verify, 4 unsupported,
   no missing file.
-- A 100 GB collection therefore goes from about eight hours to about one hour. What
-  remains: a **single very large file** uses only one process; slicing it into ranges
-  is the next lever, and it will be measured before it is announced.
+- A 100 GB collection therefore goes from about eight hours to about one hour.
+- And a **single very large file** no longer waits for its turn: it reads in ranges
+  too (see the next section).
+
+## A single huge file reads in ranges too
+
+- A folder parses on every core, one process per file; one file larger than the rest
+  stayed on a single core at 11.5 MB/s. It is now cut into line-aligned byte ranges,
+  one per worker, and the CSVs are glued back in order: same rows, same line numbers,
+  same offsets, **byte for byte**.
+- Measured on a real 250 MB access.log (1 752 069 lines): **22.8 s read alone, 6.1 s
+  in four ranges, 3.4 s in eight** - 11.5, 43.1 then 76.3 MB/s. The merged CSV is
+  identical in all three cases (747 340 923 bytes).
+- Six 250 MB logs read together, which is the folder case: **23.7 s to 18.3 s**
+  (55.3 to 71.6 MB/s), same 4 721 861 rows. Splitting costs the folder nothing.
+- Only plain text is split. A compressed file, an archive, a UTF-16 file, a systemd
+  journal and a header-driven format (Zeek TSV, W3C) are refused: a range that starts
+  in the middle of a file has no header to read, and a wrongly cut record is a wrong
+  analysis, silently.
+- The ranges are found by one pass over the file counting newlines (0.15 s for 250 MB)
+  rather than guessed, so line numbers and offsets stay absolute.
+- A batch takes the whole pool at once, one batch at a time: two big files each
+  holding half the workers while waiting for the rest is a deadlock, and it was
+  written out of the design rather than reproduced.
 
 ## Verification
 
 - New tests: reading in a separate process, fallback to the current process when the
-  pool does not start, provenance carried by the import.
+  pool does not start, provenance carried by the import, ranges that start on a line
+  boundary with their line number, a sliced read that gives the rows of a whole read,
+  a compressed or wide file that is refused, a batch in order.
+- Full suite on the range reader: 1 452 passed, 28 skipped, ruff clean, real window.
 - Full suite run on the published tree, ruff included.
 - End-to-end measurement on the same collection as 0.4.1, same machine, same
   reference files.

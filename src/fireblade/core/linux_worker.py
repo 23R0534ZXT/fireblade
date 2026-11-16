@@ -32,7 +32,7 @@ def main():
             job = json.loads(line)
             if job.get('stop'):
                 break
-            result = parse(Path(job['source']), Path(job['output']))
+            result = parse(Path(job['source']), Path(job['output']), span=job.get('span'))
             answer = dict(status='ok', result=_plain(result))
         except BaseException as exc:  # noqa: BLE001 - the parent needs the reason
             answer = dict(status='error', error='%s: %s' % (type(exc).__name__, exc))

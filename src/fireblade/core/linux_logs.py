@@ -462,7 +462,7 @@ class BoundedLzma(io.RawIOBase):
                 return len(result)
 
 
-def parse(source, output, progress=lambda _: None):
+def parse(source, output, progress=lambda _: None, span=None):
     """Stream into disk CSVs. Partial outputs survive with explicit error status."""
     source, output = Path(source), Path(output)
     members, warnings, outputs = [], [], []
@@ -512,8 +512,74 @@ def parse(source, output, progress=lambda _: None):
         if total % 100000 == 0:
             progress(f'Linux : {total:,} enregistrements ; {expanded:,} octets parcourus')
 
+    def plain_lines(line_stream, path, entry, number, offset, stop, encoding):
+        """One line at a time, from an absolute line number and byte offset."""
+        columns = None
+        separator = None
+        table_format = ''
+        while True:
+            check_cancel()
+            if stop is not None and offset >= stop:
+                break
+            raw = line_stream.readline(MAX_LINE+1)
+            if not raw:
+                break
+            consume(len(raw))
+            number += 1
+            if len(raw)>MAX_LINE:
+                raise ValueError(f'Ligne {number} supérieure à 8 Mio ; lecture interrompue explicitement')
+            text = raw.decode(encoding or ('utf-8-sig' if number==1 else 'utf-8'), 'backslashreplace').rstrip('\r\n')
+            if number==1:
+                text = text.removeprefix('\ufeff')
+            fields = text_fields(text, path)
+            if text.startswith('#separator '):
+                token = text[len('#separator '):]
+                match = re.fullmatch(r'\\x([0-9a-fA-F]{2})', token)
+                separator = chr(int(match[1], 16)) if match else token
+                if len(separator) != 1:
+                    raise ValueError('Séparateur Zeek non reconnu')
+                table_format = 'Zeek TSV'
+            elif text.startswith('#fields') and separator:
+                columns = text.split(separator)[1:]
+            elif text.startswith('#Fields: '):
+                columns = text[len('#Fields: '):].split()
+                separator = None
+                table_format = 'W3C extended'
+            elif columns and not text.startswith('#'):
+                values = text.split(separator)
+                if len(values) == len(columns):
+                    obj = dict(zip(columns, values))
+                    fields = {'Format': table_format, 'Champs': encoded(obj)}
+                    if table_format == 'Zeek TSV':
+                        fields.update(Horodatage=obj.get('ts', ''), **{'Adresse distante': obj.get('id.orig_h', '')})
+                    else:
+                        fields.update(Horodatage=' '.join(obj.get(k, '') for k in ('date', 'time')).strip(),
+                                      **{'Adresse distante': obj.get('c-ip', ''), 'Méthode': obj.get('cs-method', ''),
+                                         'Chemin': obj.get('cs-uri-stem', ''), 'Statut': obj.get('sc-status', '')})
+            if '\0' in text:
+                fields = {}  # Later binary data is visibly raw, never structured text.
+            row = dict(fields, Lecture='Structurée' if fields else 'Brute', Ligne=str(number),
+                       Offset=str(offset), **{'Fin de ligne': str(number), 'Texte brut': text})
+            emit(row, path, entry)
+            offset += len(raw)
+
     def read(stream, path, depth=0):
         nonlocal member_count
+        if depth == 0 and span is not None:
+            # One range of a plain text log: the caller already proved the format,
+            # so the range starts on a line boundary and its line number is known.
+            entry = dict(path=path, status='pending', rows=0, raw_rows=0)
+            members.append(entry)
+            try:
+                stream.seek(span['start'])
+                plain_lines(stream, path, entry, span['line'] - 1, span['start'], span['end'], None)
+            except OperationCancelled:
+                raise
+            except Exception as exc:
+                entry.update(status='error', reason=str(exc))
+            if entry['status'] == 'pending':
+                entry['status'] = 'complete' if entry['rows'] else 'empty'
+            return
         check_cancel()
         member_count += 1
         if member_count > MAX_MEMBERS:
@@ -666,54 +732,7 @@ def parse(source, output, progress=lambda _: None):
                 from fireblade.core.linux_streams import AlignedLines, bom_encoding
                 encoding = bom_encoding(prefix)
                 line_stream = AlignedLines(incoming,encoding) if encoding else incoming
-                number = 0
-                offset = 0
-                columns = None
-                separator = None
-                table_format = ''
-                while True:
-                    check_cancel()
-                    raw = line_stream.readline(MAX_LINE+1)
-                    if not raw:
-                        break
-                    consume(len(raw))
-                    number += 1
-                    if len(raw)>MAX_LINE:
-                        raise ValueError(f'Ligne {number} supérieure à 8 Mio ; lecture interrompue explicitement')
-                    text = raw.decode(encoding or ('utf-8-sig' if number==1 else 'utf-8'), 'backslashreplace').rstrip('\r\n')
-                    if number==1:
-                        text = text.removeprefix('\ufeff')
-                    fields = text_fields(text, path)
-                    if text.startswith('#separator '):
-                        token = text[len('#separator '):]
-                        match = re.fullmatch(r'\\x([0-9a-fA-F]{2})', token)
-                        separator = chr(int(match[1], 16)) if match else token
-                        if len(separator) != 1:
-                            raise ValueError('Séparateur Zeek non reconnu')
-                        table_format = 'Zeek TSV'
-                    elif text.startswith('#fields') and separator:
-                        columns = text.split(separator)[1:]
-                    elif text.startswith('#Fields: '):
-                        columns = text[len('#Fields: '):].split()
-                        separator = None
-                        table_format = 'W3C extended'
-                    elif columns and not text.startswith('#'):
-                        values = text.split(separator)
-                        if len(values) == len(columns):
-                            obj = dict(zip(columns, values))
-                            fields = {'Format': table_format, 'Champs': encoded(obj)}
-                            if table_format == 'Zeek TSV':
-                                fields.update(Horodatage=obj.get('ts', ''), **{'Adresse distante': obj.get('id.orig_h', '')})
-                            else:
-                                fields.update(Horodatage=' '.join(obj.get(k, '') for k in ('date', 'time')).strip(),
-                                              **{'Adresse distante': obj.get('c-ip', ''), 'Méthode': obj.get('cs-method', ''),
-                                                 'Chemin': obj.get('cs-uri-stem', ''), 'Statut': obj.get('sc-status', '')})
-                    if '\0' in text:
-                        fields = {}  # Later binary data is visibly raw, never structured text.
-                    row = dict(fields, Lecture='Structurée' if fields else 'Brute', Ligne=str(number),
-                               Offset=str(offset), **{'Fin de ligne': str(number), 'Texte brut': text})
-                    emit(row, path, entry)
-                    offset += len(raw)
+                plain_lines(line_stream, path, entry, 0, 0, None, encoding)
             entry['status'] = 'complete' if entry['rows'] else 'empty'
         except OperationCancelled:
             raise

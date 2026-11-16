@@ -163,7 +163,8 @@ def run_check(app, report_path):
 
         def embedded_resources():
             from fireblade.core.settings import load_settings
-            expect(load_settings(default_config()).memory_mb == 128, "La configuration intégrée n’a pas été lue.")
+            # The shipped default is what a first launch reads: 1 GB since 0.4.0.
+            expect(load_settings(default_config()).memory_mb == 1024, "La configuration intégrée n’a pas été lue.")
             from PySide6.QtGui import QMovie
             film = resource_path('assets/startup/fire.gif')
             provenance = json.loads(resource_path('assets/startup/SOURCES.json').read_text(encoding='utf-8'))
@@ -216,7 +217,8 @@ def run_check(app, report_path):
         def grouping_sorting():
             window.group_column(0)
             settle()
-            expect(window.case.page(window.view) == [("MFT", 2), ("EVTX", 1)], "Comptages de groupes incorrects.")
+            got = window.case.page(window.view)
+            expect(got == [("MFT", 2), ("EVTX", 1)], "Comptages de groupes incorrects : %r (vue %r)" % (got, window.view))
             window.group_column(1, append=True)
             settle()
             expect(window.case.page(window.view, ("MFT",)) == [("élève", 2)], "Sous-groupes incorrects.")

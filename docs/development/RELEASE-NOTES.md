@@ -65,6 +65,26 @@ que la case est cochée, avec la raison écrite dessous.
 - Une page abîmée n'emporte pas ses voisines : le numéro de page est noté, la lecture continue.
 - Sans `pypdf`, Fireblade démarre normalement, le lecteur PDF est grisé dans la fenêtre de choix avec le motif. L'extension est épinglée dans `requirements/runtime.txt`, donc présente dans l'exécutable publié.
 
+## Import : aucune quantité de mémoire n'est un prérequis
+
+Fireblade est fait pour tourner sur une VM modeste et pour rester utilisable là où un
+outil classique rame. Une collecte qui tombait en « Out of Memory » cassait exactement
+cette promesse.
+
+- La collecte dispose de **tout** le budget mémoire configuré (il était divisé par deux),
+  et le défaut de livraison passe de 128 Mo à **1 Go**.
+- Un import qui manque de mémoire **relance l'essai avec un budget plus large** (×4, au
+  moins +256 Mo) et continue tant qu'il reste de la place, jusqu'à **la moitié de la RAM
+  physique**. Le plafond est ce qui évite de swapper tout le bureau de l'analyste.
+- La voie **ligne par ligne** — celle qui prend le relais quand le lecteur natif ne peut
+  pas tenir le fichier — a désormais sa propre protection mémoire : elle ne meurt plus sur
+  la même erreur que celle qu'elle devait remplacer.
+- Mesuré sur les vrais lecteurs : un journal de **1,35 Go, 1,2 million de lignes, 30
+  colonnes** s'importe en **39 s avec 64 Mo de budget**, première et dernière ligne intactes.
+  La suite de tests contient ce cas, fichier plus gros que le budget, ligne par ligne.
+- Si la place manque vraiment (fichier plus gros que la moitié de la RAM), l'échec est
+  expliqué dans une fenêtre, avec les deux remèdes, au lieu d'être retenté sans fin.
+
 ## Porte de vérification
 
 - La suite tourne en **UTF-8** : les fixtures écrivaient leurs CSV sans `encoding=`, donc dans la page de code locale, alors que le code lit en UTF-8 et que la CI est en UTF-8. C'était 25 échecs sur 25 sans rapport avec le produit.

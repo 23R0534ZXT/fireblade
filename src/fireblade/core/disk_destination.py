@@ -7,22 +7,37 @@ import struct
 
 
 def windows_volume_disks(drive):
-    """Query VOLUME_DISK_EXTENTS through a read-only volume handle."""
+    r"""Query VOLUME_DISK_EXTENTS without asking for read access to the volume.
+
+    Opening \\.\C: for reading needs administrator rights, so every non-elevated
+    analyst had the physical-device path refused with "use an acquired image".
+    Opening the volume with no access at all is enough for the IOCTL and works for
+    a normal user; the handle is closed as soon as the extents are read.
+    """
     import ctypes
     from ctypes import wintypes
-    import msvcrt
     if not re.fullmatch(r'[A-Za-z]:', drive):
         raise ValueError('Le case doit être sur un volume local identifiable pour une lecture physique.')
-    ioctl = ctypes.WinDLL('kernel32', use_last_error=True).DeviceIoControl
-    ioctl.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
-                      wintypes.LPVOID, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), wintypes.LPVOID]
-    ioctl.restype = wintypes.BOOL
-    buffer = ctypes.create_string_buffer(65536)
-    returned = wintypes.DWORD()
-    with open('\\\\.\\'+drive, 'rb', buffering=0) as handle:
-        if not ioctl(msvcrt.get_osfhandle(handle.fileno()), 0x560000, None, 0,
-                     buffer, len(buffer), ctypes.byref(returned), None):
+    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel32.CreateFileW
+    create.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                       wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    create.restype = wintypes.HANDLE
+    invalid = wintypes.HANDLE(-1).value
+    handle = create('\\\\.\\' + drive, 0, 3, None, 3, 0, None)
+    if handle == invalid:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        ioctl = kernel32.DeviceIoControl
+        ioctl.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
+                          wintypes.LPVOID, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), wintypes.LPVOID]
+        ioctl.restype = wintypes.BOOL
+        buffer = ctypes.create_string_buffer(65536)
+        returned = wintypes.DWORD()
+        if not ioctl(handle, 0x560000, None, 0, buffer, len(buffer), ctypes.byref(returned), None):
             raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        kernel32.CloseHandle(handle)
     return parse_windows_extents(buffer.raw[:returned.value])
 
 

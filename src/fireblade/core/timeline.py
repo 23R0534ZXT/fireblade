@@ -11,6 +11,7 @@ import os
 import duckdb
 
 from fireblade.core.errors import OperationCancelled
+from fireblade.core.models import analysis_label
 from fireblade.core.models import View
 from fireblade.core.timestamps import timestamp_key
 from fireblade.core.workspace_reader import WorkspaceReader
@@ -152,7 +153,7 @@ class TimelineStore:
                 sources = []
                 for number, document in enumerate(reader.documents):
                     reader.check()
-                    progress(f'Chronologie · lecture de l’analyse {number+1}/{len(reader.documents)} : {Path(document.source_info["path"]).name}')
+                    progress(f'Chronologie · lecture de l’analyse {number+1}/{len(reader.documents)} : {analysis_label(document.source_info)}')
                     source = dict(id=number, path=document.path, name=Path(document.source_info['path']).name,
                                   original=document.source_info['path'],
                                   sha256=document.source_info.get('sha256',''),
@@ -193,7 +194,7 @@ class TimelineStore:
                             naive = f"({key}) IS NOT NULL AND NOT regexp_matches(coalesce({time},''), '(Z|[+-][0-9]{{2}}:?[0-9]{{2}})\\s*$')"
                             where, args = case.where(document.view if respect_filters else View())
                             query = (f'SELECT {number} AS source, __row_id AS row_id, ({key}) AS time_ns, {time} AS source_time, '
-                                     f'{summary} AS summary, (SELECT note FROM bookmarks b WHERE b.row_id=events.__row_id) AS note, '
+                                     f'{summary} AS summary, (SELECT note FROM bookmarks b WHERE b.row_id=events.__row_id AND b.column_id=-1) AS note, '
                                      'EXISTS(SELECT 1 FROM bookmarks b WHERE b.row_id=events.__row_id) AS bookmarked, '
                                      f'{naive} AS naive, {text} AS text, ' +
                                      ','.join(f'{value} AS {name}' for value, name in zip(arrays, ('users','ips','paths','hashes'))) +

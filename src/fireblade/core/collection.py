@@ -18,7 +18,7 @@ from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
 import duckdb
 from fireblade.core.i18n import translate
-from fireblade.core.settings import Settings, auto_threads, grown_memory
+from fireblade.core.settings import Settings, auto_threads, grown_memory, physical_memory_mb
 from fireblade.core.models import View
 
 
@@ -135,6 +135,47 @@ class ToolPack:
         return args
 
 
+BLOCKED_SIGNATURES = ('0x800711C7', 'FileLoadException')
+
+
+def fit_budget_to_file(budget, csv, progress=lambda _: None, ceiling_mb=None):
+    """Give an import room for the file it reads, instead of learning it by failing.
+
+    A bulk CSV insert cannot spill to disk: with a 128 MB budget a 3 GB table fails,
+    the retry loop multiplies the budget, and every attempt re-reads the whole file.
+    The analyst waits several times longer than the work needs, with one unchanging
+    message. Sizing the first attempt from the file replaces those passes with one,
+    still bounded by half the physical memory.
+    """
+    if budget is None:
+        return budget
+    try:
+        size_mb = Path(csv).stat().st_size // (1024 * 1024)
+    except OSError:
+        return budget
+    needed = size_mb + size_mb // 4 + 64
+    current = int(getattr(budget, 'memory_mb', 0) or 0)
+    ceiling = int(ceiling_mb or max(1024, physical_memory_mb() // 2))
+    target = min(ceiling, max(current, needed))
+    if target > current:
+        progress('Import: memory budget raised to %d MB for a %d MB file' % (target, size_mb))
+        return replace(budget, memory_mb=target)
+    return budget
+
+
+def blocked_by_windows(log):
+    """True when the engine log already says Windows refused one of its libraries."""
+    try:
+        with Path(log).open('rb') as stream:
+            stream.seek(0, 2)
+            size = stream.tell()
+            stream.seek(max(0, size - 20000))
+            text = stream.read().decode('utf-8', 'replace')
+    except OSError:
+        return False
+    return any(signature in text for signature in BLOCKED_SIGNATURES)
+
+
 def execute(command, cwd, log, timeout=3600):
     """Bound process lifetime and log to disk; no shell and no unbounded PIPE."""
     check_cancel()
@@ -147,10 +188,20 @@ def execute(command, cwd, log, timeout=3600):
         process = subprocess.Popen(command, stdout=stream, stderr=subprocess.STDOUT, **options)
         start = time.monotonic()
         try:
+            checked = 0.0
             while process.poll() is None:
                 check_cancel()
                 if time.monotonic() - start > timeout:
                     raise TimeoutError('Délai du moteur dépassé ; consulter le journal')
+                # A plugin blocked by Windows keeps the engine alive while it prints
+                # FileLoadException: waiting the full hour is a dead end for the user.
+                if time.monotonic() - checked > 1:
+                    checked = time.monotonic()
+                    if blocked_by_windows(log):
+                        raise RuntimeError(
+                            'Windows a bloqué une bibliothèque de ce moteur (0x800711C7, Smart App Control). '
+                            'Autorisez le moteur dans Sécurité Windows → Contrôle des applications et du navigateur, '
+                            'ou désactivez Smart App Control, puis relancez la collecte.')
                 time.sleep(.1)
             if process.returncode:
                 raise RuntimeError(f'Moteur terminé avec le code {process.returncode} ; journal : {log}')
@@ -207,7 +258,7 @@ class Collection:
             atomic_json(self.output/'collection.fireblade-session', dict(
                 format='fireblade-session', version=1, active=0, documents=self.report['documents']))
 
-    def import_result(self, csv, kind, view=None, register=True):
+    def import_result(self, csv, kind, view=None, register=True, evidence=None):
         check_cancel()
         if register and len(self.report['documents']) >= 1000:
             raise ValueError('Limite de 1000 analyses atteinte ; résultat conservé sur disque')
@@ -215,10 +266,10 @@ class Collection:
         # of memory is a budget problem, not a reason to fail. Each attempt raises the
         # budget (x4, at least +256 MB) up to half the physical RAM, then leans on the
         # bounded row-by-row path, which survives a file far larger than memory.
-        budget, attempt = self.settings, 0
+        budget, attempt = fit_budget_to_file(self.settings, csv, self.progress), 0
         while True:
             try:
-                return self._import_once(csv, kind, view, register, budget)
+                return self._import_once(csv, kind, view, register, budget, evidence)
             except (duckdb.OutOfMemoryException, MemoryError):
                 bigger = grown_memory(getattr(budget, 'memory_mb', 128))
                 if not bigger:
@@ -227,7 +278,7 @@ class Collection:
                 budget = replace(budget, memory_mb=bigger) if budget else Settings(memory_mb=bigger)
                 self.progress('Not enough memory: retrying with %d MB…' % bigger)
 
-    def _import_once(self, csv, kind, view, register, budget):
+    def _import_once(self, csv, kind, view, register, budget, evidence=None):
         target = self.output/'analyses'/(uuid.uuid4().hex+'.timeline')
         case = Case(target, settings=budget)
         with self._case_lock:
@@ -236,7 +287,11 @@ class Collection:
         failed = False
         try:
             self.progress('Chargement Fireblade : '+Path(csv).name)
-            case.import_csv(csv, encoding='auto', progress=self.progress)
+            provenance = None
+            if evidence:
+                provenance = dict(evidence)
+                provenance['working_path'] = str(csv)
+            case.import_csv(csv, encoding='auto', progress=self.progress, provenance=provenance)
             view = view or View()
             document = dict(path=str(target), source=case.info, view=json.loads(view.to_json()), header='')
             if register:
@@ -381,6 +436,13 @@ class Collection:
                 writer.writerow(row+[str(artifact), tool])
         return target
 
+    def label_for(self, source):
+        """The shortest name that still tells two analysed logs apart."""
+        try:
+            return str(Path(source).resolve().relative_to(self.root)).replace('\\', '/')
+        except ValueError:
+            return Path(source).name
+
     def prepare_output(self):
         self.output.mkdir(parents=True, exist_ok=False)
 
@@ -473,7 +535,10 @@ class Collection:
                         csvs = sorted(output.rglob('*.csv'))
                     for csv in csvs:
                         enriched = csv if tool == 'native' else self.enrich_result(csv, source, tool)
-                        document = self.import_result(enriched, tool, register=False)
+                        evidence = None if tool == 'native' else dict(
+                            path=str(source), size=source.stat().st_size,
+                            sha256=entry.get('sha256', ''), label=self.label_for(source))
+                        document = self.import_result(enriched, tool, register=False, evidence=evidence)
                         documents.append(document)
                         run['outputs'].append(dict(csv=str(csv), analysis=document['path'], **({'family':catscale_outputs[str(csv)]['family']} if tool in ('CatScale', 'LinuxLogs') else {})))
                     run['status'] = ('complete_with_warnings' if run.get('warnings') else 'complete') if csvs else 'no_output'

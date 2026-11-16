@@ -103,7 +103,7 @@ def build_report(reader: WorkspaceReader, title, description='', *, bookmarks_on
                 if clauses:where += (' AND ' if where else ' WHERE ') + ' AND '.join(clauses)
                 count = case.db.execute('SELECT count(*) FROM events' + where, args).fetchone()[0]
                 result.append(f'<p>{count} correspondance(s) dans cette analyse.</p>')
-                cursor = case.db.execute('SELECT events.*, (SELECT note FROM bookmarks b WHERE b.row_id=events.__row_id) '
+                cursor = case.db.execute('SELECT events.*, (SELECT note FROM bookmarks b WHERE b.row_id=events.__row_id AND b.column_id=-1) '
                                          'FROM events' + where + ' ORDER BY __row_id LIMIT ?', args + [remaining])
                 included = 0
                 while row := cursor.fetchone():

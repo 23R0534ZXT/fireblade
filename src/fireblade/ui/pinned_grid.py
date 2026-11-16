@@ -1,5 +1,5 @@
 """Pinned views share one paged model and selection; no duplicated data rows."""
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QModelIndex, Qt, QTimer
 from PySide6.QtWidgets import QFrame, QHeaderView, QTreeView
 from fireblade.ui.grid import GridDelegate
 
@@ -147,10 +147,36 @@ class PinnedTree(QTreeView):
         finally:
             self._positioning = False
 
+    def span_group_rows(self):
+        """A group row must read across the grid, not inside the row-id column."""
+        model = self.model()
+        if model is None or not hasattr(model, "node"):
+            return
+        stack = [QModelIndex()]
+        while stack:
+            parent = stack.pop()
+            for row in range(model.rowCount(parent)):
+                index = model.index(row, 0, parent)
+                node = model.node(index)
+                spanned = bool(getattr(node, "group", False))
+                if bool(self.isFirstColumnSpanned(row, parent)) != spanned:
+                    self.setFirstColumnSpanned(row, parent, spanned)
+                if model.hasChildren(index):
+                    stack.append(index)
+
     def updateGeometries(self):
         if getattr(self, '_positioning', False):
             return
         super().updateGeometries()
+        if not getattr(self, "_spanning", False):
+            self._spanning = True
+            try:
+                self.span_group_rows()
+            except Exception:
+                # A painting pass must never break because a row changed under it.
+                pass
+            finally:
+                self._spanning = False
         if hasattr(self, 'right_frozen'):
             self.position_pins()
 

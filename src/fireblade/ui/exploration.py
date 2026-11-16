@@ -8,7 +8,7 @@ from PySide6.QtCore import QModelIndex, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (QApplication, QDialog, QDialogButtonBox, QFileDialog,
     QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPlainTextEdit, QVBoxLayout)
-from fireblade.core.models import Filter
+from fireblade.core.models import Filter, analysis_label
 from fireblade.core.preferences import load_preferences, save_preferences, Preferences
 from fireblade.ui.exploration_dialogs import DateFilterDialog, GroupsDialog
 from fireblade.ui.preferences_dialog import PreferencesDialog
@@ -275,7 +275,7 @@ class ExplorationMixin:
         search, listing = QLineEdit(), QListWidget()
         search.setPlaceholderText("Filtrer les noms ou chemins")
         for i, doc in enumerate(self.documents):
-            item = QListWidgetItem(Path(doc.source_info['path']).name)
+            item = QListWidgetItem(analysis_label(doc.source_info))
             item.setData(Qt.UserRole, i)
             item.setToolTip(doc.path)
             listing.addItem(item)

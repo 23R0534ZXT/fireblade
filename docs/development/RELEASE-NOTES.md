@@ -1,3 +1,84 @@
+# Fireblade 0.4.1 — une recette sur 10 Gio, et ce qu'elle a trouvé
+
+Cette version ne vient pas d'une idée : elle vient de la recette finale de la 0.4.0 sur une
+collecte Linux réelle de **10,2 Gio / 241 fichiers**, importée par l'interface, plus un disque
+de laboratoire à deux partitions analysé en physique, en volume monté et en image RAW.
+
+## Notes : un rapport qui n'oublie plus l'analyse
+
+- Une ligne qui porte **à la fois** une note de ligne et une note de cellule suffisait à faire
+  échouer le rapport : la sous-requête censée lire « la » note renvoyait deux lignes, DuckDB
+  refusait, l'analyse entière était écartée et le rapport annonçait **0 constat**. Corrigé aux
+  trois endroits qui interrogeaient les signets sans distinguer la note de ligne (`column_id = -1`) :
+  rapport, chronologie et colonne de note calculée.
+- Le rapport cite de nouveau les notes de ligne quand une cellule de la même ligne est annotée.
+
+## Chaque analyse porte le nom de son fichier
+
+- Une collecte Linux importe un CSV intermédiaire par journal : les 34 analyses s'appelaient donc
+  toutes « Linux — journaux-fireblade.csv », dans la barre d'onglets comme dans l'arbre de
+  navigation. Chaque analyse enregistre maintenant **le chemin de la preuve** (relatif à la
+  collecte) : `var/log/nginx/access.log`, `var/log/auth.log`, `Windows/Prefetch/KAPE.pf`…
+- La provenance affichée, l'empreinte SHA-256 du rapport et les titres de section suivent le même
+  chemin ; le CSV de travail est conservé à côté (`working_path`) pour l'audit.
+
+## Lignes de groupe lisibles
+
+- Une ligne de groupe (« Adresse distante : 203.0.113.7 (12 345) ») s'affiche sur toute la largeur
+  de la grille au lieu d'être tronquée à la largeur de la colonne des identifiants.
+
+## Import : un budget calculé sur le fichier, pas découvert en échouant
+
+- Un insert CSV en une transaction ne peut pas déborder sur le disque : avec le budget par défaut
+  (128 Mo), un tableau de 3 Go échouait, la boucle de reprise quadruplait le budget, et **chaque
+  tentative relisait tout le fichier** — quatre passes pour un seul import, avec un message
+  inchangé. La première tentative part maintenant d'un budget déduit de la taille du fichier
+  (taille + 25 % + 64 Mo), plafonné à la moitié de la mémoire physique.
+- Mesuré sur la collecte de 10 Gio : le journal Apache de 2,3 Gio produit un CSV de 3 Go, importé
+  en une passe.
+
+## Un moteur bloqué par Windows s'arrête et s'explique
+
+- Sur une machine où **Smart App Control** est actif, les DLL de plugins de RECmd sont refusées
+  (`0x800711C7`). Le moteur restait alors vivant, la collecte attendait **une heure** et Windows
+  affichait une centaine de fenêtres « Une partie de cette application a été bloquée ».
+- Fireblade lit maintenant le journal du moteur en cours d'exécution : dès qu'une bibliothèque est
+  refusée par la stratégie, le processus est arrêté et le bilan de collecte dit quoi faire
+  (autoriser le moteur dans Sécurité Windows, ou désactiver Smart App Control), au lieu d'attendre.
+
+## Disque physique : le garde-fou ne demande plus les droits administrateur
+
+- La vérification « le case n'est pas sur le disque analysé » ouvrait `\\.\C:` en lecture, ce qui
+  exige l'élévation : tout analyste non administrateur voyait l'analyse d'un disque physique
+  refusée avec « utilisez une image acquise ».
+- La vérification interroge maintenant les extents du volume **sans demander d'accès**, ce qui
+  fonctionne sans élévation. Quand Windows refuse malgré tout l'ouverture du disque source, le
+  message dit exactement pourquoi et comment continuer (relancer en administrateur, ou analyser
+  une image `.raw` / `.E01`).
+
+## Interface
+
+- **34 libellés** restés en français en mode anglais sont traduits : `Largeur`, `Aucun`,
+  `Colonnes`, `Police`, `Clair` / `Sombre`, `Grille et copie`, `Ressources`, `Apparence`, `Ordre`,
+  `Par artefact`, `Liste simple`, `Date source`, `Lignes`, `Sorties`, `Exporter`, `Filtrer une date`,
+  `Ce jour`, `Ce mois`, `Appliquer les filtres`, `Surligner les occurrences…`, `Effacer images`,
+  `Seuils en pourcent`, et les en-têtes Linux `Dossier`, `Processus`, `Adresse source`,
+  `Adresse destination`, `Port source`, `Port destination`, `Port distant`, `Utilisateur cible`,
+  `Commande`, `Chemin`, `Statut`, `Octets`, `Événement`, `Détail`, `Champs`, `Ligne`,
+  `Fin de ligne`, `Texte brut`, `Méthode`, `Adresse distante`, `Protocole`, `Lecture`,
+  `Horodatage`, `Hôte`, `Horodatage UTC`, `Clé de corrélation`.
+- Les statuts du bilan d'import (`Terminé`, `À vérifier`…) passent par la table de traduction.
+
+## Vérification
+
+- Nouveaux tests : note de ligne et note de cellule dans le même rapport, libellé d'analyse,
+  budget d'import calculé sur la taille du fichier, journal de moteur bloqué par Windows.
+- Les trois chemins disque sont exercés sur un disque de laboratoire (VHD 512 Mo, NTFS + FAT32) :
+  disque physique `\\.\PhysicalDriveN`, volume monté, image RAW. Résultat identique sur les trois :
+  14 entrées, 40 analyses, 16 artefacts extraits, `$MFT` et `$Boot` compris, un accès refusé sur
+  `System Volume Information` explicitement listé.
+
+
 # Fireblade 0.4.0 — lire ce que la collecte n'avait pas reconnu
 
 ## Bilan d'import : agir sur place

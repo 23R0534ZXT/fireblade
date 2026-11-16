@@ -197,8 +197,8 @@ class Case:
                 if len(header) > 1:
                     raise ValueError("La détection automatique n’a pas trouvé de séparateur cohérent. Choisissez le séparateur dans Options du CSV.")
 
-    def import_csv(self, source, delimiter=None, encoding="utf-8", progress=lambda _: None):
-        return self._import_table(source, delimiter, encoding, progress)
+    def import_csv(self, source, delimiter=None, encoding="utf-8", progress=lambda _: None, provenance=None):
+        return self._import_table(source, delimiter, encoding, progress, provenance=provenance)
 
     def import_excel(self, source, sheet, progress=lambda _: None):
         return self._import_table(source, ",", "utf-8", progress, sheet=sheet)
@@ -529,7 +529,7 @@ class Case:
         if index == -2:
             return 'cast(EXISTS(SELECT 1 FROM bookmarks b WHERE b.row_id=events.__row_id) AS VARCHAR)'
         if index == -3:
-            return '(SELECT b.note FROM bookmarks b WHERE b.row_id=events.__row_id)'
+            return '(SELECT b.note FROM bookmarks b WHERE b.row_id=events.__row_id AND b.column_id=-1)'
         return self.column(index)
 
     def condition(self, expression):

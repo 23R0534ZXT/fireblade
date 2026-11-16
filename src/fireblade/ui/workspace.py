@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 
 from fireblade.core.engine import Case
-from fireblade.core.models import AnalysisSnapshot, View
+from fireblade.core.models import AnalysisSnapshot, View, analysis_label
 from fireblade.ui.workspace_tabs import WorkspaceTabs
 
 
@@ -95,7 +95,7 @@ class WorkspaceMixin:
 
     def sync_tabs(self):
         self.tabs.blockSignals(True)
-        self.tabs.replace_documents([Path(s.source_info["path"]).name for s in self.documents],
+        self.tabs.replace_documents([analysis_label(s.source_info) for s in self.documents],
                                     [s.path for s in self.documents], self.active_document)
         self.tabs.setVisible(bool(self.documents))
         self.tabs.blockSignals(False)

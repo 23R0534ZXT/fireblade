@@ -196,7 +196,13 @@ class DiskCollection(Collection):
                 if self.source_kind == 'physical':
                     from dissect.target.containers.raw import RawContainer
                     target = Target()
-                    handle = open_device(self.disk_source)
+                    try:
+                        handle = open_device(self.disk_source)
+                    except PermissionError as exc:
+                        raise ValueError(
+                            'Lecture refusée par Windows sur ce disque physique : elle exige des droits '
+                            'administrateur. Relancez Fireblade en tant qu’administrateur, ou analysez une '
+                            'image acquise (.raw / .E01) avec les droits courants.') from exc
                     try:
                         target.disks.add(RawContainer(handle))
                         target.apply()

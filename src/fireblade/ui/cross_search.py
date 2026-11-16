@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout)
 from fireblade.core.engine import Case
+from fireblade.core.models import analysis_label
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.models import View
 
@@ -83,11 +84,11 @@ class WorkspaceSearch:
                 if count:
                     # A few real rows, so the panel shows events and not a number.
                     sample = [summarize(row) for row in case.page(view, limit=SAMPLE_ROWS)]
-                results.append(SearchHit(document.path, Path(document.source_info['path']).name, count, sample=sample))
+                results.append(SearchHit(document.path, analysis_label(document.source_info), count, sample=sample))
             except OperationCancelled:
                 raise
             except Exception as exc:
-                results.append(SearchHit(document.path, Path(document.source_info['path']).name, None, str(exc)))
+                results.append(SearchHit(document.path, analysis_label(document.source_info), None, str(exc)))
             finally:
                 with self.lock:
                     self.current = None

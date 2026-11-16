@@ -69,3 +69,19 @@ def test_silently_incomplete_pdf_does_not_replace_existing_file(evidence,tmp_pat
     monkeypatch.setattr(QTextDocument,'print_',incomplete)
     with pytest.raises(ValueError,match='incomplet'):write_report(target,report,[doc],pdf=True)
     assert target.read_bytes()==b'previous report' and not list(tmp_path.glob('*.partial'))
+
+
+def test_row_and_cell_note_together_still_enter_the_report(evidence):
+    """A note on the row and a note on one of its cells is the normal case.
+
+    The bookmark table keys on (row_id, column_id), so a scalar subquery on row_id
+    alone raised "More than one row returned by a subquery" and the whole analysis
+    was dropped from the report: the examiner saw 0 constats and no explanation.
+    """
+    case, doc = evidence
+    case.bookmark(1, 'Note de ligne')
+    case.bookmark(1, 'Note de cellule', column=1)
+    report = build_report(WorkspaceReader([doc], active=case), 'Notes')
+    assert report['records'] == 2 and not report['errors']
+    assert 'Note de ligne' in report['html']
+    assert 'Analyse non incluse' not in report['html']

@@ -127,7 +127,7 @@ class OutcomeModel(QAbstractTableModel):
         entry=self.entries[index.row()]
         if role==Qt.ToolTipRole:return str(entry.get('path',''))
         if role==Qt.DisplayRole:
-            status=STATUSES.get(entry['status'],entry['status'])
+            status=translate(STATUSES.get(entry['status'],entry['status']))
             if outcome(entry)=='errors' and entry['status']=='attention':status+=' · erreur de lecteur'
             if entry.get('ignored'):status+=translate(' · écarté')
             return [status,str(entry.get('path','')),

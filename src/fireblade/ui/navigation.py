@@ -2,6 +2,7 @@
 from pathlib import Path, PurePosixPath
 
 from PySide6.QtCore import Qt, Signal
+from fireblade.core.models import analysis_label
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QLineEdit, QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 
 
@@ -90,9 +91,9 @@ class AnalysisNavigator(QWidget):
                                 folder.setData(0, Qt.UserRole+1, key)
                                 folders[key] = folder
                             parent = folders[key]
-                        title = relative.name+' · '+family
+                        title = analysis_label(snapshot.source_info)+' · '+family
                     else:
-                        title = labels.get(snapshot.path) or source.name
+                        title = labels.get(snapshot.path) or analysis_label(snapshot.source_info)
                     leaf = QTreeWidgetItem(parent, [title])
                     leaf.setData(0, Qt.UserRole, index)
                     leaf.setToolTip(0, (origin or {}).get('source', str(source))+'\n'+snapshot.path)
@@ -105,10 +106,10 @@ class AnalysisNavigator(QWidget):
                     parent=QTreeWidgetItem(parent,[f"{family} ({len(members)})"])
                     parent.setData(0,Qt.UserRole+1,root_key+'|'+family)
                 for index,snapshot,source in members:
-                    title=labels.get(snapshot.path) or source.name
+                    title=labels.get(snapshot.path) or analysis_label(snapshot.source_info)
                     leaf = QTreeWidgetItem(parent, [title])
                     leaf.setData(0, Qt.UserRole, index)
-                    leaf.setToolTip(0, source.name+'\n'+snapshot.path)
+                    leaf.setToolTip(0, str(snapshot.source_info.get('path',''))+'\n'+snapshot.path)
             for item in self.items():
                 if item.childCount():item.setExpanded(expanded.get(self.key(item), True))
             self.signature = signature

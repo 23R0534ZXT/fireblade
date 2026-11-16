@@ -3,6 +3,22 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+
+def analysis_label(source_info):
+    """What one analysis is called on screen: the evidence file it came from.
+
+    A Linux collection imports an intermediate CSV per log, so every analysis used
+    to be called "Linux - journaux-fireblade.csv". The label recorded at collection
+    time names the real file; the fallback keeps older analyses readable.
+    """
+    info = source_info or {}
+    label = info.get("label")
+    if label:
+        return str(label)
+    path = str(info.get("path", ""))
+    return Path(path).name if path else ""
 
 
 @dataclass

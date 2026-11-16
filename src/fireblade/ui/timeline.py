@@ -5,6 +5,7 @@ import math
 from pathlib import Path
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPointF, QRectF, Qt, Signal
+from fireblade.core.models import analysis_label
 from PySide6.QtGui import QAction, QColor, QFont, QPainter, QPen, QPalette, QPolygonF
 from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog, QDialogButtonBox,
     QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QPushButton, QScrollArea, QFileDialog,
@@ -328,7 +329,7 @@ class TimelinePanel(QWidget):
         table=QTableWidget(len(self.window.documents),3);table.setHorizontalHeaderLabels(['Analyse','Colonne temporelle','Dernier état de l’index'])
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch);combos=[]
         for i,document in enumerate(self.window.documents):
-            item=QTableWidgetItem(Path(document.source_info['path']).name);item.setFlags(item.flags()&~Qt.ItemIsEditable);item.setToolTip(document.path);table.setItem(i,0,item)
+            item=QTableWidgetItem(analysis_label(document.source_info));item.setFlags(item.flags()&~Qt.ItemIsEditable);item.setToolTip(document.path);table.setItem(i,0,item)
             combo=QComboBox();combo.addItem('Sans date / corrélation uniquement',None)
             headers=actual_headers[document.path]
             if split_date_time(headers):combo.addItem('Date + heure (colonnes séparées)',DATE_TIME)

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QDialogBut
 
 from fireblade.core import report_actions as actions
 from fireblade.core.i18n import translate
+from fireblade.ui.flow_layout import FlowLayout
 
 STATUSES = {'pending':'En attente', 'running':'En cours', 'complete':'Terminé',
     'complete_with_warnings':'Terminé avec avertissements', 'unsupported':'Non reconnu',
@@ -168,10 +169,13 @@ class CollectionReport(QWidget):
         self.ignore_button=QPushButton('Écarter du bilan');self.ignore_button.clicked.connect(self.toggle_ignored)
         self.remove_button=QPushButton('Supprimer…');self.remove_button.clicked.connect(self.remove_current)
         self.open_folder=QPushButton('Ouvrir les résultats');self.open_folder.clicked.connect(self.open_results)
-        buttons=QHBoxLayout()
-        for button in (self.preview,self.analyse_button,self.copy_button,self.export_button,self.ignore_button,self.remove_button):
+        actions_row=QWidget();buttons=FlowLayout(actions_row)
+        # A flow layout, so six actions wrap instead of forcing the window wider than
+        # the 1024-pixel screens the desktop checks run on.
+        for button in (self.preview,self.analyse_button,self.copy_button,self.export_button,self.ignore_button,
+                       self.remove_button,self.open_folder):
             buttons.addWidget(button)
-        buttons.addStretch();buttons.addWidget(self.open_folder);layout.addLayout(buttons)
+        layout.addWidget(actions_row)
         complete=QPushButton('Bilan complet');complete.clicked.connect(lambda:self.details.setPlainText(self._text))
         tail=QHBoxLayout();tail.addWidget(complete);tail.addStretch();layout.addLayout(tail)
         self.splitter=QSplitter(Qt.Vertical)

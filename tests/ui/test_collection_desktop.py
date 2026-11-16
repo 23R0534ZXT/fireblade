@@ -86,3 +86,46 @@ def test_import_prompt_applies_organization_and_cancel_does_not_start(qt_applica
         assert window.view.groups==[0]
         assert not errors
     finally:window.close()
+
+
+def wait_for(app, predicate, timeout=20):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        app.processEvents()
+        if predicate():
+            return True
+        time.sleep(.01)
+    return False
+
+
+def test_reading_a_file_again_opens_the_analysis_it_produced(qt_application, tmp_path):
+    """The button path end to end: dialog choice, worker, import, new tab."""
+    root = tmp_path / 'evidence'
+    root.mkdir()
+    (root / 'users.csv').write_text('User,Value\nalice,1\n', encoding='utf-8')
+    (root / 'note.txt').write_bytes('Réunion du service\n2026-11-14 08:12 démarrage\n'.encode('utf-8'))
+    window = Window(require_case=False)
+    errors = []
+    window.error = errors.append
+    try:
+        window.collection = Collection(root, tmp_path / 'results', ToolPack(tmp_path / 'missing'),
+                                       window.settings)
+        window.start_collection_job(window.collection.parse)
+        settle(qt_application, window)
+        assert len(window.documents) == 1
+        entry = next(e for e in window.collection.report['files'] if e['path'].endswith('note.txt'))
+        assert entry['status'] == 'unsupported'
+
+        window.analyse_with_reader(entry['path'], 'text')
+
+        assert wait_for(qt_application, lambda: len(window.documents) == 2
+                        and not window.pool.activeThreadCount()), 'analyse non ouverte'
+        assert window.workbench.currentIndex() == 0
+        assert window.model.case.headers[:3] == ['Source', 'Ligne', 'Horodatage']
+        assert entry['status'] == 'complete' and entry['tools'] == ['TextReader']
+        assert 'TextReader' in window.collection_report.toPlainText()
+        assert not errors
+    finally:
+        if window.jobs:
+            window.interrupt_queries()
+        window.close()

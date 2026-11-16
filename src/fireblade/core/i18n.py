@@ -1268,6 +1268,10 @@ EN = {
     "PDF (couche texte)": "PDF (text layer)",
     "Le texte du document, page par page ; un scan reste non lu.": "The document text, page by page; a scan stays unread.",
     "Extension pypdf absente : installez-la pour lire un PDF.": "pypdf is not installed: add it to read a PDF.",
+    "Fichier lu en partie : {} lignes, sur {} octets": "File read in part: {} lines, of {} bytes",
+    "PDF sans couche texte : un scan ne se lit pas sans OCR": "PDF with no text layer: a scan cannot be read without OCR",
+    "PDF chiffré : la couche texte demande un mot de passe": "Encrypted PDF: the text layer needs a password",
+    "aucune page décodée": "no page could be decoded",
 }
 
 LANGUAGES = ("en", "fr")

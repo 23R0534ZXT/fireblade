@@ -16,6 +16,7 @@ import uuid
 
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
+from fireblade.core.i18n import translate
 from fireblade.core.models import View
 
 
@@ -266,7 +267,9 @@ class Collection:
         if entry.get('sha256') and entry['sha256'] != digest:
             raise ValueError('Le fichier a changé depuis la collecte ; analyse refusée')
         entry['sha256'] = digest
-        tool = 'native' if reader == 'csv' else ('PDFReader' if reader == 'pdf' else 'TextReader')
+        # The tool name is what the report shows: two reads of one file must not look
+        # like the same reader twice.
+        tool = {'text': 'TextReader', 'html': 'HTMLPage', 'csv': 'native', 'pdf': 'PDFReader'}[reader]
         run = dict(tool=tool, status='running', outputs=[], reader=reader)
         entry.setdefault('runs', []).append(run)
         folder = self.output/'results'/uuid.uuid4().hex
@@ -282,10 +285,14 @@ class Collection:
                 result = pdfreader.write_csv(path, target)
                 run['pdf'] = result
                 entry['tools'] = sorted(set(entry.get('tools', [])) | {tool})
-                if result['status'] == 'scanned':
-                    # A scan is a finding, not a failure: it is reported as no output.
-                    run.update(status='no_output', error='PDF sans couche texte : un scan ne se lit pas sans OCR')
-                    entry.update(status='no_output', error=run['error'])
+                if result['status'] in ('scanned', 'encrypted', 'unreadable', 'empty'):
+                    # Not a failure of the tool: what the file is, written as the reason.
+                    reason = {'scanned': 'PDF sans couche texte : un scan ne se lit pas sans OCR',
+                              'encrypted': 'PDF chiffré : la couche texte demande un mot de passe',
+                              'unreadable': 'PDF illisible : ' + (result['warnings'][0] if result['warnings'] else 'aucune page décodée'),
+                              'empty': 'PDF sans page'}[result['status']]
+                    run.update(status='no_output', error=reason)
+                    entry.update(status='no_output', error=reason)
                     return entry
                 if not result['rows']:
                     raise ValueError('Aucune ligne lisible dans ce fichier')
@@ -298,12 +305,15 @@ class Collection:
                 run['textreader'] = result
                 if not result['rows']:
                     raise ValueError('Aucune ligne lisible dans ce fichier')
+                if result['truncated']:
+                    run['warnings'] = [translate('Fichier lu en partie : {} lignes, sur {} octets').format(
+                        result['rows'], result['size'])]
                 csvs = [target]
             for csv_path in csvs:
                 check_cancel()
                 enriched = csv_path if reader == 'csv' else self.enrich_result(csv_path, path, tool)
                 run['outputs'].append(dict(csv=str(csv_path), analysis=self.import_result(enriched, tool)))
-            run['status'] = 'complete'
+            run['status'] = 'complete_with_warnings' if run.get('warnings') else 'complete'
         except OperationCancelled:
             run['status'] = 'cancelled'
             entry['status'] = 'cancelled'
@@ -314,8 +324,8 @@ class Collection:
         else:
             entry['tools'] = sorted(set(entry.get('tools', [])) | {tool})
             entry.pop('error', None)
-            entry['status'] = ('complete' if all(item['status'] == 'complete' for item in entry.get('runs', []))
-                               else 'attention')
+            healthy = all(item['status'] == 'complete' for item in entry.get('runs', []))
+            entry['status'] = 'complete' if healthy else 'attention'
         finally:
             self.save()
         return entry

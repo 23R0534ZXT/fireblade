@@ -68,9 +68,23 @@ def test_a_saved_page_gives_its_text_and_its_links(collection):
 
     entry = collection.analyse_single(entry['path'], 'html')
 
-    assert entry['status'] == 'complete'
+    assert entry['status'] == 'complete' and entry['tools'] == ['HTMLPage']
     text = Path(entry['runs'][-1]['outputs'][0]['csv']).read_text(encoding='utf-8')
     assert 'Preuve visible' in text and 'https://exemple.fr/a' in text
+
+
+def test_reading_the_same_file_twice_keeps_both_reads(collection):
+    collection.parse()
+    entry = entries(collection.report)['page.dat']
+
+    collection.analyse_single(entry['path'], 'text')
+    entry = collection.analyse_single(entry['path'], 'html')
+
+    assert entry['status'] == 'complete'
+    assert entry['tools'] == ['HTMLPage', 'TextReader'], "chaque lecture garde son nom"
+    assert [run['reader'] for run in entry['runs']] == ['text', 'html']
+    assert len(entry['runs'][0]['outputs']) == len(entry['runs'][1]['outputs']) == 1
+    assert len(collection.report['documents']) == 2
 
 
 def test_a_binary_file_cannot_be_forced_into_text(collection):
@@ -162,3 +176,39 @@ def test_a_pdf_without_the_extension_is_refused_before_reading(collection, monke
     entry = collection.analyse_single(document, 'pdf')
 
     assert entry['status'] == 'error' and 'pypdf' in entry['error']
+
+
+def test_a_text_file_read_in_part_is_a_warning_not_a_silent_analysis(collection, monkeypatch):
+    from fireblade.core import textreader
+    collection.parse()
+    document = collection.root/'journal.txt'
+    document.write_text('2026-11-14 08:00 première ligne\n2026-11-14 09:00 seconde ligne\n', encoding='utf-8')
+    monkeypatch.setattr(textreader, 'LIMIT_BYTES', 30)
+
+    entry = collection.analyse_single(document, 'text')
+
+    assert entry['status'] == 'attention'
+    run = entry['runs'][-1]
+    assert run['status'] == 'complete_with_warnings'
+    assert run['textreader']['truncated'] is True
+    assert run['warnings'], "une lecture partielle doit être dite, pas silencieuse"
+    assert Path(run['outputs'][0]['analysis']).is_file()
+
+
+def test_an_encrypted_pdf_is_reported_with_its_reason(collection):
+    pypdf = pytest.importorskip('pypdf')
+    from pdf_sample import build_pdf
+    collection.parse()
+    plain = collection.root/'clair.pdf'
+    plain.write_bytes(build_pdf('Contrat signé'))
+    locked = collection.root/'verrouille.pdf'
+    writer = pypdf.PdfWriter()
+    writer.append(pypdf.PdfReader(str(plain)))
+    writer.encrypt('mot-de-passe')
+    with locked.open('wb') as stream:
+        writer.write(stream)
+
+    entry = collection.analyse_single(locked, 'pdf')
+
+    assert entry['status'] == 'no_output' and 'chiffré' in entry['error']
+    assert collection.report['documents'] == []

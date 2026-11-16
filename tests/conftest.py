@@ -32,19 +32,33 @@ def no_blocking_dialog(qt_application):
     the same thread, so the nested event loop of exec() processes it; the dialog is
     rejected and the test fails on its own assertions instead of never returning.
     """
+    import time
     from PySide6.QtCore import QTimer
+
+    # A modal is only a candidate once it has been the active one for a whole
+    # interval: checking identity, not just presence, is what keeps a dialog a test
+    # is driving from being rejected mid-keystroke on a loaded machine. The tick is
+    # short so a genuinely stuck dialog still costs seconds, not a wait that never
+    # ends.
+    state = {"widget": None, "since": 0.0}
 
     def reject_stray():
         widget = QApplication.activeModalWidget()
-        if isinstance(widget, QDialog):
-            print(f"\n[warn] modal window rejected by the test watchdog: {widget.windowTitle()!r}",
-                  file=sys.stderr, flush=True)
-            widget.reject()
+        if not isinstance(widget, QDialog):
+            state["widget"] = None
+            return
+        now = time.monotonic()
+        if widget is not state["widget"]:
+            state["widget"], state["since"] = widget, now
+            return
+        if now - state["since"] < 15:
+            return
+        print(f"\n[warn] modal window rejected by the test watchdog: {widget.windowTitle()!r}",
+              file=sys.stderr, flush=True)
+        widget.reject()
 
     timer = QTimer(qt_application)
-    # Long enough for a test that drives a dialog to fill it in and click OK even on
-    # a loaded machine; a dialog nobody drives still costs 15 s instead of forever.
-    timer.setInterval(15000)
+    timer.setInterval(5000)
     timer.timeout.connect(reject_stray)
     timer.start()
     yield

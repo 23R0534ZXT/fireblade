@@ -9,8 +9,8 @@ from scripts.release import application_version
 
 def promote(text, release, version, digest, commit, run_url):
     if (release.get('draft', True) or release.get('tag_name')!='v'+version
-            or 'Commit : '+commit not in release.get('body','')
-            or 'SHA-256 de Fireblade.exe : '+digest not in release.get('body','')):
+            or 'Commit: '+commit not in release.get('body','')
+            or 'SHA-256 of Fireblade.exe: '+digest not in release.get('body','')):
         raise ValueError('Published release identity does not match the qualified binary')
     assets=release.get('assets',[])
     if len(assets)!=1 or assets[0]['name']!='Fireblade.exe' or assets[0].get('digest')!='sha256:'+digest:

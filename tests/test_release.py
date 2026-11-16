@@ -50,7 +50,7 @@ def test_asset_is_uploaded_to_draft_before_publication(tmp_path, existing):
             assert '--draft' in command
         if '--notes-file' in command:
             notes = Path(command[command.index('--notes-file') + 1]).read_text()
-            assert 'Commit : tested-commit' in notes and 'SHA-256 de Fireblade.exe' in notes
+            assert 'Commit: tested-commit' in notes and 'SHA-256 of Fireblade.exe' in notes
         return subprocess.CompletedProcess(command, 0)
     result = publish(tmp_path, executable, 'owner/repo', 'tested-commit', 'v0.1.1', run=run)
     assert result['tag'] == 'v0.1.1'

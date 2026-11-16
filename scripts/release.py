@@ -51,7 +51,7 @@ def publish(root, executable, repository, commit, requested_tag='', run=subproce
         stream.seek(0)
         digest = hashlib.file_digest(stream, 'sha256').hexdigest()
     notes = (root / 'docs/development/RELEASE-NOTES.md').read_text(encoding='utf-8')
-    notes += f'\n\nCommit : {commit}\n\nSHA-256 de Fireblade.exe : {digest}\n'
+    notes += f'\n\nCommit: {commit}\n\nSHA-256 of Fireblade.exe: {digest}\n'
     with tempfile.TemporaryDirectory(prefix='fireblade-release-') as folder:
         path = Path(folder) / 'notes.md'
         path.write_text(notes, encoding='utf-8')

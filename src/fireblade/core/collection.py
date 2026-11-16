@@ -236,6 +236,74 @@ class Collection:
             if self._active_case is not None:
                 self._active_case.interrupt()
 
+    def entry_for(self, path):
+        """The report entry of one file, created when the collection never saw it."""
+        wanted = os.path.normcase(str(Path(path)))
+        for entry in self.report['files']:
+            if os.path.normcase(str(entry.get('path', ''))) == wanted:
+                return entry
+        entry = dict(path=str(path), status='unsupported', tools=[])
+        self.report['files'].append(entry)
+        return entry
+
+    def analyse_single(self, path, reader='text'):
+        """Read one file with a chosen reader, at the examiner's request.
+
+        The collection does not guess twice. A file whose format was not recognised
+        stays unread until somebody asks for it, and the request is written into the
+        report next to the hash it was made on, so the decision can be reviewed and
+        the outcome reproduced. The source is read, never modified.
+        """
+        if reader not in ('text', 'html', 'csv'):
+            raise ValueError('Lecteur inconnu : '+str(reader))
+        path = Path(path).resolve()
+        if not path.is_file():
+            raise ValueError('Fichier introuvable : '+str(path))
+        entry = self.entry_for(path)
+        if entry.get('status') == 'deleted':
+            raise ValueError('Fichier supprimé du bilan : '+str(path))
+        digest = sha256(path)
+        if entry.get('sha256') and entry['sha256'] != digest:
+            raise ValueError('Le fichier a changé depuis la collecte ; analyse refusée')
+        entry['sha256'] = digest
+        tool = 'native' if reader == 'csv' else 'TextReader'
+        run = dict(tool=tool, status='running', outputs=[], reader=reader)
+        entry.setdefault('runs', []).append(run)
+        folder = self.output/'results'/uuid.uuid4().hex
+        folder.mkdir(parents=True, exist_ok=True)
+        try:
+            if reader == 'csv':
+                csvs = [path]
+            else:
+                from fireblade.core import textreader
+                target = folder/(uuid.uuid4().hex+'.csv')
+                # "text" leaves the decision to the bytes: a binary file stays refused.
+                result = textreader.write_csv(path, target, kind='html' if reader == 'html' else None)
+                run['textreader'] = result
+                if not result['rows']:
+                    raise ValueError('Aucune ligne lisible dans ce fichier')
+                csvs = [target]
+            for csv_path in csvs:
+                check_cancel()
+                enriched = csv_path if reader == 'csv' else self.enrich_result(csv_path, path, tool)
+                run['outputs'].append(dict(csv=str(csv_path), analysis=self.import_result(enriched, tool)))
+            run['status'] = 'complete'
+        except OperationCancelled:
+            run['status'] = 'cancelled'
+            entry['status'] = 'cancelled'
+            raise
+        except Exception as exc:
+            run.update(status='error', error=str(exc))
+            entry.update(status='error', error=str(exc))
+        else:
+            entry['tools'] = sorted(set(entry.get('tools', [])) | {tool})
+            entry.pop('error', None)
+            entry['status'] = ('complete' if all(item['status'] == 'complete' for item in entry.get('runs', []))
+                               else 'attention')
+        finally:
+            self.save()
+        return entry
+
     def enrich_result(self, source, artifact, tool):
         """Keep upstream CSV and append raw-artifact provenance to a separate copy."""
         target = source.with_name(source.stem+'-fireblade.csv')

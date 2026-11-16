@@ -1,7 +1,7 @@
 # Fireblade 0.4.1 — une recette sur 10 Gio, et ce qu'elle a trouvé
 
 Cette version ne vient pas d'une idée : elle vient de la recette finale de la 0.4.0 sur une
-collecte Linux réelle de **10,2 Gio / 241 fichiers**, importée par l'interface, plus un disque
+collecte Linux réelle de **9,74 Gio / 259 fichiers**, importée par l'interface, plus un disque
 de laboratoire à deux partitions analysé en physique, en volume monté et en image RAW.
 
 ## Notes : un rapport qui n'oublie plus l'analyse
@@ -34,8 +34,10 @@ de laboratoire à deux partitions analysé en physique, en volume monté et en i
   tentative relisait tout le fichier** — quatre passes pour un seul import, avec un message
   inchangé. La première tentative part maintenant d'un budget déduit de la taille du fichier
   (taille + 25 % + 64 Mo), plafonné à la moitié de la mémoire physique.
-- Mesuré sur la collecte de 10 Gio : le journal Apache de 2,3 Gio produit un CSV de 3 Go, importé
-  en une passe.
+- Mesuré sur la collecte livrée, 259 fichiers / 9,74 Gio : bilan `complete`, **246 analyses**,
+  aucun fichier manquant, en **50 min 49 s** sur cette machine. Le budget mémoire n'est plus ce
+  qui arrête l'import ; c'est le lecteur texte, une ligne à la fois en Python, qui donne le
+  débit. C'est le sujet de la version suivante, et il est mesuré avant d'être annoncé.
 
 ## Un moteur bloqué par Windows s'arrête et s'explique
 

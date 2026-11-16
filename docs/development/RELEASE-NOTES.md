@@ -30,10 +30,28 @@
 - Un dossier `%TEMP%\pytest-of-…` laissé par une exécution antérieure est purgé : Windows réutilisait l'ancien dossier sans corriger son orthographe, `resolve()` renvoyait la casse du disque et les chemins différaient d'une majuscule. C'étaient les 7 échecs restants.
 - Le test qui vérifie que le cœur ne charge pas Qt garde désormais les paquets de l'interpréteur au lieu de les perdre en remplaçant `PYTHONPATH` : il échouait sur un détail d'environnement, pas sur une fuite de Qt.
 
+## Ce que la lecture doit accepter
+
+Un fichier texte n'arrive pas toujours en UTF-8 propre. Trois familles ont été trouvées en sondant de
+vrais fichiers, et chacune était lue de travers :
+
+- **UTF-16 avec BOM** — une sortie PowerShell redirigée, un fichier enregistré « Unicode » par Notepad :
+  le fichier était refusé comme binaire, ou affiché avec un caractère NUL entre chaque lettre.
+- **BOM UTF-8** — le caractère invisible restait en tête de la première ligne et empêchait la date
+  d'être lue quand elle ouvrait le fichier.
+- **Page HTML en cp1252** — enregistrée sur une machine française, elle perdait ses accents.
+
+Le lecteur suit désormais l'ordre : encodage demandé, BOM, charset déclaré par la page, UTF-8, cp1252.
+Et un fichier plus gros que la limite lue le dit (nombre de lignes et d'octets) au lieu de produire une
+analyse qui paraît complète.
+
 ## Vérification
 
-- Suite complète : **1 379 passés, 28 ignorés**, plateforme Qt Windows, fenêtre réelle construite, ruff propre.
-- Aucun échec restant. Les trois familles d'échecs locales ci-dessus étaient toutes dans la porte, aucune dans le produit.
+- Suite complète : **1 395 passés, 28 ignorés**, plateforme Qt Windows, fenêtre réelle construite, ruff propre.
+- Sondes sur fichiers réels : 46 contrôles sur texte, page HTML, PDF (dont un de trois pages et un
+  chiffré) et arborescence de collecte — 46 sur 46 ; journal de 100 000 lignes importé en 1,5 s.
+- Aucun échec restant. Les familles d'échecs rencontrées venaient de la porte et de son garde-fou de
+  fenêtres modales, jamais du produit.
 
 # Fireblade 0.3.1 — toute l'interface en anglais et en français
 

@@ -183,11 +183,15 @@ gh release create vX.Y.Z --title "<titre>" --notes-file body.md "<exe vérifié>
 
 ## Vérification
 
-- Dernier passage de la porte pour la 0.4.0 : **1 375 tests passés, 28 ignorés**,
+- Dernier passage de la porte pour la 0.4.0 : **1 395 tests passés, 28 ignorés**,
   plateforme Qt Windows, fenêtre réelle construite, ruff propre — via
   `powershell -File C:\Users\23R\run_gate.ps1` (voir plus haut pour l'interpréteur).
+- Sondes hors suite, sur fichiers réels : 46 contrôles (texte UTF-8/cp1252/UTF-16/BOM,
+  page HTML cp1252 et déclarée, PDF d'une et trois pages, PDF chiffré, PDF tronqué,
+  arborescence de collecte complète) — 46 sur 46. Journal de 100 000 lignes importé en 1,5 s.
 - Les échecs de la suite locale venaient tous de la porte elle-même : 25 par
-  encodage, 7 par casse du dossier temporaire, 1 par `PYTHONPATH` réduit. Aucun
+  encodage, 7 par casse du dossier temporaire, 1 par `PYTHONPATH` réduit, puis 2 par
+  le garde-fou de fenêtres modales qui rejetait un dialogue en cours de saisie. Aucun
   n'était un défaut du produit.
 
 ## Comment reprendre

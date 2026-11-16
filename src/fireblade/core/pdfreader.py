@@ -41,28 +41,45 @@ def rows(path, limit_pages=LIMIT_PAGES, limit_lines=LIMIT_LINES):
 
     path = Path(path)
     source = str(path)
-    document = reader_class(str(path))
-    pages = len(document.pages)
+    try:
+        document = reader_class(str(path))
+        if getattr(document, 'is_encrypted', False):
+            # Reading it would need a password: say so instead of returning a scan.
+            return [], dict(kind='pdf', status='encrypted', pages=0, text_pages=0, warnings=[])
+        pages = len(document.pages)
+    except Exception as error:      # truncated, empty or not a PDF at all
+        return [], dict(kind='pdf', status='unreadable', pages=0, text_pages=0, warnings=[str(error)])
     produced, text_pages, warnings = [], 0, []
     if not pages:
         return [], dict(kind='pdf', status='empty', pages=0, text_pages=0, warnings=[])
-    for number, page in enumerate(document.pages[:limit_pages], start=1):
-        try:
-            text = page.extract_text() or ''
-        except Exception as error:   # a damaged page must not lose the readable ones
-            warnings.append('Page %d : %s' % (number, error))
-            continue
-        lines = [line.strip() for line in text.splitlines()]
-        lines = [line for line in lines if line]
-        if lines:
-            text_pages += 1
-        for line in lines:
-            produced.append((source, number, stamp_of(line), line, ''))
-            if len(produced) >= limit_lines:
-                warnings.append('Texte arrêté à %d lignes' % limit_lines)
-                return produced, dict(kind='pdf', status='ok', pages=pages,
-                                      text_pages=text_pages, warnings=warnings)
-    status = 'ok' if text_pages else 'scanned'
+    read = 0
+    try:
+        for number, page in enumerate(document.pages[:limit_pages], start=1):
+            read += 1
+            try:
+                text = page.extract_text() or ''
+            except Exception as error:   # a damaged page must not lose the readable ones
+                warnings.append('Page %d : %s' % (number, error))
+                continue
+            lines = [line.strip() for line in text.splitlines()]
+            lines = [line for line in lines if line]
+            if lines:
+                text_pages += 1
+            for line in lines:
+                produced.append((source, number, stamp_of(line), line, ''))
+                if len(produced) >= limit_lines:
+                    warnings.append('Texte arrêté à %d lignes' % limit_lines)
+                    return produced, dict(kind='pdf', status='ok', pages=pages,
+                                          text_pages=text_pages, warnings=warnings)
+    except Exception as error:
+        return produced, dict(kind='pdf', status='unreadable', pages=pages,
+                              text_pages=text_pages, warnings=warnings + [str(error)])
+    if text_pages:
+        status = 'ok'
+    elif warnings and len(warnings) >= read:
+        status = 'unreadable'
+    else:
+        status = 'scanned'
     return produced, dict(kind='pdf', status=status, pages=pages,
                           text_pages=text_pages, warnings=warnings)
 

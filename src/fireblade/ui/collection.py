@@ -93,6 +93,7 @@ class CollectionMixin(AlertContextMixin):
         from fireblade.ui.collection_report import CollectionReport
         self.collection_report = CollectionReport()
         self.collection_report.on_changed = self.save_collection_report
+        self.collection_report.on_analyse = self.analyse_with_reader
         layout.addWidget(self.collection_report, 1)
         self.workbench.addTab(panel, 'Imports')
         self.setCentralWidget(self.workbench)
@@ -202,10 +203,11 @@ class CollectionMixin(AlertContextMixin):
                     snapshots=list(self.documents)+[snapshot for snapshot in incoming if snapshot.path not in existing]
                 if len(snapshots)>1000:
                     raise ValueError('Le case dépasserait 1000 analyses. Les résultats restent dans le dossier de collecte.')
-                wanted=(report.get('detection') or {}).get('analysis') or incoming[active].path
+                wanted=getattr(self,'_reader_analysis',None) or (report.get('detection') or {}).get('analysis') or incoming[active].path
                 selected=next(i for i,snapshot in enumerate(snapshots) if snapshot.path==wanted)
                 self.validate_session_snapshots(snapshots)
                 self.install_session_snapshots(snapshots,selected)
+                self._reader_analysis=None
                 if (report.get('detection') or {}).get('outputs'):
                     self.select_evidence_row(str(self.case.path),1)
                 self.workbench.setCurrentIndex(0)
@@ -292,6 +294,26 @@ class CollectionMixin(AlertContextMixin):
             self.collection = Collection.reopen(path, self.toolpack(), self.settings)
             self.collection_finished(self.collection.report)
         except Exception as exc:self.error(exc)
+
+    def analyse_with_reader(self, path, reader):
+        """Read one file with the reader the examiner picked, then show the analysis.
+
+        A collection that could not identify a file is not the end of the story: the
+        examiner can say what it is. The work happens on the collection's worker, so
+        the window keeps drawing, and the new analysis is opened when it lands.
+        """
+        if self.collection is None:
+            self.workbench.setCurrentIndex(1)
+            self.statusBar().showMessage('Importez ou reprenez une collecte avant de relancer un fichier.')
+            return
+        if not self.can_open_file():return
+        self.remember_collection_views()
+        def job():
+            entry = self.collection.analyse_single(path, reader)
+            outputs = (entry.get('runs') or [{}])[-1].get('outputs') or []
+            self._reader_analysis = outputs[-1]['analysis'] if outputs else None
+            return self.collection.report
+        self.start_collection_job(job)
 
     def analyze_collection(self):
         if not self.can_open_file():return

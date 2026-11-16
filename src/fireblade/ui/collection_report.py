@@ -4,8 +4,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QFileDialog, QHBoxLayout, QLabel,
-    QLineEdit, QMessageBox, QPushButton, QSplitter, QTableView, QTextBrowser, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
+    QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QRadioButton, QSplitter, QTableView,
+    QTextBrowser, QVBoxLayout, QWidget)
 
 from fireblade.core import report_actions as actions
 from fireblade.core.i18n import translate
@@ -59,6 +60,50 @@ def preview_text(path, limit=PREVIEW_LIMIT):
     return text
 
 
+class ReaderDialog(QDialog):
+    """Choose how to read a file the collection could not identify."""
+
+    READERS = (('text', 'Texte', 'Une ligne par ligne ; un horodatage est gardé seulement s\'il ouvre la ligne.'),
+               ('html', 'Page HTML enregistrée', 'Texte visible et liens, sans navigateur ni dépendance.'),
+               ('csv', 'Tableau CSV / TSV', 'Colonnes importées telles quelles, sans réinterprétation.'))
+
+    def __init__(self, path, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(translate('Relancer avec un lecteur'))
+        self.resize(580, 280)
+        layout = QVBoxLayout(self)
+        name = QLabel(str(path))
+        name.setWordWrap(True)
+        layout.addWidget(name)
+        self._choices = []
+        for code, label, hint in self.READERS:
+            choice = QRadioButton(translate(label))
+            choice.setProperty('reader', code)
+            layout.addWidget(choice)
+            self._choices.append(choice)
+            reason = QLabel(translate(hint))
+            reason.setWordWrap(True)
+            reason.setIndent(24)
+            layout.addWidget(reason)
+        self._choices[0].setChecked(True)
+        note = QLabel(translate("Le fichier est lu, jamais modifié. Son empreinte SHA-256 est relevée, et une "
+                                "lecture ultérieure sera refusée si le fichier change."))
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.button(QDialogButtonBox.Ok).setText(translate('Analyser'))
+        buttons.button(QDialogButtonBox.Cancel).setText(translate('Annuler'))
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def reader(self):
+        for choice in self._choices:
+            if choice.isChecked():
+                return choice.property('reader')
+        return 'text'
+
+
 class OutcomeModel(QAbstractTableModel):
     def __init__(self, parent=None):
         super().__init__(parent);self.entries=[]
@@ -97,7 +142,7 @@ class OutcomeFilter(QSortFilterProxyModel):
 class CollectionReport(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._text='';self.report=None;self.on_changed=None
+        self._text='';self.report=None;self.on_changed=None;self.on_analyse=None
         layout=QVBoxLayout(self);layout.setContentsMargins(0,0,0,0)
         self.summary=QLabel();self.summary.setTextFormat(Qt.PlainText);self.summary.setWordWrap(True)
         layout.addWidget(self.summary)
@@ -111,13 +156,14 @@ class CollectionReport(QWidget):
         row.addWidget(self.status);row.addWidget(self.search,1)
         layout.addLayout(row)
         self.preview=QPushButton('Voir le fichier');self.preview.clicked.connect(self.show_preview)
+        self.analyse_button=QPushButton('Relancer avec un lecteur…');self.analyse_button.clicked.connect(self.analyse_with_reader)
         self.copy_button=QPushButton('Copier les non traités…');self.copy_button.clicked.connect(self.copy_unprocessed)
         self.export_button=QPushButton('Exporter la liste…');self.export_button.clicked.connect(self.export_list)
         self.ignore_button=QPushButton('Écarter du bilan');self.ignore_button.clicked.connect(self.toggle_ignored)
         self.remove_button=QPushButton('Supprimer…');self.remove_button.clicked.connect(self.remove_current)
         self.open_folder=QPushButton('Ouvrir les résultats');self.open_folder.clicked.connect(self.open_results)
         buttons=QHBoxLayout()
-        for button in (self.preview,self.copy_button,self.export_button,self.ignore_button,self.remove_button):
+        for button in (self.preview,self.analyse_button,self.copy_button,self.export_button,self.ignore_button,self.remove_button):
             buttons.addWidget(button)
         buttons.addStretch();buttons.addWidget(self.open_folder);layout.addLayout(buttons)
         complete=QPushButton('Bilan complet');complete.clicked.connect(lambda:self.details.setPlainText(self._text))
@@ -178,6 +224,7 @@ class CollectionReport(QWidget):
         entry=self.current_entry()
         usable=entry is not None and entry.get('status')!='deleted'
         self.preview.setEnabled(usable)
+        self.analyse_button.setEnabled(usable and callable(self.on_analyse))
         self.ignore_button.setEnabled(usable)
         self.remove_button.setEnabled(usable)
         self.ignore_button.setText('Réintégrer au bilan' if entry and entry.get('ignored') else 'Écarter du bilan')
@@ -207,6 +254,17 @@ class CollectionReport(QWidget):
         entry=self.current_entry()
         if not entry:return
         self.details.setPlainText(str(entry.get('path',''))+'\n\n'+preview_text(entry.get('path','')))
+
+    def analyse_with_reader(self):
+        """Ask how to read this file, then hand the decision to the collection."""
+        entry=self.current_entry()
+        if not entry or not callable(self.on_analyse):return
+        dialog=ReaderDialog(entry.get('path',''),self)
+        accepted=dialog.exec()
+        reader=dialog.reader()
+        dialog.deleteLater()
+        if accepted!=QDialog.DialogCode.Accepted:return
+        self.on_analyse(str(entry.get('path','')),reader)
 
     def copy_unprocessed(self):
         if not self.report:return

@@ -1253,6 +1253,18 @@ EN = {
     "{} fichiers copiés, {} déjà présents, {} échecs.\n\nDossier : {}": "{} files copied, {} already present, {} failures.\n\nFolder: {}",
     "%s\n\nLe fichier sera supprimé du disque. Son empreinte SHA-256 restera dans le bilan, et la suppression est refusée si le fichier a changé depuis la collecte.\n\nContinuer ?": "%s\n\nThe file will be deleted from disk. Its SHA-256 stays in the report, and deletion is refused if the file changed since collection.\n\nContinue?",
     "{} fichiers · {} réussis · {} à vérifier · {} erreurs/interrompus · {} non reconnus/ignorés · {} autres/compagnons · {} écartés": "{} files · {} processed · {} to check · {} errors/interrupted · {} unrecognised/ignored · {} other/companions · {} parked",
+    "Relancer avec un lecteur…": "Read again with a reader…",
+    "Relancer avec un lecteur": "Read again with a reader",
+    "Texte": "Text",
+    "Une ligne par ligne ; un horodatage est gardé seulement s'il ouvre la ligne.": "One row per line, keeping a timestamp only when it opens the line.",
+    "Page HTML enregistrée": "Saved HTML page",
+    "Texte visible et liens, sans navigateur ni dépendance.": "Visible text and links, with no browser and no dependency.",
+    "Tableau CSV / TSV": "CSV / TSV table",
+    "Colonnes importées telles quelles, sans réinterprétation.": "Columns imported as they are, with no reinterpretation.",
+    "Le fichier est lu, jamais modifié. Son empreinte SHA-256 est relevée, et une lecture ultérieure sera refusée si le fichier change.": "The file is read, never modified. Its SHA-256 is recorded, and a later read is refused if the file changes.",
+    "Analyser": "Analyse",
+    "Annuler": "Cancel",
+    "Importez ou reprenez une collecte avant de relancer un fichier.": "Import or reopen a collection before reading a file again.",
 }
 
 LANGUAGES = ("en", "fr")

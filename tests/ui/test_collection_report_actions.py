@@ -58,3 +58,49 @@ def test_outcome_classifies_every_state_used_by_the_report():
     assert report.outcome(entry('attention')) == 'warnings'
     assert report.outcome(entry('attention', runs=[{'status': 'error'}])) == 'errors'
     assert report.outcome(entry('companion')) == 'other'
+
+
+def test_the_reader_dialog_offers_every_reader_and_starts_on_text(qt_application):
+    dialog = report.ReaderDialog('C:/preuves/note.bin')
+    try:
+        assert dialog.windowTitle() == report.translate('Relancer avec un lecteur')
+        assert [choice.text() for choice in dialog._choices] == [
+            report.translate(label) for _, label, _ in report.ReaderDialog.READERS]
+        assert dialog.reader() == 'text'
+        dialog._choices[1].setChecked(True)
+        assert dialog.reader() == 'html'
+        dialog._choices[2].setChecked(True)
+        assert dialog.reader() == 'csv'
+    finally:
+        dialog.deleteLater()
+
+
+def test_the_report_hands_the_chosen_reader_to_the_collection(qt_application, monkeypatch):
+    widget = report.CollectionReport()
+    try:
+        asked = []
+        widget.on_analyse = lambda path, reader: asked.append((path, reader))
+        widget.set_report({'status': 'complete', 'source': 'C:/preuves', 'output': 'C:/travail',
+                           'files': [entry('unsupported')], 'documents': []}, '')
+        widget.table.setCurrentIndex(widget.proxy.index(0, 0))
+        assert widget.analyse_button.isEnabled()
+
+        monkeypatch.setattr(report.ReaderDialog, 'exec',
+                            lambda self: report.QDialog.DialogCode.Accepted)
+        monkeypatch.setattr(report.ReaderDialog, 'reader', lambda self: 'html')
+        widget.analyse_with_reader()
+
+        assert asked == [('C:/preuves/fichier', 'html')]
+    finally:
+        widget.deleteLater()
+
+
+def test_a_report_without_a_collection_cannot_offer_to_read_again(qt_application):
+    widget = report.CollectionReport()
+    try:
+        widget.set_report({'status': 'complete', 'source': 'C:/preuves', 'output': 'C:/travail',
+                           'files': [entry('unsupported')], 'documents': []}, '')
+        widget.table.setCurrentIndex(widget.proxy.index(0, 0))
+        assert not widget.analyse_button.isEnabled()
+    finally:
+        widget.deleteLater()

@@ -85,6 +85,38 @@ cette promesse.
 - Si la place manque vraiment (fichier plus gros que la moitié de la RAM), l'échec est
   expliqué dans une fenêtre, avec les deux remèdes, au lieu d'être retenté sans fin.
 
+## Fichier plus gros que la mémoire : commit par tranches
+
+Un export de 100 Go ne mourait pas du lecteur mais de la transaction : DuckDB garde les
+lignes non validées hors du checkpoint, donc aucun budget ne pouvait suffire à un fichier
+qui devait entrer d'un bloc. Au-delà d'un seuil (2 Gio, et huit fois le budget), l'import
+**valide chaque tranche** écrite et rend la mémoire avant de lire la suivante. En dessous,
+rien ne change : un petit fichier arrive toujours d'un seul coup, atomiquement.
+
+Mesuré sur les vrais lecteurs :
+
+- 1 Go, 21,3 millions de lignes, budget de 64 Mo : **64 s**, et le processus n'a jamais
+  dépassé **103 Mo** de mémoire résidente, échantillonnée toutes les 250 ms depuis
+  l'extérieur ;
+- 4 Go, 30 colonnes, budget de 128 Mo : **223 s**, 2,6 millions de lignes, dernière ligne
+  intacte.
+
+## Effort : un curseur calculé pour la machine
+
+L'onglet Imports porte un seul réglage : quatre niveaux, une barre qui grandit avec ce que
+l'import prend et passe du vert à l'orange puis au rouge, et une phrase lisible —
+« Fast · 15 threads · 4,0 Go sur 31,8 Go ».
+
+- Les valeurs ne sont pas une table fixe : chaque niveau est une **fraction de la machine**
+  lue au démarrage (cœurs, puis RAM physique via le noyau, sans dépendance).
+- Light prend un quart des cœurs et 512 Mo ; Maximum prend tout et plafonne aux deux tiers
+  de la RAM, là où le rouge commence.
+- Un niveau ne promet jamais plus que la machine ne possède, et un nombre de threads écrit
+  à la main est borné et décrit de la même façon.
+- Choisir un niveau écrit d'un seul geste les threads d'analyse, les threads de requête et
+  le budget mémoire : parse et analyse cessent de se contredire, et le choix survit au
+  redémarrage.
+
 ## Porte de vérification
 
 - La suite tourne en **UTF-8** : les fixtures écrivaient leurs CSV sans `encoding=`, donc dans la page de code locale, alors que le code lit en UTF-8 et que la CI est en UTF-8. C'était 25 échecs sur 25 sans rapport avec le produit.

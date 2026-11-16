@@ -183,6 +183,7 @@ class Collection:
         self._last_checkpoint = 0
         self._case_lock = threading.Lock()
         self._active_case = None
+        self._cases = set()
         self.report = dict(format='fireblade-collection', version=1, source=str(self.root),
                            output=str(self.output), organization=organization, status='pending', files=[], documents=[], detection=None)
         manifest = Path(self.pack.root)/'manifest.json'
@@ -231,6 +232,7 @@ class Collection:
         case = Case(target, settings=budget)
         with self._case_lock:
             self._active_case = case
+            self._cases.add(case)
         failed = False
         try:
             self.progress('Chargement Fireblade : '+Path(csv).name)
@@ -247,14 +249,16 @@ class Collection:
         finally:
             with self._case_lock:
                 self._active_case = None
+                self._cases.discard(case)
                 case.close()
             if failed:
                 target.unlink(missing_ok=True)
 
     def interrupt(self):
         with self._case_lock:
-            if self._active_case is not None:
-                self._active_case.interrupt()
+            # A collection may now parse several files at once: interrupt all of them.
+            for case in list(self._cases):
+                case.interrupt()
 
     def entry_for(self, path):
         """The report entry of one file, created when the collection never saw it."""
@@ -390,12 +394,150 @@ class Collection:
         elif self.report['organization'] == 'files':
             self.ready(copy.deepcopy(self.report['documents'][start:]))
 
+    def workers(self):
+        """How many files at once: the effort level, one per thread, capped at eight.
+
+        The parsers are external processes and the disk is shared, so past a handful
+        of workers the run gets slower, not faster. Eight is the measured knee.
+        """
+        threads = int(getattr(self.settings, 'threads', 1) or 1)
+        return max(1, min(threads, 8, os.cpu_count() or 1))
+
+    def _parse_entry(self, source, entry):
+        """One file, from identity to its analyses. Returns the documents it produced.
+
+        Written to run on a worker thread: it only touches the entry it was given, its
+        own output folder, and returns its analyses instead of appending them, so the
+        collection keeps file order whatever order the workers finish in.
+        """
+        documents = []
+        self.progress('Collecte : '+str(source.relative_to(self.root)))
+        try:
+            if source.is_symlink() or self.root not in source.resolve().parents:
+                entry.update(status='skipped', error='Lien de fichier non suivi')
+                return documents
+            if not source.is_file():
+                entry.update(status='skipped', error='Fichier spécial non lu (socket, FIFO ou périphérique)')
+                return documents
+            tools = identify(source)
+            entry['tools'] = tools
+            if not tools:
+                entry['status'] = 'unsupported'
+                return documents
+            entry['sha256'] = sha256(source)
+            if tools == ['companion']:
+                entry.update(tools=[], status='companion', kind='registry_transaction_log')
+                return documents
+            companions = {}
+            if any(t in ('RECmd', 'AmcacheParser', 'AppCompatCacheParser') for t in tools):
+                for sibling in source.parent.iterdir():
+                    if sibling.name.casefold() in (source.name.casefold()+'.log1', source.name.casefold()+'.log2') and sibling.is_file() and not sibling.is_symlink():
+                        companions[str(sibling)] = sha256(sibling)
+                entry['companions'] = companions
+            entry['runs'] = []
+            for tool in tools:
+                check_cancel()
+                run = dict(tool=tool, status='running', outputs=[])
+                entry['runs'].append(run)
+                output = self.output/'results'/uuid.uuid4().hex
+                output.mkdir()
+                try:
+                    catscale_outputs = {}
+                    if tool == 'WebCache':
+                        from fireblade.core.webcache import parse
+                        result = parse(source, output, self.progress)
+                        run['webcache'] = result
+                        run['warnings'] = result['warnings']
+                        csvs = [Path(item['csv']) for item in result['outputs']]
+                    elif tool in ('CatScale', 'LinuxLogs'):
+                        if tool == 'LinuxLogs':
+                            from fireblade.core.linux_logs import parse
+                            result = parse(source, output, self.progress)
+                        else:
+                            from fireblade.core.catscale import parse
+                            result = parse(source, output)
+                        run['linux_logs' if tool == 'LinuxLogs' else 'catscale'] = result
+                        run['warnings'] = result['warnings']
+                        csvs = [Path(item['csv']) for item in result['outputs']]
+                        catscale_outputs = {item['csv']:item for item in result['outputs']}
+                    elif tool == 'native':
+                        csvs = [source]
+                    else:
+                        command = self.pack.arguments(tool, source, output)
+                        run['command'] = command
+                        self.progress(tool+' : '+str(source.relative_to(self.root)))
+                        execute(command, str(Path(self.pack.root)/tool), output/'parser.log')
+                        csvs = sorted(output.rglob('*.csv'))
+                    for csv in csvs:
+                        enriched = csv if tool == 'native' else self.enrich_result(csv, source, tool)
+                        document = self.import_result(enriched, tool, register=False)
+                        documents.append(document)
+                        run['outputs'].append(dict(csv=str(csv), analysis=document['path'], **({'family':catscale_outputs[str(csv)]['family']} if tool in ('CatScale', 'LinuxLogs') else {})))
+                    run['status'] = ('complete_with_warnings' if run.get('warnings') else 'complete') if csvs else 'no_output'
+                    log = output/'parser.log'
+                    if log.is_file():
+                        warnings = []
+                        with log.open(encoding='utf-8', errors='replace') as stream:
+                            for line in stream:
+                                if re.search(r'(?i)(?:\bERR\]|\bWRN\]|failed to|error (?:processing|reading|loading)|could not)', line) and len(warnings)<100:
+                                    warnings.append(line.strip())
+                        if warnings:
+                            run['warnings'] = warnings
+                            if csvs:run['status'] = 'complete_with_warnings'
+                except OperationCancelled:
+                    run['status'] = 'cancelled'
+                    raise
+                except Exception as exc:
+                    run.update(status='error', error=str(exc))
+            if any(sha256(path) != digest for path, digest in companions.items()):
+                raise ValueError('Journal de transaction modifié pendant le traitement')
+            if sha256(source) != entry['sha256']:
+                raise ValueError('Source modifiée pendant le traitement ; résultats à vérifier')
+            entry['status'] = 'complete' if all(r['status']=='complete' for r in entry['runs']) else 'attention'
+        except OperationCancelled:
+            entry['status'] = 'cancelled'
+            raise
+        except Exception as exc:
+            entry.update(status='error', error=str(exc))
+        return documents
+
+    def _merge(self, entry, documents):
+        """Append one file's analyses, in file order, and publish them."""
+        start = len(self.report['documents'])
+        self.report['documents'].extend(documents)
+        self.publish_results(start, entry)
+        if time.monotonic()-self._last_checkpoint >= 1:
+            self.save()
+
+    def _run_entries(self, pending):
+        """Parse every inventoried file, on one thread or on several.
+
+        Files are independent — each has its own output folder and its own analysis —
+        so the only shared state is the report, and it is written by this thread alone.
+        """
+        workers = self.workers()
+        if workers <= 1 or len(pending) < 2:
+            for source, entry in pending:
+                self._merge(entry, self._parse_entry(source, entry))
+            return
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='fireblade-parse') as pool:
+            futures = [pool.submit(self._parse_entry, source, entry) for source, entry in pending]
+            try:
+                for (source, entry), future in zip(pending, futures):
+                    self._merge(entry, future.result())
+            except OperationCancelled:
+                for future in futures:
+                    future.cancel()
+                raise
+
     def parse(self):
         self.prepare_output()
         (self.output/'analyses').mkdir()
         (self.output/'results').mkdir()
         self.report['status'] = 'running'
         self.save()
+        pending = []
         try:
             # os.walk does not follow directory symlinks. Every inaccessible entry is reported.
             def walk_error(error):
@@ -409,99 +551,10 @@ class Collection:
                 for name in sorted(names):
                     check_cancel()
                     source = Path(directory)/name
-                    document_start = len(self.report['documents'])
                     entry = dict(path=str(source), status='pending', tools=[])
                     self.report['files'].append(entry)
-                    self.progress('Collecte : '+str(source.relative_to(self.root)))
-                    try:
-                        if source.is_symlink() or self.root not in source.resolve().parents:
-                            entry.update(status='skipped', error='Lien de fichier non suivi')
-                            continue
-                        if not source.is_file():
-                            entry.update(status='skipped', error='Fichier spécial non lu (socket, FIFO ou périphérique)')
-                            continue
-                        tools = identify(source)
-                        entry['tools'] = tools
-                        if not tools:
-                            entry['status'] = 'unsupported'
-                            continue
-                        entry['sha256'] = sha256(source)
-                        if tools == ['companion']:
-                            entry.update(tools=[], status='companion', kind='registry_transaction_log')
-                            continue
-                        companions = {}
-                        if any(t in ('RECmd', 'AmcacheParser', 'AppCompatCacheParser') for t in tools):
-                            for sibling in source.parent.iterdir():
-                                if sibling.name.casefold() in (source.name.casefold()+'.log1', source.name.casefold()+'.log2') and sibling.is_file() and not sibling.is_symlink():
-                                    companions[str(sibling)] = sha256(sibling)
-                            entry['companions'] = companions
-                        entry['runs'] = []
-                        for tool in tools:
-                            check_cancel()
-                            run = dict(tool=tool, status='running', outputs=[])
-                            entry['runs'].append(run)
-                            output = self.output/'results'/uuid.uuid4().hex
-                            output.mkdir()
-                            try:
-                                catscale_outputs = {}
-                                if tool == 'WebCache':
-                                    from fireblade.core.webcache import parse
-                                    result = parse(source, output, self.progress)
-                                    run['webcache'] = result
-                                    run['warnings'] = result['warnings']
-                                    csvs = [Path(item['csv']) for item in result['outputs']]
-                                elif tool in ('CatScale', 'LinuxLogs'):
-                                    if tool == 'LinuxLogs':
-                                        from fireblade.core.linux_logs import parse
-                                        result = parse(source, output, self.progress)
-                                    else:
-                                        from fireblade.core.catscale import parse
-                                        result = parse(source, output)
-                                    run['linux_logs' if tool == 'LinuxLogs' else 'catscale'] = result
-                                    run['warnings'] = result['warnings']
-                                    csvs = [Path(item['csv']) for item in result['outputs']]
-                                    catscale_outputs = {item['csv']:item for item in result['outputs']}
-                                elif tool == 'native':
-                                    csvs = [source]
-                                else:
-                                    command = self.pack.arguments(tool, source, output)
-                                    run['command'] = command
-                                    self.progress(tool+' : '+str(source.relative_to(self.root)))
-                                    execute(command, str(Path(self.pack.root)/tool), output/'parser.log')
-                                    csvs = sorted(output.rglob('*.csv'))
-                                for csv in csvs:
-                                    enriched = csv if tool == 'native' else self.enrich_result(csv, source, tool)
-                                    run['outputs'].append(dict(csv=str(csv), analysis=self.import_result(enriched, tool), **({'family':catscale_outputs[str(csv)]['family']} if tool in ('CatScale', 'LinuxLogs') else {})))
-                                run['status'] = ('complete_with_warnings' if run.get('warnings') else 'complete') if csvs else 'no_output'
-                                log = output/'parser.log'
-                                if log.is_file():
-                                    warnings = []
-                                    with log.open(encoding='utf-8', errors='replace') as stream:
-                                        for line in stream:
-                                            if re.search(r'(?i)(?:\bERR\]|\bWRN\]|failed to|error (?:processing|reading|loading)|could not)', line) and len(warnings)<100:
-                                                warnings.append(line.strip())
-                                    if warnings:
-                                        run['warnings'] = warnings
-                                        if csvs:run['status'] = 'complete_with_warnings'
-                            except OperationCancelled:
-                                run['status'] = 'cancelled'
-                                raise
-                            except Exception as exc:
-                                run.update(status='error', error=str(exc))
-                        if any(sha256(path) != digest for path, digest in companions.items()):
-                            raise ValueError('Journal de transaction modifié pendant le traitement')
-                        if sha256(source) != entry['sha256']:
-                            raise ValueError('Source modifiée pendant le traitement ; résultats à vérifier')
-                        entry['status'] = 'complete' if all(r['status']=='complete' for r in entry['runs']) else 'attention'
-                    except OperationCancelled:
-                        entry['status'] = 'cancelled'
-                        raise
-                    except Exception as exc:
-                        entry.update(status='error', error=str(exc))
-                    finally:
-                        self.publish_results(document_start, entry)
-                        if time.monotonic()-self._last_checkpoint >= 1:
-                            self.save()
+                    pending.append((source, entry))
+            self._run_entries(pending)
             from fireblade.core.collection_organization import organize
             organize(self)
             self.report['status'] = 'complete'

@@ -244,3 +244,32 @@ def test_organization_failure_keeps_original_session(collection, monkeypatch):
     with pytest.raises(ValueError,match='Organisation interrompue'):collection.parse()
     assert len(read_session(collection.output/'collection.fireblade-session')[0])==2
     assert collection.report['status']=='error'
+
+
+def test_files_are_parsed_in_parallel_and_merged_in_file_order(tmp_path):
+    """Several files at once, one report: same results, same order, whatever finishes first."""
+    root = tmp_path/'evidence'
+    (root/'a').mkdir(parents=True)
+    for index in range(6):
+        (root/'a'/('log%02d.csv' % index)).write_text('User,Value\r\nalice,%03d\r\n' % index, encoding='utf-8', newline='')
+    pack = tmp_path/'pack'; (pack/'dotnet').mkdir(parents=True); (pack/'dotnet'/'dotnet.exe').touch()
+    from fireblade.core.settings import Settings
+
+    def build(threads):
+        item = Collection(root, tmp_path/('w%d' % threads), ToolPack(pack),
+                          settings=Settings(memory_mb=256, threads=threads))
+        item.report['organization'] = 'files'
+        item.parse()
+        return item
+
+    single = build(1)
+    parallel = build(4)
+    assert parallel.workers() == 4 and single.workers() == 1
+    order = lambda item: [Path(document['path']).name for document in item.report['documents']]
+    statuses = [(entry['status'], entry.get('error')) for entry in parallel.report['files']]
+    assert statuses == [('complete', None)] * 6, statuses
+    assert len(parallel.report['documents']) == len(single.report['documents']) == 6
+    values = lambda item: sorted(document['source']['rows'] for document in item.report['documents'])
+    assert values(parallel) == values(single) == [1] * 6
+    files = lambda item: [Path(entry['path']).name for entry in item.report['files']]
+    assert files(parallel) == files(single) == sorted(files(single))

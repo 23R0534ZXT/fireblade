@@ -15,16 +15,16 @@ See also https://duckdb.org/docs/stable/guides/performance/how_to_tune_workloads
 def test_an_out_of_memory_becomes_a_sentence_and_two_remedies():
     explained = explain_failure(DUCKDB, 64)
     assert explained['kind'] == 'memory'
-    assert 'Mémoire insuffisante' in explained['summary'] and '64' in explained['summary']
-    assert any('Préférences → Ressources' in line for line in explained['advice'])
-    assert any('lots plus petits' in line for line in explained['advice'])
+    assert 'Not enough memory' in explained['summary'] and '64' in explained['summary']
+    assert any('Preferences → Resources' in line for line in explained['advice'])
+    assert any('smaller batches' in line for line in explained['advice'])
     assert 'failed to pin' in explained['detail'], "le texte technique reste disponible"
 
 
 def test_a_source_changed_during_import_names_its_own_cause():
-    explained = explain_failure("ValueError: Le fichier source a changé pendant l'import")
+    explained = explain_failure("ValueError: Le fichier source a change pendant l'import")
     assert explained['kind'] == 'source_changed'
-    assert 'a changé' in explained['summary'] and explained['advice']
+    assert 'changed during' in explained['summary'] and explained['advice']
 
 
 def test_anything_else_keeps_its_first_line_and_the_detail():

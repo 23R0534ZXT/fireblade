@@ -40,9 +40,9 @@ def test_a_collection_failure_is_explained_in_a_window(qt_application, monkeypat
         window.report_collection_failure(DUCKDB)
         captured = FakeBox.captured
         assert captured.get('shown'), "l'échec doit s'afficher, pas seulement dans la barre d'état"
-        assert captured['title'] == 'Collecte interrompue'
-        assert 'Mémoire insuffisante' in captured['text'] and '64' in captured['text']
-        assert 'Préférences → Ressources' in captured['text']
+        assert captured['title'] == 'Collection interrupted'
+        assert 'Not enough memory' in captured['text'] and '64' in captured['text']
+        assert 'Preferences → Resources' in captured['text']
         assert 'failed to pin' in captured['detail'], "le détail technique reste consultable"
     finally:
         window.close()
@@ -57,6 +57,6 @@ def test_the_report_names_a_family_that_could_not_be_merged(qt_application, tmp_
                                                   reason='Out of Memory Error: failed to pin block')])
         window.show_collection_report(report)
         text = window.collection_report.toPlainText()
-        assert 'EVTX' in text and 'non fusionné' in text and 'Out of Memory' in text
+        assert 'EVTX' in text and 'not merged' in text and 'Out of Memory' in text
     finally:
         window.close()

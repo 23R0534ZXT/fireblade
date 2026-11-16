@@ -271,7 +271,7 @@ class StartWorkflowMixin:
         explained = explain_failure(error, memory)
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Warning)
-        box.setWindowTitle("Collecte interrompue")
+        box.setWindowTitle("Collection interrupted")
         text = explained["summary"]
         if explained["advice"]:
             text += "\n\n" + "\n".join("• " + line for line in explained["advice"])

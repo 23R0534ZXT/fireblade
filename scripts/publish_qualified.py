@@ -39,7 +39,7 @@ def inspect_run(repository, run_id):
     if not re.fullmatch(r'[1-9][0-9]*', run_id):
         raise ValueError('Invalid workflow run ID')
     def api(endpoint):
-        result = subprocess.run(['gh', 'api', endpoint], check=True, capture_output=True, text=True)
+        result = subprocess.run(['gh', 'api', endpoint], check=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
         return json.loads(result.stdout)
     run = api(f'repos/{repository}/actions/runs/{run_id}')
     jobs = api(f'repos/{repository}/actions/runs/{run_id}/jobs?per_page=100')

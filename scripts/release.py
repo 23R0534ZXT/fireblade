@@ -41,7 +41,7 @@ def publish(root, executable, repository, commit, requested_tag='', run=subproce
     version = application_version(root)
     def gh(*args, capture=False):
         return run(['gh', *args, '--repo', repository], check=True, text=True,
-                   capture_output=capture)
+                   encoding='utf-8', errors='replace', capture_output=capture)
     response = gh('release', 'list', '--limit', '100', '--json', 'name,tagName,isDraft', capture=True)
     plan = release_plan(version, requested_tag, json.loads(response.stdout))
     # Read-only metadata checks above must finish before any remote mutation.

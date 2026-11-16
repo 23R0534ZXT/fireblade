@@ -21,7 +21,8 @@ def test_folder_import_background_and_case_restore(qt_application, tmp_path, mon
     monkeypatch.setattr(Collection,'publish_results',pause)
     monkeypatch.setattr(ui,'choose_collection_directories',lambda *a:[str(source)])
     def accept(dialog):
-        {'files':dialog.progressive,'artifacts':dialog.artifacts,'combined':dialog.combined}[organization].setChecked(True)
+        dialog.progressive.setChecked(organization=='files')
+        {'artifacts':dialog.artifacts,'combined':dialog.combined}.get(organization,dialog.progressive).setChecked(True)
         return QDialog.Accepted
     monkeypatch.setattr(ui.CollectionOrganizationDialog,'exec',accept)
     window=Window(investigation_root=tmp_path/'cases');errors=[];window.error=errors.append

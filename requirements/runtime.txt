@@ -2,6 +2,11 @@
 duckdb==1.5.6
 PySide6-Essentials==6.12.0
 
+# Text layer of a PDF, with no OCR. Optional at import time: without it the PDF
+# reader is not offered, and everything else keeps working. Pinned in the build so
+# the published executable can read a PDF out of the box.
+pypdf==5.9.0
+
 openpyxl==3.1.5
 
 xlrd==2.0.2

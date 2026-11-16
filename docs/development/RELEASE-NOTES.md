@@ -1,3 +1,40 @@
+# Fireblade 0.4.0 — lire ce que la collecte n'avait pas reconnu
+
+## Bilan d'import : agir sur place
+
+- Un fichier non reconnu, en erreur ou écarté reste dans le bilan avec sa ligne, son motif et son empreinte, et l'analyste peut agir dessus sans quitter Fireblade.
+- **Voir le fichier** : aperçu texte, repli cp1252 quand le fichier n'est pas en UTF-8, affichage hexadécimal pour un binaire. Un fichier illisible affiche un message, jamais une erreur.
+- **Copier les non traités…** : copie des fichiers sans analyse dans un dossier choisi, arborescence conservée, **copie et jamais déplacement** ; la preuve reste où elle a été saisie.
+- **Exporter la liste…** : CSV UTF-8 de ce que le tableau affiche, filtres compris.
+- **Écarter du bilan** / **Réintégrer** : décision réversible, persistée avec la collecte, et sortie des compteurs de travail.
+- **Supprimer…** : refusée si l'empreinte SHA-256 ne correspond plus à celle relevée à la collecte ; la suppression est tracée dans le bilan.
+- Colonne **Motif** en clair, compteurs incluant les écartés, décisions enregistrées dans `collection.json`.
+
+## Relancer un fichier avec le lecteur de son choix
+
+- **Relancer avec un lecteur…** analyse le fichier sélectionné avec le lecteur choisi, l'importe comme n'importe quelle source et ouvre l'analyse obtenue.
+- Quatre lecteurs : **texte** (une ligne par ligne), **page HTML enregistrée** (texte visible et liens, sans navigateur ni dépendance), **PDF (couche texte)**, **tableau CSV/TSV**.
+- Le fichier n'est que lu, jamais modifié. L'empreinte relevée à la lecture devient la référence : une lecture ultérieure est refusée si le fichier a changé. Un fichier absent de la collecte ajoute sa ligne au bilan au lieu d'être refusé.
+- Un binaire n'est jamais lu comme du texte, et un fichier sans ligne lisible dit pourquoi au lieu de produire une analyse vide.
+
+## PDF : la couche texte, et rien d'autre
+
+- Texte extrait page par page via `pypdf`, dans la même forme que les autres sources : une ligne par ligne, avec le numéro de page ; l'horodatage n'est retenu que s'il ouvre la ligne.
+- **Pas d'OCR**, décision assumée : un PDF sans couche texte est signalé « PDF sans couche texte » et compté avec les avertissements, au lieu de produire des lignes vides qui ressembleraient à une analyse de la page.
+- Une page abîmée n'emporte pas ses voisines : le numéro de page est noté, la lecture continue.
+- Sans `pypdf`, Fireblade démarre normalement, le lecteur PDF est grisé dans la fenêtre de choix avec le motif. L'extension est épinglée dans `requirements/runtime.txt`, donc présente dans l'exécutable publié.
+
+## Porte de vérification
+
+- La suite tourne en **UTF-8** : les fixtures écrivaient leurs CSV sans `encoding=`, donc dans la page de code locale, alors que le code lit en UTF-8 et que la CI est en UTF-8. C'était 25 échecs sur 25 sans rapport avec le produit.
+- Un dossier `%TEMP%\pytest-of-…` laissé par une exécution antérieure est purgé : Windows réutilisait l'ancien dossier sans corriger son orthographe, `resolve()` renvoyait la casse du disque et les chemins différaient d'une majuscule. C'étaient les 7 échecs restants.
+- Le test qui vérifie que le cœur ne charge pas Qt garde désormais les paquets de l'interpréteur au lieu de les perdre en remplaçant `PYTHONPATH` : il échouait sur un détail d'environnement, pas sur une fuite de Qt.
+
+## Vérification
+
+- Suite complète : **1 379 passés, 28 ignorés**, plateforme Qt Windows, fenêtre réelle construite, ruff propre.
+- Aucun échec restant. Les trois familles d'échecs locales ci-dessus étaient toutes dans la porte, aucune dans le produit.
+
 # Fireblade 0.3.1 — toute l'interface en anglais et en français
 
 ## Langue

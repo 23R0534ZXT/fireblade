@@ -8,9 +8,7 @@ Fireblade brings Windows artifacts, Linux logs, detection results and tabular ev
 
 [Releases](https://github.com/23R0534ZXT/fireblade/releases) · [Documentation](docs/README.md) · [Report an issue](https://github.com/23R0534ZXT/fireblade/issues/new/choose) · [Release notes](docs/development/RELEASE-NOTES.md)
 
-**[Download Fireblade 0.3.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.3.1/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.3.1) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/42232632949)
-
-The desktop interface and most user guides are currently in French.
+**[Download Fireblade 0.4.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.4.0/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.4.0)
 
 The interface is in English, and English is the reference from now on: new labels are written directly in English. French stays available in **Preferences → Language** for what has already been translated, but it is no longer maintained. User guides are still in French.
 
@@ -20,7 +18,15 @@ The interface is in English, and English is the reference from now on: new label
 
 Windows CI runs focused regression tests on Python 3.12, builds the standalone EXE in parallel, then checks its appearance, 320-analysis workspace and 3-GiB import/export workflow. The full Python 3.11–3.13 test matrix remains available through the workflow’s **full_validation** option.
 
-## Version 0.3.1 · The whole interface in English and French
+## Version 0.4.0 · Reading what the collection could not name
+
+- The **Imports** report is no longer a dead end. A file that was not recognised, failed or was parked keeps its line, its reason and its hash, and can be acted on without leaving Fireblade: **See the file** (text preview, cp1252 fallback, hex dump for a binary), **Copy the unprocessed files…** (copied aside with their tree, never moved), **Export the list…** (UTF-8 CSV of what the table shows, filters included), **Park / Restore** (reversible, saved with the collection, out of the working counts) and **Delete…** (refused when the SHA-256 recorded at collection no longer matches).
+- **Read again with a reader…** analyses the selected file with the reader you choose — **text**, **saved HTML page** (visible text and links, no browser), **PDF (text layer)**, **CSV/TSV table** — imports the result like any other source and opens the new analysis. The file is only read; the hash taken at that read is the reference, and a later read is refused if the file changed.
+- **PDF**: the text layer is extracted page by page, one row per line with its page number. No OCR, and that is a decision: a PDF with no text layer is reported as such and counted with the warnings, instead of producing empty rows that would look like an analysis. `pypdf` ships with the executable and stays an optional extra for a source install; without it the PDF reader is greyed out with the reason.
+- A binary file is never read as text, a page that fails does not lose its neighbours, and every reader feeds the same timeline, search and reports.
+- Fixed in the verification gate itself: the suite ran in the local code page while the code reads UTF-8 (25 failures that were not product bugs), a stale `%TEMP%\pytest-of-…` folder made paths differ by one capital letter (the last 7), and the "core does not load Qt" check now keeps the interpreter's packages instead of failing on an environment detail.
+
+## Previous release · 0.3.1
 
 - Every window is translated, not only the menus and toolbars: dialogs, column manager, preferences, IOC hunting, coverage, timeline, table headers, drop-down lists, tooltips, input placeholders and status messages.
 - Model headers (coverage, rules, IOC results), navigation tree nodes, table cells and theme names are translated as well, and a message assembled by concatenation is treated as a template: the fixed text and the value are translated, then put back together.
@@ -70,7 +76,7 @@ Windows CI runs focused regression tests on Python 3.12, builds the standalone E
 
 | Area | Features |
 |---|---|
-| Evidence intake | Windows artifacts, raw Linux logs and rotations, CatScale collections, CSV/TSV/TXT and XLS/XLSX exports |
+| Evidence intake | Windows artifacts, raw Linux logs and rotations, CatScale collections, CSV/TSV/TXT and XLS/XLSX exports, saved HTML pages, PDF text layers |
 | Disk triage | Read-only extraction of supported artifacts from mounted volumes, RAW/E01 images and physical-device paths |
 | Analysis | Filtering, grouping, sorting, calculated columns, bookmarks, notes and source provenance |
 | Detection | Embedded Hayabusa rules, EVTX alert context and bulk IOC searches |

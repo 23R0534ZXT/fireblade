@@ -4,18 +4,38 @@ Document de reprise, mis à jour en fin de session. Il dit où en est le code, c
 qui a été décidé, et ce qui reste. Le détail technique vit dans le skill
 `fireblade-verification` ; ce fichier est la vue d'ensemble.
 
-Dernière mise à jour : 6 novembre 2026, après la publication de la 0.3.1.
+Dernière mise à jour : 16 novembre 2026, après la préparation de la 0.4.0.
 
 ## Où en est le projet
 
-- **Version publiée** : 0.3.1 — release publiée **sous le compte du mainteneur**
-  (`23R0534ZXT`), pas sous `github-actions[bot]` — `Fireblade.exe`, 280 508 600 octets,
+- **Version 0.4.0** : le lot est empilé sur la branche `hermes/0.4.0` (11 commits),
+  puis fusionné sur `main` et tagué `v0.4.0`. L'exe est construit et vérifié par la
+  CI Windows, puis publié par `publish-qualified` avec le compte du mainteneur.
+- La **0.3.1** reste téléchargeable : `Fireblade.exe`, 280 508 600 octets,
   SHA-256 `0b4f94676861da3ed15d65291f20f37ff781a2b8d0d7517ced725e42d2203a1a`,
-  publiée le 6 novembre 2026. Branche `main`, CI verte, 7 jobs sur 7.
-- La 0.3.0 reste téléchargeable : `Fireblade.exe`, 280 356 023 octets,
-  SHA-256 `e5198510bdb42211f79bcc9880f522330c558f5ed4fb50d624669c3f85c65aac`.
-- **Vérification de référence** : 1 327 tests passés, 31 ignorés, plateforme Qt
-  Windows, via `python -m scripts.dev_check` (7 min 19).
+  publiée le 6 novembre 2026.
+- **Vérification de référence** de la 0.4.0 : voir la section « Vérification » du
+  bas de ce document, remplie avec le résultat du dernier passage de la porte.
+
+## Ce qui a été livré dans la 0.4.0
+
+- **Onglet Imports actionnable** : aperçu du fichier (texte, repli cp1252, hexadécimal),
+  copie des non traités (copie, jamais déplacement), export CSV de la vue filtrée,
+  mise à l'écart réversible, suppression protégée par le SHA-256 relevé à la collecte,
+  colonne « Motif », compteurs avec les écartés, décisions persistées dans `collection.json`.
+- **Lecteur à la demande** (`Collection.analyse_single(path, reader)`) : relancer un
+  fichier non reconnu avec le lecteur choisi, l'importer comme une source, ouvrir
+  l'analyse. Le hash de référence est celui de la collecte ; à défaut, la première
+  lecture le fixe, et une lecture suivante est refusée si le fichier a changé.
+- **`core/textreader.py`** : texte et pages HTML sans aucune dépendance — une ligne
+  par ligne, horodatage gardé seulement s'il ouvre la ligne, liens collectés, octets
+  invalides conservés, binaire refusé.
+- **`core/pdfreader.py`** : couche texte seulement, page par page, via `pypdf`
+  (extra optionnel, épinglé dans `requirements/runtime.txt` pour l'exe). Pas d'OCR :
+  un PDF sans couche texte est signalé et compté avec les avertissements.
+- **Porte** : suite lancée en UTF-8 (les fixtures écrivaient en page de code locale),
+  purge des dossiers `%TEMP%\pytest-of-…` périmés (casse du chemin), et le test
+  « le cœur ne charge pas Qt » garde désormais les paquets de l'interpréteur.
 
 ## Ce qui a été livré dans la 0.3.1
 
@@ -57,23 +77,33 @@ Dernière mise à jour : 6 novembre 2026, après la publication de la 0.3.1.
   reliquats ne peut que diminuer. Un troisième test lit la vraie fenêtre en
   anglais et échoue sur tout mot français visible.
 
-## Plan de la 0.4.0
+## Plan de la 0.5.0
 
-1. « Parser un dossier » exige un case : **décidé**. Les points d'entrée d'ajout
-   de données (« Parser un dossier… », « Analyser un disque… », « Importer un
-   fichier… ») restent visibles mais **grisés** tant qu'aucun case n'est ouvert,
-   avec l'infobulle « Open or create a case first. ». La création automatique du
-   case au passage est écartée.
-2. Chronologie : table + bandeau d'ensemble + vue graphique — **déjà en place**
-   (`TimelinePanel`, `TimelineOverview`, `TimelineModel`) ; l'item est clos.
-3. Tests de l'exe publié et du pont .NET — **en place** : l'exe passe 47 contrôles
-   isolés (`scripts/windows/verify.py`) ; l'hôte .NET est vérifié à chaque build
-   (self-test + `plugin_checks` + `legacy_plugin_checks` + lecteur TLE public
-   épinglé + matrice de lecteurs amont). Non exécutable localement (pas de SDK
-   .NET sur le poste) : c'est la CI qui les fait tourner.
-4. Couverture CI — **étendue** : le job `tests` lance désormais la suite complète
-   (au lieu de 15 fichiers). Reste hors de portée du poste : Q01/Q04–Q08
-   (comparaison et essais avec une vraie Timeline Explorer + essais humains).
+Les quatre points du plan 0.4.0 sont traités : points d'entrée grisés sans case,
+chronologie en place, exe et pont .NET vérifiés par la CI, suite complète en CI.
+Ce qui reste ouvert pour le lot suivant :
+
+1. **Import cp1252** : un CSV exporté par Excel en Europe de l'Ouest lève encore un
+   `UnicodeDecodeError` parce que l'import par défaut est UTF-8 strict. Le sélecteur
+   d'encodage existe côté interface ; reste à décider si le défaut doit détecter et
+   basculer, avec avertissement (changement de comportement = son propre test).
+2. **PDF** : un aperçu du nombre de pages et de la couche texte dans le bilan, et
+   l'extraction des métadonnées (auteur, dates) — pas d'OCR, décision tenue.
+3. Ce que le mainteneur demandera ; un commit par ajout, porte verte à chaque étape.
+
+### Traité dans la 0.4.0
+
+- « Parser un dossier » exige un case : les points d'entrée restent visibles mais
+  **grisés** sans case, infobulle « Open or create a case first. » ; la création
+  automatique du case au passage est écartée.
+- Chronologie : table + bandeau d'ensemble + vue graphique, en place.
+- Exe et pont .NET vérifiés à chaque build par la CI : 47 contrôles isolés
+  (`scripts/windows/verify.py`), self-test, `plugin_checks`, `legacy_plugin_checks`,
+  lecteur TLE public épinglé, matrice de lecteurs amont. Pas de SDK .NET sur le
+  poste : c'est la CI qui les fait tourner.
+- Couverture CI étendue : le job `tests` lance la suite complète. Reste hors de
+  portée du poste : Q01/Q04–Q08 (comparaison avec une vraie Timeline Explorer,
+  essais humains).
 
 ## Publication des releases
 
@@ -136,13 +166,39 @@ gh release create vX.Y.Z --title "<titre>" --notes-file body.md "<exe vérifié>
 - Les accroches Qt sont installées **une seule fois** et ne font rien quand la
   langue est le français : c'est ce qui garde la suite rapide.
 
+- **Un dossier `%TEMP%\pytest-of-<utilisateur>` périmé change la casse des chemins** :
+  pytest calcule le nom en minuscules, Windows réutilise le dossier existant sans
+  corriger son orthographe, et `resolve()` renvoie la casse du disque. Les tests qui
+  comparent des chemins échouent alors sans rapport avec la cause. La porte purge ces
+  dossiers (`purge_stale_pytest_tmp()`), et les comparaisons passent par `os.path.normcase`.
+- **La suite doit tourner en UTF-8** (`PYTHONUTF8=1`, `PYTHONIOENCODING=utf-8`) :
+  beaucoup de fixtures écrivent leurs CSV sans `encoding=`, donc en page de code
+  locale sous Windows, alors que le code lit en UTF-8 et que la CI est en UTF-8.
+- **Smart App Control bloque `.venv\Scripts\python.exe`** sur la tour : aucune
+  modification du lanceur ne le débloque, et le désactiver ne se défait pas sans
+  réinstaller Windows. La porte tourne donc avec le Python de base
+  (`C:\Users\23R\run_gate.ps1`), `PYTHONPATH` sur `src` + `.venv\Lib\site-packages`
+  et `.venv\Scripts` dans `PATH` pour ruff. Un test qui relance `sys.executable` avec
+  un `PYTHONPATH` réduit échoue pour cette raison, pas pour un bug produit.
+
+## Vérification
+
+- Dernier passage de la porte pour la 0.4.0 : **1 375 tests passés, 28 ignorés**,
+  plateforme Qt Windows, fenêtre réelle construite, ruff propre — via
+  `powershell -File C:\Users\23R\run_gate.ps1` (voir plus haut pour l'interpréteur).
+- Les échecs de la suite locale venaient tous de la porte elle-même : 25 par
+  encodage, 7 par casse du dossier temporaire, 1 par `PYTHONPATH` réduit. Aucun
+  n'était un défaut du produit.
+
 ## Comment reprendre
 
 Premier message d'une nouvelle session, suffisant pour repartir :
 
-> Fireblade 0.3.2, la 0.3.1 est publiée, `main` est à jour. À partir de
-> maintenant on ne travaille qu'en anglais. Charge le skill
-> `fireblade-verification` et lis `docs/development/PASSATION.md`.
+> Fireblade 0.4.0, la 0.3.1 reste publiée, `main` porte la 0.4.0. On ne travaille
+> qu'en anglais. Charge le skill `fireblade-verification` et lis
+> `docs/development/PASSATION.md` ; la tour Windows est en SSH sur `23R@192.168.1.167`
+> et la porte tourne par `C:\Users\23R\run_gate.ps1` (Smart App Control bloque le
+> Python du venv).
 
 Le reste — historique, décisions, conventions — se trouve dans le dépôt et dans
 la mémoire persistante.

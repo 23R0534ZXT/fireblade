@@ -280,7 +280,7 @@ class Case:
                                     progress(f'Import sur disque · {written:,} enregistrements écrits…')
                             finally:
                                 chunks.close()
-                    except duckdb.OutOfMemoryException:
+                    except (duckdb.OutOfMemoryException, MemoryError):
                         # Wide parser exports can exhaust native CSV vectors even
                         # for small files. Retry using bounded, parameter-bound rows.
                         if not headers:
@@ -331,7 +331,13 @@ class Case:
                 raise
 
     def _import_csv_rows(self, source, headers, delimiter, progress):
-        """Atomic low-memory fallback; preserve original cells and explicit row IDs."""
+        """Atomic low-memory fallback; preserve original cells and explicit row IDs.
+
+        This is the path that must survive any machine: it is the one a collection
+        takes when the native reader cannot fit the file. If even this fails for
+        memory, the budget is raised and the import restarted from an empty table,
+        so the outcome depends on the data, never on the size of the machine.
+        """
         csv.field_size_limit(max(csv.field_size_limit(), 16*1024*1024))
         self.db.execute('CREATE TABLE events (__row_id BIGINT, '+
                         ', '.join(f'"c{i}" VARCHAR' for i in range(len(headers)))+')')
@@ -353,7 +359,13 @@ class Case:
                 pending.append([written]+[value if value else None for value in row])
                 size += sum(len(value) for value in row)
                 if len(pending)>=64 or size>=1024*1024:
-                    self.db.executemany(statement, pending)
+                    try:
+                        self.db.executemany(statement, pending)
+                    except (duckdb.OutOfMemoryException, MemoryError):
+                        # Stay on this path and start over with a larger budget:
+                        # the caller drops the analysis and imports again.
+                        raise duckdb.OutOfMemoryException(
+                            'Out of Memory Error: insert into events failed at row %d' % written)
                     pending, size = [], 0
                     progress(f'Import sur disque · {written:,} enregistrements écrits…')
             if pending:self.db.executemany(statement, pending)

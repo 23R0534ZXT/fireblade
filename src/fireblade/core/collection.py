@@ -210,16 +210,17 @@ class Collection:
         check_cancel()
         if register and len(self.report['documents']) >= 1000:
             raise ValueError('Limite de 1000 analyses atteinte ; résultat conservé sur disque')
-        # A bulk insert cannot spill to disk, so a budget too small for the file fails
-        # whatever the free space: grow the budget once before giving up. The ceiling
-        # is half the machine, so a huge export slows the import instead of the desktop.
+        # Fireblade must read a folder whatever the machine: a collection running out
+        # of memory is a budget problem, not a reason to fail. Each attempt raises the
+        # budget (x4, at least +256 MB) up to half the physical RAM, then leans on the
+        # bounded row-by-row path, which survives a file far larger than memory.
         budget, attempt = self.settings, 0
         while True:
             try:
                 return self._import_once(csv, kind, view, register, budget)
-            except duckdb.OutOfMemoryException:
+            except (duckdb.OutOfMemoryException, MemoryError):
                 bigger = grown_memory(getattr(budget, 'memory_mb', 128))
-                if attempt or not bigger:
+                if not bigger:
                     raise
                 attempt += 1
                 budget = replace(budget, memory_mb=bigger) if budget else Settings(memory_mb=bigger)

@@ -97,7 +97,12 @@ def test_investigation_guide_is_readable_inside_the_application(qt_application):
 def test_core_import_does_not_load_qt():
     root = Path(__file__).resolve().parents[2]
     environment = os.environ.copy()
-    environment["PYTHONPATH"] = str(root / "src")
+    # Keep the packages of the running interpreter reachable: the suite may be
+    # driven by a bare interpreter whose site-packages sit on PYTHONPATH
+    # (Windows smart-app-control workaround), and replacing PYTHONPATH
+    # outright made duckdb disappear from the child process.
+    inherited = [entry for entry in environment.get("PYTHONPATH", "").split(os.pathsep) if entry]
+    environment["PYTHONPATH"] = os.pathsep.join([str(root / "src"), *inherited])
     result = subprocess.run([sys.executable, "-c", "import sys; from fireblade.core.engine import Case; assert 'PySide6' not in sys.modules"],
                             env=environment, cwd=root, capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stderr

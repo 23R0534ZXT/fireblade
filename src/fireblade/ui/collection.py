@@ -86,6 +86,32 @@ class CollectionOrganizationDialog(QDialog):
 
 
 class CollectionMixin(AlertContextMixin):
+    def set_effort(self, level):
+        """One slider for parsing and analysis, applied where they read settings."""
+        from dataclasses import replace
+        from fireblade.core.machine import effort
+        from fireblade.core.preferences import save_preferences
+        item = effort(level)
+        previous = (self.preferences.effort_level, self.preferences.parsing_threads,
+                    self.preferences.query_threads, self.preferences.resource_memory_mb)
+        self.preferences.effort_level = level
+        self.preferences.parsing_threads = item.threads
+        self.preferences.query_threads = item.threads
+        self.preferences.resource_memory_mb = item.memory_mb
+        try:
+            save_preferences(self.preferences)
+        except (OSError, ValueError) as exc:
+            (self.preferences.effort_level, self.preferences.parsing_threads,
+             self.preferences.query_threads, self.preferences.resource_memory_mb) = previous
+            self.effort_bar.set_level(previous[0], notify=False)
+            self.error(exc)
+            return
+        self.settings = replace(self.settings, threads=item.threads, memory_mb=item.memory_mb)
+        if self.collection is not None:
+            self.collection.settings = self.settings
+        if hasattr(self, "apply_resource_settings"):
+            self.apply_resource_settings()
+
     def setup_collection(self):
         self.collection = None
         self._folder_queue = []
@@ -110,6 +136,10 @@ class CollectionMixin(AlertContextMixin):
             control.clicked.connect(callback)
             row.addWidget(control)
         layout.addLayout(row)
+        from fireblade.ui.effort_bar import EffortBar
+        self.effort_bar = EffortBar(getattr(self.preferences, 'effort_level', 'balanced'))
+        self.effort_bar.chosen.connect(self.set_effort)
+        layout.addWidget(self.effort_bar)
         self.detection_panel = QWidget()
         detection_layout = QVBoxLayout(self.detection_panel)
         detection_layout.addWidget(QLabel('Détection EVTX'))
@@ -310,7 +340,8 @@ class CollectionMixin(AlertContextMixin):
             from dataclasses import replace
             # The collection gets the whole budget: halving it was what made a 3 GiB export
             # fail at 64 MB. An import that still runs out grows once instead of dying.
-            settings = replace(self.settings, threads=self.preferences.parsing_threads)
+            settings = replace(self.settings, threads=self.preferences.parsing_threads,
+                                   memory_mb=self.preferences.resource_memory_mb or self.settings.memory_mb)
             collection = Collection(path, output, self.toolpack(), settings, organization=organization)
             if self.active_investigation is not None:
                 collection.ready = self.disk_signals.documents.emit

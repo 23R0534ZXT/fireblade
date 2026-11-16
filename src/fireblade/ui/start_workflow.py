@@ -169,7 +169,8 @@ class StartWorkflowMixin:
             from dataclasses import replace
             # The collection gets the whole budget: halving it was what made a 3 GiB export
             # fail at 64 MB. An import that still runs out grows once instead of dying.
-            settings = replace(self.settings, threads=self.preferences.parsing_threads)
+            settings = replace(self.settings, threads=self.preferences.parsing_threads,
+                                   memory_mb=self.preferences.resource_memory_mb or self.settings.memory_mb)
             collection = DiskCollection(source, workspace, self.toolpack(), settings,
                 ready=self.disk_signals.documents.emit, source_kind=kind)
         except Exception as exc:

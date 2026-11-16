@@ -15,6 +15,7 @@ class Preferences:
     resource_memory_mb: int = 0
     query_threads: int = 0
     parsing_threads: int = 1
+    effort_level: str = "balanced"
     navigation_visible: bool = True
     navigation_position: str = "left"
     workspace_details_visible: bool = True
@@ -43,6 +44,8 @@ class Preferences:
             value = getattr(self, name)
             if type(value) is not int or not low <= value <= high or name == "resource_memory_mb" and 0 < value < 64:
                 raise ValueError("Ressources invalides : " + name)
+        if self.effort_level not in ("light", "balanced", "fast", "maximum", "custom"):
+            raise ValueError("Niveau d'effort inconnu : " + str(self.effort_level))
         if self.navigation_grouping not in ("folders", "families", "flat") or self.navigation_position not in ("left", "right"):
             raise ValueError("Organisation de navigation invalide")
         if any(type(getattr(self, name)) is not bool for name in ("navigation_visible", "startup_animation", "workspace_details_visible", "main_toolbar_visible", "collection_toolbar_visible")):

@@ -9,8 +9,8 @@ from scripts.release import application_version
 
 def promote(text, release, version, digest, commit, run_url):
     if (release.get('draft', True) or release.get('tag_name')!='v'+version
-            or 'Commit : '+commit not in release.get('body','')
-            or 'SHA-256 de Fireblade.exe : '+digest not in release.get('body','')):
+            or 'Commit: '+commit not in release.get('body','')
+            or 'SHA-256 of Fireblade.exe: '+digest not in release.get('body','')):
         raise ValueError('Published release identity does not match the qualified binary')
     assets=release.get('assets',[])
     if len(assets)!=1 or assets[0]['name']!='Fireblade.exe' or assets[0].get('digest')!='sha256:'+digest:
@@ -29,7 +29,7 @@ def main():
     root=Path.cwd();repo=os.environ['GITHUB_REPOSITORY'];commit=os.environ['GITHUB_SHA']
     version=application_version(root)
     with (root/'dist/Fireblade.exe').open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
-    release=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/releases/tags/v{version}'],text=True))
+    release=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/releases/tags/v{version}'],text=True,encoding='utf-8',errors='replace'))
     url=f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
     path=root/'README.md';updated=promote(path.read_text(encoding='utf-8'),release,version,digest,commit,url)
     subprocess.run(['git','fetch','origin','main'],check=True)

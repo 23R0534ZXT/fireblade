@@ -1,485 +1,449 @@
-# Fireblade 0.4.2 — huit fois moins de temps sur la même collecte
+# Fireblade 0.4.2 — eight times less time on the same collection
 
-La recette de la 0.4.1 a mesuré ce que coûte une collecte Linux : 50 min 49 s pour
-9,74 Gio. Le même dossier est maintenant lu en **6 min 0 s**, avec les mêmes 246
-analyses et la même répartition des statuts. Rien n'a été ajouté « pour aller
-plus vite » : les trois causes ont d'abord été mesurées, puis supprimées.
+The 0.4.1 acceptance run measured what a Linux collection costs: 50 min 49 s for
+9.74 GiB. The same folder is now read in **6 min 0 s**, with the same 246 analyses
+and the same status breakdown. Nothing was added "to go faster": the three causes
+were first measured, then removed.
 
-## Le lecteur lisait dans un seul cœur, sans le dire
+## The reader read on a single core, without saying so
 
-- Huit fils d'import ne donnaient pas huit cœurs : le lecteur de journaux est du
-  Python pur, et le GIL les sérialise. Mesuré sur deux journaux de 250 Mo :
-  **28,3 s pour le premier, 50,8 s pour les deux menés en parallèle, soit ×1,11**.
-- Chaque fichier est désormais lu **dans son propre processus** (huit interpréteurs
-  qui se partagent la file) : quatre fichiers de 250 Mo passent de 11,7 à
-  **34,7 Mo/s**. Dans l'exécutable figé, le binaire se relance lui-même avec
-  `--parse-worker` avant de charger Qt, donc le gain vaut aussi pour la version
-  installée.
-- Si le bassin ne démarre pas — machine à bout, binaire amputé — la collecte
-  continue dans le processus courant et le dit, au lieu d'échouer.
+- Eight import threads did not give eight cores: the log reader is pure Python, and
+  the GIL serializes them. Measured on two 250 MB logs: **28.3 s for the first,
+  50.8 s for both run in parallel, that is 1.11x**.
+- Each file is now read **in its own process** (eight interpreters sharing the
+  queue): four 250 MB files go from 11.7 to **34.7 MB/s**. In the frozen executable,
+  the binary relaunches itself with `--parse-worker` before loading Qt, so the gain
+  applies to the installed version too.
+- If the pool does not start - machine out of memory, trimmed binary - the
+  collection carries on in the current process and says so, instead of failing.
 
-## La provenance ne recopie plus chaque CSV
+## Provenance no longer copies every CSV
 
-- Chaque CSV de parseur était **recopié ligne à ligne en Python** pour y ajouter
-  deux colonnes de provenance : sur cette collecte, une quinzaine de gigaoctets
-  réécrits à la main.
-- Ces colonnes sont maintenant ajoutées **par l'import lui-même**, à la lecture :
-  même résultat, un seul passage, plus de fichier intermédiaire.
+- Each parser CSV was **copied line by line in Python** to add two provenance
+  columns: on this collection, some fifteen gigabytes rewritten by hand.
+- Those columns are now added **by the import itself**, while reading: same result,
+  a single pass, no intermediate file.
 
-## Neuf expressions régulières par ligne, pour rien
+## Nine regular expressions per line, for nothing
 
-- Le format ne change pas d'un bout à l'autre d'un journal, et pourtant chaque ligne
-  essayait neuf formats avant de trouver le bon. Des tests de sous-chaîne écartent
-  maintenant les branches impossibles, et l'écriture passe par `csv.writer` au lieu
-  d'un `DictWriter` reconstruit à chaque ligne : **8,8 → 11,7 Mo/s par cœur** sur le
-  même fichier, sans changer une colonne ni une valeur.
+- The format does not change from one end of a log to the other, and yet every line
+  tried nine formats before finding the right one. Substring tests now rule out the
+  impossible branches, and the write goes through `csv.writer` instead of a
+  `DictWriter` rebuilt on every line: **8.8 to 11.7 MB/s per core** on the same
+  file, without changing a column or a value.
 
-## Ce que ça donne
+## What it gives
 
-- Collecte 9,74 Gio / 259 fichiers : **50 min 49 s → 6 min 0 s**.
-- Débit : **3,3 → 27,6 Mo/s**.
-- Résultat identique : 246 analyses, 224 fichiers complets, 31 à vérifier, 4 non
-  pris en charge, aucun fichier manquant.
-- Une collecte de 100 Go passe donc d'environ huit heures à environ une heure. Ce
-  qui reste : un **fichier unique** très gros n'utilise qu'un processus ; le
-  découper en tranches est le prochain levier, et il sera mesuré avant d'être
-  annoncé.
+- Collection 9.74 GiB / 259 files: **50 min 49 s to 6 min 0 s**.
+- Throughput: **3.3 to 27.6 MB/s**.
+- Identical result: 246 analyses, 224 complete files, 31 to verify, 4 unsupported,
+  no missing file.
+- A 100 GB collection therefore goes from about eight hours to about one hour. What
+  remains: a **single very large file** uses only one process; slicing it into ranges
+  is the next lever, and it will be measured before it is announced.
 
-## Vérification
+## Verification
 
-- Nouveaux tests : lecture dans un processus séparé, repli sur le processus courant
-  quand le bassin ne démarre pas, provenance portée par l'import.
-- Suite complète exécutée sur l'arbre publié, ruff compris.
-- Mesure de bout en bout sur la même collecte que la 0.4.1, même machine, mêmes
-  fichiers de référence.
+- New tests: reading in a separate process, fallback to the current process when the
+  pool does not start, provenance carried by the import.
+- Full suite run on the published tree, ruff included.
+- End-to-end measurement on the same collection as 0.4.1, same machine, same
+  reference files.
 
-# Fireblade 0.4.1 — une recette sur 10 Gio, et ce qu'elle a trouvé
+# Fireblade 0.4.1 — a 10 GiB collection, and what it found
 
-Cette version ne vient pas d'une idée : elle vient de la recette finale de la 0.4.0 sur une
-collecte Linux réelle de **9,74 Gio / 259 fichiers**, importée par l'interface, plus un disque
-de laboratoire à deux partitions analysé en physique, en volume monté et en image RAW.
+This version does not come from an idea: it comes from the final acceptance run of 0.4.0 on a real
+Linux collection of **9.74 GiB / 259 files**, imported through the interface, plus a laboratory disk
+with two partitions analyzed as a physical drive, as a mounted volume and as a RAW image.
 
-## Notes : un rapport qui n'oublie plus l'analyse
+## Notes: a report that no longer forgets the analysis
 
-- Une ligne qui porte **à la fois** une note de ligne et une note de cellule suffisait à faire
-  échouer le rapport : la sous-requête censée lire « la » note renvoyait deux lignes, DuckDB
-  refusait, l'analyse entière était écartée et le rapport annonçait **0 constat**. Corrigé aux
-  trois endroits qui interrogeaient les signets sans distinguer la note de ligne (`column_id = -1`) :
-  rapport, chronologie et colonne de note calculée.
-- Le rapport cite de nouveau les notes de ligne quand une cellule de la même ligne est annotée.
+- A row carrying **both** a row note and a cell note was enough to make the report fail: the
+  sub-query meant to read "the" note returned two rows, DuckDB refused, the whole analysis was set
+  aside and the report announced **0 findings**. Fixed in the three places that queried bookmarks
+  without telling the row note apart (`column_id = -1`): report, timeline and computed-note column.
+- The report cites row notes again when a cell on the same row is annotated.
 
-## Chaque analyse porte le nom de son fichier
+## Every analysis carries its file name
 
-- Une collecte Linux importe un CSV intermédiaire par journal : les 34 analyses s'appelaient donc
-  toutes « Linux — journaux-fireblade.csv », dans la barre d'onglets comme dans l'arbre de
-  navigation. Chaque analyse enregistre maintenant **le chemin de la preuve** (relatif à la
-  collecte) : `var/log/nginx/access.log`, `var/log/auth.log`, `Windows/Prefetch/KAPE.pf`…
-- La provenance affichée, l'empreinte SHA-256 du rapport et les titres de section suivent le même
-  chemin ; le CSV de travail est conservé à côté (`working_path`) pour l'audit.
+- A Linux collection imports one intermediate CSV per log: the 34 analyses were therefore all called
+  "Linux — journaux-fireblade.csv", both in the tab bar and in the navigation tree. Each analysis now
+  records **the evidence path** (relative to the collection): `var/log/nginx/access.log`,
+  `var/log/auth.log`, `Windows/Prefetch/KAPE.pf`…
+- The displayed provenance, the report's SHA-256 digest and the section titles follow the same path;
+  the working CSV is kept beside it (`working_path`) for audit.
 
-## Lignes de groupe lisibles
+## Readable group rows
 
-- Une ligne de groupe (« Adresse distante : 203.0.113.7 (12 345) ») s'affiche sur toute la largeur
-  de la grille au lieu d'être tronquée à la largeur de la colonne des identifiants.
+- A group row ("Remote address: 203.0.113.7 (12 345)") spans the full width of the grid instead of
+  being truncated to the width of the identifier column.
 
-## Import : un budget calculé sur le fichier, pas découvert en échouant
+## Import: a budget computed from the file, not discovered by failing
 
-- Un insert CSV en une transaction ne peut pas déborder sur le disque : avec le budget par défaut
-  (128 Mo), un tableau de 3 Go échouait, la boucle de reprise quadruplait le budget, et **chaque
-  tentative relisait tout le fichier** — quatre passes pour un seul import, avec un message
-  inchangé. La première tentative part maintenant d'un budget déduit de la taille du fichier
-  (taille + 25 % + 64 Mo), plafonné à la moitié de la mémoire physique.
-- Mesuré sur la collecte livrée, 259 fichiers / 9,74 Gio : bilan `complete`, **246 analyses**,
-  aucun fichier manquant, en **50 min 49 s** sur cette machine. Le budget mémoire n'est plus ce
-  qui arrête l'import ; c'est le lecteur texte, une ligne à la fois en Python, qui donne le
-  débit. C'est le sujet de la version suivante, et il est mesuré avant d'être annoncé.
+- A CSV insert in one transaction cannot spill to disk: with the default budget (128 MB), a 3 GB
+  table failed, the retry loop quadrupled the budget, and **every attempt re-read the whole file** —
+  four passes for a single import, with an unchanged message. The first attempt now starts from a
+  budget derived from the file size (size + 25% + 64 MB), capped at half the physical memory.
+- Measured on the delivered collection, 259 files / 9.74 GiB: report `complete`, **246 analyses**, no
+  missing file, in **50 min 49 s** on this machine. The memory budget is no longer what stops the
+  import; the text reader, one line at a time in Python, sets the pace. That is the subject of the
+  next version, and it is measured before it is announced.
 
-## Un moteur bloqué par Windows s'arrête et s'explique
+## An engine blocked by Windows stops and explains itself
 
-- Sur une machine où **Smart App Control** est actif, les DLL de plugins de RECmd sont refusées
-  (`0x800711C7`). Le moteur restait alors vivant, la collecte attendait **une heure** et Windows
-  affichait une centaine de fenêtres « Une partie de cette application a été bloquée ».
-- Fireblade lit maintenant le journal du moteur en cours d'exécution : dès qu'une bibliothèque est
-  refusée par la stratégie, le processus est arrêté et le bilan de collecte dit quoi faire
-  (autoriser le moteur dans Sécurité Windows, ou désactiver Smart App Control), au lieu d'attendre.
+- On a machine where **Smart App Control** is active, RECmd's plugin DLLs are refused (`0x800711C7`).
+  The engine then stayed alive, the collection waited **an hour** and Windows put up about a hundred
+  "Part of this application has been blocked" windows.
+- Fireblade now reads the engine's journal while it runs: as soon as a library is refused by the
+  policy, the process is stopped and the collection report says what to do (allow the engine in
+  Windows Security, or turn Smart App Control off), instead of waiting.
 
-## Disque physique : le garde-fou ne demande plus les droits administrateur
+## Physical disk: the guard no longer asks for administrator rights
 
-- La vérification « le case n'est pas sur le disque analysé » ouvrait `\\.\C:` en lecture, ce qui
-  exige l'élévation : tout analyste non administrateur voyait l'analyse d'un disque physique
-  refusée avec « utilisez une image acquise ».
-- La vérification interroge maintenant les extents du volume **sans demander d'accès**, ce qui
-  fonctionne sans élévation. Quand Windows refuse malgré tout l'ouverture du disque source, le
-  message dit exactement pourquoi et comment continuer (relancer en administrateur, ou analyser
-  une image `.raw` / `.E01`).
+- The "the case is not on the analyzed disk" check opened `\\.\C:` for reading, which requires
+  elevation: every non-administrator analyst saw the analysis of a physical disk refused with "use an
+  acquired image".
+- The check now queries the volume extents **without requesting access**, which works without
+  elevation. When Windows still refuses to open the source disk, the message says exactly why and
+  how to continue (restart as administrator, or analyze a `.raw` / `.E01` image).
 
 ## Interface
 
-- **34 libellés** restés en français en mode anglais sont traduits : `Largeur`, `Aucun`,
-  `Colonnes`, `Police`, `Clair` / `Sombre`, `Grille et copie`, `Ressources`, `Apparence`, `Ordre`,
-  `Par artefact`, `Liste simple`, `Date source`, `Lignes`, `Sorties`, `Exporter`, `Filtrer une date`,
-  `Ce jour`, `Ce mois`, `Appliquer les filtres`, `Surligner les occurrences…`, `Effacer images`,
-  `Seuils en pourcent`, et les en-têtes Linux `Dossier`, `Processus`, `Adresse source`,
-  `Adresse destination`, `Port source`, `Port destination`, `Port distant`, `Utilisateur cible`,
-  `Commande`, `Chemin`, `Statut`, `Octets`, `Événement`, `Détail`, `Champs`, `Ligne`,
-  `Fin de ligne`, `Texte brut`, `Méthode`, `Adresse distante`, `Protocole`, `Lecture`,
-  `Horodatage`, `Hôte`, `Horodatage UTC`, `Clé de corrélation`.
-- Les statuts du bilan d'import (`Terminé`, `À vérifier`…) passent par la table de traduction.
+- **34 labels** left in French in English mode are translated: `Width`, `None`, `Columns`, `Font`,
+  `Light` / `Dark`, `Grid and copy`, `Resources`, `Appearance`, `Order`, `By artifact`,
+  `Simple list`, `Source date`, `Rows`, `Outputs`, `Export`, `Filter a date`, `Today`,
+  `This month`, `Apply the filters`, `Highlight occurrences…`, `Clear images`,
+  `Thresholds in percent`, and the Linux headers `Folder`, `Process`, `Source address`,
+  `Destination address`, `Source port`, `Destination port`, `Remote port`, `Target user`,
+  `Command`, `Path`, `Status`, `Bytes`, `Event`, `Detail`, `Fields`, `Line`, `End of line`,
+  `Plain text`, `Method`, `Remote address`, `Protocol`, `Read`, `Timestamp`, `Host`,
+  `UTC timestamp`, `Correlation key`.
+- The import report statuses (`Complete`, `To verify`…) go through the translation table.
 
-## Vérification
+## Verification
 
-- Nouveaux tests : note de ligne et note de cellule dans le même rapport, libellé d'analyse,
-  budget d'import calculé sur la taille du fichier, journal de moteur bloqué par Windows.
-- Les trois chemins disque sont exercés sur un disque de laboratoire (VHD 512 Mo, NTFS + FAT32) :
-  disque physique `\\.\PhysicalDriveN`, volume monté, image RAW. Résultat identique sur les trois :
-  14 entrées, 40 analyses, 16 artefacts extraits, `$MFT` et `$Boot` compris, un accès refusé sur
-  `System Volume Information` explicitement listé.
+- New tests: row note and cell note in the same report, analysis label, import budget computed from
+  the file size, journal of an engine blocked by Windows.
+- The three disk paths are exercised on a laboratory disk (512 MB VHD, NTFS + FAT32): physical disk
+  `\\.\PhysicalDriveN`, mounted volume, RAW image. Same result on all three: 14 entries, 40 analyses,
+  16 extracted artifacts, `$MFT` and `$Boot` included, one access denied on
+  `System Volume Information` explicitly listed.
 
 
-# Fireblade 0.4.0 — lire ce que la collecte n'avait pas reconnu
+# Fireblade 0.4.0 — reading what the collection had not recognized
 
-## Bilan d'import : agir sur place
+## Import report: act in place
 
-- Un fichier non reconnu, en erreur ou écarté reste dans le bilan avec sa ligne, son motif et son empreinte, et l'analyste peut agir dessus sans quitter Fireblade.
-- **Voir le fichier** : aperçu texte, repli cp1252 quand le fichier n'est pas en UTF-8, affichage hexadécimal pour un binaire. Un fichier illisible affiche un message, jamais une erreur.
-- **Copier les non traités…** : copie des fichiers sans analyse dans un dossier choisi, arborescence conservée, **copie et jamais déplacement** ; la preuve reste où elle a été saisie.
-- **Exporter la liste…** : CSV UTF-8 de ce que le tableau affiche, filtres compris.
-- **Écarter du bilan** / **Réintégrer** : décision réversible, persistée avec la collecte, et sortie des compteurs de travail.
-- **Supprimer…** : refusée si l'empreinte SHA-256 ne correspond plus à celle relevée à la collecte ; la suppression est tracée dans le bilan.
-- Colonne **Motif** en clair, compteurs incluant les écartés, décisions enregistrées dans `collection.json`.
+- An unrecognized, failed or set-aside file stays in the report with its row, its reason and its digest, and the analyst can act on it without leaving Fireblade.
+- **View the file**: text preview, cp1252 fallback when the file is not UTF-8, hexadecimal display for a binary. An unreadable file shows a message, never an error.
+- **Copy the unprocessed files…**: copies the files without analysis into a chosen folder, tree layout preserved, **copy and never move**; the evidence stays where it was seized.
+- **Export the list…**: UTF-8 CSV of what the table shows, filters included.
+- **Set aside from the report** / **Reinstate**: reversible decision, saved with the collection, and removed from the work counters.
+- **Delete…**: refused when the SHA-256 digest no longer matches the one recorded during collection; the deletion is traced in the report.
+- A plain-language **Reason** column, counters including the set-aside files, decisions recorded in `collection.json`.
 
-## Relancer un fichier avec le lecteur de son choix
+## Re-running a file with the reader of your choice
 
-- **Relancer avec un lecteur…** analyse le fichier sélectionné avec le lecteur choisi, l'importe comme n'importe quelle source et ouvre l'analyse obtenue.
-- Quatre lecteurs : **texte** (une ligne par ligne), **page HTML enregistrée** (texte visible et liens, sans navigateur ni dépendance), **PDF (couche texte)**, **tableau CSV/TSV**.
-- Le fichier n'est que lu, jamais modifié. L'empreinte relevée à la lecture devient la référence : une lecture ultérieure est refusée si le fichier a changé. Un fichier absent de la collecte ajoute sa ligne au bilan au lieu d'être refusé.
-- Un binaire n'est jamais lu comme du texte, et un fichier sans ligne lisible dit pourquoi au lieu de produire une analyse vide.
+- **Re-run with a reader…** analyzes the selected file with the chosen reader, imports it like any other source and opens the resulting analysis.
+- Four readers: **text** (one line at a time), **saved HTML page** (visible text and links, no browser and no dependency), **PDF (text layer)**, **CSV/TSV table**.
+- The file is only read, never modified. The digest taken at read time becomes the reference: a later read is refused if the file changed. A file absent from the collection adds its row to the report instead of being refused.
+- A binary is never read as text, and a file with no readable line says why instead of producing an empty analysis.
 
-## Fenêtre de collecte : deux questions, pas trois
+## Collection window: two questions, not three
 
-L'écran qui s'ouvre avant un parsing proposait trois choix mélangés : « résultats
-progressifs », « par artefact » et « vue unifiée ». Les deux premiers ne répondaient pas à
-la même question, et le choix recommandé était le moins explicite.
+The screen that opens before a parse offered three mixed choices: "progressive results", "by
+artifact" and "unified view". The first two did not answer the same question, and the recommended
+choice was the least explicit.
 
-Il pose maintenant les deux questions séparément, en anglais comme le reste de
-l'interface : une case **« Keep working while the folder is parsed »** — on continue à
-travailler pendant que le dossier est lu, chaque fichier analysé s'ouvrant dans sa propre
-grille — puis le **résultat**, avec **« By artifact — recommended »** (un onglet par famille
-d'artefact, tous listés dans l'arbre de navigation, chaque grille gardant ses colonnes) et
-**« Unified view »** (une seule grille, groupée par artefact, groupement fixe).
+It now asks the two questions separately, in English like the rest of the interface: a
+**"Keep working while the folder is parsed"** checkbox — you keep working while the folder is read,
+each analyzed file opening in its own grid — then the **result**, with
+**"By artifact — recommended"** (one tab per artifact family, all listed in the navigation tree,
+each grid keeping its columns) and **"Unified view"** (a single grid, grouped by artifact, fixed
+grouping).
 
-Une vue fusionnée a besoin du dossier entier : le choix de disposition est donc grisé tant
-que la case est cochée, avec la raison écrite dessous.
+A merged view needs the whole folder, so the layout choice is greyed out while the box is ticked,
+with the reason written underneath.
 
-## Espace de travail : les mêmes barres dans tous les modes
+## Workspace: the same bars in every mode
 
-- **Chronologie seule** ne cache plus que les panneaux détachables. Les barres du haut et
-  la barre d'onglets (Analyses, Imports, Cases, Chronologie, IOC, EVTX) restent en place :
-  c'était le chemin du retour, et il disparaissait avec le mode.
-- Choisir un autre onglet sort du mode, au lieu de laisser la fenêtre à moitié déshabillée.
-- **Analyse** rattache une chronologie détachée par « Analyse + chronologie » : les modes
-  ne se mélangent plus.
-- Sortir d'un mode ne casse plus si un panneau a été supprimé entre-temps ; « Rétablir les
-  panneaux » remet aussi la barre d'onglets.
-- Le badge du case, en haut à droite, respire : 12 px à gauche, 24 à droite, aligné à
-  droite, pour qu'un nom long ne touche plus le bord de la fenêtre.
+- **Timeline only** now hides only the docks. The top bars and the tab strip (Analyses, Imports, Cases, Timeline, IOC, EVTX) stay in place: that was the way back, and it disappeared with the mode.
+- Choosing another tab leaves the mode, instead of leaving the window half undressed.
+- **Analysis** re-attaches a detached timeline created by "Analysis + timeline": the modes no longer mix.
+- Leaving a mode no longer breaks when a panel was deleted in the meantime; "Restore the panels" puts the tab strip back too.
+- The case badge, top right, breathes: 12 px on the left, 24 on the right, right-aligned, so a long name no longer touches the window edge.
 
-## Générique de démarrage : redessiné
+## Splash screen: redrawn
 
-- L'ancien générique collait une vidéo 320×426 dans la moitié droite et masquait ses
-  coutures par des dégradés : mou, pixelisé, plus lourd que l'application qu'il annonce.
-- Le nouveau est entièrement dessiné : mot centré sur un axe, nappe de lumière chaude,
-  filet ambre, signature, version, ligne de progression et poussière qui dérive —
-  déterministe, identique à chaque lancement.
-- Il dure 6,5 s au lieu de 10 : de quoi respirer sans retenir le lancement.
-- Quatre tests le regardent comme le ferait un œil : la fenêtre s'éclaire, les pixels
-  allumés sont équilibrés autour du centre, le dernier cadre revient au noir, et la durée
-  reste bornée.
+- The old splash pasted a 320×426 video into the right half and hid its seams with gradients: soft, pixelated, heavier than the application it announces.
+- The new one is entirely drawn: a word centred on an axis, a sheet of warm light, an amber rule, a signature, the version, a progress line and drifting dust — deterministic, identical on every launch.
+- It lasts 6.5 s instead of 10: enough to breathe without holding up the launch.
+- Four tests look at it the way an eye would: the frame lights up, the lit pixels are balanced around the centre, the last frame returns to black, and the duration stays bounded.
 
-## PDF : la couche texte, et rien d'autre
+## PDF: the text layer, and nothing else
 
-- Texte extrait page par page via `pypdf`, dans la même forme que les autres sources : une ligne par ligne, avec le numéro de page ; l'horodatage n'est retenu que s'il ouvre la ligne.
-- **Pas d'OCR**, décision assumée : un PDF sans couche texte est signalé « PDF sans couche texte » et compté avec les avertissements, au lieu de produire des lignes vides qui ressembleraient à une analyse de la page.
-- Une page abîmée n'emporte pas ses voisines : le numéro de page est noté, la lecture continue.
-- Sans `pypdf`, Fireblade démarre normalement, le lecteur PDF est grisé dans la fenêtre de choix avec le motif. L'extension est épinglée dans `requirements/runtime.txt`, donc présente dans l'exécutable publié.
+- Text extracted page by page through `pypdf`, in the same shape as the other sources: one line at a time, with the page number; the timestamp is kept only when it opens the line.
+- **No OCR**, a deliberate decision: a PDF without a text layer is reported as "PDF without a text layer" and counted with the warnings, instead of producing empty lines that would look like an analysis of the page.
+- A damaged page does not take its neighbours with it: the page number is noted and the reading continues.
+- Without `pypdf`, Fireblade starts normally, the PDF reader is greyed out in the choice window with the reason. The extension is pinned in `requirements/runtime.txt`, so it is present in the published executable.
 
-## Import : aucune quantité de mémoire n'est un prérequis
+## Import: no amount of memory is a prerequisite
 
-Fireblade est fait pour tourner sur une VM modeste et pour rester utilisable là où un
-outil classique rame. Une collecte qui tombait en « Out of Memory » cassait exactement
-cette promesse.
+Fireblade is built to run on a modest VM and to stay usable where a conventional tool stutters. A
+collection that fell over with "Out of Memory" broke exactly that promise.
 
-- La collecte dispose de **tout** le budget mémoire configuré (il était divisé par deux),
-  et le défaut de livraison passe de 128 Mo à **1 Go**.
-- Un import qui manque de mémoire **relance l'essai avec un budget plus large** (×4, au
-  moins +256 Mo) et continue tant qu'il reste de la place, jusqu'à **la moitié de la RAM
-  physique**. Le plafond est ce qui évite de swapper tout le bureau de l'analyste.
-- La voie **ligne par ligne** — celle qui prend le relais quand le lecteur natif ne peut
-  pas tenir le fichier — a désormais sa propre protection mémoire : elle ne meurt plus sur
-  la même erreur que celle qu'elle devait remplacer.
-- Mesuré sur les vrais lecteurs : un journal de **1,35 Go, 1,2 million de lignes, 30
-  colonnes** s'importe en **39 s avec 64 Mo de budget**, première et dernière ligne intactes.
-  La suite de tests contient ce cas, fichier plus gros que le budget, ligne par ligne.
-- Si la place manque vraiment (fichier plus gros que la moitié de la RAM), l'échec est
-  expliqué dans une fenêtre, avec les deux remèdes, au lieu d'être retenté sans fin.
+- A collection gets **all** the configured memory budget (it was halved), and the shipping default goes from 128 MB to **1 GB**.
+- An import short of memory **retries with a larger budget** (×4, at least +256 MB) and continues while there is room, up to **half the physical RAM**. The cap is what avoids swapping the analyst's whole desktop.
+- The **line-by-line** path — the one that takes over when the native reader cannot hold the file — now has its own memory guard: it no longer dies on the same error it was meant to replace.
+- Measured on the real readers: a log of **1.35 GB, 1.2 million lines, 30 columns** imports in **39 s with a 64 MB budget**, first and last row intact. The test suite holds that case, a file larger than the budget, line by line.
+- When room really runs out (a file larger than half the RAM), the failure is explained in a window, with both remedies, instead of being retried forever.
 
-## Fichier plus gros que la mémoire : commit par tranches
+## A file larger than memory: commit by chunk
 
-Un export de 100 Go ne mourait pas du lecteur mais de la transaction : DuckDB garde les
-lignes non validées hors du checkpoint, donc aucun budget ne pouvait suffire à un fichier
-qui devait entrer d'un bloc. Au-delà d'un seuil (2 Gio, et huit fois le budget), l'import
-**valide chaque tranche** écrite et rend la mémoire avant de lire la suivante. En dessous,
-rien ne change : un petit fichier arrive toujours d'un seul coup, atomiquement.
+A 100 GB export did not die from the reader but from the transaction: DuckDB keeps uncommitted rows
+out of the checkpoint, so no budget could suffice for a file that had to enter in one go. Above a
+threshold (2 GiB, and eight times the budget), the import **commits each written chunk** and gives
+the memory back before reading the next. Below it, nothing changes: a small file still arrives in one
+go, atomically.
 
-Mesuré sur les vrais lecteurs :
+Measured on the real readers:
 
-- 1 Go, 21,3 millions de lignes, budget de 64 Mo : **64 s**, et le processus n'a jamais
-  dépassé **103 Mo** de mémoire résidente, échantillonnée toutes les 250 ms depuis
-  l'extérieur ;
-- 4 Go, 30 colonnes, budget de 128 Mo : **223 s**, 2,6 millions de lignes, dernière ligne
-  intacte.
+- 1 GB, 21.3 million lines, 64 MB budget: **64 s**, and the process never exceeded **103 MB** of resident memory, sampled every 250 ms from outside;
+- 4 GB, 30 columns, 128 MB budget: **223 s**, 2.6 million lines, last row intact.
 
-## Import : un seul passage sur le fichier
+## Import: a single pass over the file
 
-Un fichier plus gros que le pas de lecture était découpé en tranches temporaires de
-quelques mégaoctets, chacune relue puis insérée. Il est maintenant lu **d'une seule
-passe** tant qu'il tient dans une transaction, les colonnes étant nommées par position
-(`c0`, `c1`, …) comme partout ailleurs dans l'application. Au-delà du seuil de
-transaction, et si la mémoire manque, le chemin par tranches reprend la main.
+A file larger than the read step was cut into temporary chunks of a few megabytes, each re-read then
+inserted. It is now read **in a single pass** while it fits in one transaction, the columns being
+named by position (`c0`, `c1`, …) as everywhere else in the application. Above the transaction
+threshold, and when memory runs short, the chunked path takes over.
 
-- Mesuré sur le même fichier de 3,65 Go / 32 millions de lignes, budget de 1 Go :
-  **69 s au lieu de 148 s**, et **59 s** rejoué à chaud (62 Mo/s contre 24).
-- Les autres tailles suivent : 0,8 s au lieu de 1,2 s (28 Mo), 2,4 au lieu de 5,1
-  (112 Mo), 7,9 au lieu de 19,7 (453 Mo), 33,4 au lieu de 74,3 (1,82 Go).
-- La mémoire ne bouge pas : pic de **1 077 Mo** mesuré de l'extérieur, budget à 1 Go.
-- L'annulation reste honorée pendant la lecture : l'interruption de DuckDB est convertie
-  en annulation, et un test coupe au milieu du passage pour le vérifier.
+- Measured on the same 3.65 GB / 32 million row file, 1 GB budget: **69 s instead of 148 s**, and **59 s** replayed warm (62 MB/s against 24).
+- The other sizes follow: 0.8 s instead of 1.2 s (28 MB), 2.4 instead of 5.1 (112 MB), 7.9 instead of 19.7 (453 MB), 33.4 instead of 74.3 (1.82 GB).
+- Memory does not move: peak of **1077 MB** measured from outside, budget at 1 GB.
+- Cancellation is still honoured during the read: DuckDB's interrupt is converted into a cancellation, and a test cuts in the middle of the pass to check it.
 
-## Threads : automatique par défaut
+## Threads: automatic by default
 
-Les deux réglages de threads de Préférences → Ressources acceptent **Automatique**, et
-c'est la valeur livrée.
+Both thread settings in Preferences → Resources accept **Automatic**, and that is the shipped value.
 
-- « Automatique » veut dire la machine, plafonnée à **huit fichiers à la fois** — le point
-  où le disque partagé cesse de payer (48 fichiers : 3,4 s à un thread, 1,2 s à quatre,
-  1,0 s à huit).
-- La valeur est résolue **avant** d'atteindre le moteur : DuckDB refuse `SET threads=0`,
-  et un import qui le recevait échouait sans message visible. Un seul endroit décide,
-  et chaque appel qui parle au moteur y passe.
-- Choisir un niveau d'effort écrit toujours des valeurs explicites : le curseur continue
-  de décrire ce qu'il fait.
-- Quand un dossier est annulé, ce qui était déjà terminé est publié : l'arrêt est
-  constaté par le thread qui tient le bilan, pas seulement par les ouvriers — un fichier
-  fini avant la demande ne lève jamais d'exception.
+- "Automatic" means the machine, capped at **eight files at a time** — the point where the shared disk stops paying (48 files: 3.4 s on one thread, 1.2 s on four, 1.0 s on eight).
+- The value is resolved **before** reaching the engine: DuckDB refuses `SET threads=0`, and an import that received it failed with no visible message. One place decides, and every call that talks to the engine goes through it.
+- Choosing an effort level always writes explicit values: the slider keeps describing what it does.
+- When a folder is cancelled, what was already finished is published: the stop is seen by the thread that holds the report, not only by the workers — a file finished before the request never raises.
 
-## Effort : un curseur calculé pour la machine
+## Effort: a slider computed for the machine
 
-L'onglet Imports porte un seul réglage : quatre niveaux, une barre qui grandit avec ce que
-l'import prend et passe du vert à l'orange puis au rouge, et une phrase lisible —
-« Fast · 15 threads · 4,0 Go sur 31,8 Go ».
+The Imports tab carries a single control: four levels, a bar that grows with what the import takes
+and goes from green to amber then red, and a readable sentence — "Fast · 15 threads · 4.0 GB of
+31.8 GB".
 
-- Les valeurs ne sont pas une table fixe : chaque niveau est une **fraction de la machine**
-  lue au démarrage (cœurs, puis RAM physique via le noyau, sans dépendance).
-- Light prend un quart des cœurs et 512 Mo ; Maximum prend tout et plafonne aux deux tiers
-  de la RAM, là où le rouge commence.
-- Un niveau ne promet jamais plus que la machine ne possède, et un nombre de threads écrit
-  à la main est borné et décrit de la même façon.
-- Choisir un niveau écrit d'un seul geste les threads d'analyse, les threads de requête et
-  le budget mémoire : parse et analyse cessent de se contredire, et le choix survit au
-  redémarrage.
+- The values are not a fixed table: each level is a **fraction of the machine** read at startup (cores, then physical RAM through the kernel, with no dependency).
+- Light takes a quarter of the cores and 512 MB; Maximum takes everything and caps at two thirds of the RAM, where red begins.
+- A level never promises more than the machine has, and a thread count typed by hand is bounded and described the same way.
+- Choosing a level writes the parsing threads, the query threads and the memory budget in one gesture: parse and analysis stop contradicting each other, and the choice survives a restart.
 
-## Comparé à Timeline Explorer, mesuré sur la même machine
+## Compared with Timeline Explorer, measured on the same machine
 
-Timeline Explorer 2026.10.0 installé, les deux outils mesurés sur les mêmes fichiers, du
-28 Mo au 3,65 Go (32 millions de lignes), sur un Core i7-12700K avec 31,8 Go de RAM.
+Timeline Explorer 2026.10.0 installed, both tools measured on the same files, from 28 MB to 3.65 GB
+(32 million rows), on a Core i7-12700K with 31.8 GB of RAM.
 
-| Fichier | Fireblade | Timeline Explorer | Mémoire Fireblade | Mémoire TLE |
+| File | Fireblade | Timeline Explorer | Fireblade memory | TLE memory |
 | --- | --- | --- | --- | --- |
-| 28 Mo | **1,2 s** | 10,9 s | ≤ 1,1 Go | 0,37 Go |
-| 453 Mo | 19,7 s | **17,1 s** | ≤ 1,1 Go | 2,2 Go |
-| 1,82 Go | 74,3 s | **51,8 s** | ≤ 1,1 Go | 7,6 Go |
-| 3,65 Go | 147,8 s | **108,3 s** | 1,1 Go | **15,3 Go** |
+| 28 MB | **1.2 s** | 10.9 s | ≤ 1.1 GB | 0.37 GB |
+| 453 MB | 19.7 s | **17.1 s** | ≤ 1.1 GB | 2.2 GB |
+| 1.82 GB | 74.3 s | **51.8 s** | ≤ 1.1 GB | 7.6 GB |
+| 3.65 GB | 147.8 s | **108.3 s** | 1.1 GB | **15.3 GB** |
 
-Timeline Explorer est plus rapide de 1,4× sur les gros fichiers — c'est vrai et ce n'est pas
-l'axe qui compte ici. Il charge le fichier entier en mémoire, à **4,2 fois sa taille** :
-15,3 Go pour un fichier de 3,65 Go, et sa propre fenêtre prévient que la limite annoncée est
-de 14 Go, soit près de 60 Go de RAM. Sur une VM de 8 Go, le plafond pratique est un fichier
-d'un peu moins de 2 Go, quel que soit le temps qu'on lui laisse.
+Timeline Explorer is 1.4× faster on the big files — that is true and it is not the axis that matters
+here. It loads the whole file into memory, at **4.2 times its size**: 15.3 GB for a 3.65 GB file, and
+its own window warns that the stated limit is 14 GB, that is close to 60 GB of RAM. On an 8 GB VM,
+the practical ceiling is a file of a little under 2 GB, whatever time you give it.
 
-Fireblade reste à **son budget** (1,1 Go mesurés, 2,2 Go quand on le règle à 8 Go) et
-importe sans changer de comportement, ce qui est le sujet de cette version.
+Fireblade stays at **its budget** (1.1 GB measured, 2.2 GB when set to 8 GB) and imports without
+changing behaviour, which is the subject of this version.
 
-Le détail, la méthode, les chiffres bruts et les limites du comparatif sont dans
-`docs/development/BENCHMARK-0.4.0.md` ; les scripts de mesure sont dans `bench/`.
+The detail, the method, the raw numbers and the limits of the comparison are in
+`docs/development/BENCHMARK-0.4.0.md`; the measurement scripts are in `bench/`.
 
-## Porte de vérification
+## Verification gate
 
-- La suite tourne en **UTF-8** : les fixtures écrivaient leurs CSV sans `encoding=`, donc dans la page de code locale, alors que le code lit en UTF-8 et que la CI est en UTF-8. C'était 25 échecs sur 25 sans rapport avec le produit.
-- Un dossier `%TEMP%\pytest-of-…` laissé par une exécution antérieure est purgé : Windows réutilisait l'ancien dossier sans corriger son orthographe, `resolve()` renvoyait la casse du disque et les chemins différaient d'une majuscule. C'étaient les 7 échecs restants.
-- Le test qui vérifie que le cœur ne charge pas Qt garde désormais les paquets de l'interpréteur au lieu de les perdre en remplaçant `PYTHONPATH` : il échouait sur un détail d'environnement, pas sur une fuite de Qt.
+- The suite runs in **UTF-8**: fixtures wrote their CSV without `encoding=`, so in the local code page, while the code reads UTF-8 and CI is UTF-8. That was 25 failures out of 25 with nothing to do with the product.
+- A `%TEMP%\pytest-of-…` folder left by an earlier run is purged: Windows reused the old folder without correcting its spelling, `resolve()` returned the case stored on disk and the paths differed by one capital. Those were the 7 remaining failures.
+- The test that verifies the core does not load Qt now keeps the interpreter's packages instead of losing them by replacing `PYTHONPATH`: it failed on an environment detail, not on a Qt leak.
 
-## Ce que la lecture doit accepter
+## What the reading must accept
 
-Un fichier texte n'arrive pas toujours en UTF-8 propre. Trois familles ont été trouvées en sondant de
-vrais fichiers, et chacune était lue de travers :
+A text file does not always arrive in clean UTF-8. Three families were found by probing real files,
+and each was read wrongly:
 
-- **UTF-16 avec BOM** — une sortie PowerShell redirigée, un fichier enregistré « Unicode » par Notepad :
-  le fichier était refusé comme binaire, ou affiché avec un caractère NUL entre chaque lettre.
-- **BOM UTF-8** — le caractère invisible restait en tête de la première ligne et empêchait la date
-  d'être lue quand elle ouvrait le fichier.
-- **Page HTML en cp1252** — enregistrée sur une machine française, elle perdait ses accents.
+- **UTF-16 with a BOM** — a redirected PowerShell output, a file saved as "Unicode" by Notepad: the file was refused as binary, or displayed with a NUL character between every letter.
+- **UTF-8 BOM** — the invisible character stayed at the head of the first line and stopped the date being read when it opened the file.
+- **HTML page in cp1252** — saved on a French machine, it lost its accents.
 
-Le lecteur suit désormais l'ordre : encodage demandé, BOM, charset déclaré par la page, UTF-8, cp1252.
-Et un fichier plus gros que la limite lue le dit (nombre de lignes et d'octets) au lieu de produire une
-analyse qui paraît complète.
+The reader now follows the order: requested encoding, BOM, charset declared by the page, UTF-8,
+cp1252. And a file larger than the read limit says so (line and byte counts) instead of producing an
+analysis that looks complete.
 
-## Vérification
+## Verification
 
-- Suite complète : **1 406 passés, 28 ignorés**, plateforme Qt Windows, fenêtre réelle construite, ruff propre.
-- Sondes sur fichiers réels : 46 contrôles sur texte, page HTML, PDF (dont un de trois pages et un
-  chiffré) et arborescence de collecte — 46 sur 46 ; journal de 100 000 lignes importé en 1,5 s.
-- Aucun échec restant. Les familles d'échecs rencontrées venaient de la porte et de son garde-fou de
-  fenêtres modales, jamais du produit.
+- Full suite: **1406 passed, 28 skipped**, Qt Windows platform, real window built, ruff clean.
+- Probes on real files: 46 checks on text, HTML page, PDF (including one of three pages and one encrypted) and a collection tree — 46 out of 46; a 100,000-line log imported in 1.5 s.
+- No failure left. The failure families encountered came from the gate and its modal-window watchdog, never from the product.
 
-# Fireblade 0.3.1 — toute l'interface en anglais et en français
 
-## Langue
+# Fireblade 0.3.1 — the whole interface in English and in French
 
-- L'interface est traduite **en entier**, et plus seulement les menus et les barres d'outils : fenêtres de dialogue, gestionnaire de colonnes, préférences, chasse IOC, couverture, chronologie, en-têtes de tableaux, listes déroulantes, infobulles, textes de saisie et messages d'état.
-- Les **en-têtes de modèles** (tableaux de couverture, règles, chasse IOC, résultats), les **nœuds d'arbre** de la navigation, les **cellules** de tableau et les **noms de thèmes** sont traduits eux aussi : ce ne sont pas des widgets, ils ont leur propre passage.
-- Les **guides intégrés** (tutoriel complet, guide d'utilisation, chronologie et sauvegardes, chasse IOC, couverture) existent en anglais et s'ouvrent selon la langue choisie, ainsi que les titres des fenêtres d'aide.
-- **Cartes de condition et filtre ET / OU / NON** : opérateurs (« Contient », « Commence par », « Nombre ≥ », « Date égale »…), connecteurs, boutons (« Toutes les conditions », « Au moins une », « + Condition », « Replier/Déplier ») et la phrase de lecture du filtre sont traduits.
-- **Notes de la sélection** : sur une sélection de lignes, le menu propose « Ajouter une note à la sélection… » tant qu'aucune n'en porte, puis « Éditer la note de la sélection… ». La fenêtre s'ouvre pré-remplie quand toutes les lignes partagent la même note, et le remplacement est explicite.
-- **Notes de cellule** : un clic droit sur une valeur propose « Ajouter une note à la cellule… », puis « Éditer la note de la cellule… » une fois la note écrite. La cellule prend un fond vert, la note se relit dans la fenêtre et dans l'infobulle. Une note de ligne (signet) et des notes de cellule cohabitent ; retirer le signet ne supprime pas les notes de cellule. Les analyses ouvertes avant cette version sont migrées à l'ouverture, sans perte.
-- **Double-clic sur une cellule** : il affiche la valeur en texte, JSON ou XML (choix dans la fenêtre), au lieu d'ouvrir l'éditeur de note. Le signet et sa note restent accessibles par le menu Édition et par un clic dans la première colonne. Les boutons des fenêtres de règles de coloration et de tri (« Ajouter », « Supprimer », « Monter », « Descendre ») sont traduits.
-- Un **menu ouvert en popup** est désormais traduit : son arbre n'était jamais parcouru.
-- Les messages **assemblés par concaténation** (`"Lecture du filtre : " + valeur`) sont traités comme des gabarits : le texte fixe et la valeur sont traduits séparément, puis recomposés.
-- **Les textes calculés à l'affichage** passent par la même table : compteurs (« 2 case(s) affiché(s) »), fins de tâche, erreurs affichées, message d'archive vérifiée. La table accepte des gabarits (`Analyse absente : {}`) dont les valeurs sont réinsérées au moment de l'affichage, et l'entrée la plus précise l'emporte toujours.
-- La traduction s'applique **à l'ouverture de chaque fenêtre** et **au moment où le code écrit le texte** : une liste remplie après coup, un compteur rafraîchi ou une erreur tardive sont couverts, sans toucher au code de chaque fenêtre.
-- Le **français reste complet** : les libellés d'origine sont mémorisés par la couche de langue, et le retour au français se fait sans perte, y compris quand un texte avait été remplacé entre-temps.
-- **À partir de la 0.3.2, on ne travaille plus que l'anglais** : les nouveaux libellés s'écrivent directement en anglais et le français déjà traduit n'est plus maintenu (il reste affichable, sans garantie de suivi).
-- Six chaînes restent volontairement telles quelles : des noms de fichiers d'exemple (`évidence.csv`, `résumés.csv`, `fonctions étendues.csv`) et deux expressions TLE synthétiques. Ce sont des données, pas de l'interface.
+## Language
 
-## Corrections
+- The interface is translated **in full**, and no longer only the menus and toolbars: dialogs, column manager, preferences, IOC hunt, coverage, timeline, table headers, drop-down lists, tooltips, input texts and status messages.
+- **Model headers** (coverage, rules, IOC hunt, results), the navigation **tree nodes**, **table cells** and **theme names** are translated too: they are not widgets, they have their own pass.
+- The **built-in guides** (full tutorial, user guide, timeline and backups, IOC hunt, coverage) exist in English and open according to the chosen language, as do the help window titles.
+- **Condition cards and the AND / OR / NOT filter**: operators ("Contains", "Starts with", "Number ≥", "Date equals"…), connectors, buttons ("All conditions", "At least one", "+ Condition", "Collapse/Expand") and the sentence that reads the filter are translated.
+- **Selection notes**: on a selection of rows, the menu offers "Add a note to the selection…" as long as none carries one, then "Edit the selection note…". The window opens pre-filled when all rows share the same note, and the replacement is explicit.
+- **Cell notes**: a right click on a value offers "Add a note to the cell…", then "Edit the cell note…" once the note is written. The cell takes a green background, the note can be read in the window and in the tooltip. A row note (bookmark) and cell notes coexist; removing the bookmark does not delete the cell notes. Analyses opened before this version are migrated on opening, without loss.
+- **Double click on a cell**: it shows the value as text, JSON or XML (choice in the window), instead of opening the note editor. The bookmark and its note stay reachable through the Edit menu and a click in the first column. The buttons of the colouring and sort rule windows ("Add", "Delete", "Move up", "Move down") are translated.
+- A **menu opened as a popup** is now translated: its tree was never walked.
+- Messages **assembled by concatenation** (`"Filter reading: " + value`) are handled as templates: the fixed text and the value are translated separately, then recomposed.
+- **Texts computed at display time** go through the same table: counters ("2 case(s) shown"), task endings, displayed errors, verified archive message. The table accepts templates (`Analysis missing: {}`) whose values are reinserted at display time, and the most specific entry always wins.
+- Translation applies **when each window opens** and **when the code writes the text**: a list filled afterwards, a refreshed counter or a late error are covered, without touching each window's code.
+- **French stays complete**: the original labels are remembered by the language layer, and switching back to French loses nothing, including when a text had been replaced in the meantime.
+- **From 0.3.2, only English is worked on**: new labels are written directly in English and the French already translated is no longer maintained (it stays displayable, with no guarantee of follow-up).
+- Six strings deliberately stay as they are: sample file names (`évidence.csv`, `résumés.csv`, `fonctions étendues.csv`) and two synthetic TLE expressions. They are data, not interface.
 
-- Un titre d'onglet n'accumule plus les esperluettes d'échappement d'un changement de langue à l'autre : `Chronologie & corrélations` finissait par s'afficher `Timeline &&&& correlations`.
-- Un passage de langue ne réécrit plus les titres d'onglets quand le texte n'a pas changé, ce qui provoquait un ralentissement net sur un espace de travail chargé.
+## Fixes
 
-## Vérification
+- A tab title no longer accumulates escape ampersands from one language change to the next: `Chronologie & corrélations` ended up displayed as `Timeline &&&& correlations`.
+- A language switch no longer rewrites tab titles when the text has not changed, which caused a clear slowdown on a loaded workspace.
 
-- Couverture mesurée : `scripts/i18n_inventory.py` liste toute chaîne française capable d'atteindre un écran. **946 sur 954 sont traduites**, les huit restantes sont des données.
-- Deux tests de garde : une nouvelle chaîne non traduite fait échouer la suite, et la liste des reliquats ne peut que diminuer.
-- Un test construit la vraie fenêtre en anglais et vérifie qu'aucun mot français n'y reste visible.
-- Un balayage de la fenêtre réelle et de onze fenêtres de dialogue en anglais ne trouve **plus aucun texte français**.
-- Suite complète : **1 327 tests passés**, 31 ignorés, aucune erreur, plateforme Qt Windows.
+## Verification
 
-# Fireblade 0.3.0 — interface anglaise, regroupement et chronologie lisible
+- Measured coverage: `scripts/i18n_inventory.py` lists every French string able to reach a screen. **946 of 954 are translated**, the eight remaining are data.
+- Two guard tests: a new untranslated string fails the suite, and the list of leftovers can only shrink.
+- A test builds the real window in English and checks no French word remains visible.
+- A sweep of the real window and eleven dialog windows in English finds **no French text left**.
+- Full suite: **1327 tests passed**, 31 skipped, no error, Qt Windows platform.
 
-## Langue
+# Fireblade 0.3.0 — English interface, grouping and a readable timeline
 
-- L’interface s’ouvre **en anglais** ; le **français** reste disponible dans **Préférences → Langue**. Le choix est enregistré.
-- La traduction couvre les menus, les barres d’outils, les onglets, les boutons, les en-têtes, les filtres et les textes de saisie. Les textes calculés à l’affichage (compteurs, « aucun case actif ») restent en français pour l’instant.
-- Un libellé non traduit s’affiche tel quel, jamais vide ni remplacé par une clé technique.
+## Language
 
-## Organisation de l’analyse
+- The interface opens **in English**; **French** stays available in **Preferences → Language**. The choice is saved.
+- The translation covers menus, toolbars, tabs, buttons, headers, filters and input texts. Texts computed at display time (counters, "no active case") stay in French for now.
+- An untranslated label displays as is, never empty and never replaced by a technical key.
 
-- **Barre de regroupement** repensée : niveaux numérotés, dépôt d’un en-tête à la position exacte, un `×` par niveau, et un bouton **Tout supprimer**.
-- **Gestionnaire de colonnes** en deux volets : colonnes masquées à gauche, ordre à droite, plus la largeur et l’épinglage de la colonne choisie. L’ensemble est mémorisé par format d’artefact.
-- **Palette de commandes** (`Ctrl+Shift+K`) : toutes les entrées de menus derrière un champ, y compris celles qui n’ont pas de bouton.
+## Organizing the analysis
 
-## Recherche
+- **Grouping bar** redesigned: numbered levels, a header dropped at the exact position, one `×` per level, and a **Clear all** button.
+- **Column manager** in two panes: hidden columns on the left, order on the right, plus the width and pinning of the chosen column. The whole is remembered per artifact format.
+- **Command palette** (`Ctrl+Shift+K`): every menu entry behind one field, including those without a button.
 
-- La recherche inter-artefacts affiche désormais **les événements trouvés** — quatre lignes réelles sous le tableau — et le reste du volume, au lieu d’un simple compteur par fichier.
+## Search
 
-## Chronologie
+- The cross-artifact search now shows **the events found** — four real rows under the table — and the rest of the volume, instead of a simple counter per file.
 
-- Les barres portent le **volume** : leur hauteur traduit le nombre d’événements de la tranche horaire.
-- Les **pistes remplissent la hauteur** disponible au lieu de flotter dans un bandeau, et l’étiquette de la source est centrée.
-- La barre d’actions reste visible en mode **Chronologie seule**.
+## Timeline
 
-## Corrections
+- The bars carry **volume**: their height reflects the number of events in the time slice.
+- The **tracks fill** the available height instead of floating in a band, and the source label is centred.
+- The action bar stays visible in **Timeline only** mode.
 
-- **Fenêtre vide au lancement** : la disposition enregistrée rejouait le mode chronologie avant qu’un case existe, masquant onglets et barres. Ce mode n’est plus rejoué au démarrage.
-- **Barre « Parser un dossier »** : elle restait masquée jusqu’à un passage par Workspace → Analyse ; elle est visible et utilisable dès l’écran de lancement.
-- **Fantôme après un glisser** : le regroupement s’applique après la fin du glisser, et l’en-tête reçoit le relâchement du bouton ; plus de colonne grisée qui reste affichée.
-- **Bouton Ouvrir** : un changement de case refusé affiche maintenant sa raison au lieu de ne rien faire.
-- **Onglets** : un `&` dans un titre ne s’affiche plus comme un souligné.
-- La version est affichée en bas à droite de la barre d’état et de l’écran de lancement.
+## Fixes
 
-## Vérification
+- **Empty window at launch**: the saved layout replayed the timeline mode before a case existed, hiding tabs and bars. That mode is no longer replayed at startup.
+- **"Parse a folder" bar**: it stayed hidden until a visit to Workspace → Analysis; it is visible and usable from the launch screen.
+- **Ghost after a drag**: grouping applies after the drag ends, and the header receives the button release; no more greyed column left on screen.
+- **Open button**: a refused case change now shows its reason instead of doing nothing.
+- **Tabs**: an `&` in a title no longer displays as an underline.
+- The version is displayed at the bottom right of the status bar and of the launch screen.
 
-- Suite complète : **1 287 tests passés**, 31 ignorés, aucune erreur, plateforme Qt Windows.
-- La suite ne peut plus se figer sur une fenêtre modale : un garde-fou rejette toute boîte laissée ouverte et la nomme.
+## Verification
 
-# Fireblade 0.2.3 — chronologie fiable et récupération
+- Full suite: **1287 tests passed**, 31 skipped, no error, Qt Windows platform.
+- The suite can no longer freeze on a modal window: a watchdog rejects any box left open and names it.
 
-- **Colonne de date** : une colonne UTC explicite (`Horodatage UTC`, `TimestampUtc`) l’emporte désormais sur la colonne brute dont elle est issue. Les journaux Linux, dont l’horodatage syslog n’a ni année ni fuseau, ne sont plus indexés sur la mauvaise colonne.
-- **Fuseau de l’index** : les dates sans fuseau sont lues comme **UTC** dans la chronologie, comme à l’import. Le même dossier produit donc le même ordre chronologique d’un poste à l’autre ; seuls les modèles de test ou les réglages d’horloge ne peuvent plus le déplacer.
-- **Colonnes calculées** : la date proposée est résolue contre le schéma réel de l’analyse, colonnes dérivées comprises. Une colonne UTC calculée est donc utilisable automatiquement, et un index deviné n’est plus mémorisé comme un choix : les réglages de chronologie enregistrés par la 0.2.2 sont réinitialisés une fois.
-- **Dates de profil** : une déclaration `VisitTime` reconnaît un export `Visit Time`. Les analyses concernées n’ouvrent plus sans colonne temporelle.
-- **Date et heure séparées** : un export qui écrit `date` et `time` dans deux colonnes (IIS, W3C, certaines timelines) est désormais indexé sur les deux colonnes combinées, et non sur la date seule à minuit. Le choix reste modifiable dans **Sources et dates…**.
-- **Détection d’artefact** : le profil le plus spécifique l’emporte sur un profil plus étroit qu’il englobe. 18 entrées du catalogue — dont `HayabusaVerbose`, `HayabusaSuperVerbose`, `ChainsawPersistence` et neuf profils RECmd — n’étaient jamais sélectionnées et le sont maintenant. Une déclaration enregistrée sur une seule ligne tabulée (`MsftMft`) est découpée en colonnes.
-- **Règles de profil** : les couleurs de catégories ne remplacent plus les règles du profil. Les seuils de sévérité Hayabusa retrouvent leurs couleurs.
-- **Export interrompu** : une interruption pendant la vérification retire le fichier temporaire. Un nouvel export vers la même cible n’est plus refusé définitivement.
-- **Robustesse** : un chemin de groupe plus profond que les regroupements de la vue produit un message explicite, et une ligne vide terminale d’un CSV de parseur n’annule plus tout le fichier.
+# Fireblade 0.2.3 — a reliable timeline and recovery
 
-# Fireblade 0.2.2 — espace d’analyse modulable
+- **Date column**: an explicit UTC column (`UTC timestamp`, `TimestampUtc`) now wins over the raw column it comes from. Linux logs, whose syslog timestamp has neither a year nor a zone, are no longer indexed on the wrong column.
+- **Index time zone**: dates without a zone are read as **UTC** in the timeline, as at import. The same folder therefore produces the same chronological order from one machine to another; only test models or clock settings can move it.
+- **Computed columns**: the proposed date is resolved against the analysis's real schema, derived columns included. A computed UTC column is therefore usable automatically, and a guessed index is no longer saved as a choice: the timeline settings saved by 0.2.2 are reset once.
+- **Profile dates**: a `VisitTime` declaration recognizes a `Visit Time` export. The analyses concerned no longer open without a time column.
+- **Separate date and time**: an export that writes `date` and `time` in two columns (IIS, W3C, some timelines) is now indexed on the two columns combined, not on the date alone at midnight. The choice stays editable in **Sources and dates…**.
+- **Artifact detection**: the most specific profile wins over a narrower profile it encompasses. 18 catalogue entries — including `HayabusaVerbose`, `HayabusaSuperVerbose`, `ChainsawPersistence` and nine RECmd profiles — were never selected and now are. A declaration saved on a single tab-separated line (`MsftMft`) is split into columns.
+- **Profile rules**: category colours no longer replace the profile rules. Hayabusa severity thresholds get their colours back.
+- **Interrupted export**: an interruption during verification removes the temporary file. A new export to the same target is no longer refused for good.
+- **Robustness**: a group path deeper than the view's groupings produces an explicit message, and a trailing empty row in a parser CSV no longer cancels the whole file.
 
-- Arbre des artefacts : choix direct famille / dossier / liste, familles reconnues et nombre d’analyses.
-- Recherche globale par défaut dans les artefacts ouverts ; panneau de résultats, masquage des résultats vides et saut à la source.
-- Panneaux détachables, ancrables et redimensionnables ; dispositions Analyse, Chronologie seule et côte à côte ; enregistrement local de la disposition.
-- Ordre et largeur des colonnes mémorisés automatiquement par format après déplacement des en-têtes.
-- Surlignage des occurrences uniquement ; prise en charge des caractères Unicode hors BMP.
-- Chronologie agrandie, commandes compactes, périodes rapides et détection des colonnes Time / Horodatage ; construction à l’ouverture.
-- Ressources persistantes : mémoire, threads de requête et threads d’import/parsing. Les collectes restent séquentielles ; les moteurs externes conservent leurs propres options.
-- Création de règles ciblant une cellule depuis le clic droit. Règles accessibles depuis la barre d’espace de travail ; création de profils JSON personnalisés à partir de l’artefact courant ; accès aux lecteurs .NET.
+# Fireblade 0.2.2 — a modular analysis workspace
 
-# Fireblade 0.2.1 — imports progressifs, menus et intégrité
+- Artifact tree: direct family / folder / list choice, recognized families and analysis count.
+- Global search by default in the open artifacts; results panel, hiding of empty results and jump to the source.
+- Panels that can be detached, docked and resized; Analysis, Timeline only and side-by-side layouts; local saving of the layout.
+- Column order and width saved automatically per format after moving headers.
+- Highlighting of occurrences only; support for Unicode characters outside the BMP.
+- Enlarged timeline, compact controls, quick periods and detection of Time / Timestamp columns; built on opening.
+- Persistent resources: memory, query threads and import/parsing threads. Collections stay sequential; external engines keep their own options.
+- Rule creation targeting a cell from the right click. Rules reachable from the workspace bar; creation of custom JSON profiles from the current artifact; access to the .NET readers.
 
-## Ajouter des données depuis Analyse
+# Fireblade 0.2.1 — progressive imports, menus and integrity
 
-L’accueil du case et la grille proposent directement les trois entrées : fichier de données, dossier à parser et disque. Le menu **Case** gère les enquêtes et leurs sauvegardes ; **Analyse** réunit les données et les outils d’investigation ; **Détection** donne accès à Hayabusa et aux IOC ; **Exporter** rassemble les sorties. Les options d’affichage sont regroupées par colonnes, groupes, vues, couleurs et navigation.
+## Adding data from Analysis
 
-Le bilan de parsing reste dans **Imports**. Le seuil et le lancement d’Hayabusa disposent d’un écran **Détection EVTX** distinct ; la chasse IOC conserve son propre espace. Les diagnostics se consultent à la demande dans **Aide → Vérifier les imports et diagnostics…**, sans onglet principal permanent.
+The case home page and the grid offer the three entries directly: data file, folder to parse and
+disk. The **Case** menu manages investigations and their backups; **Analysis** gathers the data and
+the investigation tools; **Detection** gives access to Hayabusa and to IOCs; **Export** gathers the
+outputs. Display options are grouped by columns, groups, views, colours and navigation.
 
-## Dossiers traités en arrière-plan
+The parsing report stays in **Imports**. The Hayabusa threshold and launch have a separate
+**EVTX detection** screen; the IOC hunt keeps its own space. Diagnostics are consulted on demand in
+**Help → Check imports and diagnostics…**, without a permanent main tab.
 
-- Sélection de plusieurs dossiers avec **Ctrl/Shift** dans le sélecteur. Ils sont traités successivement dans le même case ; Arrêter annule aussi les dossiers encore en attente.
+## Folders processed in the background
 
-- Les dossiers utilisent le même traitement de fond que les disques. Un seul import tourne à la fois ; la grille reste utilisable et le bouton Arrêter conserve les résultats terminés.
-- Par défaut, chaque résultat fermé et vérifié apparaît progressivement, sans changer l’analyse déjà consultée.
-- Les regroupements par artefact ou dans une grille unique restent disponibles ; leurs résultats apparaissent une fois le regroupement terminé.
-- Les analyses ajoutées sont rattachées au case et retrouvent leur place à sa réouverture.
+- Selection of several folders with **Ctrl/Shift** in the picker. They are processed one after another in the same case; Stop also cancels the folders still waiting.
 
-## Petites machines et démarrage
+- Folders use the same background processing as disks. One import runs at a time; the grid stays usable and the Stop button keeps the finished results.
+- By default, each closed and verified result appears progressively, without changing the analysis already being consulted.
+- Grouping by artifact or into a single grid stays available; their results appear once the grouping is finished.
+- The added analyses are attached to the case and find their place again when it is reopened.
 
-- Réglage par défaut : **un thread et 128 Mio par base DuckDB**. Le parsing de fond reçoit la moitié du budget configuré, avec un minimum de 64 Mio, et un thread.
-- Les résultats sont intégrés par lots de seize ; les sauvegardes intermédiaires sont espacées et le minuteur de réception s’arrête au repos.
-- Ces budgets ne plafonnent pas toute la RAM de Python, Qt ni des moteurs externes. La configuration utilisateur reste prioritaire.
-- Animation de démarrage de **10 secondes** : feu réel sur fond sombre, allumage progressif et apparition du logo, désactivable dans les préférences d’organisation. La lecture reste locale et silencieuse, sans cache de toutes les images.
+## Small machines and startup
 
-## Huit constats d’audit corrigés
+- Default setting: **one thread and 128 MiB per DuckDB database**. Background parsing gets half the configured budget, with a minimum of 64 MiB, and one thread.
+- Results are merged in batches of sixteen; intermediate backups are spaced out and the receiving timer stops when idle.
+- These budgets do not cap all the RAM of Python, Qt or the external engines. The user configuration keeps priority.
+- **10-second** startup animation: real fire on a dark background, progressive lighting and appearance of the logo, which can be disabled in the organization preferences. Playback stays local and silent, without caching every image.
 
-- Parcours des vraies images NTFS sans l’erreur `is_junction` de l’adaptateur Dissect.
-- Copie des compagnons SQLite WAL/SHM/journal ; rejet d’un groupe de fichiers changeant pendant sa copie.
-- Analyses DuckDB reçues ouvertes sans accès SQL aux fichiers externes ; validation des objets stockés et refus des vues/métadonnées hostiles.
-- Résultats d’une source dont l’intégrité a échoué retirés des sessions de collecte publiées.
-- Mise à jour d’IDNA en **3.15** et contrôle précoce de longueur des domaines.
-- Protection commune des exports : preuves brutes, compagnons, analyses, fichiers internes du case et alias par identité de fichier.
-- Export des sources Hayabusa protégé et atomique, avec conservation de l’ancienne destination en cas d’échec.
-- Sessions Fireblade/TLE et règles globales ne peuvent plus écraser les métadonnées du case.
+## Eight audit findings fixed
 
-## Validation et limites
+- Walking real NTFS images without the Dissect adapter's `is_junction` error.
+- Copying the SQLite WAL/SHM/journal companions; rejecting a group of files changing during its copy.
+- DuckDB analyses received opened without SQL access to external files; validation of stored objects and refusal of hostile views/metadata.
+- Results from a source whose integrity failed removed from published collection sessions.
+- IDNA updated to **3.15** and early length check of domains.
+- Common export protection: raw evidence, companions, analyses, internal case files and aliases by file identity.
+- Export of Hayabusa sources protected and atomic, keeping the previous destination if it fails.
+- Fireblade/TLE sessions and global rules can no longer overwrite the case metadata.
 
-La publication de l’EXE est conditionnée aux tests Windows Python 3.11/3.12/3.13, à la construction et à l’exécution autonome, aux lecteurs natifs, aux chemins UNC/longs, aux contrôles visuels, au scénario supérieur à 3 Gio et aux 320 analyses. L’empreinte de l’exécutable publié et son commit figurent à la fin de ces notes.
+## Validation and limits
 
-Les tests Linux comprennent les régressions d’audit, les trois organisations d’import de dossier, les requêtes pendant le parsing, la réouverture du case et les parcours de menus. Un essai de dossier de 250 000 lignes a aussi conservé la source et le traitement des événements Qt, avec les budgets DuckDB de 128/64 Mio ; ses mesures ne qualifient pas toutes les machines virtuelles.
+The EXE publication is conditional on the Windows Python 3.11/3.12/3.13 tests, the build and the
+standalone run, the native readers, UNC/long paths, the visual checks, the scenario above 3 GiB and
+the 320 analyses. The digest of the published executable and its commit appear at the end of these
+notes.
 
-Fireblade reste un prototype non signé. Les disques sont lus pour extraire les artefacts pris en charge : pas d’acquisition complète, de déchiffrement, de carving ni de récupération des fichiers supprimés. Les formats et périphériques non exercés ne sont pas qualifiés par ces résultats.
+The Linux tests include the audit regressions, the three folder import organizations, queries during
+parsing, reopening the case and the menu walks. A 250,000-line folder trial also kept the source and
+the processing of Qt events, with the 128/64 MiB DuckDB budgets; its measurements do not qualify
+every virtual machine.
 
-## Mémoire et stockage
+Fireblade remains an unsigned prototype. Disks are read to extract the supported artifacts: no full
+acquisition, decryption, carving or recovery of deleted files. Formats and devices not exercised are
+not qualified by these results.
 
-- Si le lecteur CSV natif atteint son budget, l’import reprend dans une transaction neuve avec des lots de lignes liés par paramètres. Les pages larges sont lues par lots de colonnes. Le budget mémoire n’est pas augmenté automatiquement.
-- **Cases → Archiver et libérer l’espace** crée une archive portable vérifiée, garde une référence dans le catalogue, puis retire les fichiers locaux. Les preuves externes restent intactes. La restauration se lance depuis le catalogue.
-- Les bases fermées sont archivées directement après checkpoint, sans seconde copie intégrale sur le disque. Les fichiers complémentaires du case sont conservés dans l’archive.
-- Le README est désormais en anglais et présente les capacités, les limites et les procédures de manière structurée.
+## Memory and storage
+
+- If the native CSV reader reaches its budget, the import resumes in a fresh transaction with row batches bound by parameters. Wide pages are read in batches of columns. The memory budget is not raised automatically.
+- **Cases → Archive and free the space** creates a verified portable archive, keeps a reference in the catalogue, then removes the local files. External evidence stays intact. Restoration starts from the catalogue.
+- Closed databases are archived directly after checkpoint, without a second full copy on disk. The case's companion files are kept in the archive.
+- The README is now in English and presents the capabilities, the limits and the procedures in a structured way.

@@ -3,7 +3,7 @@ from scripts.update_release_readme import promote
 
 
 def release():
-    return dict(draft=False,tag_name='v0.2.1',body='Commit : abc\nSHA-256 de Fireblade.exe : def',
+    return dict(draft=False,tag_name='v0.2.1',body='Commit: abc\nSHA-256 of Fireblade.exe: def',
                 html_url='https://example/release',assets=[dict(name='Fireblade.exe',digest='sha256:def',browser_download_url='https://example/Fireblade.exe')])
 
 

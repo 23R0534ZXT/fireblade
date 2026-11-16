@@ -158,6 +158,55 @@ def fireblade_search(case_path, pattern, value):
         case.close()
 
 
+def fireblade_operations(case_path, total):
+    """What an analyst repeats after the import: search, filter, group by, sort.
+
+    Each operation is timed and returns the result a person reads, so a fast number
+    that answers the wrong thing is caught here instead of in review.
+    """
+    sys.path.insert(0, r'C:\Users\23R\dev\fireblade\src')
+    sys.path.insert(0, r'C:\Users\23R\dev\fireblade\.venv\Lib\site-packages')
+    from fireblade.core.engine import Case
+
+    case = Case(case_path)
+    result = {}
+
+    def timed(name, sql, params=()):
+        started = time.monotonic()
+        value = case.db.execute(sql, list(params)).fetchall()
+        result[name] = dict(seconds=round(time.monotonic() - started, 2), value=value)
+        return value
+
+    try:
+        # Columns are positional: c0 timestamp, c1 host, c2 user, c3 process,
+        # c4 event id, c5 source, c6 message, c7 path.
+        timed('search_session', 'SELECT count(*) FROM events WHERE "c6" LIKE ?', ['%session%'])
+        timed('search_error', 'SELECT count(*) FROM events WHERE "c6" LIKE ?', ['%error%'])
+        timed('search_net', 'SELECT count(*) FROM events WHERE "c6" LIKE ?', ['%192.168.%'])
+        timed('filter_eventid', 'SELECT count(*) FROM events WHERE "c4" = ?', ['4625'])
+        timed('filter_host', 'SELECT count(*) FROM events WHERE "c1" = ?', ['host07'])
+        hosts = timed('group_host', 'SELECT "c1", count(*) FROM events GROUP BY 1 ORDER BY 2 DESC')
+        processes = timed('group_process', 'SELECT "c3", count(*) FROM events GROUP BY 1 ORDER BY 2 DESC')
+        events = timed('group_eventid', 'SELECT "c4", count(*) FROM events GROUP BY 1 ORDER BY 2 DESC')
+        timed('sort_timestamp_desc', 'SELECT "c0" FROM events ORDER BY "c0" DESC LIMIT 100')
+        timed('sort_host_then_time', 'SELECT "c1", "c0" FROM events ORDER BY "c1", "c0" LIMIT 1000')
+        # The generator is deterministic: 37 hosts, 6 processes, 6 event ids, and every
+        # row belongs to exactly one host.
+        result['checks'] = dict(
+            rows=total,
+            host_groups=len(hosts),
+            host_sum=sum(count for _, count in hosts),
+            process_groups=len(processes),
+            eventid_groups=len(events),
+            group_sum_equals_rows=sum(count for _, count in hosts) == total,
+            session_is_every_row=result['search_session']['value'][0][0] == total,
+            host_filter_matches_group=result['filter_host']['value'][0][0] == dict(hosts)['host07'],
+        )
+        return result
+    finally:
+        case.close()
+
+
 def main():
     plan = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8')) if len(sys.argv) > 1 else {}
     sizes = plan.get('sizes', [[100000, 1]])
@@ -187,6 +236,7 @@ def main():
             entry['throughput_mb_s'] = round(size_mb / max(run['seconds'], 0.01), 1)
             entry['verify'] = verify(run['case'], check)
             entry['search'] = fireblade_search(run['case'], pattern, 'host07')
+            entry['operations'] = fireblade_operations(run['case'], count)
         except Exception as exc:
             entry['error'] = '%s: %s' % (type(exc).__name__, exc)
         entry['at'] = time.strftime('%Y-%m-%d %H:%M:%S')

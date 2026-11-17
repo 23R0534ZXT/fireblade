@@ -1329,6 +1329,7 @@ EN = {
     "Contient…": "Filter…",
     "Plan de mise en page refusé : {} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-le depuis Timeline Explorer sans DTD, puis réessayez.": "Layout refused: {} declares a DTD or XML entities, which Fireblade does not read. Save it from Timeline Explorer without a DTD, then try again.",
     "Préférences TLE refusées : {} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-les depuis Timeline Explorer sans DTD, puis réessayez.": "TLE settings refused: {} declares a DTD or XML entities, which Fireblade does not read. Save them from Timeline Explorer without a DTD, then try again.",
+    "Sélectionnez un fichier pour lire ses avertissements, sa provenance et ses sorties. « Voir le fichier » affiche un aperçu de son contenu, sans jamais modifier la preuve.": "Select a file to read its warnings, its provenance and its outputs. « View the file » shows a preview of its content, without ever modifying the evidence.",
 }
 
 LANGUAGES = ("en", "fr")

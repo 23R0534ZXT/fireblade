@@ -217,8 +217,8 @@ class CollectionReport(QWidget):
                 translate(STATUSES.get(report['status'],report['status'])),len(report.get('documents',[])),report['source'])
             self.summary.setText(head+'\n'+tail)
         else:self.summary.setText('Aucune collecte ouverte. Importez un dossier ou reprenez une collecte existante.')
-        self.details.setPlainText('Sélectionnez un fichier pour lire ses avertissements, sa provenance et ses sorties. '
-            '« Voir le fichier » affiche un aperçu de son contenu, sans jamais modifier la preuve.' if report else text)
+        self.details.setPlainText(translate('Sélectionnez un fichier pour lire ses avertissements, sa provenance et ses sorties. '
+            '« Voir le fichier » affiche un aperçu de son contenu, sans jamais modifier la preuve.') if report else text)
         self.filter()
 
     def filter(self, *_):

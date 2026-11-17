@@ -44,6 +44,7 @@ from fireblade.ui.export_commands import ExportCommandsMixin
 
 
 from fireblade.ui.start_workflow import StartWorkflowMixin
+from fireblade.core.i18n import translate
 
 
 class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, TimelineMixin, InvestigationToolsMixin, InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
@@ -653,9 +654,10 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         self.filters.clear()
         for f in self.view.filters:
             label = dict((v, k) for k, v in OPERATORS)[f.operator]
-            self.filters.addItem(f"{self.case.headers[f.column]}  {label}  {f.value}")
+            self.filters.addItem(
+                f"{translate(self.case.headers[f.column])}  {translate(label)}  {f.value}")
         if self.view.expression is not None:
-            self.filters.addItem("Expression ET / OU / NON · ouvrir l’éditeur pour modifier")
+            self.filters.addItem(translate("Expression ET / OU / NON · ouvrir l’éditeur pour modifier"))
         self.filters.setVisible(bool(self.view.filters) or self.view.expression is not None)
         self.groups_label.set_groups(self.case.headers, self.view.groups)
         for grid in (self.tree, *self.tree.frozen_views):

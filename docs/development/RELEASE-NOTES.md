@@ -111,6 +111,27 @@ fixed here, each with a test.
   declarations and the data rows were mixed with them. They keep their line, their offset
   and their text - the evidence is unchanged - but carry their own state, counted apart.
 
+- **The active-filter list and the report's own help text stayed French.** A filter was
+  shown as `Statut  Égal à (exact)  404` - the column header and the operator were read raw,
+  so translating the table could not help. Both go through the translation now, and the
+  report's help line is translated too.
+- **The scan that hunts leftover French cried 61 times for two real hits.** `Source`, `Date`,
+  `Sans Serif` and ordinary English sentences matched its list. It now uses the curated
+  vocabulary of the inventory, which leaves one real hit - the filter list above - and
+  stops hiding the rest.
+
+## Known limits of this version
+
+- A Windows install without `LongPathsEnabled` cannot open paths beyond 260 characters: the
+  product relies on the operating system for extended paths, and two tests fail on a fresh
+  Windows until the key is set. Documented rather than worked around.
+- The collection has no per-file analyses in its session: it publishes them merged by family
+  (`Prefetch.csv`, `MFT et USN.csv`, `EVTX.csv`), and the per-file ones stay on disk in
+  `Collectes/<stamp>/analyses/`. That is the chosen organization mode, not a loss.
+- Messages raised by the engine for a technical failure are still written in French in the
+  source (916 of 924 visible strings are translated; the residue is in the deepest error
+  paths).
+
 Full suite after these fixes: 1 459 passed, 28 skipped, ruff clean, real window.
 
 # Fireblade 0.4.1 — a 10 GiB collection, and what it found

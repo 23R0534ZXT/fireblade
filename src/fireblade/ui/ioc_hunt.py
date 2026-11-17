@@ -7,6 +7,7 @@ from PySide6.QtCore import QAbstractTableModel, Qt, Signal
 from PySide6.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QLabel,QPlainTextEdit,
     QPushButton,QCheckBox,QSpinBox,QTableView,QFileDialog,QComboBox,QSplitter)
 from fireblade.core.ioc_hunt import parse_indicators,read_indicator_file,KINDS
+from fireblade.core.i18n import translate
 from fireblade.core.ioc_results import hunt,HuntStore,discover_hunts,batch_text
 from fireblade.core.workspace_reader import WorkspaceReader
 from fireblade.core.models import View,Filter
@@ -40,7 +41,8 @@ class HuntPanel(QWidget):
         self.subdomains=QCheckBox('Inclure les sous-domaines');self.subdomains.setChecked(True);bar.addWidget(self.subdomains)
         bar=QHBoxLayout();layout.addLayout(bar)
         self.filters=QCheckBox('Respecter les filtres des analyses');bar.addWidget(self.filters)
-        self.limit=QSpinBox();self.limit.setRange(1,5000000);self.limit.setValue(250000);self.limit.setPrefix('Détails max. : ');bar.addWidget(self.limit)
+        # A prefix is outside the language pass: it has to be wrapped here.
+        self.limit=QSpinBox();self.limit.setRange(1,5000000);self.limit.setValue(250000);self.limit.setPrefix(translate('Détails max. : '));bar.addWidget(self.limit)
         bar=QHBoxLayout();layout.addLayout(bar)
         self.build_button=QPushButton('Chasser dans toutes les analyses ouvertes');bar.addWidget(self.build_button);self.build_button.clicked.connect(self.launch)
         stop=QPushButton('Interrompre');bar.addWidget(stop);stop.clicked.connect(window.interrupt_queries)
@@ -98,17 +100,25 @@ class HuntPanel(QWidget):
                 f"Chasse {m.get('status')} : {m.get('scanned_rows')} lignes lues ; {m.get('rejected')} IOC rejetés ; détails limités : {m.get('truncated')}.",str(store.path),summary=m)
 
         def fail(message):release();self.window.error(message)
-        def cancel():release();self.status.setText('Chasse annulée. Les résultats précédents sont conservés.')
+        def cancel():release();self.status.setText(translate('Chasse annulée. Les résultats précédents sont conservés.'))
         self.window.run(work,done,on_cancel=cancel,on_error=fail,coverage_stage="Chasse IOC")
     def display(self,store):
         if self.store and self.store is not store:self.store.close()
         self.store=store;self.ioc=None;self.offset=0
-        self.summary.display([[KINDS[r[1]],*r[2:]] for r in store.indicators()]);self.indicators.resizeColumnsToContents()
-        m=store.metadata;state={'complete':'Terminée','partial':'Partielle','running':'Inachevée — à relancer'}.get(m.get('status'),'État inconnu');errors=' ; '.join(s['error'] for s in store.sources() if s['error'])
-        self.status.setText(f"{state} · {m.get('scanned_rows',0):,} lignes lues · {m.get('matching_fields',0):,} champs correspondants · {m.get('stored_hits',0):,} détails conservés. "
-            +('Détails limités : les compteurs portent sur toute la lecture. ' if m.get('truncated') else '')
-            +('Périmètre : filtres enregistrés. ' if m.get('respect_filters') else 'Périmètre : toutes les lignes des analyses ouvertes. ')
-            +f"{m.get('rejected',0)} IOC rejetés. "+errors+' Une présence est une observation, pas un verdict de compromission.')
+        self.summary.display([[translate(KINDS[r[1]]),*r[2:]] for r in store.indicators()]);self.indicators.resizeColumnsToContents()
+        m=store.metadata
+        # Written after the language pass: each piece is translated here, and the
+        # counts go into a translated template instead of into a raw French frame.
+        state=translate({'complete':'Terminée','partial':'Partielle','running':'Inachevée — à relancer'}.get(m.get('status'),'État inconnu'))
+        errors=' ; '.join(translate(s['error']) for s in store.sources() if s['error'])
+        text=translate('{} · {} lignes lues · {} champs correspondants · {} détails conservés.').format(
+            state,f"{m.get('scanned_rows',0):,}",f"{m.get('matching_fields',0):,}",f"{m.get('stored_hits',0):,}")
+        if m.get('truncated'):text+=' '+translate('Détails limités : les compteurs portent sur toute la lecture.')
+        text+=' '+translate('Périmètre : filtres enregistrés.' if m.get('respect_filters') else 'Périmètre : toutes les lignes des analyses ouvertes.')
+        text+=' '+translate('{} IOC rejetés.').format(m.get('rejected',0))
+        if errors:text+=' '+errors
+        text+=' '+translate('Une présence est une observation, pas un verdict de compromission.')
+        self.status.setText(text)
         self.refresh_after_page=True;self.page(0)
     def select_ioc(self,index):self.ioc=index.row()+1;self.offset=0;self.page(0)
     def all_iocs(self):self.ioc=None;self.offset=0;self.page(0)

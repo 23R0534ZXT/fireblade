@@ -28,3 +28,22 @@ def test_the_engine_reasons_are_english():
         assert translate('Binaire inconnu ; aucun décodage arbitraire') == 'Unknown binary; no arbitrary decoding'
     finally:
         set_language('fr')
+
+
+def test_the_timeline_lane_counter_is_english():
+    set_language('en')
+    try:
+        assert translate('{} datés').format('1 752 069') == '1 752 069 dated'
+    finally:
+        set_language('fr')
+
+
+def test_the_alert_banner_and_the_row_details_are_english():
+    set_language('en')
+    try:
+        assert translate('Alerte : {} · Gravité : {}').format('Important Log File Cleared', 'high') == \
+            'Alert: Important Log File Cleared · Severity: high'
+        assert translate('Date source ({}) : {}').format('Horodatage UTC', '2026-08-12') == \
+            'Source date (Horodatage UTC): 2026-08-12'
+    finally:
+        set_language('fr')

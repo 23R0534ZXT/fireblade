@@ -123,7 +123,7 @@ class TimelineCanvas(QWidget):
             painter.fillRect(QRectF(12,y+10,4,18),color);painter.setPen(text)
             label=painter.fontMetrics().elidedText(source['name'],Qt.ElideMiddle,self.LEFT-35)
             painter.drawText(24,y+lane_h//2-4,label);painter.setPen(muted)
-            painter.drawText(24,y+lane_h//2+12,f"{source['dated']:,} datés".replace(',',' '))
+            painter.drawText(24,y+lane_h//2+12,translate('{} datés').format(f"{source['dated']:,}".replace(',',' ')))
             peak=max((count for (s,b),count in counts.items() if s==source['id']),default=1)
             for (s,bucket),count in counts.items():
                 if s!=source['id']:continue

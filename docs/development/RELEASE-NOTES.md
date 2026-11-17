@@ -74,6 +74,30 @@ were first measured, then removed.
 - End-to-end measurement on the same collection as 0.4.1, same machine, same
   reference files.
 
+## What the acceptance run found, and what is now fixed
+
+The 0.4.1 acceptance run covered eight sections on a clean Windows 11 virtual
+machine, 286 checked steps: 274 passed, 1 to review, 7 failed. The failures are
+fixed here, each with a test.
+
+- **The coverage audit went silent after a hunt.** Once an IOC hunt had run, the
+  window still held a query, `can_open_file()` stayed false, and the audit's
+  `launch()` returned without a word: the user clicked, and nothing happened, with
+  no way to know why. It now says the check waits for the running query, starts by
+  itself as soon as the query frees the window, and explains what to do if the
+  query never ends.
+- **The report's Reason column was empty** for every file that was not fully read,
+  although the reason existed: it lives on the run, or on a member of an archive,
+  never on the file itself. The file now carries its own sentence, taken from the
+  reader error, the member or the warning, deduplicated; a file no reader claims
+  says so instead of leaving a blank cell.
+- **An annotation export could hand over an empty file.** The note was in the
+  database - the export intersected it with the filter in force (52 581 rows out of
+  420 487, the annotated row outside) and wrote a header-only CSV without a word.
+  It now refuses, names the count held by the analysis, and writes nothing.
+
+Full suite after these fixes: 1 458 passed, 28 skipped, ruff clean, real window.
+
 # Fireblade 0.4.1 — a 10 GiB collection, and what it found
 
 This version does not come from an idea: it comes from the final acceptance run of 0.4.0 on a real

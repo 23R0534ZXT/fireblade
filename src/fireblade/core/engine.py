@@ -960,6 +960,11 @@ class Case:
             owns_temporary = False
             try:
                 expected=self.db.execute('SELECT count(*) FROM ('+sql+') AS export_coverage',args).fetchone()[0]
+                if view.bookmarks_only and not expected:
+                    held=self.db.execute('SELECT count(*) FROM bookmarks').fetchone()[0]
+                    if held:
+                        raise ValueError(f"Nothing to export: no annotated row matches the current view, while this analysis holds {held} annotation(s). Clear the filters to export them.")
+                    raise ValueError('Nothing to export: this analysis holds no annotation yet.')
                 from fireblade.core.coverage import ExportCursor,verify_export
                 try:
                     native_cursor = self.db.execute(sql, args)

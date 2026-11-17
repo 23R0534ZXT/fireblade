@@ -220,6 +220,27 @@ def execute(command, cwd, log, timeout=3600):
                 process.wait(timeout=10)
 
 
+def entry_reason(entry):
+    """The sentence a report row shows for a file that was not fully read.
+
+    The reason is recorded per run (a reader error) or per member (a file inside a
+    jar), never at the file level, so the report's Reason column used to stay empty
+    while the information sat one level down. Deduplicated and bounded: a row shows
+    one line, the details stay in the file's own panel.
+    """
+    reasons = []
+    for run in entry.get('runs') or []:
+        if run.get('error'):
+            reasons.append(str(run['error']))
+        for member in (run.get('linux_logs') or {}).get('members') or []:
+            if member.get('reason'):
+                reasons.append(str(member['reason']))
+        if not reasons:
+            for warning in run.get('warnings') or []:
+                reasons.append(str(warning))
+    joined = ' ; '.join(dict.fromkeys(reasons))
+    return joined[:400]
+
 class Collection:
     def __init__(self, root, output, pack, settings=None, progress=lambda _: None, organization='files', _reopening=False):
         if organization not in ('files', 'artifacts', 'combined'):
@@ -407,6 +428,8 @@ class Collection:
             entry.pop('error', None)
             healthy = all(item['status'] == 'complete' for item in entry.get('runs', []))
             entry['status'] = 'complete' if healthy else 'attention'
+            if not healthy:
+                entry['reason'] = entry_reason(entry)
         finally:
             self.save()
         return entry
@@ -495,6 +518,7 @@ class Collection:
             entry['tools'] = tools
             if not tools:
                 entry['status'] = 'unsupported'
+                entry['reason'] = 'No reader recognised this file'
                 return documents
             entry['sha256'] = sha256(source)
             if tools == ['companion']:
@@ -570,6 +594,8 @@ class Collection:
             if sha256(source) != entry['sha256']:
                 raise ValueError('Source modifiée pendant le traitement ; résultats à vérifier')
             entry['status'] = 'complete' if all(r['status']=='complete' for r in entry['runs']) else 'attention'
+            if entry['status'] != 'complete':
+                entry['reason'] = entry_reason(entry)
         except OperationCancelled:
             entry['status'] = 'cancelled'
             raise

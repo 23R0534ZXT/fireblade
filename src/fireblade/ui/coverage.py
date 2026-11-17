@@ -3,7 +3,7 @@ import copy
 import json
 from pathlib import Path
 
-from PySide6.QtCore import Qt,Signal
+from PySide6.QtCore import Qt,QTimer,Signal
 from PySide6.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QLabel,QPushButton,QComboBox,
     QCheckBox,QLineEdit,QTableView,QTextBrowser,QSplitter,QFileDialog,QDialog,QDialogButtonBox,QListWidget,QListWidgetItem)
 from fireblade.core.coverage import (FORMAT,MAX_EVENTS,EXPECTED,audit,event,load_state,save_state,load_report,save_report,export_report)
@@ -14,7 +14,7 @@ from fireblade.ui.ioc_hunt import Rows
 class CoveragePanel(QWidget):
     progress=Signal(str)
     def __init__(self,window):
-        super().__init__();self.window=window;self.events=[];self.dropped=0;self.context=None;self.report=None;self.reader=None;self.entries=[];self.stale=True;self.persistence_error='';self.expected_tools=None
+        super().__init__();self.window=window;self.events=[];self.dropped=0;self.context=None;self.report=None;self.reader=None;self.entries=[];self.stale=True;self.persistence_error='';self.expected_tools=None;self._waiting=False;self._waits=0
         layout=QVBoxLayout(self)
         self.status=QLabel('Couverture non contrôlée. Les données jamais acquises ne peuvent pas être déduites des fichiers présents.');self.status.setWordWrap(True);self.status.setTextFormat(Qt.PlainText);layout.addWidget(self.status);self.progress.connect(self.status.setText)
         bar=QHBoxLayout();layout.addLayout(bar)
@@ -132,7 +132,24 @@ class CoveragePanel(QWidget):
     def interrupt(self):
         if self.reader:self.reader.interrupt()
     def launch(self):
-        if not self.window.can_open_file():return
+        """Start the audit now, or as soon as the running query frees the window."""
+        if self.window.can_open_file():
+            self._audit();return
+        if self._waiting:return
+        self._waiting,self._waits=True,120
+        self.status.setText('The check starts as soon as the running query finishes.')
+        QTimer.singleShot(500,self._start_when_idle)
+    def _start_when_idle(self):
+        if not self._waiting:return
+        self._waits-=1
+        if self.window.can_open_file():
+            self._waiting=False;self._audit();return
+        if self._waits<=0:
+            self._waiting=False
+            self.status.setText('No check started: a query is still running. Interrupt it, then launch the check again.')
+            return
+        QTimer.singleShot(500,self._start_when_idle)
+    def _audit(self):
         self.ensure_context();self.record('Analyse','info','Contrôle de couverture demandé.',verify_hashes=self.hashes.isChecked(),deep_checks=self.deep.isChecked())
         self.window.remember_active();reader=WorkspaceReader(self.window.documents,self.window.settings,self.window.case);self.reader=reader
         active=copy.deepcopy(self.window.collection.report) if self.window.collection else None

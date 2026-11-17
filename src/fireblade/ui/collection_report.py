@@ -132,7 +132,7 @@ class OutcomeModel(QAbstractTableModel):
             if entry.get('ignored'):status+=translate(' · écarté')
             return [status,str(entry.get('path','')),
                     ', '.join(entry.get('tools',[])),
-                    str(entry.get('error','')),
+                    str(entry.get('error') or entry.get('reason') or ''),
                     sum(len(run.get('outputs',[])) for run in entry.get('runs',[]))][index.column()]
 
 

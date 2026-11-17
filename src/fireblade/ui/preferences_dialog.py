@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QLabel, QTableWidget, QTableWidgetItem, QApplication, QTabWidget,
 )
-from fireblade.core.i18n import translate
+from fireblade.core import machine
 
 
 class PreferencesDialog(QDialog):
@@ -40,9 +40,15 @@ class PreferencesDialog(QDialog):
             self.language.addItem(label, code)
         self.language.setCurrentIndex(max(0, self.language.findData(getattr(preferences, 'language', 'en'))))
         form.insertRow(0, 'Langue / Language', self.language)
-        self.memory = QSpinBox();self.memory.setRange(0, 16384);self.memory.setSpecialValueText(translate('Configuration actuelle'));self.memory.setSuffix(' Mo');self.memory.setValue(preferences.resource_memory_mb)
-        self.query_threads = QSpinBox();self.query_threads.setRange(0, 32);self.query_threads.setSpecialValueText(translate('Configuration actuelle'));self.query_threads.setValue(preferences.query_threads)
-        self.parsing_threads = QSpinBox();self.parsing_threads.setRange(0, 32);self.parsing_threads.setSpecialValueText(translate('Automatique'));self.parsing_threads.setValue(preferences.parsing_threads)
+        # Zero is stored, not shown: the analyst reads what "automatic" resolves to on
+        # this machine, computed here the same way the engine computes it. The field
+        # keeps 0, so saving the dialog still saves "automatic".
+        resolved = machine.from_settings(preferences.parsing_threads, preferences.resource_memory_mb)
+        automatic_memory = 'Automatic · %d MB' % resolved.memory_mb
+        automatic_threads = 'Automatic · %d threads' % resolved.threads
+        self.memory = QSpinBox();self.memory.setRange(0, 16384);self.memory.setSpecialValueText(automatic_memory);self.memory.setSuffix(' Mo');self.memory.setValue(preferences.resource_memory_mb)
+        self.query_threads = QSpinBox();self.query_threads.setRange(0, 32);self.query_threads.setSpecialValueText(automatic_threads);self.query_threads.setValue(preferences.query_threads)
+        self.parsing_threads = QSpinBox();self.parsing_threads.setRange(0, 32);self.parsing_threads.setSpecialValueText(automatic_threads);self.parsing_threads.setValue(preferences.parsing_threads)
         resources.addRow('Mémoire par analyse', self.memory)
         resources.addRow('Threads · recherche et requêtes', self.query_threads)
         resources.addRow('Threads · import et parsing', self.parsing_threads)

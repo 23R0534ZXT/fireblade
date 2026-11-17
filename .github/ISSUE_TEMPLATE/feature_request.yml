@@ -1,22 +1,24 @@
-name: Proposer une amélioration / Suggest an improvement
-description: Expliquer un besoin ou une difficulté dans votre investigation.
+name: Suggest an improvement
+description: Describe the investigation you are trying to do, and what gets in the way.
 title: "[Suggestion] "
+labels: ["enhancement"]
 body:
   - type: textarea
     id: need
     attributes:
-      label: Quel besoin voulez-vous résoudre ?
-      description: Décrivez votre usage et ce qui vous bloque actuellement.
+      label: What are you trying to do?
+      description: The investigation, the artifact and the question you need answered.
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Amélioration proposée
+      label: What would help
+      description: A behaviour, a column, a report, an export — as precise as you can.
     validations:
       required: true
   - type: textarea
     id: context
     attributes:
-      label: Contexte et alternatives
-      description: Version utilisée, exemples publics et solutions déjà essayées.
+      label: Context and alternatives
+      description: The version you use, public examples, and anything you tried instead.

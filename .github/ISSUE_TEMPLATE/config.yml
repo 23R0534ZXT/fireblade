@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Premiers essais et retours généraux
-    url: https://github.com/23R0534ZXT/fireblade/issues/6
-    about: Suivre le parcours de test et partager vos impressions.
+  - name: Documentation
+    url: https://github.com/23R0534ZXT/fireblade/blob/main/docs/README.md
+    about: Guides, architecture, benchmark and release notes.
+  - name: Latest release and checksums
+    url: https://github.com/23R0534ZXT/fireblade/releases/latest
+    about: Download the executable and verify its SHA-256.

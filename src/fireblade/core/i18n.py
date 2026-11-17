@@ -64,6 +64,7 @@ EN = {
     "aucune colonne": "no column",
     "Analyse : ": "Analysis: ",
     "{} datés": "{} dated",
+    "Recherche · tous les artefacts": "Search · all artifacts",
     "Alerte : {} · Gravité : {}": "Alert: {} · Severity: {}",
     "Ligne source : {}": "Source line: {}",
     "Date source ({}) : {}": "Source date ({}): {}",

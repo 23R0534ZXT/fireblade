@@ -19,8 +19,8 @@ parfait, refaire une recette complète, puis publier.**
 | `main` | `32c84e3` — la 0.4.1 est publiée, `origin/main` au même commit |
 | `hermes/0.4.2` | **20 commits devant `main`** au moment de la recette (`git rev-list --count main..HEAD`), les dix d'avant plus ceux de la passe du 17 au soir. Arbre propre, **rien n'est poussé** |
 | Tête de branche | le dernier commit de la branche — `git log --oneline -1` (cette passation est commitée avec le lot de documents) |
-| Porte (dernier passage) | **1 477 passés, 28 ignorés**, ruff propre, fenêtre réelle — `TOUT EST VERT`, ~8 minutes |
-| Porte, relevés du jour | 1 459, puis 1 461, 1 475, 1 476 et 1 477 à mesure que les tests arrivaient — 28 ignorés chaque fois |
+| Porte (dernier passage) | **1 481 passés, 28 ignorés**, ruff propre, fenêtre réelle — `TOUT EST VERT`, ~8 à 10 minutes |
+| Porte, relevés du jour | 1 459, 1 461, 1 475, 1 476, 1 477 puis 1 481 à mesure que les tests arrivaient — 28 ignorés chaque fois |
 | Release GitHub | `v0.4.1` seulement : exe 281 209 660 octets, SHA-256 `14ae688b…`, auteur `23R0534ZXT`. La 0.4.2 n'est **pas encore taguée** : le tag se crée après accord du mainteneur, et la taille et le SHA-256 de l'exe se relèvent après la publication (§9) |
 | Recette 0.4.2 | **passée le 17 novembre au soir** sur la VM, les neuf sections `s0`…`s8` enchaînées, toutes `EXIT 0` — détail en §3 |
 | VM de recette | `fb@192.168.1.80` (Proxmox, VM 300), Windows 11 26H2 `en-us`, SSH par `/root/.ssh/id_ed25519` |
@@ -281,7 +281,7 @@ harnais, pas dans le produit.
 
 1. **La porte décide, seule** :
    `set QT_QPA_PLATFORM=windows` puis `.venv\Scripts\python.exe -m scripts.dev_check`
-   → doit finir par `TOUT EST VERT`, **1 477 passés / 28 ignorés**, ruff inclus. ~8 minutes.
+   → doit finir par `TOUT EST VERT`, **1 481 passés / 28 ignorés**, ruff inclus. ~8 à 10 minutes.
    Le compte est passé de 1 459 à 1 461 pendant la passe du 17 : un total différent doit
    s'expliquer, pas se tolérer. Ne jamais lancer deux suites en même temps : DuckDB prend un
    verrou et la seconde se fige sans message.
@@ -406,7 +406,7 @@ Avant de taguer : la version doit être `0.4.2` dans `pyproject.toml` **et**
 
 > Reprise de la 0.4.2. Lis ce fichier en entier, puis le skill `fireblade-verification`.
 > La branche `hermes/0.4.2` porte les commits de la passe du 17 au soir
-> (`git rev-list --count main..HEAD`), arbre propre, porte verte à 1 477 passés / 28 ignorés,
+> (`git rev-list --count main..HEAD`), arbre propre, porte verte à 1 481 passés / 28 ignorés,
 > rien de poussé.
 > Objectif : passer la recette complète en entier sur la VM (`run-all-sections.ps1`, `s0` →
 > `s8`), lire et zoomer chaque capture, remplir les `[RECETTE]` de §1, §3 et §9, corriger ce

@@ -1058,6 +1058,7 @@ EN = {
     "{} / {} lignes": "{} / {} rows",
     "{} niveaux": "{} levels",
     "{} · {} analyse(s) · {}": "{} · {} analyses · {}",
+    "{} · {} analyse(s) · {} incidents": "{} · {} analyses · {} incidents",
     "· signets uniquement": "· bookmarks only",
 
     # Added for the full English interface: one entry per French label

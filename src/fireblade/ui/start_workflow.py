@@ -202,6 +202,8 @@ class StartWorkflowMixin:
             self.collection = collection
         self.disk_progress.setRange(0, 0)
         self.disk_stop.setEnabled(True); self.disk_status.show()
+        # The run owns the right-hand side of the bar; the save stamp comes back after.
+        self.set_collection_status_visible(True)
         self.disk_message('Découverte et indexation…')
         job.signals.progress.connect(self.disk_message)
         job.signals.done.connect(self.disk_finished)
@@ -212,8 +214,17 @@ class StartWorkflowMixin:
         self.disk_pool.start(job)
         return True
 
+    def set_collection_status_visible(self, busy):
+        """Give the running collection the whole right-hand side of the status bar."""
+        label = getattr(self, 'last_case_save', None)
+        if label is not None:
+            label.setVisible(not busy)
+
     def disk_message(self, message):
-        self.disk_label.setText(self.fontMetrics().elidedText(message, Qt.ElideMiddle, 290))
+        # Written after the language pass, so a sentence built at run time
+        # ("Dossier : C:\\...") used to reach an English bar untranslated.
+        message = translate(message)
+        self.disk_label.setText(self.fontMetrics().elidedText(message, Qt.ElideMiddle, 200))
         self.disk_status.setToolTip(message)
 
     def cancel_disk(self):
@@ -311,9 +322,14 @@ class StartWorkflowMixin:
             self.coverage_notice('Disque', 'error', error, '')
             self.report_collection_failure(error)
         else:
-            self.disk_message(f"{translate(label)} · {len(report['documents'])} analyses · {errors} incidents")
+            self.disk_message(translate('{} · {} analyse(s) · {} incidents').format(
+                translate(label), len(report['documents']), errors))
         self.disk_job = None
         self.disk_drain.stop()
+        # Progress and Stop have nothing left to do: leaving them in the status bar
+        # cost the message half of its width for the rest of the session.
+        self.disk_status.hide()
+        self.set_collection_status_visible(False)
         self.update_collection_controls()
         if self._folder_queue:
             if error or report['status'] == 'cancelled':self._folder_queue.clear()

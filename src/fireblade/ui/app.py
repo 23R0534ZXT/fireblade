@@ -265,9 +265,11 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         add_layout.setContentsMargins(0, 0, 0, 0)
         add_layout.addWidget(QLabel('Importer :'))
         layout.addWidget(self.analysis_add_bar)
+        # The source file is already the window title and the active tab label. A third
+        # copy in the status bar is what squeezed the left message to "2 ite" on a
+        # 1024-pixel window; the text is still kept for anything that reads it.
         self.source = QLabel()
         self.source.setMaximumWidth(240)
-        self.statusBar().addPermanentWidget(self.source)
         self.rules_summary = QLabel()
         self.rules_summary.setMaximumWidth(180)
         self.statusBar().addPermanentWidget(self.rules_summary)

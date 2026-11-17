@@ -63,6 +63,10 @@ def test_progressive_disk_keeps_workspace_interactive(qt_application, tmp_path, 
         assert window.disk_job is not None
         assert window.centralWidget().isEnabled()
         assert window.documents and window.disk_progress.maximum() == 0
+        # The running collection owns the right-hand side of the bar; the save stamp
+        # and the source label used to squeeze the message to "2 ite" at 1024 px.
+        assert not window.disk_status.isHidden()
+        assert window.last_case_save.isHidden()
         assert not window.close_investigation()
         window.search.setText('host')
         window.apply()
@@ -76,6 +80,9 @@ def test_progressive_disk_keeps_workspace_interactive(qt_application, tmp_path, 
         assert not any(item.text(0) == 'var' for item in window.navigator.items())
         release.set()
         until(qt_application, lambda: window.disk_job is None and not window.disk_pool.activeThreadCount() and not window._disk_pending and idle(window))
+        # Progress and Stop go away with the run instead of living in the bar forever.
+        assert window.disk_status.isHidden()
+        assert not window.last_case_save.isHidden()
         assert not errors
         assert window.close()
         restarted = Window(investigation_root=tmp_path/'cases', require_case=True)

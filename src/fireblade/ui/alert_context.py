@@ -122,7 +122,7 @@ class AlertContextMixin:
         self.context_window_label.setVisible(alert)
         if alert:
             text=translate('Sélectionnez une alerte pour ouvrir les événements EVTX autour de sa date, sur la même machine.')
-            if row:text=translate('Alerte : {} · Gravité : {}').format(row[1].get('RuleTitle',''),row[1].get('Level',''))
+            if row:text=translate('Alerte : {} · Gravité : {}').format(translate(str(row[1].get('RuleTitle',''))),translate(str(row[1].get('Level',''))))
             if not associated:text+=' '+translate('Reprenez le dossier de collecte pour retrouver ses analyses EVTX.')
         elif metadata:
             text=f"{metadata['rule']} · {metadata['references']} référence(s), {metadata['events']} événement(s) · ± {metadata['minutes']} min."

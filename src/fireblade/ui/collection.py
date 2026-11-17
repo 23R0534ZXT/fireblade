@@ -147,7 +147,7 @@ class CollectionMixin(AlertContextMixin):
         settings = QHBoxLayout()
         settings.addWidget(QLabel('Gravité minimale Hayabusa :'))
         self.hayabusa_level = QComboBox()
-        for label, code in [('Information', 'informational'), ('Faible', 'low'), ('Moyenne', 'medium'), ('Élevée', 'high'), ('Critique', 'critical')]:
+        for label, code in [('Information', 'informational'), (translate('Faible'), 'low'), (translate('Moyenne'), 'medium'), (translate('Élevée'), 'high'), (translate('Critique'), 'critical')]:
             self.hayabusa_level.addItem(label, code)
         self.hayabusa_level.setCurrentIndex(1)
         settings.addWidget(self.hayabusa_level)

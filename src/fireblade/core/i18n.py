@@ -34,6 +34,8 @@ EN = {
     "Moteur intégré absent : SQLECmd. La construction du pack forensic est nécessaire.": "Built-in engine missing: SQLECmd. The forensic pack must be built.",
     "{} ligne(s) non structurée(s), conservée(s) en texte brut": "{} unstructured line(s), kept as raw text",
     "Enregistrement Linux tronqué à {} ; ABI attendu : glibc LE {} octets": "Linux record truncated at {}; expected ABI: glibc LE {} bytes",
+    "Chemin non sûr, lien ou fichier spécial": "Unsafe path, link or special file",
+    "Chemin non sûr, lien ou fichier spécial": "Unsafe path, link or special file",
     "{} ligne(s) conservée(s) en lecture brute (colonne Lecture)": "{} line(s) kept in raw mode (Read type column)",
     "Correspondances": "Matches",
     # Coverage and hunt findings: composed sentences, translated before the counts
@@ -54,7 +56,7 @@ EN = {
     # call site because they carry counts and paths.
     "VUE D’ENSEMBLE": "OVERVIEW",
     "ACTIVITÉ CHRONOLOGIQUE": "TIMELINE ACTIVITY",
-    "Construisez la chronologie pour explorer vos événements.\\nChoisissez les colonnes de date avec « Sources et dates… ».": "Build the timeline to explore your events.\\nChoose the date columns with \"Sources and dates…\".",
+    "Construisez la chronologie pour explorer vos événements.\nChoisissez les colonnes de date avec « Sources et dates… ».": "Build the timeline to explore your events.\nChoose the date columns with \"Sources and dates…\".",
     "Densité globale": "Overall density",
     "Échelle logarithmique": "Logarithmic scale",
     "{} correspondance(s) · {} analyses · {} sans date exploitable · {} dates sans fuseau explicite": "{} matches · {} analyses · {} without a usable date · {} dates without an explicit time zone",
@@ -64,6 +66,10 @@ EN = {
     "aucune colonne": "no column",
     "Analyse : ": "Analysis: ",
     "{} datés": "{} dated",
+    "Faible": "Low",
+    "Moyenne": "Medium",
+    "Élevée": "High",
+    "Critique": "Critical",
     "Recherche · tous les artefacts": "Search · all artifacts",
     "Alerte : {} · Gravité : {}": "Alert: {} · Severity: {}",
     "Ligne source : {}": "Source line: {}",

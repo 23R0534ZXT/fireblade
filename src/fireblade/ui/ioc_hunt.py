@@ -97,7 +97,7 @@ class HuntPanel(QWidget):
             release();self.display(store)
             m=store.metadata
             self.window.coverage_notice('Chasse IOC','warning' if m.get('truncated') or m.get('rejected') or m.get('status')!='complete' else 'info',
-                f"Chasse {m.get('status')} : {m.get('scanned_rows')} lignes lues ; {m.get('rejected')} IOC rejetés ; détails limités : {m.get('truncated')}.",str(store.path),summary=m)
+                translate('Chasse {} : {} lignes lues ; {} IOC rejetés ; détails limités : {}.').format(m.get('status'),m.get('scanned_rows'),m.get('rejected'),m.get('truncated')),str(store.path),summary=m)
 
         def fail(message):release();self.window.error(message)
         def cancel():release();self.status.setText(translate('Chasse annulée. Les résultats précédents sont conservés.'))

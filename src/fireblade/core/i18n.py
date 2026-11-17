@@ -20,6 +20,49 @@ from functools import lru_cache
 PLACEHOLDER = "{}"
 
 EN = {
+    # What the engines write into collection.json and the analyst reads in the report.
+    "Binaire inconnu ; aucun décodage arbitraire": "Unknown binary; no arbitrary decoding",
+    "Signature de compression absente ou fichier tronqué": "Compression signature missing or file truncated",
+    "Chemin non sûr, fichier spécial ou ZIP chiffré": "Unsafe path, special file or encrypted ZIP",
+    "Ligne 1 supérieure à 8 Mio ; lecture interrompue explicitement": "Line 1 larger than 8 MiB; read interrupted explicitly",
+    "Moteur intégré absent : SQLECmd. La construction du pack forensic est nécessaire.": "Built-in engine missing: SQLECmd. The forensic pack must be built.",
+    "{} ligne(s) non structurée(s), conservée(s) en texte brut": "{} unstructured line(s), kept as raw text",
+    "Enregistrement Linux tronqué à {} ; ABI attendu : glibc LE {} octets": "Linux record truncated at {}; expected ABI: glibc LE {} bytes",
+    "{} ligne(s) conservée(s) en lecture brute (colonne Lecture)": "{} line(s) kept in raw mode (Read type column)",
+    "Correspondances": "Matches",
+    # Coverage and hunt findings: composed sentences, translated before the counts
+    # go in so the frame is English too.
+    "Collecte": "Collection",
+    "Chronologie": "Timeline",
+    "Collecte {} · {} fichiers inventoriés · {} sans réussite complète attestée.": "Collection {} · {} files inventoried · {} without an attested complete success.",
+    "Index construit : {} lignes datées, {} sans date ({} absentes, {} invalides), {} sans fuseau et {} analyses en erreur.": "Index built: {} dated rows, {} without a date ({} absent, {} invalid), {} without an explicit time zone and {} analyses in error.",
+    "Export vérifié : {} / {} lignes écrites ; SHA-256 calculé.": "Verified export: {} / {} rows written; SHA-256 computed.",
+    " Base : {} lignes ; {} champs exportés ; {} colonnes sources disponibles.": " Base: {} rows; {} fields exported; {} source columns available.",
+    " Le fichier contient des comptages par groupe.": " The file contains per-group counts.",
+    " Périmètre partiel ou détails limités : consulter les limites du reçu.": " Partial scope or limited details: see the receipt limits.",
+    "Export vérifié : {} lignes · {}": "Verified export: {} rows · {}",
+    "Contrôle de couverture demandé.": "Coverage check requested.",
+    "Plan de familles attendues ajusté.": "Expected-family plan adjusted.",
+    "Chasse {} : {} lignes lues ; {} IOC rejetés ; détails limités : {}.": "Hunt {}: {} rows read; {} IOCs rejected; details limited: {}.",
+    # Timeline, alert banner and row details: composed sentences, translated at the
+    # call site because they carry counts and paths.
+    "VUE D’ENSEMBLE": "OVERVIEW",
+    "ACTIVITÉ CHRONOLOGIQUE": "TIMELINE ACTIVITY",
+    "Construisez la chronologie pour explorer vos événements.\\nChoisissez les colonnes de date avec « Sources et dates… ».": "Build the timeline to explore your events.\\nChoose the date columns with \"Sources and dates…\".",
+    "Densité globale": "Overall density",
+    "Échelle logarithmique": "Logarithmic scale",
+    "{} correspondance(s) · {} analyses · {} sans date exploitable · {} dates sans fuseau explicite": "{} matches · {} analyses · {} without a usable date · {} dates without an explicit time zone",
+    "{} analyse(s) en erreur : ": "{} analysis(es) in error: ",
+    "Détails dans Sources et dates.": "Details in Sources and dates.",
+    "Date source ({}) : {}": "Source date ({}) : {}",
+    "aucune colonne": "no column",
+    "Analyse : ": "Analysis: ",
+    "Ligne source : ": "Source line: ",
+    "Note : ": "Note: ",
+    "Alerte : {} · Gravité : {}": "Alert: {} · Severity: {}",
+    "Reprenez le dossier de collecte pour retrouver ses analyses EVTX.": "Resume the collection folder to find its EVTX analyses again.",
+    "Sélectionnez une alerte pour ouvrir les événements EVTX autour de sa date, sur la même machine.": "Select an alert to open the EVTX events around its date, on the same machine.",
+    "{} · {} référence(s), {} événement(s) · ± {} min.": "{} · {} reference(s), {} event(s) · ± {} min.",
     # Messages the engines raise on error, shown in a dialog, the Imports report
     # or the coverage panel; translated here rather than in each call site.
     "Erreur": "Error",

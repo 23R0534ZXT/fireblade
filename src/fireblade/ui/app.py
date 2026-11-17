@@ -977,7 +977,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
             self.detail_fields = []
             self.details.setPlainText(str(self.model.data(index.siblingAtColumn(0))))
         else:
-            text = f"Ligne source : {node.values[0]}\nNote : {node.note or ''}\n\n"
+            text = translate('Ligne source : ')+f"{node.values[0]}\n"+translate('Note : ')+f"{node.note or ''}\n\n"
             self.detail_fields = []
             parts, position = [text], len(text.encode('utf-16-le')) // 2
             for column, (header, value) in enumerate(zip(self.case.headers, node.values[1:])):

@@ -115,26 +115,28 @@ class CoveragePanel(QWidget):
         try:
             if dialog.exec()==QDialog.Accepted:
                 self.expected_tools=[listing.item(i).text() for i in range(listing.count()) if listing.item(i).checkState()==Qt.Checked]
-                self.record('Collecte','info','Plan de familles attendues ajusté.',expected_readers=self.expected_tools)
+                self.record('Collecte','info',translate('Plan de familles attendues ajusté.'),expected_readers=self.expected_tools)
         finally:dialog.deleteLater()
     def record_collection(self,report):
         files=report.get('files',[]);issues=[e for e in files if e.get('status') not in ('complete','companion')]
         self.record('Collecte','warning' if issues or report.get('status')!='complete' else 'info',
-                    f"Collecte {report.get('status')} · {len(files)} fichiers inventoriés · {len(issues)} sans réussite complète attestée.",report.get('output',''),
+                    translate('Collecte {} · {} fichiers inventoriés · {} sans réussite complète attestée.').format(report.get('status'),len(files),len(issues)),report.get('output',''),
                     issues=[dict(path=e.get('path'),status=e.get('status'),reason=e.get('error') or e.get('reason') or ' ; '.join(str(r.get('error') or ' ; '.join(r.get('warnings',[]))) for r in e.get('runs',[]) if r.get('error') or r.get('warnings')) or 'Consulter les journaux des lecteurs') for e in issues[:100]],omitted_issue_details=max(0,len(issues)-100))
     def record_timeline(self,panel):
         sources=panel.store.sources;errors=[s for s in sources if s.get('error')];undated=sum(s['undated'] for s in sources);naive=sum(s['naive'] for s in sources)
         self.record('Chronologie','warning' if errors or undated or naive else 'info',
-                    f"Index construit : {sum(s['dated'] for s in sources)} lignes datées, {undated} sans date ({sum(s.get('empty_dates',0) for s in sources)} absentes, {sum(s.get('invalid_dates',0) for s in sources)} invalides), {naive} sans fuseau et {len(errors)} analyses en erreur.",
+                    translate('Index construit : {} lignes datées, {} sans date ({} absentes, {} invalides), {} sans fuseau et {} analyses en erreur.').format(
+                        sum(s['dated'] for s in sources),undated,sum(s.get('empty_dates',0) for s in sources),
+                        sum(s.get('invalid_dates',0) for s in sources),naive,len(errors)),
                     sources=copy.deepcopy(sources),respect_filters=panel.built_respect)
     def export_done(self,receipt):
         limited=receipt.get('partial') or receipt.get('truncated')
-        reason=f"Export vérifié : {receipt['written']} / {receipt['expected']} lignes écrites ; SHA-256 calculé."
-        if 'source_rows' in receipt:reason+=f" Base : {receipt['source_rows']} lignes ; {len(receipt.get('columns',[]))} champs exportés ; {receipt.get('available_columns')} colonnes sources disponibles."
-        if receipt.get('grouped'):reason+=' Le fichier contient des comptages par groupe.'
-        if limited:reason+=' Périmètre partiel ou détails limités : consulter les limites du reçu.'
+        reason=translate('Export vérifié : {} / {} lignes écrites ; SHA-256 calculé.').format(receipt['written'],receipt['expected'])
+        if 'source_rows' in receipt:reason+=translate(' Base : {} lignes ; {} champs exportés ; {} colonnes sources disponibles.').format(receipt['source_rows'],len(receipt.get('columns',[])),receipt.get('available_columns'))
+        if receipt.get('grouped'):reason+=translate(' Le fichier contient des comptages par groupe.')
+        if limited:reason+=translate(' Périmètre partiel ou détails limités : consulter les limites du reçu.')
         self.record('Export','warning' if not receipt['written'] or limited else 'info',reason,receipt['path'],**{k:v for k,v in receipt.items() if k!='path'})
-        self.window.statusBar().showMessage(f"Export vérifié : {receipt['written']} lignes · {receipt['path']}")
+        self.window.statusBar().showMessage(translate('Export vérifié : {} lignes · {}').format(receipt['written'],receipt['path']))
     def interrupt(self):
         if self.reader:self.reader.interrupt()
     def launch(self):
@@ -156,7 +158,7 @@ class CoveragePanel(QWidget):
             return
         QTimer.singleShot(500,self._start_when_idle)
     def _audit(self):
-        self.ensure_context();self.record('Analyse','info','Contrôle de couverture demandé.',verify_hashes=self.hashes.isChecked(),deep_checks=self.deep.isChecked())
+        self.ensure_context();self.record('Analyse','info',translate('Contrôle de couverture demandé.'),verify_hashes=self.hashes.isChecked(),deep_checks=self.deep.isChecked())
         self.window.remember_active();reader=WorkspaceReader(self.window.documents,self.window.settings,self.window.case);self.reader=reader
         active=copy.deepcopy(self.window.collection.report) if self.window.collection else None
         data=self.window.active_investigation;paths=[str(Path(c['path'])/'collection.json') for c in data.get('collections',[])] if data else []

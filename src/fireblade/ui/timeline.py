@@ -29,7 +29,7 @@ class TimelineOverview(QWidget):
     def display(self,histogram,bounds):self.histogram=histogram;self.bounds=bounds;self.update()
     def paintEvent(self,event):
         painter=QPainter(self);painter.fillRect(self.rect(),self.palette().color(QPalette.Base))
-        painter.setPen(self.palette().color(QPalette.PlaceholderText));painter.drawText(12,18,'VUE D’ENSEMBLE')
+        painter.setPen(self.palette().color(QPalette.PlaceholderText));painter.drawText(12,18,translate('VUE D’ENSEMBLE'))
         data=self.histogram
         if not data:return
         left=TimelineCanvas.LEFT;width=max(1,self.width()-left-24);counts={}
@@ -84,11 +84,11 @@ class TimelineCanvas(QWidget):
         palette=self.palette();painter.fillRect(self.rect(),palette.color(QPalette.Base))
         text=palette.color(QPalette.Text);muted=palette.color(QPalette.PlaceholderText)
         font=QFont(self.font());font.setBold(True);painter.setFont(font);painter.setPen(text)
-        painter.drawText(16,26,'ACTIVITÉ CHRONOLOGIQUE')
+        painter.drawText(16,26,translate('ACTIVITÉ CHRONOLOGIQUE'))
         if not self.histogram:
             painter.setFont(self.font());painter.setPen(muted)
             painter.drawText(QRectF(20,55,self.width()-40,100),Qt.AlignCenter|Qt.TextWordWrap,
-                             'Construisez la chronologie pour explorer vos événements.\nChoisissez les colonnes de date avec « Sources et dates… ».')
+                             translate('Construisez la chronologie pour explorer vos événements.\nChoisissez les colonnes de date avec « Sources et dates… ».'))
             return
         data=self.histogram;left=self.LEFT;width=max(1,self.width()-left-24)
         counts={};global_counts={};marks={}
@@ -97,8 +97,8 @@ class TimelineCanvas(QWidget):
             if marked:marks[source,bucket]=marked
         maximum=max(global_counts.values(),default=1);bar_width=width/data['bins']
         painter.setFont(self.font());painter.setPen(muted)
-        painter.drawText(16,63,'Densité globale')
-        painter.drawText(16,83,'Échelle logarithmique')
+        painter.drawText(16,63,translate('Densité globale'))
+        painter.drawText(16,83,translate('Échelle logarithmique'))
         for bucket,count in global_counts.items():
             height=47*math.log1p(count)/math.log1p(maximum)
             painter.fillRect(QRectF(left+bucket*bar_width,92-height,max(1,bar_width-1),height),QColor(COLORS[0]))
@@ -435,8 +435,13 @@ class TimelinePanel(QWidget):
         self.previous.setEnabled(self.offset>0);self.next.setEnabled(self.offset+len(page['rows'])<page['count'])
         self.page_label.setText(f"{self.offset+1 if page['rows'] else 0}–{self.offset+len(page['rows'])} / {page['count']:,}".replace(',',' '))
         errors=[s['name']+' : '+s['error'] for s in sources if s['error']]
-        self.stats.setText(f"{page['count']:,} correspondance(s) · {len(sources)} analyses · {sum(s['undated'] for s in sources):,} sans date exploitable · {sum(s['naive'] for s in sources):,} dates sans fuseau explicite".replace(',',' ')+
-            (f'\n{len(errors)} analyse(s) en erreur : '+' ; '.join(message[:350] for message in errors[:3])+('… Détails dans Sources et dates.' if len(errors)>3 else '') if errors else ''))
+        # Composed after the language pass: the template is translated first, then the
+        # numbers go in, so an English interface never shows a French counter line.
+        line=translate('{} correspondance(s) · {} analyses · {} sans date exploitable · {} dates sans fuseau explicite').format(
+            f"{page['count']:,}",f"{len(sources):,}",f"{sum(s['undated'] for s in sources):,}",f"{sum(s['naive'] for s in sources):,}").replace(',',' ')
+        if errors:
+            line+='\n'+translate('{} analyse(s) en erreur : ').format(len(errors))+' ; '.join(message[:350] for message in errors[:3])+('… '+translate('Détails dans Sources et dates.') if len(errors)>3 else '')
+        self.stats.setText(line)
         if self.bounds:
             self.start.setText(utc_label(self.bounds[0]).replace(' UTC','Z').replace(' ','T'))
             self.end.setText(utc_label(self.bounds[1]).replace(' UTC','Z').replace(' ','T'))
@@ -493,9 +498,10 @@ class TimelinePanel(QWidget):
         row=self.model.rows[index.row()];source=self.store.sources[row[0]]
         self.canvas.selected_time=row[2];self.canvas.selected_source=row[0];self.canvas.update()
         self.open_button.setEnabled(True)
-        self.details.setPlainText(f"{utc_label(row[2])}\n\nDate source ({source.get('column_name') or 'aucune colonne'}) : {row[3] or 'Absente'}\n"+
-            ('Attention : fuseau absent ; position UTC supposée.\n' if row[7] else '')+
-            f"\nAnalyse : {source['path']}\nLigne source : {row[1]}\n\n{row[4] or ''}\n\nNote : {row[5] or 'Aucune'}")
+        self.details.setPlainText(f"{utc_label(row[2])}\n\n"+
+            translate('Date source ({}) : {}').format(source.get('column_name') or translate('aucune colonne'),row[3] or translate('Absente'))+'\n'+
+            (translate('Attention : fuseau absent ; position UTC supposée.')+'\n' if row[7] else '')+
+            '\n'+translate('Analyse : ')+str(source['path'])+'\n'+translate('Ligne source : ')+str(row[1])+f"\n\n{row[4] or ''}\n\n"+translate('Note : ')+(row[5] or translate('Aucune')))
 
     def open_source(self):
         if self.loading or not self.window.can_open_file():return

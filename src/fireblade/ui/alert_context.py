@@ -10,6 +10,7 @@ from fireblade.core.collection import Collection
 from fireblade.core.alert_context import build_context, sources, retain_context, discard_preview
 from fireblade.core.engine import Case
 from fireblade.core.models import Filter, View
+from fireblade.core.i18n import translate
 
 
 class AlertContextMixin:
@@ -120,9 +121,9 @@ class AlertContextMixin:
         self.context_minutes.setVisible(alert)
         self.context_window_label.setVisible(alert)
         if alert:
-            text='Sélectionnez une alerte pour ouvrir les événements EVTX autour de sa date, sur la même machine.'
-            if row:text='Alerte : '+str(row[1].get('RuleTitle',''))+' · Gravité : '+str(row[1].get('Level',''))
-            if not associated:text+=' Reprenez le dossier de collecte pour retrouver ses analyses EVTX.'
+            text=translate('Sélectionnez une alerte pour ouvrir les événements EVTX autour de sa date, sur la même machine.')
+            if row:text=translate('Alerte : {} · Gravité : {}').format(row[1].get('RuleTitle',''),row[1].get('Level',''))
+            if not associated:text+=' '+translate('Reprenez le dossier de collecte pour retrouver ses analyses EVTX.')
         elif metadata:
             text=f"{metadata['rule']} · {metadata['references']} référence(s), {metadata['events']} événement(s) · ± {metadata['minutes']} min."
             if metadata.get('truncated'):text+=' Contexte limité : certains événements ne sont pas affichés.'

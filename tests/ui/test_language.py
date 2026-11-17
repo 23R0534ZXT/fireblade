@@ -132,7 +132,9 @@ def test_the_most_specific_template_wins(monkeypatch):
     try:
         set_language('en')
         assert translate("Analyse en erreur : 3") == "Analysis in error: 3"
-        assert translate("Collecte en erreur") == "Collecte in error"
+        # The captured value goes through the table too, so this sample must be a word
+        # the table does not know: "Collecte" is now an entry (Collection).
+        assert translate("Zorg en erreur") == "Zorg in error"
     finally:
         set_language('fr')
         templates.cache_clear()

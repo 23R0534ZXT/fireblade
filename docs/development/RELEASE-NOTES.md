@@ -20,7 +20,7 @@ were first measured, then removed.
 ## Provenance no longer copies every CSV
 
 - Each parser CSV was **copied line by line in Python** to add two provenance
-  columns: on this collection, some fifteen gigabytes rewritten by hand.
+  columns: the whole collection rewritten a second time, line by line.
 - Those columns are now added **by the import itself**, while reading: same result,
   a single pass, no intermediate file.
 
@@ -70,14 +70,14 @@ were first measured, then removed.
   boundary with their line number, a sliced read that gives the rows of a whole read,
   a compressed or wide file that is refused, a batch in order.
 - Full suite on the range reader: 1 452 passed, 28 skipped, ruff clean, real window.
-- Full suite run on the published tree, ruff included.
+- Full suite run on the tree that was tagged: 1 475 passed, 28 skipped, ruff clean.
 - End-to-end measurement on the same collection as 0.4.1, same machine, same
   reference files.
 
 ## What the acceptance run found, and what is now fixed
 
 The 0.4.1 acceptance run covered eight sections on a clean Windows 11 virtual
-machine, 286 checked steps: 274 passed, 1 to review, 7 failed. The failures are
+machine, 282 checked steps: 274 passed, 1 to review, 7 failed. The failures are
 fixed here, each with a test.
 
 - **The coverage audit went silent after a hunt.** Once an IOC hunt had run, the
@@ -119,6 +119,46 @@ fixed here, each with a test.
   `Sans Serif` and ordinary English sentences matched its list. It now uses the curated
   vocabulary of the inventory, which leaves one real hit - the filter list above - and
   stops hiding the rest.
+
+- **The status bar had no room left for its own message.** Five permanent widgets
+  met the left side of the bar - the version, a copy of the case name already in the
+  window title, the global-rules summary, the coverage badge, the save stamp - and a
+  running collection added a label, a progress bar and Stop that then stayed for the
+  rest of the session. On a 1024-pixel window the analyst read `2 ite`. The case name
+  leaves the bar, the progress block disappears with the run, the save stamp steps
+  aside while a collection runs, and the running label elides with its tooltip
+  carrying the whole sentence.
+- **The Imports table stayed empty while the collection advanced.** Counters moved,
+  the table showed "0 files in this view", because the report was only published at
+  the end. It now follows the run once a second: rows are appended, the cells of the
+  rows already shown are repainted, and the model is reset only when a file leaves.
+- **"Full report" printed the whole page in French.** The text is assembled after the
+  language pass, so no widget pass could translate it. Every line is now translated
+  where it is written, status words included, and the table headers that were still
+  French (Readers, Reason) have their entries.
+- **Three analyses of the same family gave three identical tabs.** The tab is named
+  after the evidence file, so three `CarsDB.db` from different folders were
+  indistinguishable. A shared label now gains the shortest run of trailing folders
+  that separates it - `active.txt · System32/config` - and two analyses of the very
+  same file fall back to ` (2)`.
+- **Preferences answered "Automatic" to a question about quantities.** Memory per
+  analysis and both thread fields showed `Current configuration` or `Automatic`
+  instead of a number. The field now reads out what automatic resolves to on this
+  machine, computed by the same helper the engine uses: `Automatic · 2048 MB`,
+  `Automatic · 8 threads`. The stored value is still 0.
+- **The IOC hunt summary stated its counts in French.** The line under the results
+  table - status, rows read, matching fields, details kept, scope, rejected
+  indicators - was composed in French after the language pass, so an English
+  interface showed `Terminée · 2,499,027 lignes lues · ... 1 IOC rejetés` on the
+  screen an analyst reads after every hunt. Each piece is translated where it is
+  written, the counts go into a translated template, and the indicator types read
+  IP, Domain, URL, MD5.
+- **The coverage panel stated its findings in French.** Causes, impacts and proposed
+  actions are written by the engine, land in a table model and a text pane, and
+  neither goes through the language pass; the status line and the badge are written
+  after it too. The panel translates every cell as it displays it, and 135 table
+  entries cover the reasons the engine raises, the coverage explanations and the
+  export receipts.
 
 ## Known limits of this version
 

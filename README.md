@@ -8,7 +8,7 @@ Fireblade brings Windows artifacts, Linux logs, detection results and tabular ev
 
 [Releases](https://github.com/23R0534ZXT/fireblade/releases) · [Documentation](docs/README.md) · [Report an issue](https://github.com/23R0534ZXT/fireblade/issues/new/choose) · [Release notes](docs/development/RELEASE-NOTES.md)
 
-**[Download Fireblade 0.4.1 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.4.1/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.4.1) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/43964869155)
+**[Download Fireblade 0.4.2 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.4.2/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.4.2) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/43964869155)
 
 The desktop interface and most user guides are currently in French.
 
@@ -20,7 +20,23 @@ The interface is in English, and English is the reference from now on: new label
 
 Windows CI runs focused regression tests on Python 3.12, builds the standalone EXE in parallel, then checks its appearance, 320-analysis workspace and 3-GiB import/export workflow. The full Python 3.11–3.13 test matrix remains available through the workflow’s **full_validation** option.
 
-## Version 0.4.0 · Reading what the collection could not name
+## Version 0.4.2 · The same collection in 6 min 0 s
+
+The 9.74 GiB collection imported for the 0.4.1 acceptance run now parses in 6 min 0 s instead of 50 min 49 s, with the same 246 analyses and the same result. The read path was changed rather than tuned, and the findings of that acceptance run are fixed here.
+
+- Each file is read in its own process: no file waits on another, and one slow file no longer holds the rest of the collection.
+- A single file much larger than the others is cut into line-aligned ranges read at the same time, then merged back in order without changing a row.
+- Provenance is written by the import as it reads, instead of being copied into a second file afterwards.
+- The status bar message is no longer squeezed and stays readable while a task runs.
+- The Imports table shows the files of a collection as they are read, instead of staying empty until the end.
+- The Imports "Full report" and the findings of the coverage panel are in English, like the rest of the interface.
+- Three tabs that carried the same label now name the analysis each one shows, and Preferences shows the thread count as a number instead of the word "Automatic".
+
+Known limit: a Windows install without `LongPathsEnabled` cannot open paths beyond 260 characters.
+
+**[Download Fireblade 0.4.2 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.4.2/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.4.2)
+
+## Previous release · 0.4.0
 
 - The **Imports** report is no longer a dead end. A file that was not recognised, failed or was parked keeps its line, its reason and its hash, and can be acted on without leaving Fireblade: **See the file** (text preview, cp1252 fallback, hex dump for a binary), **Copy the unprocessed files…** (copied aside with their tree, never moved), **Export the list…** (UTF-8 CSV of what the table shows, filters included), **Park / Restore** (reversible, saved with the collection, out of the working counts) and **Delete…** (refused when the SHA-256 recorded at collection no longer matches).
 - **Read again with a reader…** analyses the selected file with the reader you choose — **text**, **saved HTML page** (visible text and links, no browser), **PDF (text layer)**, **CSV/TSV table** — imports the result like any other source and opens the new analysis. The file is only read; the hash taken at that read is the reference, and a later read is refused if the file changed.

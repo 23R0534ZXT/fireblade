@@ -20,6 +20,8 @@ from functools import lru_cache
 PLACEHOLDER = "{}"
 
 EN = {
+    "Suppression impossible": "Delete failed",
+    "le fichier a changé depuis la collecte : suppression refusée": "the file has changed since the collection: deletion refused",
     "Ouverture": "Opening",
     "Modification": "Modification",
     "Rechercher": "Search",

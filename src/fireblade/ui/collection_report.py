@@ -346,7 +346,7 @@ class CollectionReport(QWidget):
         try:
             record=actions.remove_source(entry)
         except (OSError, ValueError) as error:
-            QMessageBox.warning(self,'Suppression impossible',str(error));return
+            QMessageBox.warning(self,translate('Suppression impossible'),translate(str(error)));return
         entry.update(record)
         self.model.layoutChanged.emit();self.show_entry(self.table.currentIndex());self.notify()
 

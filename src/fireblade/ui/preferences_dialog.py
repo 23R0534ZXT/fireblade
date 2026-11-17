@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QLabel, QTableWidget, QTableWidgetItem, QApplication, QTabWidget,
 )
 from fireblade.core import machine
+from fireblade.core.i18n import translate
 
 
 class PreferencesDialog(QDialog):
@@ -107,16 +108,16 @@ class PreferencesDialog(QDialog):
         preview_layout.setContentsMargins(5,5,5,5)
         self.preview_table=QTableWidget(2,2)
         self.preview_table.setHorizontalHeaderLabels(['Événement','Utilisateur'])
-        self.preview_table.setItem(0,0,QTableWidgetItem('Ouverture'))
+        self.preview_table.setItem(0,0,QTableWidgetItem(translate('Ouverture')))
         self.preview_table.setItem(0,1,QTableWidgetItem('alice'))
-        self.preview_table.setItem(1,0,QTableWidgetItem('Modification'))
+        self.preview_table.setItem(1,0,QTableWidgetItem(translate('Modification')))
         self.preview_table.setItem(1,1,QTableWidgetItem('bob'))
         self.preview_table.setAlternatingRowColors(True)
         self.preview_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.preview_table.selectRow(0)
         self.preview_table.setFixedHeight(100)
         preview_layout.addWidget(self.preview_table)
-        controls=QHBoxLayout();controls.addWidget(QLineEdit('Rechercher un événement'))
+        controls=QHBoxLayout();controls.addWidget(QLineEdit(translate('Rechercher un événement')))
         controls.addWidget(QPushButton('Ouvrir'));preview_layout.addLayout(controls)
         form.addRow('Aperçu',self.preview)
         self.skin.currentIndexChanged.connect(self.choose_skin)

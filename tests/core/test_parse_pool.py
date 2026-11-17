@@ -5,6 +5,17 @@ from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.parse_pool import ParsePool
 
 
+def test_the_worker_is_told_where_the_package_lives(monkeypatch):
+    """A source checkout is not installed: the child must still import fireblade."""
+    import os
+    import fireblade
+    monkeypatch.delenv('PYTHONPATH', raising=False)
+    environment = ParsePool(1)._environment()
+    root = os.path.dirname(os.path.dirname(os.path.abspath(fireblade.__file__)))
+    assert environment['PYTHONPATH'].split(os.pathsep)[0] == root
+    assert environment['PYTHONUTF8'] == '1'
+
+
 def test_a_file_is_read_in_another_process(tmp_path):
     source = tmp_path / "auth.log"
     source.write_text("Jan  2 03:04:05 host sshd[42]: Accepted password for root from 10.0.0.5 port 22 ssh2\n",

@@ -33,11 +33,28 @@ class ParsePool:
             return [sys.executable, '--parse-worker']
         return [sys.executable, '-m', 'fireblade.core.linux_worker']
 
-    def _spawn(self):
+    def _environment(self):
+        """The environment of a worker, with the package reachable from a source tree.
+
+        A child interpreter inherits the environment, not the parent's sys.path: a
+        source checkout that is not installed (a CI runner, a contributor clone)
+        imports fireblade in the parent only because pytest put src on the path, and
+        every worker died at import with return code 1 - the suite was green here and
+        red on the runner for exactly that reason.
+        """
         environment = dict(os.environ, PYTHONIOENCODING='utf-8', PYTHONUTF8='1')
+        package = sys.modules.get('fireblade')
+        origin = getattr(package, '__file__', None)
+        if origin:
+            root = os.path.dirname(os.path.dirname(os.path.abspath(origin)))
+            existing = environment.get('PYTHONPATH')
+            environment['PYTHONPATH'] = root + (os.pathsep + existing if existing else '')
+        return environment
+
+    def _spawn(self):
         return subprocess.Popen(self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL, text=True, encoding='utf-8',
-                                bufsize=1, env=environment)
+                                bufsize=1, env=self._environment())
 
     def start(self):
         with self._mutex:

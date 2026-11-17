@@ -142,6 +142,9 @@ class SearchDialog(QDialog):
         close = QDialogButtonBox(QDialogButtonBox.Close)
         close.rejected.connect(self.reject)
         layout.addWidget(close)
+        # Built on demand, after the window's pass: it applies the language itself.
+        from fireblade.ui.language import apply_language
+        apply_language(self)
 
     def cancel(self):
         if self.task:

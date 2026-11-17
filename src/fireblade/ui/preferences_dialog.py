@@ -146,6 +146,10 @@ class PreferencesDialog(QDialog):
         screen=QApplication.primaryScreen()
         if screen:
             area=screen.availableGeometry();self.resize(min(620,int(area.width()*.9)),min(780,int(area.height()*.85)))
+        # This dialog is built after the window's language pass has run, so it applies
+        # the language itself: its theme preview and its buttons used to stay French.
+        from fireblade.ui.language import apply_language
+        apply_language(self)
 
     def choose_skin(self):
         from fireblade.core.themes import THEMES

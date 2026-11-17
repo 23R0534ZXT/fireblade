@@ -20,6 +20,10 @@ from functools import lru_cache
 PLACEHOLDER = "{}"
 
 EN = {
+    "Ouverture": "Opening",
+    "Modification": "Modification",
+    "Rechercher": "Search",
+    "Rechercher un événement": "Search for an event",
     # What the engines write into collection.json and the analyst reads in the report.
     "Binaire inconnu ; aucun décodage arbitraire": "Unknown binary; no arbitrary decoding",
     "Signature de compression absente ou fichier tronqué": "Compression signature missing or file truncated",

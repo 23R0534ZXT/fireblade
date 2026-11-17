@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QDialog,
 
 from fireblade.ui.flow_layout import FlowLayout
 from fireblade.core.layout import write_json
+from fireblade.core.i18n import translate
 from fireblade.core.models import Filter, View
 from fireblade.core.timeline import (KINDS, DATE_TIME, TimelineStore, field_kind, guess_time_column,
                                      guess_time_columns, saved_columns, split_date_time, utc_label)

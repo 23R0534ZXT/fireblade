@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QFileDialog
 from fireblade.core.models import AnalysisSnapshot, View
 from fireblade.ui.language import source_text
 from fireblade.ui.workers import Job
+from fireblade.core.i18n import translate
 
 
 class DiskSignals(QObject):
@@ -310,7 +311,7 @@ class StartWorkflowMixin:
             self.coverage_notice('Disque', 'error', error, '')
             self.report_collection_failure(error)
         else:
-            self.disk_message(f"{label} · {len(report['documents'])} analyses · {errors} incidents")
+            self.disk_message(f"{translate(label)} · {len(report['documents'])} analyses · {errors} incidents")
         self.disk_job = None
         self.disk_drain.stop()
         self.update_collection_controls()

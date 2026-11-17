@@ -889,7 +889,7 @@ EN = {
     "· Gravité :": "· Severity:",
     "· Les pistes hors de la vue visible ne sont pas représentées dans cette capture.": "· Lanes outside the visible view are not shown in this capture.",
     "· SHA-256 vérifiés ·": "· SHA-256 verified ·",
-    "· erreur de lecteur": "· drive error",
+    "· erreur de lecteur": "· reader error",
     "· filtres de chaque analyse appliqués": "· filters of each analysis applied",
     "· filtres des analyses appliqués lors de la construction": "· analysis filters applied during creation",
     "· filtres ignorés": "· filters ignored",
@@ -1317,6 +1317,15 @@ EN = {
     "PDF sans couche texte : un scan ne se lit pas sans OCR": "PDF with no text layer: a scan cannot be read without OCR",
     "PDF chiffré : la couche texte demande un mot de passe": "Encrypted PDF: the text layer needs a password",
     "aucune page décodée": "no page could be decoded",
+    "Configuration actuelle": "Current configuration",
+    "Threads · import et parsing": "Threads · import and parsing",
+    "Correspondances uniquement": "Matching fields only",
+    "{} correspondances · {} artefacts parcourus": "{} matches · {} artifacts scanned",
+    "Filtrer artifact names…": "Filter artifact names…",
+    "Opération impossible": "Operation failed",
+    "DTD et entités non prises en charge": "DTD and entities are not supported",
+    "Erreurs / interrompus": "Errors / interrupted",
+    "Indisponible": "Unavailable",
 }
 
 LANGUAGES = ("en", "fr")

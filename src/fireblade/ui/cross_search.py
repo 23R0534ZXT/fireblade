@@ -11,6 +11,7 @@ from fireblade.core.engine import Case
 from fireblade.core.models import analysis_label
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.models import View
+from fireblade.core.i18n import translate
 
 SAMPLE_ROWS = 4
 SAMPLE_WIDTH = 160
@@ -176,7 +177,7 @@ class SearchDialog(QDialog):
                     item.setToolTip(result.path if col == 0 else result.error)
                     self.table.setItem(row, col, item)
             self.filter_results()
-            self.message.setText(f"{sum(r.count or 0 for r in results)} correspondances · {len(results)} artefacts parcourus")
+            self.message.setText(translate("{} correspondances · {} artefacts parcourus").format(sum(r.count or 0 for r in results), len(results)))
             if results:
                 self.table.setCurrentCell(0, 0)
             self.show_sample()

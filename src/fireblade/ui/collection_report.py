@@ -128,7 +128,7 @@ class OutcomeModel(QAbstractTableModel):
         if role==Qt.ToolTipRole:return str(entry.get('path',''))
         if role==Qt.DisplayRole:
             status=translate(STATUSES.get(entry['status'],entry['status']))
-            if outcome(entry)=='errors' and entry['status']=='attention':status+=' · erreur de lecteur'
+            if outcome(entry)=='errors' and entry['status']=='attention':status+=translate(' · erreur de lecteur')
             if entry.get('ignored'):status+=translate(' · écarté')
             return [status,str(entry.get('path','')),
                     ', '.join(entry.get('tools',[])),
@@ -214,7 +214,7 @@ class CollectionReport(QWidget):
                 len(self.model.entries),counts['complete'],counts['warnings'],counts['errors'],
                 counts['unsupported'],counts['other'],counts['ignored'])
             tail=translate('Import : {} · {} analyses · Source : {}').format(
-                STATUSES.get(report['status'],report['status']),len(report.get('documents',[])),report['source'])
+                translate(STATUSES.get(report['status'],report['status'])),len(report.get('documents',[])),report['source'])
             self.summary.setText(head+'\n'+tail)
         else:self.summary.setText('Aucune collecte ouverte. Importez un dossier ou reprenez une collecte existante.')
         self.details.setPlainText('Sélectionnez un fichier pour lire ses avertissements, sa provenance et ses sorties. '

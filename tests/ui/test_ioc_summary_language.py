@@ -37,10 +37,11 @@ def test_the_hunt_summary_is_written_in_english(qt_application):
         def close(self):
             pass
 
+    # The interface language decides the spinbox prefix at construction time.
+    set_language('en')
     window = FakeWindow()
     panel = HuntPanel(window)
     try:
-        set_language('en')
         panel.page = lambda delta: None
         panel.display(Store())
         text = panel.status.text()

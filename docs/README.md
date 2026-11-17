@@ -1,26 +1,42 @@
 # Documentation
 
-| Besoin | Document |
+Fireblade ships with its guides inside the executable; this folder is the same material,
+plus what a contributor needs.
+
+## Use it
+
+| Need | Document |
 |---|---|
-| Personnaliser les panneaux, colonnes, recherches et ressources | [Espace de travail 0.2.2](guides/ESPACE-DE-TRAVAIL.md) |
-| Parser le grand pack d’artefacts bruts | [Exercice brut](guides/PACK-BRUT.md) et [choix des collectes](guides/COLLECTES-PACK-BRUT.md) |
-| Choisir entre petit pack, gros CSV et fichiers bruts | [Jeux de test](guides/JEUX-DE-TEST.md) |
-| Installer le programme et découvrir le dépôt | [README principal](../README.md) |
-| Voir la démonstration courte | [Démonstration](guides/DEMONSTRATION.md) |
-| Lire la référence détaillée et les mesures historiques | [Fonctionnalités et limites](guides/FONCTIONNALITES.md) |
-| Parcourir toutes les fonctionnalités dans l’application | [Tutoriel complet](guides/TUTORIEL-COMPLET.md) |
-| Importer une collecte, analyser les EVTX et lire le contexte des alertes | [Parcours collecte](guides/UTILISATION.md#importer-une-collecte-dartefacts-et-lancer-hayabusa) |
-| Vérifier les essais réels des moteurs embarqués | [Validation forensic](validation/COLLECTE-FORENSIC.md) |
-| Utiliser recherche, groupes, notes et exports | [Guide utilisateur](guides/UTILISATION.md) |
-| Explorer une chronologie, corréler, récupérer ou transporter un case et produire un rapport | [Chronologie et sauvegardes](guides/CHRONOLOGIE-ET-SAUVEGARDES.md) |
-| Comprendre le code et choisir où modifier | [Architecture](development/ARCHITECTURE.md) |
-| Installer les sources, tester et reconstruire | [Contribuer](development/CONTRIBUER.md) |
-| Voir le périmètre des tests du fichier Windows | [Validation Windows](validation/WINDOWS.md) |
-| Lire les mesures, rapports et limites du CSV de 3 GiB | [Qualification en charge](validation/QUALIFICATION.md) |
-| Suivre les fonctions présentes et restantes | [Parité fonctionnelle](development/PARITE-TIMELINE-EXPLORER.md) |
-| Consulter les derniers ajouts et leurs contrôles | [Ajouts TLE](validation/AJOUTS-TLE.md) |
-| Lire les anciens essais et captures | [Archives](archive/README.md) |
+| Learn the interface end to end | [Full tutorial](guides/TUTORIEL-COMPLET.md) |
+| Follow a first investigation | [User guide](guides/UTILISATION.md) |
+| Import a collection, read the Imports report, run Hayabusa | [Collection](guides/UTILISATION.md) |
+| Walk a timeline, correlate, archive, transport a case, produce a report | [Timeline and backups](guides/CHRONOLOGIE-ET-SAUVEGARDES.md) |
+| Hunt indicators in bulk | [IOC hunting](guides/CHASSE-IOC.md) |
+| Check what a collection did and did not cover | [Coverage and diagnostics](guides/COUVERTURE-COLLECTE.md) |
+| Work on a disk image or a mounted volume | [Disks and workspace](guides/DISQUES-ET-ESPACE-DE-TRAVAIL.md) |
+| Use the sample datasets | [Test datasets](guides/JEUX-DE-TEST.md) |
 
-[Contrôle de couverture et diagnostics](guides/COUVERTURE-COLLECTE.md) : inventaires, dates, intégrité, reçus d’export et limites.
+The guides are in French today; the interface, the release notes and the README are in
+English, and the guides are being translated in that order.
 
-Le tutoriel complet, le guide utilisateur et les notices sont intégrés au programme. Le reste de ce dossier est destiné au développement et n’est pas nécessaire à côté du `.exe`.
+## Understand it
+
+| Need | Document |
+|---|---|
+| Where the code lives and where to change it | [Architecture](development/ARCHITECTURE.md) |
+| Which inputs are supported, and how they are read | [Compatibility](development/COMPATIBILITE.md) |
+| The measured comparison with Timeline Explorer | [Benchmark](development/BENCHMARK-0.4.0.md) |
+| Write a plugin or a .NET reader | [Plugins](development/PLUGINS.md) |
+| Build, test and publish | [Contributing](development/CONTRIBUER.md) |
+| What each release changed | [Release notes](development/RELEASE-NOTES.md) |
+
+## Verify it
+
+| Need | Document |
+|---|---|
+| What the embedded readers were tested against | [Forensic readers](validation/COLLECTE-FORENSIC.md) |
+| The Windows qualification scope | [Windows validation](validation/WINDOWS.md) |
+| The 3 GiB load qualification | [Load qualification](validation/QUALIFICATION.md) |
+
+Validation reports are kept with the release they belong to; the CI run linked from each
+release is the authoritative record.

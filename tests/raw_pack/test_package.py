@@ -28,7 +28,7 @@ def test_generated_raw_logs_parse_with_exact_line_counts_and_landmarks(tmp_path,
     with path.open(encoding='utf-8') as stream:
         parsed = list(records(enumerate((line.rstrip('\n') for line in stream), 1), path, []))
     assert len(parsed) == result['lines']
-    assert all(row['Lecture'] == 'Structurée' for row in parsed)
+    assert all(row['Lecture'] == 'Structured' for row in parsed)
     assert result['landmarks']
     for landmark in result['landmarks']:
         assert landmark['text'] == parsed[landmark['line'] - 1]['Texte brut']

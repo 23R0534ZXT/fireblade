@@ -21,6 +21,11 @@ FAMILIES = {
     'docker': 'Conteneurs et virtualisation', 'podman': 'Conteneurs et virtualisation',
     'virsh': 'Conteneurs et virtualisation',
 }
+def is_raw(row):
+    """A row kept as raw text. Older analyses wrote the French word."""
+    return row.get('Lecture') in ('Brute', 'Raw')
+
+
 HEADERS = ['Hôte', 'Type', 'Lecture', 'Horodatage', 'Utilisateur', 'PID', 'PPID', 'Commande',
     'État', 'Protocole', 'Adresse locale', 'Port local', 'Adresse distante', 'Port distant',
     'Chemin', 'Cible', 'SHA1', 'SHA256', 'Clé', 'Valeur', 'Section', 'Planification',
@@ -97,7 +102,7 @@ def records(lines, path, warnings):
     mode=kind(path);columns=None;section='';owner='';block=None;history_time=''
     def row(number,raw,fields=None,end=None):
         return dict(zip(('Ligne','Fin de ligne','Lecture','Texte brut'),
-                        (str(number),str(end or number),'Structurée' if fields else 'Brute',raw)),**(fields or {}))
+                        (str(number),str(end or number),'Structured' if fields else 'Raw',raw)),**(fields or {}))
     for number,raw in lines:
         check_cancel()
         text=raw.strip();fields={}
@@ -297,10 +302,10 @@ def parse(source,output):
                     outputs[family]=dict(csv=str(target),family=family,rows=0);used[family]=set()
                 row.update({'Hôte':record_host or row.get('Hôte',''),'Collecte':record_collection,'Famille':family,'Type':kind(path),'Source':path})
                 writers[family].writerow(row);outputs[family]['rows']+=1;total+=1
-                totals['raw' if row['Lecture']=='Brute' else 'structured']+=1
-                entry.update(rows=total,raw_rows=raw_count+(row['Lecture']=='Brute'))
+                totals['raw' if is_raw(row) else 'structured']+=1
+                entry.update(rows=total,raw_rows=raw_count+is_raw(row))
                 used[family].update(key for key,value in row.items() if value)
-                raw_count+=row['Lecture']=='Brute'
+                raw_count+=is_raw(row)
             entry.update(status='complete' if total else 'empty',rows=total,raw_rows=raw_count)
         except OperationCancelled:raise
         except (OSError,ValueError,tarfile.TarError,EOFError) as exc:

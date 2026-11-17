@@ -96,6 +96,16 @@ fixed here, each with a test.
   420 487, the annotated row outside) and wrote a header-only CSV without a word.
   It now refuses, names the count held by the analysis, and writes nothing.
 
+- **The Read type column said its values in French.** `Structurée` and `Brute` were
+  written by the parsers as data, so no translation table could reach them: an English
+  interface showed French in every log analysis. The parsers now write `Structured` and
+  `Raw`; the code that counts them still reads the old French words, so an analysis
+  produced by an earlier version keeps working and keeps its values.
+- **The column filter fields said nothing about their column.** Every field carried the
+  same French hint, and its accessible name announced a position - "Filter the column 3" -
+  which is what a screen reader reads out. The hint is translated and the name carries the
+  real header; the sort buttons announce ascending and descending in the chosen language.
+
 Full suite after these fixes: 1 458 passed, 28 skipped, ruff clean, real window.
 
 # Fireblade 0.4.1 — a 10 GiB collection, and what it found

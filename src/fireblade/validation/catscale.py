@@ -60,7 +60,7 @@ def verify_catscale(app,directory,settings=None):
                 families.update(row[1+headers.index('Famille')] for row in case.page(View()))
                 if 'PID' in headers and case.count(View(filters=[Filter(headers.index('PID'),'eq','42')])):process_index=index
                 for row in case.page(View()):
-                    structured+=row[1+headers.index('Lecture')]=='Structurée';raw+=row[1+headers.index('Lecture')]=='Brute'
+                    value=row[1+headers.index('Lecture')];structured+=value in ('Structurée','Structured');raw+=value in ('Brute','Raw')
             finally:
                 if owned:case.close()
         if len(families)!=7 or process_index is None or not structured:raise AssertionError('Missing CatScale fields')

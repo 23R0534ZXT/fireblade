@@ -304,7 +304,7 @@ def test_generated_unknown_text_round_trips_without_loss(tmp_path,seed):
     lines=['unknown '+''.join(generator.choice('abcé,;\t"\\=') for _ in range(100)) for _ in range(10)]
     _,rows=parsed(tmp_path,gzip.compress(('\n'.join(lines)+'\n').encode()),'custom.log.gz')
     assert [row['Texte brut'] for row in rows]==lines
-    assert all(row['Lecture']=='Brute' for row in rows)
+    assert all(row['Lecture']=='Raw' for row in rows)
 
 
 def test_partial_journal_corruption_keeps_rows_and_exposes_error(tmp_path):

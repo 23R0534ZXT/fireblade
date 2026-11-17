@@ -209,7 +209,7 @@ def binary_rows(stream, path):
                        'exit': list(struct.unpack_from('<hh', raw, 332))}), 'Format': 'utmp glibc LE', 'Événement': str(typ), 'PID': str(pid),
                       'Horodatage': timestamp(seconds, micros), 'Utilisateur': display(raw[44:76].split(b'\0')[0]),
                       'Hôte': display(raw[76:332].split(b'\0')[0]), 'Chemin': display(raw[8:40].split(b'\0')[0])}
-        yield dict(fields, Offset=str(offset), Lecture='Structurée', **{'Texte brut': raw.hex()})
+        yield dict(fields, Offset=str(offset), Lecture='Structured', **{'Texte brut': raw.hex()})
 
 
 
@@ -230,7 +230,7 @@ def accounting_rows(stream):
         counters = struct.unpack_from(endian+'8H',raw,32)
         counters = [(value & 8191) << (3*(value >> 13)) for value in counters]
         command = display(raw[48:64].split(b'\0')[0])
-        yield {'Format':'Linux acct_v3', 'Lecture':'Structurée', 'Offset':str(offset),
+        yield {'Format':'Linux acct_v3', 'Lecture':'Structured', 'Offset':str(offset),
                'Horodatage':timestamp(seconds), 'PID':str(pid), 'PPID':str(ppid),
                'UID':str(uid), 'Commande':command, 'Statut':str(exit_code),
                'Champs':encoded(dict(gid=gid,tty=tty,flags=raw[0],exit_code=exit_code,
@@ -361,7 +361,7 @@ def journal_rows(stream):
             fields.setdefault(display(key), []).append(display(value))
         values = {key: value[0] for key, value in fields.items()}
         count += 1
-        yield {'Format': 'systemd journal', 'Lecture': 'Structurée', 'Offset': str(offset),
+        yield {'Format': 'systemd journal', 'Lecture': 'Structured', 'Offset': str(offset),
                'Horodatage': timestamp(realtime//1000000, realtime%1000000),
                'Hôte': values.get('_HOSTNAME', ''), 'Processus': values.get('SYSLOG_IDENTIFIER', values.get('_COMM', '')),
                'PID': values.get('_PID', ''), 'UID': values.get('_UID', ''), 'Détail': values.get('MESSAGE', ''),
@@ -386,7 +386,7 @@ def export_rows(stream):
             if fields:
                 values = {k: v[0] for k, v in fields.items()}
                 micros = values.get('__REALTIME_TIMESTAMP', '')
-                yield {'Format': 'Journal export', 'Lecture': 'Structurée', 'Offset': str(start),
+                yield {'Format': 'Journal export', 'Lecture': 'Structured', 'Offset': str(start),
                        'Horodatage': timestamp(int(micros)//1000000, int(micros)%1000000) if micros.isdigit() else '',
                        'Hôte': values.get('_HOSTNAME', ''), 'PID': values.get('_PID', ''),
                        'Détail': values.get('MESSAGE', ''), 'Champs': encoded(fields), 'Texte brut': encoded(fields)}
@@ -504,7 +504,7 @@ def parse(source, output, progress=lambda _: None, span=None):
         row['Source'] = path
         writer.writerow([row.get(name, '') for name in HEADERS])
         total += 1
-        is_raw = row.get('Lecture') == 'Brute'
+        is_raw = row.get('Lecture') in ('Brute', 'Raw')
         raw_count += is_raw
         structured += not is_raw
         entry['rows'] += 1
@@ -558,7 +558,7 @@ def parse(source, output, progress=lambda _: None, span=None):
                                          'Chemin': obj.get('cs-uri-stem', ''), 'Statut': obj.get('sc-status', '')})
             if '\0' in text:
                 fields = {}  # Later binary data is visibly raw, never structured text.
-            row = dict(fields, Lecture='Structurée' if fields else 'Brute', Ligne=str(number),
+            row = dict(fields, Lecture='Structured' if fields else 'Raw', Ligne=str(number),
                        Offset=str(offset), **{'Fin de ligne': str(number), 'Texte brut': text})
             emit(row, path, entry)
             offset += len(raw)

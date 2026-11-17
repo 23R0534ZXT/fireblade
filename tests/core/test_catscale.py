@@ -60,7 +60,7 @@ def test_unknown_lines_and_invalid_utf8_are_visible(tmp_path):
     output=tmp_path/'out';output.mkdir();result=parse(source,output)
     assert result['raw']==2 and result['warnings']
     with Path(result['outputs'][0]['csv']).open() as stream:loaded=list(csv.DictReader(stream))
-    assert loaded[1]['Texte brut']==r'invalid \xff' and loaded[1]['Lecture']=='Brute'
+    assert loaded[1]['Texte brut']==r'invalid \xff' and loaded[1]['Lecture']=='Raw'
 
 
 def add_tar(archive,name,value=b'',kind=None):

@@ -2,6 +2,7 @@
 from PySide6.QtCore import QByteArray, QMimeData, Qt, QTimer, Signal, QRect
 from PySide6.QtGui import QDrag, QColor, QFontMetrics, QPalette
 from PySide6.QtWidgets import QHeaderView, QLabel, QStyle, QStyleOptionHeader, QLineEdit, QToolButton, QHBoxLayout
+from fireblade.core.i18n import translate
 
 MIME = "application/x-fireblade-column"
 
@@ -34,9 +35,9 @@ class GroupHeader(QHeaderView):
         for section in range(1, count):
             if section not in self.controls:
                 edit = QLineEdit(self.viewport())
-                edit.setPlaceholderText("Contient…")
+                edit.setPlaceholderText(translate("Contient…"))
                 edit.setClearButtonEnabled(True)
-                edit.setAccessibleName(f"Filtrer la colonne {section}")
+                edit.setAccessibleName(translate('Filtrer la colonne {}').format((self.model().headerData(section, Qt.Horizontal) if self.model() else None) or section))
                 edit.setToolTip("Contient ce texte · les filtres de colonnes se combinent avec ET")
                 edit.textEdited.connect(lambda text, c=section-1: self.queue_filter(c, text))
                 edit.returnPressed.connect(self.flush_filters)
@@ -46,7 +47,7 @@ class GroupHeader(QHeaderView):
                     button.setArrowType(arrow)
                     button.setAutoRaise(True)
                     button.setCheckable(True)
-                    label = "Tri décroissant" if descending else "Tri croissant"
+                    label = translate("Tri décroissant" if descending else "Tri croissant")
                     button.setToolTip(label)
                     button.setAccessibleName(label)
                     button.clicked.connect(lambda checked=False, c=section-1, d=descending: self.sortRequested.emit(c, d))

@@ -1326,6 +1326,7 @@ EN = {
     "DTD et entités non prises en charge": "DTD and entities are not supported",
     "Erreurs / interrompus": "Errors / interrupted",
     "Indisponible": "Unavailable",
+    "Contient…": "Filter…",
 }
 
 LANGUAGES = ("en", "fr")

@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt,QTimer,Signal
 from PySide6.QtWidgets import (QWidget,QVBoxLayout,QHBoxLayout,QLabel,QPushButton,QComboBox,
     QCheckBox,QLineEdit,QTableView,QTextBrowser,QSplitter,QFileDialog,QDialog,QDialogButtonBox,QListWidget,QListWidgetItem)
 from fireblade.core.coverage import (FORMAT,MAX_EVENTS,EXPECTED,audit,event,load_state,save_state,load_report,save_report,export_report)
+from fireblade.core.i18n import translate
 from fireblade.core.workspace_reader import WorkspaceReader
 from fireblade.ui.ioc_hunt import Rows
 
@@ -65,7 +66,9 @@ class CoveragePanel(QWidget):
             except Exception as exc:self.journal_blocked=True;self.persistence_error='Journal de couverture non chargé et conservé sans modification : '+str(exc)
         if path and path.with_name('coverage-last.json').exists():
             try:
-                self.report=load_report(path.with_name('coverage-last.json'));self.status.setText('Bilan sauvegardé du '+self.report['created']+' ; périmètre à actualiser avant toute conclusion. Les incidents restent dans l’historique.')
+                self.report=load_report(path.with_name('coverage-last.json'))
+                self.status.setText(translate('Bilan sauvegardé du {}').format(self.report['created'])
+                    +translate(' ; périmètre à actualiser avant toute conclusion. Les incidents restent dans l’historique.'))
             except Exception as exc:self.report_blocked=True;self.persistence_error+=' Bilan précédent non chargé et conservé : '+str(exc)
         self.update_badge()
     def reset_workspace(self):
@@ -95,9 +98,12 @@ class CoveragePanel(QWidget):
         findings=self.report['counts'] if self.report else {}
         alerts=findings.get('error',0)+findings.get('warning',0)
         recent_incident=self.stale and self.events and self.events[-1]['severity'] in ('error','warning')
-        self.badge.setText('Imports : incident à vérifier' if recent_incident else f'Imports : {alerts} point(s) à vérifier')
+        self.badge.setText(translate('Imports : incident à vérifier') if recent_incident
+            else translate('Imports : {} point(s) à vérifier').format(alerts))
         self.badge.setVisible(bool(recent_incident or alerts or self.persistence_error))
-        self.badge.setToolTip((self.events[-1]['reason']+'\n' if recent_incident else '')+(self.persistence_error+'\n' if self.persistence_error else '')+f'{alerts} constats actuels ; {incidents} incidents historiques. Ouvrir les causes, impacts et actions de correction.')
+        self.badge.setToolTip((translate(self.events[-1]['reason'])+'\n' if recent_incident else '')
+            +(self.persistence_error+'\n' if self.persistence_error else '')
+            +translate('{} constats actuels ; {} incidents historiques. Ouvrir les causes, impacts et actions de correction.').format(alerts,incidents))
     def configure_plan(self):
         self.ensure_context();dialog=QDialog(self);dialog.setWindowTitle('Familles attendues pour cette enquête');layout=QVBoxLayout(dialog)
         hint=QLabel('Cochez uniquement les familles prévues dans votre plan de collecte. Leur absence est un point à vérifier, pas une preuve d’absence sur la machine.');hint.setWordWrap(True);layout.addWidget(hint)
@@ -185,24 +191,34 @@ class CoveragePanel(QWidget):
         def release():self.reader=None;self.build_button.setEnabled(True)
         def done(result):
             release();self.report=result;self.stale=False
-            counts=result['counts'];self.status.setText(f"Contrôle du {result['created']} · {len(result['sources'])} analyses · {counts['error']} erreurs · {counts['warning']} points à vérifier. "+('SHA-256 recalculés. ' if verify else 'SHA-256 non recalculés. ')+f'{self.dropped} anciennes opérations sorties du journal borné. '+self.persistence_error+' '+result['scope'])
+            counts=result['counts'];sha=translate('SHA-256 recalculés. ' if verify else 'SHA-256 non recalculés. ')
+            detail=sha+translate('{} anciennes opérations sorties du journal borné. ').format(self.dropped)+str(self.persistence_error)+' '+translate(str(result.get('scope','')))
+            self.status.setText(translate('Contrôle du {} · {} analyses · {} erreurs · {} points à vérifier. {}').format(
+                result['created'],len(result['sources']),counts['error'],counts['warning'],detail))
             self.update_badge();self.filter()
         def failed(message='Contrôle interrompu ; le bilan précédent est conservé.'):
-            release();self.status.setText(message);self.stale=True;self.update_badge()
+            release();self.status.setText(translate(message));self.stale=True;self.update_badge()
         self.window.run(work,done,on_error=failed,on_cancel=failed,coverage_stage='Intégrité')
     def filter(self,*_):
         data=(self.report or {}).get('findings',[]) if self.mode.currentIndex()==0 else self.events
         severity=self.level.currentData();query=self.search.text().casefold()
         self.entries=[r for r in data if (not severity or r['severity']==severity) and (not query or query in json.dumps(r,ensure_ascii=False).casefold())]
-        self.model.display([[r.get('stage',''),{'info':'Information','warning':'À vérifier','error':'Erreur'}.get(r.get('severity'),r.get('severity')),*[r.get(k,'') for k in ('path','reason','impact','action')]] for r in self.entries]);self.details.clear()
+        # Reasons are written by the engine in French: the table is the only place
+        # where they can still be translated before the analyst reads them.
+        rows=[[r.get('stage',''),{'info':'Information','warning':'À vérifier','error':'Erreur'}.get(r.get('severity'),r.get('severity')),
+               *[r.get(k,'') for k in ('path','reason','impact','action')]] for r in self.entries]
+        self.model.display([[translate(str(cell)) for cell in row] for row in rows]);self.details.clear()
     def show_details(self,index):
         if index.isValid():
             item=self.entries[index.row()]
-            self.details.setPlainText('\n\n'.join(label+' : '+str(item.get(key,'')) for label,key in [('Étape','stage'),('Fichier / périmètre','path'),('Cause','reason'),('Conséquence','impact'),('Action proposée','action')])+'\n\nMesures et références :\n'+json.dumps(item.get('metrics',{}),ensure_ascii=False,indent=2))
+            lines=[translate(label)+' : '+translate(str(item.get(key,''))) for label,key in
+                   [('Étape','stage'),('Fichier / périmètre','path'),('Cause','reason'),('Conséquence','impact'),('Action proposée','action')]]
+            self.details.setPlainText('\n\n'.join(lines)+'\n\n'+translate('Mesures et références :')+'\n'
+                +json.dumps(item.get('metrics',{}),ensure_ascii=False,indent=2))
     def export(self):
         if not self.window.can_open_file():return
         self.ensure_context()
-        if not self.report:self.status.setText('Lancez un contrôle avant d’exporter son bilan.');return
+        if not self.report:self.status.setText(translate('Lancez un contrôle avant d’exporter son bilan.'));return
         path,_=QFileDialog.getSaveFileName(self,'Exporter le contrôle de couverture','couverture.json','JSON complet (*.json);;CSV des constats (*.csv)')
         if not path or not self.window.investigation_destination_is_safe(path):return
         report=copy.deepcopy(self.report);report.update(events=copy.deepcopy(self.events),stale=self.stale,journal_dropped=self.dropped)

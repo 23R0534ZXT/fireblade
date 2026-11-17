@@ -17,7 +17,7 @@ parfait, refaire une recette complète, puis publier.**
 |---|---|
 | Dépôt | `C:\Users\23R\dev\fireblade` sur la tour `192.168.1.167`, utilisateur `23R`, branche **`hermes/0.4.2`** |
 | `main` | `32c84e3` — la 0.4.1 est publiée, `origin/main` au même commit |
-| `hermes/0.4.2` | **19 commits devant `main`** : les dix déjà présents, plus **neuf commits ajoutés le 17 au soir**. Arbre propre, **rien n'est poussé** |
+| `hermes/0.4.2` | **20 commits devant `main`** au moment de la recette (`git rev-list --count main..HEAD`), les dix d'avant plus ceux de la passe du 17 au soir. Arbre propre, **rien n'est poussé** |
 | Tête de branche | le dernier commit de la branche — `git log --oneline -1` (cette passation est commitée avec le lot de documents) |
 | Porte (dernier passage) | **1 477 passés, 28 ignorés**, ruff propre, fenêtre réelle — `TOUT EST VERT`, ~8 minutes |
 | Porte, relevés du jour | 1 459, puis 1 461, 1 475, 1 476 et 1 477 à mesure que les tests arrivaient — 28 ignorés chaque fois |
@@ -185,8 +185,11 @@ Neuf sections enchaînées sur la VM, de `s0` à `s8`, **toutes terminées `EXIT
   `C:\fireblade-test\moved-big` pour ne pas remplir le disque (14,7 Gio libres).
 - **Chasse IOC** : 2 499 056 lignes lues, 1 525 544 champs correspondants, 250 000 détails
   conservés, 1 IOC rejeté, onze minutes.
-- **Audit de couverture** : `J03` démarre seul après la chasse et rend son bilan ; `J09`
-  écrit 391 879 octets (vérifié aussi hors section par une sonde dédiée).
+- **Audit de couverture** : `J03` démarre seul après la chasse et rend son bilan. `J09` a
+  demandé trois rejeux : l'export était appelé pendant que l'audit tenait encore la fenêtre,
+  donc il refusait — d'abord en silence (défaut produit, corrigé : il dit maintenant qu'il
+  attend), puis avec un message que le harnais n'attendait pas. Le harnais attend désormais
+  la porte du produit (`J09b`) : 10 s d'attente, puis `couverture.json`, 540 784 octets.
 - **Captures** : 148 la première passe, toutes dans `C:\fireblade-test\shots\` et copiées
   sur la machine de contrôle dans `/root/work/shots-042/`.
 
@@ -402,8 +405,9 @@ Avant de taguer : la version doit être `0.4.2` dans `pyproject.toml` **et**
 ## 10. Premier message de la prochaine session
 
 > Reprise de la 0.4.2. Lis ce fichier en entier, puis le skill `fireblade-verification`.
-> La branche `hermes/0.4.2` porte 19 commits (les dix d'avant plus les neuf de la passe du
-> 17 au soir), arbre propre, porte verte à 1 477 passés / 28 ignorés, rien de poussé.
+> La branche `hermes/0.4.2` porte les commits de la passe du 17 au soir
+> (`git rev-list --count main..HEAD`), arbre propre, porte verte à 1 477 passés / 28 ignorés,
+> rien de poussé.
 > Objectif : passer la recette complète en entier sur la VM (`run-all-sections.ps1`, `s0` →
 > `s8`), lire et zoomer chaque capture, remplir les `[RECETTE]` de §1, §3 et §9, corriger ce
 > que la recette trouve, puis publier selon §9 — et seulement après un go explicite.
@@ -412,5 +416,5 @@ Avant de taguer : la version doit être `0.4.2` dans `pyproject.toml` **et**
 
 ---
 
-*Fin de la passation. 19 commits, seize constats corrigés, trois constats faux, une limite
+*Fin de la passation. Seize constats corrigés, trois constats faux, une limite
 assumée, un résidu d'exports à traiter, une recette complète à passer.*

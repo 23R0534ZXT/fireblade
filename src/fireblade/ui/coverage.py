@@ -216,7 +216,10 @@ class CoveragePanel(QWidget):
             self.details.setPlainText('\n\n'.join(lines)+'\n\n'+translate('Mesures et références :')+'\n'
                 +json.dumps(item.get('metrics',{}),ensure_ascii=False,indent=2))
     def export(self):
-        if not self.window.can_open_file():return
+        # A silent return is a dead button: say why, the way the audit already does.
+        if not self.window.can_open_file():
+            self.status.setText(translate('The export starts as soon as the running query finishes.'))
+            return
         self.ensure_context()
         if not self.report:self.status.setText(translate('Lancez un contrôle avant d’exporter son bilan.'));return
         path,_=QFileDialog.getSaveFileName(self,'Exporter le contrôle de couverture','couverture.json','JSON complet (*.json);;CSV des constats (*.csv)')

@@ -198,28 +198,56 @@ class CollectionReport(QWidget):
         self.table.doubleClicked.connect(lambda *_:self.show_preview())
         self.refresh_buttons()
 
+    def summary_text(self):
+        counts=Counter(outcome(e) for e in self.model.entries)
+        # The template is translated before formatting, so the English entry can
+        # be found: a formatted string never matches a table entry.
+        head=translate("{} fichiers · {} réussis · {} à vérifier · {} erreurs/interrompus · "
+                       "{} non reconnus/ignorés · {} autres/compagnons · {} écartés").format(
+            len(self.model.entries),counts['complete'],counts['warnings'],counts['errors'],
+            counts['unsupported'],counts['other'],counts['ignored'])
+        tail=translate('Import : {} · {} analyses · Source : {}').format(
+            translate(STATUSES.get(self.report['status'],self.report['status'])),
+            len(self.report.get('documents',[])),self.report['source'])
+        return head+'\n'+tail
+
     def set_report(self, report, text):
         self.report=report;self._text=text
-        self.model.beginResetModel();self.model.entries=report.get('files',[]) if report else [];self.model.endResetModel()
+        self.model.beginResetModel();self.model.entries=list(report.get('files',[])) if report else [];self.model.endResetModel()
         self.open_folder.setEnabled(report is not None)
         self.copy_button.setEnabled(report is not None)
         self.export_button.setEnabled(report is not None)
         self.refresh_buttons()
-        if report:
-            counts=Counter(outcome(e) for e in self.model.entries)
-            # The template is translated before formatting, so the English entry can
-            # be found: a formatted string never matches a table entry.
-            head=translate("{} fichiers · {} réussis · {} à vérifier · {} erreurs/interrompus · "
-                           "{} non reconnus/ignorés · {} autres/compagnons · {} écartés").format(
-                len(self.model.entries),counts['complete'],counts['warnings'],counts['errors'],
-                counts['unsupported'],counts['other'],counts['ignored'])
-            tail=translate('Import : {} · {} analyses · Source : {}').format(
-                translate(STATUSES.get(report['status'],report['status'])),len(report.get('documents',[])),report['source'])
-            self.summary.setText(head+'\n'+tail)
+        if report:self.summary.setText(self.summary_text())
         else:self.summary.setText('Aucune collecte ouverte. Importez un dossier ou reprenez une collecte existante.')
         self.details.setPlainText(translate('Sélectionnez un fichier pour lire ses avertissements, sa provenance et ses sorties. '
             '« Voir le fichier » affiche un aperçu de son contenu, sans jamais modifier la preuve.') if report else text)
         self.filter()
+
+    def refresh(self, report, text):
+        """A collection that is still running: rows appear, states change.
+
+        A reset at every file would drop the selection and the scroll position on
+        every tick, so rows are only appended and the cells already shown are the
+        only ones repainted.
+        """
+        self.report=report;self._text=text
+        entries=list(report.get('files',[])) if report else []
+        model=self.model
+        shown=model.entries
+        if len(entries)<len(shown) or any(entries[index] is not shown[index] for index in range(len(shown))):
+            model.beginResetModel();model.entries=entries;model.endResetModel()
+        elif len(entries)>len(shown):
+            model.beginInsertRows(QModelIndex(),len(shown),len(entries)-1)
+            model.entries=entries
+            model.endInsertRows()
+        else:
+            model.entries=entries
+            if entries:model.dataChanged.emit(model.index(0,0),model.index(len(entries)-1,model.columnCount()-1))
+        self.open_folder.setEnabled(True);self.copy_button.setEnabled(True);self.export_button.setEnabled(True)
+        self.summary.setText(self.summary_text())
+        if self.proxy.status or self.proxy.query:self.filter()
+        return True
 
     def filter(self, *_):
         self.proxy.status=self.status.currentData();self.proxy.query=self.search.text().strip().casefold()

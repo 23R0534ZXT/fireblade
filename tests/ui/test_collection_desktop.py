@@ -21,7 +21,10 @@ def test_native_collection_opens_results_and_keeps_report(qt_application,tmp_pat
     try:
         window.collection=Collection(root,tmp_path/'results',ToolPack(tmp_path/'missing'),window.settings)
         window.start_collection_job(window.collection.parse)
+        # The Imports table follows the run, and stops following it when it ends.
+        assert window.report_timer.isActive()
         settle(qt_application,window)
+        assert not window.report_timer.isActive()
         assert len(window.documents)==1
         assert window.model.case.headers==['User','Value']
         assert 'Terminé' in window.collection_report.toPlainText()

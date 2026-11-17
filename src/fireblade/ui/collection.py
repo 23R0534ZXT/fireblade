@@ -9,6 +9,7 @@ from PySide6.QtGui import QAction, QPalette
 from PySide6.QtWidgets import QCheckBox, QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from fireblade.core.collection import Collection, ToolPack
+from fireblade.core.i18n import translate
 from fireblade.ui.language import source_text
 from fireblade.ui.alert_context import AlertContextMixin
 from fireblade.ui.folder_picker import choose_collection_directories
@@ -162,6 +163,10 @@ class CollectionMixin(AlertContextMixin):
         self.collection_report = CollectionReport()
         self.collection_report.on_changed = self.save_collection_report
         self.collection_report.on_analyse = self.analyse_with_reader
+        # The table follows the run instead of waiting for its end: it used to stay
+        # empty while the counters advanced, which reads as 'nothing is happening'.
+        self.report_timer = QTimer(self); self.report_timer.setInterval(1000)
+        self.report_timer.timeout.connect(self.refresh_collection_report_live)
         layout.addWidget(self.collection_report, 1)
         self.workbench.addTab(panel, 'Imports')
         self.setCentralWidget(self.workbench)
@@ -192,7 +197,8 @@ class CollectionMixin(AlertContextMixin):
         if collection is not None:
             collection.save()
 
-    def show_collection_report(self, report=None):
+    def collection_report_text(self, report=None):
+        """The whole Imports report, in the text 'Full report' shows."""
         pack = self.toolpack()
         from fireblade.core.collection import PARSERS
         ready = [name for name in (*PARSERS, 'Shellbags', 'Hayabusa') if pack.available(name)]
@@ -200,31 +206,56 @@ class CollectionMixin(AlertContextMixin):
                  'complete_with_warnings':'Terminé avec avertissements', 'unsupported':'Non reconnu',
                  'skipped':'Ignoré', 'error':'Erreur', 'cancelled':'Interrompu',
                  'attention':'À vérifier', 'no_output':'Aucune sortie', 'companion':'Journal de transaction'}
-        status = lambda value: names.get(value, value)
-        lines = ['Parsers intégrés : CatScale Linux, journaux /var/log/ et WebCache ESE (lecture seule).', 'Moteurs Windows disponibles : '+(', '.join(ready) or 'aucun pack intégré dans cette construction')]
+        # Every line is translated where it is written: the report is assembled after
+        # the language pass, so a label cannot be translated as one block ("Full
+        # report" showed the whole text in French under an English interface).
+        status = lambda value: translate(names.get(value, value))
+        lines = [translate('Parsers intégrés : CatScale Linux, journaux /var/log/ et WebCache ESE (lecture seule).'),
+                 translate('Moteurs Windows disponibles : {}').format(
+                     ', '.join(ready) or translate('aucun pack intégré dans cette construction'))]
         if report:
-            organization = {'files':'Un onglet par résultat', 'artifacts':'Un onglet par artefact', 'combined':'Onglet unique regroupé par artefact'}.get(report.get('organization', 'files'), '')
-            lines += ['', 'Organisation : '+organization, 'Dossier source : '+report['source'], 'Dossier de travail : '+report['output'],
-                      'État de l’import : '+status(report['status']), 'Bilan : '+str(dict(Counter(status(e['status']) for e in report['files']))),
-                      'Analyses chargées : '+str(len(report['documents']))]
+            organization = translate({'files':'Un onglet par résultat', 'artifacts':'Un onglet par artefact',
+                                      'combined':'Onglet unique regroupé par artefact'}.get(report.get('organization', 'files'), ''))
+            lines += ['', translate('Organisation : {}').format(organization),
+                      translate('Dossier source : {}').format(report['source']),
+                      translate('Dossier de travail : {}').format(report['output']),
+                      translate('État de l’import : {}').format(status(report['status'])),
+                      translate('Bilan : {}').format(str(dict(Counter(status(e['status']) for e in report['files'])))),
+                      translate('Analyses chargées : {}').format(len(report['documents']))]
             if report.get('detection'):
-                lines += ['Hayabusa : '+status(report['detection']['status']), str(report['detection'].get('error', ''))]
+                lines += [translate('Hayabusa : {}').format(status(report['detection']['status'])), str(report['detection'].get('error', ''))]
             for failure in report.get('organization_failures', []):
                 lines += ['Layout: '+str(failure.get('artifact',''))+' not merged; results kept separate · '+str(failure.get('reason',''))[:300]]
             for entry in report['files']:
                 lines.append(f"{status(entry['status'])} · {entry['path']}")
                 if entry.get('sha256'):lines.append('  SHA-256 : '+entry['sha256'])
-                if entry.get('error'):lines.append('  '+entry['error'])
+                if entry.get('error'):lines.append('  '+translate(entry['error']))
                 for run in entry.get('runs', []):
-                    lines.append('  '+run['tool']+' : '+status(run['status'])+' '+run.get('error', ''))
-                    lines.extend('    '+warning for warning in run.get('warnings', [])[:10])
+                    lines.append('  '+run['tool']+' : '+status(run['status'])+' '+translate(run.get('error', '')))
+                    lines.extend('    '+translate(warning) for warning in run.get('warnings', [])[:10])
                     for member in run.get('linux_logs', run.get('catscale',{})).get('members',[]):
                         if member['status'] in ('error','unsupported','skipped'):
-                            lines.append('    '+member['status']+' · '+member['path']+' : '+member.get('reason',''))
-        lines += ['', 'Un fichier non reconnu, un moteur absent ou une erreur restent dans le bilan. Une alerte est une piste à vérifier, pas une conclusion de compromission. Les résultats et journaux sont conservés dans le dossier de travail.']
-        self.collection_report.set_report(report, '\n'.join(lines))
+                            lines.append('    '+status(member['status'])+' · '+member['path']+' : '+translate(member.get('reason','')))
+        lines += ['', translate('Un fichier non reconnu, un moteur absent ou une erreur restent dans le bilan. Une alerte est une piste à vérifier, pas une conclusion de compromission. Les résultats et journaux sont conservés dans le dossier de travail.')]
+        return '\n'.join(lines)
+
+    def show_collection_report(self, report=None):
+        self.collection_report.set_report(report, self.collection_report_text(report))
         self.update_collection_controls()
         self.refresh_navigation()
+
+    def refresh_collection_report_live(self):
+        """Keep the Imports table in step with a collection that is still running."""
+        report = getattr(getattr(self, 'collection', None), 'report', None)
+        if not report:
+            return
+        self.collection_report.refresh(report, self.collection_report_text(report))
+
+    def watch_collection_report(self, watching=True):
+        timer = getattr(self, 'report_timer', None)
+        if timer is None:
+            return
+        timer.start() if watching else timer.stop()
 
     def update_collection_controls(self):
         if not hasattr(self,'hayabusa_action'):return
@@ -247,6 +278,7 @@ class CollectionMixin(AlertContextMixin):
         self.hayabusa_action.setToolTip(reason)
 
     def collection_finished(self, report):
+        self.watch_collection_report(False)
         self.coverage_panel.record_collection(report)
         self.show_collection_report(report)
         self.workbench.setCurrentIndex(1)
@@ -294,6 +326,7 @@ class CollectionMixin(AlertContextMixin):
     def start_collection_job(self, function):
         self.workbench.setCurrentIndex(1)
         def failed(message):
+            self.watch_collection_report(False)
             self.show_collection_report(self.collection.report)
             self.collection_report.setPlainText(self.collection_report.toPlainText()+'\nErreur : '+message)
             self.workbench.setCurrentIndex(1)
@@ -301,6 +334,7 @@ class CollectionMixin(AlertContextMixin):
         job = self.run(function, self.collection_finished, exclusive=True, on_error=failed,coverage_stage="Collecte")
         if job is not None:
             self.collection.progress = job.signals.progress.emit
+            self.watch_collection_report()
         self.cancel_action.setEnabled(True)
 
     def parse_collection(self):
@@ -345,7 +379,9 @@ class CollectionMixin(AlertContextMixin):
             collection = Collection(path, output, self.toolpack(), settings, organization=organization)
             if self.active_investigation is not None:
                 collection.ready = self.disk_signals.documents.emit
-                if not self.start_background_collection(collection):self._folder_queue.clear()
+                if self.start_background_collection(collection):
+                    self.watch_collection_report()
+                else:self._folder_queue.clear()
             else:
                 self.collection = collection
                 self.start_collection_job(collection.parse)

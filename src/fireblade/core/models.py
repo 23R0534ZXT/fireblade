@@ -21,6 +21,85 @@ def analysis_label(source_info):
     return Path(path).name if path else ""
 
 
+def _path_parts(path):
+    """Path components with the file name last, whatever the separator.
+
+    Evidence paths reach the interface from Windows collections as often as from
+    Linux ones, so both separators split; the drive or the root stays a component.
+    """
+    text = str(path or "").replace("\\", "/")
+    return tuple(part for part in text.split("/") if part not in ("", "."))
+
+
+def _suffix_depth(parts, index, indexes):
+    """How many trailing folders tell one path apart from its neighbours.
+
+    Zero when every other document carries the same folders: there only the
+    position in the strip can separate them.
+    """
+    depth = 0
+    mine = parts[index]
+    for other in indexes:
+        if other == index or parts[other] == mine:
+            continue
+        shared = 0
+        while (shared < len(mine) and shared < len(parts[other])
+               and mine[-1 - shared] == parts[other][-1 - shared]):
+            shared += 1
+        if shared + 1 > depth:
+            depth = shared + 1
+    return depth
+
+
+def _with_suffix(label, suffix):
+    return label + " · " + suffix if label else suffix
+
+
+def analysis_tab_labels(documents):
+    """Tab titles for the open analyses, unique inside the strip.
+
+    Three CarsDB.db produced by SQLECmd in different folders used to give three
+    identical tabs. A name shared by several analyses keeps analysis_label() as its
+    base and gains the shortest run of trailing folders that tells it apart; two
+    analyses of the very same file fall back to " (2)", " (3)" in tab order. A label
+    no other document uses is returned exactly as analysis_label() gives it.
+    """
+    documents = list(documents)
+    labels = [analysis_label(getattr(item, "source_info", None)) for item in documents]
+    groups = {}
+    for index, label in enumerate(labels):
+        groups.setdefault(label, []).append(index)
+    taken = set(label for label, indexes in groups.items() if len(indexes) < 2)
+    for label, indexes in groups.items():
+        if len(indexes) < 2:
+            continue
+        parts = {}
+        for index in indexes:
+            info = getattr(documents[index], "source_info", None) or {}
+            full = _path_parts(info.get("path", ""))
+            parts[index] = full[:-1] if len(full) > 1 else ()
+        seen, proposals = {}, {}
+        for index in indexes:
+            rank = seen.get(parts[index], 0) + 1
+            seen[parts[index]] = rank
+            depth = _suffix_depth(parts, index, indexes)
+            suffix = "/".join(parts[index][-depth:]) if depth and parts[index] else ""
+            title = _with_suffix(label, suffix) if suffix else label
+            if rank > 1:
+                title = title + " (%d)" % rank if title else "(%d)" % rank
+            proposals[index] = title
+        for index in indexes:
+            title, number = proposals[index], 2
+            while title in taken:
+                title = "%s (%d)" % (proposals[index], number)
+                number += 1
+            proposals[index] = title
+            taken.add(title)
+        for index in indexes:
+            labels[index] = proposals[index]
+    return labels
+
+
 @dataclass
 class Filter:
     column: int

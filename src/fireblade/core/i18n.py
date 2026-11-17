@@ -1327,6 +1327,8 @@ EN = {
     "Erreurs / interrompus": "Errors / interrupted",
     "Indisponible": "Unavailable",
     "Contient…": "Filter…",
+    "Plan de mise en page refusé : {} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-le depuis Timeline Explorer sans DTD, puis réessayez.": "Layout refused: {} declares a DTD or XML entities, which Fireblade does not read. Save it from Timeline Explorer without a DTD, then try again.",
+    "Préférences TLE refusées : {} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-les depuis Timeline Explorer sans DTD, puis réessayez.": "TLE settings refused: {} declares a DTD or XML entities, which Fireblade does not read. Save them from Timeline Explorer without a DTD, then try again.",
 }
 
 LANGUAGES = ("en", "fr")

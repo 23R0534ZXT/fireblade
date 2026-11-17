@@ -20,7 +20,7 @@ def read_tle_settings(path, current=None):
         raise ValueError("Préférences TLE limitées à 128 Ko")
     raw = path.read_text(encoding="utf-8-sig")
     if "<!DOCTYPE" in raw.upper() or "<!ENTITY" in raw.upper():
-        raise ValueError("DTD et entités non prises en charge")
+        raise ValueError('Préférences TLE refusées : {} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-les depuis Timeline Explorer sans DTD, puis réessayez.'.format(path.name))
     root = ET.fromstring(raw)
     local = lambda tag: tag.rsplit("}", 1)[-1]
     if local(root.tag) != "Settings":

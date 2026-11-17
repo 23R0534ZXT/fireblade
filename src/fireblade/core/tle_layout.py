@@ -61,7 +61,7 @@ def read_tle_layout(path, headers):
         raise ValueError("Disposition limitée à 4 Mo")
     raw = path.read_text(encoding="utf-8-sig")
     if "<!DOCTYPE" in raw.upper() or "<!ENTITY" in raw.upper():
-        raise ValueError("DTD et entités non prises en charge")
+        raise ValueError('Plan de mise en page refusé : {} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-le depuis Timeline Explorer sans DTD, puis réessayez.'.format(path.name))
     root = ET.fromstring(raw)
     from fireblade.core.tle_styles import custom_styles
     named_styles=custom_styles(path)

@@ -21,7 +21,7 @@ parfait, refaire une recette complète, puis publier.**
 | Tête de branche | le dernier commit de la branche — `git log --oneline -1` (cette passation est commitée avec le lot de documents) |
 | Porte (dernier passage) | **1 481 passés, 28 ignorés**, ruff propre, fenêtre réelle — `TOUT EST VERT`, ~8 à 10 minutes |
 | Porte, relevés du jour | 1 459, 1 461, 1 475, 1 476, 1 477 puis 1 481 à mesure que les tests arrivaient — 28 ignorés chaque fois |
-| Release GitHub | `v0.4.1` seulement : exe 281 209 660 octets, SHA-256 `14ae688b…`, auteur `23R0534ZXT`. La 0.4.2 n'est **pas encore taguée** : le tag se crée après accord du mainteneur, et la taille et le SHA-256 de l'exe se relèvent après la publication (§9) |
+| Release GitHub | **`v0.4.2` publiée** : exe **281 250 614 octets**, SHA-256 `c7c358f2f8d8536b7c13e4a514d440ba4f81a62c166cbd34cb6992d8b155bfbd`, auteur `23R0534ZXT` (release recréée sous son compte après une publication par le bot), pré-release, notes complètes. La 0.4.1 reste en dessous |
 | Recette 0.4.2 | **passée le 17 novembre au soir** sur la VM, les neuf sections `s0`…`s8` enchaînées, toutes `EXIT 0` — détail en §3 |
 | VM de recette | `fb@192.168.1.80` (Proxmox, VM 300), Windows 11 26H2 `en-us`, SSH par `/root/.ssh/id_ed25519` |
 
@@ -305,6 +305,17 @@ harnais, pas dans le produit.
 
 ## 7. Pièges qui ont coûté du temps
 
+- **Un processus enfant hérite de l'environnement, pas du `sys.path` du parent.** Le bassin
+  de lecture lance `python -m fireblade.core.linux_worker` : sur une copie source non
+  installée (le runner GitHub, un clone de contributeur), le parent importe `fireblade` parce
+  que pytest a mis `src` sur le chemin, l'enfant meurt à l'import avec le code 1, et la suite
+  dit « Le processus de lecture s'est arrêté ». Vert sur la tour, rouge en CI. Le bassin
+  prepend désormais la racine du paquet au `PYTHONPATH` de ses enfants ; le test le vérifie
+  `PYTHONPATH` vidé.
+- **Un tag mal placé se déplace, tant que rien n'est publié.** Le tag `v0.4.2` avait été posé,
+  la suite CI a échoué, le correctif est allé sur `main`, puis le tag a été supprimé et
+  recréé sur le nouveau commit (`git tag -d`, `git tag -a`, `git push --force origin`).
+
 - **`findstr` ne trouve pas un texte accentué** (page de code de la console) : chercher avec
   un script Python qui lit les octets en UTF-8.
 - **Une capture se lit au zoom.** Une vignette m'a fait enregistrer « six boutons » qui
@@ -388,7 +399,7 @@ gh release view v0.4.2 --repo 23R0534ZXT/fireblade --json author,assets,isPrerel
 
 Relever l'auteur, le SHA-256 de l'exe publié et l'URL de la release, et les reporter ici :
 
-- SHA-256 de l'exe 0.4.2 : à relever après la publication (l'exe est construit par la CI).
+- SHA-256 de l'exe 0.4.2 : `c7c358f2f8d8536b7c13e4a514d440ba4f81a62c166cbd34cb6992d8b155bfbd` (281 250 614 octets), relevé après la publication et re-vérifié après la recréation sous le compte du mainteneur.
 - URL de la release : `https://github.com/23R0534ZXT/fireblade/releases/tag/v0.4.2`
 
 Si `author.login` vaut `github-actions[bot]`, recréer la release sous le mainteneur en

@@ -1,3 +1,51 @@
+# Fireblade 0.5.0 — the Hayabusa findings map, and an assistant that will not invent
+
+This version is a prototype of one idea: an analyst should not read 35 000 alerts one
+by one, and a small local model should never be the thing that decides what is true.
+
+### A new tab: Hayabusa + AI
+
+- The alerts of a Hayabusa analysis are **grouped** instead of listed: one rule on one
+  host, one burst. Three identical alerts three minutes apart are one finding with a
+  count, not three rows. A collection that produced 6 000 rows reads as a few hundred
+  findings.
+- Findings are then gathered into **time windows**: what happened in the same hour stays
+  together, ordered by the clock, so a chain reads as a chain.
+- **Three painted views**, switchable inside the tab: a dial of the day (angle = time,
+  distance from the centre = severity), a heat map (one row per rule, brightness per
+  time slice), and a timeline per host for one window.
+- Every mark is clickable: the grid follows the selection, and the finding's own card
+  appears beside the map. The grid keeps the usual actions — open the alerts in the main
+  grid, bookmark every alert of a finding.
+- A finding whose timestamp cannot be read is **counted and reported**, never silently
+  dropped.
+
+### The assistant, wired but not yet running
+
+- `assistant.json` beside the user's cases decides whether a local model is enabled;
+  Fireblade works exactly the same without it.
+- Before anything is generated, Fireblade checks the machine: weights present, memory
+  available. When one is missing it says which, in one sentence, instead of failing
+  later.
+- The **evidence pack** — the group, its events numbered `[evt 1]`, the other findings of
+  the same window, and what could not be established — is built deterministically.
+- An answer is displayed only if **every citation names an event that exists in the
+  pack**; otherwise the draft is discarded and the reason is written. A well-formed
+  answer is not a true one, and the guard is what keeps the difference visible.
+
+### Honest limits of this prototype
+
+- **No model ships with this build and none is executed.** The panel computes and shows
+  the facts; asking a question explains why the assistant cannot answer yet. The
+  inference step, the model download at install time and the "explain this finding"
+  button come next.
+- The chain view draws the order of events in one window; the real "what the assistant
+  linked, edge by edge" picture needs the engine, and drawing hops before that would
+  invent them.
+- The grouping is computed in memory from the loaded analysis. A collection with
+  millions of alerts will need the grouping to run in DuckDB instead; the numbers here
+  (35 000 alerts, 128 findings) are the scale that works today.
+
 # Fireblade 0.4.2 — eight times less time on the same collection
 
 The 0.4.1 acceptance run measured what a Linux collection costs: 50 min 49 s for

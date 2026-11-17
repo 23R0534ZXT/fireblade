@@ -77,6 +77,10 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         from fireblade.ui.ioc_hunt import HuntPanel
         self.ioc_panel = HuntPanel(self)
         self.workbench.addTab(self.ioc_panel, "Chasse IOC")
+        # Findings map and local assistant: one tab, read from the Hayabusa analysis.
+        from fireblade.ui.hayabusa import HayabusaPanel
+        self.hayabusa_panel = HayabusaPanel(self)
+        self.workbench.addTab(self.hayabusa_panel, "Hayabusa + AI")
         from fireblade.ui.coverage import CoveragePanel
         self.coverage_panel=CoveragePanel(self)
         self.coverage_dialog=QDialog(self)

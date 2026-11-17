@@ -130,7 +130,20 @@ Sample data, if you have nothing at hand:
   coverage audit states what it could not verify.
 - **.NET plugins run with your rights** — load only assemblies you trust.
 
-## What's new in 0.4.2
+## What's new in 0.5.0 — prototype
+
+- **A findings map for Hayabusa.** Instead of 35 000 alert rows, the alerts are grouped
+  into a few hundred findings and drawn three ways: a dial of the day, a heat map, and a
+  timeline per host for one window. A click on a mark selects the finding and the grid
+  follows.
+- **An assistant tab, wired but not yet generating.** Fireblade builds the evidence pack
+  (numbered events, neighbours, what could not be established) and refuses any answer
+  whose citation does not exist in it. No model ships with this build: asking a question
+  says why.
+- This version is **source only**; the published executable stays
+  [0.4.2](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.4.2).
+
+## Previous release — 0.4.2
 
 - A 9.74 GiB collection parses in **6 min 0 s** instead of 50 min 49 s, for the same 246
   analyses: each file is read in its own process and a huge file is split into line-aligned

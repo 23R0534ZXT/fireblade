@@ -362,3 +362,17 @@ def test_compressed_trailing_garbage_is_not_silently_ignored(tmp_path,compress,s
 def test_bz2_lz4_concatenated_frames(tmp_path,compress,suffix):
     result,rows=parsed(tmp_path,compress(LINE)+compress(LINE),'auth.log'+suffix)
     assert len(rows)==2 and not result['warnings']
+
+
+def test_zeek_declarations_are_kept_but_are_not_data(tmp_path):
+    """A Zeek header declares the format; counting it as a raw line inflated every report."""
+    data = (b'#separator \\x09\n#fields\tts\tuid\n1793707200.25\tabc\n#close\n')
+    result, rows = parsed(tmp_path, data, 'conn.log')
+    lectures = [row['Lecture'] for row in rows]
+    assert lectures.count('Declaration') == 3, lectures      # separator, fields, close
+    assert lectures.count('Structured') == 1, lectures        # the one record
+    assert lectures.count('Raw') == 0, lectures
+    assert result['structured'] == 1
+    assert result.get('raw', 0) == 0
+    assert len(rows) == 4, 'every line stays in the evidence'
+    assert rows[2]['Format'] == 'Zeek TSV'

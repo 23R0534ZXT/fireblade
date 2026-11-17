@@ -505,8 +505,9 @@ def parse(source, output, progress=lambda _: None, span=None):
         writer.writerow([row.get(name, '') for name in HEADERS])
         total += 1
         is_raw = row.get('Lecture') in ('Brute', 'Raw')
+        declaration = row.get('Lecture') == 'Declaration'
         raw_count += is_raw
-        structured += not is_raw
+        structured += not is_raw and not declaration
         entry['rows'] += 1
         entry['raw_rows'] += is_raw
         if total % 100000 == 0:
@@ -556,9 +557,16 @@ def parse(source, output, progress=lambda _: None, span=None):
                         fields.update(Horodatage=' '.join(obj.get(k, '') for k in ('date', 'time')).strip(),
                                       **{'Adresse distante': obj.get('c-ip', ''), 'Méthode': obj.get('cs-method', ''),
                                          'Chemin': obj.get('cs-uri-stem', ''), 'Statut': obj.get('sc-status', '')})
+            declaration = not fields and bool(table_format) and text.startswith('#')
+            if declaration:
+                # '#separator', '#fields', '#Software': a declaration of the format, not a
+                # record. Counting it as a raw line inflated the raw count of every Zeek
+                # and W3C file by its header, and showed declarations among the data rows.
+                fields = {'Format': table_format}
             if '\0' in text:
                 fields = {}  # Later binary data is visibly raw, never structured text.
-            row = dict(fields, Lecture='Structured' if fields else 'Raw', Ligne=str(number),
+            row = dict(fields, Lecture='Declaration' if declaration and fields else
+                       ('Structured' if fields else 'Raw'), Ligne=str(number),
                        Offset=str(offset), **{'Fin de ligne': str(number), 'Texte brut': text})
             emit(row, path, entry)
             offset += len(raw)

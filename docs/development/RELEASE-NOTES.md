@@ -106,7 +106,12 @@ fixed here, each with a test.
   which is what a screen reader reads out. The hint is translated and the name carries the
   real header; the sort buttons announce ascending and descending in the chosen language.
 
-Full suite after these fixes: 1 458 passed, 28 skipped, ruff clean, real window.
+- **A Zeek or W3C header counted as raw data.** `#separator`, `#fields`, `#close` and
+  `#Software` were emitted with the raw state, so the report announced raw lines that were
+  declarations and the data rows were mixed with them. They keep their line, their offset
+  and their text - the evidence is unchanged - but carry their own state, counted apart.
+
+Full suite after these fixes: 1 459 passed, 28 skipped, ruff clean, real window.
 
 # Fireblade 0.4.1 — a 10 GiB collection, and what it found
 

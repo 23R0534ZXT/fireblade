@@ -15,8 +15,8 @@ Git de la VM : `C:\Users\fb\tools\git\cmd\git.exe`. Interpréteur :
 
 | Élément | État |
 |---|---|
-| Branche | `hermes/0.5.0-assistant`, trois commits, **pas poussée** |
-| Version | 0.5.0 (prototype assumé) |
+| Branche | `main`, à `1d8ada9` ; la branche `hermes/0.5.0-assistant` est fusionnée |
+| Version | **0.5.0 publiée** (tag `v0.5.0`, prerelease assumée) — exe 281 125 170 o, SHA-256 `59a44840f7890b43f1d3fcff98260b92737e50a2b632f7c651b47415ad23d9dd` |
 | Porte | verte sur la VM : **1527 passés, 28 ignorés, 954 s** (`vm_gate.ps1`) |
 | Modèle local | moteur llama.cpp `b12483` + MiniCPM5-2B Q4_K_M (1 561 318 368 octets, SHA-256 `ec2d5801…602fd`) |
 | Recette | `s0`, `s1` (972 s, 214 analyses), `s2`, `s4` à `s9` vertes ; `s10_assistant.py` (9 étapes) et `s11_strain.py` (8 étapes) vertes ; captures `C:\fireblade-test\shots\S10-*` et `S11-*` |
@@ -74,6 +74,23 @@ Git de la VM : `C:\Users\fb\tools\git\cmd\git.exe`. Interpréteur :
 - Le regroupement par défaut est le SQL ; la version Python reste pour les tests et le
   repli, et un test vérifie que les deux produisent les mêmes constats.
 
+## 4 bis. Publier (fait pour la 0.5.0, à refaire à l'identique)
+
+- La VM **pousse en SSH** : clé `C:\Users\fb\.ssh\id_ed25519` (`fireblade-vm@proxmox`, type
+  authentification), remote `git@github.com:23R0534ZXT/fireblade.git`. Aucun jeton n'est
+  stocké sur la VM ; `GIT_SSH_COMMAND='ssh -o BatchMode=yes -o StrictHostKeyChecking=no'`.
+- La CI construit l'exe et publie la release **sous `github-actions[bot]`** : la recréer depuis
+  la tour (`gh` y est authentifié) — `gh release download`, `gh release delete`, `gh release
+  create` avec le même exe et le même corps. Le corps contient déjà `Commit:` et
+  `SHA-256 of Fireblade.exe:` : vérifier que le fichier téléchargé donne la même empreinte.
+- **Le titre doit être posé par l'API en UTF-8 brut** : `gh api --input` et PowerShell
+  ré-encodent, et le tiret cadratin devient `ÔÇö`. Utiliser `urllib` avec
+  `Content-Type: application/json; charset=utf-8` et le jeton rendu par `gh auth token`.
+- Le workflow a ensuite committé lui-même la mise à jour du README (lien direct vers l'exe et
+  vers le run de qualification) : ne pas la réécrire, rebaser dessus.
+- Une prerelease laisse `latest` sur la version précédente ; le lien du README vise donc le
+  tag, pas `/releases/latest`.
+
 ## 5. Pièges rencontrés cette nuit
 
 - **Le disque de la VM s'est rempli** (96 Go, 0 libre) : les deux cas du test 10 Gio pèsent
@@ -127,7 +144,8 @@ Qualité de l'assistant : `powershell -File C:\Users\fb\vm_quality_run.ps1` puis
 
 1. **Qualité du modèle** : MiniCPM5-2B donne un résumé utile mais pauvre (1 à 2 faits par
    constat) ; c'est une limite du modèle, pas du garde-fou. Un modèle plus gros tiendrait
-   sur la même interface.
+   sur la même interface. Pas de fine-tuning : il faudrait un GPU et des réponses de
+   référence étiquetées ; le prompt a été mesuré à la place (`vm_quality.py`).
 2. **Enquête multi-étapes** : l'assistant explique un constat, il ne conduit pas
    l'analyse.
 3. **Paquet de preuve** borné à 40 événements ; au-delà, le nombre non lu est écrit.

@@ -16,6 +16,8 @@ surface must not add French to the interface.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import math
 
 import time
@@ -594,7 +596,32 @@ class HayabusaPanel(QWidget):
         def query(sql, params):
             with case.lock:
                 return case.db.execute(sql, params).fetchall()
-        return CaseTools(query, findings=findings, context=context)
+        return CaseTools(query, findings=findings, context=context,
+                         inventory=self.case_inventory)
+
+    def case_inventory(self):
+        """The other analyses of the case, named: one analysis is not the whole case."""
+        documents = list(getattr(self.window, 'documents', []) or [])
+        if len(documents) < 2:
+            return ''
+        active = str(getattr(getattr(self.window, 'case', None), 'path', ''))
+        names = []
+        for document in documents:
+            path = str(getattr(document, 'path', ''))
+            if path == active:
+                continue
+            info = getattr(document, 'source_info', None)
+            if info is None and isinstance(document, dict):
+                info = document.get('source_info') or {}
+            info = info or {}
+            name = Path(str(info.get('path', path))).name
+            rows = info.get('rows')
+            names.append(name + (' (%s rows)' % rows if rows not in (None, '') else ''))
+        if not names:
+            return ''
+        return ('The case also holds: ' + ', '.join(names[:12])
+                + '. The rows above come from the analysis open in the window; say so if the '
+                'question is about one of the others.')
 
     def run_chat(self, question):
         """One conversation turn from a worker thread, with the lookups the model asked for."""

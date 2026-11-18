@@ -234,3 +234,19 @@ def test_the_rows_are_printed_with_their_real_names_and_without_the_row_id():
 
     assert 'Timestamp | Computer | Details' in text
     assert '[1] 2026-11-17T10:02:52Z | FBVM | ServiceName: updsvc' in text
+
+
+def test_the_brief_names_the_other_analyses_of_the_case():
+    """One analysis is not the whole case, and the model must not be told otherwise."""
+    tools = CaseTools(lambda sql, params: [], brief='42 row(s) in the case.',
+                      inventory=lambda: 'The case also holds: iis.log (1024 rows).')
+    described = tools.describe()
+    assert described.startswith('42 row(s) in the case.')
+    assert 'iis.log (1024 rows)' in described
+
+
+def test_an_inventory_that_fails_does_not_break_the_brief():
+    def broken():
+        raise RuntimeError('no document')
+    tools = CaseTools(lambda sql, params: [], brief='42 row(s) in the case.', inventory=broken)
+    assert tools.describe() == '42 row(s) in the case.'

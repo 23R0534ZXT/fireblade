@@ -153,3 +153,18 @@ def test_destroying_evidence_lists_the_case_but_never_its_record(qt_application,
             dialog.deleteLater()
     finally:
         window.close()
+
+
+def test_a_corrupt_workspace_is_reported_in_the_panel_not_in_a_dialog(qt_application, tmp_path):
+    window = Window(require_case=False, investigation_root=tmp_path/'Cases')
+    errors = []
+    window.error = errors.append
+    try:
+        case = window.create_investigation('Affaire F')
+        (window.investigation_library.folder(case['id'])/'workspace.json').write_text('{broken', encoding='utf-8')
+        panel = window.operations_panel
+        panel.refresh()
+        assert 'illisible' in panel.status.text() or 'cannot be read' in panel.status.text()
+        assert not errors
+    finally:
+        window.close()

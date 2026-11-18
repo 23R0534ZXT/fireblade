@@ -1,3 +1,35 @@
+# Fireblade 0.7.1 — the assistant knows the whole case
+
+0.7.0 gave the case a workspace, a graph, a report and a certificate. This patch fixes
+what the first evening with a real multi-source case showed.
+
+## The assistant no longer mistakes one analysis for the case
+
+- When a case holds several analyses, the brief handed to the model names them — file and
+  row count — and says that the rows it read come from the analysis open in the window. A
+  question about `iis.log` while `hayabusa-alerts.csv` is on screen gets an answer that
+  knows the other one exists, instead of a confident answer about the wrong source.
+
+## A corrupt workspace is reported once, in the panel
+
+- An unreadable `workspace.json` used to open an error dialog on every case switch. The
+  tracking panel now keeps the message on its own status line, the rest of the window
+  keeps working, and the file can be repaired or restored.
+
+## The Linux stress benchmark checks what it reads again
+
+- It hooked `csv.DictWriter` and looked for the old French row labels, while `linux_logs`
+  writes through `csv.writer` with `Structured`/`Raw`. It validated nothing and its count
+  stayed at zero, which turned the CI step red the first time the file was touched. It now
+  validates every row: 1 GiB of records at 53 MiB/s, 1 024 records verified, 79 MB peak
+  memory, and the persisted collection check passes.
+
+## Release housekeeping
+
+- An early archive published as "Fireblade 0.7.0 — archive (old numbering)" was renamed:
+  its title blocked the real 0.7.0 through the release guard, which refuses a version whose
+  name already exists.
+
 # Fireblade 0.7.0 — the case becomes something you can hand over
 
 The analysis was already readable. What an engagement needs next is the paperwork: who
@@ -67,6 +99,48 @@ and stops treating every disk image as a raw file.
   part would truncate the evidence silently.
 - The "no filesystem" error now names the case it found — container recognised, no usable
   partition — instead of a generic failure.
+
+## The assistant proposes the next question
+
+- The assistant answers well when it is asked well, and a 2B model asked "what next"
+  invents a priority. Three **guided questions** now sit under the question box, read from
+  the case itself: the worst finding and its host, the benign explanation that would fit it,
+  the busiest host, a lateral-movement question when more than one host is involved, the
+  first tracked indicator, an open action's machine.
+- A click only fills the box; nothing is sent until the analyst presses Ask. A case with no
+  finding gets the three questions that make sense on an empty case.
+
+## Log formats an incident actually hands over
+
+- **IIS / W3C** logs are parsed with their `#Fields:` declaration: date, time, verb, URI,
+  status, client address, user and agent become columns, and the four `#Software`/`#Version`
+  comment lines are recorded as declarations instead of inflating the raw line count.
+- **Windows Event Viewer CSV** keeps quoted commas, a BOM and CRLF; **AmcacheParser CSV**
+  loses its BOM before the first header; **TSV** keeps its columns.
+- **JSON Lines** (journald, Sysmon JSON) are recognised field by field, **PowerShell
+  transcripts** in UTF-16 and **cp1252** logs keep their accents.
+- An empty file is refused with a reason instead of becoming an empty analysis the case
+  has to carry and every report has to skip.
+
+## A portable case that carries what the case knows
+
+- The portable archive now includes the workspace, the destruction records and the
+  assistant conversations (`include_extra_files`). Before, a portable case reopened as an
+  empty shell: the actions, the indicators and the conversations stayed on the machine.
+- An imported case keeps those files under `case-extra/`, which is the archive's existing
+  layout; the workspace and the destruction records are now read and written there, so the
+  certificate's photographs still resolve after the move.
+- Importing an indicator list writes the workspace once, not once per indicator: 3 000
+  indicators in a single save.
+
+## Measured strain
+
+- A 512 MiB evidence file destroyed with the three-pass scheme: 13.2 s (three passes plus
+  the read-back), certificate written.
+- 800 findings over 120 hosts: 324 graph nodes, layout and SVG in 0.01 s.
+- 300 findings in a client report: 0.1 MB of HTML, under a second.
+- 2 000 actions and 5 000 indicators: a 2.85 MB workspace, saved in 0.31 s and loaded in
+  0.08 s.
 
 ## What this version still does not claim
 

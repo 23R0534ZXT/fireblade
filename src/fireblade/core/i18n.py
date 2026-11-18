@@ -1676,6 +1676,7 @@ EN = {
     "Valeur de l'indicateur (le type est déduit)": "Indicator value (the type is inferred)",
     "aucun case actif": "no active case",
     "cet hôte": "this host",
+    "Case workspace illisible : {}": "The case workspace cannot be read: {}",
     "domaine, IP, URL ou empreinte": "domain, IP, URL or hash",
     "détruit et vérifié": "destroyed and verified",
     "tous les cases": "all cases",

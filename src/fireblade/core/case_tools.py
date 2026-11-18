@@ -37,12 +37,14 @@ def select_only(sql):
 class CaseTools:
     """`query(sql, params)` runs on the interface's connection, on its own thread."""
 
-    def __init__(self, query, findings=None, brief=None, context=None):
+    def __init__(self, query, findings=None, brief=None, context=None, inventory=None):
         self._run = query
         self.query = self._guarded(query)
         self.findings = findings or (lambda: [])
         self.brief = brief or ''
         self.context = context or (lambda: '')
+        # What else the case holds, when the assistant reads one analysis of several.
+        self.inventory = inventory or (lambda: '')
         self._columns = None
 
     def _guarded(self, query):
@@ -125,6 +127,16 @@ class CaseTools:
 
     # ------------------------------------------------------------------ brief
     def describe(self):
+        return self._with_inventory(self._describe())
+
+    def _with_inventory(self, text):
+        try:
+            extra = self.inventory() or ''
+        except Exception:  # noqa: BLE001 - an inventory is context, never a failure
+            extra = ''
+        return text + ('\n' + extra if extra else '')
+
+    def _describe(self):
         if self.brief:
             return self.brief
         selected = ''

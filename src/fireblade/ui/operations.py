@@ -269,6 +269,7 @@ class OperationsPanel(QWidget):
         super().__init__(window)
         self.window = window
         self.workspace = None
+        self._workspace_error = ''
         self.case_workspaces = {}
         self._build()
 
@@ -295,11 +296,14 @@ class OperationsPanel(QWidget):
         if case is None:
             self.workspace = None
             return
+        self._workspace_error = ''
         try:
             self.workspace = case_workspace.load(self.case_folder(case['id']))
         except (OSError, ValueError) as exc:
+            # A corrupt workspace must not open a modal on every case switch: the panel
+            # says it once, keeps working and lets the analyst repair the file.
             self.workspace = None
-            self.window.error(str(exc))
+            self._workspace_error = translate('Case workspace illisible : {}').format(str(exc))
 
     def machines(self):
         names = []
@@ -517,7 +521,11 @@ class OperationsPanel(QWidget):
                       and str(item['due']) < date.today().isoformat())
         scope_label = 'tous les cases' if all_cases else _one_case_label(self)
         summary = f'{len(rows)} action(s) · {open_count} ouverte(s) · {overdue} en retard · {scope_label}'
-        self.status.setText(summary if rows else summary + ' · ' + translate('Aucune action enregistrée dans ce périmètre.'))
+        if not rows:
+            summary += ' · ' + translate('Aucune action enregistrée dans ce périmètre.')
+        if getattr(self, '_workspace_error', ''):
+            summary = self._workspace_error + ' · ' + summary
+        self.status.setText(summary)
         self.notice.clear()
 
     def fill_iocs(self):

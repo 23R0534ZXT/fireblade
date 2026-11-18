@@ -20,7 +20,37 @@ from pathlib import Path
 
 from fireblade.core.settings import physical_memory_mb
 
+# Three sizes, all pinned: a model that moves upstream cannot change what this build runs.
+# The digest of every entry was read from the file's own SHA-256, not from a page.
+MODELS = {
+    'MiniCPM5-2B': dict(
+        label='Fast - 2B, works on a laptop without a graphics card',
+        url='https://huggingface.co/openbmb/MiniCPM5-2B-GGUF/resolve/main/MiniCPM5-2B-Q4_K_M.gguf',
+        sha256='ec2d5801640099e97d8d7e8003ad4d81f336e757811f03a26173dddf386602fd',
+        bytes=1_561_318_368, weights_mb=1600),
+    'Qwen3-4B-Instruct-2507': dict(
+        label='Balanced - 4B, follows instructions and answers in your language',
+        url=('https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/'
+             'Qwen3-4B-Instruct-2507-Q4_K_M.gguf'),
+        sha256='3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597',
+        bytes=2_497_281_120, weights_mb=2500),
+    'Qwen3-8B': dict(
+        label='Best - 8B, needs about 8 GB of free memory or a graphics card',
+        url='https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf',
+        sha256='d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785',
+        bytes=5_027_783_488, weights_mb=4900),
+}
 DEFAULT_MODEL = 'MiniCPM5-2B'
+RECOMMENDED_MODEL = 'Qwen3-4B-Instruct-2507'
+
+
+def catalogue():
+    """What can be installed, smallest first."""
+    return [dict(name=name, **spec) for name, spec in MODELS.items()]
+
+
+def spec_of(name):
+    return MODELS.get(str(name)) or MODELS[DEFAULT_MODEL]
 # What the model needs before it is allowed to answer: weights at Q4_K_M (1.56 GB on
 # disk for MiniCPM5-2B), a KV cache for 8k tokens, and room for the runtime itself.
 WEIGHTS_MB = 1600
@@ -104,7 +134,8 @@ class Assistant:
         return self._memory_mb if self._memory_mb is not None else physical_memory_mb()
 
     def needed_mb(self):
-        return WEIGHTS_MB + RUNTIME_MB + KV_CACHE_MB
+        weights = spec_of(self.model).get('weights_mb', WEIGHTS_MB)
+        return weights + RUNTIME_MB + KV_CACHE_MB
 
     @property
     def runtime(self):
@@ -138,7 +169,7 @@ class Assistant:
                           'The weights are installed but the local engine is not; re-run the '
                           'download to fetch it.')
         return Status(STATE_READY, self.model, str(self.root), self.needed_mb(), available,
-                      'The local model is installed and ready.')
+                      'The local model (%s) is installed and ready.' % self.model)
 
 
 _SERVERS = {}
@@ -226,12 +257,6 @@ def write_manifest(root, enabled, model=DEFAULT_MODEL, weights=None):
 RUNTIME_TAG = 'b12483'
 RUNTIME_URL = ('https://github.com/ggml-org/llama.cpp/releases/download/%s/'
                'llama-%s-bin-win-cpu-x64.zip') % (RUNTIME_TAG, RUNTIME_TAG)
-MODEL_URL = ('https://huggingface.co/openbmb/MiniCPM5-2B-GGUF/resolve/main/'
-             'MiniCPM5-2B-Q4_K_M.gguf')
-# Measured on the downloaded file: the installer refuses anything else, so a model that
-# moves upstream cannot change what this build runs.
-MODEL_SHA256 = 'ec2d5801640099e97d8d7e8003ad4d81f336e757811f03a26173dddf386602fd'
-MODEL_BYTES = 1_561_318_368
 
 
 def download(url, target, progress=None, expected_bytes=None, digest=None, chunk=1 << 20):
@@ -299,14 +324,16 @@ def install_runtime(root, progress=None):
     return server
 
 
-def install_model(root, progress=None):
-    """Fetch the weights, verify their size, and record their digest in the manifest."""
+def install_model(root, progress=None, model=None):
+    """Fetch the weights of one catalogue entry, verify them, and return where they are."""
     root = model_directory(root)
-    weights = root / 'MiniCPM5-2B-Q4_K_M.gguf'
-    if weights.is_file() and weights.stat().st_size == MODEL_BYTES:
+    name = str(model or DEFAULT_MODEL)
+    spec = spec_of(name)
+    weights = root / Path(spec['url']).name
+    if weights.is_file() and weights.stat().st_size == spec['bytes']:
         return weights
-    target, digest = download(MODEL_URL, weights, progress, expected_bytes=MODEL_BYTES,
-                              digest=MODEL_SHA256 or None)
+    target, digest = download(spec['url'], weights, progress,
+                              expected_bytes=spec['bytes'], digest=spec['sha256'] or None)
     return target, digest
 
 
@@ -400,12 +427,24 @@ def ask(port, prompt, max_tokens=480, timeout=600, schema=None):
     if schema is not None:
         body['response_format'] = dict(type='json_schema',
                                        json_schema=dict(name='finding', schema=schema, strict=True))
-    request = urllib.request.Request('http://127.0.0.1:%d/v1/chat/completions' % int(port),
-                                     data=json.dumps(body).encode('utf-8'),
-                                     headers={'Content-Type': 'application/json'})
+    def send(payload_body):
+        request = urllib.request.Request(
+            'http://127.0.0.1:%d/v1/chat/completions' % int(port),
+            data=json.dumps(payload_body).encode('utf-8'),
+            headers={'Content-Type': 'application/json'})
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read().decode('utf-8'))
+
     started = time.monotonic()
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        payload = json.loads(response.read().decode('utf-8'))
+    try:
+        payload = send(body)
+    except urllib.error.HTTPError as error:
+        # Not every chat template knows enable_thinking: a model that does not support it
+        # answers 400, and losing the assistant over one key would be absurd.
+        if error.code != 400:
+            raise
+        body.pop('chat_template_kwargs', None)
+        payload = send(body)
     elapsed = time.monotonic() - started
     choice = (payload.get('choices') or [{}])[0]
     message = choice.get('message') or {}

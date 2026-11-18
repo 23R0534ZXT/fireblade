@@ -15,11 +15,44 @@ Git de la VM : `C:\Users\fb\tools\git\cmd\git.exe`. Interpréteur :
 
 | Élément | État |
 |---|---|
-| Branche | `hermes/0.5.1-import` (travail de la 0.5.1) ; `main` reste à `22fcf1d` |
-| Version | **0.5.1 préparée, non publiée** : `pyproject.toml` et `__init__.py` à 0.5.1 |
-| Porte | verte sur la VM : **1556 passés, 28 ignorés, 957 s** — sur l'arbre exact de la 0.5.1 |
-| Recette | `s1_import` (collecte 10 Gio) et `s17_import_051` (contrat d'import) — à relancer sur l'arbre final |
-| 0.5.0 publiée | tag `v0.5.0`, exe 281 125 170 o, SHA-256 `59a44840…` — inchangée |
+| Branche | `hermes/0.6.0-assistant` (travail en cours) ; `main` porte la 0.5.2 |
+| Version | **0.6.0 en préparation** : `pyproject.toml` et `__init__.py` à 0.6.0 |
+| 0.5.1 publiée | tag `v0.5.1`, `Fireblade-0.5.1-win64.zip`, 283 208 795 o, SHA-256 `a0319dd2…`, auteur `23R0534ZXT`, *prerelease* |
+| 0.5.2 publiée | tag `v0.5.2` — archive dont tous les chemins tiennent sous 160 caractères |
+| Porte | verte : **1589 passés, 28 ignorés, 955 s** — sur l'arbre exact de la 0.6.0 |
+| Recette | `s17_import_051` (import) et `s18_chat_060` (assistant, cadran) sur la vraie fenêtre |
+
+## 2 bis. Ce que contient la 0.6.0
+
+Trois sujets, tous nés d'une remarque d'usage :
+
+- **L'assistant est une conversation.** `core/assistant_chat.py` tient le fil : chaque tour
+  envoie l'échange précédent, pose une question de planification à schéma fixe, exécute
+  **un** outil, puis demande la réponse. `core/case_tools.py` expose quatre lectures
+  bornées (`overview`, `search`, `findings`, `artifact`) au-dessus de la connexion
+  sérialisée du dossier (`case.lock`) — jamais de SQL libre. L'aperçu du dossier contient
+  les constats (niveau, règle, hôte, heure) et, si un constat est sélectionné, ses lignes.
+- **Deux garde-fous, un seul nouvel essai chacun** : une réponse dans la mauvaise langue
+  par rapport à la question, ou une réponse qui ne nomme aucun constat alors qu'elle en a
+  reçu, est redemandée une fois puis rendue telle quelle. `language_of` /
+  `names_a_finding` décident ; il n'y a pas de boucle.
+- **Le cadran répond au clic.** Dans `ui/maps.py`, chaque raie enregistre la forme qu'elle
+  a dessinée (segment épaissi de 18 px via `QPainterPathStroker`) au lieu d'une boîte de
+  16 px autour de sa pointe ; `mark_at` interroge la forme, et survoler nomme le constat.
+  Une tranche horaire qui contient plusieurs constats ouvre le plus grave.
+- **Le choix de mise en page redevient utilisable** : `CollectionOrganizationDialog`
+  ne grise plus « par artefact » quand l'analyse progressive est cochée ; choisir une
+  disposition groupée décoche le flux (elle a besoin de tous les fichiers), et l'infobulle
+  dit ce qui se passe. C'est ce qui remplace 110 onglets EVTX par une table par famille.
+- **Trois modèles au choix** (`core/assistant.py`) : MiniCPM5-2B (1,56 Go), Qwen3-4B-Instruct-2507
+  (2,50 Go), Qwen3-8B (5,03 Go), chacun avec son empreinte SHA-256 épinglée. Le dialogue
+  d'installation grise ce que la mémoire de la machine ne porte pas, et choisit le 4B par
+  défaut quand il tient.
+
+Mesuré sur la VM (4 cœurs, 8 Go, sans GPU) : 2B = 30 à 45 s par réponse, 4B = 91 à 111 s.
+Le 4B se télécharge en 3 min 30 par le chemin du produit, empreinte vérifiée. Recette
+`s18_chat_060` : C00–C07 verts, question en français, réponse en français, second tour
+avec mémoire, clic sur une raie qui sélectionne le bon constat.
 
 ## 3. Ce que contient la 0.5.1 — l'import
 

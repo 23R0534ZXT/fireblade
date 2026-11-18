@@ -22,12 +22,15 @@ import time
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import (QSizePolicy, QAbstractItemView, QComboBox, QFrame, QHBoxLayout,
-                               QHeaderView, QLabel, QLineEdit, QMenu, QPlainTextEdit,
-                               QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QSizePolicy, QAbstractItemView, QComboBox, QDialog, QDialogButtonBox,
+                               QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMenu,
+                               QPlainTextEdit, QPushButton, QRadioButton, QSplitter, QTableWidget,
+                               QTableWidgetItem, QVBoxLayout, QWidget)
 
-from fireblade.core.assistant import Assistant, answer, install_model, install_runtime, write_manifest
+from fireblade.core.assistant import (Assistant, answer, catalogue, install_model, install_runtime,
+                                      write_manifest)
+from fireblade.core.assistant_chat import Chat
+from fireblade.core.case_tools import CaseTools
 from fireblade.core.explain import (SCHEMA, build_pack, describe_without_model, read_answer,
                                     render_structured, verify)
 from fireblade.core.findings import group_alerts, group_alerts_sql, summarise
@@ -61,6 +64,7 @@ class HayabusaPanel(QWidget):
         self.selected = -1
         self.summary = dict(groups=0, hits=0, levels={})
         self.assistant = Assistant()
+        self.chat = None
         self._build()
 
     # ---------------------------------------------------------------- interface
@@ -142,7 +146,7 @@ class HayabusaPanel(QWidget):
         side_layout.addWidget(self.explanation, 1)
         ask_row = QHBoxLayout()
         self.ask = QLineEdit()
-        self.ask.setPlaceholderText('Ask about this finding…')
+        self.ask.setPlaceholderText('Ask anything about this case…')
         self.ask.returnPressed.connect(self.ask_question)
         ask_row.addWidget(self.ask, 1)
         self.ask_button = QPushButton('Ask')
@@ -442,17 +446,93 @@ class HayabusaPanel(QWidget):
                              group.end.strftime('%H:%M:%S') if group.end else '—', window))
 
     def ask_question(self):
-        """Answer a question about the selected finding, with the same guard as an explanation."""
+        """Talk to the assistant: the whole case is in reach, a selection is not required."""
         text = self.ask.text().strip()
-        pack = getattr(self, '_pack', None)
         if not text:
             return
-        if pack is None:
-            self.explanation.appendPlainText('Select a finding first.')
-            return
         self.ask.clear()
-        self.explanation.appendPlainText('\n> ' + text)
-        self.run_assistant(text)
+        self.explanation.appendPlainText('\nYou: ' + text)
+        self.run_chat(text)
+
+    def finding_rows(self):
+        """The detections as plain dicts: the assistant reads the same list the table shows."""
+        rows = []
+        for group in getattr(self, 'groups', []) or []:
+            rows.append(dict(key=group.key, level=group.level, title=group.title, host=group.host,
+                             count=group.count,
+                             start=group.start.isoformat(sep=' ', timespec='seconds')
+                             if group.start else 'unknown'))
+        rows.sort(key=lambda item: (item['level'] != 'critical', item['level'] != 'high',
+                                    item['level'] != 'medium', item['start']))
+        return rows
+
+    def selection_brief(self):
+        """The finding on screen, handed to the assistant as the words and rows it holds."""
+        pack = getattr(self, '_pack', None)
+        if pack is None or not pack.facts:
+            return ''
+        lines = ['SELECTED FINDING: [%s] %s on %s, %s, %s occurrence(s)' % (
+            pack.level, pack.title, pack.host, pack.start, pack.count)]
+        for row in pack.facts[:8]:
+            lines.append('  %s %s id=%s %s' % (row.stamp, row.host, row.event_id, row.text[:180]))
+        return '\n'.join(lines)
+
+    def case_tools(self):
+        """The case as the assistant can read it: a bounded query on the open connection."""
+        case = getattr(self.window, 'case', None)
+        findings = self.finding_rows
+        context = self.selection_brief
+        if case is None:
+            return CaseTools(lambda sql, params: [], findings=findings, context=context)
+        def query(sql, params):
+            with case.lock:
+                return case.db.execute(sql, params).fetchall()
+        return CaseTools(query, findings=findings, context=context)
+
+    def run_chat(self, question):
+        """One conversation turn from a worker thread, with the lookups the model asked for."""
+        status = self.assistant.status()
+        if self._busy_since is not None:
+            self.progress_label.setText('An operation is already running; try again after it.')
+            self.explanation.appendPlainText('\nA question is already running: this one was not sent.')
+            return
+        if not status.can_answer:
+            self.explanation.appendPlainText('\nThe local assistant cannot answer: ' + status.detail)
+            return
+        if self.chat is None or self.chat.root != str(self.assistant.root):
+            self.chat = Chat(str(self.assistant.root), self.case_tools())
+        self._busy_since = time.monotonic()
+        self._ticker.start()
+        self.explain_button.setEnabled(False)
+        self.ask_button.setEnabled(False)
+        self.progress_label.setText('The local model is reading the case…')
+        chat = self.chat
+        self.window.run(lambda: chat.ask(question), self.chat_ready, on_error=self.chat_failed)
+
+    def chat_ready(self, turn):
+        self._busy_since = None
+        self._ticker.stop()
+        self._engine_used = True
+        self.progress_label.setText('')
+        self.explain_button.setEnabled(bool(getattr(self, '_pack', None)))
+        self.ask_button.setEnabled(True)
+        if turn is None or not getattr(turn, 'text', ''):
+            self.explanation.appendPlainText('The local assistant did not answer.')
+            return
+        lines = [turn.text]
+        if turn.steps:
+            lines.append('Read: ' + ', '.join('%s (%d row(s))' % (step.tool, step.rows)
+                                              for step in turn.steps))
+        lines.append('(%s s)' % turn.seconds)
+        self.explanation.appendPlainText('\n' + '\n'.join(lines))
+
+    def chat_failed(self, error):
+        self._busy_since = None
+        self._ticker.stop()
+        self.ask_button.setEnabled(True)
+        self.explain_button.setEnabled(bool(getattr(self, '_pack', None)))
+        self.progress_label.setText('')
+        self.explanation.appendPlainText('\nThe local assistant failed: %s' % error)
 
     def explain_group(self):
         """Explain the selected finding with the local model, without freezing the window."""
@@ -546,10 +626,16 @@ class HayabusaPanel(QWidget):
     # ---------------------------------------------------------------- installation
     def setup_assistant(self):
         """Fetch the engine and the weights, with a progress the analyst can read."""
+        chooser = ModelChooser(self.assistant.status().available_mb, self)
+        if chooser.exec() != QDialog.DialogCode.Accepted:
+            chooser.deleteLater()
+            return
+        model = chooser.model()
+        chooser.deleteLater()
         self.setup_button.setEnabled(False)
-        self.progress_label.setText('Starting the download…')
+        self.progress_label.setText('Starting the download of %s…' % model)
         root = str(self.assistant.root)
-        job = InstallJob(self)
+        job = InstallJob(self, model)
         self.install_job = job
         job.progress.connect(self.install_progress)
         job.done.connect(self.install_done)
@@ -631,6 +717,54 @@ class HayabusaPanel(QWidget):
         self.status.setText('Bookmarked %d alert(s) of this finding.' % len(ids))
 
 
+class ModelChooser(QDialog):
+    """Which model to install: the smallest that works is not always the one wanted.
+
+    The weights decide how well the assistant follows an instruction, and the machine
+    decides how large they can be, so both facts are on screen before anything is
+    downloaded. Nothing is preselected that this machine cannot run.
+    """
+
+    def __init__(self, available_mb=None, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Install the local model')
+        self.resize(560, 320)
+        layout = QVBoxLayout(self)
+        intro = QLabel('Everything runs offline after this download. The larger the model, '
+                       'the better it follows instructions, and the slower it answers on a '
+                       'machine without a graphics card.')
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+        self.buttons = []
+        entries = catalogue()
+        fits = lambda spec: available_mb is None or available_mb >= spec['weights_mb'] + 1300
+        for spec in entries:
+            radio = QRadioButton('%s  -  %s' % (spec['name'], spec['label']))
+            radio.setToolTip('%s GB to download' % round(spec['bytes'] / 1024 ** 3, 1))
+            radio.setEnabled(fits(spec))
+            self.buttons.append((radio, spec['name']))
+            layout.addWidget(radio)
+            if not fits(spec):
+                radio.setText(radio.text() + '  (needs more memory than this machine has)')
+        chosen = next((radio for radio, _name in self.buttons if radio.isEnabled()), None)
+        preferred = next((radio for radio, name in self.buttons
+                          if radio.isEnabled() and name == 'Qwen3-4B-Instruct-2507'), None)
+        (preferred or chosen).setChecked(True)
+        layout.addStretch(1)
+        box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        box.button(QDialogButtonBox.Ok).setText('Download')
+        box.button(QDialogButtonBox.Cancel).setText('Cancel')
+        box.accepted.connect(self.accept)
+        box.rejected.connect(self.reject)
+        layout.addWidget(box)
+
+    def model(self):
+        for radio, name in self.buttons:
+            if radio.isChecked():
+                return name
+        return self.buttons[0][1]
+
+
 class InstallJob(QThread):
     """Download outside the UI thread: 1.6 GB over a home link is minutes, not seconds."""
 
@@ -638,17 +772,18 @@ class InstallJob(QThread):
     done = Signal(str)
     failed = Signal(str)
 
-    def __init__(self, panel):
+    def __init__(self, panel, model=None):
         super().__init__(panel)
         self.panel = panel
+        self.model = model or panel.assistant.model
 
     def run(self):
         try:
             root = self.panel.assistant.root
             install_runtime(root, progress=lambda received, total: self.progress.emit(received, total))
-            weights = install_model(root, progress=lambda received, total: self.progress.emit(received, total))
-            name = weights.name if hasattr(weights, 'name') else 'MiniCPM5-2B-Q4_K_M.gguf'
-            write_manifest(root, enabled=True, model=self.panel.assistant.model, weights=name)
+            weights = install_model(root, model=self.model,
+                                    progress=lambda received, total: self.progress.emit(received, total))
+            write_manifest(root, enabled=True, model=self.model, weights=weights.name)
             self.done.emit(str(root))
         except Exception as exc:            # a failed download must reach the panel, not the log
             self.failed.emit('%s: %s' % (type(exc).__name__, exc))

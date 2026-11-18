@@ -1,3 +1,52 @@
+# Fireblade 0.6.0 — the assistant reads the case, and the dial answers the click
+
+The local assistant was a single question about a single finding: forty rows in, a
+JSON object out, no memory of what you asked before and no way to look anything up.
+This version makes it a conversation, and it gives it the case.
+
+## A conversation, not a form
+
+- The question box is a **transcript**: your question, then the answer, then the next
+  question with the previous exchange still in front of you.
+- **Nothing needs to be selected.** Ask about the whole case — how many hosts, what
+  happened around ten o'clock, which detections matter — and the assistant reads the
+  case to answer.
+- It answers **in the language you wrote in**. Ask in French and the answer is French;
+  a file path, a rule name or a timestamp stays exactly as the case spells it.
+
+## It looks before it speaks
+
+- Four bounded lookups, and no SQL of its own: **overview** (hosts, sources, time span,
+  counts), **search** (events matching a word, a host or an event id), **findings** (the
+  detections, most severe first), **artifact** (one artifact kind at a time).
+- The turn is two model calls: one that picks the lookup, one that writes the answer from
+  what came back. The transcript says what was read — `Read: search (25 row(s))`.
+- A lookup that finds nothing, or a case imported without the column the question needs,
+  says so instead of inventing a host or a time.
+
+## The dial answers the click
+
+- A ray of the **Clock** view is four pixels wide and its tip was a sixteen-pixel square:
+  clicking the line itself did nothing. The whole ray now answers, along its length and a
+  little either side, and hovering it names the finding it stands for.
+- A slice that holds several findings opens the **most severe** of them, not whichever
+  was drawn first.
+
+## One table per artifact family
+
+- The layout choice was greyed out whenever the parse was set to publish files as they
+  arrive, which left one usable choice on screen: a collection of a hundred EVTX files
+  became a hundred tabs.
+- **By artifact** is now reachable in that situation and picking it stops the streaming:
+  the parse finishes, then Security logs land in one table, AppX in another, Amcache,
+  Prefetch, MFT and the rest each in their own.
+
+## What this is not
+
+- The bundled model is a 2B model on CPU: it reads, it compares, it answers plainly, and
+  it is slow. It is not a reasoning engine, and an answer that needs a chain of five
+  deductions is still an answer to check.
+- Nothing is downloaded unless you ask for it, and the assistant stays optional.
 # Fireblade 0.5.2 — an archive Windows can open
 
 0.5.1 shipped as a folder, and one file inside it carried a path long enough to stop

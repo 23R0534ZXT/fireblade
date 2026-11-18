@@ -18,7 +18,7 @@ import math
 from datetime import timedelta
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPainterPathStroker, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
 # Severity colours: readable on white, distinct without being fluorescent.
@@ -61,16 +61,33 @@ class FindingMap(QWidget):
         self.update()
 
     def mousePressEvent(self, event):
-        position = event.position()
-        for rect, key in reversed(self._marks):
-            if rect.contains(position):
-                self.selected_key = key
-                index = next((i for i, group in enumerate(self.groups) if group.key == key), -1)
-                if index >= 0:
-                    self.group_selected.emit(index)
-                self.update()
-                return
+        key = self.mark_at(event.position())
+        if key is not None:
+            self.selected_key = key
+            index = next((i for i, group in enumerate(self.groups) if group.key == key), -1)
+            if index >= 0:
+                self.group_selected.emit(index)
+            self.update()
+            return
         super().mousePressEvent(event)
+
+    def mark_at(self, position):
+        """What is under the pointer: the drawing decides, not a rectangle around its tip.
+
+        A ray is four pixels wide, so its bounding box was the only thing that could be
+        clicked and the tip was a sixteen-pixel square: the line itself ignored the click.
+        Marks now carry the shape they drew, which is a stroked segment for a ray.
+        """
+        for shape, key in reversed(self._marks):
+            if shape.contains(position):
+                return key
+        return None
+
+    def mouseMoveEvent(self, event):
+        key = self.mark_at(event.position())
+        group = next((item for item in self.groups if item.key == key), None) if key else None
+        self.setToolTip('%s · %s' % (group.level, group.title) if group is not None else '')
+        super().mouseMoveEvent(event)
 
     def colours(self):
         """Every colour the drawings need, taken from the widget's own palette.
@@ -147,7 +164,8 @@ class CircularMap(FindingMap):
             bins[index]['count'] += group.count
             if bins[index]['level'] is None or RANKS[group.level] > RANKS[bins[index]['level']]:
                 bins[index]['level'] = group.level
-            if bins[index]['owner'] is None:
+            if bins[index]['owner'] is None or RANKS[group.level] > RANKS[bins[index]['level']]:
+                # The slice is one click target: it must open the worst thing in it.
                 bins[index]['owner'] = group.key
         return bins
 
@@ -244,9 +262,19 @@ class CircularMap(FindingMap):
                 continue
             angle = angle_of(index)
             length = (outer - inner) * min(1.0, item['count'] / peak)
+            start = QPointF(centre.x() + math.cos(angle) * inner,
+                            centre.y() + math.sin(angle) * inner)
             tip = QPointF(centre.x() + math.cos(angle) * (inner + length),
                           centre.y() + math.sin(angle) * (inner + length))
-            self._marks.append((QRectF(tip.x() - 8, tip.y() - 8, 16, 16), item['owner']))
+            self._marks.append((self.ray_area(start, tip), item['owner']))
+
+    def ray_area(self, start, tip):
+        """The whole ray, eighteen pixels wide: a click anywhere along it selects it."""
+        path = QPainterPath(start)
+        path.lineTo(tip)
+        stroker = QPainterPathStroker()
+        stroker.setWidth(18)
+        return stroker.createStroke(path)
 
     def _wedge(self, painter, centre, inner, outer, first, last, colours):
         """A pale sector from the first to the last slice of the selection.

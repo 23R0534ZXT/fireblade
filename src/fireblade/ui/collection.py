@@ -57,7 +57,7 @@ class CollectionOrganizationDialog(QDialog):
         self.combined_hint.setWordWrap(True)
         self.combined_hint.setIndent(22)
         layout.addWidget(self.combined_hint)
-        self.layout_hint = QLabel("A merged layout needs the whole folder: uncheck the box above to choose one.")
+        self.layout_hint = QLabel("A grouped layout reads every file first; the per-file grids above are what you get while it parses.")
         self.layout_hint.setWordWrap(True)
         layout.addWidget(self.layout_hint)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -67,18 +67,36 @@ class CollectionOrganizationDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
         self.progressive.toggled.connect(self.sync_state)
+        self.artifacts.toggled.connect(self.choose_layout)
+        self.combined.toggled.connect(self.choose_layout)
+        # "By artifact" is already checked when the dialog opens, so a click on it fires
+        # `clicked` and not `toggled`: without this, the analyst could not ask for it.
+        self.artifacts.clicked.connect(lambda _checked=False: self.choose_layout(True))
+        self.combined.clicked.connect(lambda _checked=False: self.choose_layout(True))
         self.sync_state()
 
+    def choose_layout(self, checked=False):
+        """A layout that merges files needs every file: picking one ends the streaming."""
+        if checked and self.progressive.isChecked():
+            self.progressive.setChecked(False)
+
     def sync_state(self):
-        """The layout choice only exists when the parse is allowed to finish first."""
+        """Both decisions stay reachable; choosing a layout is what makes the parse wait.
+
+        The radios used to be disabled while the parse was progressive, which left one
+        usable choice on screen: a collection of a hundred EVTX files became a hundred
+        tabs, and the layout that merges them per artifact family could not be picked.
+        """
         waiting = not self.progressive.isChecked()
-        for widget in (self.artifacts, self.combined, self.artifacts_hint, self.combined_hint):
-            widget.setEnabled(waiting)
         self.progressive_hint.setText(
             "Each analysed file opens in its own grid as it is parsed, and you can keep working on what is already open."
             if self.progressive.isChecked() else
             "Fireblade stays on this parse, then opens the results in the layout chosen below.")
-        self.layout_hint.setVisible(not waiting)
+        self.layout_hint.setText(
+            "Pick a layout below: the parse then finishes first, and the results open grouped."
+            if self.progressive.isChecked() else
+            "The results open in the layout chosen above.")
+        self.layout_hint.setVisible(True)
 
     def organization(self):
         if self.progressive.isChecked():

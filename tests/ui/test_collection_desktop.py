@@ -42,22 +42,25 @@ def test_the_collection_dialog_separates_waiting_from_layout(qt_application):
     from PySide6.QtWidgets import QDialogButtonBox
     dialog = CollectionOrganizationDialog()
     try:
-        # Working while the folder is parsed: one grid per result, no merged layout.
+        # Both decisions stay reachable: a hundred EVTX files must not be a hundred tabs
+        # just because the parse was allowed to stream.
         assert dialog.organization() == 'files'
         assert dialog.progressive.isChecked()
-        assert not dialog.artifacts.isEnabled() and not dialog.combined.isEnabled()
+        assert dialog.artifacts.isEnabled(), 'the per-artifact layout was greyed out'
+        assert dialog.combined.isEnabled()
         assert dialog.layout_hint.isVisibleTo(dialog)
 
-        dialog.progressive.setChecked(False)
-        assert dialog.artifacts.isEnabled() and dialog.combined.isEnabled()
-        assert dialog.artifacts.isChecked(), "by artifact is the recommended default"
+        # Choosing a merged layout is what makes the parse finish first. The radio is
+        # already checked, so this is the click a user makes, not a state change.
+        dialog.artifacts.click()
+        assert not dialog.progressive.isChecked(), 'a merged layout still streamed'
         assert dialog.organization() == 'artifacts'
 
         dialog.combined.setChecked(True)
         assert dialog.organization() == 'combined'
 
         dialog.progressive.setChecked(True)
-        assert dialog.organization() == 'files', "waiting rules out a merged layout"
+        assert dialog.organization() == 'files', 'streaming publishes one grid per file'
 
         # Every option says what it does: the whole point of the rework.
         texts = [dialog.artifacts.text(), dialog.artifacts_hint.text(),

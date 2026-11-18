@@ -182,8 +182,9 @@ def test_a_draft_with_an_invented_citation_is_refused(qt_application, window, mo
     monkeypatch.setattr(module, 'answer', answer_with(dict(
         summary='something happened', facts=[dict(text='invented', events=[999])],
         links=[dict(**{'from': 1, 'to': 999}, why='invented')], missing=[])))
-    panel.ask.setText('summarise')
-    panel.ask_question()
+    # The button keeps the verified path: a claim about an event that does not exist
+    # is discarded before it reaches the analyst.
+    panel.explain_group()
     settle(qt_application, w)
     text = panel.explanation.toPlainText()
     assert 'discarded' in text or 'Dropped' in text
@@ -193,8 +194,7 @@ def test_a_draft_with_an_invented_citation_is_refused(qt_application, window, mo
     monkeypatch.setattr(module, 'answer', answer_with(dict(
         summary='three alerts in order', facts=[dict(text='encoded powershell ran', events=[1, 2])],
         links=[dict(**{'from': 1, 'to': 2}, why='the same process')], missing=[])))
-    panel.ask.setText('summarise again')
-    panel.ask_question()
+    panel.explain_group()
     settle(qt_application, w)
     text = panel.explanation.toPlainText()
     assert 'three alerts in order' in text
@@ -210,3 +210,42 @@ def test_the_panel_is_a_qt_widget_that_can_be_closed_cleanly(qt_application, win
     panel = w.hayabusa_panel
     assert isinstance(panel, HayabusaPanel)
     panel.close()
+
+def test_the_question_box_talks_to_the_chat(qt_application, window):
+    """The box is a conversation now: no selection, and the answer is prose."""
+    w, _errors, tmp_path = window
+    case = analysis(tmp_path)
+    w.attach(case)
+    settle(qt_application, w)
+    panel = w.hayabusa_panel
+    panel.reload()
+
+    class Ready:
+        detail = ''
+        can_answer = True
+        enabled = True
+
+    panel.assistant = type('Stub', (), {'status': staticmethod(lambda: Ready()),
+                                        'root': tmp_path})()
+    asked = []
+
+    class Turn:
+        text = 'Deux hotes : PC01 et PC02.'
+        steps = []
+        seconds = 1.2
+
+    class FakeChat:
+        root = str(tmp_path)
+
+        def ask(self, question):
+            asked.append(question)
+            return Turn()
+
+    panel.chat = FakeChat()
+    panel.ask.setText('Combien d hotes ?')
+    panel.ask_question()
+    settle(qt_application, w)
+    text = panel.explanation.toPlainText()
+    assert asked == ['Combien d hotes ?']
+    assert 'You: Combien d hotes ?' in text
+    assert 'Deux hotes : PC01 et PC02.' in text

@@ -44,13 +44,13 @@ jobs:
         run: python -m pytest tests/core/test_linux_logs.py tests/ui/test_linux_logs_desktop.py tests/core/test_catscale.py tests/core/test_collection.py tests/core/test_coverage.py tests/core/test_timeline.py -q --junitxml=artifacts/linux-log-tests.xml
       - name: Bounded parsing and persisted collection checks
         run: python -m scripts.benchmarks.linux_logs --directory artifacts/linux-stress --gib 1 --import-rows 20000 --report artifacts/linux-log-qualification.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Linux-log-qualification
           path: artifacts/*.json
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Linux-log-test-results

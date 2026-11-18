@@ -85,7 +85,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Test-pack upload failed' }
           gh release edit $tag --draft=false --notes-file $notes
           if ($LASTEXITCODE -ne 0) { throw 'Test-pack publication failed' }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Forensic-test-pack-metadata

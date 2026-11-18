@@ -28,7 +28,7 @@ def main():
     source=Path(data['source']);source.chmod(stat.S_IREAD)
     try:
         with tempfile.TemporaryDirectory(prefix='Fireblade qualification ') as temp:
-            root=Path(temp);binary=root/'Application été';binary.mkdir();exe=binary/'Fireblade.exe';shutil.copy2(args.exe,exe)
+            root=Path(temp);binary=root/'Application été';binary.mkdir();bundle=binary/'Fireblade';shutil.copytree(args.exe.parent,bundle);exe=bundle/'Fireblade.exe'
             env=os.environ.copy()
             for key in ('PYTHONPATH','PYTHONHOME','QT_PLUGIN_PATH','QT_QPA_PLATFORM_PLUGIN_PATH'):env.pop(key,None)
             system=Path(env.get('SystemRoot',r'C:\Windows'))

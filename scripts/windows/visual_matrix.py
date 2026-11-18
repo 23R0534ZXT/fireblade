@@ -35,7 +35,7 @@ def main():
     results=[]
     try:
         with tempfile.TemporaryDirectory(prefix='Fireblade visual ') as temp:
-            root=Path(temp);binary=root/'Application été';binary.mkdir();exe=binary/'Fireblade.exe';shutil.copy2(args.exe,exe)
+            root=Path(temp);binary=root/'Application été';binary.mkdir();bundle=binary/'Fireblade';shutil.copytree(args.exe.parent,bundle);exe=bundle/'Fireblade.exe'
             for mode in ('light','dark'):
                 for name in previous:winreg.SetValueEx(key,name,0,winreg.REG_DWORD,1 if mode=='light' else 0)
                 for scale in (1,1.25,1.5,2):

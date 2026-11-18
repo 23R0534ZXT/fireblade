@@ -35,8 +35,10 @@ def main():
         root = Path(temporary)
         binary = root/'Application été'
         binary.mkdir()
-        exe = binary/'Fireblade.exe'
-        shutil.copy2(args.exe, exe)
+        # A folder build travels with its libraries: the folder is copied, not the exe.
+        bundle = binary/'Fireblade'
+        shutil.copytree(args.exe.parent, bundle)
+        exe = bundle/'Fireblade.exe'
         report = output/'workspace.json'
         code = run_executable([str(exe), '--workspace-report', str(report)], cwd=root,
                               env=environment(root, 1, root/'profile'), timeout=900)

@@ -151,6 +151,10 @@ class InvestigationMixin:
         self.save_case_button.setEnabled(data is not None);self.close_case_button.setEnabled(data is not None)
         self.save_case_action.setEnabled(data is not None);self.close_case_action.setEnabled(data is not None)
         self.case_collection_panel.setVisible(data is not None)
+        if getattr(self, 'operations_panel', None) is not None:
+            self.operations_panel.refresh()
+        if getattr(self, 'graph_panel', None) is not None:
+            self.graph_panel.reload()
         self.update_case_gate()
 
     def selected_investigation(self):

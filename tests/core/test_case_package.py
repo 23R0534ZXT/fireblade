@@ -6,6 +6,7 @@ import zipfile
 
 import pytest
 
+from fireblade.core import case_workspace, destruction, destruction_certificate
 from fireblade.core.case_package import export_package, import_package
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, cancellation_scope
@@ -191,3 +192,49 @@ def test_export_snapshots_locked_database_and_preserves_derived_columns(tmp_path
         assert restored.bookmarks()[1] == 'Note <exacte>'
     finally:
         restored.close()
+
+
+PNG = (b'\x89PNG\r\n\x1a\n' + b'\x00\x00\x00\rIHDR' + b'\x00'*13 + b'\x00'*20)
+
+
+def test_the_workspace_and_the_destruction_certificate_travel_with_the_case(tmp_path):
+    library, data, document, case, source = prepared(tmp_path)
+    folder = library.folder(data['id'])
+    case_workspace.add_action(folder, 'Réinitialiser les comptes', owner='client',
+                              status='waiting_client', intervenant='Direction SI',
+                              machine='SRV-DC01')
+    case_workspace.add_ioc(folder, 'evil.example', status='confirmed', machine='SRV-DC01')
+
+    def client(workspace):
+        workspace['client'].update(name='ACME', reference='REF-1')
+    case_workspace.mutate(folder, client)
+    evidence = folder / 'preuves'
+    evidence.mkdir()
+    victim = evidence / 'journal.txt'
+    victim.write_text('preuve' * 40)
+    record = destruction.destroy(destruction.plan([victim], folder), 'dod3', operator='op')
+    photo = tmp_path / 'photo.png'
+    photo.write_bytes(PNG)
+    record['attachments'] = destruction_certificate.store_attachments(folder, [photo], ['Capture'])
+    destruction.store_record(folder, record)
+    try:
+        archive = tmp_path / 'case.fireblade-case'
+        export_package(library, data, [document], 0, archive, include_sources=True,
+                       active_case=case, include_extra_files=True)
+    finally:
+        case.close()
+
+    target = InvestigationLibrary(tmp_path / 'ailleurs' / 'cases')
+    imported = import_package(target, archive)['case']
+    restored_folder = target.folder(imported['id'])
+    restored = case_workspace.load(restored_folder)
+    assert restored['client']['name'] == 'ACME' and restored['client']['reference'] == 'REF-1'
+    assert restored['actions'][0]['title'] == 'Réinitialiser les comptes'
+    assert restored['actions'][0]['intervenant'] == 'Direction SI'
+    assert restored['iocs'][0]['value'] == 'evil.example'
+    records = destruction.load_records(restored_folder)
+    assert records and records[0]['files'][0]['sha256_before']
+    attachment = case_workspace.data_folder(restored_folder) / records[0]['attachments'][0]['relative']
+    assert attachment.is_file(), 'the photo did not travel with the case'
+    html = destruction_certificate.build(records[0], case_folder=restored_folder)['html']
+    assert 'data:image/png;base64,' in html

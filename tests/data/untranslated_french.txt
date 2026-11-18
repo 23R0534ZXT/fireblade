@@ -1,3 +1,7 @@
+"<h1>Procès-verbal de destruction de preuves</h1>"
+"<h2>4. Signatures</h2><p class=\"muted\">Chaque signataire atteste avoir assisté à l'opération décrite ci-dessus.</p><div class=\"sign\"><div>Opérateur<br>"
+"<title>Procès-verbal de destruction —"
+"<title>Procès-verbal de destruction — {}"
 "Alertes Hayabusa.csv"
 "PluginText('FixtureEcho', 'évidence') = 'évidence'"
 "[Details.Name] = 'évidence' And [Details.Children].Sum([Amount]) = 10"

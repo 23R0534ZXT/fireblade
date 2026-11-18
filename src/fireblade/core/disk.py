@@ -6,6 +6,7 @@ carving. Every copied artifact retains its disk/partition path and SHA-256.
 import copy
 import hashlib
 import os
+import re
 from pathlib import Path, PurePosixPath
 
 from fireblade.core.collection import Collection, atomic_json, check_cancel
@@ -24,6 +25,39 @@ def candidate(path):
             or name.endswith(('.evtx', '.pf', '.lnk', '.automaticdestinations-ms', '.customdestinations-ms'))
             or name.startswith('$i') and '$recycle.bin' in parts
             or any(parts[i:i+2] == ['var', 'log'] for i in range(len(parts)-1)))
+
+
+def image_segments(path):
+    """Every segment of an EWF set, refusing a hole.
+
+    ``.E01`` is not a single file when the acquisition was split: ``.E02``, ``.E03``…
+    continue it. Reading only the first segment would silently truncate the disk, so a
+    gap is an error rather than a shorter image.
+    """
+    path = Path(path)
+    match = re.fullmatch(r'(?i)(.*)\.e(\d{2})', path.name)
+    if not match or not path.is_file():
+        return [path]
+    base = match.group(1)
+    files = {}
+    for item in path.parent.iterdir():
+        if not item.is_file():
+            continue
+        found = re.fullmatch(r'(?i)' + re.escape(base) + r'\.e(\d{2})', item.name)
+        if found:
+            files[int(found.group(1))] = item
+    if not files:
+        return [path]
+    first = 1 if 1 in files else int(match.group(2))
+    segments = []
+    index = first
+    while index in files:
+        segments.append(files[index])
+        index += 1
+    if any(number > index for number in files):
+        raise ValueError(f'Jeu EWF incomplet : le segment {base}.E{index:02d} est absent. '
+                         'Fournissez tous les segments de l’acquisition.')
+    return segments
 
 
 def open_device(path):
@@ -221,10 +255,21 @@ class DiskCollection(Collection):
                         handle.close()
                         raise
                 else:
-                    target = Target.open(self.disk_source)
+                    segments = image_segments(self.disk_source)
+                    if len(segments) > 1:
+                        # EWF splits a large acquisition into E01, E02…; dissect needs
+                        # every handle at once, and Target.open only takes one path.
+                        from dissect.target.container import Container
+                        target = Target()
+                        target.disks.add(Container.open([str(segment) for segment in segments]))
+                        target.apply()
+                    else:
+                        target = Target.open(self.disk_source)
                 roots = [(f'partition-{i+1}', fs.path('/')) for i, fs in enumerate(target.filesystems)]
                 if not roots:
-                    raise ValueError('Aucun système de fichiers lisible : format non pris en charge ou disque chiffré.')
+                    raise ValueError('Aucun système de fichiers lisible : le conteneur est reconnu mais aucune '
+                                     'partition exploitable n’en a été extraite (image sans table de partitions, '
+                                     'volume chiffré ou format non pris en charge).')
             for partition, root in roots:
                 def failed(error):
                     self.disk['errors'].append(str(error))

@@ -315,6 +315,11 @@ class Case:
                                                for key, name in zip(('artifact', 'parser'), extra_names)])
                 headers = list(headers) + extra_names
                 count = self.db.execute("SELECT count(*) FROM events").fetchone()[0]
+                if count == 0 and not source.read_bytes().strip(b'\xef\xbb\xbf \t\r\n'):
+                    # A truly empty file is not evidence: it used to become an analysis
+                    # the case carried and every report had to skip. A single line read as
+                    # a header is a different matter and stays accepted.
+                    raise ValueError('Fichier vide : aucune donnée à importer')
                 progress("Vérification de l’intégrité de la source…")
                 after_sha = digest()
                 after = source.stat()

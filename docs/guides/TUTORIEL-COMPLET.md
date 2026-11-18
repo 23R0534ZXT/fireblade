@@ -192,6 +192,18 @@ Les cases sont conservés sous `%LOCALAPPDATA%\Fireblade\Cases\<identifiant>`. S
 
 Avant de changer de case, terminez ou annulez les opérations en cours et videz les imports en attente. Si une analyse référencée manque à la réouverture, Fireblade signale le problème et conserve l’espace de travail déjà ouvert.
 
+## Suivi des actions, des indicateurs et des machines
+
+L’onglet **Actions & suivi** consigne ce que l’enquête attend de chacun, sur une ligne par action : **Date · Priorité · État de l’action · Type d’action · Intervenant · Détails**. Le périmètre se choisit en haut : le case courant, ou **tous les cases** — le tableau ajoute alors les colonnes Case et Client, ce qui permet de suivre une même entreprise sur plusieurs machines comme plusieurs clients dans la même fenêtre. Double-cliquez une ligne pour la modifier ; le menu contextuel la marque terminée, la rouvre ou la supprime. **Exporter le suivi…** écrit le tableau visible en CSV (séparateur point-virgule, encodage lisible par Excel).
+
+Le même onglet porte les **indicateurs** du case — normalisés par le même code que la chasse IOC, donc les doublons sont refusés — et les **machines et comptes** analysés, avec leurs étiquettes. Une liste d’indicateurs s’importe depuis un fichier texte, CSV ou TSV. Les actions, indicateurs et machines sont enregistrés dans `workspace.json`, dans le dossier du case, et suivent le case dans une archive portable.
+
+## Destruction des preuves et rapport client
+
+**Fichier → Détruire des preuves…** écrase les fichiers sélectionnés du case avec la méthode **DoD 5220.22-M**, en **3 ou 7 passes** au choix, relit le fichier pour vérifier la dernière passe, puis le supprime. Renseignez l’opérateur, le témoin, le motif et le mot **DETRUIRE** : le bouton reste inactif tant que ces champs et la case de compréhension manquent. Le procès-verbal (HTML et PDF) est écrit dans `destruction` du case et liste chaque fichier avec sa taille, son empreinte SHA-256 avant la première passe et celle de la relecture, les signatures et les photos jointes — copiées dans le case et empreintées, une photo modifiée depuis étant écartée du document. Le procès-verbal rappelle sa portée : l’écrasement réécrit les blocs logiques, pas les copies physiques que le wear levelling, un système de fichiers copy-on-write ou un journal peuvent conserver. La fiche du case (`case.json`, `workspace.json`, session, historique) n’est jamais proposée à la destruction.
+
+**Fichier → Rapport client…** produit un document HTML ou PDF destiné au client : page de garde confidentielle, synthèse et comptage par gravité, périmètre et machines, inventaire des preuves avec les empreintes relevées à l’import, fenêtres chronologiques, constats détaillés, graphe d’attaque, indicateurs, tableau des actions, destructions enregistrées, méthode et limites. Une section sans donnée le dit explicitement plutôt que de disparaître.
+
 ## Se repérer dans la fenêtre
 
 | Zone | Rôle et gestes |

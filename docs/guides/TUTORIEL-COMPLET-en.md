@@ -192,6 +192,18 @@ The cases are kept under `%LOCALAPPDATA%\Fireblade\Cases\<identifiant>`. Back up
 
 Before changing case, finish or cancel the operations in progress and empty the pending imports. If a referenced analysis is missing on reopening, Fireblade reports the problem and keeps the workspace already open.
 
+## Actions, indicators and machines tracking
+
+The **Actions & suivi** tab records what the engagement expects from each party, one row per action: **Date · Priority · action status · type of action · person · details**. The scope is chosen at the top: the current case, or **every case** — the table then adds the Case and Client columns, so one company with several machines and several clients in the same window stay readable. Double-click a row to edit it; the context menu marks it done, reopens it or deletes it. **Exporter le suivi…** writes the visible table as CSV (semicolon-separated, Excel-readable encoding).
+
+The same tab carries the case's **indicators** — normalised by the same code as the IOC hunt, so duplicates are refused — and the **machines and accounts** under analysis, with their tags. An indicator list is imported from a text, CSV or TSV file. Actions, indicators and machines are stored in `workspace.json` inside the case folder and travel with the case in a portable archive.
+
+## Destroying evidence and the client report
+
+**Fichier → Détruire des preuves…** overwrites the selected files of the case with the **DoD 5220.22-M** scheme, in **3 or 7 passes**, reads the file back to verify the last pass, then deletes it. Fill in the operator, the witness, the reason and the word **DETRUIRE**: the button stays disabled until those fields and the acknowledgement box are complete. The certificate (HTML and PDF) is written to the case's `destruction` folder and lists every file with its size, its SHA-256 before the first pass and the read-back fingerprint, the signatures and the attached photographs — copied into the case and fingerprinted, with a modified photo left out of the document. The certificate states its scope: overwriting rewrites logical blocks, not the physical copies that wear levelling, a copy-on-write filesystem or a journal may keep. The case's own record (`case.json`, `workspace.json`, session, history) is never offered for destruction.
+
+**Fichier → Rapport client…** produces an HTML or PDF document for the client: confidential cover page, summary and severity counts, scope and machines, evidence inventory with the fingerprints taken at import, timeline windows, detailed findings, attack graph, indicators, action table, recorded destructions, method and limits. A section without data says so explicitly instead of disappearing.
+
 ## Finding your way around the window
 
 | Area | Role and gestures |

@@ -1,3 +1,80 @@
+# Fireblade 0.7.0 — the case becomes something you can hand over
+
+The analysis was already readable. What an engagement needs next is the paperwork: who
+owes which action, what the attack looked like, what the client receives, and what
+happens to the evidence once the mission is over. This version adds those four surfaces
+and stops treating every disk image as a raw file.
+
+## Actions, indicators and machines, tracked in the case
+
+- A new **Actions & suivi** tab holds the tracking table, with exactly the columns used on
+  the client side: **Date · Priorité · État de l'action · Type d'action · Intervenant ·
+  Détails**. A row is edited in place, closed with one click, reopened, or deleted.
+- The table reads one case or **every case**, and the global view adds the Case and Client
+  columns: one company with several machines, several companies in the same window, one
+  list.
+- The same tab records the **indicators** (normalised by the same code the IOC hunt uses)
+  and the **machines and accounts** of the case. Indicators can be imported from a text,
+  CSV or TSV list; duplicates are refused rather than silently merged.
+- Everything is stored in `<case>/workspace.json` — atomic write, revision check, 8 MiB
+  bound, strict validation. The portable-case archive already carries that file.
+- **Exporter le suivi…** writes the visible table as a semicolon CSV with a BOM, which
+  opens in Excel without an import step.
+
+## The attack graph, tagged by the analyst
+
+- A new **Attack graph** tab lays the case out along the kill chain: hosts on the left,
+  techniques in the column of the tactic they declare, the indicator nodes beside them.
+  It is built from the Hayabusa findings, the tracked indicators and the declared
+  machines — nothing is inferred that the data does not say.
+- A node is dragged, tagged with any label (the MITRE tactics are offered, a free label is
+  accepted), and the tags are stored in the case. A rebuild keeps them, matched by node
+  identifier, so a new Hayabusa run does not lose the work.
+- The canvas is exported as PNG and embedded in the client report.
+
+## A report for the client, not for the analyst
+
+- **Fichier → Rapport client…** produces one document — HTML or PDF — with the cover and
+  confidentiality line, the executive summary and severity counts, the scope and the
+  machines, the evidence inventory with the SHA-256 taken at import, the timeline windows,
+  the detailed findings, the attack graph, the tracked indicators, the action table, the
+  destruction record, and the method and limits.
+- A section with no data says so instead of disappearing: a report that omits the
+  indicators looks like a report that found none.
+
+## Destroying evidence, and proving it
+
+- **Fichier → Détruire des preuves…** overwrites the selected files of the case with the
+  **DoD 5220.22-M** scheme in **3 or 7 passes**, reads the file back to verify the last
+  pass, then removes it. The scheme, the pass count, the operator, the witness and the
+  reason are recorded.
+- The **procès-verbal** (HTML and PDF) lists every file with its size, its SHA-256 before
+  the first pass and the SHA-256 of the read-back, the state of each file, the signatures,
+  and the photographic annex — the photos are copied into the case and fingerprinted, and
+  a modified photo is left out of the document rather than silently included.
+- The certificate states what such an overwrite can and cannot prove: logical blocks are
+  rewritten, but flash wear levelling, copy-on-write filesystems and journals may keep
+  physical copies. It is a record of the operation, not a NIST SP 800-88 certification.
+- The case's own record — `case.json`, `workspace.json`, the session, the history — is
+  never listed for destruction and is refused if a path points at it.
+
+## Disk images: E01, and split sets
+
+- An `.E01` segment is read through Dissect's EWF container; the fixture published by
+  `dissect.evidence` is now part of the test data and is opened by the suite.
+- A **split acquisition** (`E01`, `E02`, …) is collected in order and handed to Dissect as
+  one disk. A missing segment is a refusal, not a shorter disk: reading only the first
+  part would truncate the evidence silently.
+- The "no filesystem" error now names the case it found — container recognised, no usable
+  partition — instead of a generic failure.
+
+## What this version still does not claim
+
+- The E01 fixture has no filesystem: the container is qualified, the reading of NTFS or
+  FAT *inside* an E01 still needs an image acquired from a real medium.
+- The 8B assistant model has still not been measured, for lack of a GPU here.
+- On flash storage, overwriting is not physical sanitisation; the certificate says so.
+
 # Fireblade 0.6.1 — the assistant works the case like an analyst
 
 0.6.0 taught the assistant to read a case. This version teaches it a method: the same

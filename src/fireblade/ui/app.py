@@ -37,6 +37,7 @@ from fireblade.ui.help_dialogs import show_about, show_guide, show_licenses, sho
 from fireblade.ui.collection import CollectionMixin
 from fireblade.ui.investigations import InvestigationMixin
 from fireblade.ui.investigation_tools import InvestigationToolsMixin
+from fireblade.ui.case_commands import CaseCommandsMixin
 from fireblade.ui.timeline import TimelineMixin
 
 
@@ -48,7 +49,7 @@ from fireblade.ui.start_workflow import StartWorkflowMixin
 from fireblade.core.i18n import translate
 
 
-class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, TimelineMixin, InvestigationToolsMixin, InvestigationMixin, CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
+class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, TimelineMixin, InvestigationToolsMixin, InvestigationMixin, CaseCommandsMixin, CollectionMixin, ExplorationMixin, SharedRulesMixin, WorkspaceMixin, QMainWindow):
     """Desktop workspace. Case-free mode is an opt-out for component qualification."""
     def __init__(self, settings=None, rule_path=None, investigation_root=None, require_case=True):
         super().__init__()
@@ -82,6 +83,12 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         from fireblade.ui.hayabusa import HayabusaPanel
         self.hayabusa_panel = HayabusaPanel(self)
         self.workbench.addTab(self.hayabusa_panel, "Hayabusa + AI")
+        from fireblade.ui.operations import OperationsPanel
+        self.operations_panel = OperationsPanel(self)
+        self.workbench.addTab(self.operations_panel, 'Actions & suivi')
+        from fireblade.ui.attack_graph_view import AttackGraphPanel
+        self.graph_panel = AttackGraphPanel(self)
+        self.workbench.addTab(self.graph_panel, 'Attack graph')
         from fireblade.ui.coverage import CoveragePanel
         self.coverage_panel=CoveragePanel(self)
         self.coverage_dialog=QDialog(self)
@@ -148,6 +155,9 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         file_menu.addSeparator()
         export = action(file_menu, "Exporter…", self.export_csv, "Ctrl+Shift+E", icon=QStyle.SP_DialogSaveButton)
         action(file_menu, "Exporter les signets et notes…", self.export_annotations)
+        file_menu.addSeparator()
+        action(file_menu, "Rapport client…", self.client_report, requires_file=False)
+        action(file_menu, "Détruire des preuves…", self.destroy_evidence, requires_file=False)
         file_menu.addSeparator()
         action(file_menu, "Quitter", self.close, "Alt+F4", False)
         action(edit_menu, "Copier les lignes", self.copy_rows, "Ctrl+C")

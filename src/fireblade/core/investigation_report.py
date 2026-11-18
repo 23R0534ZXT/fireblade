@@ -140,33 +140,8 @@ def write_report(target, report, documents, *, pdf=False):
             temporary = Path(stream.name)
             if not pdf:stream.write(report['html'].encode('utf-8'))
         if pdf:
-            from PySide6.QtCore import QMarginsF, QSizeF
-            from PySide6.QtGui import QPageSize, QPdfWriter, QTextDocument, QTextOption
-            writer,document=None,None
-            try:
-                writer = QPdfWriter(str(temporary))
-                writer.setResolution(72)  # Document geometry and PDF points share one unit.
-                writer.setPageSize(QPageSize(QPageSize.A4));writer.setPageMargins(QMarginsF(12, 12, 12, 12))
-                writer.setTitle('Fireblade — rapport d’investigation');writer.setCreator('Fireblade')
-                document = QTextDocument()
-                option=document.defaultTextOption();option.setWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere);document.setDefaultTextOption(option)
-                # QTextDocument does not apply browser @media print rules.
-                page_width=round(writer.width()*96/72)  # HTML image dimensions use CSS pixels.
-                pdf_html=report['html'].replace('<body>','<body style="margin:0;padding:0">').replace('width="680"',f'width="{page_width}"')
-                document.setHtml(pdf_html)
-                document.documentLayout().setPaintDevice(writer)
-                document.setPageSize(QSizeF(writer.width(),writer.height()))
-                document.setDocumentMargin(0)
-                frame=document.rootFrame().frameFormat();frame.setMargin(0);frame.setPadding(0);document.rootFrame().setFrameFormat(frame)
-                document.print_(writer)
-            finally:
-                # Release the Windows file handle before deleting/replacing it,
-                # including when rendering fails partway through.
-                del document, writer
-            with temporary.open('rb') as stream:
-                header=stream.read(5);stream.seek(max(0,temporary.stat().st_size-1024));trailer=stream.read()
-            if header!=b'%PDF-' or not trailer.rstrip().endswith(b'%%EOF'):
-                raise ValueError('Création du PDF impossible ou document incomplet')
+            from fireblade.core.pdf_export import html_to_pdf
+            html_to_pdf(report['html'], temporary, title='Fireblade — rapport d’investigation')
         from fireblade.core.case_package import check_cancelled
         check_cancelled();os.replace(temporary, target)
         return str(target)

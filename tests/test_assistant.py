@@ -1,8 +1,8 @@
 """The assistant says what it can and cannot do, and never pretends to have a model."""
 import json
 
-from fireblade.core.assistant import (Assistant, STATE_MISSING, STATE_NO_MEMORY, STATE_OFF,
-                                      STATE_READY, model_directory, write_manifest)
+from fireblade.core.assistant import (Assistant, STATE_MISSING, STATE_NO_MEMORY, STATE_NO_RUNTIME,
+                                      STATE_OFF, STATE_READY, model_directory, write_manifest)
 
 
 def test_off_by_default_and_that_is_not_an_error(tmp_path):
@@ -28,12 +28,23 @@ def test_enabled_with_weights_but_no_memory_stays_off(tmp_path):
     assert not status.can_answer
 
 
-def test_enabled_with_weights_and_memory_is_ready_but_promises_nothing(tmp_path):
+def test_weights_without_an_engine_say_the_engine_is_missing(tmp_path):
     (tmp_path / 'model.gguf').write_bytes(b'\x00' * 8)
     write_manifest(tmp_path, enabled=True, weights='model.gguf')
     status = Assistant(tmp_path, memory_mb=16384).status()
+    assert status.state == STATE_NO_RUNTIME
+    assert 'engine' in status.detail
+    assert not status.can_answer
+
+
+def test_weights_and_engine_together_are_ready(tmp_path):
+    (tmp_path / 'model.gguf').write_bytes(b'\x00' * 8)
+    (tmp_path / 'runtime').mkdir()
+    (tmp_path / 'runtime' / 'llama-server.exe').write_bytes(b'MZ')
+    write_manifest(tmp_path, enabled=True, weights='model.gguf')
+    status = Assistant(tmp_path, memory_mb=16384).status()
     assert status.state == STATE_READY
-    assert 'not available in this build' in status.detail
+    assert status.can_answer
 
 
 def test_a_broken_manifest_is_reported_not_raised(tmp_path):

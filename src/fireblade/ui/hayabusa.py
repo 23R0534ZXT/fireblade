@@ -18,16 +18,17 @@ from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QFrame, QHBoxLayout,
                                QHeaderView, QLabel, QLineEdit, QMenu, QPlainTextEdit,
                                QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
 
-from fireblade.core.assistant import Assistant
-from fireblade.core.explain import build_pack, describe_without_model, verify
-from fireblade.core.findings import group_alerts, summarise
+from fireblade.core.assistant import Assistant, answer, install_model, install_runtime, write_manifest
+from fireblade.core.explain import (SCHEMA, build_pack, describe_without_model, read_answer,
+                                    render_structured, verify)
+from fireblade.core.findings import group_alerts, group_alerts_sql, summarise
 from fireblade.ui.maps import CircularMap, HeatMap, ChainMap
 
 COLUMNS = ('Time', 'Level', 'Rule', 'Host', 'Count', 'Event IDs', 'MITRE')
@@ -105,7 +106,7 @@ class HayabusaPanel(QWidget):
         self.card = QLabel()
         self.card.setWordWrap(True)
         self.card.setFrameShape(QFrame.StyledPanel)
-        self.card.setMinimumHeight(48)
+        self.card.setMinimumHeight(38)
         self.card.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.card.setMargin(8)
         host_layout.addWidget(self.card)
@@ -129,9 +130,12 @@ class HayabusaPanel(QWidget):
         header.setSectionResizeMode(2, QHeaderView.Stretch)
         for index in (0, 1, 3, 4, 5, 6):
             header.setSectionResizeMode(index, QHeaderView.ResizeToContents)
-        bottom_layout.addWidget(self.table, 1)
+        lower = QSplitter(Qt.Vertical)
+        lower.addWidget(self.table)
 
-        detail = QHBoxLayout()
+        detail_host = QWidget()
+        detail = QHBoxLayout(detail_host)
+        detail.setContentsMargins(0, 0, 0, 0)
         self.explanation = QPlainTextEdit()
         self.explanation.setReadOnly(True)
         self.explanation.setPlaceholderText('Select a finding to see what Fireblade knows about it.')
@@ -150,10 +154,26 @@ class HayabusaPanel(QWidget):
         side.addWidget(self.assistant_state)
         side.addStretch()
         detail.addLayout(side, 1)
-        bottom_layout.addLayout(detail)
+        lower.addWidget(detail_host)
+        lower.setSizes([220, 200])
+        bottom_layout.addWidget(lower, 1)
         split.addWidget(bottom)
-        split.setSizes([320, 420])
+        split.setSizes([500, 300])
         layout.addWidget(split, 1)
+
+        self.actions_row = QHBoxLayout()
+        self.explain_button = QPushButton('Explain this finding')
+        self.explain_button.setEnabled(False)
+        self.explain_button.setToolTip('Ask the local model to read this finding and say what it shows.')
+        self.explain_button.clicked.connect(self.explain_group)
+        self.actions_row.addWidget(self.explain_button)
+        self.setup_button = QPushButton('Set up the local model…')
+        self.setup_button.setToolTip('Download the engine and the weights once; everything runs offline after that.')
+        self.setup_button.clicked.connect(self.setup_assistant)
+        self.actions_row.addWidget(self.setup_button)
+        self.progress_label = QLabel()
+        self.actions_row.addWidget(self.progress_label, 1)
+        layout.addLayout(self.actions_row)
 
         self.status = QLabel()
         self.status.setFrameShape(QFrame.StyledPanel)
@@ -195,32 +215,40 @@ class HayabusaPanel(QWidget):
                                'Run Hayabusa; Fireblade keeps every alert and this tab reads them.')
             self.render()
             return
+        # DuckDB groups the alerts: a folder that produced millions of rows never has to
+        # fit in memory. The in-memory path stays as the fallback, and says so.
+        self.mode = 'sql'
         try:
-            self.rows = self.read_rows(case)
-        except Exception as exc:  # a broken analysis must say so, not kill the tab
-            self.groups, self.incidents, self.rows = [], [], []
-            self.state.setText('The Hayabusa table could not be read: %s' % exc)
-            self.render()
-            return
-        self.groups, self.incidents = group_alerts(self.rows)
+            with case.operation():
+                self.groups, self.incidents = group_alerts_sql(case)
+        except Exception as exc:                       # a broken analysis must say why
+            try:
+                self.rows = self.read_rows(case)
+                self.groups, self.incidents = group_alerts(self.rows)
+                # Samples are positions in that list; the rest of the panel addresses rows
+                # by identifier, exactly as the SQL path does.
+                for group in self.groups:
+                    group.samples = [self.rows[index]['__row_id'] for index in group.samples
+                                     if index < len(self.rows)]
+                self.mode = 'python'
+            except Exception as nested:
+                self.groups, self.incidents, self.rows = [], [], []
+                self.mode = 'none'
+                self.state.setText('The Hayabusa table could not be read: %s (%s)' % (nested, exc))
+                self.render()
+                return
         self.summary = summarise(self.groups)
         self.selected = -1
         # 'incident' is a word the French heuristic flags, so the sentence avoids it.
-        self.state.setText('%d alerts grouped into %d findings over %d time windows.'
-                           % (self.summary['hits'], self.summary['groups'], len(self.incidents)))
+        self.state.setText('%d alerts grouped into %d findings over %d time windows (%s).'
+                           % (self.summary['hits'], self.summary['groups'], len(self.incidents),
+                              'grouped in DuckDB' if self.mode == 'sql' else 'grouped in memory'))
         self.render()
 
     def read_rows(self, case):
         """Every alert row, as a dict keyed by the analysis' own column names."""
         headers = list(case.headers)
-        wanted = [name for name in ('Timestamp', 'RuleTitle', 'Level', 'Computer', 'Channel', 'EventID',
-                                    'MitreTactics', 'MitreTags', 'Details', 'DetailsShort', 'RuleID',
-                                    'RuleFile', 'EvtxFile', 'RecordID')
-                  if name in headers]
-        # __row_id first: bookmarking a finding needs the identifiers the case uses.
-        wanted.insert(0, '__row_id')
-        if '__row_id' not in headers:
-            wanted.remove('__row_id')
+        wanted = self.wanted_columns(case)
         columns = ','.join(case.column(headers.index(name)) if name != '__row_id' else '__row_id'
                            for name in wanted)
         with case.operation():
@@ -312,11 +340,35 @@ class HayabusaPanel(QWidget):
         return self.groups[self.selected] if 0 <= self.selected < len(self.groups) else None
 
     def group_rows(self, group):
-        return [self.rows[index] for index in group.samples if 0 <= index < len(self.rows)]
+        """The alert rows of one finding, read by identifier, bounded by the pack."""
+        case = self.analysis()
+        if case is None:
+            return []
+        ids = [int(value) for value in group.samples][:200]
+        if not ids:
+            return []
+        wanted = self.wanted_columns(case)
+        columns = ','.join('__row_id' if name == '__row_id' else case.column(case.headers.index(name))
+                           for name in wanted)
+        placeholders = ','.join('?' for _ in ids)
+        with case.operation():
+            rows = case.db.execute('SELECT %s FROM events WHERE __row_id IN (%s) ORDER BY __row_id'
+                                   % (columns, placeholders), ids).fetchall()
+        return [dict(zip(wanted, values)) for values in rows]
+
+    def wanted_columns(self, case):
+        names = [name for name in ('Timestamp', 'RuleTitle', 'Level', 'Computer', 'Channel', 'EventID',
+                                   'MitreTactics', 'MitreTags', 'Details', 'DetailsShort', 'RuleID',
+                                   'RuleFile', 'EvtxFile', 'RecordID') if name in case.headers]
+        return ['__row_id'] + names
 
     def show_explanation(self, group):
         pack = build_pack(group, self.group_rows(group), self.groups, self.incidents)
+        pack.links = []
         self._pack = pack
+        chain = self.maps[ChainMap]
+        chain.set_pack(pack)
+        self.explain_button.setEnabled(self.assistant.status().can_answer and bool(pack.facts))
         text = describe_without_model(pack)
         status = self.assistant.status()
         if status.enabled:
@@ -336,33 +388,115 @@ class HayabusaPanel(QWidget):
                              group.end.strftime('%H:%M:%S') if group.end else '—', window))
 
     def ask_question(self):
+        """Answer a question about the selected finding, with the same guard as an explanation."""
         text = self.ask.text().strip()
+        pack = getattr(self, '_pack', None)
         if not text:
             return
-        pack = getattr(self, '_pack', None)
         if pack is None:
             self.explanation.appendPlainText('Select a finding first.')
             return
-        status = self.assistant.status()
         self.ask.clear()
         self.explanation.appendPlainText('\n> ' + text)
-        if not status.can_answer:
-            self.explanation.appendPlainText(
-                'The local assistant cannot answer: ' + status.detail)
+        self.run_assistant(text)
+
+    def explain_group(self):
+        """Explain the selected finding with the local model, without freezing the window."""
+        pack = getattr(self, '_pack', None)
+        if pack is None or self.current_group() is None:
             return
-        # The guard is wired before the engine: an answer whose citations do not exist
-        # in the pack is refused, never shown.
-        answer = self.generate(text, pack)
-        if verify(answer, pack):
-            self.explanation.appendPlainText(answer)
+        self.explanation.appendPlainText('\nLocal assistant, reading %d event(s) of this finding…'
+                                         % len(pack.facts))
+        self.run_assistant('')
+
+    def run_assistant(self, question):
+        """One model call from a worker thread; both the button and the box go through it."""
+        pack = getattr(self, '_pack', None)
+        status = self.assistant.status()
+        if pack is None or not status.can_answer:
+            self.explanation.appendPlainText('The local assistant cannot answer: ' + status.detail)
+            return
+        self._pending_question = question
+        self.explain_button.setEnabled(False)
+        self.ask_button.setEnabled(False)
+        self.progress_label.setText('The local model is reading %d event(s)…' % len(pack.facts))
+        job = self.window.run(lambda: answer(str(self.assistant.root), pack, question, schema=SCHEMA),
+                              self.explanation_ready, on_error=self.explanation_failed)
+        if job is None:
+            self.progress_label.setText('An operation is already running; try again after it.')
+
+    def explanation_ready(self, result):
+        pack = getattr(self, '_pack', None)
+        question = getattr(self, '_pending_question', '')
+        self._pending_question = ''
+        self.explain_button.setEnabled(bool(pack and pack.facts))
+        self.ask_button.setEnabled(True)
+        self.progress_label.setText('')
+        if not result or not result.get('ok'):
+            self.explanation.appendPlainText('The local assistant did not answer: %s'
+                                             % ((result or {}).get('text') or 'no reason given'))
+            return
+        decoded = read_answer(result.get('text', ''), pack)
+        structured = decoded.get('structured') or {}
+        structured['links'] = structured.get('links') or []
+        pack.links = structured['links']
+        self.maps[ChainMap].set_pack(pack)
+        lines = []
+        if decoded.get('valid'):
+            lines.append(render_structured(structured))
         else:
-            self.explanation.appendPlainText(
-                'The draft answer was discarded: it cited an event that is not in this finding.')
+            lines.append('The draft was discarded: '
+                         + '; '.join(decoded.get('dropped') or ['the answer could not be read']))
+        for item in decoded.get('dropped') or []:
+            lines.append('Dropped: ' + item)
+        cost = '%s s' % result.get('seconds')
+        if result.get('completion_tokens'):
+            cost += ' · %s tokens out' % result['completion_tokens']
+        if question:
+            cost += ' · answer to your question'
+        self.explanation.appendPlainText('\n' + '\n'.join(lines) + '\n(' + cost + ')')
 
-    def generate(self, question, pack):
-        """Placeholder until the engine lands: no model, no answer."""
-        return ''
+    def explanation_failed(self, message):
+        self.explain_button.setEnabled(True)
+        self.progress_label.setText('')
+        self.explanation.appendPlainText('The local assistant failed: %s' % message)
 
+    # ---------------------------------------------------------------- installation
+    def setup_assistant(self):
+        """Fetch the engine and the weights, with a progress the analyst can read."""
+        self.setup_button.setEnabled(False)
+        self.progress_label.setText('Starting the download…')
+        root = str(self.assistant.root)
+        job = InstallJob(self)
+        self.install_job = job
+        job.progress.connect(self.install_progress)
+        job.done.connect(self.install_done)
+        job.failed.connect(self.install_failed)
+        job.start()
+
+    def install_progress(self, received, total):
+        if total:
+            self.progress_label.setText('%d%% of %s MB downloaded · the window stays usable'
+                                        % (int(100 * received / total), round(total / 1024 / 1024)))
+        else:
+            self.progress_label.setText('%s MB downloaded' % round(received / 1024 / 1024))
+
+    def install_done(self, root):
+        self.assistant = Assistant(root)
+        status = self.assistant.status()
+        self.assistant_state.setText(status.detail)
+        self.progress_label.setText('Installed · ' + status.state)
+        self.setup_button.setEnabled(True)
+        group = self.current_group()
+        if group is not None:
+            self.show_explanation(group)
+
+    def install_failed(self, message):
+        self.setup_button.setEnabled(False)
+        self.progress_label.setText('')
+        self.explanation.appendPlainText('Installation failed: %s' % message)
+
+    # ---------------------------------------------------------------- the grid
     def open_imports(self):
         index = self.window.workbench.indexOf(getattr(self.window, 'detection_panel', None))
         if index >= 0:
@@ -373,46 +507,66 @@ class HayabusaPanel(QWidget):
         if index < 0:
             return
         item = self.table.item(index, 0)
-        group_index = int(item.data(Qt.UserRole))
-        group = self.groups[group_index]
+        group = self.groups[int(item.data(Qt.UserRole))]
         menu = QMenu(self)
-        menu.addAction('Open the alerts in the grid', lambda: self.open_in_grid(group))
+        menu.addAction('Show the alerts in the grid', lambda: self.open_in_grid(group))
         menu.addAction('Bookmark every alert of this finding', lambda: self.bookmark(group))
         menu.exec(self.table.viewport().mapToGlobal(point))
 
     def open_in_grid(self, group):
+        """Leave this tab and search the case's own grid for the rule's alerts."""
         window = self.window
-        if not window.documents:
+        if not window.documents or window.case is None:
             return
-        target = next((i for i, snapshot in enumerate(window.documents) if snapshot.path == str(window.case.path)), 0)
+        target = next((i for i, snapshot in enumerate(window.documents)
+                       if snapshot.path == str(window.case.path)), 0)
         window.switch_document(target)
-        # Re-applies the search on the active case's own grid, so the alert appears
-        # selected instead of the analyst hunting for its row.
         QTimer.singleShot(0, lambda: self.apply_search(group))
+
+    def apply_search(self, group):
+        """One search on the rule title, so the alert appears selected rather than hunted."""
+        window = self.window
+        if not getattr(window, 'model', None):
+            return
+        window.search.setText(group.title or '')
+        window.search.returnPressed.emit()
+        window.workbench.setCurrentIndex(0)
 
     def bookmark(self, group):
         case = getattr(self.window, 'case', None)
         if case is None:
             return
-        ids = [int(self.rows[index].get('__row_id'))
-               for index in group.samples if isinstance(self.rows[index].get('__row_id'), (int, str))]
+        ids = [int(self.rows[index]['__row_id']) for index in group.samples
+               if isinstance(self.rows[index].get('__row_id'), (int, str))]
         if not ids:
-            self.status.setText('Bookmarking needs the row identifiers; reopen the analysis.')
+            self.status.setText('Bookmarking needs the row identifiers of this analysis.')
             return
         try:
-            case.bookmark_many([int(value) for value in ids], 'Hayabusa: ' + group.title, mode='mark')
+            case.bookmark_many(ids, 'Hayabusa: ' + group.title, mode='mark')
         except Exception as exc:
             self.status.setText('Bookmarking failed: %s' % exc)
             return
         self.status.setText('Bookmarked %d alert(s) of this finding.' % len(ids))
 
-    def apply_search(self, group):
-        """Show this finding's alerts in the grid: one search on the rule title, then the host."""
-        window = self.window
-        if not getattr(window, 'model', None):
-            return
-        from PySide6.QtWidgets import QApplication
-        window.search.setText(group.title or '')
-        QApplication.sendPostedEvents(None, 0)
-        window.search.returnPressed.emit()
-        window.workbench.setCurrentIndex(0)
+
+class InstallJob(QThread):
+    """Download outside the UI thread: 1.6 GB over a home link is minutes, not seconds."""
+
+    progress = Signal(int, int)
+    done = Signal(str)
+    failed = Signal(str)
+
+    def __init__(self, panel):
+        super().__init__(panel)
+        self.panel = panel
+
+    def run(self):
+        try:
+            root = self.panel.assistant.root
+            install_runtime(root, progress=lambda received, total: self.progress.emit(received, total))
+            weights = install_model(root, progress=lambda received, total: self.progress.emit(received, total))
+            name = weights.name if hasattr(weights, 'name') else 'MiniCPM5-2B-Q4_K_M.gguf'
+            write_manifest(root, enabled=True, model=self.panel.assistant.model, weights=name)
+            self.done.emit(str(root))
+        except Exception as exc:            # a failed download must reach the panel, not the log
+            self.failed.emit('%s: %s' % (type(exc).__name__, exc))

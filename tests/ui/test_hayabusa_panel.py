@@ -153,31 +153,53 @@ def test_asking_a_question_without_a_model_says_why(qt_application, window):
     assert 'cannot answer' in text
 
 
-def test_a_draft_with_an_invented_citation_is_refused(qt_application, window):
+def test_a_draft_with_an_invented_citation_is_refused(qt_application, window, monkeypatch):
     w, _errors, tmp_path = window
     case = analysis(tmp_path)
     w.attach(case)
     settle(qt_application, w)
     panel = w.hayabusa_panel
     panel.reload()
-    # a finding with several events, so a two-citation answer can be valid
-    panel.select_group(next(i for i, group in enumerate(panel.groups) if group.title == 'Encoded PowerShell'))
+    panel.select_group(next(i for i, group in enumerate(panel.groups)
+                            if group.title == 'Encoded PowerShell'))
 
     class Ready:
         detail = ''
         can_answer = True
         enabled = True
 
-    panel.assistant = type('Stub', (), {'status': staticmethod(lambda: Ready())})()
+    panel.assistant = type('Stub', (), {'status': staticmethod(lambda: Ready()),
+                                        'root': tmp_path})()
+
+    import json as _json
+    import fireblade.ui.hayabusa as module
+
+    def answer_with(payload):
+        return lambda *args, **kwargs: dict(ok=True, text=_json.dumps(payload), seconds=1.0,
+                                            completion_tokens=10)
+
+    # a claim pointing at an event that does not exist must never be shown
+    monkeypatch.setattr(module, 'answer', answer_with(dict(
+        summary='something happened', facts=[dict(text='invented', events=[999])],
+        links=[dict(**{'from': 1, 'to': 999}, why='invented')], missing=[])))
     panel.ask.setText('summarise')
-    # a model that cites an event which does not exist must never be displayed
-    panel.generate = lambda question, pack: 'This happened because of [evt 999].'
     panel.ask_question()
-    assert 'discarded' in panel.explanation.toPlainText()
-    panel.generate = lambda question, pack: 'Three alerts [evt 1] and [evt 2].'
+    settle(qt_application, w)
+    text = panel.explanation.toPlainText()
+    assert 'discarded' in text or 'Dropped' in text
+    assert 'evt 999' not in text
+
+    # a claim inside the pack is shown with its reference
+    monkeypatch.setattr(module, 'answer', answer_with(dict(
+        summary='three alerts in order', facts=[dict(text='encoded powershell ran', events=[1, 2])],
+        links=[dict(**{'from': 1, 'to': 2}, why='the same process')], missing=[])))
     panel.ask.setText('summarise again')
     panel.ask_question()
-    assert 'Three alerts' in panel.explanation.toPlainText()
+    settle(qt_application, w)
+    text = panel.explanation.toPlainText()
+    assert 'three alerts in order' in text
+    assert '[evt 1]' in text
+    assert panel._pack.links and panel._pack.links[0]['target'] == 2
 
 
 def test_the_panel_is_a_qt_widget_that_can_be_closed_cleanly(qt_application, window):

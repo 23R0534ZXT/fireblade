@@ -38,3 +38,7 @@ structlog==26.1.0
 msgpack==1.2.4
 dissect.fat==3.13
 dissect.extfs==3.15
+
+# DuckDB needs pytz to convert a TIMESTAMPTZ: without it every grouping by time
+# fails with "Required module 'pytz' failed to import". MIT, pure Python.
+pytz==2026.6

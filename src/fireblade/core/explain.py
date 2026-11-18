@@ -107,11 +107,19 @@ def render_prompt(pack, limit=MAX_PROMPT_CHARS):
     list of what is unknown, and the citation format spelled out.
     """
     lines = [
-        'You are assisting a forensic analyst. Answer only from the EVIDENCE below.',
-        'Write at most 5 short sentences, in English, describing what these events show.',
-        'Cite every statement with the event number in brackets, like [evt 3].',
-        'Never invent an event, a host, a user, a path or a time that is not listed.',
-        'If the evidence is not enough, say what is missing instead of guessing.',
+        'You assist a forensic analyst. Answer only from the EVIDENCE below.',
+        'Return JSON with these keys:',
+        '  summary   - at most 4 short sentences describing what these events show;',
+        '  facts     - each item is {"text": one statement, "events": [event numbers it rests on]};',
+        '  links     - each item is {"from": n, "to": n, "why": short reason}, joining two',
+        '              events where the second follows from the first: same process or path,',
+        '              cause then effect. Add at least one link whenever two events are in',
+        '              order on the same host; for example from a protection being disabled to',
+        '              the command that runs right after it;',
+        '  missing   - what the evidence does not establish.',
+        'Use only the event numbers listed under EVIDENCE. Never invent an event, a host,',
+        'a user, a path or a time. If the evidence is thin, say so in missing instead of',
+        'guessing, and leave facts or links empty.',
         '',
         'FINDING',
         'rule: %s' % pack.title,
@@ -141,6 +149,112 @@ def render_prompt(pack, limit=MAX_PROMPT_CHARS):
             lines.append('- ' + item)
     text = '\n'.join(lines)
     return text[:limit]
+
+
+# The shape the model must produce. A schema is not a truth guarantee, but it turns an
+# invented reference into a value this code can reject before anything is drawn.
+SCHEMA = {
+    'type': 'object',
+    'additionalProperties': False,
+    'required': ['summary', 'facts', 'links', 'missing'],
+    'properties': {
+        'summary': {'type': 'string'},
+        'facts': {
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'additionalProperties': False,
+                'required': ['text', 'events'],
+                'properties': {
+                    'text': {'type': 'string'},
+                    'events': {'type': 'array', 'items': {'type': 'integer'}},
+                },
+            },
+        },
+        'links': {
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'additionalProperties': False,
+                'required': ['from', 'to', 'why'],
+                'properties': {
+                    'from': {'type': 'integer'},
+                    'to': {'type': 'integer'},
+                    'why': {'type': 'string'},
+                },
+            },
+        },
+        'missing': {'type': 'array', 'items': {'type': 'string'}},
+    },
+}
+
+
+def read_answer(text, pack):
+    """Parse the model's JSON, keep only what the pack can support, and say what was cut.
+
+    Returns ``dict(structured=..., dropped=..., valid=bool)``. A link is kept only when
+    both of its ends are events the pack really contains; a fact with a fabricated
+    reference is dropped whole rather than shown with the reference stripped, because a
+    claim without its evidence is exactly what this feature refuses to display.
+    """
+    import json
+    raw = (text or '').strip()
+    if raw.startswith('```'):
+        raw = raw.split('```')[1] if len(raw.split('```')) > 1 else raw
+        raw = raw[4:] if raw.lower().startswith('json') else raw
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return dict(structured=None, dropped=['the answer was not valid JSON'], valid=False)
+    if not isinstance(data, dict):
+        return dict(structured=None, dropped=['the answer was not an object'], valid=False)
+    known = pack.numbers()
+    dropped = []
+    facts = []
+    for item in data.get('facts') or []:
+        if not isinstance(item, dict):
+            continue
+        cited = [int(value) for value in (item.get('events') or []) if isinstance(value, int)]
+        unknown = [value for value in cited if value not in known]
+        if unknown:
+            dropped.append('a claim cited events that are not in this finding: %s'
+                           % ', '.join(str(value) for value in unknown))
+            continue
+        if not cited:
+            dropped.append('a claim was dropped because it cited no event at all')
+            continue
+        facts.append(dict(text=str(item.get('text') or '').strip(), events=cited))
+    links = []
+    for item in data.get('links') or []:
+        if not isinstance(item, dict):
+            continue
+        source, target = item.get('from'), item.get('to')
+        if type(source) is not int or type(target) is not int or source not in known or target not in known:
+            dropped.append('a link joined events that are not in this finding')
+            continue
+        if source == target:
+            continue
+        links.append(dict(source=source, target=target, why=str(item.get('why') or '').strip()))
+    missing = [str(item).strip() for item in (data.get('missing') or []) if str(item).strip()]
+    structured = dict(summary=str(data.get('summary') or '').strip(), facts=facts,
+                      links=links, missing=missing)
+    valid = bool(structured['summary'] or facts)
+    return dict(structured=structured, dropped=dropped, valid=valid)
+
+
+def render_structured(structured):
+    """The text the panel shows: the model's sentences, then its links, then the gaps."""
+    lines = []
+    if structured.get('summary'):
+        lines.append(structured['summary'])
+    for fact in structured.get('facts') or []:
+        references = ' '.join('[evt %d]' % value for value in fact['events'])
+        lines.append('· %s %s' % (fact['text'], references))
+    for link in structured.get('links') or []:
+        lines.append('→ evt %d → evt %d : %s' % (link['source'], link['target'], link['why']))
+    if structured.get('missing'):
+        lines.append('Not established: ' + '; '.join(structured['missing']))
+    return '\n'.join(lines)
 
 
 _CITATION = __import__('re').compile(r'\[evt\s+(\d+)\]')

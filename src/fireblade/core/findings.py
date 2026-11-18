@@ -257,3 +257,106 @@ def summarise(groups):
         counts[group.level] = counts.get(group.level, 0) + 1
         hits += group.count
     return dict(groups=len(groups), hits=hits, levels=counts)
+
+
+def _columns(case):
+    """The Hayabusa columns this analysis actually has, quoted for SQL."""
+    wanted = ('Timestamp', 'RuleTitle', 'Level', 'Computer', 'Channel', 'EventID', 'MitreTactics',
+              'MitreTags', 'RuleID', 'RuleFile', 'Details', 'DetailsShort')
+    found = {}
+    for name in wanted:
+        try:
+            index = case.headers.index(name)
+        except ValueError:
+            continue
+        found[name] = case.column(index)
+    return found
+
+
+def group_alerts_sql(case, gap_seconds=GAP_SECONDS, incident_window=INCIDENT_WINDOW_SECONDS):
+    """The same grouping as ``group_alerts``, done by DuckDB.
+
+    Millions of alerts cannot be grouped in a Python loop without holding them all in
+    memory; a window function over the events table can. The dated alerts are cut into
+    bursts per rule and host by the gap between two consecutive timestamps, the undated
+    ones are counted as one burst of their own, and the incident windows are then built
+    on the few hundred groups this returns.
+
+    The caller holds the case's operation lock; this function does not open one.
+    """
+    columns = _columns(case)
+    if 'RuleTitle' not in columns:
+        raise ValueError('Cette analyse ne contient pas de colonne RuleTitle')
+    title = columns['RuleTitle']
+    host = columns.get('Computer', "'unknown'")
+    channel = columns.get('Channel', "''")
+    level = columns.get('Level', "'informational'")
+    event_id = columns.get('EventID', "''")
+    tactics = columns.get('MitreTactics', "''")
+    techniques = columns.get('MitreTags', "''")
+    rule_id = columns.get('RuleID', "''")
+    rule_file = columns.get('RuleFile', "''")
+    details = columns.get('Details', columns.get('DetailsShort', "''"))
+    stamp = columns.get('Timestamp')
+    gap = int(gap_seconds)
+
+    if stamp is None:
+        return group_alerts((), gap_seconds, incident_window)
+
+    dated = f"""
+        WITH parsed AS (
+            SELECT __row_id AS rid, {title} AS title, {host} AS host, {channel} AS channel,
+                   {level} AS lvl, {event_id} AS eid, {tactics} AS tac, {techniques} AS tech,
+                   {rule_id} AS rule, {rule_file} AS rfile, {details} AS det,
+                   TRY_CAST({stamp} AS TIMESTAMPTZ) AS ts
+            FROM events
+        ), marked AS (
+            SELECT *,
+                   CASE WHEN lag(ts) OVER w IS NULL THEN 1
+                        WHEN date_diff('second', lag(ts) OVER w, ts) > {gap} THEN 1
+                        ELSE 0 END AS starts
+            FROM parsed WHERE ts IS NOT NULL
+            WINDOW w AS (PARTITION BY title, host, channel, lvl ORDER BY ts)
+        ), numbered AS (
+            SELECT *, sum(starts) OVER (PARTITION BY title, host, channel, lvl ORDER BY ts
+                                        ROWS UNBOUNDED PRECEDING) AS burst
+            FROM marked
+        )
+        SELECT title, host, channel, lvl, min(ts) AS start, max(ts) AS end, count(*) AS n,
+               min(eid) AS eid, min(tac) AS tac, min(tech) AS tech, min(rule) AS rule,
+               min(rfile) AS rfile, min(det) AS det,
+               list(rid ORDER BY ts) AS rows
+        FROM numbered GROUP BY title, host, channel, lvl, burst
+    """
+    undated = f"""
+        SELECT {title} AS title, {host} AS host, {channel} AS channel, {level} AS lvl,
+               CAST(NULL AS TIMESTAMPTZ) AS start, CAST(NULL AS TIMESTAMPTZ) AS end, count(*) AS n,
+               min({event_id}) AS eid, min({tactics}) AS tac, min({techniques}) AS tech,
+               min({rule_id}) AS rule, min({rule_file}) AS rfile, min({details}) AS det,
+               list(__row_id) AS rows
+        FROM events WHERE TRY_CAST({stamp} AS TIMESTAMPTZ) IS NULL
+        GROUP BY 1, 2, 3, 4
+    """
+    fields = ('title', 'host', 'channel', 'lvl', 'start', 'end', 'n', 'eid', 'tac', 'tech',
+              'rule', 'rfile', 'det', 'rows')
+    cursor = case.db.execute(dated + ' UNION ALL ' + undated)
+    groups = []
+    for record in cursor.fetchall():
+        row = dict(zip(fields, record))
+        level_name = level_of(row['lvl'])
+        start = row['start'].astimezone(timezone.utc) if row['start'] is not None else None
+        end = row['end'].astimezone(timezone.utc) if row['end'] is not None else None
+        event_ids = tuple(value.strip() for value in str(row['eid'] or '').split('¦')
+                          if value.strip() and value.strip() != '-')
+        keys = list(row['rows'] or [])
+        groups.append(Group(
+            key='|'.join((row['title'] or '(untitled)', row['host'] or '', level_name,
+                          start.isoformat() if start else 'no-date')),
+            title=row['title'] or '(untitled rule)', level=level_name, host=row['host'] or '',
+            channel=row['channel'] or '', event_ids=event_ids,
+            tactics=row['tac'] or '', techniques=row['tech'] or '', rule_id=row['rule'] or '',
+            rule_file=row['rfile'] or '', start=start, end=end, count=int(row['n']),
+            samples=[int(value) for value in keys[:MAX_SAMPLES]], details=row['det'] or ''))
+    groups.sort(key=lambda item: (item.span(), -item.severity, item.title.casefold()))
+    incidents = _incidents(groups, incident_window)
+    return groups, incidents

@@ -105,7 +105,9 @@ class HayabusaPanel(QWidget):
         bar.addWidget(self.filter_box, 1)
         layout.addLayout(bar)
 
-        split = QSplitter(Qt.Vertical)
+        # Two columns, and both of them drag: the map beside the card and the chat, with the
+        # grid as its own band under both. Each band is a splitter handle, so the analyst
+        # decides how much room the day, the list and the answer get on this screen.
         self.maps = {}
         self.map_host = QWidget()
         host_layout = QVBoxLayout(self.map_host)
@@ -120,6 +122,11 @@ class HayabusaPanel(QWidget):
             widget.hide()
             self.map_layout.addWidget(widget)
             self.maps[factory] = widget
+        self.map_host.setMinimumWidth(240)
+
+        side_widget = QWidget()
+        side_layout = QVBoxLayout(side_widget)
+        side_layout.setContentsMargins(0, 0, 0, 0)
         self.card = QLabel()
         self.card.setWordWrap(True)
         self.card.setFrameShape(QFrame.StyledPanel)
@@ -127,12 +134,36 @@ class HayabusaPanel(QWidget):
         self.card.setMinimumWidth(0)
         self.card.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.card.setMargin(8)
-        host_layout.addWidget(self.card)
-        split.addWidget(self.map_host)
+        side_layout.addWidget(self.card)
+        self.explanation = QPlainTextEdit()
+        self.explanation.setReadOnly(True)
+        self.explanation.setPlaceholderText('Select a finding to see what Fireblade knows about it.')
+        self.explanation.setMinimumHeight(72)
+        side_layout.addWidget(self.explanation, 1)
+        ask_row = QHBoxLayout()
+        self.ask = QLineEdit()
+        self.ask.setPlaceholderText('Ask about this finding…')
+        self.ask.returnPressed.connect(self.ask_question)
+        ask_row.addWidget(self.ask, 1)
+        self.ask_button = QPushButton('Ask')
+        self.ask_button.clicked.connect(self.ask_question)
+        ask_row.addWidget(self.ask_button)
+        side_layout.addLayout(ask_row)
+        self.assistant_state = shrinkable(QLabel())
+        side_layout.addWidget(self.assistant_state)
+        side_widget.setMinimumWidth(260)
+        side_widget.setMaximumWidth(900)
 
-        bottom = QWidget()
-        bottom_layout = QVBoxLayout(bottom)
-        bottom_layout.setContentsMargins(0, 0, 0, 0)
+        self.columns = QSplitter(Qt.Horizontal)
+        self.columns.addWidget(self.map_host)
+        self.columns.addWidget(side_widget)
+        self.columns.setSizes([620, 460])
+        self.columns.setStretchFactor(0, 3)
+        self.columns.setStretchFactor(1, 2)
+        self.columns.setChildrenCollapsible(False)
+
+        # A handful of rows, not the whole list: the map stays readable and the rest of the
+        # findings are one click away. Its height is a handle too.
         self.table = QTableWidget(0, len(COLUMNS))
         self.table.setHorizontalHeaderLabels(list(COLUMNS))
         self.table.verticalHeader().setVisible(False)
@@ -146,38 +177,27 @@ class HayabusaPanel(QWidget):
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.grid_menu)
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(2, QHeaderView.Stretch)
-        for index in (0, 1, 3, 4, 5, 6):
-            header.setSectionResizeMode(index, QHeaderView.ResizeToContents)
-        lower = QSplitter(Qt.Vertical)
-        lower.addWidget(self.table)
+        # Every column is draggable: a width chosen by the code cut the date in half, and the
+        # analyst knows which column matters on this screen. Rule starts wide because it
+        # carries the sentence, and it is the one that gives space back.
+        header.setSectionResizeMode(QHeaderView.Interactive)
+        self.table.setColumnWidth(0, 150)
+        self.table.setColumnWidth(1, 78)
+        self.table.setColumnWidth(2, 230)
+        self.table.setColumnWidth(3, 84)
+        self.table.setColumnWidth(4, 52)
+        self.table.setColumnWidth(5, 82)
+        self.table.setColumnWidth(6, 74)
+        header.setStretchLastSection(False)
+        header.setSectionsMovable(False)
 
-        detail_host = QWidget()
-        detail = QHBoxLayout(detail_host)
-        detail.setContentsMargins(0, 0, 0, 0)
-        self.explanation = QPlainTextEdit()
-        self.explanation.setReadOnly(True)
-        self.explanation.setPlaceholderText('Select a finding to see what Fireblade knows about it.')
-        self.explanation.setMinimumHeight(72)
-        detail.addWidget(self.explanation, 3)
-        side = QVBoxLayout()
-        self.ask = QLineEdit()
-        self.ask.setPlaceholderText('Ask about this finding…')
-        self.ask.returnPressed.connect(self.ask_question)
-        side.addWidget(self.ask)
-        self.ask_button = QPushButton('Ask')
-        self.ask_button.clicked.connect(self.ask_question)
-        side.addWidget(self.ask_button)
-        self.assistant_state = shrinkable(QLabel())
-        side.addWidget(self.assistant_state)
-        side.addStretch()
-        detail.addLayout(side, 1)
-        lower.addWidget(detail_host)
-        lower.setSizes([220, 200])
-        bottom_layout.addWidget(lower, 1)
-        split.addWidget(bottom)
-        split.setSizes([500, 300])
-        layout.addWidget(split, 1)
+        self.main = QSplitter(Qt.Vertical)
+        self.main.addWidget(self.columns)
+        self.main.addWidget(self.table)
+        self.main.setSizes([430, 175])
+        self.main.setStretchFactor(0, 1)
+        self.main.setChildrenCollapsible(False)
+        layout.addWidget(self.main, 1)
 
         self.actions_row = QHBoxLayout()
         self.explain_button = QPushButton('Explain this finding')
@@ -502,7 +522,17 @@ class HayabusaPanel(QWidget):
         if question:
             cost += ' · answer to your question'
         rendered = '\n'.join(lines) + '\n(' + cost + ')'
+        start = len(self.explanation.toPlainText())
         self.explanation.appendPlainText('\n' + rendered)
+        # An answer that arrives below the fold looks like no answer at all: bring its first
+        # line into view (the end of a long answer is not what an analyst wants to land on),
+        # and leave a line saying it landed even when the box is scrolled back up.
+        cursor = self.explanation.textCursor()
+        cursor.setPosition(min(start + 1, len(self.explanation.toPlainText())))
+        self.explanation.setTextCursor(cursor)
+        self.explanation.ensureCursorVisible()
+        self.progress_label.setText('Answered in %s s - %s'
+                                    % (result.get('seconds', 0), 'read it below'))
         if pack is not None and decoded.get('valid'):
             self._answers[pack.group_key] = rendered
 

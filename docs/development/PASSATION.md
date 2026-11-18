@@ -15,7 +15,7 @@ Git de la VM : `C:\Users\fb\tools\git\cmd\git.exe`. Interpréteur :
 
 | Élément | État |
 |---|---|
-| Branche | `main`, à `1d8ada9` ; la branche `hermes/0.5.0-assistant` est fusionnée |
+| Branche | `main` (fusionnée, poussée) ; le tag `v0.5.0` marque ce qui est publié |
 | Version | **0.5.0 publiée** (tag `v0.5.0`, prerelease assumée) — exe 281 125 170 o, SHA-256 `59a44840f7890b43f1d3fcff98260b92737e50a2b632f7c651b47415ad23d9dd` |
 | Porte | verte sur la VM : **1527 passés, 28 ignorés, 954 s** (`vm_gate.ps1`) |
 | Modèle local | moteur llama.cpp `b12483` + MiniCPM5-2B Q4_K_M (1 561 318 368 octets, SHA-256 `ec2d5801…602fd`) |

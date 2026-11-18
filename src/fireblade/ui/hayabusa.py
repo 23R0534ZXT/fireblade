@@ -164,6 +164,14 @@ class HayabusaPanel(QWidget):
         self.ask_button.clicked.connect(self.ask_question)
         ask_row.addWidget(self.ask_button)
         side_layout.addLayout(ask_row)
+        # The questions worth asking next, read from the case by core.suggestions: a small
+        # model asked "what next" invents a priority, the findings do not.
+        self.chips_row = QWidget()
+        self.chips = QHBoxLayout(self.chips_row)
+        self.chips.setContentsMargins(0, 0, 0, 0)
+        self.chips.setSpacing(4)
+        self.chip_buttons = []
+        side_layout.addWidget(self.chips_row)
         self.assistant_state = shrinkable(QLabel())
         side_layout.addWidget(self.assistant_state)
         side_widget.setMinimumWidth(260)
@@ -241,6 +249,7 @@ class HayabusaPanel(QWidget):
         self._ticker.timeout.connect(self.tick_progress)
         self._active = CircularMap
         self.maps[CircularMap].show()
+        self.refresh_suggestions()
 
     # ---------------------------------------------------------------- content
     def showEvent(self, event):
@@ -297,6 +306,7 @@ class HayabusaPanel(QWidget):
                 return
         self.summary = summarise(self.groups)
         self.selected = -1
+        self.refresh_suggestions()
         # 'incident' is a word the French heuristic flags, so the sentence avoids it.
         self.state.setText('%d alerts grouped into %d findings over %d time windows (%s).'
                            % (self.summary['hits'], self.summary['groups'], len(self.incidents),
@@ -455,6 +465,38 @@ class HayabusaPanel(QWidget):
                              group.count,
                              group.start.strftime('%H:%M:%S') if group.start else '—',
                              group.end.strftime('%H:%M:%S') if group.end else '—', window))
+
+    def refresh_suggestions(self):
+        """Rewrite the suggestion chips from what the case now holds."""
+        from fireblade.core.suggestions import suggest
+        from fireblade.core.i18n import translate
+        for button in self.chip_buttons:
+            button.deleteLater()
+        self.chip_buttons = []
+        workspace = None
+        case = getattr(self.window, 'active_investigation', None)
+        if case is not None:
+            try:
+                from fireblade.core import case_workspace
+                workspace = case_workspace.load(self.window.investigation_library.folder(case['id']))
+            except (OSError, ValueError):
+                workspace = None
+        for question in suggest(list(getattr(self, 'groups', []) or []), workspace, limit=3):
+            text = translate(question)
+            button = QPushButton(text)
+            button.setFlat(True)
+            button.setCursor(Qt.PointingHandCursor)
+            button.setToolTip(text)
+            button.setStyleSheet('text-align:left;color:#457b9d;')
+            button.clicked.connect(lambda _checked=False, value=text: self.use_suggestion(value))
+            self.chips.addWidget(button, 1)
+            self.chip_buttons.append(button)
+        self.chips_row.setVisible(bool(self.chip_buttons))
+
+    def use_suggestion(self, question):
+        """A chip only fills the box: nothing is sent until the analyst presses Ask."""
+        self.ask.setText(question)
+        self.ask.setFocus()
 
     def ask_question(self):
         """Talk to the assistant: the whole case is in reach, a selection is not required."""

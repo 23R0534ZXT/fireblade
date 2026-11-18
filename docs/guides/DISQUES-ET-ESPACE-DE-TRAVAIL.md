@@ -25,8 +25,14 @@ par le menu Fichier une fois le case ouvert.
   partitions et les systèmes de fichiers lisibles. Pour E01 segmenté, conserver
   les segments ensemble et sélectionner le premier.
 - **Disque physique** : saisir son chemin de périphérique. Les droits et la
-  lisibilité dépendent du système hôte. L’accès physique Windows et les images
-  E01 n’ont pas encore été qualifiés par les tests locaux de ce changement.
+  lisibilité dépendent du système hôte. L’accès physique Windows n’a pas encore
+  été qualifié par un test sur un vrai périphérique.
+- **E01** : le conteneur est lu par Dissect et qualifié par un test sur l’image
+  publique de `dissect.evidence` — cette image ne contient pas de système de
+  fichiers, donc la lecture d’un NTFS ou d’un FAT *à l’intérieur* d’un E01 reste
+  à qualifier sur une acquisition réelle. Un jeu segmenté (E01, E02, …) est
+  rassemblé dans l’ordre ; un segment manquant est refusé plutôt que de produire
+  un disque tronqué en silence.
 
 Les lecteurs de fichiers intégrés à cette extension sont NTFS, FAT et ext.
 Les volumes chiffrés ne sont pas déverrouillés ; un système de fichiers absent

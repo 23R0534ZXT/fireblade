@@ -532,6 +532,7 @@ def parse(source, output, progress=lambda _: None, span=None):
             text = raw.decode(encoding or ('utf-8-sig' if number==1 else 'utf-8'), 'backslashreplace').rstrip('\r\n')
             if number==1:
                 text = text.removeprefix('\ufeff')
+            declaration_text = False
             fields = text_fields(text, path)
             if text.startswith('#separator '):
                 token = text[len('#separator '):]
@@ -546,6 +547,11 @@ def parse(source, output, progress=lambda _: None, span=None):
                 columns = text[len('#Fields: '):].split()
                 separator = None
                 table_format = 'W3C extended'
+            elif text.startswith(('#Software:', '#Version:', '#Date:', '#Remark:')):
+                # IIS writes four comment lines before #Fields; they describe the log, they
+                # are not events. Kept as declarations so the raw count stays the data's.
+                table_format = 'W3C extended'
+                declaration_text = True
             elif columns and not text.startswith('#'):
                 values = text.split(separator)
                 if len(values) == len(columns):
@@ -555,9 +561,12 @@ def parse(source, output, progress=lambda _: None, span=None):
                         fields.update(Horodatage=obj.get('ts', ''), **{'Adresse distante': obj.get('id.orig_h', '')})
                     else:
                         fields.update(Horodatage=' '.join(obj.get(k, '') for k in ('date', 'time')).strip(),
-                                      **{'Adresse distante': obj.get('c-ip', ''), 'Méthode': obj.get('cs-method', ''),
-                                         'Chemin': obj.get('cs-uri-stem', ''), 'Statut': obj.get('sc-status', '')})
-            declaration = not fields and bool(table_format) and text.startswith('#')
+                                      **{'Adresse distante': obj.get('c-ip', ''), 'Adresse locale': obj.get('s-ip', ''),
+                                         'Méthode': obj.get('cs-method', ''), 'Chemin': obj.get('cs-uri-stem', ''),
+                                         'Statut': obj.get('sc-status', ''), 'Utilisateur': obj.get('cs-username', ''),
+                                         'Agent': obj.get('cs(User-Agent)', ''),
+                                         'Octets': obj.get('sc-bytes', '') or obj.get('cs-bytes', '')})
+            declaration = bool(declaration_text) or (not fields and bool(table_format) and text.startswith('#'))
             if declaration:
                 # '#separator', '#fields', '#Software': a declaration of the format, not a
                 # record. Counting it as a raw line inflated the raw count of every Zeek

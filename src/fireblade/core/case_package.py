@@ -60,7 +60,8 @@ def relocate(value, mapping, key=None):
 
 
 def export_package(library, data, documents, active, target, *, include_sources=False,
-                   active_case=None, settings=None, include_case_files=False, max_bytes=None):
+                   active_case=None, settings=None, include_case_files=False,
+                   include_extra_files=False, max_bytes=None):
     max_bytes = MAX_BYTES if max_bytes is None else max_bytes
     target = Path(target).resolve()
     ensure_export_destination(target, documents=documents, case_folder=library.folder(data['id']),
@@ -207,13 +208,22 @@ def export_package(library, data, documents, active, target, *, include_sources=
                 load_report(coverage_last);add(archive,coverage_last,'coverage-last.json')
             state = library.folder(data['id']) / 'timeline-state.json'
             if state.is_file():add(archive, state, 'timeline-state.json')
-            if include_case_files:
+            if include_case_files or include_extra_files:
                 folder=library.folder(data['id'])
+                # Everything already packed above must not be packed twice: an open
+                # analysis database cannot be read a second time on Windows, and a copy
+                # under case-extra would shadow the real one after an import.
+                already={Path(document.path).resolve() for document in documents}
+                collection_roots=[Path(entry['path']).resolve() for entry in data['collections']]
                 for extra in folder.rglob('*'):
                     check_cancelled()
                     if extra.is_symlink() or (hasattr(extra,'is_junction') and extra.is_junction()):raise ValueError('Lien dans le dossier du case : '+str(extra))
                     if not extra.is_file() or extra.name in ('case.json','case.lock','case.active.lock'):continue
-                    if str(extra.resolve()) not in mapping:
+                    resolved=extra.resolve()
+                    if resolved in already or any(root in resolved.parents for root in collection_roots):continue
+                    if extra.name in ('coverage-state.json','coverage-last.json','timeline-state.json'):continue
+                    if resolved.suffix.lower()=='.timeline':continue
+                    if str(resolved) not in mapping:
                         add(archive,extra,'case-extra/'+extra.relative_to(folder).as_posix())
             by_member={item['path']:item for item in files}
             for document in documents:

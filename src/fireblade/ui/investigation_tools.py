@@ -173,8 +173,14 @@ class InvestigationToolsMixin:
             self.coverage_notice('Export','warning' if result['missing_sources'] else 'info',f"Case portable vérifié : {result['files']} fichiers ; {len(result['missing_sources'])} sources non incluses.",result['path'],missing_sources=result['missing_sources'])
             self.statusBar().showMessage(f"Archive vérifiée créée · {result['files']} fichiers · {len(result['missing_sources'])} source(s) non incluse(s) : {result['path']}")
         self.statusBar().showMessage('Création puis vérification SHA-256 de l’archive portable…')
+        # include_extra_files carries the workspace (client, actions, indicators), the
+        # destruction records and the assistant conversations: a portable case without
+        # them reopens as an empty shell. It leaves the databases to the normal path,
+        # which can snapshot them while the case is open (include_case_files expects a
+        # closed case and opens every database itself).
         self.run(lambda:export_package(self.investigation_library,data,documents,active,path,
-                                      include_sources=include_sources,active_case=case,settings=self.settings),done,exclusive=True,coverage_stage="Export",coverage_context=path)
+                                      include_sources=include_sources,active_case=case,settings=self.settings,
+                                      include_extra_files=True),done,exclusive=True,coverage_stage="Export",coverage_context=path)
 
     def import_investigation_package(self, path=None):
         if not self.can_switch_investigation():return

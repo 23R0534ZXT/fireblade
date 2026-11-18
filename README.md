@@ -130,18 +130,17 @@ Sample data, if you have nothing at hand:
   coverage audit states what it could not verify.
 - **.NET plugins run with your rights** — load only assemblies you trust.
 
-## What's new in 0.5.0 — prototype
+## What's new in 0.5.0 - prototype
 
-- **A findings map for Hayabusa.** Instead of 35 000 alert rows, the alerts are grouped
-  into a few hundred findings and drawn three ways: a dial of the day, a heat map, and a
-  timeline per host for one window. A click on a mark selects the finding and the grid
-  follows.
-- **An assistant tab, wired but not yet generating.** Fireblade builds the evidence pack
-  (numbered events, neighbours, what could not be established) and refuses any answer
-  whose citation does not exist in it. No model ships with this build: asking a question
-  says why.
-- This version is **source only**; the published executable stays
-  [0.4.2](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.4.2).
+- **Hayabusa + AI**: the alerts of an analysis become findings (one rule, one host, one
+  burst), grouped in DuckDB and gathered into time windows.
+- **Three views, one selector**: the day as a polar histogram (one ray per ten minutes,
+  length = alerts, colour = severity), rules over time, and the chain of a finding.
+- **A local assistant, optional and offline**: llama.cpp CPU build and MiniCPM5-2B
+  weights downloaded once, 25 to 45 s per explanation on four cores.
+- **It cannot invent**: every fact and every link must cite events of the pack; anything
+  citing an event that does not exist is dropped, and the reason is shown.
+- The interface keeps working with no model at all, and says so.
 
 ## Previous release — 0.4.2
 

@@ -1,50 +1,68 @@
-# Fireblade 0.5.0 — the Hayabusa findings map, and an assistant that will not invent
+# Fireblade 0.5.0 — the Hayabusa findings map, and a local assistant that answers
 
-This version is a prototype of one idea: an analyst should not read 35 000 alerts one
-by one, and a small local model should never be the thing that decides what is true.
+An analyst should not read 35 000 alerts one by one, and a small local model should never
+be the thing that decides what is true. This version does the first, and lets the second
+help without being trusted.
 
-### A new tab: Hayabusa + AI
+## A new tab: Hayabusa + AI
 
-- The alerts of a Hayabusa analysis are **grouped** instead of listed: one rule on one
-  host, one burst. Three identical alerts three minutes apart are one finding with a
-  count, not three rows. A collection that produced 6 000 rows reads as a few hundred
-  findings.
-- Findings are then gathered into **time windows**: what happened in the same hour stays
-  together, ordered by the clock, so a chain reads as a chain.
-- **Three painted views**, switchable inside the tab: a dial of the day (angle = time,
-  distance from the centre = severity), a heat map (one row per rule, brightness per
-  time slice), and a timeline per host for one window.
-- Every mark is clickable: the grid follows the selection, and the finding's own card
-  appears beside the map. The grid keeps the usual actions — open the alerts in the main
-  grid, bookmark every alert of a finding.
+- The alerts of a Hayabusa analysis are **grouped in DuckDB**: one rule on one host, one
+  burst. Three identical alerts three minutes apart are one finding with a count, not
+  three rows. Grouping runs as a window function over the events table, so a collection
+  with millions of rows never has to fit in memory; a grouping that fails falls back to
+  the in-memory path and says so in the header.
+- Findings are gathered into **time windows**, ordered by the clock, so a chain reads as
+  a chain.
+- **Three painted views**, one selector. The day is a **polar histogram**: one ray per ten
+  minutes, its length the number of alerts in that slice, its colour the worst severity in
+  it, so a quiet morning is a row of short ticks and the incident is a spike. The heat map
+  gives one row per rule over time; the chain shows the events of the selected finding and,
+  once the assistant has answered, the links it asserted.
+- The views follow the window's own theme, light or dark, and use the same severity
+  colours as the rest of Fireblade.
 - A finding whose timestamp cannot be read is **counted and reported**, never silently
   dropped.
 
-### The assistant, wired but not yet running
+## The local assistant
 
-- `assistant.json` beside the user's cases decides whether a local model is enabled;
-  Fireblade works exactly the same without it.
-- Before anything is generated, Fireblade checks the machine: weights present, memory
-  available. When one is missing it says which, in one sentence, instead of failing
-  later.
-- The **evidence pack** — the group, its events numbered `[evt 1]`, the other findings of
-  the same window, and what could not be established — is built deterministically.
-- An answer is displayed only if **every citation names an event that exists in the
-  pack**; otherwise the draft is discarded and the reason is written. A well-formed
-  answer is not a true one, and the guard is what keeps the difference visible.
+- **Optional, installed once.** `Set up the local model…` downloads the CPU build of
+  llama.cpp (pinned tag) and the MiniCPM5-2B weights (Q4_K_M, 1.5 GB, digest checked),
+  then writes `assistant.json` beside the user's cases. Fireblade works identically
+  without it, and the tab still explains a finding from the data alone.
+- **Before it speaks, it checks the machine**: weights present, engine present, memory
+  available. A missing piece is a sentence, not a stack trace.
+- **Explain this finding** sends a bounded evidence pack — the finding, its events
+  numbered `[evt n]`, the other findings of the same window, and what could not be
+  established — and asks for JSON: summary, facts with the events they rest on, links
+  between events, and what is missing.
+- **The answer is verified before display.** A fact that cites no event, or an event that
+  is not in the pack, is dropped with its reason; a link is kept only when both ends
+  exist. A well-formed answer is not a true one.
+- **The prompt says which numbers exist.** Telling the model that the valid event numbers
+  run from 1 to N raised the facts kept from 1.3 to 1.5 per finding and cut the dropped
+  ones by about half; a worked example in the prompt made answers shorter and *worse*, so
+  it is not used.
+- **Links are drawn**, not described: the chain view shows the arrows the model asserted,
+  labelled with the event numbers they join.
+- **One question at a time**, with the elapsed seconds on screen; asking twice says so
+  instead of queueing a second call against the same engine. An answer belongs to its
+  finding and comes back when you return to it.
+- **An engine that dies is restarted once.** On a machine of eight gigabytes the server did
+  exit mid-answer; the socket is then refused, and the call is retried on a fresh engine
+  instead of leaving a dead feature behind.
+- Measured on the four-core, eight-gigabyte test VM, no GPU: **25 to 45 s** for one
+  explanation (six findings, mean 28 s), **29 s** for a follow-up question, and the engine
+  stays loaded between questions. An answer that is cut off at the token budget is reported
+  as cut off, not as malformed.
 
-### Honest limits of this prototype
+## What this version does not do
 
-- **No model ships with this build and none is executed.** The panel computes and shows
-  the facts; asking a question explains why the assistant cannot answer yet. The
-  inference step, the model download at install time and the "explain this finding"
-  button come next.
-- The chain view draws the order of events in one window; the real "what the assistant
-  linked, edge by edge" picture needs the engine, and drawing hops before that would
-  invent them.
-- The grouping is computed in memory from the loaded analysis. A collection with
-  millions of alerts will need the grouping to run in DuckDB instead; the numbers here
-  (35 000 alerts, 128 findings) are the scale that works today.
+- No fine-tuning; the model is used as shipped, with the prompt this version ships.
+- No multi-hop investigation: the assistant explains one finding and answers questions
+  about it, it does not drive the analysis.
+- The evidence pack is bounded at 40 events; a finding with more occurrences says how many
+  were not read.
+- The .NET forensic pack is unchanged: this version adds no new artefact parser.
 
 # Fireblade 0.4.2 — eight times less time on the same collection
 

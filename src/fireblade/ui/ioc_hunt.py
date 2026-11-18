@@ -87,9 +87,14 @@ class HuntPanel(QWidget):
         self.window.remember_active();documents=self.window.documents
         if not documents:self.window.error('Ouvrez au moins une analyse.');return
         text=self.input.toPlainText();cached=self.cached;root=self.root();sub=self.subdomains.isChecked();filters=self.filters.isChecked();limit=self.limit.value()
-        self.reader=WorkspaceReader(documents,self.window.settings,self.window.case);reader=self.reader
         self.build_button.setEnabled(False)
         def work():
+            # The reader opens the analyses: doing that on the interface thread froze the
+            # window for minutes on a case with dozens of them, before any progress could
+            # be shown. It is built in the worker, and interrupt() still reaches it once
+            # it exists.
+            reader=WorkspaceReader(documents,self.window.settings,self.window.case)
+            self.reader=reader
             batch=cached[1] if cached and cached[0]==text else parse_indicators(text)
             return hunt(reader,batch,root,include_subdomains=sub,respect_filters=filters,hit_limit=limit,progress=self.progress.emit)
         def release():self.reader=None;self.build_button.setEnabled(True)

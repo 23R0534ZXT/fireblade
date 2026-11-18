@@ -34,3 +34,33 @@ def test_source_row_return_restores_view(qt_application,tmp_path):
         panel.return_to_hunt();settle(qt_application,window)
         assert not window.view.filters and window.workbench.currentWidget() is panel and not errors
     finally:window.close();settle(qt_application,window)
+
+
+def test_the_hunt_returns_at_once_and_builds_the_reader_off_the_interface_thread(qt_application, tmp_path, monkeypatch):
+    """A case with dozens of analyses froze the window before any progress was shown."""
+    import time
+    import fireblade.ui.ioc_hunt as ui
+    window, errors = loaded(qt_application, tmp_path)
+    try:
+        real = ui.WorkspaceReader
+        started = []
+
+        class SlowReader(real):
+            def __init__(self, *args, **kwargs):
+                started.append(time.monotonic())
+                time.sleep(0.8)
+                super().__init__(*args, **kwargs)
+
+        monkeypatch.setattr(ui, 'WorkspaceReader', SlowReader)
+        panel = window.ioc_panel
+        panel.input.setPlainText('10.0.0.1')
+        begin = time.monotonic()
+        panel.launch()
+        elapsed = time.monotonic() - begin
+        assert elapsed < 0.4, 'launch() blocked the interface for %.2fs' % elapsed
+        assert not panel.build_button.isEnabled()
+        settle(qt_application, window)
+        assert started and panel.store is not None, errors
+        assert panel.build_button.isEnabled()
+    finally:
+        window.close()

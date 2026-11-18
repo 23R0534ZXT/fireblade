@@ -1,3 +1,13 @@
+# Fireblade 0.7.2 — the IOC hunt no longer freezes the window
+
+- Starting a hunt built its reader — which opens every analysis of the case — on the
+  interface thread. On a case with dozens of analyses the window stopped responding for
+  minutes, before any progress could be shown, and the run looked like a hang. The reader
+  is now built in the worker thread like the hunt itself; `launch()` returns at once, the
+  button stays disabled while the hunt runs, and interrupting still reaches the reader.
+- A test holds the rule: with a reader that takes 0.8 s to construct, `launch()` returns in
+  under 0.4 s and the hunt still completes.
+
 # Fireblade 0.7.1 — the assistant knows the whole case
 
 0.7.0 gave the case a workspace, a graph, a report and a certificate. This patch fixes

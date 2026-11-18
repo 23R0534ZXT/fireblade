@@ -2,6 +2,7 @@
 from pathlib import Path, PurePosixPath
 
 from PySide6.QtCore import Qt, Signal
+from fireblade.core.artifact_names import friendly_label, unique_labels
 from fireblade.core.models import analysis_label
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QLineEdit, QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 
@@ -60,14 +61,22 @@ class AnalysisNavigator(QWidget):
             roots, families, folders = {}, {}, {}
             for owner in collections:
                 root_key = owner['path']
-                roots[root_key] = QTreeWidgetItem(self.tree, [owner['name']])
+                roots[root_key] = QTreeWidgetItem(self.tree, [collection_title(owner)])
                 roots[root_key].setData(0, Qt.UserRole+1, root_key)
                 roots[root_key].setToolTip(0, root_key)
+            numbered = {}
+            for item in roots.values():
+                text = item.text(0)
+                numbered[text] = numbered.get(text, 0) + 1
+                if numbered[text] > 1:
+                    item.setText(0, f'{text} ({numbered[text]})')
+            # What each analysis is, rather than the folder it was saved under.
+            short = unique_labels([snapshot.source_info.get('path', '') for snapshot in documents])
             for index, snapshot in enumerate(documents):
                 owner = next((c for c in collections if Path(c['path']) in Path(snapshot.path).parents), None)
                 root_key = owner['path'] if owner else ''
                 if root_key not in roots:
-                    roots[root_key] = QTreeWidgetItem(self.tree, [owner['name'] if owner else 'Analyses hors collecte'])
+                    roots[root_key] = QTreeWidgetItem(self.tree, [collection_title(owner) if owner else 'Analyses hors collecte'])
                     roots[root_key].setData(0, Qt.UserRole+1, root_key)
                     roots[root_key].setToolTip(0, root_key)
                 source = Path(snapshot.source_info['path'])
@@ -96,7 +105,8 @@ class AnalysisNavigator(QWidget):
                         title = (relative.name or PurePosixPath(
                             analysis_label(snapshot.source_info)).name)+' · '+family
                     else:
-                        title = labels.get(snapshot.path) or analysis_label(snapshot.source_info)
+                        title = (labels.get(snapshot.path) or short.get(snapshot.source_info.get('path', ''))
+                                 or analysis_label(snapshot.source_info))
                     leaf = QTreeWidgetItem(parent, [title])
                     leaf.setData(0, Qt.UserRole, index)
                     leaf.setToolTip(0, (origin or {}).get('source', str(source))+'\n'+snapshot.path)
@@ -109,7 +119,8 @@ class AnalysisNavigator(QWidget):
                     parent=QTreeWidgetItem(parent,[f"{family} ({len(members)})"])
                     parent.setData(0,Qt.UserRole+1,root_key+'|'+family)
                 for index,snapshot,source in members:
-                    title=labels.get(snapshot.path) or analysis_label(snapshot.source_info)
+                    title=(labels.get(snapshot.path) or short.get(snapshot.source_info.get('path', ''))
+                           or analysis_label(snapshot.source_info))
                     leaf = QTreeWidgetItem(parent, [title])
                     leaf.setData(0, Qt.UserRole, index)
                     leaf.setToolTip(0, str(snapshot.source_info.get('path',''))+'\n'+snapshot.path)
@@ -144,6 +155,19 @@ class AnalysisNavigator(QWidget):
             if query and children and visible:item.setExpanded(True)
             return visible
         for i in range(self.tree.topLevelItemCount()):visit(self.tree.topLevelItem(i))
+
+
+def collection_title(owner):
+    """A collection is named after its evidence, not after its saved path.
+
+    Names recorded before this rule ("Folder: C:\\...") are shortened when shown, so
+    an existing case reads like a new one; the full path stays in the tooltip.
+    """
+    name = str((owner or {}).get('name', ''))
+    for prefix in ('Dossier : ', 'Folder: '):
+        if name.startswith(prefix):
+            return friendly_label(name[len(prefix):])
+    return name
 
 
 def artifact_family(info, source):

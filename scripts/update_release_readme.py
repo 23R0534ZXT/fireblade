@@ -8,13 +8,14 @@ from scripts.release import application_version
 
 
 def promote(text, release, version, digest, commit, run_url):
-    if (release.get('draft', True) or release.get('tag_name')!='v'+version
-            or 'Commit: '+commit not in release.get('body','')
-            or 'SHA-256 of Fireblade.exe: '+digest not in release.get('body','')):
+    if release.get('draft', True) or release.get('tag_name')!='v'+version or 'Commit: '+commit not in release.get('body',''):
         raise ValueError('Published release identity does not match the qualified binary')
-    assets=release.get('assets',[])
-    if len(assets)!=1 or assets[0]['name']!='Fireblade.exe' or assets[0].get('digest')!='sha256:'+digest:
-        raise ValueError('Published executable hash differs from the qualified binary')
+    assets=[item for item in release.get('assets',[]) if item.get('name','').endswith('.zip')]
+    if len(assets)!=1 or assets[0].get('digest')!='sha256:'+digest:
+        raise ValueError('Published archive hash differs from the qualified build')
+    # The digest line names the archive it belongs to, so a stale body cannot pass.
+    if 'SHA-256 of '+assets[0]['name']+': '+digest not in release.get('body',''):
+        raise ValueError('Published release does not carry the archive digest')
     banner='> Download the Windows x64 executable from [GitHub Releases]'
     lines=[line for line in text.splitlines() if line != 'The desktop interface and most user guides are currently in French.'
            and not line.startswith('The published download above remains the last qualified release until ')]
@@ -28,7 +29,9 @@ def promote(text, release, version, digest, commit, run_url):
 def main():
     root=Path.cwd();repo=os.environ['GITHUB_REPOSITORY'];commit=os.environ['GITHUB_SHA']
     version=application_version(root)
-    with (root/'dist/Fireblade.exe').open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
+    archives=sorted((root/'dist').glob('Fireblade-%s-win64.zip' % version))
+    if len(archives)!=1:raise ValueError('Expected exactly one Fireblade-<version>-win64.zip in dist')
+    with archives[0].open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
     release=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/releases/tags/v{version}'],text=True,encoding='utf-8',errors='replace'))
     url=f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
     path=root/'README.md';updated=promote(path.read_text(encoding='utf-8'),release,version,digest,commit,url)

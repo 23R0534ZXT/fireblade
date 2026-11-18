@@ -70,7 +70,7 @@ def stage_resources(root, destination):
     (legal / "DEPENDENCIES.json").write_text(json.dumps(packages, ensure_ascii=False, indent=2), encoding="utf-8")
     version = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
     revision, modified = source_revision(root)
-    info = dict(application="Fireblade", version=version, platform="Windows x64", packaging="onefile",
+    info = dict(application="Fireblade", version=version, platform="Windows x64", packaging="onedir",
                 python=sys.version.split()[0], machine=platform.machine(), source_commit=revision, source_modified=modified,
                 maturity="prototype", dependencies=[dict(name=p["name"], version=p["version"]) for p in packages])
     (destination / "build").mkdir(exist_ok=True)

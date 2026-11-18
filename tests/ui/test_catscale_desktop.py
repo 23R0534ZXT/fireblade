@@ -15,7 +15,7 @@ def test_folder_picker_imports_catscale_in_case_and_hayabusa_explains_evtx_requi
     from fireblade.ui.app import Window
     import fireblade.ui.collection as ui
     source=write_corpus(tmp_path/'evidence')
-    monkeypatch.setattr(ui,'choose_collection_directories',lambda *args:[str(source)])
+    monkeypatch.setattr(ui,'choose_import_sources',lambda *args:[str(source)])
     def accept_artifacts(dialog):
         # A merged layout is chosen by unchecking "keep working": the dialog
         # now asks the two questions separately.

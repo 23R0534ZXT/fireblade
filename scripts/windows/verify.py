@@ -1,4 +1,4 @@
-"""Run only the EXE from an empty folder, isolated from host Python and Qt."""
+"""Run the folder build from an empty folder, isolated from host Python and Qt."""
 import argparse
 import hashlib
 import json
@@ -32,12 +32,15 @@ def verify(executable, report_path, timeout=360):
         environment.pop(key, None)
     system_root = Path(environment.get("SystemRoot", r"C:\Windows"))
     environment["PATH"] = os.pathsep.join(map(str, [system_root / "System32", system_root]))
-    with tempfile.TemporaryDirectory(prefix="Fireblade fichier unique ") as temporary:
+    with tempfile.TemporaryDirectory(prefix="Fireblade dossier ") as temporary:
         temporary = Path(temporary)
         copied = temporary / "Application été"
         copied.mkdir()
-        target = copied / executable.name
-        shutil.copy2(executable, target)  # Deliberately copy no directory, DLL or config.
+        # The product is the folder now: copy it whole and start the exe inside it, so
+        # a missing DLL or a plugin left behind fails here and not on a tester's machine.
+        target_folder = copied / executable.parent.name
+        shutil.copytree(executable.parent, target_folder)
+        target = target_folder / executable.name
         extraction = temporary / "Cache Windows"
         extraction.mkdir()
         environment["TEMP"] = environment["TMP"] = str(extraction)
@@ -46,8 +49,8 @@ def verify(executable, report_path, timeout=360):
         try:
             code=process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
-            # A onefile launcher owns another process. Killing only its parent
-            # leaves the real application alive and locks the relocated EXE.
+            # The launcher owns another process. Killing only its parent leaves the
+            # real application alive and locks the relocated folder.
             subprocess.run(['taskkill','/PID',str(process.pid),'/T','/F'],capture_output=True,timeout=10,check=False)
             if process.poll() is None:process.kill()
             process.wait(timeout=10)
@@ -60,18 +63,19 @@ def verify(executable, report_path, timeout=360):
                 report = dict(status="failed", error="Rapport incomplet", report_tail=raw[-3000:])
         else:
             report = dict(status="failed", error="Le processus n’a pas produit de rapport.")
-        adjacent = sorted(p.name for p in copied.iterdir())
+        adjacent = sorted(p.name for p in target_folder.iterdir())
         extraction_cleaned = not list(extraction.glob("_MEI*"))
         # The executable runs 47 checks. The threshold is a floor, not the count:
         # it must stay high enough that removing a whole check family (the ten
         # completion checks, which run the .NET hosts for real) fails the build.
         valid = (code == 0 and report.get("status") == "passed" and report.get("frozen") is True
                  and report.get("platform") == "win32" and report.get("pointer_bits") == 64
-                 and report.get("qt_platform") == "windows" and report.get("packaging") == "onefile"
-                 and len(report.get("checks", [])) >= 40 and adjacent == [executable.name] and extraction_cleaned
+                 and report.get("qt_platform") == "windows" and report.get("packaging") == "onedir"
+                 and len(report.get("checks", [])) >= 40
+                 and "_internal" in adjacent and executable.name in adjacent and extraction_cleaned
                  and all(item.get("status") == "passed" for item in report.get("checks", [])))
         report["bundle_verification"] = dict(status="passed" if valid else "failed", exit_code=code,
-                                             executable_sha256=original_hash, application_version=version, windows_version_resource=resource, single_file_distribution=True,
+                                             executable_sha256=original_hash, application_version=version, windows_version_resource=resource, distribution="folder",
                                              adjacent_files=adjacent, extraction_cleaned=extraction_cleaned,
                                              relocated_unicode_path=True, host_python_paths_removed=True)
         if not valid:

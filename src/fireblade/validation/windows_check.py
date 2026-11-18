@@ -188,13 +188,18 @@ def run_check(app, report_path):
                 expect(resource_path(relative).is_file(), f"Ressource du tutoriel absente : {relative}")
             expect("MIT License" in resource_path("LICENSE").read_text(encoding="utf-8"), "La licence du projet n’est pas intégrée.")
             if report["frozen"]:
-                expect(report["packaging"] == "onefile", "Le livrable doit être un exécutable onefile.")
+                expect(report["packaging"] == "onedir", "Le livrable doit être le dossier Fireblade (onedir).")
                 dependencies = json.loads(resource_path("legal/DEPENDENCIES.json").read_text(encoding="utf-8"))
                 expect({"duckdb", "PySide6-Essentials", "openpyxl"}.issubset({item["name"] for item in dependencies}), "Les notices des dépendances sont absentes.")
                 expect(resource_path("legal/qt/LGPL-3.0-only.txt").is_file(), "La licence Qt n’est pas intégrée.")
                 for name in ("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll"):
                     expect((Path(sys._MEIPASS) / name).is_file(), f"Le runtime Windows {name} n’est pas intégré.")
-                expect(sorted(p.name for p in Path(sys.executable).parent.iterdir()) == [Path(sys.executable).name], "Le programme a besoin de fichiers à côté du .exe.")
+                beside = sorted(p.name for p in Path(sys.executable).parent.iterdir())
+                # A folder build ships its libraries in "_internal", beside the exe and
+                # nothing else: no DLL, no config and no asset dropped next to it.
+                expect(beside == [Path(sys.executable).name]
+                       or beside == sorted([Path(sys.executable).name, "_internal"]),
+                       "Le programme ne doit pas dépendre de fichiers déposés à côté de lui.")
         check("single_file_embedded_guide_defaults_and_licenses", embedded_resources)
         if report['frozen']:
             from fireblade.validation.forensic_tools import parser_result_display, verify_embedded_engines

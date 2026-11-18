@@ -15,7 +15,8 @@ from fireblade.ui.flow_layout import FlowLayout
 STATUSES = {'pending':'En attente', 'running':'En cours', 'complete':'Terminé',
     'complete_with_warnings':'Terminé avec avertissements', 'unsupported':'Non reconnu',
     'skipped':'Ignoré', 'error':'Erreur', 'cancelled':'Interrompu', 'attention':'À vérifier',
-    'no_output':'Aucune sortie', 'companion':'Journal de transaction', 'deleted':'Supprimé'}
+    'no_output':'Aucune sortie', 'companion':'Journal de transaction', 'deleted':'Supprimé',
+    'duplicate':'Doublon'}
 
 PREVIEW_LIMIT = 64 * 1024
 
@@ -29,6 +30,9 @@ def outcome(entry):
     if state in ('error','cancelled') or any(run['status'] in ('error','cancelled') for run in entry.get('runs',[])):return 'errors'
     if state in ('complete_with_warnings','attention','no_output'):return 'warnings'
     if state in ('unsupported','skipped','deleted'):return 'unsupported'
+    # A duplicate is neither a success nor a failure: it is evidence already read,
+    # and the report has to say so instead of counting it twice.
+    if state=='duplicate':return 'duplicate'
     return 'complete' if state=='complete' else 'other'
 
 
@@ -157,7 +161,7 @@ class CollectionReport(QWidget):
         self.status=QComboBox()
         for label,value in [('Tous les fichiers',''),('Réussis','complete'),('Avertissements / à vérifier','warnings'),
                             ('Erreurs / interrompus','errors'),('Non reconnus / ignorés','unsupported'),
-                            ('Écartés du bilan','ignored')]:
+                            ('Doublons','duplicate'),('Écartés du bilan','ignored')]:
             self.status.addItem(label,value)
         self.search=QLineEdit();self.search.setPlaceholderText('Chercher un fichier ou un lecteur…');self.search.setClearButtonEnabled(True)
         row.addWidget(self.status);row.addWidget(self.search,1)
@@ -203,12 +207,21 @@ class CollectionReport(QWidget):
         # The template is translated before formatting, so the English entry can
         # be found: a formatted string never matches a table entry.
         head=translate("{} fichiers · {} réussis · {} à vérifier · {} erreurs/interrompus · "
-                       "{} non reconnus/ignorés · {} autres/compagnons · {} écartés").format(
+                       "{} non reconnus/ignorés · {} doublons · {} autres/compagnons · {} écartés").format(
             len(self.model.entries),counts['complete'],counts['warnings'],counts['errors'],
-            counts['unsupported'],counts['other'],counts['ignored'])
+            counts['unsupported'],counts['duplicate'],counts['other'],counts['ignored'])
+        sources=self.report.get('sources') or [self.report.get('source','')]
+        origin=list(sources)[0] if len(sources)==1 else translate('{} sources').format(len(sources))
         tail=translate('Import : {} · {} analyses · Source : {}').format(
             translate(STATUSES.get(self.report['status'],self.report['status'])),
-            len(self.report.get('documents',[])),self.report['source'])
+            len(self.report.get('documents',[])),origin)
+        verification=self.report.get('verification')
+        if verification:
+            # The number a reader needs is the one that could be wrong.
+            tail+='\n'+translate('Vérification : {} analyses contrôlées · {} en échec').format(
+                verification.get('checked',0),verification.get('broken',0))
+        if self.report.get('journal_error'):
+            tail+='\n'+translate('Journal incomplet : {}').format(self.report['journal_error'])
         return head+'\n'+tail
 
     def set_report(self, report, text):

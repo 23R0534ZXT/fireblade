@@ -37,7 +37,7 @@ def main():
     from scripts.windows.version_info import write_version_file
     version_file=write_version_file(root/"build/windows/version-info.txt",application_version(root))
     staging = root / "build" / "windows" / "output"
-    command = [str(python), "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--onefile",
+    command = [str(python), "-m", "PyInstaller", "--noconfirm", "--clean", "--windowed", "--onedir",
                "--name", "Fireblade", "--version-file", str(version_file), "--paths", str(root / "src"),
                "--distpath", str(staging), "--workpath", str(root / "build" / "windows" / "pyinstaller"),
                "--specpath", str(root / "build" / "windows"), "--collect-all", "duckdb",
@@ -66,22 +66,30 @@ def main():
         command += ["--add-binary", f"{source}{os.pathsep}."]
     command.append(str(root / "scripts" / "windows" / "entrypoint.py"))
     subprocess.run(command, check=True)
-    candidate = staging / "Fireblade.exe"
-    report_path = root / "artifacts" / "windows-single-file.json"
+    # PyInstaller --onedir writes a folder: the exe and everything it needs beside it.
+    candidate = staging / "Fireblade" / "Fireblade.exe"
+    report_path = root / "artifacts" / "windows-bundle.json"
     report_path.unlink(missing_ok=True)
     verify(candidate, report_path)
     destination = root / "dist"
     destination.mkdir(exist_ok=True)
-    temporary = None
-    try:
-        with tempfile.NamedTemporaryFile(dir=destination, suffix=".partial", delete=False) as output:
-            temporary = Path(output.name)
-        shutil.copy2(candidate, temporary)
-        os.replace(temporary, destination / "Fireblade.exe")
-    finally:
-        if temporary:
-            temporary.unlink(missing_ok=True)
-    print(f"Exécutable Windows autonome vérifié : {destination / 'Fireblade.exe'}")
+    # A folder build replaces the previous one whole, never file by file.
+    bundle = destination / "Fireblade"
+    partial = destination / "Fireblade.partial"
+    shutil.rmtree(partial, ignore_errors=True)
+    shutil.copytree(candidate.parent, partial)
+    shutil.rmtree(bundle, ignore_errors=True)
+    os.replace(partial, bundle)
+    archive = destination / ("Fireblade-%s-win64.zip" % application_version(root))
+    partial_zip = archive.with_name(archive.name + ".partial")
+    partial_zip.unlink(missing_ok=True)
+    import zipfile
+    with zipfile.ZipFile(partial_zip, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as stream:
+        for path in sorted(bundle.rglob("*")):
+            stream.write(path, Path("Fireblade") / path.relative_to(bundle))
+    os.replace(partial_zip, archive)
+    print(f"Application Windows vérifiée : {bundle}")
+    print(f"Archive à distribuer : {archive}")
 
 
 if __name__ == "__main__":

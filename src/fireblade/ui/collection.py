@@ -6,13 +6,13 @@ import uuid
 
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QAction, QPalette
-from PySide6.QtWidgets import QCheckBox, QComboBox, QDialog, QDialogButtonBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QComboBox, QDialog, QDialogButtonBox, QMessageBox, QRadioButton, QFileDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.i18n import translate
 from fireblade.ui.language import source_text
 from fireblade.ui.alert_context import AlertContextMixin
-from fireblade.ui.folder_picker import choose_collection_directories
+from fireblade.ui.folder_picker import choose_import_sources
 from fireblade.runtime.resources import resource_path
 from fireblade.runtime.windows_paths import user_directory
 
@@ -131,8 +131,8 @@ class CollectionMixin(AlertContextMixin):
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
         row = QHBoxLayout()
-        for label, callback in [('Parser un dossier…', self.parse_collection),
-                                ('Reprendre une collecte…', self.reopen_collection)]:
+        for label, callback in [('Import evidence…', self.parse_collection),
+                                ('Resume an import…', self.reopen_collection)]:
             control = QPushButton(label)
             control.clicked.connect(callback)
             row.addWidget(control)
@@ -171,7 +171,7 @@ class CollectionMixin(AlertContextMixin):
         self.workbench.addTab(panel, 'Imports')
         self.setCentralWidget(self.workbench)
         file_menu = self.menuBar().actions()[0].menu()
-        action = QAction('Importer un dossier de collecte…', self)
+        action = QAction('Import evidence…', self)
         action.triggered.connect(self.parse_collection)
         file_menu.insertAction(file_menu.actions()[1], action)
         analyze = self.hayabusa_action = QAction('Analyser la collecte avec Hayabusa', self)
@@ -216,12 +216,24 @@ class CollectionMixin(AlertContextMixin):
         if report:
             organization = translate({'files':'Un onglet par résultat', 'artifacts':'Un onglet par artefact',
                                       'combined':'Onglet unique regroupé par artefact'}.get(report.get('organization', 'files'), ''))
+            summary = report.get('summary') or {}
+            counted = ', '.join(f'{status(key)} : {value}' for key, value in sorted(summary.items())
+                                if key not in ('files', 'analyses'))
             lines += ['', translate('Organisation : {}').format(organization),
                       translate('Dossier source : {}').format(report['source']),
                       translate('Dossier de travail : {}').format(report['output']),
                       translate('État de l’import : {}').format(status(report['status'])),
                       translate('Bilan : {}').format(str(dict(Counter(status(e['status']) for e in report['files'])))),
-                      translate('Analyses chargées : {}').format(len(report['documents']))]
+                      translate('Analyses chargées : {}').format(len(report['documents'])),
+                      translate('Bilan par état : {}').format(counted),
+                      translate('Sources : {}').format(' · '.join(report.get('sources') or [report.get('source', '')])),
+                      translate('Journal de l’opération : {}').format(Path(report.get('output', ''))/'journal.jsonl')]
+            verification = report.get('verification')
+            if verification:
+                lines += [translate('Vérification des analyses : {} contrôlées · {} en échec').format(
+                    verification.get('checked', 0), verification.get('broken', 0))]
+            if report.get('journal_error'):
+                lines += [translate('Journal incomplet : {}').format(report['journal_error'])]
             if report.get('detection'):
                 lines += [translate('Hayabusa : {}').format(status(report['detection']['status'])), str(report['detection'].get('error', ''))]
             for failure in report.get('organization_failures', []):
@@ -343,22 +355,27 @@ class CollectionMixin(AlertContextMixin):
         if self.disk_job is not None or self.disk_pool.activeThreadCount() or self._disk_pending or self._folder_queue:
             self.statusBar().showMessage('Un import est déjà en cours. Attendez sa fin ou arrêtez-le.')
             return
-        paths = choose_collection_directories(self)
-        if not paths:return
+        chosen = choose_import_sources(self)
+        if not chosen:return
         try:
-            paths = list(dict.fromkeys(str(Path(path).resolve(strict=True)) for path in paths))
-            if len(paths)>1000 or any(not Path(path).is_dir() for path in paths):
-                raise ValueError('Sélectionnez au plus 1000 dossiers existants.')
+            paths = list(dict.fromkeys(str(Path(path).resolve(strict=True)) for path in chosen))
+            if len(paths)>1000:
+                raise ValueError('Sélectionnez au plus 1000 sources.')
+            missing = [path for path in paths if not Path(path).exists()]
+            if missing:
+                raise ValueError('Source introuvable : '+', '.join(missing[:3]))
         except (OSError, ValueError) as exc:
             self.error(exc); return
         if len(paths)>1 and self.active_investigation is None:
-            self.error('Ouvrez un case pour importer plusieurs dossiers.'); return
+            self.error('Ouvrez un case pour importer plusieurs sources.'); return
         dialog = CollectionOrganizationDialog(self)
         accepted = dialog.exec()
         organization = dialog.organization()
         dialog.deleteLater()
         if accepted != QDialog.DialogCode.Accepted:return
-        self._folder_queue = [(path, organization) for path in paths]
+        # One operation, one report: the sources share a journal and a duplicate index,
+        # so a file present in two of them is read once and named in the other row.
+        self._folder_queue = [(paths, organization)]
         self.start_next_folder()
 
     def start_next_folder(self):
@@ -366,7 +383,7 @@ class CollectionMixin(AlertContextMixin):
         if self.disk_job is not None or self.disk_pool.activeThreadCount() or not self.can_open_file():
             QTimer.singleShot(150, self.start_next_folder)
             return
-        path, organization = self._folder_queue.pop(0)
+        sources, organization = self._folder_queue.pop(0)
         parent = self.investigation_data_directory('Collectes') or user_directory()/'Collectes'
         parent.mkdir(parents=True, exist_ok=True)
         output = parent/(datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid.uuid4().hex[:8])
@@ -376,7 +393,8 @@ class CollectionMixin(AlertContextMixin):
             # fail at 64 MB. An import that still runs out grows once instead of dying.
             settings = replace(self.settings, threads=self.preferences.parsing_threads,
                                    memory_mb=self.preferences.resource_memory_mb or self.settings.memory_mb)
-            collection = Collection(path, output, self.toolpack(), settings, organization=organization)
+            collection = Collection(sources, output, self.toolpack(), settings, organization=organization,
+                                    index_folder=parent)
             if self.active_investigation is not None:
                 collection.ready = self.disk_signals.documents.emit
                 if self.start_background_collection(collection):
@@ -400,7 +418,17 @@ class CollectionMixin(AlertContextMixin):
             self.statusBar().showMessage('Cette collecte est encore en cours d’indexation.')
             return
         try:
-            self.collection = Collection.reopen(path, self.toolpack(), self.settings)
+            self.collection = Collection.reopen(path, self.toolpack(), self.settings,
+                                                index_folder=Path(path).parent)
+            remaining = self.collection.resumable()
+            if remaining:
+                # An operation that was stopped is not a collection to read: it is work
+                # to finish, and the analyst decides whether to finish it now.
+                answer = QMessageBox.question(self, translate('Resume import'), translate(
+                    'This import stopped with {} file(s) never read. Continue it now?').format(remaining))
+                if answer == QMessageBox.Yes:
+                    self.start_collection_job(self.collection.resume)
+                    return
             self.collection_finished(self.collection.report)
         except Exception as exc:self.error(exc)
 

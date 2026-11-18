@@ -16,8 +16,8 @@ from. Everything runs locally: no server, no upload, no cloud account, no API ke
 
 The desktop interface and most user guides are currently in French.
 
-Windows, one executable, no installation: Python, Qt, the parsers and the .NET readers
-are bundled inside it. The assistant is optional and downloaded separately, once.
+Windows, a folder to unzip, no installation: Python, Qt, the parsers and the .NET readers
+are inside it. The assistant is optional and downloaded separately, once.
 
 ![Fireblade investigation workspace](docs/assets/fireblade-workspace.png)
 
@@ -163,8 +163,11 @@ configured budget. Method, every figure, and what the comparison does not prove:
 
 ## Install
 
-1. Download **Fireblade.exe** from the [latest release](https://github.com/23R0534ZXT/fireblade/releases).
-2. Run it. There is nothing else to install — no Python, no Excel, no separate .NET.
+1. Download **Fireblade-<version>-win64.zip** from the
+   [latest release](https://github.com/23R0534ZXT/fireblade/releases).
+2. Unzip it anywhere and run **Fireblade.exe** from the folder. There is nothing else to
+   install — no Python, no Excel, no separate .NET. Unzipping once is what makes every
+   launch fast: the 0.5.0 single file re-extracted itself at every start.
 3. Create a case, then point Fireblade at a collected folder (**Parse a folder…**), a file
    (**Import a file…**) or a disk image (**Analyze a disk…**).
 4. Optional: **Set up the local model…** in the Hayabusa + AI tab downloads the assistant
@@ -173,11 +176,13 @@ configured budget. Method, every figure, and what the comparison does not prove:
 **First five minutes**: create a case → parse a folder → open the Imports tab to see what
 was read and what was not → filter the table or open the timeline → save the case.
 
-The binary is **unsigned**: Windows may show a SmartScreen prompt on first launch
+The executable is **unsigned**: Windows may show a SmartScreen prompt on first launch
 ("More info" → "Run anyway"), and Smart App Control on a fresh Windows 11 may refuse it
 outright. Verify the download against the SHA-256 published in the release notes.
 
-Sample data, if you have nothing at hand:
+Sample data, if you have nothing at hand. The **sample collection** is a real Windows 11
+machine (183 event logs, Amcache, 60 Prefetch entries, 251 scheduled tasks, 5.6 MB):
+[sample collection](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip) ·
 [discovery pack](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) ·
 [raw artifact pack](https://github.com/23R0534ZXT/fireblade/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip) ·
 [3 GiB CSV](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/Fireblade-test-3GiB.zip).
@@ -198,7 +203,31 @@ Sample data, if you have nothing at hand:
   application already provides; without it the engine refuses to start and the tab says so.
 - **.NET plugins run with your rights** — load only assemblies you trust.
 
-## What's new in 0.5.0
+## What's new in 0.5.1
+
+- **A readable tree.** Left panel entries are named for what they are - `Event logs .
+  Security`, `Amcache`, `Browser history`, `Prefetch` - or for the folder they came
+  from; the full path is in the tooltip.
+- **A fast launch.** The download is a folder zipped once, not an executable that
+  unpacks itself at every start: 0.6 s measured against 41 to 50 s for the 0.5.0 file.
+  The 6.5 s startup ident is kept, and it now covers the window build instead of
+  following it.
+- **The local assistant stays optional**, and nothing is downloaded unless you ask.
+- **One import for several sources.** Files and folders are chosen in one list and read
+  as one operation: one report, one journal, one working folder.
+- **Resume an interrupted import** instead of starting it over: what was read is kept,
+  and only the rows that were never read — or whose analysis went missing — are read again.
+- **Duplicate detection on the SHA-256** of the evidence, inside one operation and across
+  the imports of a case: the second copy is a `Duplicate` row naming the copy that was read,
+  never a second set of tabs.
+- **A proof after the write.** Every analysis is reopened and counted against the number
+  recorded at import; the report shows `verification: N checked · N failed`.
+- **`journal.jsonl` per operation**: one line per file with its status, its reason and its
+  seconds, plus duplicates, memory retries and the verification.
+- **One bad file costs one row.** A reader that crashes no longer ends a collection that
+  had already read two thousand files.
+
+## Previous release — 0.5.0
 
 - **A new tab: Hayabusa + AI.** Alerts become findings (one rule, one host, one burst),
   grouped in DuckDB and gathered into time windows; a short grid lists them and three views

@@ -18,6 +18,9 @@ from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
 import duckdb
 from fireblade.core.i18n import translate
+from fireblade.core.import_index import load as load_index
+from fireblade.core.import_index import update as update_index
+from fireblade.core.import_journal import ImportJournal
 from fireblade.core.settings import Settings, auto_threads, grown_memory, physical_memory_mb
 from fireblade.core.models import View
 
@@ -42,6 +45,52 @@ def sha256(path):
             check_cancel()
             digest.update(block)
     return digest.hexdigest()
+
+
+def normalise_sources(root):
+    """One path or many, files or folders: one operation keeps one list."""
+    items = [root] if isinstance(root, (str, os.PathLike)) else list(root)
+    if not items:
+        raise ValueError('No source to import')
+    return [Path(item) for item in items]
+
+
+def common_root(sources):
+    """The folder labels are measured from: the deepest one that holds them all."""
+    folders = [item if item.is_dir() else item.parent for item in sources]
+    try:
+        folders = [Path(os.path.commonpath([str(folder.resolve()) for folder in folders]))]
+    except ValueError:
+        # Different drives: each source keeps its own absolute path as its label.
+        return sources[0].resolve().parent
+    return folders[0].resolve()
+
+
+def verify_analysis(path):
+    """Open one written analysis read-only and count what it really holds.
+
+    An import that reports 412 rows and writes 411 is the failure this catches:
+    nothing else in the application would ever look again.
+    """
+    path = Path(path)
+    if not path.is_file():
+        return dict(status='missing', reason='Analysis file is gone')
+    expected = None
+    try:
+        connection = duckdb.connect(str(path), read_only=True)
+        try:
+            row = connection.execute("SELECT value FROM metadata WHERE key='source'").fetchone()
+            if row:
+                expected = json.loads(row[0]).get('rows')
+            rows = int(connection.execute('SELECT count(*) FROM events').fetchone()[0])
+        finally:
+            connection.close()
+    except Exception as exc:  # noqa: BLE001 - the verdict is a row, not an exception
+        return dict(status='unreadable', reason=str(exc)[:200])
+    if expected is not None and rows != expected:
+        return dict(status='mismatch', rows=rows, expected=expected,
+                    reason=f'{rows} rows on disk, {expected} recorded at import')
+    return dict(status='ok', rows=rows, expected=expected)
 
 
 def atomic_json(path, value):
@@ -242,38 +291,87 @@ def entry_reason(entry):
     return joined[:400]
 
 class Collection:
-    def __init__(self, root, output, pack, settings=None, progress=lambda _: None, organization='files', _reopening=False):
+    # A folder import reads one export once, whatever path it was found under; a disk
+    # collection must not: two partitions holding the same bytes are two pieces of
+    # evidence, each with its own location, and the report would lose one of them.
+    deduplicate_content = True
+
+    def __init__(self, root, output, pack, settings=None, progress=lambda _: None, organization='files',
+                 _reopening=False, index_folder=None):
         if organization not in ('files', 'artifacts', 'combined'):
             raise ValueError('Organisation de collecte inconnue')
-        self.root, self.output = Path(root).resolve(), Path(output).resolve()
-        if not _reopening and not self.root.is_dir():
-            raise ValueError('Dossier de collecte introuvable')
-        if self.output == self.root or self.root in self.output.parents:
-            raise ValueError('Choisissez un dossier de travail hors de la collecte source')
+        self.sources = normalise_sources(root)
+        self.root, self.output = common_root(self.sources), Path(output).resolve()
+        if not _reopening:
+            missing = [str(item) for item in self.sources if not item.exists()]
+            if missing:
+                raise ValueError('Source not found: ' + ', '.join(missing[:3]))
+            for item in self.sources:
+                # Only a folder source can swallow the output: walking it would read the
+                # collection into itself. A loose file selected beside the case is normal.
+                if not item.is_dir():
+                    if self.output == item.resolve():
+                        raise ValueError('The working folder cannot be the source itself')
+                    continue
+                folder = item.resolve()
+                if self.output == folder or folder in self.output.parents:
+                    raise ValueError('Choisissez un dossier de travail hors de la collecte source')
         self.pack, self.settings, self.progress = pack, settings, progress
         self.ready = lambda documents: None
         self._last_checkpoint = 0
         self._case_lock = threading.Lock()
         self._active_case = None
         self._cases = set()
+        self.journal = ImportJournal(self.output/'journal.jsonl')
+        # What this case already imported, keyed by the evidence digest. A digest
+        # this operation wrote itself is not a duplicate, or a resume would refuse
+        # to redo the file it just lost.
+        self.index_folder = Path(index_folder) if index_folder else None
+        self.known = {}
+        if self.index_folder is not None:
+            self.known = {digest: record for digest, record in load_index(self.index_folder).items()
+                          if str(record.get('collection', '')) != str(self.output)}
+        self._seen = {}
+        self._seen_lock = threading.Lock()
         self.report = dict(format='fireblade-collection', version=1, source=str(self.root),
+                           sources=[str(item) for item in self.sources],
                            output=str(self.output), organization=organization, status='pending', files=[], documents=[], detection=None)
         manifest = Path(self.pack.root)/'manifest.json'
         if manifest.is_file():
             self.report['toolchain'] = json.loads(manifest.read_text(encoding='utf-8'))
 
     @classmethod
-    def reopen(cls, output, pack, settings=None, progress=lambda _: None):
+    def reopen(cls, output, pack, settings=None, progress=lambda _: None, index_folder=None):
         output = Path(output).resolve()
         data = json.loads((output/'collection.json').read_text(encoding='utf-8'))
         if data.get('format') != 'fireblade-collection' or data.get('version') != 1:
             raise ValueError('Dossier de travail Fireblade invalide')
-        instance = cls(data['source'], output, pack, settings, progress, _reopening=True)
+        instance = cls(data.get('sources') or data['source'], output, pack, settings, progress,
+                       _reopening=True, index_folder=index_folder)
         instance.report = data
+        instance.report.setdefault('sources', [str(item) for item in instance.sources])
         return instance
+
+    def event(self, kind, **fields):
+        '''One line in the operation's journal, and its own failure in the report.'''
+        record = self.journal.event(kind, **fields)
+        if self.journal.error and self.report.get('journal_error') != self.journal.error:
+            # A journal that cannot be written may not fail the import, and may not
+            # pass for a complete record either.
+            self.report['journal_error'] = self.journal.error
+        return record
+
+    def summary(self):
+        '''Counts the table and the report can both quote: one field, one number.'''
+        counts = {}
+        for entry in self.report['files']:
+            key = str(entry.get('status', 'pending'))
+            counts[key] = counts.get(key, 0) + 1
+        return dict(files=len(self.report['files']), analyses=len(self.report['documents']), **counts)
 
     def save(self):
         self._last_checkpoint = time.monotonic()
+        self.report['summary'] = self.summary()
         atomic_json(self.output/'collection.json', self.report)
         if self.report['documents']:
             atomic_json(self.output/'collection.fireblade-session', dict(
@@ -291,13 +389,17 @@ class Collection:
         while True:
             try:
                 return self._import_once(csv, kind, view, register, budget, evidence)
-            except (duckdb.OutOfMemoryException, MemoryError):
+            except (duckdb.OutOfMemoryException, MemoryError) as exc:
                 bigger = grown_memory(getattr(budget, 'memory_mb', 128))
                 if not bigger:
                     raise
                 attempt += 1
                 budget = replace(budget, memory_mb=bigger) if budget else Settings(memory_mb=bigger)
                 self.progress('Not enough memory: retrying with %d MB…' % bigger)
+                # The retry is part of the operation's record: a run that needed three
+                # attempts is not the same run as one that needed none.
+                self.event('import.retry', file=Path(csv).name, attempt=attempt,
+                           memory_mb=bigger, error=str(exc)[:200])
 
     def _import_once(self, csv, kind, view, register, budget, evidence=None):
         target = self.output/'analyses'/(uuid.uuid4().hex+'.timeline')
@@ -314,7 +416,18 @@ class Collection:
                 provenance['working_path'] = str(csv)
             case.import_csv(csv, encoding='auto', progress=self.progress, provenance=provenance)
             view = view or View()
-            document = dict(path=str(target), source=case.info, view=json.loads(view.to_json()), header='')
+            # Counted on the connection that just wrote the file: opening the analysis
+            # again in read-only is what collided with the workspace (DuckDB refuses two
+            # connections with different configurations) while a progressive import was
+            # already publishing documents to the grid.
+            written = int(case.db.execute('SELECT count(*) FROM events').fetchone()[0])
+            expected = int((case.info or {}).get('rows') or 0)
+            verdict = dict(status='ok' if written == expected else 'mismatch',
+                           rows=written, expected=expected)
+            if verdict['status'] != 'ok':
+                verdict['reason'] = f'{written} rows written, {expected} read from the source'
+            document = dict(path=str(target), source=case.info, view=json.loads(view.to_json()),
+                            header='', verification=verdict)
             if register:
                 self.report['documents'].append(document)
                 return str(target)
@@ -447,6 +560,44 @@ class Collection:
     def walk_sources(self, on_error):
         return os.walk(self.root, followlinks=False, onerror=on_error)
 
+    def walk_roots(self, on_error):
+        '''One walker per source folder, in the order the examiner chose them.
+
+        Separate from walk_sources because a disk collection walks a volume it
+        discovers itself, while a folder import walks what was selected.
+        '''
+        return [os.walk(folder, followlinks=False, onerror=on_error)
+                for folder in self.sources if folder.is_dir()]
+
+    def inventorize(self, on_error):
+        '''Every selected file and folder, one row each, in the examiner's order.'''
+        pending = []
+        for source in self.sources:
+            check_cancel()
+            if source.is_file():
+                # A file chosen on its own is a source like a folder is; it is not
+                # skipped because its parent was not selected.
+                entry = dict(path=str(source), status='pending', tools=[], origin='file')
+                self.report['files'].append(entry)
+                pending.append((source, entry))
+        for walker in self.walk_roots(on_error):
+            for directory, dirs, names in walker:
+                for name in list(dirs):
+                    path = Path(directory)/name
+                    if path.is_symlink() or (hasattr(path, 'is_junction') and path.is_junction()):
+                        dirs.remove(name)
+                        entry = dict(path=str(path), status='skipped', error='Lien de dossier non suivi', tools=[])
+                        self.report['files'].append(entry)
+                        self.event('file.done', path=str(path), status='skipped',
+                                   reason='Lien de dossier non suivi')
+                for name in sorted(names):
+                    check_cancel()
+                    source = Path(directory)/name
+                    entry = dict(path=str(source), status='pending', tools=[])
+                    self.report['files'].append(entry)
+                    pending.append((source, entry))
+        return pending
+
     def publish_results(self, start, entry):
         """Hook for immutable, closed results after source integrity checks."""
         if entry['status'] not in ('complete', 'attention'):
@@ -498,6 +649,23 @@ class Collection:
         return max(1, min(threads, 8, os.cpu_count() or 1))
 
     def _parse_entry(self, source, entry):
+        """One file, timed and journalled, whatever it decides.
+
+        The wrapper is what makes the journal exhaustive: a file that is read, a
+        file that is refused and a file whose reader dies all leave one line each,
+        with the reason the row shows.
+        """
+        started = time.monotonic()
+        self.event('file.started', path=str(source))
+        try:
+            return self._read_entry(source, entry)
+        finally:
+            self.event('file.done', path=str(source), status=entry.get('status'),
+                       reason=(entry.get('reason') or entry.get('error') or '')[:400] or None,
+                       analyses=sum(len(run.get('outputs', [])) for run in entry.get('runs', [])),
+                       seconds=round(time.monotonic() - started, 3))
+
+    def _read_entry(self, source, entry):
         """One file, from identity to its analyses. Returns the documents it produced.
 
         Written to run on a worker thread: it only touches the entry it was given, its
@@ -506,7 +674,7 @@ class Collection:
         """
         documents = []
         check_cancel()
-        self.progress('Collecte : '+str(source.relative_to(self.root)))
+        self.progress('Collecte : '+self.label_for(source))
         try:
             if source.is_symlink() or self.root not in source.resolve().parents:
                 entry.update(status='skipped', error='Lien de fichier non suivi')
@@ -520,7 +688,10 @@ class Collection:
                 entry['status'] = 'unsupported'
                 entry['reason'] = 'No reader recognised this file'
                 return documents
-            entry['sha256'] = sha256(source)
+            entry['sha256'] = digest = sha256(source)
+            duplicate = self.duplicate_of(entry)
+            if duplicate:
+                return documents
             if tools == ['companion']:
                 entry.update(tools=[], status='companion', kind='registry_transaction_log')
                 return documents
@@ -603,6 +774,104 @@ class Collection:
             entry.update(status='error', error=str(exc))
         return documents
 
+    def duplicate_of(self, entry):
+        """Name the already-read copy of this content, and mark the row a duplicate.
+
+        Two references to one export are one piece of evidence: reading it twice
+        doubles the tabs and the analyst's reading time for nothing. The decision
+        is taken on the source's SHA-256, and the row keeps the path of the copy
+        that was read, so nothing disappears from the report.
+        """
+        digest = entry.get('sha256')
+        if not digest or not self.deduplicate_content:
+            return None
+        path = str(entry.get('path', ''))
+        with self._seen_lock:
+            # setdefault is the whole decision: the first row to arrive owns the
+            # content, and a row that finds itself already registered is reading
+            # its own file again (a resume), not a second copy of it.
+            first = self._seen.setdefault(digest, entry)
+        if first is not entry:
+            reason = f'Same content as {self.label_for(first.get("path", path))} ; read once'
+            entry.update(status='duplicate', reason=reason, duplicate_of=first.get('path'))
+            self.event('file.duplicate', path=path, sha256=digest, duplicate_of=first.get('path'))
+            return entry
+        known = self.known.get(digest)
+        # The index excludes this collection's own output, so a hit means another
+        # import in this case already read this content — same path or a copy of it.
+        if known:
+            folder = Path(str(known.get('collection', ''))).name or 'an earlier import'
+            reason = f'Already imported from {known.get("path", "?")} ({folder})'
+            entry.update(status='duplicate', reason=reason, duplicate_of=known.get('path'))
+            self.event('file.duplicate', path=path, sha256=digest, duplicate_of=known.get('path'),
+                       collection=str(known.get('collection', '')))
+            return entry
+        return None
+
+    def safe_parse(self, source, entry):
+        """One file's outcome, never the operation's.
+
+        A bug in one reader used to unwind the merge loop and end a collection
+        that had already read two thousand files. It now costs one row, with the
+        reason, and the other files carry on.
+        """
+        try:
+            return self._parse_entry(source, entry)
+        except OperationCancelled:
+            raise
+        except Exception as exc:  # noqa: BLE001 - isolation is the point of this method
+            message = (str(exc) or exc.__class__.__name__)[:400]
+            entry.update(status='error', reason=message, error=message)
+            self.event('file.crashed', path=str(source), reason=message)
+            return []
+
+    def record_index(self):
+        """Remember what this operation read, so a later import can refuse it."""
+        if self.index_folder is None:
+            return 0
+        records = {}
+        for entry in self.report['files']:
+            digest = entry.get('sha256')
+            if not digest or entry.get('status') not in ('complete', 'attention', 'duplicate'):
+                continue
+            records[digest] = dict(path=str(entry.get('duplicate_of') or entry.get('path')),
+                                   import_path=str(entry.get('path')),
+                                   collection=str(self.output), status=entry.get('status'))
+        try:
+            added = update_index(self.index_folder, records)
+        except OSError as exc:
+            self.event('index.failed', reason=str(exc))
+            return 0
+        self.event('index.updated', added=added, files=len(records))
+        return added
+
+    def verify_documents(self):
+        """Report what the import proved about every analysis it wrote.
+
+        Each analysis was counted on the connection that wrote it, before that connection
+        closed. Reopening it here is what broke the workspace: a progressive import
+        publishes a document as soon as it exists, the grid opens it read-write, and a
+        second read-only connection makes DuckDB refuse both. A document that carries no
+        verdict (an older collection) is reported as unchecked, never re-read.
+        """
+        checked = broken = unchecked = 0
+        for document in list(self.report['documents']):
+            check_cancel()
+            verdict = document.get('verification') or {}
+            if not verdict:
+                verdict = dict(status='unchecked', reason='imported before the verification existed')
+                document['verification'] = verdict
+            if verdict.get('status') == 'ok':
+                checked += 1
+            elif verdict.get('status') == 'unchecked':
+                unchecked += 1
+            else:
+                broken += 1
+                self.event('analysis.broken', path=document.get('path'), reason=verdict.get('reason'))
+        self.report['verification'] = dict(checked=checked, broken=broken, unchecked=unchecked)
+        self.event('verification.done', checked=checked, broken=broken, unchecked=unchecked)
+        return self.report['verification']
+
     def _merge(self, entry, documents):
         """Append one file's analyses, in file order, and publish them."""
         start = len(self.report['documents'])
@@ -620,7 +889,7 @@ class Collection:
         workers = self.workers()
         if workers <= 1 or len(pending) < 2:
             for source, entry in pending:
-                self._merge(entry, self._parse_entry(source, entry))
+                self._merge(entry, self.safe_parse(source, entry))
             return
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='fireblade-parse') as pool:
@@ -638,7 +907,7 @@ class Collection:
                     # one, this thread honours the stop itself. What is already merged stays.
                     if index:
                         check_cancel()
-                    self._merge(entry, future.result())
+                    self._merge(entry, self._future_documents(future, source, entry))
                     merged += 1
             except OperationCancelled:
                 for future in futures:
@@ -650,32 +919,42 @@ class Collection:
                         self._merge(entry, future.result())
                 raise
 
+    def _future_documents(self, future, source, entry):
+        '''The worker's documents, or the row that says why there are none.'''
+        try:
+            return future.result()
+        except OperationCancelled:
+            raise
+        except Exception as exc:  # noqa: BLE001 - one file may not end the operation
+            message = (str(exc) or exc.__class__.__name__)[:400]
+            entry.update(status='error', reason=message, error=message)
+            self.event('file.crashed', path=str(source), reason=message)
+            return []
+
     def parse(self):
         self.prepare_output()
         (self.output/'analyses').mkdir()
         (self.output/'results').mkdir()
         self.report['status'] = 'running'
+        self.event('operation.started', sources=[str(item) for item in self.sources],
+                   organization=self.report.get('organization'), threads=self.workers(),
+                   memory_mb=getattr(self.settings, 'memory_mb', None))
         self.save()
         pending = []
         try:
             # os.walk does not follow directory symlinks. Every inaccessible entry is reported.
             def walk_error(error):
-                self.report['files'].append(dict(path=str(getattr(error, 'filename', self.root)), status='error', error=str(error), tools=[]))
-            for directory, dirs, names in self.walk_sources(walk_error):
-                for name in list(dirs):
-                    path = Path(directory)/name
-                    if path.is_symlink() or (hasattr(path, 'is_junction') and path.is_junction()):
-                        dirs.remove(name)
-                        self.report['files'].append(dict(path=str(path), status='skipped', error='Lien de dossier non suivi', tools=[]))
-                for name in sorted(names):
-                    check_cancel()
-                    source = Path(directory)/name
-                    entry = dict(path=str(source), status='pending', tools=[])
-                    self.report['files'].append(entry)
-                    pending.append((source, entry))
+                message = str(error)
+                entry = dict(path=str(getattr(error, 'filename', self.root)), status='error',
+                             error=message, reason=message, tools=[])
+                self.report['files'].append(entry)
+                self.event('file.done', path=entry['path'], status='error', reason=message)
+            pending = self.inventorize(walk_error)
+            self.event('inventory.done', files=len(self.report['files']), to_read=len(pending))
             self._run_entries(pending)
             from fireblade.core.collection_organization import organize
             organize(self)
+            self.verify_documents()
             self.report['status'] = 'complete'
         except OperationCancelled:
             self.report['status'] = 'cancelled'
@@ -683,12 +962,99 @@ class Collection:
             self.report['status'] = 'error'
             raise
         finally:
+            # The index is part of the operation, so it is written before the line
+            # that closes the record: the last event of a journal is its own ending.
+            self.record_index()
+            self.event('operation.finished', status=self.report['status'],
+                       files=len(self.report['files']), analyses=len(self.report['documents']),
+                       journal_error=self.journal.error or None)
             self.save()
             pool = getattr(self, '_parse_pool', None)
             if pool is not None:
                 pool.close()
                 self._parse_pool = None
         return self.report
+
+    def resumable(self):
+        '''How many files a reopen would still have to read.'''
+        return sum(1 for entry in self.report.get('files', [])
+                   if entry.get('status') in ('pending', 'running', 'cancelled')
+                   or (entry.get('status') in ('complete', 'attention') and self._analyses_gone(entry)))
+
+    @staticmethod
+    def _analyses_gone(entry):
+        '''True when a row claims an analysis whose file no longer exists.'''
+        for run in entry.get('runs', []):
+            for output in run.get('outputs', []):
+                analysis = output.get('analysis')
+                if analysis and not Path(analysis).is_file():
+                    return True
+        return False
+
+    def resume(self):
+        '''Continue an interrupted operation: keep what is done, read what is not.
+
+        An operation that was stopped, or whose window was closed, left its report
+        and its written analyses on disk. Rereading the whole folder to recover a
+        handful of files is the cost this removes; a row whose analysis vanished is
+        put back in the queue rather than trusted.
+        '''
+        if not (self.output/'analyses').is_dir():
+            (self.output/'analyses').mkdir(parents=True)
+        (self.output/'results').mkdir(exist_ok=True)
+        self.report['status'] = 'running'
+        self.event('resumed', files=len(self.report['files']), pending=self.resumable())
+        if self.report.get('raw_documents'):
+            # A merged layout is derived: rebuild it from the analyses it merged,
+            # because one of the merged tables may be the file that is gone.
+            self.report['documents'] = list(self.report['raw_documents'])
+            self.report.pop('raw_documents', None)
+        # The digest map is a process-local cache: refill it from the rows this
+        # operation already read, so a file resumed beside a copy of it stays one row.
+        self._seen = {entry['sha256']: entry for entry in self.report['files']
+                      if entry.get('sha256') and entry.get('status') in ('complete', 'attention')}
+        pending, missing = [], 0
+        for entry in self.report['files']:
+            status = entry.get('status')
+            if status in ('pending', 'running', 'cancelled'):
+                entry['status'] = 'pending'
+                pending.append((Path(entry['path']), entry))
+                continue
+            if status in ('complete', 'attention') and self._analyses_gone(entry):
+                entry['status'] = 'pending'
+                entry.pop('error', None)
+                pending.append((Path(entry['path']), entry))
+                missing += 1
+        self._drop_missing_documents()
+        try:
+            self._run_entries(pending)
+            from fireblade.core.collection_organization import organize
+            organize(self)
+            self.verify_documents()
+            self.report['status'] = 'complete'
+        except OperationCancelled:
+            self.report['status'] = 'cancelled'
+        except BaseException:
+            self.report['status'] = 'error'
+            raise
+        finally:
+            self.record_index()
+            self.event('operation.finished', status=self.report['status'], resumed=True,
+                       reread=len(pending), lost_analyses=missing,
+                       files=len(self.report['files']), analyses=len(self.report['documents']),
+                       journal_error=self.journal.error or None)
+            self.save()
+        return self.report
+
+    def _drop_missing_documents(self):
+        '''A document whose database is gone must not be offered to the workspace.'''
+        kept = []
+        for document in self.report['documents']:
+            if Path(document.get('path', '')).is_file():
+                kept.append(document)
+            else:
+                self.event('analysis.missing', path=document.get('path'))
+        self.report['documents'] = kept
 
     def analyze(self, min_level='low'):
         """One Hayabusa run over verified EVTX copies, including cross-file context."""

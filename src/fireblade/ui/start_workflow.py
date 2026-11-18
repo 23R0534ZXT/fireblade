@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QFileDialog
     QFormLayout, QHBoxLayout, QLabel, QLineEdit, QProgressBar, QPushButton,
     QVBoxLayout, QWidget)
 
+from fireblade.core.artifact_names import friendly_label
 from fireblade.core.models import AnalysisSnapshot, View
 from fireblade.ui.language import source_text
 from fireblade.ui.workers import Job
@@ -184,7 +185,13 @@ class StartWorkflowMixin:
         job = Job(collection.parse)
         collection.progress = job.signals.progress.emit
         self.disk_collection = collection
-        label = ('Disque : '+collection.disk_source) if hasattr(collection, 'disk_source') else ('Dossier : '+str(collection.root))
+        if hasattr(collection, 'disk_source'):
+            label = 'Disque : '+collection.disk_source
+        elif len(getattr(collection, 'sources', ()) or ()) > 1:
+            label = '{} sources'.format(len(collection.sources))
+        else:
+            # The tree says "Event logs", not the folder it was saved under.
+            label = friendly_label(collection.root)
         self.investigation_collections.append(dict(path=str(collection.output), name=label[:256]))
         self.refresh_investigation_collections()
         if not self.persist_investigation():

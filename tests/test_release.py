@@ -13,9 +13,9 @@ def project(tmp_path):
     (tmp_path / 'src/fireblade/__init__.py').write_text('__version__ = "0.1.1"\n')
     (tmp_path / 'pyproject.toml').write_text('[project]\nversion="0.1.1"\n')
     (tmp_path / 'docs/development/RELEASE-NOTES.md').write_text('New release\n')
-    executable = tmp_path / 'Fireblade.exe'
-    executable.write_bytes(b'MZ synthetic test executable')
-    return executable
+    archive = tmp_path / 'Fireblade-0.1.1-win64.zip'
+    archive.write_bytes(b'PK synthetic test archive')
+    return archive
 
 
 def test_tag_and_metadata_versions_must_agree(tmp_path):
@@ -50,7 +50,7 @@ def test_asset_is_uploaded_to_draft_before_publication(tmp_path, existing):
             assert '--draft' in command
         if '--notes-file' in command:
             notes = Path(command[command.index('--notes-file') + 1]).read_text()
-            assert 'Commit: tested-commit' in notes and 'SHA-256 of Fireblade.exe' in notes
+            assert 'Commit: tested-commit' in notes and 'SHA-256 of Fireblade-0.1.1-win64.zip' in notes
         return subprocess.CompletedProcess(command, 0)
     result = publish(tmp_path, executable, 'owner/repo', 'tested-commit', 'v0.1.1', run=run)
     assert result['tag'] == 'v0.1.1'

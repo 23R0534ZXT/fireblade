@@ -3,8 +3,8 @@ from scripts.update_release_readme import promote
 
 
 def release():
-    return dict(draft=False,tag_name='v0.2.1',body='Commit: abc\nSHA-256 of Fireblade.exe: def',
-                html_url='https://example/release',assets=[dict(name='Fireblade.exe',digest='sha256:def',browser_download_url='https://example/Fireblade.exe')])
+    return dict(draft=False,tag_name='v0.2.1',body='Commit: abc\nSHA-256 of Fireblade-0.2.1-win64.zip: def',
+                html_url='https://example/release',assets=[dict(name='Fireblade-0.2.1-win64.zip',digest='sha256:def',browser_download_url='https://example/Fireblade-0.2.1-win64.zip')])
 
 
 def test_published_binary_is_linked_with_qualification():

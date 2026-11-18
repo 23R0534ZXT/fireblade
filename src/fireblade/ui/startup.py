@@ -28,9 +28,22 @@ FAINT = QColor('#5f6369')
 AMBER = QColor('#f2ab6b')
 
 # One clock for the whole ident; every move is a window on it, so the cadence can be
-# retuned in one place. Long enough to breathe, short enough not to stand between the
-# analyst and the work.
-DURATION = 6500
+# retuned in one place. It covers the window's construction and never outlives it:
+# 6.5 s of animation used to run *after* the window was built and before it appeared,
+# which made every launch seven seconds long for nothing.
+DURATION = 1200
+
+# The splash may hold the screen this long, counted from the start of the launch. The
+# window is shown when it is built; this only keeps the ident from flashing.
+MINIMUM_VISIBLE = 0.6
+
+
+def reveal_delay(elapsed, minimum=MINIMUM_VISIBLE):
+    """Milliseconds the splash may still hold the screen, given what the build cost.
+
+    Returning 0 is the normal case on a warm start: the ident is a cover, not a step.
+    """
+    return max(0, int(round((minimum - float(elapsed)) * 1000)))
 
 
 def ease(value):

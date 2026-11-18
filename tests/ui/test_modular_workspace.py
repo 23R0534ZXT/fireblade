@@ -151,7 +151,11 @@ def test_navigation_groups_artifacts_without_reading_databases(qt_application,tm
         add_case(window,tmp_path,'Prefetch');settle(qt_application,window)
         assert window.navigator.grouping.currentData() == 'families'
         labels = [item.text(0) for item in window.navigator.items()]
-        assert 'Exécution (1)' in labels and 'Prefetch.csv' in labels
+        # The row names the artifact, not the file it was exported to; the file name
+        # stays reachable in the tooltip and through the search box.
+        assert 'Exécution (1)' in labels and 'Prefetch' in labels
+        tips = [item.toolTip(0) for item in window.navigator.items()]
+        assert any('Prefetch.csv' in tip for tip in tips)
         window.workspace_layout.detach_auxiliary('artifacts',window.navigator,window.workspace_splitter)
         window.workspace_layout.detach_auxiliary('details',window.details,window.splitter)
         assert len(window.workspace_layout.auxiliary) == 2

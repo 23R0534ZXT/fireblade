@@ -87,14 +87,14 @@ jobs:
         with:
           name: Fireblade-exe
           path: dist
-      - name: Publish only Fireblade.exe as the release asset
+      - name: Publish the zipped application folder as the release asset
         shell: pwsh
         env:
           # A personal token makes the maintainer the release author; without it
           # the release is published by github-actions[bot].
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           REQUESTED_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
-        run: python -m scripts.release --exe dist/Fireblade.exe
+        run: python -m scripts.release --asset dist
       - name: Update README with the verified published release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -149,7 +149,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Fireblade-exe
-          path: dist/Fireblade.exe
+          path: dist/Fireblade
           if-no-files-found: error
           retention-days: 14
 
@@ -196,7 +196,7 @@ jobs:
         with:
           name: Fireblade-exe
           path: dist
-      - run: python -m scripts.windows.workspace --exe dist/Fireblade.exe --out artifacts/workspace
+      - run: python -m scripts.windows.workspace --exe dist/Fireblade/Fireblade.exe --out artifacts/workspace
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -234,7 +234,7 @@ jobs:
         run: python -m scripts.windows.qualify prepare --directory "$env:RUNNER_TEMP/fireblade-data" --out artifacts/large-data --gib 3
       - name: Import group sort filter annotate export cancel and reopen in the actual EXE
         if: ${{ !cancelled() && steps.dataset.outcome == 'success' }}
-        run: python -m scripts.windows.qualify run --directory "$env:RUNNER_TEMP/fireblade-data" --out artifacts/large-data --exe dist/Fireblade.exe
+        run: python -m scripts.windows.qualify run --directory "$env:RUNNER_TEMP/fireblade-data" --out artifacts/large-data --exe dist/Fireblade/Fireblade.exe
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -262,7 +262,7 @@ jobs:
           name: Fireblade-exe
           path: dist
       - name: Render light and dark Windows preferences at 100 125 150 200 percent
-        run: python -m scripts.windows.visual_matrix --exe dist/Fireblade.exe --out artifacts/visual
+        run: python -m scripts.windows.visual_matrix --exe dist/Fireblade/Fireblade.exe --out artifacts/visual
       - uses: actions/upload-artifact@v4
         if: always()
         with:

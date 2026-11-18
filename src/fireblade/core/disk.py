@@ -57,6 +57,9 @@ def open_device(path):
 
 
 class DiskCollection(Collection):
+    # Same bytes on two partitions is two artifacts, not one read twice.
+    deduplicate_content = False
+
     def __init__(self, source, workspace, pack, settings=None, progress=lambda _: None,
                  ready=lambda _: None, source_kind='mounted'):
         if source_kind not in ('mounted', 'image', 'physical'):
@@ -179,6 +182,14 @@ class DiskCollection(Collection):
             del self.disk['artifacts'][start:]
             self.disk['extracted'] = len(self.disk['artifacts'])
             raise
+
+    def walk_roots(self, on_error):
+        """One walker, and it is the volume: artifacts are copied as it goes.
+
+        The folder import walks one root per selection; a disk has a single source
+        whose walker performs the extraction, so it is handed over unchanged.
+        """
+        return [self.walk_sources(on_error)]
 
     def walk_sources(self, on_error):
         target = None

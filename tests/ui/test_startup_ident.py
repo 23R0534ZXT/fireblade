@@ -1,5 +1,6 @@
 """The ident must be drawn, centred, and short enough not to delay a launch."""
-from fireblade.ui.startup import DURATION, HEIGHT, WIDTH, StartupAnimation
+from fireblade.ui.startup import (DURATION, HEIGHT, MINIMUM_VISIBLE, WIDTH,
+                                 StartupAnimation, reveal_delay)
 
 
 def render(widget, phase):
@@ -59,3 +60,15 @@ def test_the_last_frame_fades_to_the_backdrop(qt_application):
         assert light_in_band(dark, *band) < light_in_band(bright, *band) * .5
     finally:
         widget.deleteLater()
+
+
+def test_the_ident_covers_the_build_and_never_extends_it():
+    """The launch is the window's construction; the splash may only cover it."""
+    assert DURATION <= 1500, "un ident couvre la construction, il ne l'allonge pas"
+    # A built window costs a third of a second here; only the anti-flicker floor is left.
+    assert reveal_delay(0.34) <= 300
+    assert reveal_delay(0.6) == 0
+    assert reveal_delay(5.0) == 0
+    # A cold start shows the ident for a moment instead of flashing it.
+    assert reveal_delay(0.0) == int(round(MINIMUM_VISIBLE * 1000))
+    assert reveal_delay(0.0) <= 800

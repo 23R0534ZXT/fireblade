@@ -1,3 +1,137 @@
+# Fireblade 0.5.1 — an import that never loses a file in silence
+
+Every other screen in Fireblade is worth what the import put behind it, and one file
+that vanished without a reason is enough to make a report indefensible. This version
+rebuilds the import around one rule: whatever happens to a file, its row says what
+happened, and the operation itself leaves a record that survives the window.
+
+## One operation, several sources
+
+- The Imports picker now takes **files and folders in one list** — a KAPE output, three
+  EVTX copied to the desktop and a folder of Linux logs are one import, with one report,
+  one journal and one working folder. Each item can be removed before starting; a path
+  added twice is kept once.
+- The sources are read in the order they were given, and every one of them gets a row.
+  A folder inside another selected folder is not read twice.
+
+## Resume where it stopped
+
+- **`Resume an import…`** notices an operation that was stopped, or never finished, and
+  offers to continue it instead of pretending the collection is done: `N file(s) never
+  read. Continue it now?`
+- What is already read is kept — its analyses stay on disk and are not imported again.
+  Only the rows that are still pending, interrupted, or whose analysis file disappeared
+  are read again.
+- A **merged layout** (one tab per artifact, or one unified grid) is derived, not stored:
+  a resume rebuilds it from the analyses it merged, instead of trusting a table that may
+  be the file that went missing.
+
+## Nothing counted twice
+
+- Duplicate detection is done on the **SHA-256 of the source file**, the only identifier an
+  examiner can defend. Inside one operation, two copies of the same export are read once:
+  the second row is `Duplicate`, and its reason names the copy that was read.
+- Across imports of the same case, an index beside the collections
+  (`Collectes/import-index.json`) records what was already read, so re-selecting a folder
+  by mistake produces a report instead of a second set of tabs: `Already imported from
+  <path> (<collection>)`.
+- A duplicate is neither a success nor a failure: it has its own filter in the table, its
+  own count in the summary, and it never becomes a tab.
+- **A disk collection is the exception, and on purpose**: two partitions holding the same
+  bytes are two artefacts at two locations, and the report keeps both — deduplicating them
+  would erase where one of them was found.
+
+## A proof after the write
+
+- Each analysis is **opened again read-only and counted**: the number of events actually on
+  disk is compared with the number recorded at import. The verdict is stored per analysis
+  and summarised in the report — `Verification: 214 checked · 0 failed` — and a mismatch is
+  a line in the journal, with both numbers.
+- A database that cannot be opened, or a file that is gone, is a result too (`unreadable`,
+  `missing`), not an exception during the next click.
+
+## A journal for every file
+
+- Every operation writes **`journal.jsonl`** next to `collection.json`: one JSON object per
+  event, with a UTC timestamp, the seconds since the operation started, and what happened.
+  The operation's start and end, the inventory, one line per file (status, reason, seconds,
+  analyses written), each duplicate, each memory-budget retry, the organisation step and the
+  verification are all there.
+- The file is written line by line and flushed as it goes, so an operation that dies still
+  explains itself; and if the journal cannot be written at all, the report says
+  `Journal incomplet : <reason>` instead of passing for a complete record.
+
+## One bad file costs one row
+
+- A reader that raises — a parser that crashes, a file locked by another program, a bug in
+  a format nobody tested — now marks **that row** as `error` with its message. The
+  operation carries on with the other files, and the report's status is not turned into a
+  failure by one file.
+- The same isolation applies to the workers: an exception that escapes a parsing worker is
+  recorded on its own row instead of unwinding the merge loop and ending a collection that
+  had already read two thousand files.
+
+## The tree says what the evidence is
+
+- A source saved under a long collection path used to appear as that path of which a narrow
+  panel showed only the beginning. The tree and the collection list now show the **type of
+  evidence**: `Event logs · Security`, `Amcache`, `Browser history`, `Browser cookies`,
+  `Prefetch`, `MFT`, `NTUSER.DAT`, `Jump lists`, `Shellbags`, `SRUM`, `PowerShell history`.
+- When Fireblade does not recognise a file, the label is **the folder it was found in**, with
+  the plumbing (`Saved_Files`, `C:`, `Users`, `AppData`, a profile name) skipped. Two entries
+  that would read the same are separated by the file name, then by a number. The full path is
+  never lost: it is the tooltip, and the report keeps it.
+- Existing collections are renamed the same way when they are displayed, so an older case
+  reads like a new one.
+
+## A launch that costs the ident and nothing else
+
+- **The application is now a folder, zipped once**, instead of a single executable that
+  unpacked itself at every launch. Measured on the same four-core VM, three runs each: the
+  0.5.0 executable took **41 to 50 s** to answer `--help`, because a onefile build
+  re-extracts ~280 MB into `%TEMP%` at every start while Defender scans each extracted DLL.
+  The folder build answers the same command in **0.6 to 0.9 s**, and after the unzip there is
+  nothing left to extract. The download is the same size as before (280 MB) and the folder
+  takes 510 MB on disk once.
+- **The 6.5 s ident is kept** — it is the product's signature — but it is now the *floor* of
+  a launch, not an addition: its clock starts with the process, so the window's 0.32 s build
+  happens inside it. A build slower than the ident is shown at once, never waited on twice.
+- The verification still proves the promise: it copies the folder into an empty directory,
+  strips `PATH`, `PYTHONPATH` and `QT_PLUGIN_PATH`, moves `TEMP` and `LOCALAPPDATA`, and runs
+  the exe's own 47 checks there. A missing DLL fails the build, not a tester's machine.
+
+## The assistant is optional, and says so
+
+- Nothing is downloaded unless the analyst clicks **Set up the local model…**. The tab used
+  to describe a missing install as a fault ("no model file yet, put the GGUF in…"); it now
+  says the feature is optional, that a finding is explained from the data alone, where the
+  model *would* live, and that nothing is fetched without a click.
+
+## Counts that add up
+
+- `report['summary']` is computed once, from the rows the table shows: one number per state,
+  the number of files, and the number of analyses. The tab's summary line quotes it, counts
+  duplicates separately, and adds the verification line, so the sentence at the top and the
+  rows underneath can no longer disagree.
+
+## What was tested
+
+- Thirteen core tests on synthetic evidence: mixed sources, a file no reader knows, a
+  duplicate inside one operation, a duplicate across two imports of one case, a reader that
+  raises, a cancelled operation resumed, a resume whose analysis vanished, the journal's
+  completeness, an analysis that lost a row, a journal that cannot be written, retries.
+- The picker and the single-operation gesture in the interface suite: one report for a
+  folder, a second folder and a loose file, and a cancel that leaves one collection and no
+  queued work.
+- The full gate, and the acceptance run on the Windows test VM.
+
+## What this version does not do
+
+- It does not merge two collections of one case into a single report; each import keeps its
+  own folder, journal and report.
+- The duplicate index is per case, by digest: the same evidence imported into two different
+  cases is read twice, which is what those two cases asked for.
+
 # Fireblade 0.5.0 — the Hayabusa findings map, and a local assistant that answers
 
 An analyst should not read 35 000 alerts one by one, and a small local model should never

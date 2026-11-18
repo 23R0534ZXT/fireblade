@@ -1,4 +1,4 @@
-# Passation — Fireblade, 18 novembre 2026 (nuit)
+# Passation — Fireblade, 18 novembre 2026 (soirée)
 
 Document de reprise. Il dit où en est le dépôt, ce qui a été construit, ce qui est
 mesuré, ce qui reste ouvert, et comment vérifier. Le détail des procédures vit dans le
@@ -15,64 +15,105 @@ Git de la VM : `C:\Users\fb\tools\git\cmd\git.exe`. Interpréteur :
 
 | Élément | État |
 |---|---|
-| Branche | `main` (fusionnée, poussée) ; le tag `v0.5.0` marque ce qui est publié |
-| Version | **0.5.0 publiée** (tag `v0.5.0`, prerelease assumée) — exe 281 125 170 o, SHA-256 `59a44840f7890b43f1d3fcff98260b92737e50a2b632f7c651b47415ad23d9dd` |
-| Porte | verte sur la VM : **1527 passés, 28 ignorés, 954 s** (`vm_gate.ps1`) |
-| Modèle local | moteur llama.cpp `b12483` + MiniCPM5-2B Q4_K_M (1 561 318 368 octets, SHA-256 `ec2d5801…602fd`) |
-| Recette | `s0`, `s1` (972 s, 214 analyses), `s2`, `s4` à `s9` vertes ; `s10_assistant.py` (9 étapes) et `s11_strain.py` (8 étapes) vertes ; captures `C:\fireblade-test\shots\S10-*` et `S11-*` |
-| Non concluant | `s3_tools.py` : se bloque sur la boîte « sources and dates » **et le fait aussi sur `main`** — défaut du harnais sur cette VM, pas une régression 0.5.0 |
-| Mesure de qualité | `vm_quality.py` : 6 constats × 2 formes de prompt, résultats dans `C:\Users\fb\quality.json` |
+| Branche | `hermes/0.5.1-import` (travail de la 0.5.1) ; `main` reste à `22fcf1d` |
+| Version | **0.5.1 préparée, non publiée** : `pyproject.toml` et `__init__.py` à 0.5.1 |
+| Porte | verte sur la VM : **1556 passés, 28 ignorés, 957 s** — sur l'arbre exact de la 0.5.1 |
+| Recette | `s1_import` (collecte 10 Gio) et `s17_import_051` (contrat d'import) — à relancer sur l'arbre final |
+| 0.5.0 publiée | tag `v0.5.0`, exe 281 125 170 o, SHA-256 `59a44840…` — inchangée |
 
-## 3. Ce que contient la 0.5.0
+## 3. Ce que contient la 0.5.1 — l'import
 
-- Onglet **Hayabusa + AI** : constats regroupés **en SQL (DuckDB)** par règle / hôte /
-  rafale, puis rassemblés en fenêtres horaires ; repli mémoire si le SQL échoue, avec la
-  raison affichée.
-- **Trois vues peintes, une seule palette** : le jour est un **histogramme polaire** (un
-  rayon par tranche de dix minutes, longueur = alertes, couleur = gravité la plus haute),
-  la carte de chaleur donne une ligne par règle dans le temps, la chaîne montre les
-  événements du constat et les liens que l'assistant affirme. Les trois suivent le thème
-  clair ou sombre de la fenêtre.
-- **Assistant local optionnel** : téléchargement du moteur et des poids (une fois),
-  manifeste `assistant.json`, vérification mémoire / empreinte avant démarrage.
-- **Bouton « Explain this finding »** et **chat** : paquet de preuve borné (40 événements
-  numérotés), sortie JSON (résumé, faits cités, liens, manques), **vérifiée** avant
-  affichage — un fait sans événement, ou citant un événement inconnu, est écarté avec sa
-  raison ; un lien n'est gardé que si ses deux extrémités existent.
-- **Liens dessinés** dans la vue chaîne, fléchés et numérotés.
-- **Une seule question à la fois** : le temps écoulé s'affiche, une seconde demande est
-  refusée avec une phrase visible au lieu d'être mise en file. Une réponse reste attachée
-  à son constat et revient quand on y retourne.
-- **Moteur ressuscité une fois** : sur 8 Go, le serveur llama.cpp est mort en pleine
-  réponse (`ConnectionRefusedError` 10061 ensuite) ; l'appel est rejoué sur un moteur neuf,
-  une seule fois, puis l'erreur remonte.
-- Mesuré sur la VM (4 cœurs, sans GPU) : **25 à 45 s** par explication (moyenne 28 s sur
-  six constats), **29 s** pour une question de suivi ; le moteur reste chargé entre deux
-  questions. Une réponse coupée au budget de jetons est annoncée comme coupée.
+Le sujet de cette version : **aucun import ne doit échouer en silence**. Ce qui existe
+maintenant, et qui a été mesuré par les tests et par la recette :
+
+- **Une opération, plusieurs sources** : le sélecteur prend des fichiers **et** des
+  dossiers dans une même liste (`SourcesDialog`), lus en une seule collecte — un rapport,
+  un journal, un dossier de travail. Un dossier déjà contenu dans un autre n'est pas lu
+  deux fois.
+- **Reprise** : `resume()` relit seulement les lignes `pending`/`cancelled` et celles dont
+  le fichier d'analyse a disparu ; ce qui est fait reste fait. Un rendu fusionné
+  (`raw_documents`) est reconstruit depuis ses analyses au lieu d'être cru sur parole.
+  Côté interface, `Resume an import…` propose la reprise quand il reste des fichiers.
+- **Doublons** : détection sur le **SHA-256 de la preuve**, dans l'opération et entre les
+  imports d'un même case via `Collectes/import-index.json`. La seconde copie est une ligne
+  `Duplicate` dont le motif nomme la copie lue ; elle ne produit pas d'onglet.
+  **Exception assumée** : une collecte disque (`deduplicate_content = False`) garde deux
+  artefacts identiques trouvés à deux endroits — c'est la localisation qui fait la preuve.
+- **Preuve après écriture** : chaque analyse est rouverte en lecture seule et comptée
+  contre le nombre enregistré à l'import (`verify_analysis`), verdict par document et
+  résumé `Vérification : N contrôlées · N en échec` ; un écart est une ligne du journal.
+- **Journal** : `journal.jsonl` à côté de `collection.json`, une ligne JSON par événement
+  (horodatage UTC, secondes depuis le début). Début/fin d'opération, inventaire, une ligne
+  par fichier (état, motif, secondes, analyses), doublons, reprises de budget mémoire,
+  organisation, vérification. Si le journal ne peut pas s'écrire, le rapport affiche
+  `Journal incomplet : <raison>`.
+- **Isolation** : une exception d'un lecteur ou d'un worker marque **sa** ligne en `error`
+  avec son message ; l'opération continue. C'est `safe_parse` / `_future_documents`.
+- **Comptes justes** : `report['summary']` est calculé une fois depuis les lignes affichées ;
+  le bandeau de l'onglet Imports le cite, compte les doublons et ajoute la vérification.
+
+## 3 bis. Le reste de la 0.5.1
+
+- **Arbre lisible** : `core/artifact_names.py` traduit un chemin en type de preuve
+  (`Event logs · Security`, `Amcache`, `Browser history`, `Browser cookies`, `Prefetch`,
+  `MFT`, `NTUSER.DAT`, `Jump lists`…), sinon le nom du dossier en sautant la plomberie
+  (`Saved_Files`, `C:`, `Users`, `AppData`, le nom du profil). Deux entrées identiques sont
+  séparées par le nom du fichier puis par un numéro. Le chemin complet reste en infobulle et
+  dans le rapport. Utilisé par `ui/navigation.py` (feuilles **et** nœuds de collecte) et par
+  le nom enregistré d'une collecte (`start_workflow`).
+- **Démarrage** : l'ident garde ses **6,5 s** (choix de l'utilisateur, 18 nov. : « je veux
+  qu'elle dure toujours 6,5 secondes ») et devient le **plancher** du lancement, pas un ajout.
+  Mesuré sur la VM : fenêtre construite en **0,32 s** (import Qt compris) ; `reveal_delay()`
+  ne rend la main qu'à la fin de l'ident, et rend **0** si la construction a dépassé les 6,5 s.
+  Le lancement vaut donc max(6,5 s, construction), au lieu de construction + 6,5 s.
+- **Livraison en dossier zippé** : l'exe `--onefile` de 281 Mo se décompressait dans `%TEMP%`
+  à **chaque** lancement — mesuré **43 s** pour afficher `--help` sur la VM (disque lent +
+  Defender qui scanne chaque DLL extraite), contre 0,9 s depuis les sources. La construction
+  passe en `--onedir` et publie `Fireblade-<version>-win64.zip` : on décompresse une fois, le
+  lancement ne paie plus l'extraction. Chaîne touchée : `scripts/windows/build.py`,
+  `verify.py` (copie le dossier, exige `packaging == 'onedir'`), `bundle.py` (l'étiquette),
+  `validation/windows_check.py`, `scripts/release.py` (l'asset est le zip, empreinte dans le
+  corps de la release), `update_release_readme.py` (choisit l'archive), le workflow
+  (`--asset dist`, chemins `dist/Fireblade/Fireblade.exe`) et les deux tests de release.
+- **Assistant** : rien ne se télécharge sans un clic sur `Set up the local model…` (vérifié :
+  `install_model`/`install_runtime` ne sont appelés que par ce bouton). Le texte d'un modèle
+  absent ne ressemble plus à une panne ni à une tâche à faire.
+
+## 3 ter. Pack de démonstration publié
+
+- **`test-pack-v2`** : `Fireblade-Sample-Collection-2026-11-18.zip`, 5 606 171 o,
+  SHA-256 `b3482b9bcc393e6bcdc2b2900b7128268596a6624e1c0d7bcca6f25031d7e4e7`.
+  Contenu réel pris sur la VM : 183 journaux EVTX, Amcache, 60 Prefetch, 251 tâches
+  planifiées, historique PowerShell, `inventory.json` (497 fichiers), README.
+- Retirés avant publication, et pourquoi : `SAM`/`SECURITY` (empreintes et secrets LSA),
+  `SOFTWARE`/`SYSTEM`/`NTUSER.DAT`/`UsrClass.dat`/`WebCache` (identité machine, profil
+  réseau, fichiers récents), `Security.evtx`/`SRUDB.dat` et les canaux NTLM, SMB, OpenSSH,
+  LiveId, PushNotification (adressage du labo, jeton de notification).
+- Balayage avant zip : motifs de clés, clés privées, jetons cloud, `192.168.1` — aucun hit
+  dans ce qui reste. Le zip a été retéléchargé depuis l'URL publique et son empreinte
+  comparée avant d'être annoncé.
+- Publié depuis la **tour** (`gh` y est authentifié, scope `repo`), asset par asset, en
+  prerelease comme les packs v1. Le README de `main` le cite en tête des jeux de données.
+- **Aucune clé GitHub utilisable ailleurs** : ce que `~/.hermes` contient est un motif de
+  test (API 401), la VM n'a qu'une clé SSH de dépôt, et `git@github.com` est refusé depuis
+  le conteneur. Toute publication passe par la tour, réveillée par WoL.
 
 ## 4. Décisions prises, à ne pas rouvrir sans raison
 
-- **Le modèle ne décide de rien** : il écrit de la prose sur un paquet de preuve, et
-  Fireblade vérifie chaque citation. Comptages, tris et jointures restent du code.
-- **Réflexion du modèle coupée** (`enable_thinking=False`) : en mode « thinking », ce
-  modèle écrit dans un champ séparé et rend une réponse vide ; la latence triple pour
-  rien. Constaté à la mesure, pas supposé.
-- **Le prompt dit quels numéros existent** (« les numéros valides vont de 1 à N ») : les
-  faits conservés passent de 1,3 à 1,5 par constat et les rejets diminuent de moitié.
-  Un exemple travaillé dans le prompt **dégrade** la réponse (1,3 fait, 0,5 lien contre
-  1,5 et 1,0) : il n'est pas utilisé. Les deux formes restent dans `explain.py` pour être
-  remesurées si le modèle change.
-- **Une dépendance ajoutée** : `pytz`, exigée par DuckDB pour convertir un `TIMESTAMPTZ`.
-  Sans elle, tout regroupement temporel échoue sur « Required module 'pytz' failed to
-  import ».
-- **Le moteur est téléchargé, jamais embarqué** : binaire llama.cpp CPU épinglé par tag,
-  poids vérifiés par SHA-256. Conséquence assumée : l'installation du modèle demande
-  Internet une fois, puis tout est hors ligne.
-- **Le runtime Visual C++ est un prérequis** de llama.cpp : sur une VM Windows 11 nue le
-  binaire meurt en `STATUS_DLL_NOT_FOUND` (0xC0000135). `vc_redist.x64.exe` est installé
-  sur la VM de recette ; un installateur devra le prévoir.
-- Le regroupement par défaut est le SQL ; la version Python reste pour les tests et le
-  repli, et un test vérifie que les deux produisent les mêmes constats.
+- **Le doublon est décidé par l'empreinte de la source**, jamais par le nom ni la date :
+  c'est le seul identifiant défendable devant un rapport.
+- **Une collecte disque ne déduplique pas** : deux partitions aux mêmes octets sont deux
+  artefacts, avec deux localisations. Le test `test_complete_mbr_disk_exposes_both_partitions`
+  le pin (2 analyses).
+- **L'index des doublons est par case** (`Collectes/import-index.json`) : la même preuve
+  importée dans deux cases est lue deux fois, et c'est ce que ces deux cases demandent.
+- **Une opération interrompue n'est jamais reprise automatiquement** : l'interface propose,
+  l'analyste décide. Rien ne relit un dossier sans un clic.
+- **Le journal ne fait jamais échouer l'import**, mais il le dit : un import sans journal
+  complet n'est pas présenté comme complet.
+- **La vérification n'est pas optionnelle** : elle ouvre chaque analyse, à la fin de
+  l'opération. Coût mesuré sur la recette, à comparer au total de la collecte.
+- Le regroupement par défaut reste le SQL ; l'assistant local (0.5.0) est inchangé.
 
 ## 4 bis. Publier (fait pour la 0.5.0, à refaire à l'identique)
 
@@ -90,65 +131,77 @@ Git de la VM : `C:\Users\fb\tools\git\cmd\git.exe`. Interpréteur :
   vers le run de qualification) : ne pas la réécrire, rebaser dessus.
 - Une prerelease laisse `latest` sur la version précédente ; le lien du README vise donc le
   tag, pas `/releases/latest`.
+- **Ne pas pousser sans demande explicite dans la session** : préparer la fusion et le tag,
+  annoncer l'état, demander.
 
 ## 5. Pièges rencontrés cette nuit
 
-- **Le disque de la VM s'est rempli** (96 Go, 0 libre) : les deux cas du test 10 Gio pèsent
-  20 Go chacun dans `%LOCALAPPDATA%\Fireblade\Cases`. Symptômes trompeurs : une boîte
-  « No space left on device », puis une section qui se bloque, puis un abandon Python dont
-  la trace finit en `object refcount : 3`. Nettoyage des cas, `Get-PSDrive C` avant chaque
-  recette.
-- Windows Update a **redémarré la VM deux fois** pendant les tests (`id 1074`,
-  TrustedInstaller). Politique posée : `NoAutoRebootWithLoggedOnUsers=1`.
-- `scp` vers la VM passe par **PowerShell** : `&&`, `;` et les variables `%VAR%` de cmd
-  n'y existent pas ; écrire des `.ps1` et les lancer avec `-File`.
-- `PowerShell -File` **ne découpe pas** les tableaux : `-Files a,b` arrive en une seule
-  chaîne. Le plan de build passe donc par un `build.json`.
-- **Un onglet impose sa largeur minimale à toute la fenêtre** : une phrase de résumé dans
-  un `QLabel` a fait monter la largeur minimale à 1252 px et cassé deux tests 1024×600.
-  Les libellés longs passent par `shrinkable()` (politique `Ignored`, texte complet en
-  infobulle) ; les cartes gardent une hauteur minimale basse (120 px).
-- La hauteur minimale des vues avait aussi dépassé 600 px : garder 120 px, pas 190.
-- Un `TIMESTAMPTZ` DuckDB exige `pytz` (voir §4) ; un `UNION ALL` refuse un `ORDER BY`
-  avant la seconde branche.
-- `assistant.json` écrit par PowerShell porte un **BOM** : le lire en `utf-8-sig`, sinon
-  « installé » devient « désactivé ».
-- Le harnais de recette utilise son propre `LOCALAPPDATA` : le modèle doit être copié dans
-  `C:\fireblade-test\profile\Fireblade\Assistant` (`vm_seed_profile.ps1`).
-- `powershell ... *> log` transforme **tout message Qt sur stderr en erreur PowerShell** :
-  le code de sortie devient 1 alors que la section a réussi. Les lanceurs passent par
-  `Start-Process` avec `-RedirectStandardError` et lisent `$process.ExitCode`.
-- Un `Start-Process` détaché meurt avec la session ssh : les longues suites se lancent
-  depuis le poste Proxmox, section par section (`tools/recette.sh`).
-- `Start-Process -Wait` **attend aussi les handles hérités** : avec llama-server encore
-  vivant, la section imprime `SECTION_DONE` et le lanceur ne rend jamais la main. Utiliser
-  `WaitForExit(ms)` et retomber sur la présence de `SECTION_DONE` dans le journal.
+- **`duplicate_of` se déclenchait sur le fichier lui-même pendant une reprise** : `first is
+  not None` au lieu de `first is not entry`. La carte des empreintes doit se remplir avec
+  `setdefault(digest, entry)`, sinon un fichier relu se croit le doublon de lui-même et la
+  reprise ne réécrit rien (documents vides, statut `duplicate`).
+- **La racine commune des sources** (`common_root`) est ce dont les libellés se mesurent, pas
+  ce dont la sortie doit être exclue : un dossier de travail posé à côté d'un **fichier**
+  sélectionné est légitime, seul un dossier source peut avaler sa propre collecte.
+- **Le rendu fusionné n'est pas une source** : `organize()` remplace `documents` ; une
+  reprise doit restaurer `raw_documents` avant de relancer, sinon `organize` refuse
+  (« Provenance de résultat absente »).
+- **Les pilotes de recette patchaient le sélecteur par son ancien nom** : `s1`, `s2`, `s4`
+  et deux tests d'interface utilisaient `choose_collection_directories`. Les renommer tous
+  (`choose_import_sources`), sinon `AttributeError` au premier import de la section.
+- **Un test isolé qui échoue en français n'est pas une régression** : les trois tests de
+  `preview_text` de `tests/ui/test_collection_report_actions.py` échouent seuls sur `main`
+  aussi (la langue est posée par un autre test dans la suite complète). Prouvé avec un
+  `git worktree` sur HEAD, puis clos.
+- **La vérification après import ouvrait DuckDB sur les analyses en cours d'écriture** : elle
+  tourne après `organize`, quand plus aucune transaction n'est ouverte.
+- Le disque de la VM reste juste après une collecte 10 Gio : `Get-PSDrive C` avant chaque
+  recette ; les cas de test pèsent ~20 Go chacun.
+
+- **Une copie locale de `app.py` avait été laissée par une session précédente** : la patcher
+  aurait installé un fichier d'il y a deux jours. Toujours `scp` le fichier à modifier juste
+  avant de le patcher, et comparer les empreintes quand un doute existe (`md5sum`).
+- **Un `\U` dans une docstring** (`C:\Users\...`) casse le module à l'import : écrire la
+  docstring en `r"""…"""` ou éviter le chemin en dur.
+
+- **Construire le dossier sur la VM demande trois réglages d'environnement** : le SDK .NET
+  10 décompressé dans `C:\Users\fb\tools\dotnet` avec `FIREBLADE_DOTNET`, son dossier
+  ajouté au `PATH` (car `build_forensic_tools` appelle `dotnet` par son nom), et
+  `C:\Users\fb\tools\git\cmd` au `PATH` (une session SSH n'a pas git). Sans l'un des
+  trois, le build meurt en `WinError 2` après avoir déjà construit les hôtes .NET.
+- **L'auto-test du produit exigeait un exe seul dans son dossier** : la vérification d'un
+  bundle `--onedir` échouait sur « Le programme a besoin de fichiers à côté du .exe. ».
+  L'assertion accepte maintenant l'exe et `_internal`, et rien d'autre — c'est la même
+  promesse, dite pour un dossier.
 
 ## 6. Vérifier
 
 ```powershell
 # sur la VM, dans C:\Users\fb\dev\fireblade
 powershell -File C:\Users\fb\vm_gate.ps1                    # ~16 min, doit finir TOUT EST VERT
-powershell -File C:\Users\fb\vm_section.ps1 -Name s10_assistant
-powershell -File C:\Users\fb\vm_section.ps1 -Name s11_strain
+powershell -File C:\Users\fb\vm_section.ps1 -Name s1_import
+powershell -File C:\Users\fb\vm_section.ps1 -Name s17_import_051
 ```
 
-Recette complète : `tools/recette.sh` depuis Proxmox enchaîne `s0` à `s11` et écrit
+Recette complète : `tools/recette.sh` depuis Proxmox enchaîne `s0` à `s17` et écrit
 `recette-report.txt`. Journal détaillé et captures : `C:\fireblade-test\harness\journal.json`,
 `C:\fireblade-test\shots\`.
 
-Qualité de l'assistant : `powershell -File C:\Users\fb\vm_quality_run.ps1` puis relire
-`C:\Users\fb\quality.json` (validité JSON, faits conservés / rendus, liens, secondes).
+Contrôles de l'import, sans interface :
+
+```powershell
+.venv\Scripts\python.exe -m pytest -q tests/core/test_import_operation.py
+```
 
 ## 7. Ce qui reste ouvert
 
-1. **Qualité du modèle** : MiniCPM5-2B donne un résumé utile mais pauvre (1 à 2 faits par
-   constat) ; c'est une limite du modèle, pas du garde-fou. Un modèle plus gros tiendrait
-   sur la même interface. Pas de fine-tuning : il faudrait un GPU et des réponses de
-   référence étiquetées ; le prompt a été mesuré à la place (`vm_quality.py`).
-2. **Enquête multi-étapes** : l'assistant explique un constat, il ne conduit pas
-   l'analyse.
-3. **Paquet de preuve** borné à 40 événements ; au-delà, le nombre non lu est écrit.
+1. **Deux collectes d'un même case ne se fusionnent pas** : chaque import garde son dossier,
+   son journal et son rapport. Un rapport unique par case demanderait une décision de produit.
+2. **Qualité du modèle** (0.5.0) : MiniCPM5-2B donne un résumé utile mais pauvre ; limite du
+   modèle, pas du garde-fou.
+3. **Enquête multi-étapes** : l'assistant explique un constat, il ne conduit pas l'analyse.
 4. **`vc_redist`** à intégrer proprement au programme d'installation.
 5. Sujets 0.4.2 toujours ouverts : guides en français, `docs/validation` embarqué dans
    l'exe, résidu de traduction « exports ».
+6. **Chemins de plus de 260 caractères** : toujours le seul cas connu où un fichier peut
+   échapper à l'inventaire ; à provoquer sur la VM avant de promettre le contraire.

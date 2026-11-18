@@ -5,6 +5,7 @@ import base64
 import json
 import argparse
 import sys
+import time
 from xml.parsers.expat import ExpatError
 from pathlib import Path
 
@@ -1333,19 +1334,28 @@ def main():
     except (OSError, ValueError, TypeError):
         animate = True
     splash = None
+    launched = time.monotonic()
     if animate:
         from fireblade.ui.startup import StartupAnimation
         splash = StartupAnimation()
         splash.show()
+        splash.animation.start()
         app.processEvents()
     window = Window(settings, require_case=True)
     window._startup_file = args.file
-    if splash is not None:
-        splash.finished.connect(window.show)
-        splash.finished.connect(splash.close)
-        splash.animation.start()
-    else:
+    if splash is None:
         window.show()
+    else:
+        # The ident covers the build; it never waits on top of it. The window is built
+        # in about a third of a second here, so the splash leaves as soon as it can
+        # without flashing — waiting for the animation cost 6.5 s on every launch.
+        from fireblade.ui.startup import reveal_delay
+
+        def reveal():
+            splash.close()
+            window.show()
+
+        QTimer.singleShot(reveal_delay(time.monotonic() - launched), reveal)
     sys.exit(app.exec())
 
 

@@ -119,12 +119,16 @@ class Assistant:
                           'assistant.json could not be read: ' + self.manifest_error)
         if not self.enabled:
             return Status(STATE_OFF, self.model, str(self.root), self.needed_mb(), available,
-                          'The local assistant is off. Fireblade works without it.')
+                          'The local assistant is off. Fireblade works without it, and nothing is '
+                          'downloaded unless you ask for it.')
         weights = self.weights
         if weights is None or not weights.is_file():
+            # Not a fault and not a to-do: the analyst chooses, and the tab already
+            # explains a finding from the data alone.
             return Status(STATE_MISSING, self.model, str(self.root), self.needed_mb(), available,
-                          'No model file yet. Put the GGUF in %s and set "weights" in assistant.json.'
-                          % self.root)
+                          'The local assistant is not installed (optional). Fireblade explains a '
+                          'finding from the data alone; it would go to %s, and nothing is '
+                          'downloaded unless you ask for it.' % self.root)
         if available < self.needed_mb():
             return Status(STATE_NO_MEMORY, self.model, str(self.root), self.needed_mb(), available,
                           'This machine has %d MB and the model needs about %d MB; the assistant stays off.'

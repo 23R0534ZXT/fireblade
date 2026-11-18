@@ -37,7 +37,7 @@ def release_plan(version, requested_tag, releases):
                 draft_exists=any(release['tagName'] == tag for release in releases))
 
 
-def publish(root, executable, repository, commit, requested_tag='', run=subprocess.run):
+def publish(root, asset, repository, commit, requested_tag='', run=subprocess.run):
     version = application_version(root)
     def gh(*args, capture=False):
         return run(['gh', *args, '--repo', repository], check=True, text=True,
@@ -45,35 +45,43 @@ def publish(root, executable, repository, commit, requested_tag='', run=subproce
     response = gh('release', 'list', '--limit', '100', '--json', 'name,tagName,isDraft', capture=True)
     plan = release_plan(version, requested_tag, json.loads(response.stdout))
     # Read-only metadata checks above must finish before any remote mutation.
-    with executable.open('rb') as stream:
-        if stream.read(2) != b'MZ':
-            raise ValueError('Expected a Windows executable')
+    asset = Path(asset)
+    if asset.is_dir():
+        # The workflow hands over the dist folder: the archive it built is the asset.
+        candidates = sorted(asset.glob('Fireblade-%s-win64.zip' % version))
+        if len(candidates) != 1:
+            raise ValueError('Expected exactly one Fireblade-%s-win64.zip in %s' % (version, asset))
+        asset = candidates[0]
+    with asset.open('rb') as stream:
+        if stream.read(2) != b'PK':
+            raise ValueError('Expected the Windows zip archive')
         stream.seek(0)
         digest = hashlib.file_digest(stream, 'sha256').hexdigest()
     notes = (root / 'docs/development/RELEASE-NOTES.md').read_text(encoding='utf-8')
-    notes += f'\n\nCommit: {commit}\n\nSHA-256 of Fireblade.exe: {digest}\n'
+    notes += f'\n\nCommit: {commit}\n\nSHA-256 of {asset.name}: {digest}\n'
     with tempfile.TemporaryDirectory(prefix='fireblade-release-') as folder:
         path = Path(folder) / 'notes.md'
         path.write_text(notes, encoding='utf-8')
         if plan['draft_exists']:
-            gh('release', 'upload', plan['tag'], str(executable), '--clobber')
+            gh('release', 'upload', plan['tag'], str(asset), '--clobber')
         else:
-            gh('release', 'create', plan['tag'], str(executable), '--draft', '--prerelease',
+            gh('release', 'create', plan['tag'], str(asset), '--draft', '--prerelease',
                '--target', commit, '--title', plan['title'], '--notes-file', str(path))
         # Failed upload/create leaves a draft; nothing is published in that case.
         gh('release', 'edit', plan['tag'], '--title', plan['title'], '--notes-file', str(path),
            '--prerelease', '--draft=false')
-    return dict(**plan, sha256=digest, commit=commit)
+    return dict(**plan, sha256=digest, commit=commit, asset=asset.name)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--exe', type=Path, required=True)
+    parser.add_argument('--asset', type=Path, required=True,
+                        help='the zip to publish, or the dist folder that holds it')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     repository, commit = os.environ['GITHUB_REPOSITORY'], os.environ['GITHUB_SHA']
     requested_tag = os.environ.get('REQUESTED_TAG', '')
-    print(json.dumps(publish(root, args.exe.resolve(), repository, commit, requested_tag), ensure_ascii=False))
+    print(json.dumps(publish(root, args.asset.resolve(), repository, commit, requested_tag), ensure_ascii=False))
 
 
 if __name__ == '__main__':

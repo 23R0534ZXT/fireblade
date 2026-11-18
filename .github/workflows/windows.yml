@@ -149,7 +149,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Fireblade-exe
-          path: dist/Fireblade
+          # The folder and the archive: a consumer restores dist/ and finds both.
+          path: dist
           if-no-files-found: error
           retention-days: 14
 

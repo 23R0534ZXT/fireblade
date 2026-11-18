@@ -65,7 +65,7 @@ def _row_to_evidence(number, row):
     )
 
 
-def build_pack(group, rows, groups, incidents, rows_by_number=None):
+def build_pack(group, rows, groups, incidents, rows_by_number=None, style='plain'):
     """Assemble the page handed to the model, and to the analyst when the model is off.
 
     ``rows`` are the alert rows of the selected group, in the order the group recorded
@@ -96,11 +96,24 @@ def build_pack(group, rows, groups, incidents, rows_by_number=None):
                 start=group.start.isoformat(sep=' ', timespec='seconds') if group.start else 'unknown',
                 end=group.end.isoformat(sep=' ', timespec='seconds') if group.end else 'unknown',
                 count=group.count, facts=facts, neighbours=neighbours[:12], missing=missing)
-    pack.prompt = render_prompt(pack)
+    pack.prompt = render_prompt(pack, style=style)
     return pack
 
 
-def render_prompt(pack, limit=MAX_PROMPT_CHARS):
+EXAMPLE = """WORKED EXAMPLE (shape only, not your data)
+FINDING rule: Suspicious service installed, severity: high
+EVIDENCE
+[evt 1] 09:14:02 HOST-1 id=7045 ServiceName: updater | ImagePath: C:\\Temp\\u.exe
+[evt 2] 09:14:30 HOST-1 id=3 Image: C:\\Temp\\u.exe | DestinationIp: 203.0.113.9
+ANSWER
+{"summary": "A service pointing at a temporary binary starts and then opens an outbound connection.",
+ "facts": [{"text": "The service updater is installed from C:\\Temp.", "events": [1]},
+           {"text": "The same binary connects out 28 s later.", "events": [2]}],
+ "links": [{"from": 1, "to": 2, "why": "same binary, cause then effect"}],
+ "missing": ["the binary contents"]}"""
+
+
+def render_prompt(pack, limit=MAX_PROMPT_CHARS, style='plain'):
     """The instruction and the evidence, in the shape a small model reads best.
 
     Kept deliberately plain: one block of facts, one block of neighbours, an explicit
@@ -109,7 +122,9 @@ def render_prompt(pack, limit=MAX_PROMPT_CHARS):
     lines = [
         'You assist a forensic analyst. Answer only from the EVIDENCE below.',
         'Return JSON with these keys:',
-        '  summary   - at most 4 short sentences describing what these events show;',
+        'Keep it short: at most 3 facts of one sentence each, at most 2 links, at most 2',
+        'missing items. An answer that runs long is cut off and becomes unreadable.',
+        '  summary   - at most 2 short sentences describing what these events show;',
         '  facts     - each item is {"text": one statement, "events": [event numbers it rests on]};',
         '  links     - each item is {"from": n, "to": n, "why": short reason}, joining two',
         '              events where the second follows from the first: same process or path,',
@@ -117,9 +132,11 @@ def render_prompt(pack, limit=MAX_PROMPT_CHARS):
         '              order on the same host; for example from a protection being disabled to',
         '              the command that runs right after it;',
         '  missing   - what the evidence does not establish.',
-        'Use only the event numbers listed under EVIDENCE. Never invent an event, a host,',
-        'a user, a path or a time. If the evidence is thin, say so in missing instead of',
-        'guessing, and leave facts or links empty.',
+        'The only valid event numbers are the ones printed in brackets at the start of an',
+        'EVIDENCE line: they run from 1 to %d for this finding. A number outside that range' % len(pack.facts),
+        'does not exist, and the other findings listed below carry no numbers at all.',
+        'Never invent an event, a host, a user, a path or a time. If the evidence is thin,',
+        'say so in missing instead of guessing, and leave facts or links empty.',
         '',
         'FINDING',
         'rule: %s' % pack.title,
@@ -147,6 +164,9 @@ def render_prompt(pack, limit=MAX_PROMPT_CHARS):
         lines.append('NOT AVAILABLE')
         for item in pack.missing:
             lines.append('- ' + item)
+    if style == 'fewshot':
+        lines.insert(0, EXAMPLE)
+        lines.insert(1, '')
     text = '\n'.join(lines)
     return text[:limit]
 

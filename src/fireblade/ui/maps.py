@@ -46,7 +46,7 @@ class FindingMap(QWidget):
         self.selected_key = ''
         self._marks = []          # (QRectF, key)
         self.unplaced = 0
-        self.setMinimumHeight(190)
+        self.setMinimumHeight(120)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMouseTracking(True)
 

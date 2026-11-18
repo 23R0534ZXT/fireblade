@@ -14,3 +14,4 @@ artifacts/
 
 **/bin/
 **/obj/
+devcheck.log

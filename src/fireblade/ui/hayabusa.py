@@ -18,9 +18,11 @@ from __future__ import annotations
 
 import math
 
+import time
+
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QFrame, QHBoxLayout,
+from PySide6.QtWidgets import (QSizePolicy, QAbstractItemView, QComboBox, QFrame, QHBoxLayout,
                                QHeaderView, QLabel, QLineEdit, QMenu, QPlainTextEdit,
                                QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
@@ -33,6 +35,20 @@ from fireblade.ui.maps import CircularMap, HeatMap, ChainMap
 
 COLUMNS = ('Time', 'Level', 'Rule', 'Host', 'Count', 'Event IDs', 'MITRE')
 VIEWS = (('Clock', CircularMap), ('Heat map', HeatMap), ('Chain', ChainMap))
+
+
+def shrinkable(label):
+    """A label that may be narrower than its text.
+
+    The panel lives in a tab, and a tab's minimum width becomes the whole window's: a
+    one-line summary long enough to be useful would otherwise stop Fireblade being usable
+    on a 1024-pixel screen. The full text stays in the tooltip.
+    """
+    label.setWordWrap(False)
+    label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+    label.setMinimumWidth(0)
+    label.setToolTip(label.text())
+    return label
 
 
 class HayabusaPanel(QWidget):
@@ -56,6 +72,7 @@ class HayabusaPanel(QWidget):
         run = QHBoxLayout()
         self.state = QLabel()
         self.state.setWordWrap(True)
+        self.state.setMinimumWidth(0)
         run.addWidget(self.state, 1)
         self.rerun = QPushButton('Run Hayabusa…')
         self.rerun.setToolTip('Runs Hayabusa from the Imports tab; the results come back here.')
@@ -107,6 +124,7 @@ class HayabusaPanel(QWidget):
         self.card.setWordWrap(True)
         self.card.setFrameShape(QFrame.StyledPanel)
         self.card.setMinimumHeight(38)
+        self.card.setMinimumWidth(0)
         self.card.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.card.setMargin(8)
         host_layout.addWidget(self.card)
@@ -123,6 +141,7 @@ class HayabusaPanel(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.setMinimumHeight(72)
+        self.table.setMinimumWidth(0)
         self.table.itemSelectionChanged.connect(self.table_selection)
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.grid_menu)
@@ -149,8 +168,7 @@ class HayabusaPanel(QWidget):
         self.ask_button = QPushButton('Ask')
         self.ask_button.clicked.connect(self.ask_question)
         side.addWidget(self.ask_button)
-        self.assistant_state = QLabel()
-        self.assistant_state.setWordWrap(True)
+        self.assistant_state = shrinkable(QLabel())
         side.addWidget(self.assistant_state)
         side.addStretch()
         detail.addLayout(side, 1)
@@ -171,16 +189,21 @@ class HayabusaPanel(QWidget):
         self.setup_button.setToolTip('Download the engine and the weights once; everything runs offline after that.')
         self.setup_button.clicked.connect(self.setup_assistant)
         self.actions_row.addWidget(self.setup_button)
-        self.progress_label = QLabel()
+        self.progress_label = shrinkable(QLabel())
         self.actions_row.addWidget(self.progress_label, 1)
         layout.addLayout(self.actions_row)
 
-        self.status = QLabel()
+        self.status = shrinkable(QLabel())
         self.status.setFrameShape(QFrame.StyledPanel)
         layout.addWidget(self.status)
         # The panel is a tab of the workbench, so its minimum becomes the window's.
         self.setMinimumHeight(0)
         self.assistant_state.setText(self.assistant.status().detail)
+        self._answers = {}
+        self._busy_since = None
+        self._ticker = QTimer(self)
+        self._ticker.setInterval(1000)
+        self._ticker.timeout.connect(self.tick_progress)
         self._active = CircularMap
         self.maps[CircularMap].show()
 
@@ -362,17 +385,28 @@ class HayabusaPanel(QWidget):
                                    'RuleFile', 'EvtxFile', 'RecordID') if name in case.headers]
         return ['__row_id'] + names
 
+    def tick_progress(self):
+        """A model call takes a minute: the panel says how long it has been running."""
+        if self._busy_since is None:
+            return
+        elapsed = int(time.monotonic() - self._busy_since)
+        self.progress_label.setText('The local model is reading this finding - %d s' % elapsed)
+
     def show_explanation(self, group):
         pack = build_pack(group, self.group_rows(group), self.groups, self.incidents)
         pack.links = []
         self._pack = pack
         chain = self.maps[ChainMap]
         chain.set_pack(pack)
-        self.explain_button.setEnabled(self.assistant.status().can_answer and bool(pack.facts))
+        able = self.assistant.status().can_answer and bool(pack.facts)
+        self.explain_button.setEnabled(able)
+        self.ask_button.setEnabled(able)
         text = describe_without_model(pack)
-        status = self.assistant.status()
-        if status.enabled:
-            text += '\n\nAssistant: ' + status.detail
+        remembered = self._answers.get(group.key)
+        if remembered:
+            text += '\n\n--- local assistant ---\n' + remembered
+        elif self.assistant.status().enabled:
+            text += '\n\nAssistant: ' + self.assistant.status().detail
         self.explanation.setPlainText(text)
 
     def show_card(self):
@@ -405,32 +439,45 @@ class HayabusaPanel(QWidget):
         pack = getattr(self, '_pack', None)
         if pack is None or self.current_group() is None:
             return
-        self.explanation.appendPlainText('\nLocal assistant, reading %d event(s) of this finding…'
-                                         % len(pack.facts))
         self.run_assistant('')
 
     def run_assistant(self, question):
         """One model call from a worker thread; both the button and the box go through it."""
         pack = getattr(self, '_pack', None)
         status = self.assistant.status()
+        if self._busy_since is not None:
+            # window.run queues a second job instead of refusing it, and two model calls
+            # against one engine would only make both slower.
+            self.progress_label.setText('An operation is already running; try again after it.')
+            self.explanation.appendPlainText('\nA question is already running: this one was not sent.')
+            return
         if pack is None or not status.can_answer:
             self.explanation.appendPlainText('The local assistant cannot answer: ' + status.detail)
             return
+        if not question:
+            self.explanation.appendPlainText('\nLocal assistant, reading %d event(s) of this finding…'
+                                             % len(pack.facts))
         self._pending_question = question
         self.explain_button.setEnabled(False)
         self.ask_button.setEnabled(False)
-        self.progress_label.setText('The local model is reading %d event(s)…' % len(pack.facts))
-        job = self.window.run(lambda: answer(str(self.assistant.root), pack, question, schema=SCHEMA),
-                              self.explanation_ready, on_error=self.explanation_failed)
-        if job is None:
-            self.progress_label.setText('An operation is already running; try again after it.')
+        self._busy_since = time.monotonic()
+        self._ticker.start()
+        first = not getattr(self, '_engine_used', False)
+        self.progress_label.setText('Loading the local model…' if first
+                                    else 'The local model is reading %d event(s)…' % len(pack.facts))
+        self.window.run(lambda: answer(str(self.assistant.root), pack, question, schema=SCHEMA),
+                        self.explanation_ready, on_error=self.explanation_failed)
 
     def explanation_ready(self, result):
+        self._busy_since = None
+        self._ticker.stop()
+        self._engine_used = True
         pack = getattr(self, '_pack', None)
         question = getattr(self, '_pending_question', '')
         self._pending_question = ''
-        self.explain_button.setEnabled(bool(pack and pack.facts))
-        self.ask_button.setEnabled(True)
+        able = self.assistant.status().can_answer and bool(pack and pack.facts)
+        self.explain_button.setEnabled(able)
+        self.ask_button.setEnabled(able)
         self.progress_label.setText('')
         if not result or not result.get('ok'):
             self.explanation.appendPlainText('The local assistant did not answer: %s'
@@ -454,9 +501,14 @@ class HayabusaPanel(QWidget):
             cost += ' · %s tokens out' % result['completion_tokens']
         if question:
             cost += ' · answer to your question'
-        self.explanation.appendPlainText('\n' + '\n'.join(lines) + '\n(' + cost + ')')
+        rendered = '\n'.join(lines) + '\n(' + cost + ')'
+        self.explanation.appendPlainText('\n' + rendered)
+        if pack is not None and decoded.get('valid'):
+            self._answers[pack.group_key] = rendered
 
     def explanation_failed(self, message):
+        self._busy_since = None
+        self._ticker.stop()
         self.explain_button.setEnabled(True)
         self.progress_label.setText('')
         self.explanation.appendPlainText('The local assistant failed: %s' % message)

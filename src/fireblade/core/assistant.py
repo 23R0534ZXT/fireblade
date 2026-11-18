@@ -12,6 +12,7 @@ possible command-line probe, and none of them should need a window.
 """
 from __future__ import annotations
 
+import urllib.error
 import json
 import os
 from dataclasses import dataclass
@@ -177,14 +178,27 @@ def answer(root, pack, question='', memory_mb=None, progress=None, schema=None):
     status = assistant.status()
     if not status.can_answer:
         return dict(ok=False, text=status.detail, seconds=0.0)
+    restarted = False
     prompt = pack.prompt
     if question.strip():
         prompt += ('\n\nANALYST QUESTION\n' + question.strip() +
-                   '\nAnswer the question first in summary, using only the events above.')
+                   '\nThe summary must start with a direct answer in one sentence, using only'
+                   ' the events above. If those events cannot answer it, the summary must start'
+                   ' with "Not established by these events" and say what would be needed.')
     server = shared_server(root, assistant)
-    result = ask(server.port, prompt, schema=schema)
-    return dict(ok=True, text=result['text'], seconds=result['seconds'],
-                prompt_tokens=result.get('prompt_tokens'),
+    try:
+        result = ask(server.port, prompt, schema=schema)
+    except (urllib.error.URLError, ConnectionResetError, ConnectionAbortedError, OSError):
+        # The engine can die mid-answer, and did: on eight gigabytes the weights plus a
+        # long context leave little room, and the socket is simply refused afterwards.
+        # Starting a fresh engine and asking once more turns a dead feature into a delay.
+        server.stop()
+        _SERVERS.pop(str(Path(root).resolve()), None)
+        restarted = True
+        server = shared_server(root, assistant)
+        result = ask(server.port, prompt, schema=schema)
+    return dict(ok=True, restarted=restarted, text=result['text'], seconds=result['seconds'],
+                finish=result.get('finish'), prompt_tokens=result.get('prompt_tokens'),
                 completion_tokens=result.get('completion_tokens'))
 
 
@@ -223,6 +237,7 @@ def download(url, target, progress=None, expected_bytes=None, digest=None, chunk
     next attempt overwrites it, and a half-written file never looks installed.
     """
     import hashlib
+    import urllib.error
     import urllib.request
     target = Path(target)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -298,7 +313,10 @@ class Server:
         self.server_path = Path(server_path)
         self.model_path = Path(model_path)
         self.context = int(context)
-        self.threads = int(threads or max(1, (os.cpu_count() or 4) // 2))
+        # Half the cores was the cautious choice; measured on four cores, generation is
+        # bound by the model, not by thread count, so the extra threads only cost latency.
+        choose = os.environ.get('FIREBLADE_ASSISTANT_THREADS')
+        self.threads = int(threads or choose or max(1, min(8, os.cpu_count() or 4)))
         self.port = int(port or free_port())
         self.process = None
         self.log_path = model_directory() / 'llama-server.log'
@@ -364,7 +382,7 @@ def free_port():
         return probe.getsockname()[1]
 
 
-def ask(port, prompt, max_tokens=400, timeout=600, schema=None):
+def ask(port, prompt, max_tokens=480, timeout=600, schema=None):
     """One completion from the local server, with the answer text and its timing."""
     import json
     import time
@@ -394,5 +412,5 @@ def ask(port, prompt, max_tokens=400, timeout=600, schema=None):
         raise ValueError('Le modèle a raisonné sans conclure : augmentez la limite de '
                          'jetons ou vérifiez que le modèle supporte enable_thinking=False')
     usage = payload.get('usage') or {}
-    return dict(text=text.strip(), seconds=round(elapsed, 1),
+    return dict(text=text.strip(), seconds=round(elapsed, 1), finish=choice.get('finish_reason'),
                 prompt_tokens=usage.get('prompt_tokens'), completion_tokens=usage.get('completion_tokens'))

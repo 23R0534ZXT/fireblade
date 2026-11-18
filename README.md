@@ -12,7 +12,9 @@ groups the detections into findings, draws them, and lets a local language model
 finding with you — offline, with every sentence of its answer tied to the events it came
 from. Everything runs locally: no server, no upload, no cloud account, no API key.
 
-**[Download Fireblade 0.5.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/latest)** · [SHA-256 and release notes](https://github.com/23R0534ZXT/fireblade/releases) · [Windows qualification run](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
+**[Download Fireblade 0.5.0 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.5.0/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.5.0) · [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/44266460136)
+
+The desktop interface and most user guides are currently in French.
 
 Windows, one executable, no installation: Python, Qt, the parsers and the .NET readers
 are bundled inside it. The assistant is optional and downloaded separately, once.

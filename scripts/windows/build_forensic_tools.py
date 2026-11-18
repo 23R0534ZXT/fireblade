@@ -30,6 +30,69 @@ def load_evtx_fixture(spec):
     return sample
 
 
+ARCHIVE_PREFIX = 'Fireblade/_internal/resources/'
+PATH_LIMIT = 160
+
+
+def _unique(folder, stem, tag, suffix):
+    target = folder/f'{stem}-{tag}{suffix}'
+    counter = 1
+    while target.exists():
+        counter += 1
+        target = folder/f'{stem}-{tag}{counter}{suffix}'
+    return target
+
+
+def flatten_rules(resources):
+    """Hayabusa reads rules by content: the Sigma tree depth buys nothing but long paths."""
+    renamed = {}
+    for source in sorted((Path(resources)/'forensic-tools'/'Hayabusa'/'rules').glob('*')):
+        if not source.is_dir():
+            continue
+        for rule in sorted(source.rglob('*.yml')):
+            if rule.parent == source:
+                continue
+            relative = rule.relative_to(resources).as_posix()
+            tag = hashlib.sha1(relative.encode('utf-8')).hexdigest()[:6]
+            target = _unique(source, rule.stem, tag, rule.suffix) if (source/rule.name).exists() else source/rule.name
+            rule.rename(target)
+            renamed[relative] = target.relative_to(resources).as_posix()
+    for folder in sorted((Path(resources)/'forensic-tools'/'Hayabusa'/'rules').rglob('*'), reverse=True):
+        if folder.is_dir() and not any(folder.iterdir()):
+            folder.rmdir()
+    return renamed
+
+
+def shorten_paths(resources, archive_prefix=ARCHIVE_PREFIX, limit=PATH_LIMIT):
+    """The archive is extracted by hand: every entry must fit Windows Explorer's 260 chars."""
+    resources = Path(resources)
+    renamed = flatten_rules(resources)
+    short = resources/'short'
+    for path in sorted(resources.rglob('*')):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(resources).as_posix()
+        if len(archive_prefix) + len(relative) <= limit:
+            continue
+        parent, _, name = relative.rpartition('/')
+        budget = limit - len(archive_prefix) - (len(parent) + 1 if parent else 0)
+        suffix = path.suffix
+        tag = hashlib.sha1(relative.encode('utf-8')).hexdigest()[:6]
+        keep = budget - len(suffix) - len(tag) - 1
+        if keep >= 6:
+            target = _unique(path.parent, path.stem[:keep], tag, suffix)
+        else:
+            short.mkdir(exist_ok=True)
+            target = _unique(short, 'f', tag, suffix)
+        path.rename(target)
+        renamed[relative] = target.relative_to(resources).as_posix()
+    for path in resources.rglob('*'):
+        if path.is_file():
+            relative = path.relative_to(resources).as_posix()
+            if len(archive_prefix) + len(relative) > limit:
+                raise ValueError('Chemin encore trop long dans l’archive : '+relative)
+    return renamed
+
 def build(root, resources):
     root, resources = Path(root), Path(resources)
     lock = json.loads((root/'config/forensic-toolchain.json').read_text())
@@ -216,6 +279,10 @@ def build(root, resources):
     if not (destination/'Shellbags'/'Shellbags.dll').is_file():raise ValueError('Hôte Shellbags absent')
     (destination/'manifest.json').write_text(json.dumps(lock, indent=2), encoding='utf-8')
     stage_parser_fixtures(root, destination)
+    shortened = shorten_paths(resources)
+    if shortened:
+        (destination/'shortened-paths.json').write_text(
+            json.dumps(shortened, indent=2, ensure_ascii=False), encoding='utf-8')
     return destination
 
 

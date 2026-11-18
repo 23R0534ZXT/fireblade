@@ -1,3 +1,26 @@
+# Fireblade 0.5.2 — an archive Windows can open
+
+0.5.1 shipped as a folder, and one file inside it carried a path long enough to stop
+Windows Explorer at 260 characters: the download could not be extracted by
+double-clicking it. This patch fixes the archive and nothing else.
+
+## The rules tree is flattened
+
+- The Sigma rule set was nested `sigma/sysmon/emerging-threats/2023/Exploits/CVE-.../`,
+  which is twelve folders deep before the rule name starts. Hayabusa reads a rule by its
+  content, never by its folder, so the tree is now two levels deep (`rules/hayabusa`,
+  `rules/sigma`) and every rule keeps its bytes and its file name.
+- Anything still above the limit — a plugin, a parser fixture — is renamed with a short
+  stable suffix, and the build refuses to finish if a single entry is still too long.
+- The rename map is written to `shortened-paths.json` beside the tools, so a rule named
+  in a report can still be found.
+
+## What did not change
+
+- No behaviour, no interface, no import: 0.5.2 is 0.5.1 with a working archive.
+- Every entry of the published archive is now under 160 characters, which leaves room
+  for an extraction folder of about a hundred characters.
+
 # Fireblade 0.5.1 — an import that never loses a file in silence
 
 Every other screen in Fireblade is worth what the import put behind it, and one file

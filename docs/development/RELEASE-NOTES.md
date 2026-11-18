@@ -1,3 +1,53 @@
+# Fireblade 0.6.1 — the assistant works the case like an analyst
+
+0.6.0 taught the assistant to read a case. This version teaches it a method: the same
+first pass every time, then its own lookups, then an answer that separates what was seen
+from what it deduces — and a conversation that belongs to the case instead of the window.
+
+## A conversation the case keeps
+
+- Every turn is written to `assistant/conversation-<date>.jsonl` **inside the case**, at
+  the moment it happens. Close the window, reopen the case next week: the exchange is
+  there, in the panel's conversation list, and the next question continues it.
+- `New` starts a fresh thread without losing the previous one. A half-written answer
+  costs one line, never the conversation.
+- The list is read from the case folder, so a conversation can be replayed on another
+  machine that has the case — nothing is stored in the application profile.
+
+## A method, not a prompt
+
+The assistant now follows a written method: turn the question into the decision it feeds;
+keep observation and inference in different sentences; never read a timestamp alone; name
+the benign explanation that fits the same rows; say what is missing and which artifact
+would settle it. The answer starts with the verdict, then the evidence, then the
+explanation it could not rule out, then one next check.
+
+## It always looks first, then it digs
+
+- **The first pass is not left to the model.** Every question reads the case the same way
+  — what it contains, its detections, the minutes around the worst of them, and that same
+  window in time order. A small model asked "what next" before it has seen the detections
+  opens the wrong door.
+- **Then it chooses up to two more lookups itself**, from a menu that now includes the
+  moves an analyst actually makes: `around` (the minutes around a detection), `sequence`
+  (the same window in order), `entity` (everything one host, account, path or binary
+  touches), `rare` (the values that appear once, where hunting starts), `stats` (a column
+  at a glance), `timeline` (where the activity sits).
+- An empty lookup stops the digging instead of feeding the model a blank page.
+
+## It analyses, it never acts
+
+- Every lookup is a read. The lookup layer refuses any statement that is not a `SELECT`,
+  a `PRAGMA` or a `DESCRIBE`, before it reaches DuckDB, and the method says it in the
+  prompt: this assistant changes nothing in a case.
+- Verified on the real window: the analysis file is byte-identical after a full
+  question/answer/next-question cycle, SHA-256 compared before and after.
+
+## What it still is
+
+A local model, 2B or 4B by default. It reads, it correlates, it names its evidence and it
+admits what it cannot settle — but a chain of five deductions is still an answer to check.
+The method and the lookups are what make it useful; the model is the ceiling.
 # Fireblade 0.6.0 — the assistant reads the case, and the dial answers the click
 
 The local assistant was a single question about a single finding: forty rows in, a

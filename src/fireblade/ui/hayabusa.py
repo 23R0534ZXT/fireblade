@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (QSizePolicy, QAbstractItemView, QComboBox, QDialo
 from fireblade.core.assistant import (Assistant, answer, catalogue, install_model, install_runtime,
                                       write_manifest)
 from fireblade.core.assistant_chat import Chat
+from fireblade.core.assistant_history import History
 from fireblade.core.case_tools import CaseTools
 from fireblade.core.explain import (SCHEMA, build_pack, describe_without_model, read_answer,
                                     render_structured, verify)
@@ -139,6 +140,16 @@ class HayabusaPanel(QWidget):
         self.card.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.card.setMargin(8)
         side_layout.addWidget(self.card)
+        history_row = QHBoxLayout()
+        self.conversations = QComboBox()
+        self.conversations.setToolTip('Conversations are saved inside this case.')
+        self.conversations.activated.connect(self.open_conversation)
+        history_row.addWidget(self.conversations, 1)
+        self.new_conversation = QPushButton('New')
+        self.new_conversation.setToolTip('Start a conversation that does not carry the previous one.')
+        self.new_conversation.clicked.connect(self.start_conversation)
+        history_row.addWidget(self.new_conversation)
+        side_layout.addLayout(history_row)
         self.explanation = QPlainTextEdit()
         self.explanation.setReadOnly(True)
         self.explanation.setPlaceholderText('Select a finding to see what Fireblade knows about it.')
@@ -477,6 +488,60 @@ class HayabusaPanel(QWidget):
             lines.append('  %s %s id=%s %s' % (row.stamp, row.host, row.event_id, row.text[:180]))
         return '\n'.join(lines)
 
+    def case_history(self):
+        """The conversations of this case, read from the case folder, not from the window."""
+        case = getattr(self.window, 'case', None)
+        if case is None:
+            return None
+        try:
+            return History(case.path)
+        except OSError:
+            return None
+
+    def refresh_conversations(self, select=''):
+        """The list the analyst sees: one line per conversation, newest first."""
+        history = self.case_history()
+        self._conversations = history.conversations() if history is not None else []
+        self.conversations.blockSignals(True)
+        self.conversations.clear()
+        self.conversations.addItem('New conversation', '')
+        for conversation in self._conversations:
+            when = conversation.updated[11:16] if len(conversation.updated) >= 16 else ''
+            label = conversation.title if not when else '%s  ·  %s' % (conversation.title, when)
+            self.conversations.addItem(label, conversation.identifier)
+        index = self.conversations.findData(select)
+        self.conversations.setCurrentIndex(max(0, index))
+        self.conversations.blockSignals(False)
+
+    def open_conversation(self, index=0):
+        """Reopen what was said in this case, and keep going from there."""
+        identifier = self.conversations.itemData(index) or ''
+        if not identifier:
+            self.start_conversation()
+            return
+        history = self.case_history()
+        conversation = history.load(identifier) if history is not None else None
+        if conversation is None:
+            self.explanation.appendPlainText('That conversation could not be read.')
+            return
+        self.chat = Chat(str(self.assistant.root), self.case_tools(), history=history,
+                         conversation=conversation)
+        self.explanation.clear()
+        for message in conversation.messages:
+            if message.role == 'user':
+                self.explanation.appendPlainText('You: ' + message.text)
+            else:
+                self.explanation.appendPlainText('\n' + message.text)
+        self.explanation.verticalScrollBar().setValue(self.explanation.verticalScrollBar().maximum())
+
+    def start_conversation(self):
+        if self.chat is not None:
+            self.chat.reset()
+        self.explanation.clear()
+        self.explanation.setPlaceholderText('Ask anything about this case.')
+        self.conversations.setCurrentIndex(0)
+        self.refresh_conversations()
+
     def case_tools(self):
         """The case as the assistant can read it: a bounded query on the open connection."""
         case = getattr(self.window, 'case', None)
@@ -500,7 +565,10 @@ class HayabusaPanel(QWidget):
             self.explanation.appendPlainText('\nThe local assistant cannot answer: ' + status.detail)
             return
         if self.chat is None or self.chat.root != str(self.assistant.root):
-            self.chat = Chat(str(self.assistant.root), self.case_tools())
+            history = self.case_history()
+            conversation = history.latest() if history is not None else None
+            self.chat = Chat(str(self.assistant.root), self.case_tools(), history=history,
+                             conversation=conversation)
         self._busy_since = time.monotonic()
         self._ticker.start()
         self.explain_button.setEnabled(False)
@@ -519,6 +587,7 @@ class HayabusaPanel(QWidget):
         if turn is None or not getattr(turn, 'text', ''):
             self.explanation.appendPlainText('The local assistant did not answer.')
             return
+        self.refresh_conversations(getattr(turn, 'conversation', '') or '')
         lines = [turn.text]
         if turn.steps:
             lines.append('Read: ' + ', '.join('%s (%d row(s))' % (step.tool, step.rows)

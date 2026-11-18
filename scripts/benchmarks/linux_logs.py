@@ -55,26 +55,36 @@ def qualify(directory, gib=32, import_rows=200000):
             source_hash=sha256(source);sink=DigestSink();observed=[0]
             decoded_hash=hashlib.sha256();decoded_bytes=[0]
             expected_raw=block[:-1].decode();expected_detail='A'*(len(block)-len(prefix)-1)
-            original_open=Path.open;original_writer=csv.DictWriter
+            original_open=Path.open;original_writer=csv.writer
             def open_output(path,*args,**kwargs):
                 return sink if path==out/'Linux — journaux.csv' else original_open(path,*args,**kwargs)
-            class CheckedWriter(original_writer):
+            # linux_logs writes its CSV with csv.writer over a fixed header list, not with
+            # DictWriter, and the row label is 'Structured'/'Raw' since the labels were
+            # translated. The old shim therefore never saw a row and the stress check had
+            # been passing on an empty count; this one validates every row it receives.
+            headers=list(linux_logs.HEADERS)
+            class CheckedRows:
+                def __init__(self,stream,*args,**kwargs):
+                    self.stream=stream
                 def writerow(self,row):
-                    if row.get('Lecture') in ('Structurée','Brute'):
+                    record=dict(zip(headers,row))
+                    if record.get('Lecture') in ('Structured','Raw'):
                         index=observed[0]
-                        assert row['Texte brut']==expected_raw
-                        assert row['Détail']==expected_detail
-                        assert row['PID']=='42' and row['Ligne']==str(index+1)
-                        assert row['Offset']==str(index*len(block))
-                        value=row['Texte brut'].encode('utf-8')
+                        assert record['Texte brut']==expected_raw
+                        assert record['Détail']==expected_detail
+                        assert record['PID']=='42' and record['Ligne']==str(index+1)
+                        assert record['Offset']==str(index*len(block))
+                        value=record['Texte brut'].encode('utf-8')
                         decoded_hash.update(value);decoded_hash.update(b'\n');decoded_bytes[0]+=len(value)+1
                         observed[0]+=1
                         if observed[0] % 1024 == 0:
                             print(f'Linux stress: {observed[0]//1024} GiB / {count//1024} GiB',flush=True)
-                        return None
-                    return super().writerow(row)
+                    return None
+                def writerows(self,rows):
+                    for row in rows:
+                        self.writerow(row)
             start=time.monotonic()
-            with patch.object(Path,'open',open_output),patch.object(csv,'DictWriter',CheckedWriter):
+            with patch.object(Path,'open',open_output),patch.object(csv,'writer',CheckedRows):
                 result=linux_logs.parse(source,out)
             duration=time.monotonic()-start
             assert observed[0]==count==result['structured'] and not result['raw'] and not result['warnings'], (observed[0],result)

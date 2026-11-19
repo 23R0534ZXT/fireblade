@@ -37,15 +37,34 @@ def main():
     path=root/'README.md';updated=promote(path.read_text(encoding='utf-8'),release,version,digest,commit,url)
     subprocess.run(['git','fetch','origin','main'],check=True)
     head=subprocess.check_output(['git','rev-parse','origin/main'],text=True).strip()
-    if head!=commit:raise ValueError('Main changed during qualification; refusing to overwrite it')
-    path.write_text(updated,encoding='utf-8')
+    if head!=commit:
+        # The main run publishes its own README update in parallel with the tag run, so
+        # main almost always moves during a qualification. The change here is one line in
+        # a file this script owns: redo it on the fresh file instead of refusing, and touch
+        # nothing else.
+        subprocess.run(['git','checkout','--detach',head],check=True)
+        path.write_text(promote(path.read_text(encoding='utf-8'),release,version,digest,commit,url),
+                        encoding='utf-8')
+    else:
+        path.write_text(updated,encoding='utf-8')
     # Commit as the maintainer, not as a bot: the contributor list is public and
     # should only show the person who actually owns the repository.
     subprocess.run(['git','config','user.name',os.environ.get('MAINTAINER_NAME','23R0534ZXT')],check=True)
     subprocess.run(['git','config','user.email',os.environ.get('MAINTAINER_EMAIL','112427500+23R0534ZXT@users.noreply.github.com')],check=True)
     subprocess.run(['git','add','README.md'],check=True)
     subprocess.run(['git','commit','-m',f'Docs: link qualified Fireblade {version} release'],check=True)
-    subprocess.run(['git','push','origin','HEAD:main'],check=True)
+    for attempt in range(3):
+        pushed=subprocess.run(['git','push','origin','HEAD:main'])
+        if pushed.returncode==0:return
+        # Another run pushed between our fetch and our push: replay the one-line edit on
+        # top of what is there now, never a force.
+        subprocess.run(['git','fetch','origin','main'],check=True)
+        subprocess.run(['git','checkout','--detach','origin/main'],check=True)
+        path.write_text(promote(path.read_text(encoding='utf-8'),release,version,digest,commit,url),
+                        encoding='utf-8')
+        subprocess.run(['git','add','README.md'],check=True)
+        subprocess.run(['git','commit','-m',f'Docs: link qualified Fireblade {version} release'],check=True)
+    raise SystemExit('the README update could not be pushed after three attempts')
 
 
 if __name__=='__main__':main()

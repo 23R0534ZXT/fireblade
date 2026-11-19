@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from fireblade.core.i18n import translate
+
 import math
 
 import time
@@ -234,6 +236,11 @@ class HayabusaPanel(QWidget):
         self.setup_button.setToolTip('Download the engine and the weights once; everything runs offline after that.')
         self.setup_button.clicked.connect(self.setup_assistant)
         self.actions_row.addWidget(self.setup_button)
+        self.rules_button = QPushButton(translate('Règles de détection…'))
+        self.rules_button.setToolTip(translate('Lire et ajuster les règles Hayabusa ; les changements '
+                                               's’appliquent à la prochaine analyse.'))
+        self.rules_button.clicked.connect(self.open_rules)
+        self.actions_row.addWidget(self.rules_button)
         self.progress_label = shrinkable(QLabel())
         self.actions_row.addWidget(self.progress_label, 1)
         layout.addLayout(self.actions_row)
@@ -762,6 +769,17 @@ class HayabusaPanel(QWidget):
         self.explanation.appendPlainText('The local assistant failed: %s' % message)
 
     # ---------------------------------------------------------------- installation
+    def open_rules(self):
+        from pathlib import Path
+        from fireblade.ui.hayabusa_rules_dialog import HayabusaRulesDialog
+        pack = self.window.toolpack() if hasattr(self.window, 'toolpack') else None
+        root = Path(getattr(pack, 'root', ''))/'Hayabusa'/'rules' if pack else None
+        if root is None or not root.is_dir():
+            self.window.error(translate('Les règles Hayabusa ne sont pas installées dans cette '
+                                        'construction : rien à modifier.'))
+            return
+        HayabusaRulesDialog(root, self).exec()
+
     def setup_assistant(self):
         """Fetch the engine and the weights, with a progress the analyst can read."""
         chooser = ModelChooser(self.assistant.status().available_mb, self)

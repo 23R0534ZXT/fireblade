@@ -12,13 +12,36 @@ def analysis_label(source_info):
     A Linux collection imports an intermediate CSV per log, so every analysis used
     to be called "Linux - journaux-fireblade.csv". The label recorded at collection
     time names the real file; the fallback keeps older analyses readable.
+
+    A parser CSV is named by the artefact it holds, never by the tool's word for it:
+    "amcache.csv" reads "Amcache", and a bare "export.csv" takes the family its rows
+    carry. The file's own stem stays when it adds something ("Amcache · amcache-01").
     """
     info = source_info or {}
     label = info.get("label")
     if label:
         return str(label)
     path = str(info.get("path", ""))
-    return Path(path).name if path else ""
+    if not path:
+        return ""
+    from fireblade.core.artifact_names import GENERIC_STEMS, csv_kind
+    name = Path(path).name
+    stem = Path(name).stem
+    if name.casefold().endswith((".csv", ".tsv", ".jsonl")):
+        kind = csv_kind(path)
+        generic = stem.casefold() in GENERIC_STEMS
+        if kind:
+            if generic or kind.casefold() in stem.casefold():
+                return kind
+            return kind+" · "+stem
+        if generic:
+            family = str(info.get("artifact") or info.get("parser") or "").strip()
+            if family:
+                return family
+            parent = Path(path).parent.name
+            if parent and len(parent) > 2:
+                return parent
+    return name
 
 
 def _path_parts(path):

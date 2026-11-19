@@ -1,6 +1,8 @@
 """Context menus for the grid. Actions delegate to the window's existing commands."""
 from PySide6.QtWidgets import QApplication, QMenu
 
+from fireblade.core.i18n import translate
+
 
 def header_menu(window, section):
     if not window.case or window.busy or not 1 <= section <= len(window.case.headers):
@@ -46,6 +48,18 @@ def header_menu(window, section):
     return menu
 
 
+def pivot_anchor(window, values):
+    """The 'what launched this' search for a row, when the row carries a process at all."""
+    from fireblade.core.pivot import anchor_of
+    headers = getattr(getattr(window, 'case', None), 'headers', None)
+    if not headers:
+        return None
+    try:
+        return anchor_of(list(headers), list(values))
+    except (IndexError, TypeError):
+        return None
+
+
 def cell_menu(window, index):
     if not window.model or window.busy or not index.isValid():
         return None
@@ -70,6 +84,10 @@ def cell_menu(window, index):
             window.search.setText('' if value is None else str(value));window.find_workspace()
         menu.addAction('Rechercher dans tous les artefacts', search_all)
         menu.addAction("Corréler dans toutes les analyses", lambda: window.correlate_value(column, value))
+        anchor = pivot_anchor(window, node.values[1:])
+        if anchor is not None:
+            menu.addAction(translate('Qu’est-ce qui a lancé {} ?').format(anchor['process']),
+                           lambda a=anchor: window.pivot_launch(a))
         if value is not None:
             menu.addAction("Créer une règle pour cette valeur…", lambda: window.rule_from_value(column, value))
             menu.addAction("Ouvrir avec…", lambda: window.open_with(str(value)))

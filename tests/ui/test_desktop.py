@@ -628,8 +628,11 @@ def test_header_controls_follow_layout_and_cancel_pending_on_view_change(app, wi
     window.tree.horizontalScrollBar().setValue(150)
     app.processEvents()
     edit = header.controls[2][0]
-    assert edit.x() == header.sectionViewportPosition(2) + 3
-    assert edit.width() == header.sectionSize(2) - 6
+    operator = header.operators[2]
+    # The operator glyph owns the left edge of the cell; the field starts after it.
+    assert operator.x() == header.sectionViewportPosition(2) + 3
+    assert edit.x() == header.sectionViewportPosition(2) + 22
+    assert edit.width() == header.sectionSize(2) - 25
     window.tree.setColumnHidden(2, True)
     app.processEvents()
     assert edit.isHidden()

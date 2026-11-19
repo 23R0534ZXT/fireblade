@@ -42,6 +42,23 @@ class AnalysisNavigator(QWidget):
         self.tree.itemClicked.connect(self.activate)
         layout.addWidget(self.tree)
 
+    @staticmethod
+    def _title(snapshot, labels, short):
+        """A parser CSV by its artefact, evidence by its friendly name.
+
+        `amcache.csv` is a parser's word for Amcache; `Security.evtx` is already the
+        right name, and the friendly form ("Event logs · Security") says more.
+        """
+        full = labels.get(snapshot.path)
+        if full:
+            return full
+        source = str(snapshot.source_info.get('path', ''))
+        friendly = short.get(source)
+        suffix = Path(source).suffix.casefold()
+        if suffix in ('.csv', '.tsv', '.jsonl'):
+            return analysis_label(snapshot.source_info) or friendly or ''
+        return friendly or analysis_label(snapshot.source_info) or ''
+
     def _leaf(self, parent, title, index, tip, closed_paths, snapshot):
         """One analysis under its family, marked and greyed out when its tab was closed."""
         closed = snapshot.path in closed_paths
@@ -140,8 +157,7 @@ class AnalysisNavigator(QWidget):
                         title = (relative.name or PurePosixPath(
                             analysis_label(snapshot.source_info)).name)+' · '+family
                     else:
-                        title = (labels.get(snapshot.path) or short.get(snapshot.source_info.get('path', ''))
-                                 or analysis_label(snapshot.source_info))
+                        title = self._title(snapshot, labels, short)
                     self._leaf(parent, title, index,
                                (origin or {}).get('source', str(source))+'\n'+snapshot.path,
                                closed_paths, snapshot)
@@ -154,8 +170,7 @@ class AnalysisNavigator(QWidget):
                     parent=QTreeWidgetItem(parent,[f"{family} ({len(members)})"])
                     parent.setData(0,Qt.UserRole+1,root_key+'|'+family)
                 for index,snapshot,source in members:
-                    title=(labels.get(snapshot.path) or short.get(snapshot.source_info.get('path', ''))
-                           or analysis_label(snapshot.source_info))
+                    title=self._title(snapshot, labels, short)
                     self._leaf(parent, title, index,
                                str(snapshot.source_info.get('path',''))+'\n'+snapshot.path,
                                closed_paths, snapshot)

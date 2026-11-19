@@ -1,3 +1,68 @@
+# Fireblade 0.7.8 — the import in full, and rules you can change
+
+## An import history, file by file
+
+- The Imports panel gains "History…": every file of the import with its state — imported,
+  duplicate, not imported — its reader, and the reason when there is one. The list filters
+  to imported, not imported or duplicates, and each row can be ticked.
+- Ticked files can be retried with another reader, which is the answer to "these EVTX were
+  not imported": the reason is written next to each one, and another attempt is one click.
+- A row whose file resembles another (same name, same size, different content) says so: the
+  two are distinct evidence, and both are imported.
+
+## Duplicates are content, never resemblance
+
+- Two files are a duplicate only when their SHA-256 matches: the same bytes, read once. A
+  file that merely looks like another keeps its place in the case, and the history names the
+  file it resembles instead of hiding it.
+
+## Hayabusa rules you can read, adjust and switch off
+
+- The Hayabusa panel gains "Detection rules…": the rules of the pack, searchable, with their
+  title, level and state; the selected rule opens as text, and saving validates that it still
+  carries what Hayabusa needs (title, logsource, detection).
+- A saved rule is an override in your own rules folder — the delivered pack is never
+  written. A rule can be switched off without deleting anything, and restored to the pack's
+  version in one click.
+- The next analysis runs on a merged folder: the pack's rules, minus the ones switched off,
+  plus your overrides, linked so the cost is nil.
+
+# Fireblade 0.7.7 — "what launched this?", a filter operator, and names that say something
+
+## From a row to what started the process
+
+- Right-clicking a row that carries a process — a PowerShell script block, a Sysmon image, a
+  4688 new process — offers "What launched powershell.exe?". The timeline opens with that
+  process searched across **every analysis of the case**, narrowed to half an hour before the
+  event and two minutes after it, and the line under the results says what was searched, on
+  which host and around which instant.
+- Nothing is concluded for the analyst: the rows the artefacts recorded come back, with the
+  parent process columns they carry, and the reading stays theirs.
+- The anchor is read the way a practitioner reads a row: by column name (Image, NewProcessName,
+  ScriptBlockText, CommandLine…) and, when there is none, by what the value looks like.
+
+## A filter operator under every column
+
+- The box under a column header now starts with a glyph (∈, =, ≠, ^, $, .*, >, ≤…): clicking it
+  offers the whole operator list — contains, does not contain, exact, starts, ends, regex,
+  empty, numeric and date comparisons, named expression. The filter is applied with the operator
+  chosen, without leaving the grid.
+
+## Artefact names instead of parser file names
+
+- A parser CSV is named by what it holds: `amcache.csv` reads "Amcache", an EvtxECmd export
+  reads "Event logs", and a bare `export.csv` takes its family or its folder instead of its
+  own meaningless name. The file stem stays when it adds something.
+
+## Verified
+
+- Real window, four analyses: the pivot from a 4104 row found two events across the case,
+  including the Sysmon process-creation row that carried the same command line, and the
+  window line named the host and the instant.
+- The operator glyph applied an exact filter (`=`) instead of the implicit "contains".
+- The tree showed "Amcache" and "PowerShell" where it used to show `amcache.csv` and a bare
+  file name, and no longer showed `export.csv`.
+
 # Fireblade 0.7.6 — a closed tab keeps its analysis, a column hides with a cross, and the graph leaves as an ATT&CK layer
 
 ## Closing a grid no longer loses the file

@@ -447,10 +447,14 @@ class TimelinePanel(QWidget):
             self.start.setText(utc_label(self.bounds[0]).replace(' UTC','Z').replace(' ','T'))
             self.end.setText(utc_label(self.bounds[1]).replace(' UTC','Z').replace(' ','T'))
         else:self.start.clear();self.end.clear()
+        if getattr(self,'pivot_note',None) and self.pivot_note not in self.stats.text():
+            self.stats.setText(self.stats.text()+'\n'+self.pivot_note)
+        self.apply_pending_pivot()
 
     def apply_query(self):
         if self.loading:return
         self.offset=0
+        self.pivot_note=None
         if self.store and [(d.path,d.source_info) for d in self.documents] == [(d.path,d.source_info) for d in self.window.documents]:self.refresh(fit=True)
         else:self.rebuild()
 
@@ -521,6 +525,50 @@ class TimelinePanel(QWidget):
             self.window.set_view(View(filters=[Filter(-1,'eq',str(row[1]))]))
             self.window.workbench.setCurrentIndex(0)
 
+    def pivot(self, anchor):
+        """Look for what launched a process: its name across every artefact, around the moment.
+
+        The window is deliberately narrow — half an hour before the event, two minutes
+        after — because a launcher is close in time. What comes back is evidence, not a
+        verdict: the rows show the parents the artefacts recorded, and the analyst reads
+        them.
+        """
+        self.pending_pivot=anchor
+        self.saved_bounds=None;self.saved_sources=None
+        self.query.setText(anchor['token'])
+        self.kind.setCurrentIndex(max(0,self.kind.findData('text')))
+        self.exact.setChecked(False)
+        self.source_filter=None
+        # A collection or a first build may still be running: the request is armed and
+        # applied as soon as the store exists, instead of being dropped.
+        if self.loading:return
+        if not self.state_loaded:self.load_state()
+        self.apply_query()
+
+    def apply_pending_pivot(self):
+        """Once the store exists: narrow to the launch window and say what was searched."""
+        anchor=getattr(self,'pending_pivot',None)
+        if not anchor or not self.store or self.loading:return
+        if self.query.text()!=anchor['token']:
+            # The page shown was built before the request: ask again, once.
+            self.query.setText(anchor['token'])
+            self.exact.setChecked(False)
+            self.apply_query()
+            return
+        self.pending_pivot=None
+        moment=anchor.get('moment') or ''
+        try:moment_ns=self.store.parse_time(moment) if moment else None
+        except Exception:moment_ns=None
+        minutes=30
+        where=anchor.get('host') or translate('hôte non nommé')
+        # Kept aside: narrowing the window refreshes the page and rewrites the stats line.
+        self.pivot_note=translate('Quête du lanceur de {} · {} · fenêtre ± {} min autour de {}').format(
+            anchor['token'],where,minutes,moment or translate('l’instant inconnu'))
+        if moment_ns:
+            self.select_range(moment_ns-minutes*60*1_000_000_000,moment_ns+2*60*1_000_000_000)
+        if self.pivot_note not in self.stats.text():
+            self.stats.setText(self.stats.text()+'\n'+self.pivot_note)
+
     def correlate(self,value,kind='text'):
         if self.loading:return
         if not self.state_loaded:self.load_state()
@@ -586,6 +634,14 @@ class TimelineMixin:
     def return_to_timeline(self):
         if not self.can_open_file():return
         self.restore_timeline_origin();self.show_timeline()
+
+    def pivot_launch(self,anchor):
+        """From a row: the timeline, searching for the process that started it."""
+        if not self.can_open_file() or not anchor:return
+        self.show_timeline()
+        panel=self.timeline_panel
+        if not panel.state_loaded:panel.load_state()
+        panel.pivot(anchor)
 
     def correlate_value(self,column,value):
         if value is None or not self.can_open_file():return

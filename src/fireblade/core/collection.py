@@ -432,7 +432,8 @@ class Collection:
         if self.index_folder is not None:
             self.known = {digest: record for digest, record in load_index(self.index_folder).items()
                           if str(record.get('collection', '')) != str(self.output)}
-        self._seen = {}
+        self._seen = {}
+        self._similar = {}
         self._seen_lock = threading.Lock()
         self.report = dict(format='fireblade-collection', version=1, source=str(self.root),
                            sources=[str(item) for item in self.sources],
@@ -892,11 +893,19 @@ class Collection:
         if not digest or not self.deduplicate_content:
             return None
         path = str(entry.get('path', ''))
+        signature = (Path(path).name.casefold(), entry.get('size'))
         with self._seen_lock:
             # setdefault is the whole decision: the first row to arrive owns the
             # content, and a row that finds itself already registered is reading
             # its own file again (a resume), not a second copy of it.
             first = self._seen.setdefault(digest, entry)
+            twin = self._similar.get(signature)
+            if twin is None:
+                self._similar[signature] = (digest, path)
+            elif twin[0] != digest:
+                # Same name and same size, different content: the two files look alike and
+                # are not the same. It is imported, and the row says what it resembles.
+                entry['similar_to'] = twin[1]
         if first is not entry:
             reason = f'Same content as {self.label_for(first.get("path", path))} ; read once'
             entry.update(status='duplicate', reason=reason, duplicate_of=first.get('path'))
@@ -1217,8 +1226,21 @@ class Collection:
                     raise ValueError(f'EVTX modifié pendant copie : {source}')
                 origins[copy.name] = str(source)
             target = folder/'hayabusa.csv'
+            rules = Path(self.pack.root)/'Hayabusa'/'rules'
+            try:
+                from fireblade.core import hayabusa_rules
+                if hayabusa_rules.has_changes():
+                    # The analyst edited or switched off rules: Hayabusa reads a folder built
+                    # for this run, and the delivered pack stays untouched.
+                    merged = Path(self.output)/'hayabusa-rules'
+                    receipt = hayabusa_rules.effective_rules(rules, merged)
+                    self.progress('Règles Hayabusa : {} utilisateur · {} désactivées · {} liées'.format(
+                        receipt['overrides'], receipt['skipped'], receipt['linked']))
+                    rules = Path(receipt['path'])
+            except Exception as exc:  # noqa: BLE001 - a rule folder must not stop a run
+                self.progress('Règles Hayabusa non chargées : '+str(exc))
             command = self.pack.command('Hayabusa') + ['dfir-timeline', '-d', str(inputs), '-o', str(target),
-                '-r', str(Path(self.pack.root)/'Hayabusa'/'rules'), '--no-wizard', '--min-level', min_level,
+                '-r', str(rules), '--no-wizard', '--min-level', min_level,
                 '--profile', 'verbose', '--iso-8601', '--no-color', '--scan-all-evtx-files']
             detection['command'] = command
             self.progress('Hayabusa : analyse de tous les EVTX vérifiés…')

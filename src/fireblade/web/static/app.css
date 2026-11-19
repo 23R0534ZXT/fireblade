@@ -185,3 +185,11 @@ body.dropping{outline:2px dashed #7aa9c9;outline-offset:-6px}
 .columns-list label:hover{background:#eaf5ff}
 .columns-list input[type=checkbox]{margin:0}
 .columns-list .pin{margin-left:auto;font-size:11px;color:#555}
+
+.timeline-legend{display:flex;gap:14px;padding:2px 8px;font-size:11px;flex-wrap:wrap}
+.timeline-legend .chip{display:flex;align-items:center;gap:5px}
+.timeline-legend .swatch{width:10px;height:10px;border:1px solid #999;display:inline-block}
+.timeline-hist{display:flex;align-items:flex-end;gap:1px;height:66px;margin:2px 6px 4px;
+  border:1px solid var(--border);background:#fff;padding:2px}
+.timeline-hist .bar{flex:1;min-width:1px;background:#2d9cdb;display:flex;flex-direction:column;justify-content:flex-end}
+.timeline-hist .seg{width:100%}

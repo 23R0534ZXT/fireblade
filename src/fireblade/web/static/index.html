@@ -56,7 +56,7 @@
     <div class="tab active" data-tab="analyses">Analyses</div>
     <div class="tab off" data-tab="imports" title="Not available in Fireblade Host yet">Imports</div>
     <div class="tab" data-tab="cases">Cases</div>
-    <div class="tab off" title="Not available in Fireblade Host yet">Timeline &amp; correlations</div>
+    <div class="tab" data-tab="timeline">Timeline &amp; correlations</div>
     <div class="tab off" title="Not available in Fireblade Host yet">IOC hunting</div>
     <div class="tab off" title="Not available in Fireblade Host yet">Hayabusa + AI</div>
     <div class="tab off" title="Not available in Fireblade Host yet">Actions &amp; tracking</div>
@@ -110,6 +110,37 @@
           <button class="btn" id="next">Next</button>
           <div class="spacer"></div>
           <div class="info" id="pageinfo"></div>
+        </div>
+      </div>
+
+      <div id="timeline-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="filterbar">
+          <select class="select" id="timeline-kind">
+            <option value="text">Any text</option>
+            <option value="user">User</option>
+            <option value="ip">IP address</option>
+            <option value="path">Path</option>
+            <option value="hash">Hash</option>
+          </select>
+          <input class="search" id="timeline-search" placeholder="Correlate an entity across the case…  Enter to search">
+          <button class="btn" id="timeline-build">Build / refresh</button>
+        </div>
+        <div class="timeline-legend" id="timeline-legend"></div>
+        <div class="timeline-hist" id="timeline-hist"></div>
+        <div class="gridwrap" style="flex:1">
+          <div class="gridbody" id="timeline-body">
+            <table>
+              <colgroup><col style="width:170px"><col style="width:130px"><col><col style="width:200px"></colgroup>
+              <thead><tr><th>Time (UTC)</th><th>Source</th><th>Summary</th><th>Note</th></tr></thead>
+              <tbody id="timeline-rows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="pager">
+          <button class="btn" id="timeline-prev">Previous</button>
+          <button class="btn" id="timeline-next">Next</button>
+          <div class="spacer"></div>
+          <div class="info" id="timeline-info"></div>
         </div>
       </div>
 

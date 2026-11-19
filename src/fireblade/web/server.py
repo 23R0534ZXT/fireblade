@@ -76,6 +76,14 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/timeline")
+    def timeline(identifier: str, start: int | None = None, end: int | None = None,
+                 offset: int = 0, text: str = "", kind: str = "text"):
+        try:
+            return library.timeline(identifier, start=start, end=end, offset=offset, text=text, kind=kind)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/analyses/{index}/bookmarks")
     def bookmarks(identifier: str, index: int):
         return library.bookmarks(identifier, index)

@@ -23,6 +23,8 @@ from fireblade.core.engine import Case
 from fireblade.core.investigations import InvestigationLibrary
 from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View, analysis_label
 from fireblade.core.sessions import read_session
+from fireblade.core.timeline import TimelineStore
+from fireblade.core.workspace_reader import WorkspaceReader
 
 # Columns the grid always shows before the analysis own columns, in display order.
 META_COLUMNS = ["__row_id"]
@@ -61,6 +63,8 @@ class Library:
         self.root = Path(root).resolve()
         self.library = InvestigationLibrary(self.root)
         self._open: dict[tuple[str, int], Case] = {}
+        self._timelines: dict[tuple[str, str | None], TimelineStore] = {}
+        self._timeline_dir = tempfile.mkdtemp(prefix="fireblade-timelines-")
         self._lock = threading.RLock()
 
     # -- catalogue ---------------------------------------------------------
@@ -127,6 +131,7 @@ class Library:
             source = document.get("source") or {}
             entries.append({
                 "index": index,
+                "source_info": source if isinstance(source, dict) else {},
                 "label": self._label(source, resolved or recorded),
                 "path": str(resolved or ""),
                 "recorded_path": recorded,
@@ -172,6 +177,73 @@ class Library:
                 break
         return matches[0].resolve() if len(matches) == 1 else None
 
+
+    # -- timeline ----------------------------------------------------------
+
+    def _snapshots(self, identifier: str):
+        """The case's analyses as snapshots, with the source record the timeline needs."""
+        data = self.library.read(identifier)
+        snapshots = []
+        for entry in self._analyses(data):
+            if not entry["found"]:
+                continue
+            snapshots.append(AnalysisSnapshot(entry["path"], entry.get("source_info") or {},
+                                              View(), b""))
+        return snapshots
+
+    def timeline(self, identifier: str, start: int | None = None, end: int | None = None,
+                 offset: int = 0, text: str = "", kind: str = "text") -> dict:
+        """Counts the case's rows over time with the desktop's own TimelineStore."""
+        key = (identifier, self.library.read(identifier).get("revision"))
+        store = self._timelines.get(key)
+        if store is None:
+            snapshots = self._snapshots(identifier)
+            if not snapshots:
+                raise ServiceError("Ce case ne contient aucune analyse.")
+            # DuckDB refuses a second connection with another configuration: the
+            # grid's open handles are closed before the timeline opens the files
+            # read-only, and they reopen on the next grid request.
+            with self._lock:
+                for open_key in [item for item in self._open if item[0] == identifier]:
+                    try:
+                        self._open.pop(open_key).close()
+                    except Exception:
+                        pass
+            store = TimelineStore(self._timeline_dir)
+            reader = WorkspaceReader(snapshots)
+            store.build(reader, columns={})
+            for old in list(self._timelines):
+                if old[0] == identifier:
+                    try:
+                        self._timelines.pop(old).close()
+                    except Exception:
+                        pass
+            self._timelines[key] = store
+        filters = {}
+        if text:
+            filters.update(text=text, kind=kind)
+        low, high, total, dated = store.extent(**filters)
+        page = store.page(offset, **(filters if filters else {}))
+        payload = {
+            "sources": [{k: item.get(k) for k in ("id", "name", "original", "rows", "dated", "undated", "column", "error")}
+                        for item in store.sources],
+            "extent": {"start": low, "end": high, "rows": int(total or 0), "dated": int(dated or 0)},
+            "count": int(page["count"]),
+            "page_size": store.PAGE_SIZE,
+            "offset": int(offset),
+            "rows": [[int(row[0]), int(row[1]), int(row[2]) if row[2] is not None else None,
+                      row[3], row[4], row[5] or "", bool(row[6]), bool(row[7])] for row in page["rows"]],
+        }
+        if low is not None and high is not None:
+            window_start = int(start if start is not None else low)
+            window_end = int(end if end is not None else high)
+            histogram = store.histogram(window_start, window_end, 120, **(filters if filters else {}))
+            payload["histogram"] = {"start": histogram["start"], "end": histogram["end"],
+                                    "width": histogram["width"], "bins": histogram["bins"],
+                                    "rows": [[int(a), int(b), int(c), int(d)]
+                                                                          for a, b, c, d in histogram["rows"]]}
+            payload["window"] = {"start": window_start, "end": window_end}
+        return payload
 
     # -- importing ---------------------------------------------------------
 
@@ -255,6 +327,12 @@ class Library:
                 except Exception:
                     pass
             self._open.clear()
+            for store in self._timelines.values():
+                try:
+                    store.close()
+                except Exception:
+                    pass
+            self._timelines.clear()
 
     def columns(self, identifier: str, index: int) -> list[str]:
         case = self._case_for(identifier, index)

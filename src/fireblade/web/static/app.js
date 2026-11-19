@@ -181,6 +181,71 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- timeline ---------- */
+
+const TIMELINE_COLORS = ["#2d9cdb", "#e6a23c", "#27ae82", "#bb6bd9", "#eb6577", "#56bfc4", "#9fa8da", "#b4a34a"];
+const timelineState = { offset: 0, text: "", kind: "text", payload: null };
+
+function utcLabel(ns) {
+  const ms = Number(ns) / 1e6;
+  return new Date(ms).toISOString().replace("T", " ").replace(".000Z", "Z");
+}
+
+async function loadTimeline(reset) {
+  if (!state.openCase) return;
+  if (reset) timelineState.offset = 0;
+  const params = new URLSearchParams({ offset: String(timelineState.offset) });
+  if (timelineState.text) { params.set("text", timelineState.text); params.set("kind", timelineState.kind); }
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/timeline?${params}`);
+    timelineState.payload = payload;
+    renderTimeline(payload);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+function renderTimeline(payload) {
+  $("timeline-legend").innerHTML = payload.sources.map((source, index) =>
+    `<span class="chip"><span class="swatch" style="background:${TIMELINE_COLORS[index % 8]}"></span>${escapeHtml(source.name)} — ${source.dated} dated / ${source.rows} row(s)</span>`).join("");
+
+  const hist = payload.histogram;
+  const box = $("timeline-hist");
+  if (!hist || !hist.rows.length) {
+    box.innerHTML = '<div class="emptygrid">No dated row to chart.</div>';
+  } else {
+    const totals = new Map();
+    for (const [sourceIndex, bucket, count] of hist.rows) {
+      if (!totals.has(bucket)) totals.set(bucket, []);
+      totals.get(bucket).push([sourceIndex, count]);
+    }
+    const peak = Math.max(1, ...[...totals.values()].map((segments) => segments.reduce((sum, seg) => sum + seg[1], 0)));
+    const bars = [];
+    for (let bucket = 0; bucket < hist.bins; bucket += 1) {
+      const segments = totals.get(bucket) || [];
+      const height = segments.reduce((sum, seg) => sum + seg[1], 0);
+      const inner = segments.map(([sourceIndex, count]) =>
+        `<span class="seg" style="height:${Math.max(1, Math.round(count / peak * 56))}px;background:${TIMELINE_COLORS[sourceIndex % 8]}"></span>`).join("");
+      bars.push(`<span class="bar" title="${height} event(s)" style="height:${Math.max(height ? 2 : 0, Math.round(height / peak * 56))}px">${inner}</span>`);
+    }
+    box.innerHTML = bars.join("");
+  }
+
+  $("timeline-rows").innerHTML = payload.rows.map((row) => {
+    const [source, rowId, timeNs, sourceTime, summary, note, bookmarked] = row;
+    return `<tr data-tl-row="${rowId}" data-tl-source="${source}">
+      <td>${timeNs === null ? "(undated)" : escapeHtml(utcLabel(timeNs))}</td>
+      <td>${payload.sources[source] ? escapeHtml(payload.sources[source].name) : source}</td>
+      <td title="${escapeHtml(summary)}">${bookmarked ? "\u2605 " : ""}${escapeHtml(summary)}</td>
+      <td>${escapeHtml(note)}</td></tr>`;
+  }).join("");
+
+  const from = payload.count ? timelineState.offset + 1 : 0;
+  const to = Math.min(timelineState.offset + payload.rows.length, payload.count);
+  $("timeline-info").textContent = `${from}\u2013${to} / ${payload.count} event(s) — ${payload.extent.dated} dated`;
+  say(`Timeline: ${payload.extent.rows} row(s), ${payload.extent.dated} dated`);
+}
+
 /* ---------- artifacts tree ---------- */
 
 function renderTree() {
@@ -409,7 +474,9 @@ function showTab(name) {
     tab.classList.toggle("active", tab.dataset.tab === name));
   $("analysis-view").style.display = name === "analyses" ? "flex" : "none";
   $("cases-view").style.display = name === "cases" ? "flex" : "none";
+  $("timeline-view").style.display = name === "timeline" ? "flex" : "none";
   $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";
+  if (name === "timeline" && state.openCase) loadTimeline(!timelineState.payload);
 }
 
 function openGroupPicker() {
@@ -643,6 +710,22 @@ function wire() {
     event.preventDefault();
     document.body.classList.remove("dropping");
     uploadFiles([...event.dataTransfer.files]);
+  });
+
+  $("timeline-build").addEventListener("click", () => loadTimeline(false));
+  $("timeline-search").addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    timelineState.text = $("timeline-search").value.trim();
+    timelineState.kind = $("timeline-kind").value;
+    loadTimeline(true);
+  });
+  $("timeline-prev").addEventListener("click", () => {
+    timelineState.offset = Math.max(0, timelineState.offset - (timelineState.payload?.page_size || 250));
+    loadTimeline(false);
+  });
+  $("timeline-next").addEventListener("click", () => {
+    const size = timelineState.payload?.page_size || 250;
+    if (timelineState.offset + size < (timelineState.payload?.count || 0)) { timelineState.offset += size; loadTimeline(false); }
   });
 
   $("scale").addEventListener("change", (event) => {

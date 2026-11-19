@@ -179,3 +179,9 @@ tbody tr.sel td .cb{border-color:#5a86a6}
 ::-webkit-scrollbar-corner{background:#f0f0f0}
 
 body.dropping{outline:2px dashed #7aa9c9;outline-offset:-6px}
+
+.columns-list{max-height:340px;overflow:auto;border:1px solid var(--border);background:#fff}
+.columns-list label{display:flex;align-items:center;gap:8px;padding:3px 8px;font-size:12px;border-bottom:1px solid #eee}
+.columns-list label:hover{background:#eaf5ff}
+.columns-list input[type=checkbox]{margin:0}
+.columns-list .pin{margin-left:auto;font-size:11px;color:#555}

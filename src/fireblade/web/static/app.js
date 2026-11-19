@@ -22,6 +22,9 @@ const state = {
   bookmarksOnly: false,
   groups: [],          // column indexes, outer first
   path: [],            // drill-down values
+  multiSort: [],       // [{column, descending}] in application order
+  hidden: new Set(),    // column indexes hidden by the analyst
+  pinned: new Set(),    // column indexes frozen on the left
 };
 
 /* ---------- small helpers ---------- */
@@ -47,6 +50,20 @@ function say(message, error) {
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function parseFilterValue(raw) {
+  const text = String(raw);
+  const rules = [
+    ["!=", "ne"], [">=", "ge"], ["<=", "le"], ["=", "eq"], [">", "gt"], ["<", "lt"],
+    ["^", "starts"], ["$", "ends"], ["~", "contains"],
+  ];
+  for (const [prefix, operator] of rules) {
+    if (text.startsWith(prefix)) return { operator, value: text.slice(prefix.length).trim() };
+  }
+  if (/^empty$/i.test(text.trim())) return { operator: "empty", value: "" };
+  if (/^notempty$/i.test(text.trim())) return { operator: "not_empty", value: "" };
+  return { operator: "contains", value: text.trim() };
 }
 
 function defaultWidth(name, index) {
@@ -205,7 +222,9 @@ function query() {
   if (state.bookmarksOnly) params.set("bookmarks_only", "true");
   for (const column of state.groups) params.append("group", String(column));
   for (const value of state.path) params.append("path", value === null ? "" : String(value));
-  if (state.sort !== null) {
+  if (state.multiSort.length) {
+    for (const key of state.multiSort) params.append("sortkey", `${key.column}:${key.descending ? "desc" : "asc"}`);
+  } else if (state.sort !== null) {
     params.set("sort", String(state.sort));
     params.set("descending", state.descending ? "true" : "false");
   }
@@ -267,9 +286,14 @@ function clearGrid(message) {
   $("pageinfo").textContent = "";
 }
 
+function visibleColumns() {
+  return state.columns.map((name, index) => ({ name, index })).filter((item) => !state.hidden.has(item.index));
+}
+
 function renderGrid() {
   const empty = $("grid-empty");
   if (state.grouped) { renderGroupedGrid(); return; }
+  const shown = visibleColumns();
   if (!state.columns.length) {
     clearGrid("No analysis open.");
     return;
@@ -284,8 +308,10 @@ function renderGrid() {
 
   const head = ['<tr><th></th>'];
   state.columns.forEach((name, index) => {
-    const sorted = state.sort === index;
-    const arrow = sorted ? (state.descending ? "▼" : "▲") : "▲▼";
+    const multi = state.multiSort.findIndex((item) => item.column === index - 1);
+    const sorted = state.sort === index || multi >= 0;
+    const flag = state.sort === index ? state.descending : (multi >= 0 ? state.multiSort[multi].descending : false);
+    const arrow = sorted ? (flag ? "▼" : "▲") + (multi >= 0 ? String(multi + 1) : "") : "▲▼";
     head.push(`<th class="${sorted ? "sorted" : ""}" data-column="${index}" title="${escapeHtml(name)}">
       ${index === 0 ? "Ro…" : escapeHtml(name)}<span class="sort">${arrow}</span>
       <span class="grip" data-grip="${index}"></span></th>`);
@@ -293,7 +319,7 @@ function renderGrid() {
   head.push("</tr>");
   // One leading cell for the checkbox column, then one per column.
   head.push('<tr class="colfilter"><th></th>');
-  state.columns.forEach((name, index) => {
+  shown.forEach(({ index }) => {
     if (index === 0) { head.push("<th></th>"); return; }
     const current = state.filters.find((item) => item.column === index - 1);
     head.push(`<th><input data-filter="${index - 1}" placeholder="Filter…" value="${escapeHtml(current ? current.value : "")}"></th>`);
@@ -304,7 +330,8 @@ function renderGrid() {
   $("body").innerHTML = state.rows.map((row) => {
     const id = row[0];
     // Column 0 is the row identifier: it gets its own cell, after the checkbox one.
-    const cells = row.map((value, index) => {
+    const cells = shown.map(({ index }) => {
+      const value = row[index];
       const text = value === null || value === "" ? "☐" : String(value);
       const cls = value === null || value === "" ? "cellnull" : (index === 0 ? "rowid" : "");
       return `<td class="${cls}">${escapeHtml(text)}</td>`;
@@ -353,7 +380,7 @@ function showDetails(row) {
     box.innerHTML = '<div class="ph">Details of the selected row</div>';
     return;
   }
-  const pairs = state.columns.map((name, index) => {
+  const pairs = visibleColumns().map(({ name, index }) => {
     const value = row[index];
     if (index === 0) return "";
     if (value === null || value === "") return "";
@@ -392,6 +419,43 @@ function openGroupPicker() {
     `<option value="${index}">${escapeHtml(name)}</option>`).join("");
   if (state.groups.length) select.value = String(state.groups[0]);
   $("group-modal").classList.add("show");
+}
+
+function openColumnManager() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  const list = $("columns-list");
+  list.innerHTML = state.columns.map((name, index) => `
+    <label>
+      <input type="checkbox" data-col="${index}" ${state.hidden.has(index) ? "" : "checked"}>
+      <span>${escapeHtml(index === 0 ? "Row number" : name)}</span>
+      ${index ? `<span class="pin"><input type="checkbox" data-pin="${index}" ${state.pinned.has(index) ? "checked" : ""}> pin</span>` : ""}
+    </label>`).join("");
+  list.querySelectorAll("input[data-col]").forEach((box) => {
+    box.addEventListener("change", () => {
+      const index = Number(box.dataset.col);
+      if (box.checked) state.hidden.delete(index); else state.hidden.add(index);
+      renderGrid();
+    });
+  });
+  list.querySelectorAll("input[data-pin]").forEach((box) => {
+    box.addEventListener("change", () => {
+      const index = Number(box.dataset.pin);
+      if (box.checked) state.pinned.add(index); else state.pinned.delete(index);
+      applyPinning();
+    });
+  });
+  $("columns-modal").classList.add("show");
+}
+
+function applyPinning() {
+  $("grid").querySelectorAll("th").forEach((th) => {
+    const index = Number(th.dataset.column);
+    const pinned = state.pinned.has(index - 1);
+    th.style.position = "sticky";
+    th.style.left = pinned ? `${30 + 0}px` : "";
+    th.style.zIndex = pinned ? "3" : "";
+    th.classList.toggle("pinned", pinned);
+  });
 }
 
 function applyGrouping() {
@@ -489,8 +553,17 @@ function wire() {
     if (!th || event.target.dataset.grip !== undefined) return;
     const index = Number(th.dataset.column);
     if (index === 0) return;
-    if (state.sort === index - 1) state.descending = !state.descending;
-    else { state.sort = index - 1; state.descending = false; }
+    const column = index - 1;
+    if (event.shiftKey) {
+      const existing = state.multiSort.find((item) => item.column === column);
+      if (existing) existing.descending = !existing.descending;
+      else state.multiSort.push({ column, descending: false });
+      state.sort = null;
+    } else {
+      state.multiSort = [];
+      if (state.sort === column) state.descending = !state.descending;
+      else { state.sort = column; state.descending = false; }
+    }
     loadRows(true);
   });
 
@@ -498,10 +571,6 @@ function wire() {
     const input = event.target.closest("input[data-filter]");
     if (!input) return;
     if (event.key !== "Enter") return;
-    const column = Number(input.dataset.filter);
-    const value = input.value.trim();
-    state.filters = state.filters.filter((item) => item.column !== column);
-    if (value) state.filters.push({ column, operator: "contains", value });
     loadRows(true);
   });
 
@@ -509,9 +578,11 @@ function wire() {
     const input = event.target.closest("input[data-filter]");
     if (!input) return;
     const column = Number(input.dataset.filter);
-    const value = input.value.trim();
+    const parsed = parseFilterValue(input.value);
     state.filters = state.filters.filter((item) => item.column !== column);
-    if (value) state.filters.push({ column, operator: "contains", value });
+    if (input.value.trim() || parsed.operator === "empty" || parsed.operator === "not_empty") {
+      state.filters.push({ column, ...parsed });
+    }
   });
 
   $("body").addEventListener("click", (event) => {
@@ -612,6 +683,8 @@ async function act(name) {
       break;
     case "import-file": $("import-input").click(); break;
     case "group-column": openGroupPicker(); break;
+    case "columns": openColumnManager(); break;
+    case "columns-reset": state.hidden.clear(); renderGrid(); openColumnManager(); break;
     case "group-apply": applyGrouping(); break;
     case "group-remove":
       state.groups = []; state.path = []; $("group-label").textContent = "Filters apply to the whole analysis, not just the page on screen.";

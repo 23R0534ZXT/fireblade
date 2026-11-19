@@ -264,7 +264,7 @@ class Library:
              search: str = "", sort: int | None = None, descending: bool = False,
              filters: list[tuple[int, str, str]] | None = None,
              bookmarks_only: bool = False, groups: list[int] | None = None,
-             path: list[str] | None = None) -> dict:
+             path: list[str] | None = None, sorts: list[tuple[int, bool]] | None = None) -> dict:
         case = self._case_for(identifier, index)
         view = View(search=search or "", filters=[], bookmarks_only=bool(bookmarks_only))
         for column, operator, value in filters or ():
@@ -273,13 +273,16 @@ class Library:
             if not 0 <= column < len(case.headers):
                 raise ServiceError("Colonne de filtre hors de l'analyse.")
             view.filters.append(Filter(column, operator, value))
-        if sort is not None:
-            if not 0 <= sort < len(case.headers):
+        keys = list(sorts or ())
+        if not keys and sort is not None:
+            keys = [(sort, bool(descending))]
+        for column, _descending in keys:
+            if not 0 <= int(column) < len(case.headers):
                 raise ServiceError("Colonne de tri hors de l'analyse.")
-            view.sort_column = sort
-            view.descending = bool(descending)
+        if keys:
+            view.sort_column, view.descending = int(keys[0][0]), bool(keys[0][1])
             view.sort_type = "text"
-            view.sorts = [SortKey(sort, "text", bool(descending))]
+            view.sorts = [SortKey(int(column), "text", bool(flag)) for column, flag in keys]
         if groups:
             for column in groups:
                 if not 0 <= int(column) < len(case.headers):

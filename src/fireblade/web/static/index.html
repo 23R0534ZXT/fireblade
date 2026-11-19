@@ -87,6 +87,7 @@
           <div class="hint" id="group-label">Filters apply to the whole analysis, not just the page on screen.</div>
           <div class="grow"></div>
           <button class="btn" data-act="group-column">Group…</button>
+          <button class="btn" data-act="columns">Columns…</button>
           <button class="btn" id="details-toggle">Row details</button>
         </div>
 
@@ -155,6 +156,20 @@
       <div class="note">The palette and the density come from the desktop theme, so a wider text size only enlarges the interface; it does not change the colours.</div>
     </div>
     <div class="foot">
+      <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="columns-modal">
+  <div class="dialog">
+    <h3>Columns</h3>
+    <div class="body">
+      <div class="note">Untick to hide a column, pin the ones you need to keep in sight while scrolling.</div>
+      <div id="columns-list" class="columns-list"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="columns-reset">Show all</button>
       <button class="btn" data-act="settings-close">Close</button>
     </div>
   </div>

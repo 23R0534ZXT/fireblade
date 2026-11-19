@@ -290,6 +290,105 @@ def entry_reason(entry):
     joined = ' ; '.join(dict.fromkeys(reasons))
     return joined[:400]
 
+class CollectionProgress:
+    """Where the import stands, told in one place.
+
+    An import of a hundred and nineteen files gives nothing to watch for twenty minutes:
+    the rows appear one grid at a time and the window looks asleep. This keeps the counts
+    — files done, the file being read, rows written, an estimate of what is left — so the
+    interface can show a percentage instead of a spinner.
+
+    Written from several threads: every field is behind one lock, and a snapshot is taken
+    under it. The percentage weights files by their size, not by their number: one 4 GB
+    image is not worth the same as one 2 KB text file. The file in progress adds a partial
+    share, estimated from the speed of the files already finished, and never counted as
+    complete before it is.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.reset()
+
+    def reset(self):
+        with self._lock:
+            self.total_weight = 0.0
+            self.done_weight = 0.0
+            self.done = 0
+            self.total = 0
+            self.current = ''
+            self.rows = 0
+            self.started = time.monotonic()
+            self.started_current = None
+            self.stage = 'inventory'
+            self.finished = False
+
+    def inventory(self, weights):
+        """The plan is known: weights are bytes, or one each when a size is missing."""
+        with self._lock:
+            self.total = len(weights)
+            self.total_weight = float(sum(weights)) or float(len(weights)) or 1.0
+
+    def begin(self, name, weight=1):
+        with self._lock:
+            self.current = name
+            self.current_weight = max(float(weight), 0.0) or 1.0
+            self.started_current = time.monotonic()
+            self.rows = 0
+            self.stage = 'parse'
+
+    def note(self, text):
+        """The parsers say how many records they wrote; that is the only live number."""
+        match = re.search(r'([\d][\d  ,.]*)\s+enregistrement', text or '')
+        if not match:
+            return
+        digits = re.sub(r'[^\d]', '', match.group(1))
+        if not digits:
+            return
+        with self._lock:
+            if not self.finished:
+                self.rows = int(digits)
+
+    def finish_current(self, rows=None):
+        with self._lock:
+            self.done += 1
+            self.done_weight += getattr(self, 'current_weight', 1.0)
+            if rows:
+                self.rows = int(rows)
+            self.current = ''
+            self.started_current = None
+
+    def phase(self, name):
+        """A step with no weight of its own: the merge that follows the reading."""
+        with self._lock:
+            self.current = name
+            self.stage = 'organize'
+            self.started_current = None
+
+    def done_all(self):
+        with self._lock:
+            self.finished = True
+            self.current = ''
+            self.stage = 'done'
+
+    def snapshot(self):
+        with self._lock:
+            elapsed = max(time.monotonic() - self.started, 0.001)
+            fraction = self.done_weight / self.total_weight if self.total_weight else 0.0
+            partial = 0.0
+            if not self.finished and self.started_current is not None and self.done:
+                speed = self.done_weight / elapsed
+                spent = (time.monotonic() - self.started_current) * speed
+                partial = min(spent, 0.6 * getattr(self, 'current_weight', 1.0))
+            fraction = max(0.0, min(1.0, fraction + partial / self.total_weight if self.total_weight else 0.0))
+            percent = 100.0 if self.finished else min(99.0, fraction * 100.0)
+            remaining = 0.0
+            if fraction > 0.02 and not self.finished:
+                remaining = max(0.0, elapsed * (1.0 - fraction) / fraction)
+            return dict(total=self.total, done=self.done, current=self.current, rows=self.rows,
+                        percent=round(percent, 1), elapsed=round(elapsed, 1),
+                        remaining=round(remaining, 1), phase=self.stage, finished=self.finished)
+
+
 class Collection:
     # A folder import reads one export once, whatever path it was found under; a disk
     # collection must not: two partitions holding the same bytes are two pieces of
@@ -316,7 +415,9 @@ class Collection:
                 folder = item.resolve()
                 if self.output == folder or folder in self.output.parents:
                     raise ValueError('Choisissez un dossier de travail hors de la collecte source')
-        self.pack, self.settings, self.progress = pack, settings, progress
+        self.pack, self.settings = pack, settings
+        self.emit_text = progress
+        self.progress_state = CollectionProgress()
         self.ready = lambda documents: None
         self._last_checkpoint = 0
         self._case_lock = threading.Lock()
@@ -637,6 +738,11 @@ class Collection:
             self._parse_pool = ParsePool(self.workers()).start()
         return self._parse_pool
 
+    def progress(self, text):
+        """One message from a parser or the collection: shown, and counted."""
+        self.progress_state.note(text)
+        self.emit_text(text)
+
     def workers(self):
         """How many files at once: the effort level, one per thread, capped at eight.
 
@@ -872,8 +978,17 @@ class Collection:
         self.event('verification.done', checked=checked, broken=broken, unchecked=unchecked)
         return self.report['verification']
 
+    @staticmethod
+    def _weight(entry):
+        """A file's share of the import: its size, one point when the size is unknown."""
+        try:
+            return float(entry.get('size') or 1)
+        except (TypeError, ValueError):
+            return 1.0
+
     def _merge(self, entry, documents):
         """Append one file's analyses, in file order, and publish them."""
+        self.report['progress'] = self.progress_state.snapshot()
         start = len(self.report['documents'])
         self.report['documents'].extend(documents)
         self.publish_results(start, entry)
@@ -889,7 +1004,9 @@ class Collection:
         workers = self.workers()
         if workers <= 1 or len(pending) < 2:
             for source, entry in pending:
+                self.progress_state.begin(self.label_for(source), self._weight(entry))
                 self._merge(entry, self.safe_parse(source, entry))
+                self.progress_state.finish_current()
             return
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='fireblade-parse') as pool:
@@ -907,7 +1024,9 @@ class Collection:
                     # one, this thread honours the stop itself. What is already merged stays.
                     if index:
                         check_cancel()
+                    self.progress_state.begin(self.label_for(source), self._weight(entry))
                     self._merge(entry, self._future_documents(future, source, entry))
+                    self.progress_state.finish_current()
                     merged += 1
             except OperationCancelled:
                 for future in futures:
@@ -950,14 +1069,26 @@ class Collection:
                 self.report['files'].append(entry)
                 self.event('file.done', path=entry['path'], status='error', reason=message)
             pending = self.inventorize(walk_error)
+            self.progress_state.reset()
+            self.progress_state.inventory([self._weight(entry) for _source, entry in pending])
+            self.report['progress'] = self.progress_state.snapshot()
             self.event('inventory.done', files=len(self.report['files']), to_read=len(pending))
             self._run_entries(pending)
             from fireblade.core.collection_organization import organize
+            if self.report.get('organization') in ('artifacts', 'combined'):
+                # Merging the families takes minutes on a big collection: the bar must not
+                # claim 100 % while it is still writing the merged grids.
+                self.progress_state.phase(translate('Organisation des familles d’artefacts'))
+                self.report['progress'] = self.progress_state.snapshot()
             organize(self)
             self.verify_documents()
+            self.progress_state.done_all()
+            self.report['progress'] = self.progress_state.snapshot()
             self.report['status'] = 'complete'
         except OperationCancelled:
             self.report['status'] = 'cancelled'
+            self.progress_state.done_all()
+            self.report['progress'] = self.progress_state.snapshot()
         except BaseException:
             self.report['status'] = 'error'
             raise

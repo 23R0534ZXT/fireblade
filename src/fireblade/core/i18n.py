@@ -42,6 +42,12 @@ EN = {
     # go in so the frame is English too.
     "Collecte": "Collection",
     "Chronologie": "Timeline",
+    "{} / {} fichiers": "{} / {} files",
+    "Organisation des familles d’artefacts": "Merging the artifact families",
+    "en cours : {}": "reading: {}",
+    "inventaire": "inventory",
+    "lignes : {}": "rows: {}",
+    "reste ≈ {}": "left ≈ {}",
     "Collecte {} · {} fichiers inventoriés · {} sans réussite complète attestée.": "Collection {} · {} files inventoried · {} without an attested complete success.",
     "Index construit : {} lignes datées, {} sans date ({} absentes, {} invalides), {} sans fuseau et {} analyses en erreur.": "Index built: {} dated rows, {} without a date ({} absent, {} invalid), {} without an explicit time zone and {} analyses in error.",
     "Export vérifié : {} / {} lignes écrites ; SHA-256 calculé.": "Verified export: {} / {} rows written; SHA-256 computed.",

@@ -345,7 +345,7 @@ class CollectionMixin(AlertContextMixin):
             self.error(message)
         job = self.run(function, self.collection_finished, exclusive=True, on_error=failed,coverage_stage="Collecte")
         if job is not None:
-            self.collection.progress = job.signals.progress.emit
+            self.collection.emit_text = job.signals.progress.emit
             self.watch_collection_report()
         self.cancel_action.setEnabled(True)
 

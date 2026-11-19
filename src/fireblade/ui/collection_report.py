@@ -5,8 +5,8 @@ from pathlib import Path
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
-    QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QRadioButton, QSplitter, QTableView,
-    QTextBrowser, QVBoxLayout, QWidget)
+    QHBoxLayout, QLabel, QLineEdit, QMessageBox, QProgressBar, QPushButton, QRadioButton, QSplitter,
+    QTableView, QTextBrowser, QVBoxLayout, QWidget)
 
 from fireblade.core import report_actions as actions
 from fireblade.core.i18n import translate
@@ -150,6 +150,16 @@ class OutcomeFilter(QSortFilterProxyModel):
                               ' '.join(entry.get('tools',[]))).casefold()
 
 
+def elapsed_text(seconds):
+    """Two units at most: '2 min 40 s', '1 h 05'."""
+    seconds=max(0,int(seconds))
+    if seconds<60:
+        return f'{seconds} s'
+    if seconds<3600:
+        return f'{seconds//60} min {seconds%60:02d} s'
+    return f'{seconds//3600} h {(seconds%3600)//60:02d}'
+
+
 class CollectionReport(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -157,6 +167,16 @@ class CollectionReport(QWidget):
         layout=QVBoxLayout(self);layout.setContentsMargins(0,0,0,0)
         self.summary=QLabel();self.summary.setTextFormat(Qt.PlainText);self.summary.setWordWrap(True)
         layout.addWidget(self.summary)
+        # Where the import stands. Without it a folder of a hundred and nineteen files
+        # looks asleep for twenty minutes.
+        progress_row=QHBoxLayout()
+        self.progress_bar=QProgressBar();self.progress_bar.setRange(0,1000);self.progress_bar.setTextVisible(False)
+        self.progress_bar.setFixedHeight(12)
+        self.progress_text=QLabel();self.progress_text.setTextFormat(Qt.PlainText)
+        progress_row.addWidget(self.progress_bar,1);progress_row.addWidget(self.progress_text)
+        self.progress_widget=QWidget();self.progress_widget.setLayout(progress_row)
+        self.progress_widget.setVisible(False)
+        layout.addWidget(self.progress_widget)
         row=QHBoxLayout()
         self.status=QComboBox()
         for label,value in [('Tous les fichiers',''),('Réussis','complete'),('Avertissements / à vérifier','warnings'),
@@ -224,8 +244,28 @@ class CollectionReport(QWidget):
             tail+='\n'+translate('Journal incomplet : {}').format(self.report['journal_error'])
         return head+'\n'+tail
 
+    def show_progress(self, report):
+        """The counters of a running import, or nothing when there is nothing to watch."""
+        state=(report or {}).get('progress') or {}
+        running=(report or {}).get('status') in ('running','pending') and not state.get('finished')
+        self.progress_widget.setVisible(bool(running))
+        if not running:
+            return
+        percent=float(state.get('percent') or 0)
+        self.progress_bar.setValue(int(max(0.0,min(100.0,percent))*10))
+        parts=[translate('{} / {} fichiers').format(state.get('done',0),state.get('total',0)),
+               translate('en cours : {}').format(state.get('current') or translate('inventaire')),
+               ]
+        if int(state.get('rows') or 0) > 0:
+            parts.append(translate('lignes : {}').format(f"{int(state.get('rows') or 0):,}".replace(',',' ')))
+        if state.get('remaining'):
+            parts.append(translate('reste ≈ {}').format(elapsed_text(state['remaining'])))
+        parts.append(f"{percent:.1f} %")
+        self.progress_text.setText(' · '.join(parts))
+
     def set_report(self, report, text):
         self.report=report;self._text=text
+        self.show_progress(report)
         self.model.beginResetModel();self.model.entries=list(report.get('files',[])) if report else [];self.model.endResetModel()
         self.open_folder.setEnabled(report is not None)
         self.copy_button.setEnabled(report is not None)
@@ -238,6 +278,7 @@ class CollectionReport(QWidget):
         self.filter()
 
     def refresh(self, report, text):
+        self.show_progress(report)
         """A collection that is still running: rows appear, states change.
 
         A reset at every file would drop the selection and the scroll position on

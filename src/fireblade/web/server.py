@@ -76,6 +76,21 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/analyses/{index}/bookmarks")
+    def bookmarks(identifier: str, index: int):
+        return library.bookmarks(identifier, index)
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/bookmark")
+    def bookmark(identifier: str, index: int, payload: dict):
+        try:
+            row_id = int((payload or {}).get("row_id"))
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="row_id attendu.") from exc
+        column = (payload or {}).get("column")
+        return library.bookmark(identifier, index, row_id,
+                                (payload or {}).get("note", ""),
+                                None if column in (None, "") else int(column))
+
     @app.get("/api/cases/{identifier}/analyses/{index}/columns")
     def columns(identifier: str, index: int):
         return {"columns": library.columns(identifier, index)}
@@ -83,9 +98,10 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     @app.get("/api/cases/{identifier}/analyses/{index}/rows")
     def rows(identifier: str, index: int, offset: int = 0, limit: int = 200,
              search: str = "", sort: int | None = None, descending: bool = False,
-             filter: list[str] = Query(default=[])):
+             bookmarks_only: bool = False, filter: list[str] = Query(default=[])):
         return library.rows(identifier, index, offset=offset, limit=limit, search=search,
-                            sort=sort, descending=descending, filters=parse_filters(filter))
+                            sort=sort, descending=descending, bookmarks_only=bookmarks_only,
+                            filters=parse_filters(filter))
 
     @app.get("/api/cases/{identifier}/analyses/{index}/export")
     def export(identifier: str, index: int, search: str = "", sort: int | None = None,

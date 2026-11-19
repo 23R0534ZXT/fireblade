@@ -127,7 +127,14 @@ tbody tr:hover td{background:#eaf5ff}
 tbody tr.sel td{background:var(--sel);color:var(--sel-text)}
 tbody tr.sel td .cb{border-color:#5a86a6}
 .cellnull{color:var(--disabled)}
-.cb{width:13px;height:13px;border:1px solid #8a8a8a;background:#fff;display:inline-block;vertical-align:-2px}
+.cb{width:13px;height:13px;border:1px solid #8a8a8a;background:#fff;display:inline-block;vertical-align:-2px;cursor:default}
+.cb.marked{background:#3b7bb5;border-color:#2d5f8c;box-shadow:inset 0 0 0 2px #fff}
+.markcell{cursor:default}
+.btn.active{background:#dcecfa;border-color:#7aa9c9}
+.note-editor{display:flex;align-items:center;gap:6px;padding:6px;border-top:1px solid #e0e0e0;
+  position:sticky;bottom:0;background:var(--base)}
+.note-editor label{font-size:11px;color:#444;white-space:nowrap}
+.note-editor input{flex:1;height:20px;border:1px solid var(--border);background:#fff;font-family:inherit;font-size:11px;padding:0 4px;outline:none}
 .rowid{color:#404040}
 .emptygrid{padding:10px 12px;color:var(--disabled);font-size:11px;line-height:1.6}
 

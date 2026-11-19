@@ -240,7 +240,10 @@ class Library:
                     self._open.pop(oldest).close()
                 except Exception:  # a broken handle must not block the new one
                     pass
-            case = Case(path, read_only=True)
+            # Writable: the analyst books rows and writes notes from the grid, and
+            # DuckDB refuses two connections with different configurations on the
+            # same file, so one handle serves reads and writes.
+            case = Case(path, read_only=False)
             self._open[key] = case
             return case
 
@@ -259,9 +262,10 @@ class Library:
 
     def rows(self, identifier: str, index: int, offset: int = 0, limit: int = 200,
              search: str = "", sort: int | None = None, descending: bool = False,
-             filters: list[tuple[int, str, str]] | None = None) -> dict:
+             filters: list[tuple[int, str, str]] | None = None,
+             bookmarks_only: bool = False) -> dict:
         case = self._case_for(identifier, index)
-        view = View(search=search or "", filters=[])
+        view = View(search=search or "", filters=[], bookmarks_only=bool(bookmarks_only))
         for column, operator, value in filters or ():
             if operator not in OPERATORS:
                 raise ServiceError(f"Opérateur de filtre inconnu : {operator}")
@@ -288,6 +292,23 @@ class Library:
             "offset": offset,
             "limit": limit,
         }
+
+    def bookmarks(self, identifier: str, index: int) -> dict:
+        case = self._case_for(identifier, index)
+        with case.lock:
+            notes = case.bookmarks()
+        return {"bookmarks": [{"row_id": int(row_id), "note": note or ""}
+                              for row_id, note in notes.items()]}
+
+    def bookmark(self, identifier: str, index: int, row_id: int, note: str = "",
+                 column: int | None = None) -> dict:
+        """Mark a row, or one cell, with a note. An empty note removes the mark."""
+        case = self._case_for(identifier, index)
+        clean = (note or "").strip()
+        with case.lock:
+            # An empty note removes the mark; the core speaks None for removal.
+            case.bookmark(int(row_id), clean or None, None if column is None else int(column))
+        return {"row_id": int(row_id), "column": column, "note": clean}
 
     def export(self, identifier: str, index: int, search: str = "",
                sort: int | None = None, descending: bool = False,

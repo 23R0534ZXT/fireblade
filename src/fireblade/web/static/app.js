@@ -18,6 +18,8 @@ const state = {
   descending: false,
   widths: {},
   selected: null,
+  bookmarks: new Map(),
+  bookmarksOnly: false,
 };
 
 /* ---------- small helpers ---------- */
@@ -198,6 +200,7 @@ function query() {
   params.set("offset", String(state.offset));
   params.set("limit", String(PAGE));
   if (state.search) params.set("search", state.search);
+  if (state.bookmarksOnly) params.set("bookmarks_only", "true");
   if (state.sort !== null) {
     params.set("sort", String(state.sort));
     params.set("descending", state.descending ? "true" : "false");
@@ -222,11 +225,32 @@ async function loadRows(reset) {
     state.rows = payload.rows;
     state.total = payload.total;
     state.offset = payload.offset;
+    await loadBookmarks();
     renderGrid();
     renderPaneTabs();
   } catch (error) {
     say(error.message, true);
   }
+}
+
+async function loadBookmarks() {
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/bookmarks`);
+    state.bookmarks = new Map(payload.bookmarks.map((item) => [String(item.row_id), item.note]));
+  } catch (_) {
+    state.bookmarks = new Map();
+  }
+}
+
+async function toggleBookmark(rowId, note) {
+  const body = JSON.stringify({ row_id: Number(rowId), note: note ?? "" });
+  const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/bookmark`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.detail || response.statusText);
+  if ((payload.note || "").trim()) state.bookmarks.set(String(rowId), payload.note);
+  else state.bookmarks.delete(String(rowId));
+  renderGrid();
 }
 
 function clearGrid(message) {
@@ -279,8 +303,9 @@ function renderGrid() {
       const cls = value === null || value === "" ? "cellnull" : (index === 0 ? "rowid" : "");
       return `<td class="${cls}">${escapeHtml(text)}</td>`;
     }).join("");
+    const marked = state.bookmarks.has(String(id)) ? "marked" : "";
     return `<tr data-row="${escapeHtml(String(id))}" class="${state.selected === id ? "sel" : ""}">
-      <td><span class="cb"></span></td>${cells}</tr>`;
+      <td class="markcell"><span class="cb ${marked}" title="Bookmark this row"></span></td>${cells}</tr>`;
   }).join("");
 
   const from = state.total ? state.offset + 1 : 0;
@@ -301,7 +326,20 @@ function showDetails(row) {
     if (value === null || value === "") return "";
     return `<tr><td class="k">${escapeHtml(name)}</td><td>${escapeHtml(String(value))}</td></tr>`;
   }).join("");
-  box.innerHTML = `<table>${pairs}</table>`;
+  const id = String(row[0]);
+  const note = state.bookmarks.get(id) || "";
+  box.innerHTML = `<table>${pairs}</table>
+    <div class="note-editor">
+      <label>Bookmark note</label>
+      <input id="note-input" value="${escapeHtml(note)}" placeholder="What to remember about this row…">
+      <button class="btn" id="note-save">Save</button>
+      <button class="btn" id="note-clear">Remove</button>
+    </div>`;
+  $("note-save").addEventListener("click", () => toggleBookmark(id, $("note-input").value));
+  $("note-clear").addEventListener("click", () => toggleBookmark(id, ""));
+  $("note-input").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") toggleBookmark(id, $("note-input").value);
+  });
 }
 
 /* ---------- tabs and panels ---------- */
@@ -378,11 +416,19 @@ function wire() {
       loadRows(true);
     }
   });
+  $("bookmarks-only").addEventListener("click", () => {
+    state.bookmarksOnly = !state.bookmarksOnly;
+    $("bookmarks-only").classList.toggle("active", state.bookmarksOnly);
+    loadRows(true);
+  });
+
   $("clear").addEventListener("click", () => {
     state.search = "";
     state.filters = [];
     state.sort = null;
     state.descending = false;
+    state.bookmarksOnly = false;
+    $("bookmarks-only").classList.remove("active");
     $("search").value = "";
     loadRows(true);
   });
@@ -420,6 +466,12 @@ function wire() {
   $("body").addEventListener("click", (event) => {
     const tr = event.target.closest("tr[data-row]");
     if (!tr) return;
+    if (event.target.closest(".markcell")) {
+      const id = tr.dataset.row;
+      const current = state.bookmarks.get(String(id)) || "";
+      toggleBookmark(id, current ? "" : "bookmarked").catch((error) => say(error.message, true));
+      return;
+    }
     $("body").querySelectorAll("tr.sel").forEach((node) => node.classList.remove("sel"));
     tr.classList.add("sel");
     const id = tr.dataset.row;

@@ -187,10 +187,27 @@ class ToolPack:
                 return [str(exe)]
         else:
             dll = root / name / (name + '.dll')
-            host = root / 'dotnet' / 'dotnet.exe'
-            if dll.is_file() and host.is_file():
+            host = self.dotnet(root)
+            if dll.is_file() and host is not None:
                 return [str(host), str(dll)]
         raise FileNotFoundError(f'Moteur intégré absent : {name}. La construction du pack forensic est nécessaire.')
+
+    @staticmethod
+    def dotnet(root):
+        """The .NET host: bundled with the pack, or the system one on Linux.
+
+        The pack ships dotnet.exe for the Windows edition. In a Linux container
+        the same tools run through the distribution runtime instead, and the
+        rest of the command line does not change: only the host is different.
+        """
+        bundled = root / 'dotnet' / ('dotnet.exe' if WINDOWS else 'dotnet')
+        if bundled.is_file():
+            return bundled
+        if not WINDOWS:
+            found = shutil.which('dotnet')
+            if found:
+                return Path(found)
+        return None
 
     def available(self, name):
         try:
@@ -210,6 +227,9 @@ class ToolPack:
 
 
 BLOCKED_SIGNATURES = ('0x800711C7', 'FileLoadException')
+
+# Read once so the two branches can be exercised from either platform's tests.
+WINDOWS = os.name == 'nt'
 
 
 def fit_budget_to_file(budget, csv, progress=lambda _: None, ceiling_mb=None):
@@ -461,7 +481,8 @@ class Collection:
         if self.index_folder is not None:
             self.known = {digest: record for digest, record in load_index(self.index_folder).items()
                           if str(record.get('collection', '')) != str(self.output)}
-        self._seen = {}
+        self._seen = {}
+
         self._similar = {}
         self._seen_lock = threading.Lock()
         self.report = dict(format='fireblade-collection', version=1, source=str(self.root),

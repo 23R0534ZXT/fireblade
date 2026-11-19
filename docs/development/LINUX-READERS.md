@@ -32,11 +32,31 @@ the Windows run.
 Byte-level note: same CRLF, same UTF-8 BOM. The 10 616-byte difference between
 the two files is exactly the longer Windows path repeated on every row.
 
+### Measured on real artifacts from the test VM (Linux, .NET 10 runtime)
+
+| tool | input | rows | verdict |
+| --- | --- | --- | --- |
+| EvtxECmd 2026.10.2 | `System.evtx` (1.1 MB) | 1 327 | identical to Windows but the source path |
+| PECmd 2026.10.3 | 316 `.pf` files | 1 046 | parses |
+| AppCompatCacheParser 2026.10.1 | `SYSTEM` hive (reg save) | 239 | parses |
+| JLECmd 2026.10.6 | 5 jump lists | 8 | parses |
+| LECmd 2026.10.4 | 2 `.lnk` files | 2 | parses |
+| WxTCmd 2026.10.1 | `ActivitiesCache.db` | 4 activities, 8 package ids | parses |
+
+All twelve `net10.0` builds start and print their help under the Linux runtime.
+Not yet measured: MFTECmd, SrumECmd, RBCmd, AmcacheParser, RecentFileCacheParser —
+their inputs (`$MFT`, `SRUDB.dat`, `$Recycle.Bin`, `Amcache.hve`, `RecentFileCache.bcf`)
+are locked on a running Windows and need a shadow copy or a disk image;
+SQLECmd and RECmd were not driven with their final arguments yet.
+
 ## Consequences for the code
 
-`core/collection.py` currently launches `<Tool>.exe`. Under Linux the same
-arguments go to `dotnet <Tool>.dll`. That is one branch in the launcher, not a
-change to the parsers, the column profiles or the tests: the CSV is the contract.
+`core/collection.py` already ran every tool through a .NET host:
+`ToolPack.command()` returned `[dotnet/dotnet.exe, <Tool>.dll]`. The only change
+needed was the host itself — `dotnet.exe` next to the pack on Windows, the
+distribution `dotnet` on Linux — in `ToolPack.dotnet()`. The arguments
+(`-f <source> --csv <out>`) are untouched, so the parsers, the column profiles
+and the tests see the same CSV. Covered by `tests/core/test_toolpack_host.py`.
 
 ## Still to measure
 

@@ -42,7 +42,8 @@
   </div>
 
   <div class="toolbar">
-    <div class="tb off" title="Not available in Fireblade Host yet">🗀 Import a file</div>
+    <div class="tb" data-act="import-file" title="Send a file to the server and read it">🗀 Import a file</div>
+    <input type="file" id="import-input" multiple hidden>
     <div class="tb" data-act="export-csv">🖫 Export</div>
     <div class="tbsep"></div>
     <div class="casecombo" id="casecombo"><span id="casecombo-label">No case open</span><span class="arrow">▼</span></div>

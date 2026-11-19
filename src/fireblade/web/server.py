@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -54,6 +54,25 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         try:
             return library.import_source(identifier, source, tools_root=tools_root,
                                          organization=(payload or {}).get("organization", "files"))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/upload")
+    def upload(identifier: str, file: UploadFile = File(...)):
+        """The browser cannot hand over a server path: the file is sent, stored in
+        the case's own evidence folder, then read by the same collection."""
+        folder = library.library.folder(identifier)
+        name = Path(file.filename or "evidence").name
+        if not name or name in (".", ".."):
+            raise HTTPException(status_code=400, detail="Nom de fichier invalide.")
+        evidence = folder / "evidence"
+        evidence.mkdir(parents=True, exist_ok=True)
+        target = evidence / name
+        with target.open("wb") as stream:
+            while chunk := file.file.read(1024 * 1024):
+                stream.write(chunk)
+        try:
+            return library.import_source(identifier, target, tools_root=tools_root)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

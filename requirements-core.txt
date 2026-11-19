@@ -17,3 +17,4 @@ dissect.fat==3.13
 dissect.extfs==3.15
 fastapi>=0.115,<1
 uvicorn[standard]>=0.32,<1
+python-multipart>=0.0.9,<1

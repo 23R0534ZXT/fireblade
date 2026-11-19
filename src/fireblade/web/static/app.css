@@ -170,3 +170,5 @@ tbody tr.sel td .cb{border-color:#5a86a6}
 ::-webkit-scrollbar-thumb{background:#cdcdcd;border:1px solid #a8a8a8}
 ::-webkit-scrollbar-thumb:hover{background:#b8d8ee;border-color:#7aa9c9}
 ::-webkit-scrollbar-corner{background:#f0f0f0}
+
+body.dropping{outline:2px dashed #7aa9c9;outline-offset:-6px}

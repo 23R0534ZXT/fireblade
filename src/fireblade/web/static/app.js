@@ -55,6 +55,33 @@ function defaultWidth(name, index) {
   return Math.max(90, Math.min(200, name.length * 8 + 30));
 }
 
+/* ---------- import ---------- */
+
+async function uploadFiles(files) {
+  if (!state.openCase) { say("Open a case before importing", true); return; }
+  const total = files.length;
+  let done = 0;
+  for (const file of files) {
+    say(`Importing ${file.name} (${done + 1}/${total})…`);
+    const body = new FormData();
+    body.append("file", file);
+    try {
+      const response = await fetch(`/api/cases/${state.openCase.id}/upload`, { method: "POST", body });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || payload.error || response.statusText);
+      if (!payload.analyses) {
+        say(`${file.name}: ${payload.message || "not recognised"}`, true);
+      }
+      done += 1;
+    } catch (error) {
+      say(`${file.name}: ${error.message}`, true);
+      return;
+    }
+  }
+  await openCase(state.openCase.id);
+  say(`${done} file(s) imported`);
+}
+
 /* ---------- cases ---------- */
 
 async function loadCases() {
@@ -414,6 +441,25 @@ function wire() {
     box.style.display = box.style.display === "none" ? "block" : "none";
   });
 
+  $("import-input").addEventListener("change", (event) => {
+    const files = [...(event.target.files || [])];
+    event.target.value = "";
+    if (files.length) uploadFiles(files);
+  });
+
+  document.addEventListener("dragover", (event) => {
+    if (!state.openCase) return;
+    event.preventDefault();
+    document.body.classList.add("dropping");
+  });
+  document.addEventListener("dragleave", () => document.body.classList.remove("dropping"));
+  document.addEventListener("drop", (event) => {
+    if (!state.openCase || !event.dataTransfer?.files?.length) return;
+    event.preventDefault();
+    document.body.classList.remove("dropping");
+    uploadFiles([...event.dataTransfer.files]);
+  });
+
   $("scale").addEventListener("change", (event) => {
     localStorage.setItem("fireblade.scale", event.target.value);
     applyScale();
@@ -450,6 +496,7 @@ async function act(name) {
       if (!state.openCase) { say("No case open", true); break; }
       window.location.href = rowsUrl().replace("/rows?", "/export?");
       break;
+    case "import-file": $("import-input").click(); break;
     case "display-settings": $("settings-modal").classList.add("show"); break;
     case "settings-close": closeModals(); break;
     case "about":

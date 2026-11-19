@@ -54,6 +54,29 @@ class ClientReportDialog(QDialog):
 class CaseCommandsMixin:
     """Two commands the case needs and no document-level mixin owns."""
 
+    def destroy_case(self):
+        """Delete the whole case: evidence, analyses, tracking, history, then the folder."""
+        from fireblade.ui.case_destruction_dialog import CaseDestructionDialog
+        if self.active_investigation is None:
+            self.error('Ouvrez le case à supprimer.')
+            return
+        if not self.can_switch_investigation():
+            return
+        dialog = CaseDestructionDialog(self)
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()
+
+    def after_case_destroyed(self, case):
+        """The folder is gone: the window must not keep pointing at it."""
+        if self.active_investigation and case and self.active_investigation.get('id') == case.get('id'):
+            self.clear_investigation_workspace()
+            self.active_investigation = None
+            self.refresh_investigations()
+            self.update_investigation_badge()
+            self.statusBar().showMessage('Case détruit : ' + str(case.get('name', '')))
+
     def destroy_evidence(self):
         from fireblade.ui.destruction_dialog import DestructionDialog
         if self.active_investigation is None:

@@ -68,6 +68,22 @@ def re_safe(name):
     return cleaned.strip() or 'attachment.png'
 
 
+def short_path(value):
+    """The end of a path, so a table row stays on one line; the appendix keeps it whole."""
+    text = str(value or '')
+    if len(text) <= 30:
+        return text
+    return '…/'+text[-28:]
+
+
+def short_digest(value):
+    """Enough of a hash to compare two rows by eye; the full value lives in the appendix."""
+    text = str(value or '')
+    if len(text) <= 20:
+        return text or '—'
+    return text[:12]+'…'+text[-6:]
+
+
 def _escape(value):
     return html.escape('' if value is None else str(value), quote=True)
 
@@ -99,6 +115,9 @@ def build(record, *, case_name='', case_id='', client=None, generated=None, case
         'table.annex{width:100%}table.annex td{border:1px solid #ccd5df;padding:6px;vertical-align:top;width:50%}',
         'table.annex img{max-width:100%;height:auto}',
         '.annex .cap{font-size:8.5pt;color:#4f6074;margin-top:4px}',
+        'tr{page-break-inside:avoid}',
+        'thead{display:table-header-group}',
+        '.digest{margin:6px 0;font-size:8.5pt}.digest code{font:8.5pt monospace;overflow-wrap:anywhere}',
         '@media print{body{margin:0;padding:0}h2{page-break-after:avoid}}',
         '</style></head><body>',
         '<h1>Procès-verbal de destruction de preuves</h1>',
@@ -124,8 +143,7 @@ def build(record, *, case_name='', case_id='', client=None, generated=None, case
     if not files:
         parts.append('<p class="ko">Aucun fichier n\'a été détruit.</p>')
     else:
-        parts.append('<table><thead><tr><th>Fichier</th><th>Taille</th><th>Horodatage</th>'
-                     '<th>SHA-256 avant</th><th>SHA-256 après (relecture)</th>'
+        parts.append('<table><thead><tr><th>Fichier</th><th>Taille</th>'
                      '<th>État</th></tr></thead><tbody>')
         for item in files:
             state = item.get('state')
@@ -134,19 +152,29 @@ def build(record, *, case_name='', case_id='', client=None, generated=None, case
             css = 'ok' if state == 'destroyed' and item.get('verified') else 'ko'
             started = str(item.get('started') or '')[11:19]
             finished = str(item.get('finished') or '')[11:19]
-            parts.append('<tr><td><pre>' + escape(item.get('relative') or item.get('path')) + '</pre></td>'
+            parts.append('<tr><td>' + escape(short_path(item.get('relative') or item.get('path'))) + '</td>'
                          '<td>' + escape(f"{item.get('size', 0):,}".replace(',', ' ')) + '</td>'
-                         '<td>' + escape((started + ' → ' + finished) if started else '—') + '</td>'
-                         '<td><pre>' + escape(item.get('sha256_before') or '—') + '</pre></td>'
-                         '<td><pre>' + escape(item.get('sha256_after') or '—') + '</pre></td>'
                          '<td class="' + css + '">' + escape(label) + '</td></tr>')
         parts.append('</tbody></table>')
+        # The table has to stay readable: the full hashes go to an appendix, one per line.
+        parts.append('<p class="muted">Empreintes abrégées dans le tableau ; les valeurs complètes '
+                     'figurent en annexe, pour les mêmes fichiers.</p>')
+        parts.append('<h2>2. Empreintes complètes</h2>')
+        # Paragraphs, not table rows: a paragraph breaks between lines, a tall row does not.
+        for item in files:
+            started = str(item.get('started') or '')[11:19]
+            finished = str(item.get('finished') or '')[11:19]
+            parts.append('<p class="digest"><b>' + escape(item.get('relative') or item.get('path')) + '</b><br>'
+                         + escape((started + ' → ' + finished) if started else '—')
+                         + ' · ' + escape(f"{item.get('size', 0):,}".replace(',', ' ')) + ' octets<br>'
+                         'avant : <code>' + escape(item.get('sha256_before') or '—') + '</code><br>'
+                         'après : <code>' + escape(item.get('sha256_after') or '—') + '</code></p>')
     destroyed = sum(1 for item in files if item.get('state') == 'destroyed')
     parts.append(f'<p>{destroyed} fichier(s) détruit(s) sur {len(files)} listé(s) · '
                  f'{len({item.get("sha256_before") for item in files})} empreinte(s) distincte(s).</p>')
     attachments = record.get('attachments') or []
     if attachments:
-        parts.append('<h2>2. Annexes photographiques</h2>')
+        parts.append('<h2>3. Annexes photographiques</h2>')
         cells = []
         for item in attachments:
             # A portable case moves the folder: the recorded relative path wins over the
@@ -171,8 +199,8 @@ def build(record, *, case_name='', case_id='', client=None, generated=None, case
             for start in range(0, len(cells), 2):
                 parts.append('<tr>' + ''.join(cells[start:start + 2]) + '</tr>')
             parts.append('</table>')
-    parts.append('<h2>3. Portée et limites</h2><p>' + escape(record.get('limitations', '')) + '</p>')
-    parts.append('<h2>4. Signatures</h2>'
+    parts.append('<h2>4. Portée et limites</h2><p>' + escape(record.get('limitations', '')) + '</p>')
+    parts.append('<h2>5. Signatures</h2>'
                  '<p class="muted">Chaque signataire atteste avoir assisté à l\'opération décrite ci-dessus.</p>'
                  '<div class="sign"><div>Opérateur<br>' + escape(record.get('operator') or '') + '</div>'
                  '<div>Témoin<br>' + escape(record.get('witness') or '') + '</div>'

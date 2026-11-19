@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QBuffer, QIODevice, QPoint, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QAction, QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout,
+from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout, QHBoxLayout,
                                QInputDialog, QLabel, QLineEdit, QMenu, QMessageBox, QPlainTextEdit,
                                QPushButton, QToolButton, QVBoxLayout, QWidget)
 
@@ -292,6 +292,7 @@ class AttackGraphPanel(QWidget):
         menu = QMenu(more)
         menu.addAction('Nœud libre…', self.add_node)
         menu.addAction('Exporter PNG…', self.export_png)
+        menu.addAction('Couche ATT&CK Navigator…', self.export_navigator)
         more.setMenu(menu)
         more.setPopupMode(QToolButton.InstantPopup)
         bar.addWidget(more)
@@ -430,6 +431,36 @@ class AttackGraphPanel(QWidget):
             self.workspace = case_workspace.mutate(folder, change)
         except (OSError, ValueError) as exc:
             self.window.error(str(exc))
+
+    def export_navigator(self):
+        """The techniques of this case, as a layer the official Navigator opens."""
+        import json
+        from pathlib import Path
+        from fireblade.core.attack_graph import navigator_layer
+        graph = self.canvas.graph
+        if not any(node.get('kind') == 'technique' for node in graph.get('nodes', [])):
+            self.window.error('Aucune technique MITRE dans ce graphe : rien à exporter pour le Navigator.')
+            return
+        case = getattr(self.window, 'active_investigation', None) or {}
+        label = case.get('name') or 'Fireblade'
+        layer = navigator_layer(graph, name='Fireblade — '+str(label),
+                                description='Techniques observed in the case, as Fireblade read them.',
+                                case=label)
+        if not layer['techniques']:
+            self.window.error('Aucune technique identifiée par un identifiant ATT&CK (Txxxx) : rien à exporter.')
+            return
+        path, _ = QFileDialog.getSaveFileName(self, 'Exporter la couche ATT&CK Navigator',
+                                              'fireblade-attack-layer.json', 'Couche Navigator (*.json)')
+        if not path:
+            return
+        if not path.casefold().endswith('.json'):
+            path += '.json'
+        try:
+            Path(path).write_text(json.dumps(layer, ensure_ascii=False, indent=2), encoding='utf-8')
+        except OSError as exc:
+            self.window.error('La couche n’a pas pu être enregistrée : '+str(exc))
+            return
+        self.status.setText(f"Couche ATT&CK Navigator exportée : {path} ({len(layer['techniques'])} techniques)")
 
     def export_png(self):
         from PySide6.QtWidgets import QFileDialog

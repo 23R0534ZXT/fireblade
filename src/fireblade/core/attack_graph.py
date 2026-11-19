@@ -224,6 +224,61 @@ def layout(graph, *, column=260, row=66, margin=30):
     return graph
 
 
+NAVIGATOR_VERSIONS = dict(attack='16', navigator='4.9.1', layer='4.5')
+
+
+def tactic_slug(name):
+    """The spelling the Navigator uses: 'Command and Control' becomes command-and-control."""
+    return re.sub(r'[^a-z0-9]+', '-', str(name or '').casefold()).strip('-')
+
+
+def navigator_layer(graph, *, name='Fireblade', description='', case=''):
+    """A MITRE ATT&CK Navigator layer holding the techniques this case actually saw.
+
+    Only what the findings declare goes in: a technique identifier and the hosts an alert
+    named for it. The score is the number of hosts, so the layer's colour says how widely
+    a technique spread rather than how often a rule fired. A node that is not a technique
+    is never written: the Navigator reads technique identifiers and nothing else.
+    """
+    nodes = {node['id']: node for node in graph.get('nodes', [])}
+    hosts_of, stages = {}, {}
+    for edge in graph.get('edges', []):
+        source, target = nodes.get(edge.get('source')), nodes.get(edge.get('target'))
+        if not source or not target:
+            continue
+        if edge.get('label') == 'alert' and target.get('kind') == 'technique':
+            hosts_of.setdefault(target['id'], {'code': target.get('code', ''), 'hosts': set()})
+            if source.get('kind') in ('host', 'account'):
+                hosts_of[target['id']]['hosts'].add(source.get('label', ''))
+        elif edge.get('label') == 'tactic' and source.get('kind') == 'technique':
+            stages[source['id']] = tactic_slug(target.get('label', ''))
+    techniques = []
+    for node_id, found in hosts_of.items():
+        code = found['code']
+        if not code or not _TECHNIQUE.fullmatch(code):
+            continue
+        hosts = sorted(host for host in found['hosts'] if host)
+        entry = dict(techniqueID=code, enabled=True, score=min(100, max(20, len(hosts) * 20)),
+                     comment='Seen on: ' + (', '.join(hosts[:12]) + ('…' if len(hosts) > 12 else '') or 'no host named'),
+                     metadata=[dict(name='Hosts', value=', '.join(hosts))])
+        if stages.get(node_id):
+            entry['tactic'] = stages[node_id]
+        techniques.append(entry)
+    techniques.sort(key=lambda item: (item.get('tactic', ''), item['techniqueID']))
+    highest = max((item['score'] for item in techniques), default=20)
+    layer = dict(
+        name=name, versions=dict(NAVIGATOR_VERSIONS), domain='enterprise-attack',
+        description=description or 'Techniques observed in the case, as Fireblade read them.',
+        techniques=techniques,
+        gradient=dict(colors=['#ffe8cc', '#8b320c'], minValue=20, maxValue=highest),
+        legendItems=[dict(label='Hosts an alert named for the technique', color='#8b320c')],
+        hideDisabled=True, showTacticRowBackground=False,
+        metadata=[dict(name='Source', value='Fireblade')])
+    if case:
+        layer['metadata'].append(dict(name='Case', value=str(case)))
+    return layer
+
+
 def tags_of(graph, node_id):
     return next((list(item.get('tags') or []) for item in graph.get('nodes', []) if item['id'] == node_id), [])
 

@@ -36,6 +36,7 @@ class WorkspaceMixin:
         from fireblade.ui.navigation import AnalysisNavigator
         self.navigator = AnalysisNavigator()
         self.navigator.activated.connect(self.switch_document)
+        self.navigator.reopened.connect(self.reopen_closed_analysis)
         self.navigator.grouping_changed.connect(lambda value: self.set_navigation_option("navigation_grouping", value))
         self.workspace_splitter = QSplitter(Qt.Horizontal)
         self.workspace_splitter.addWidget(self.navigator)
@@ -79,7 +80,8 @@ class WorkspaceMixin:
         origins.update(getattr(self, '_analysis_origins', {}))
         self._navigation_origin_cache = cache
         self.navigator.refresh(self.documents,self.active_document,collections,self._analysis_labels,origins,
-            getattr(getattr(self, 'preferences', None), 'navigation_grouping', 'folders'))
+            getattr(getattr(self, 'preferences', None), 'navigation_grouping', 'folders'),
+            self.closed_documents)
         self.update_navigation_visibility()
 
     def update_navigation_visibility(self, *_):
@@ -145,13 +147,40 @@ class WorkspaceMixin:
         removing_active = self.documents[index].path == active_path
         if removing_active:
             self.detach()
-        self.closed_documents.append(self.documents[index])
-        self.closed_documents = self.closed_documents[-20:]
+        # A closed tab is not a deleted analysis: it stays in the case, listed by the
+        # navigation tree, and one double-click brings it back.
+        closed = self.documents[index]
+        if not any(item.path == closed.path for item in self.closed_documents):
+            self.closed_documents.append(closed)
         del self.documents[index]
         self.active_document = next((i for i, s in enumerate(self.documents) if s.path == active_path), -1)
         self.sync_tabs()
         if removing_active and self.documents:
             self.switch_document(min(index, len(self.documents) - 1))
+        # The case remembers what was closed: reopening it must list the analysis again.
+        if getattr(self, 'active_investigation', None) is not None:
+            self.persist_investigation()
+        self.refresh_navigation()
+
+    def reopen_closed_analysis(self, path):
+        """Bring a closed analysis back as a tab, in its saved view."""
+        if not self.can_open_file():
+            return False
+        snapshot = next((item for item in self.closed_documents if item.path == str(path)), None)
+        if snapshot is None:
+            return False
+        if any(item.path == snapshot.path for item in self.documents):
+            self.closed_documents.remove(snapshot)
+            return self.switch_document(next(i for i, item in enumerate(self.documents) if item.path == snapshot.path))
+        self.closed_documents.remove(snapshot)
+        self.documents.append(snapshot)
+        self.sync_tabs()
+        self.switch_document(len(self.documents)-1)
+        if getattr(self, 'active_investigation', None) is not None:
+            self.persist_investigation()
+        self.refresh_navigation()
+        self.statusBar().showMessage(f"Analyse réouverte : {Path(snapshot.path).name}")
+        return True
 
     def next_document(self, direction=1):
         if self.documents:
@@ -170,14 +199,18 @@ class WorkspaceMixin:
         self.remember_active()
         try:
             target = Path(path).resolve()
-            write_session(target, self.documents, self.active_document)
+            write_session(target, self.documents, self.active_document, self.closed_documents)
             if getattr(self,'active_investigation',None) is not None:
                 if not self.persist_investigation():return False
             self.statusBar().showMessage("Session enregistrée : onglets, vues et dispositions des colonnes")
         except Exception as exc:
             self.error(exc)
 
-    def validate_session(self, path):
+    def validate_session(self, path, with_closed=False):
+        if with_closed:
+            snapshots, active, closed = read_session(path, with_closed=True)
+            self.validate_session_snapshots(snapshots or closed[:1])
+            return snapshots, active, closed
         snapshots, active = read_session(path)
         self.validate_session_snapshots(snapshots)
         return snapshots, active

@@ -244,7 +244,7 @@ class InvestigationLibrary:
                 try:old.unlink()
                 except OSError:pass
 
-    def save(self, identifier, snapshots, active, collections, active_collection, expected_revision):
+    def save(self, identifier, snapshots, active, collections, active_collection, expected_revision, closed=()):
         if len(snapshots)>1000 or (snapshots and (type(active) is not int or not 0 <= active < len(snapshots))) or (not snapshots and active != -1):
             raise ValueError('Session ou onglet actif invalide')
         with self.lock(identifier):
@@ -252,9 +252,9 @@ class InvestigationLibrary:
             self.check_revision(data,expected_revision)
             folder = self.folder(identifier)
             session = None
-            if snapshots:
+            if snapshots or closed:
                 session = folder/('session-'+uuid.uuid4().hex+'.fireblade-session')
-                write_session(session,snapshots,active)
+                write_session(session,snapshots,active,closed)
                 if session.stat().st_size>4*1024*1024:
                     session.unlink()
                     raise ValueError('Session limitée à 4 Mo')

@@ -2,13 +2,16 @@
 from pathlib import Path, PurePosixPath
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QBrush, QColor
 from fireblade.core.artifact_names import friendly_label, unique_labels
+from fireblade.core.i18n import translate
 from fireblade.core.models import analysis_label
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QLineEdit, QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 
 
 class AnalysisNavigator(QWidget):
     activated = Signal(int)
+    reopened = Signal(str)
     close_requested = Signal()
     grouping_changed = Signal(str)
 
@@ -39,12 +42,43 @@ class AnalysisNavigator(QWidget):
         self.tree.itemClicked.connect(self.activate)
         layout.addWidget(self.tree)
 
+    def _leaf(self, parent, title, index, tip, closed_paths, snapshot):
+        """One analysis under its family, marked and greyed out when its tab was closed."""
+        closed = snapshot.path in closed_paths
+        if closed:
+            title = title+' · '+translate('onglet fermé')
+        leaf = QTreeWidgetItem(parent, [title])
+        if closed:
+            leaf.setData(0, Qt.UserRole+2, 'closed')
+            leaf.setData(0, Qt.UserRole+3, snapshot.path)
+            leaf.setForeground(0, QBrush(QColor(145, 145, 145)))
+            leaf.setToolTip(0, tip+'\n'+translate('Onglet fermé — double-clic pour rouvrir.'))
+        else:
+            leaf.setData(0, Qt.UserRole, index)
+            leaf.setToolTip(0, tip)
+        return leaf
+
     def activate(self, item, *_):
+        if item.data(0, Qt.UserRole+2) == 'closed':
+            path = item.data(0, Qt.UserRole+3)
+            if path:
+                self.reopened.emit(str(path))
+            return
         index = item.data(0, Qt.UserRole)
         if index is not None:
             self.activated.emit(index)
 
-    def refresh(self, documents, active, collections, labels=None, origins=None, grouping="families"):
+    def refresh(self, documents, active, collections, labels=None, origins=None, grouping="families", closed=()):
+        """The tree of the case: open analyses, and the ones whose tab was closed.
+
+        A closed analysis stays in the case — its database is on disk and the tree is how
+        an analyst finds it again. Dual-clicking one reopens its tab instead of switching
+        to a tab that no longer exists.
+        """
+        closed = tuple(closed)
+        closed_paths = {snapshot.path for snapshot in closed}
+        opened = list(documents)
+        documents = opened + list(closed)
         blocked = self.grouping.blockSignals(True)
         self.grouping.setCurrentIndex(self.grouping.findData(grouping))
         self.grouping.blockSignals(blocked)
@@ -53,7 +87,8 @@ class AnalysisNavigator(QWidget):
         signature = (tuple((d.path, d.source_info['path']) for d in documents),
                      tuple((c['path'], c['name']) for c in collections),
                      tuple(labels.get(d.path,'') for d in documents), grouping,
-                     tuple((d.path, str(origins.get(d.path, {}))) for d in documents))
+                     tuple((d.path, str(origins.get(d.path, {}))) for d in documents),
+                     tuple(d.path for d in closed))
         if signature != self.signature:
             expanded = {self.key(item): item.isExpanded() for item in self.items()}
             self.family_cache = {d.path:self.family_cache[d.path] for d in documents if d.path in self.family_cache}
@@ -107,9 +142,9 @@ class AnalysisNavigator(QWidget):
                     else:
                         title = (labels.get(snapshot.path) or short.get(snapshot.source_info.get('path', ''))
                                  or analysis_label(snapshot.source_info))
-                    leaf = QTreeWidgetItem(parent, [title])
-                    leaf.setData(0, Qt.UserRole, index)
-                    leaf.setToolTip(0, (origin or {}).get('source', str(source))+'\n'+snapshot.path)
+                    self._leaf(parent, title, index,
+                               (origin or {}).get('source', str(source))+'\n'+snapshot.path,
+                               closed_paths, snapshot)
                     continue
                 family_key = (root_key, family)
                 families.setdefault(family_key,[]).append((index,snapshot,source))
@@ -121,9 +156,9 @@ class AnalysisNavigator(QWidget):
                 for index,snapshot,source in members:
                     title=(labels.get(snapshot.path) or short.get(snapshot.source_info.get('path', ''))
                            or analysis_label(snapshot.source_info))
-                    leaf = QTreeWidgetItem(parent, [title])
-                    leaf.setData(0, Qt.UserRole, index)
-                    leaf.setToolTip(0, str(snapshot.source_info.get('path',''))+'\n'+snapshot.path)
+                    self._leaf(parent, title, index,
+                               str(snapshot.source_info.get('path',''))+'\n'+snapshot.path,
+                               closed_paths, snapshot)
             for item in self.items():
                 if item.childCount():item.setExpanded(expanded.get(self.key(item), True))
             self.signature = signature

@@ -263,7 +263,8 @@ class Library:
     def rows(self, identifier: str, index: int, offset: int = 0, limit: int = 200,
              search: str = "", sort: int | None = None, descending: bool = False,
              filters: list[tuple[int, str, str]] | None = None,
-             bookmarks_only: bool = False) -> dict:
+             bookmarks_only: bool = False, groups: list[int] | None = None,
+             path: list[str] | None = None) -> dict:
         case = self._case_for(identifier, index)
         view = View(search=search or "", filters=[], bookmarks_only=bool(bookmarks_only))
         for column, operator, value in filters or ():
@@ -279,18 +280,27 @@ class Library:
             view.descending = bool(descending)
             view.sort_type = "text"
             view.sorts = [SortKey(sort, "text", bool(descending))]
+        if groups:
+            for column in groups:
+                if not 0 <= int(column) < len(case.headers):
+                    raise ServiceError("Colonne de groupement hors de l'analyse.")
+            view.groups = [int(column) for column in groups]
         limit = max(1, min(int(limit), 1000))
         offset = max(0, int(offset))
+        depth = tuple(path or ())
         with case.lock:
             total = case.count(view)
-            page = case.page(view, offset=offset, limit=limit)
+            page = case.page(view, path=depth, offset=offset, limit=limit)
             rows = [[json_value(value) for value in row] for row in page]
+        grouped = len(depth) < len(view.groups)
         return {
             "columns": META_COLUMNS + list(case.headers),
             "rows": rows,
             "total": int(total),
             "offset": offset,
             "limit": limit,
+            "grouped": grouped,
+            "path": list(depth),
         }
 
     def bookmarks(self, identifier: str, index: int) -> dict:

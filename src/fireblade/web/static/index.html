@@ -84,9 +84,9 @@
           <button class="btn" id="bookmarks-only" title="Show bookmarked rows only">Bookmarks</button>
         </div>
         <div class="groupbar">
-          <div class="hint">Filters apply to the whole analysis, not just the page on screen.</div>
+          <div class="hint" id="group-label">Filters apply to the whole analysis, not just the page on screen.</div>
           <div class="grow"></div>
-          <button class="btn off" disabled title="Grouping arrives in a later phase">Group…</button>
+          <button class="btn" data-act="group-column">Group…</button>
           <button class="btn" id="details-toggle">Row details</button>
         </div>
 
@@ -156,6 +156,24 @@
     </div>
     <div class="foot">
       <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="group-modal">
+  <div class="dialog">
+    <h3>Group the results</h3>
+    <div class="body">
+      <div class="row">
+        <label for="group-select">Group by</label>
+        <select id="group-select"></select>
+      </div>
+      <div class="note">Grouping counts every row of the analysis, not just the page on screen. Click a group to drill down, Root to come back.</div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="group-apply">Group</button>
+      <button class="btn" data-act="group-remove">Remove grouping</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
     </div>
   </div>
 </div>

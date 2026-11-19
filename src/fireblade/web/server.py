@@ -98,10 +98,11 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     @app.get("/api/cases/{identifier}/analyses/{index}/rows")
     def rows(identifier: str, index: int, offset: int = 0, limit: int = 200,
              search: str = "", sort: int | None = None, descending: bool = False,
-             bookmarks_only: bool = False, filter: list[str] = Query(default=[])):
+             bookmarks_only: bool = False, group: list[int] = Query(default=[]),
+             path: list[str] = Query(default=[]), filter: list[str] = Query(default=[])):
         return library.rows(identifier, index, offset=offset, limit=limit, search=search,
                             sort=sort, descending=descending, bookmarks_only=bookmarks_only,
-                            filters=parse_filters(filter))
+                            groups=group, path=path, filters=parse_filters(filter))
 
     @app.get("/api/cases/{identifier}/analyses/{index}/export")
     def export(identifier: str, index: int, search: str = "", sort: int | None = None,

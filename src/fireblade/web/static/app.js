@@ -20,6 +20,8 @@ const state = {
   selected: null,
   bookmarks: new Map(),
   bookmarksOnly: false,
+  groups: [],          // column indexes, outer first
+  path: [],            // drill-down values
 };
 
 /* ---------- small helpers ---------- */
@@ -201,6 +203,8 @@ function query() {
   params.set("limit", String(PAGE));
   if (state.search) params.set("search", state.search);
   if (state.bookmarksOnly) params.set("bookmarks_only", "true");
+  for (const column of state.groups) params.append("group", String(column));
+  for (const value of state.path) params.append("path", value === null ? "" : String(value));
   if (state.sort !== null) {
     params.set("sort", String(state.sort));
     params.set("descending", state.descending ? "true" : "false");
@@ -225,6 +229,7 @@ async function loadRows(reset) {
     state.rows = payload.rows;
     state.total = payload.total;
     state.offset = payload.offset;
+    state.grouped = Boolean(payload.grouped);
     await loadBookmarks();
     renderGrid();
     renderPaneTabs();
@@ -264,6 +269,7 @@ function clearGrid(message) {
 
 function renderGrid() {
   const empty = $("grid-empty");
+  if (state.grouped) { renderGroupedGrid(); return; }
   if (!state.columns.length) {
     clearGrid("No analysis open.");
     return;
@@ -314,6 +320,33 @@ function renderGrid() {
   say(`${state.total} row(s) in this analysis${state.filters.length ? ` — ${state.filters.length} filter(s)` : ""}`);
 }
 
+function renderGroupedGrid() {
+  const column = state.groups[state.path.length];
+  const name = state.columns?.[column + 1] || `column ${column + 1}`;
+  const empty = $("grid-empty");
+  empty.hidden = state.rows.length > 0;
+  empty.textContent = "No group at this level.";
+
+  $("cols").innerHTML = '<col style="width:30px"><col style="width:34px"><col style="width:52%"><col style="width:120px">';
+  $("head").innerHTML = `<tr><th></th><th>Ro…</th><th>${escapeHtml(name)}</th><th style="width:120px">Rows</th></tr>`;
+
+  $("body").innerHTML = state.rows.map((row, position) => {
+    const value = row[0];
+    const count = row[1];
+    const text = value === null || value === "" ? "(empty)" : String(value);
+    return `<tr data-group="${escapeHtml(text)}" data-value="${escapeHtml(String(value ?? ""))}">
+      <td><span class="cb"></span></td>
+      <td class="rowid">${state.offset + position + 1}</td>
+      <td title="${escapeHtml(text)}">▸ ${escapeHtml(text)}</td>
+      <td>${count}</td></tr>`;
+  }).join("");
+
+  const from = state.total ? state.offset + 1 : 0;
+  const to = Math.min(state.offset + state.rows.length, state.total);
+  $("pageinfo").textContent = `${from}–${to} / ${state.rows.length} group(s) — ${state.total} row(s)`;
+  say(`Grouped by ${name} — ${state.rows.length} group(s) on this page, ${state.total} row(s) in the analysis`);
+}
+
 function showDetails(row) {
   const box = $("details");
   if (!row) {
@@ -350,6 +383,24 @@ function showTab(name) {
   $("analysis-view").style.display = name === "analyses" ? "flex" : "none";
   $("cases-view").style.display = name === "cases" ? "flex" : "none";
   $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";
+}
+
+function openGroupPicker() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  const select = $("group-select");
+  select.innerHTML = state.columns.slice(1).map((name, index) =>
+    `<option value="${index}">${escapeHtml(name)}</option>`).join("");
+  if (state.groups.length) select.value = String(state.groups[0]);
+  $("group-modal").classList.add("show");
+}
+
+function applyGrouping() {
+  const column = Number($("group-select").value);
+  state.groups = [column];
+  state.path = [];
+  $("group-label").textContent = `Grouped by ${state.columns[column + 1]}`;
+  closeModals();
+  loadRows(true);
 }
 
 /* ---------- display settings ---------- */
@@ -464,6 +515,13 @@ function wire() {
   });
 
   $("body").addEventListener("click", (event) => {
+    const group = event.target.closest("tr[data-group]");
+    if (group) {
+      const raw = group.dataset.value;
+      state.path.push(raw === "" ? null : raw);
+      loadRows(true);
+      return;
+    }
     const tr = event.target.closest("tr[data-row]");
     if (!tr) return;
     if (event.target.closest(".markcell")) {
@@ -480,8 +538,12 @@ function wire() {
     showDetails(row);
   });
 
-  $("first").addEventListener("click", () => { state.offset = 0; loadRows(false); });
+  $("first").addEventListener("click", () => {
+    state.offset = 0;
+    if (state.path.length) { state.path = []; loadRows(true); } else { loadRows(false); }
+  });
   $("prev").addEventListener("click", () => {
+    if (state.path.length) { state.path.pop(); state.offset = 0; loadRows(true); return; }
     state.offset = Math.max(0, state.offset - PAGE);
     loadRows(false);
   });
@@ -549,6 +611,14 @@ async function act(name) {
       window.location.href = rowsUrl().replace("/rows?", "/export?");
       break;
     case "import-file": $("import-input").click(); break;
+    case "group-column": openGroupPicker(); break;
+    case "group-apply": applyGrouping(); break;
+    case "group-remove":
+      state.groups = []; state.path = []; $("group-label").textContent = "Filters apply to the whole analysis, not just the page on screen.";
+      loadRows(true); break;
+    case "group-none":
+      state.groups = []; state.path = []; $("group-label").textContent = "Glissez un en-tête ici pour regrouper les résultats";
+      loadRows(true); break;
     case "display-settings": $("settings-modal").classList.add("show"); break;
     case "settings-close": closeModals(); break;
     case "about":

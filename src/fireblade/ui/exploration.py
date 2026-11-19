@@ -296,19 +296,10 @@ class ExplorationMixin:
         dialog.deleteLater()
 
     def reopen_closed(self):
+        """The last closed tab, brought back by the same path the tree uses."""
         if not self.closed_documents or not self.can_open_file():
             return
-        snapshot = self.closed_documents[-1]
-        if any(d.path == snapshot.path for d in self.documents):
-            self.closed_documents.pop()
-            return
-        self.documents.append(snapshot)
-        self.switch_document(len(self.documents) - 1)
-        if self.case and str(self.case.path) == snapshot.path:
-            self.closed_documents.pop()
-        else:
-            self.documents.pop()
-        self.sync_tabs()
+        self.reopen_closed_analysis(self.closed_documents[-1].path)
 
     def record_message(self, text):
         if not text:

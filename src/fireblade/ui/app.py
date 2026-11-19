@@ -364,6 +364,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         for grid in (self.tree, *self.tree.frozen_views):
             grid.header().filterChanged.connect(self.column_search)
             grid.header().sortRequested.connect(self.set_sort)
+            grid.header().hideRequested.connect(self.hide_column)
             if grid is not self.tree:
                 grid.header().sectionClicked.connect(self.header_sort)
         self.tree.header().setContextMenuPolicy(Qt.CustomContextMenu)

@@ -464,7 +464,7 @@ def test_all_date_group_intervals_are_accessible_in_header_menu(app,window):
 def test_inline_filters_sort_pins_and_clear(app, window):
     from PySide6.QtTest import QTest
     header = window.tree.header()
-    edit, up, down = header.controls[2]
+    edit, up, down, _close = header.controls[2]
     QTest.keyClicks(edit, "ali")
     QTest.qWait(500)
     settle(app, window)

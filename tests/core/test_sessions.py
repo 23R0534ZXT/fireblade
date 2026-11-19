@@ -68,3 +68,35 @@ def test_1000_distinct_analyses_roundtrip(tmp_path):
     target = tmp_path / 'workspace.fireblade-session'
     sessions.write_session(target, documents, 999)
     assert sessions.read_session(target) == (documents, 999)
+
+def test_closed_analyses_travel_with_the_session(tmp_path):
+    open_one = snapshot(tmp_path, 'open', search='keep')
+    closed_one = snapshot(tmp_path, 'closed', search='parked')
+    target = tmp_path / 'workspace.fireblade-session'
+    sessions.write_session(target, [open_one], 0, [closed_one])
+    documents, active, closed = sessions.read_session(target, with_closed=True)
+    assert [d.path for d in documents] == [open_one.path]
+    assert [d.path for d in closed] == [closed_one.path]
+    assert closed[0].view.search == 'parked'
+    assert active == 0
+    assert sessions.read_session(target)[0] == [open_one], 'the old shape still answers'
+
+
+def test_a_case_with_every_tab_closed_is_still_a_session(tmp_path):
+    closed_one = snapshot(tmp_path, 'closed')
+    target = tmp_path / 'workspace.fireblade-session'
+    sessions.write_session(target, [], -1, [closed_one])
+    documents, active, closed = sessions.read_session(target, with_closed=True)
+    assert documents == [] and active == -1 and len(closed) == 1
+
+
+def test_a_session_written_before_closed_existed_still_opens(tmp_path):
+    import json
+    document = snapshot(tmp_path)
+    target = tmp_path / 'workspace.fireblade-session'
+    sessions.write_session(target, [document], 0)
+    payload = json.loads(target.read_text(encoding='utf-8'))
+    payload.pop('closed', None)
+    target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
+    documents, _, closed = sessions.read_session(target, with_closed=True)
+    assert len(documents) == 1 and closed == []

@@ -267,7 +267,7 @@ class InvestigationMixin:
                 self.remember_collection_views()
             data=self.investigation_library.save(self.active_investigation['id'],self.documents,self.active_document,
                 list(self.investigation_collections),str(self.collection.output) if self.collection else None,
-                self.active_investigation['revision'])
+                self.active_investigation['revision'],self.closed_documents)
             self.active_investigation=data
             self.update_investigation_badge();self.refresh_investigations()
             return True
@@ -359,7 +359,7 @@ class InvestigationMixin:
                 self.restore_storage_case(data);return None
             lease=self.investigation_library.lease(identifier);lease.__enter__()
             session=self.investigation_library.session_path(data)
-            snapshots,active=self.validate_session(session) if session else ([], -1)
+            snapshots,active,closed=self.validate_session(session,with_closed=True) if session else ([], -1, [])
             if snapshots:candidate=self.prepare_snapshot(snapshots[active])
             # Validate the target before saving or closing the current workspace.
             if not self.persist_investigation():return False
@@ -372,7 +372,7 @@ class InvestigationMixin:
                 from fireblade.core.collection import Collection
                 try:self.collection=Collection.reopen(data['active_collection'],self.toolpack(),self.settings)
                 except Exception as exc:self.statusBar().showMessage('Collecte indisponible : '+str(exc))
-            self.documents=snapshots;self.active_document=-1;self.sync_tabs()
+            self.documents=snapshots;self.active_document=-1;self.closed_documents=list(closed);self.sync_tabs()
             if snapshots:
                 snapshot=snapshots[active]
                 self.attach(candidate,snapshot.view,snapshot.header_state,auto_layout=False)

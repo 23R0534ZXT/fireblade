@@ -1,3 +1,40 @@
+# Fireblade 0.7.6 — a closed tab keeps its analysis, a column hides with a cross, and the graph leaves as an ATT&CK layer
+
+## Closing a grid no longer loses the file
+
+- Closing a tab used to remove the analysis from the navigation tree, so the only way back
+  was to import the folder again. Closing now closes the tab and nothing else: the analysis
+  stays in the case, listed in the tree, greyed out and marked "closed tab".
+- Double-clicking it brings the tab back with its saved view, columns and filters. The
+  Ctrl+Shift+T shortcut, which reopened the last closed tab, takes the same path.
+- The case remembers what was closed: switching cases or restarting keeps the analysis in
+  the tree. A case whose every tab is closed is still a case, not an empty window.
+
+## A cross on every column header
+
+- Each column header carries a small cross on its right: it hides that column, exactly as
+  the column manager does. It is not drawn on a column too narrow to hold it.
+
+## Verified
+
+- Three files imported as three tabs; one closed by hand: two tabs left, the third listed in
+  the tree with its "closed tab" mark; double-clicking it restored the third tab.
+- The cross of the `EventId` header hid that column on the real window, and the other
+  headers kept theirs.
+- Sessions written before this version still open, and a session holding only closed
+  analyses is accepted.
+
+## The attack graph as a MITRE ATT&CK Navigator layer
+
+- The graph tab now exports the case as a Navigator layer (`.json`), the format the official
+  ATT&CK Navigator opens. Each technique the findings declare becomes an entry: its
+  identifier, the tactic the rule named, the hosts an alert attributed it to, and a score
+  equal to the number of those hosts — so the colour says how widely a technique spread.
+- Nothing invented: a node without an ATT&CK identifier (`Txxxx` or `Txxxx.yyy`) is never
+  written, and a graph without techniques says so instead of producing an empty file.
+- The case name travels in the layer metadata, so two layers opened side by side stay
+  distinguishable.
+
 # Fireblade 0.7.4 — the import says where it stands
 
 An import of a hundred and nineteen files gave nothing to watch for twenty minutes: rows

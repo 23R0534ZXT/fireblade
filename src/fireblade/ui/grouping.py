@@ -10,6 +10,7 @@ MIME = "application/x-fireblade-column"
 class GroupHeader(QHeaderView):
     filterChanged = Signal(int, str)
     sortRequested = Signal(int, bool)
+    hideRequested = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(Qt.Horizontal, parent)
@@ -52,7 +53,14 @@ class GroupHeader(QHeaderView):
                     button.setAccessibleName(label)
                     button.clicked.connect(lambda checked=False, c=section-1, d=descending: self.sortRequested.emit(c, d))
                     buttons.append(button)
-                self.controls[section] = (edit, *buttons)
+                close = QToolButton(self.viewport())
+                close.setText('×')
+                close.setAutoRaise(True)
+                close.setToolTip(translate('Masquer la colonne'))
+                close.setAccessibleName(translate('Masquer la colonne {}').format(
+                    self.model().headerData(section, Qt.Horizontal) if self.model() else section))
+                close.clicked.connect(lambda checked=False, c=section-1: self.hideRequested.emit(c))
+                self.controls[section] = (edit, *buttons, close)
             for direction, button in zip((False, True), self.controls[section][1:]):
                 button.setChecked(sort_column == section-1 and descending == direction)
             value = next((f.value for f in filters if f.column == section-1 and f.operator == 'contains'), '')
@@ -73,15 +81,17 @@ class GroupHeader(QHeaderView):
     def position_controls(self, *_):
         row_height = self.fontMetrics().height() + 12
         top_height = max(24, self.height() - row_height)
-        for section, (edit, up, down) in self.controls.items():
+        for section, (edit, up, down, close) in self.controls.items():
             visible = section < self.count() and not self.isSectionHidden(section)
             x, width = self.sectionViewportPosition(section), self.sectionSize(section)
             edit.setGeometry(x+3, top_height+1, max(1, width-6), row_height-3)
             up.setGeometry(x+width-36, 1, 16, top_height-2)
             down.setGeometry(x+width-19, 1, 16, top_height-2)
+            close.setGeometry(x+width-53, 1, 16, top_height-2)
             edit.setVisible(visible and width > 32)
             up.setVisible(visible and width > 60)
             down.setVisible(visible and width > 60)
+            close.setVisible(visible and width > 88)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -106,7 +116,7 @@ class GroupHeader(QHeaderView):
             option = QStyleOptionHeader()
             self.initStyleOptionForIndex(option, logical)
             option.rect = rect
-            option.text = self.fontMetrics().elidedText(option.text, Qt.ElideRight, max(0, rect.width()-44))
+            option.text = self.fontMetrics().elidedText(option.text, Qt.ElideRight, max(0, rect.width()-62))
             option.sortIndicator = QStyleOptionHeader.None_
             painter.save()
             self.style().drawControl(QStyle.CE_Header, option, painter, self)
@@ -120,7 +130,7 @@ class GroupHeader(QHeaderView):
         paint_image(painter,rect,appearance)
         font=font_for(appearance,self.font());painter.setFont(font)
         painter.setPen(QColor(appearance['foreground']) if 'foreground' in appearance else self.palette().color(QPalette.ButtonText))
-        content=rect.adjusted(5,2,-40,-2)
+        content=rect.adjusted(5,2,-58,-2)
         label=str(model.headerData(logical,Qt.Horizontal) or '')
         alignment=role_value(appearance,Qt.TextAlignmentRole) or (Qt.AlignLeft|Qt.AlignVCenter)
         paint_text(painter,content,label,appearance,alignment)

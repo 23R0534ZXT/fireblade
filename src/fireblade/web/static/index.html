@@ -169,6 +169,9 @@
         <div class="filterbar">
           <input class="search" id="case-search" placeholder="Filter cases by name, environment or identifier…">
           <button class="btn" data-act="refresh-cases">Refresh</button>
+          <button class="btn" data-act="new-case">New case…</button>
+          <button class="btn" data-act="rename-case">Rename…</button>
+          <button class="btn" data-act="destroy-case">Destroy…</button>
         </div>
         <div class="caseswrap">
           <table>
@@ -209,6 +212,53 @@
     </div>
     <div class="foot">
       <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="case-modal">
+  <div class="dialog">
+    <h3 id="case-modal-title">New case</h3>
+    <div class="body">
+      <div class="row"><label for="case-name">Name</label><input id="case-name"></div>
+      <div class="row"><label for="case-description">Description</label><textarea id="case-description" rows="3"></textarea></div>
+      <div class="row"><label for="case-environment">Environment</label>
+        <select id="case-environment">
+          <option value="windows">windows</option>
+          <option value="linux">linux</option>
+          <option value="macos">macos</option>
+          <option value="network">network</option>
+          <option value="unspecified">unspecified</option>
+        </select>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="case-save">Create</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="destroy-modal">
+  <div class="dialog">
+    <h3>Destroy this case</h3>
+    <div class="body">
+      <div class="note"><b>This cannot be undone.</b> Every file of the case is overwritten, the folders are removed, and a certificate is written outside the case folder.</div>
+      <div class="row"><label for="destroy-method">Method</label>
+        <select id="destroy-method">
+          <option value="dod3">DoD 5220.22-M — 3 passes</option>
+          <option value="dod7">DoD 5220.22-M — 7 passes</option>
+        </select>
+      </div>
+      <div class="row"><label for="destroy-operator">Operator</label><input id="destroy-operator" placeholder="Your name"></div>
+      <div class="row"><label for="destroy-witness">Witness</label><input id="destroy-witness" placeholder="Optional"></div>
+      <div class="row"><label for="destroy-reason">Reason</label><input id="destroy-reason" placeholder="Optional"></div>
+      <div class="row"><label for="destroy-confirm">Type the case name</label><input id="destroy-confirm"></div>
+      <div class="note" id="destroy-target"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="destroy-run">Destroy</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
     </div>
   </div>
 </div>

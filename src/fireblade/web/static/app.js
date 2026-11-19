@@ -105,6 +105,92 @@ async function uploadFiles(files) {
 
 /* ---------- cases ---------- */
 
+let caseDialogMode = "create";
+
+function openCaseDialog(mode) {
+  caseDialogMode = mode;
+  const current = state.openCase && mode === "rename" ? state.openCase : null;
+  if (mode === "rename" && !current) { say("Open a case first", true); return; }
+  $("case-modal-title").textContent = mode === "rename" ? "Rename the case" : "New case";
+  $("case-name").value = current ? current.name : "";
+  $("case-description").value = current ? current.description || "" : "";
+  $("case-environment").value = current ? current.environment || "unspecified" : "unspecified";
+  $("case-environment").disabled = mode === "rename";
+  $("case-name").closest(".row").style.display = "flex";
+  document.querySelector('[data-act="case-save"]').textContent = mode === "rename" ? "Save" : "Create";
+  $("case-modal").classList.add("show");
+}
+
+async function saveCase() {
+  const name = $("case-name").value.trim();
+  if (!name) { say("A name is required", true); return; }
+  closeModals();
+  try {
+    if (caseDialogMode === "rename") {
+      await apiPatch(`/api/cases/${state.openCase.id}`, { name, description: $("case-description").value });
+      await openCase(state.openCase.id);
+      say(`Case renamed to ${name}`);
+    } else {
+      const created = await apiPost("/api/cases", { name, description: $("case-description").value,
+                                                     environment: $("case-environment").value });
+      say(`Case created: ${created.name}`);
+    }
+    await loadCases();
+    showTab("cases");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+function openDestroyDialog() {
+  if (!state.openCase) { say("Open the case you want to destroy", true); return; }
+  $("destroy-target").textContent = `Case: ${state.openCase.name} — type that name to confirm.`;
+  $("destroy-confirm").value = "";
+  $("destroy-modal").classList.add("show");
+}
+
+async function runDestroy() {
+  const confirmation = $("destroy-confirm").value.trim();
+  const body = {
+    method: $("destroy-method").value,
+    operator: $("destroy-operator").value,
+    witness: $("destroy-witness").value,
+    reason: $("destroy-reason").value,
+    confirmation,
+  };
+  if (confirmation !== state.openCase.name) { say("The typed name does not match", true); return; }
+  closeModals();
+  say("Destroying the case — this takes a moment…");
+  try {
+    const response = await fetch(`/api/cases/${state.openCase.id}/destroy`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || response.statusText);
+    state.openCase = null;
+    await loadCases();
+    showTab("cases");
+    say(`Case destroyed: ${payload.files} file(s), certificate ${payload.certificate}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function apiPost(path, body) {
+  const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" },
+                                       body: JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.detail || response.statusText);
+  return payload;
+}
+
+async function apiPatch(path, body) {
+  const response = await fetch(path, { method: "PATCH", headers: { "Content-Type": "application/json" },
+                                       body: JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.detail || response.statusText);
+  return payload;
+}
+
 async function loadCases() {
   try {
     const payload = await api("/api/cases");
@@ -822,6 +908,11 @@ async function act(name) {
       break;
     case "import-file": $("import-input").click(); break;
     case "group-column": openGroupPicker(); break;
+    case "new-case": openCaseDialog("create"); break;
+    case "rename-case": openCaseDialog("rename"); break;
+    case "case-save": await saveCase(); break;
+    case "destroy-case": openDestroyDialog(); break;
+    case "destroy-run": await runDestroy(); break;
     case "report": $("report-modal").classList.add("show"); break;
     case "report-build": await buildReport(); break;
     case "columns": openColumnManager(); break;

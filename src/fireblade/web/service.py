@@ -178,6 +178,61 @@ class Library:
         return matches[0].resolve() if len(matches) == 1 else None
 
 
+    # -- case lifecycle ----------------------------------------------------
+
+    def create_case(self, name: str, description: str = "", environment: str = "unspecified") -> dict:
+        data = self.library.create(name, description, environment)
+        return self._summary(data)
+
+    def update_case(self, identifier: str, name: str | None = None,
+                    description: str | None = None) -> dict:
+        fields = {}
+        if name is not None:
+            fields["name"] = name
+        if description is not None:
+            fields["description"] = description
+        if not fields:
+            raise ServiceError("Rien à modifier.")
+        data = self.library.update(identifier, **fields)
+        return self._summary(data)
+
+    def destroy(self, identifier: str, method: str = "dod3", operator: str = "",
+                witness: str = "", reason: str = "", confirmation: str = "") -> dict:
+        """Destroy the case the way the desktop does, and keep the certificate outside."""
+        from fireblade.core.case_destruction import destroy_case
+
+        data = self.library.read(identifier)
+        if (confirmation or "").strip() != data.get("name", ""):
+            raise ServiceError("La confirmation doit reprendre le nom du case à l'identique.")
+        folder = self.library.folder(identifier)
+        certificates = self.root / "certificates"
+        certificates.mkdir(parents=True, exist_ok=True)
+        # The generator writes HTML unless the target ends in .pdf.
+        certificate = certificates / (datetime.now(timezone.utc).strftime("pv-%Y%m%d-%H%M%S-")
+                                      + identifier[:8] + ".html")
+        self.close_case(identifier)
+        record = destroy_case(folder, method, operator=operator, witness=witness, reason=reason,
+                              certificate_path=certificate, case_name=data.get("name", ""),
+                              case_id=identifier)
+        return {"id": record.get("id"), "method": record.get("method"),
+                "files": len(record.get("files") or []),
+                "certificate": str(certificate),
+                "bytes": sum(int(item.get("size") or 0) for item in (record.get("files") or []))}
+
+    def close_case(self, identifier: str) -> None:
+        """Release every handle the service holds on one case."""
+        with self._lock:
+            for key in [item for item in self._open if item[0] == identifier]:
+                try:
+                    self._open.pop(key).close()
+                except Exception:
+                    pass
+            for key in [item for item in self._timelines if item[0] == identifier]:
+                try:
+                    self._timelines.pop(key).close()
+                except Exception:
+                    pass
+
     # -- reports -----------------------------------------------------------
 
     def report(self, identifier: str, title: str, description: str = "",

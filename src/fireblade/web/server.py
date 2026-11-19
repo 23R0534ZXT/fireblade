@@ -39,6 +39,34 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     def cases():
         return library.cases()
 
+    @app.post("/api/cases")
+    def create_case(payload: dict):
+        payload = payload or {}
+        try:
+            return library.create_case(payload.get("name") or "Untitled case",
+                                       payload.get("description", ""),
+                                       payload.get("environment", "unspecified"))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.patch("/api/cases/{identifier}")
+    def update_case(identifier: str, payload: dict):
+        payload = payload or {}
+        try:
+            return library.update_case(identifier, payload.get("name"), payload.get("description"))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/destroy")
+    def destroy(identifier: str, payload: dict):
+        payload = payload or {}
+        try:
+            return library.destroy(identifier, payload.get("method", "dod3"),
+                                   payload.get("operator", ""), payload.get("witness", ""),
+                                   payload.get("reason", ""), payload.get("confirmation", ""))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}")
     def case(identifier: str):
         try:

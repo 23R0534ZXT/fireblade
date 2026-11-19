@@ -76,6 +76,25 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/report")
+    def report(identifier: str, payload: dict):
+        payload = payload or {}
+        try:
+            return library.report(identifier, payload.get("title") or "Fireblade report",
+                                  payload.get("description", ""),
+                                  bookmarks_only=bool(payload.get("bookmarks_only", True)),
+                                  limit=int(payload.get("limit", 2000)))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/reports/{name}")
+    def report_file(identifier: str, name: str):
+        try:
+            path = library.report_file(identifier, name)
+        except ServiceError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return FileResponse(path, media_type="text/html", filename=name)
+
     @app.post("/api/cases/{identifier}/analyses/{index}/ioc")
     def ioc(identifier: str, index: int, payload: dict):
         text = (payload or {}).get("text", "")

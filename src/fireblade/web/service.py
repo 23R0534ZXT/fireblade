@@ -178,6 +178,43 @@ class Library:
         return matches[0].resolve() if len(matches) == 1 else None
 
 
+    # -- reports -----------------------------------------------------------
+
+    def report(self, identifier: str, title: str, description: str = "",
+               bookmarks_only: bool = True, limit: int = 2000) -> dict:
+        """Build the client report with the desktop's own generator.
+
+        Bookmarks are the default selection: a report is a set of explicit
+        findings, not a dump of the grid.
+        """
+        from fireblade.core.investigation_report import build_report, write_report
+
+        snapshots = self._snapshots(identifier)
+        if not snapshots:
+            raise ServiceError("Ce case ne contient aucune analyse.")
+        with self._lock:
+            for open_key in [item for item in self._open if item[0] == identifier]:
+                try:
+                    self._open.pop(open_key).close()
+                except Exception:
+                    pass
+        reader = WorkspaceReader(snapshots)
+        report = build_report(reader, title, description, bookmarks_only=bookmarks_only, limit=limit)
+        folder = self.library.folder(identifier)
+        target = folder / "reports" / (datetime.now(timezone.utc).strftime("report-%Y%m%d-%H%M%S") + ".html")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        write_report(target, report, snapshots)
+        return {"name": target.name, "records": report.get("records", 0),
+                "errors": report.get("errors", []), "url": f"/api/cases/{identifier}/reports/{target.name}"}
+
+    def report_file(self, identifier: str, name: str) -> Path:
+        if "/" in name or "\\" in name or name.startswith("."):
+            raise ServiceError("Nom de rapport invalide.")
+        path = self.library.folder(identifier) / "reports" / name
+        if not path.is_file():
+            raise ServiceError("Rapport introuvable.")
+        return path
+
     # -- IOC hunting -------------------------------------------------------
 
     def ioc_scan(self, identifier: str, index: int, text: str, limit: int = 2000) -> dict:

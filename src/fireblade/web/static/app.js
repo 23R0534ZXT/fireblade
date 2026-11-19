@@ -789,6 +789,27 @@ function closeModals() {
   document.querySelectorAll(".menu").forEach((node) => node.classList.remove("show"));
 }
 
+async function buildReport() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const body = JSON.stringify({
+    title: $("report-title").value || "Investigation report",
+    description: $("report-description").value || "",
+    bookmarks_only: $("report-bookmarks").value === "true",
+  });
+  closeModals();
+  say("Generating the report…");
+  try {
+    const response = await fetch(`/api/cases/${state.openCase.id}/report`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || response.statusText);
+    say(`Report: ${payload.records} finding(s) -> ${payload.name}`);
+    window.open(payload.url, "_blank");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 async function act(name) {
   closeModals();
   switch (name) {
@@ -801,6 +822,8 @@ async function act(name) {
       break;
     case "import-file": $("import-input").click(); break;
     case "group-column": openGroupPicker(); break;
+    case "report": $("report-modal").classList.add("show"); break;
+    case "report-build": await buildReport(); break;
     case "columns": openColumnManager(); break;
     case "columns-reset": state.hidden.clear(); renderGrid(); openColumnManager(); break;
     case "group-apply": applyGrouping(); break;

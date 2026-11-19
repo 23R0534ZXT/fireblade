@@ -1,3 +1,30 @@
+# Fireblade 0.7.4 — the import says where it stands
+
+An import of a hundred and nineteen files gave nothing to watch for twenty minutes: rows
+appeared one grid at a time, and with a merged layout nothing appeared at all until the
+end. The window looked asleep while it was working.
+
+## A percentage, and what it counts
+
+- The Imports panel now carries a bar and one line: files done out of the total, the file
+  being read, the rows a parser reported, the estimated time left, and the percentage.
+- Files are weighted by their size, not their number: a 4 GB image counts far more than a
+  2 KB text file, so the percentage follows the reading and not the file count.
+- The file in progress adds a partial share, estimated from the speed of the files already
+  finished, and is never counted as complete before it is. The bar stops at 99 % until the
+  last analysis is published — it does not sit at 100 % while the merge is still running.
+- During the family merge the line names the step ("Merging the artifact families") and the
+  percentage stays where the reading left it instead of jumping to the end.
+- A cancelled import stops where it really stopped, and the line disappears once the report
+  is complete.
+
+## Verified
+
+- Forty files read on the real window: 0 % → 7,5 → 18 → … → 98 → 99 (merge) → 100, thirteen
+  samples, the file being read named at every step, and the merged grid alone at the end.
+- The line is shown while the import runs and hidden when it is over, including after a
+  cancel; rows are only displayed when a parser actually counted them.
+
 # Fireblade 0.7.3 — one grid per artifact family, and it is what you get
 
 Choosing "by artifact" on a real collection left the per-file grids on screen: 128 EVTX

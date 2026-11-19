@@ -183,7 +183,7 @@ class StartWorkflowMixin:
         if self.disk_job is not None or self.disk_pool.activeThreadCount() or self._disk_pending:
             return False
         job = Job(collection.parse)
-        collection.progress = job.signals.progress.emit
+        collection.emit_text = job.signals.progress.emit
         self.disk_collection = collection
         if hasattr(collection, 'disk_source'):
             label = 'Disque : '+collection.disk_source

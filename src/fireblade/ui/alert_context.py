@@ -167,7 +167,7 @@ class AlertContextMixin:
                 self.show_collection_report(collection.report)
             QTimer.singleShot(0,open_when_idle)
         job=self.run(lambda:build_context(collection,alert,alert_path,row,minutes),done,exclusive=True)
-        if job is not None:collection.progress=job.signals.progress.emit
+        if job is not None:collection.emit_text=job.signals.progress.emit
 
     def preview_alert_context(self):
         if not self.can_open_file():return
@@ -220,7 +220,7 @@ class AlertContextMixin:
             self.context_preview.show()
             self.resizeDocks([self.context_preview],[max(320,self.width()//2)],Qt.Horizontal)
         job=self.run(build,display,exclusive=True)
-        if job is not None:collection.progress=job.signals.progress.emit
+        if job is not None:collection.emit_text=job.signals.progress.emit
 
     def keep_preview_context(self):
         if not self.can_open_file() or not self._preview_result or self._preview_collection is not self.collection:return

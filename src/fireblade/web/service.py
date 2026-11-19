@@ -1,0 +1,281 @@
+"""HTTP-facing, read-only access to a Fireblade case library.
+
+Nothing here imports Qt: this module is what the container runs. The desktop
+keeps its own window and its own copy of the same core calls.
+
+A case on disk keeps the structure the desktop writes: Cases/<32 hex>/case.json,
+a session file listing the analyses, and one DuckDB file per analysis. The web
+service only reads that structure and never rewrites it, so a case created on
+Windows opens here and the other way round.
+"""
+from __future__ import annotations
+
+import csv
+import json
+import tempfile
+import threading
+import uuid
+from datetime import date, datetime, time
+from pathlib import Path
+
+from fireblade.core.engine import Case
+from fireblade.core.investigations import InvestigationLibrary
+from fireblade.core.models import Filter, SortKey, View, analysis_label
+
+# Columns the grid always shows before the analysis own columns, in display order.
+META_COLUMNS = ["__row_id"]
+
+OPERATORS = {
+    "contains", "starts", "ends", "eq", "ne", "empty", "not_empty",
+    "gt", "ge", "lt", "le", "date_after", "date_eq", "date_ne", "date_before",
+}
+
+
+class ServiceError(Exception):
+    """A request the service refuses, with a message meant for a human."""
+
+
+def json_value(value):
+    """DuckDB cells are typed; the wire is JSON."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return bytes(value).hex()
+    if isinstance(value, (list, tuple)):
+        return [json_value(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): json_value(item) for key, item in value.items()}
+    return str(value)
+
+
+class Library:
+    """Case catalogue plus one open analysis at a time per (case, index)."""
+
+    MAX_OPEN = 4
+
+    def __init__(self, root: str | Path):
+        self.root = Path(root).resolve()
+        self.library = InvestigationLibrary(self.root)
+        self._open: dict[tuple[str, int], Case] = {}
+        self._lock = threading.RLock()
+
+    # -- catalogue ---------------------------------------------------------
+
+    def cases(self) -> dict:
+        records, errors = self.library.list()
+        return {
+            "root": str(self.root),
+            "cases": [self._summary(item) for item in records],
+            "errors": list(errors),
+        }
+
+    def _summary(self, data: dict) -> dict:
+        return {
+            "id": data.get("id"),
+            "name": data.get("name", ""),
+            "description": data.get("description", ""),
+            "environment": data.get("environment", ""),
+            "status": data.get("status", ""),
+            "updated": data.get("updated", ""),
+            "created": data.get("created", ""),
+            "analysis_count": data.get("analysis_count", len(data.get("analyses") or [])),
+            "recovery_needed": bool(data.get("recovery_needed")),
+        }
+
+    def case(self, identifier: str) -> dict:
+        data = self.library.read(identifier)
+        summary = self._summary(data)
+        summary["analyses"] = self._analyses(data)
+        summary["collections"] = [
+            {"name": Path(entry.get("path", "")).name, "path": entry.get("path", "")}
+            for entry in data.get("collections") or []
+            if isinstance(entry, dict)
+        ]
+        return summary
+
+    def _analyses(self, data: dict) -> list[dict]:
+        """The session's analyses, with the recorded path repaired when the case moved.
+
+        A session written on Windows stores absolute paths such as
+        C:\\Users\\...\\analysis.duckdb. Once the folder is copied to Linux the
+        file is there but the path is not, so the recorded path is tried first and
+        the case folder is searched by file name. Nothing on disk is rewritten.
+        """
+        session = self.library.session_path(data)
+        if not session or not Path(session).is_file():
+            return []
+        folder = Path(session).parent
+        if Path(session).stat().st_size > 4 * 1024 * 1024:
+            raise ServiceError("Fichier de session trop volumineux.")
+        payload = json.loads(Path(session).read_text(encoding="utf-8"))
+        if payload.get("format") != "fireblade-session" or payload.get("version") != 1:
+            raise ServiceError("Format de session Fireblade inconnu.")
+        documents = payload.get("documents") or []
+        if not isinstance(documents, list) or len(documents) > 1000:
+            raise ServiceError("Session Fireblade invalide.")
+        active = payload.get("active", 0)
+        entries = []
+        for index, document in enumerate(documents):
+            if not isinstance(document, dict) or "path" not in document:
+                continue
+            recorded = str(document["path"])
+            resolved = self._resolve_analysis(folder, recorded)
+            source = document.get("source") or {}
+            entries.append({
+                "index": index,
+                "label": self._label(source, resolved or recorded),
+                "path": str(resolved or ""),
+                "recorded_path": recorded,
+                "found": resolved is not None,
+                "source": str(source.get("path", "")) if isinstance(source, dict) else "",
+                "active": index == active,
+            })
+        return entries
+
+    @staticmethod
+    def _label(source, fallback) -> str:
+        """The tab label the desktop would show: the source file name, not its path."""
+        if isinstance(source, dict):
+            raw = str(source.get("path", "") or "")
+            if raw:
+                name = Path(raw.replace("\\", "/")).name
+                if name:
+                    return name
+        return Path(str(fallback).replace("\\", "/")).stem or "analysis"
+
+    @staticmethod
+    def _resolve_analysis(folder: Path, recorded: str) -> Path | None:
+        # A Windows session stores backslashes; on Linux they are ordinary characters,
+        # not separators, so the separator is normalised before anything else.
+        candidate = Path(recorded.replace("\\", "/"))
+        if candidate.is_file():
+            return candidate.resolve()
+        if not candidate.is_absolute():
+            relative = (folder / candidate)
+            if relative.is_file():
+                return relative.resolve()
+        name = candidate.name
+        if not name or name in (".", ".."):
+            return None
+        local = folder / name
+        if local.is_file():
+            return local.resolve()
+        matches = []
+        for path in folder.rglob(name):
+            if path.is_file() and not path.is_symlink():
+                matches.append(path)
+            if len(matches) > 1:
+                break
+        return matches[0].resolve() if len(matches) == 1 else None
+
+    # -- one analysis ------------------------------------------------------
+
+    def _case_for(self, identifier: str, index: int) -> Case:
+        key = (identifier, index)
+        with self._lock:
+            existing = self._open.get(key)
+            if existing is not None:
+                return existing
+            data = self.library.read(identifier)
+            analyses = self._analyses(data)
+            if not 0 <= index < len(analyses):
+                raise ServiceError("Cette analyse n'existe pas dans le case.")
+            entry = analyses[index]
+            if not entry["found"]:
+                raise ServiceError(
+                    "Le fichier d'analyse est absent du case "
+                    f"(chemin enregistré : {entry['recorded_path']}).")
+            path = Path(entry["path"])
+            if len(self._open) >= self.MAX_OPEN:
+                oldest = next(iter(self._open))
+                try:
+                    self._open.pop(oldest).close()
+                except Exception:  # a broken handle must not block the new one
+                    pass
+            case = Case(path, read_only=True)
+            self._open[key] = case
+            return case
+
+    def close(self):
+        with self._lock:
+            for case in self._open.values():
+                try:
+                    case.close()
+                except Exception:
+                    pass
+            self._open.clear()
+
+    def columns(self, identifier: str, index: int) -> list[str]:
+        case = self._case_for(identifier, index)
+        return META_COLUMNS + list(case.headers)
+
+    def rows(self, identifier: str, index: int, offset: int = 0, limit: int = 200,
+             search: str = "", sort: int | None = None, descending: bool = False,
+             filters: list[tuple[int, str, str]] | None = None) -> dict:
+        case = self._case_for(identifier, index)
+        view = View(search=search or "", filters=[])
+        for column, operator, value in filters or ():
+            if operator not in OPERATORS:
+                raise ServiceError(f"Opérateur de filtre inconnu : {operator}")
+            if not 0 <= column < len(case.headers):
+                raise ServiceError("Colonne de filtre hors de l'analyse.")
+            view.filters.append(Filter(column, operator, value))
+        if sort is not None:
+            if not 0 <= sort < len(case.headers):
+                raise ServiceError("Colonne de tri hors de l'analyse.")
+            view.sort_column = sort
+            view.descending = bool(descending)
+            view.sort_type = "text"
+            view.sorts = [SortKey(sort, "text", bool(descending))]
+        limit = max(1, min(int(limit), 1000))
+        offset = max(0, int(offset))
+        with case.lock:
+            total = case.count(view)
+            page = case.page(view, offset=offset, limit=limit)
+            rows = [[json_value(value) for value in row] for row in page]
+        return {
+            "columns": META_COLUMNS + list(case.headers),
+            "rows": rows,
+            "total": int(total),
+            "offset": offset,
+            "limit": limit,
+        }
+
+    def export(self, identifier: str, index: int, search: str = "",
+               sort: int | None = None, descending: bool = False,
+               filters: list[tuple[int, str, str]] | None = None) -> Path:
+        """Write a CSV next to the OS temporary directory and return its path."""
+        case = self._case_for(identifier, index)
+        view = View(search=search or "", filters=[])
+        for column, operator, value in filters or ():
+            if operator in OPERATORS and 0 <= column < len(case.headers):
+                view.filters.append(Filter(column, operator, value))
+        if sort is not None and 0 <= sort < len(case.headers):
+            view.sort_column, view.descending = sort, bool(descending)
+            view.sorts = [SortKey(sort, "text", bool(descending))]
+        target = Path(tempfile.gettempdir()) / f"fireblade-{uuid.uuid4().hex}.csv"
+        with case.lock:
+            case.export(str(target), view, include_annotations=True)
+        return target
+
+
+def parse_filters(values) -> list[tuple[int, str, str]]:
+    """`column:operator:value` triples, as the grid sends them."""
+    filters = []
+    for raw in values or ():
+        parts = raw.split(":", 2)
+        if len(parts) != 3:
+            raise ServiceError("Format de filtre attendu : colonne:opérateur:valeur")
+        try:
+            column = int(parts[0])
+        except ValueError as exc:
+            raise ServiceError("Indice de colonne invalide.") from exc
+        filters.append((column, parts[1], parts[2]))
+    return filters
+
+
+def read_rows_csv(path: Path):
+    with path.open("r", encoding="utf-8-sig", newline="") as stream:
+        yield from csv.reader(stream)

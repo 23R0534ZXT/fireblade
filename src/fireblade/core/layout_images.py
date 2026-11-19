@@ -1,11 +1,23 @@
 """Bounded raster data only: never deserialize .NET objects or follow file paths."""
 import base64
 from functools import lru_cache
-from PySide6.QtCore import QByteArray,QBuffer,QIODevice
-from PySide6.QtGui import QImageReader
+
+
+def _qt():
+    """Qt is a desktop dependency.
+
+    Importing it here keeps fireblade.core importable on a machine without Qt —
+    the container, the command-line tools and the tests. Only a layout that
+    actually carries an image needs the decoder.
+    """
+    from PySide6.QtCore import QByteArray, QBuffer, QIODevice
+    from PySide6.QtGui import QImageReader
+    return QByteArray, QBuffer, QIODevice, QImageReader
+
 
 @lru_cache(maxsize=32)
 def image_bytes(encoded):
+    QByteArray, QBuffer, QIODevice, QImageReader = _qt()
     if not isinstance(encoded,str) or len(encoded)>350000:raise ValueError('Image de disposition limitée à 256 Ko')
     try:data=base64.b64decode(encoded,validate=True)
     except (ValueError,TypeError):raise ValueError('Image de disposition : base64 invalide') from None
@@ -17,7 +29,9 @@ def image_bytes(encoded):
     if reader.read().isNull():raise ValueError('Image de disposition corrompue')
     return data
 
+
 def normalize_image(raw):
+    QByteArray, QBuffer, QIODevice, QImageReader = _qt()
     raw=''.join(raw.split())
     if raw.startswith('data:image/') and ';base64,' in raw:raw=raw.split(';base64,',1)[1]
     # ImageConverter/BinaryFormatter envelopes can contain a raster byte array.

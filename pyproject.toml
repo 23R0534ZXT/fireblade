@@ -16,6 +16,9 @@ dev = ["pytest>=8", "psutil>=6", "pyinstaller>=6", "ruff==0.14.3"]
 # The text layer of a PDF. Absent, Fireblade still runs and says the reader is missing;
 # present, a PDF in a seizure is readable without a second tool. No OCR either way.
 pdf = ["pypdf>=4,<6"]
+# Fireblade Host: the same core over HTTP. The container installs these instead of
+# PySide6 (see requirements-core.txt); the desktop edition does not need them.
+web = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.32,<1"]
 
 [project.scripts]
 fireblade = "fireblade.runtime.bootstrap:main"
@@ -23,6 +26,9 @@ fireblade = "fireblade.runtime.bootstrap:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["fireblade*"]
+
+[tool.setuptools.package-data]
+"fireblade.web" = ["static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

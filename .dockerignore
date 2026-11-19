@@ -1,0 +1,10 @@
+.git
+.venv
+build
+dist
+tests
+harness
+docs
+*.pyc
+__pycache__
+cases

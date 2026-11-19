@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fireblade</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="menubar" id="menubar">
+    <div class="m" data-menu="case"><span class="mnemonic">C</span>ase</div>
+    <div class="m" data-menu="analysis">A<span class="mnemonic">n</span>alysis</div>
+    <div class="m off" data-menu="detection"><span class="mnemonic">D</span>etection</div>
+    <div class="m off" data-menu="edit"><span class="mnemonic">E</span>dit</div>
+    <div class="m" data-menu="view"><span class="mnemonic">V</span>iew</div>
+    <div class="m off" data-menu="filters">Fi<span class="mnemonic">l</span>ters</div>
+    <div class="m" data-menu="export">E<span class="mnemonic">x</span>port</div>
+    <div class="m" data-menu="help"><span class="mnemonic">H</span>elp</div>
+
+    <div class="menu" data-for="case">
+      <div class="item" data-act="refresh-cases">Refresh the case list<span class="key">F5</span></div>
+      <div class="sep"></div>
+      <div class="item" data-act="close-case">Close the open case</div>
+    </div>
+    <div class="menu" data-for="analysis">
+      <div class="item" data-act="reload-analysis">Reload the analysis</div>
+      <div class="item" data-act="export-csv">Export the current view…</div>
+    </div>
+    <div class="menu" data-for="view">
+      <div class="item" data-act="display-settings">Display settings…</div>
+      <div class="sep"></div>
+      <div class="item" data-act="toggle-artifacts">Artifacts panel</div>
+    </div>
+    <div class="menu" data-for="export">
+      <div class="item" data-act="export-csv">Export the current view…</div>
+    </div>
+    <div class="menu" data-for="help">
+      <div class="item" data-act="about">About Fireblade Host</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tb off" title="Not available in Fireblade Host yet">🗀 Import a file</div>
+    <div class="tb" data-act="export-csv">🖫 Export</div>
+    <div class="tbsep"></div>
+    <div class="casecombo" id="casecombo"><span id="casecombo-label">No case open</span><span class="arrow">▼</span></div>
+    <div class="tbsep"></div>
+    <div class="tb" data-act="refresh-cases">Refresh</div>
+    <div class="tb" data-act="close-case">Close case</div>
+  </div>
+
+  <div class="tabs" id="doctabs">
+    <div class="tab active" data-tab="analyses">Analyses</div>
+    <div class="tab off" data-tab="imports" title="Not available in Fireblade Host yet">Imports</div>
+    <div class="tab" data-tab="cases">Cases</div>
+    <div class="tab off" title="Not available in Fireblade Host yet">Timeline &amp; correlations</div>
+    <div class="tab off" title="Not available in Fireblade Host yet">IOC hunting</div>
+    <div class="tab off" title="Not available in Fireblade Host yet">Hayabusa + AI</div>
+    <div class="tab off" title="Not available in Fireblade Host yet">Actions &amp; tracking</div>
+    <div class="tab off" title="Not available in Fireblade Host yet">Attack graph</div>
+    <div class="tab off" title="Not available in Fireblade Host yet">EVTX detection</div>
+    <div class="doctab docempty" id="doctab">Case</div>
+  </div>
+  <div class="tabbar-line"></div>
+
+  <div class="work">
+    <div class="artifacts" id="artifacts">
+      <div class="head"><span>Artifacts</span><span class="x">✕</span></div>
+      <div class="combo">By artifact <span class="arrow">▼</span></div>
+      <input class="tree-search" id="tree-search" placeholder="Filter artifact names…">
+      <div class="tree" id="tree"></div>
+    </div>
+
+    <div class="pane">
+      <div class="pane-tabs" id="pane-tabs"></div>
+
+      <div id="analysis-view" style="display:flex;flex-direction:column;flex:1;min-height:0">
+        <div class="filterbar">
+          <input class="search" id="search" placeholder="Text, IP, path, hash…  Enter to search">
+          <button class="btn" id="clear">Clear the filters</button>
+          <button class="btn off" disabled title="Bookmarks arrive with the analysis API">Bookmarks</button>
+        </div>
+        <div class="groupbar">
+          <div class="hint">Filters apply to the whole analysis, not just the page on screen.</div>
+          <div class="grow"></div>
+          <button class="btn off" disabled title="Grouping arrives in a later phase">Group…</button>
+          <button class="btn" id="details-toggle">Row details</button>
+        </div>
+
+        <div class="gridwrap">
+          <div class="gridbody" id="gridbody">
+            <table id="grid">
+              <colgroup id="cols"></colgroup>
+              <thead id="head"></thead>
+              <tbody id="body"></tbody>
+            </table>
+            <div class="emptygrid" id="grid-empty" hidden></div>
+          </div>
+        </div>
+
+        <div class="details" id="details"><div class="ph">Details of the selected row</div></div>
+
+        <div class="pager">
+          <button class="btn" id="first">Root</button>
+          <button class="btn" id="prev">Previous</button>
+          <button class="btn" id="next">Next</button>
+          <div class="spacer"></div>
+          <div class="info" id="pageinfo"></div>
+        </div>
+      </div>
+
+      <div id="cases-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="filterbar">
+          <input class="search" id="case-search" placeholder="Filter cases by name, environment or identifier…">
+          <button class="btn" data-act="refresh-cases">Refresh</button>
+        </div>
+        <div class="caseswrap">
+          <table>
+            <colgroup>
+              <col style="width:34%"><col style="width:16%"><col style="width:12%">
+              <col style="width:11%"><col style="width:27%">
+            </colgroup>
+            <thead><tr><th>Case</th><th>Environment</th><th>Status</th><th>Analyses</th><th>Updated</th></tr></thead>
+            <tbody id="cases-body"></tbody>
+          </table>
+          <div class="emptygrid" id="cases-empty" hidden></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span id="status">Ready</span>
+    <div class="right"><span id="version">Fireblade</span><span id="caseroot"></span></div>
+  </div>
+</div>
+
+<div class="modal" id="settings-modal">
+  <div class="dialog">
+    <h3>Display settings</h3>
+    <div class="body">
+      <div class="row">
+        <label for="scale">Text size</label>
+        <select id="scale">
+          <option value="1">100 % — same as the desktop window</option>
+          <option value="1.1">110 %</option>
+          <option value="1.25">125 %</option>
+          <option value="1.5">150 %</option>
+          <option value="1.75">175 %</option>
+        </select>
+      </div>
+      <div class="note">The palette and the density come from the desktop theme, so a wider text size only enlarges the interface; it does not change the colours.</div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="about-modal">
+  <div class="dialog">
+    <h3>About Fireblade Host</h3>
+    <div class="body">
+      <div class="note" id="about-text"></div>
+    </div>
+    <div class="foot"><button class="btn" data-act="about-close">Close</button></div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

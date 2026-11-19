@@ -1,0 +1,26 @@
+# Fireblade Host — one image, one analyst, cases on the local disk.
+#
+#   FIREBLADE_CASES=/srv/fireblade/cases docker compose up -d
+#   then open http://localhost:8080
+#
+# The same image becomes the case container of the Server edition later; only the
+# service that drives Docker changes.
+services:
+  fireblade-host:
+    image: fireblade:host
+    build:
+      context: .
+    container_name: fireblade-host
+    ports:
+      - "${FIREBLADE_PORT:-8080}:8080"
+    volumes:
+      - "${FIREBLADE_CASES:-./cases}:/data/cases"
+    environment:
+      TZ: "${TZ:-Europe/Paris}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

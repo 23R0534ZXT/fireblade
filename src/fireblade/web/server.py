@@ -1,0 +1,74 @@
+"""Fireblade Host: the case library served over HTTP, next to the desktop app."""
+from __future__ import annotations
+
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+from fireblade.web.service import Library, ServiceError, parse_filters
+
+STATIC = Path(__file__).with_name("static")
+
+
+def create_app(root: str | Path, version: str = "") -> FastAPI:
+    library = Library(root)
+    app = FastAPI(title="Fireblade Host", version=version or "0", docs_url="/api/docs", openapi_url="/api/openapi.json")
+
+    @app.exception_handler(ServiceError)
+    async def _service_error(_request, exc: ServiceError):
+        return JSONResponse(status_code=400, content={"error": str(exc)})
+
+    @app.on_event("shutdown")
+    def _shutdown():
+        library.close()
+
+    @app.get("/health")
+    def health():
+        catalogue = library.cases()
+        return {
+            "status": "ok",
+            "version": version or "0",
+            "root": catalogue["root"],
+            "cases": len(catalogue["cases"]),
+            "errors": len(catalogue["errors"]),
+        }
+
+    @app.get("/api/cases")
+    def cases():
+        return library.cases()
+
+    @app.get("/api/cases/{identifier}")
+    def case(identifier: str):
+        try:
+            return library.case(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/analyses/{index}/columns")
+    def columns(identifier: str, index: int):
+        return {"columns": library.columns(identifier, index)}
+
+    @app.get("/api/cases/{identifier}/analyses/{index}/rows")
+    def rows(identifier: str, index: int, offset: int = 0, limit: int = 200,
+             search: str = "", sort: int | None = None, descending: bool = False,
+             filter: list[str] = Query(default=[])):
+        return library.rows(identifier, index, offset=offset, limit=limit, search=search,
+                            sort=sort, descending=descending, filters=parse_filters(filter))
+
+    @app.get("/api/cases/{identifier}/analyses/{index}/export")
+    def export(identifier: str, index: int, search: str = "", sort: int | None = None,
+               descending: bool = False, filter: list[str] = Query(default=[])):
+        target = library.export(identifier, index, search=search, sort=sort,
+                                descending=descending, filters=parse_filters(filter))
+        name = f"fireblade-{identifier[:8]}-analysis-{index}.csv"
+        return FileResponse(target, media_type="text/csv", filename=name)
+
+    @app.get("/")
+    def index():
+        return FileResponse(STATIC / "index.html")
+
+    app.mount("/static", StaticFiles(directory=STATIC), name="static")
+    app.state.library = library
+    return app

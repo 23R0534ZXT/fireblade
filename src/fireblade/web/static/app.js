@@ -234,7 +234,8 @@ function renderGrid() {
       <span class="grip" data-grip="${index}"></span></th>`);
   });
   head.push("</tr>");
-  head.push('<tr class="colfilter">');
+  // One leading cell for the checkbox column, then one per column.
+  head.push('<tr class="colfilter"><th></th>');
   state.columns.forEach((name, index) => {
     if (index === 0) { head.push("<th></th>"); return; }
     const current = state.filters.find((item) => item.column === index - 1);

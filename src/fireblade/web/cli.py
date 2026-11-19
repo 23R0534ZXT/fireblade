@@ -66,7 +66,7 @@ def serve(args) -> int:
 
     root = Path(args.root).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    app = create_app(root, _version())
+    app = create_app(root, _version(), tools_root=args.tools)
     print(f"Fireblade Host {_version()} on {args.host}:{args.port} — cases in {root}", flush=True)
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level)
     return 0
@@ -81,6 +81,8 @@ def main(argv=None) -> int:
     p_serve.add_argument("--root", default="/data/cases", help="folder holding the case directories")
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8080)
+    p_serve.add_argument("--tools", default="/opt/fireblade/tools",
+                         help="folder holding the .NET readers and their manifest")
     p_serve.add_argument("--log-level", default="info")
     p_serve.set_defaults(func=serve)
 

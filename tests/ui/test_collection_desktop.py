@@ -36,37 +36,31 @@ def test_native_collection_opens_results_and_keeps_report(qt_application,tmp_pat
         window.close()
 
 
-def test_the_collection_dialog_separates_waiting_from_layout(qt_application):
-    """Two decisions, stated separately: the report asked for exactly that."""
+def test_the_collection_dialog_offers_three_layouts(qt_application):
+    """Per file, per artifact family, or one grid for everything — nothing hidden."""
     from fireblade.ui.collection import CollectionOrganizationDialog
     from PySide6.QtWidgets import QDialogButtonBox
     dialog = CollectionOrganizationDialog()
     try:
-        # Both decisions stay reachable: a hundred EVTX files must not be a hundred tabs
-        # just because the parse was allowed to stream.
-        assert dialog.organization() == 'files'
-        assert dialog.progressive.isChecked()
-        assert dialog.artifacts.isEnabled(), 'the per-artifact layout was greyed out'
-        assert dialog.combined.isEnabled()
-        assert dialog.layout_hint.isVisibleTo(dialog)
+        assert dialog.organization() == 'artifacts', 'the recommended layout is not the default'
+        assert dialog.artifacts.isChecked()
 
-        # Choosing a merged layout is what makes the parse finish first. The radio is
-        # already checked, so this is the click a user makes, not a state change.
-        dialog.artifacts.click()
+        dialog.progressive.click()
+        assert dialog.organization() == 'files'
+        assert not dialog.artifacts.isChecked(), 'two layouts at once'
+
+        dialog.combined.click()
+        assert dialog.organization() == 'combined'
         assert not dialog.progressive.isChecked(), 'a merged layout still streamed'
+
+        dialog.artifacts.click()
         assert dialog.organization() == 'artifacts'
 
-        dialog.combined.setChecked(True)
-        assert dialog.organization() == 'combined'
-
-        dialog.progressive.setChecked(True)
-        assert dialog.organization() == 'files', 'streaming publishes one grid per file'
-
-        # Every option says what it does: the whole point of the rework.
+        # Every option says what it does, with the families named as they are on disk.
         texts = [dialog.artifacts.text(), dialog.artifacts_hint.text(),
                  dialog.combined.text(), dialog.combined_hint.text()]
         assert 'recommended' in texts[0]
-        assert 'navigation tree' in texts[1] and 'own columns' in texts[1]
+        assert 'EVTX' in texts[1] and 'MFT' in texts[1]
         assert 'cannot be removed' in texts[3]
         assert not [text for text in texts if not text.strip()]
 

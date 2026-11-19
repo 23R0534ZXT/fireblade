@@ -70,7 +70,12 @@ def test_files_and_folders_are_one_operation(qt_application,tmp_path,monkeypatch
         folder.mkdir();(folder/'data.csv').write_text(f'ID\n{i}\n')
     loose=tmp_path/'loose.csv';loose.write_text('ID\n2\n')
     monkeypatch.setattr(ui,'choose_import_sources',lambda *a:[str(p) for p in folders]+[str(loose)])
-    monkeypatch.setattr(ui.CollectionOrganizationDialog,'exec',lambda *a:QDialog.Accepted)
+    def accept_per_file(dialog):
+        # This test is about one operation for several sources, not about the layout:
+        # pin the per-file layout so publishing stays observable file by file.
+        dialog.progressive.setChecked(True)
+        return QDialog.Accepted
+    monkeypatch.setattr(ui.CollectionOrganizationDialog,'exec',accept_per_file)
     release=threading.Event();entered=threading.Event()
     original=Collection.publish_results
     def pause(self,start,entry):
@@ -103,7 +108,12 @@ def test_cancel_leaves_one_collection_and_no_queued_work(qt_application,tmp_path
     import fireblade.ui.collection as ui
     folder=tmp_path/'one';folder.mkdir()
     monkeypatch.setattr(ui,'choose_import_sources',lambda *a:[str(folder)])
-    monkeypatch.setattr(ui.CollectionOrganizationDialog,'exec',lambda *a:QDialog.Accepted)
+    def accept_per_file(dialog):
+        # This test is about one operation for several sources, not about the layout:
+        # pin the per-file layout so publishing stays observable file by file.
+        dialog.progressive.setChecked(True)
+        return QDialog.Accepted
+    monkeypatch.setattr(ui.CollectionOrganizationDialog,'exec',accept_per_file)
     window=Window(investigation_root=tmp_path/'cases');window.create_investigation('Cancel queue')
     queued=[]
     monkeypatch.setattr(window.disk_pool,'start',queued.append)

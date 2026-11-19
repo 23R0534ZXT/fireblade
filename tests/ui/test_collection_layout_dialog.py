@@ -1,31 +1,41 @@
-"""Choosing a grouped layout is reachable, and it is what makes the parse wait."""
+"""Three import layouts, named by what the analyst gets: per file, per family, or one grid.
+
+The report that led here: "by artifact" was chosen and a hundred and twenty-eight EVTX
+grids opened instead of one. The dialog is where the analyst picks; these tests pin what
+each choice returns and that every choice says what it does.
+"""
 from fireblade.ui.collection import CollectionOrganizationDialog
 
 
-def test_both_layouts_are_reachable_while_the_parse_streams(qt_application):
+def test_the_recommended_layout_is_one_grid_per_artifact_family(qt_application):
     dialog = CollectionOrganizationDialog()
-    assert dialog.progressive.isChecked()
-    assert dialog.artifacts.isEnabled(), 'the per-artifact layout was greyed out'
-    assert dialog.combined.isEnabled()
-    dialog.deleteLater()
+    assert dialog.artifacts.isChecked()
+    assert dialog.organization() == 'artifacts'
+    assert not dialog.progressive.isChecked()
 
 
-def test_choosing_a_grouped_layout_stops_publishing_file_by_file(qt_application):
+def test_every_layout_is_reachable_and_says_what_it_gives(qt_application):
     dialog = CollectionOrganizationDialog()
+    for radio in (dialog.progressive, dialog.artifacts, dialog.combined):
+        assert radio.isEnabled(), radio.text()
+        assert radio.isCheckable()
+    texts = [dialog.progressive.text(), dialog.artifacts.text(), dialog.combined.text(),
+             dialog.progressive_hint.text(), dialog.artifacts_hint.text(), dialog.combined_hint.text()]
+    joined = ' '.join(texts).casefold()
+    assert 'evtx' in joined and 'mft' in joined and 'amcache' in joined
+    assert 'grouping is fixed' in joined
+
+
+def test_the_three_choices_are_exclusive(qt_application):
+    dialog = CollectionOrganizationDialog()
+    dialog.progressive.setChecked(True)
     assert dialog.organization() == 'files'
+    assert not dialog.artifacts.isChecked() and not dialog.combined.isChecked()
 
     dialog.combined.setChecked(True)
-
-    assert not dialog.progressive.isChecked(), 'a merged layout still streamed'
     assert dialog.organization() == 'combined'
-    dialog.deleteLater()
+    assert not dialog.progressive.isChecked() and not dialog.artifacts.isChecked()
 
-
-def test_the_artifact_layout_is_what_it_returns(qt_application):
-    dialog = CollectionOrganizationDialog()
     dialog.artifacts.setChecked(True)
-
-    dialog.progressive.setChecked(False)
-
     assert dialog.organization() == 'artifacts'
-    dialog.deleteLater()
+    assert not dialog.progressive.isChecked() and not dialog.combined.isChecked()

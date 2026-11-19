@@ -1,3 +1,38 @@
+# Fireblade 0.7.3 — one grid per artifact family, and it is what you get
+
+Choosing "by artifact" on a real collection left the per-file grids on screen: 128 EVTX
+files were still 128 tabs, and the merged grid was nowhere. The folder had been read
+progressively — every file published its own analysis as it finished — and the merged
+results were added on top of them instead of replacing them. An analyst who asked for one
+grid got a hundred and twenty-eight, which is the opposite of the point.
+
+## Three layouts, named by what you get
+
+- **One grid per file** — results appear as the folder is parsed. Each source keeps its own
+  grid; the window stays usable during a long parse.
+- **One grid per artifact family** — recommended, and the default. All EVTX in one grid, all
+  MFT in another, all Amcache in another. The source file is kept as a column, so no
+  provenance is lost, and the parse finishes before the grids open.
+- **One grid for everything** — a single grid holding every artifact, grouped by family. The
+  grouping is fixed: it cannot be removed, and the columns of all sources are merged.
+
+The progressive checkbox is gone: it was a second decision hidden inside a layout. A layout
+now says what happens, and the per-file behaviour belongs to the first one.
+
+## What changed under it
+
+- A merged layout now removes the per-file analyses it was built from, so the case holds the
+  grids the analyst asked for and nothing else.
+- A family that cannot be merged — out of memory on a very large merge — stays as its
+  original analyses, and the reason is written in the Imports report instead of disappearing.
+
+## Verified
+
+- Three layouts on the real window, same folder of four sources: 4 grids, then 2 (all CSV in
+  one), then 1 holding every row with its grouping.
+- The 128-file case, at scale: 128 analyses of 20 000 rows merged into a single EVTX grid,
+  2 560 000 rows, 353 MB, in 44 s, no memory failure.
+
 # Fireblade 0.7.2 — the IOC hunt no longer freezes the window
 
 - Starting a hunt built its reader — which opens every analysis of the case — on the

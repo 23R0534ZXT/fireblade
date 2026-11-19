@@ -18,46 +18,48 @@ from fireblade.runtime.windows_paths import user_directory
 
 
 class CollectionOrganizationDialog(QDialog):
-    """Two decisions, stated separately: do I wait, and what do I get at the end.
+    """Three layouts, named by what the analyst gets at the end.
 
-    They used to be three options in one list, which is why no label could say what
-    each one did: "progressive results" is about staying usable during the parse, while
-    "by artifact" and "unified view" are about how the results are laid out.
+    Two of them merge the files: one grid per artifact family (every EVTX together,
+    every MFT together, every Amcache together) or one grid holding everything with a
+    fixed grouping by family. The first one is what a streaming parse gives, and it is
+    the only one that keeps the window usable while the folder is read.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Collection results")
-        self.resize(630, 450)
+        self.resize(680, 520)
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
-        intro = QLabel("Fireblade reads every file of the folder. Choose whether you wait for the parse; the results layout applies when you do.")
+        intro = QLabel("Fireblade reads every file of the folder. Choose what you want on screen at the end.")
         intro.setWordWrap(True)
         layout.addWidget(intro)
-        self.progressive = QCheckBox("Keep working while the folder is parsed")
-        self.progressive.setChecked(True)
-        layout.addWidget(self.progressive)
-        self.progressive_hint = QLabel()
-        self.progressive_hint.setWordWrap(True)
-        self.progressive_hint.setIndent(22)
-        layout.addWidget(self.progressive_hint)
-        section = QLabel("Results layout")
-        section.setStyleSheet("font-weight: 600; margin-top: 6px;")
-        layout.addWidget(section)
-        self.artifacts = QRadioButton("By artifact — recommended")
+
+        def option(radio, hint):
+            layout.addWidget(radio)
+            label = QLabel(hint)
+            label.setWordWrap(True)
+            label.setIndent(22)
+            layout.addWidget(label)
+            return label
+
+        self.progressive = QRadioButton("One grid per file — results appear as the folder is parsed")
+        self.progressive_hint = option(self.progressive,
+            "Each analysed file opens in its own grid as it is read, and the window stays usable. "
+            "A folder of a hundred EVTX files gives a hundred grids, listed one by one.")
+        self.artifacts = QRadioButton("One grid per artifact family — recommended")
+        self.artifacts_hint = option(self.artifacts,
+            "All EVTX in one grid, all MFT in another, all Amcache in another: one merged grid per "
+            "family, with the source file kept as a column. The parse finishes before the grids open.")
+        self.combined = QRadioButton("One grid for everything, grouped by artifact family")
+        self.combined_hint = option(self.combined,
+            "A single grid holding every artifact, grouped by family. The grouping is fixed — it "
+            "cannot be removed — and the columns of all sources are merged.")
         self.artifacts.setChecked(True)
-        layout.addWidget(self.artifacts)
-        self.artifacts_hint = QLabel("One tab per artifact family, all of them listed in the navigation tree, and each grid keeps its own columns and filters.")
-        self.artifacts_hint.setWordWrap(True)
-        self.artifacts_hint.setIndent(22)
-        layout.addWidget(self.artifacts_hint)
-        self.combined = QRadioButton("Unified view")
-        layout.addWidget(self.combined)
-        self.combined_hint = QLabel("A single grid holding every artifact, grouped by artifact. The grouping is fixed — it cannot be removed — and the columns of all sources are merged.")
-        self.combined_hint.setWordWrap(True)
-        self.combined_hint.setIndent(22)
-        layout.addWidget(self.combined_hint)
-        self.layout_hint = QLabel("A grouped layout reads every file first; the per-file grids above are what you get while it parses.")
+
+        self.layout_hint = QLabel("The two merged layouts read every file first; the per-file grids are "
+                                  "what you get while it parses.")
         self.layout_hint.setWordWrap(True)
         layout.addWidget(self.layout_hint)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -66,37 +68,6 @@ class CollectionOrganizationDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-        self.progressive.toggled.connect(self.sync_state)
-        self.artifacts.toggled.connect(self.choose_layout)
-        self.combined.toggled.connect(self.choose_layout)
-        # "By artifact" is already checked when the dialog opens, so a click on it fires
-        # `clicked` and not `toggled`: without this, the analyst could not ask for it.
-        self.artifacts.clicked.connect(lambda _checked=False: self.choose_layout(True))
-        self.combined.clicked.connect(lambda _checked=False: self.choose_layout(True))
-        self.sync_state()
-
-    def choose_layout(self, checked=False):
-        """A layout that merges files needs every file: picking one ends the streaming."""
-        if checked and self.progressive.isChecked():
-            self.progressive.setChecked(False)
-
-    def sync_state(self):
-        """Both decisions stay reachable; choosing a layout is what makes the parse wait.
-
-        The radios used to be disabled while the parse was progressive, which left one
-        usable choice on screen: a collection of a hundred EVTX files became a hundred
-        tabs, and the layout that merges them per artifact family could not be picked.
-        """
-        waiting = not self.progressive.isChecked()
-        self.progressive_hint.setText(
-            "Each analysed file opens in its own grid as it is parsed, and you can keep working on what is already open."
-            if self.progressive.isChecked() else
-            "Fireblade stays on this parse, then opens the results in the layout chosen below.")
-        self.layout_hint.setText(
-            "Pick a layout below: the parse then finishes first, and the results open grouped."
-            if self.progressive.isChecked() else
-            "The results open in the layout chosen above.")
-        self.layout_hint.setVisible(True)
 
     def organization(self):
         if self.progressive.isChecked():
@@ -246,6 +217,8 @@ class CollectionMixin(AlertContextMixin):
                       translate('Bilan par état : {}').format(counted),
                       translate('Sources : {}').format(' · '.join(report.get('sources') or [report.get('source', '')])),
                       translate('Journal de l’opération : {}').format(Path(report.get('output', ''))/'journal.jsonl')]
+            for failure in report.get('organization_failures') or []:
+                lines.append(translate('{} : {}').format(failure.get('artifact', ''), failure.get('reason', '')))
             verification = report.get('verification')
             if verification:
                 lines += [translate('Vérification des analyses : {} contrôlées · {} en échec').format(
@@ -332,7 +305,16 @@ class CollectionMixin(AlertContextMixin):
                 snapshots=incoming
                 if getattr(self,'active_investigation',None) is not None:
                     existing={snapshot.path for snapshot in self.documents}
-                    snapshots=list(self.documents)+[snapshot for snapshot in incoming if snapshot.path not in existing]
+                    # A merged layout replaces the per-file analyses it was built from. They
+                    # were published while the parse streamed, and keeping them open is what
+                    # showed a hundred EVTX grids next to the single one that was asked for.
+                    replaced={str(item.get('path')) for item in (report.get('raw_documents') or [])}
+                    if replaced:
+                        existing={path for path in existing if path not in replaced}
+                        snapshots=[snapshot for snapshot in self.documents if snapshot.path in existing]
+                    else:
+                        snapshots=list(self.documents)
+                    snapshots+=[snapshot for snapshot in incoming if snapshot.path not in existing]
                 if len(snapshots)>1000:
                     raise ValueError('Le case dépasserait 1000 analyses. Les résultats restent dans le dossier de collecte.')
                 wanted=getattr(self,'_reader_analysis',None) or (report.get('detection') or {}).get('analysis') or incoming[active].path

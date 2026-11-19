@@ -15,12 +15,14 @@ import json
 import tempfile
 import threading
 import uuid
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
 from pathlib import Path
 
+from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.engine import Case
 from fireblade.core.investigations import InvestigationLibrary
-from fireblade.core.models import Filter, SortKey, View, analysis_label
+from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View, analysis_label
+from fireblade.core.sessions import read_session
 
 # Columns the grid always shows before the analysis own columns, in display order.
 META_COLUMNS = ["__row_id"]
@@ -169,6 +171,50 @@ class Library:
             if len(matches) > 1:
                 break
         return matches[0].resolve() if len(matches) == 1 else None
+
+
+    # -- importing ---------------------------------------------------------
+
+    def import_source(self, identifier: str, source: str | Path, tools_root: str | Path | None = None,
+                      organization: str = "files", progress=None) -> dict:
+        """Read a file or a folder into the case, the way the desktop does it.
+
+        The orchestration is `fireblade.core.collection.Collection`: the same
+        reader selection, the same CSV, the same verification. Only the interface
+        around it is different. The collection writes its own session file, and
+        that file becomes the case session — so an import done here opens in the
+        desktop edition unchanged.
+        """
+        data = self.library.read(identifier)
+        folder = self.library.folder(identifier)
+        source = Path(source).resolve()
+        if not source.exists():
+            raise ServiceError("La source à importer est absente.")
+        output = folder / "collections" / ("import-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
+        if output.exists():
+            output = folder / "collections" / ("import-" + uuid.uuid4().hex[:8])
+        output.parent.mkdir(parents=True, exist_ok=True)
+        pack = ToolPack(Path(tools_root)) if tools_root else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack")
+        collection = Collection(source, output, pack, progress=progress or (lambda _text: None),
+                                organization=organization)
+        report = collection.parse()
+        session = output / "collection.fireblade-session"
+        if not session.is_file():
+            return {"status": report.get("status"), "analyses": 0, "files": len(report.get("files") or []),
+                    "collection": str(output), "message": "Aucune analyse produite : format non reconnu."}
+        snapshots, active = read_session(session)
+        collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+        collections.append({"path": str(output), "name": output.name,
+                            "imported": datetime.now(timezone.utc).isoformat()})
+        self.library.save(identifier, snapshots, active if snapshots else -1, collections,
+                          str(output), data.get("revision"))
+        self._open.pop((identifier, 0), None)
+        return {
+            "status": report.get("status", "complete"),
+            "analyses": len(snapshots),
+            "files": len(report.get("files") or []),
+            "collection": str(output),
+        }
 
     # -- one analysis ------------------------------------------------------
 

@@ -12,7 +12,7 @@ from fireblade.web.service import Library, ServiceError, parse_filters
 STATIC = Path(__file__).with_name("static")
 
 
-def create_app(root: str | Path, version: str = "") -> FastAPI:
+def create_app(root: str | Path, version: str = "", tools_root: str | Path | None = None) -> FastAPI:
     library = Library(root)
     app = FastAPI(title="Fireblade Host", version=version or "0", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
@@ -45,6 +45,17 @@ def create_app(root: str | Path, version: str = "") -> FastAPI:
             return library.case(identifier)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/import")
+    def import_source(identifier: str, payload: dict):
+        source = (payload or {}).get("source")
+        if not source:
+            raise HTTPException(status_code=400, detail="Champ 'source' attendu.")
+        try:
+            return library.import_source(identifier, source, tools_root=tools_root,
+                                         organization=(payload or {}).get("organization", "files"))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/cases/{identifier}/analyses/{index}/columns")
     def columns(identifier: str, index: int):

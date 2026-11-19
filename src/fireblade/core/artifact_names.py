@@ -89,6 +89,33 @@ FOLDERS = {
 
 CONTAINERS = ('saved_files',)
 
+# Parsers write a CSV; the analyser must not read "export.csv" as the name of an
+# artefact. A stem that names a tool output, in order of specificity.
+CSV_KINDS = (
+    ('amcacheparser', 'Amcache'), ('amcache', 'Amcache'), ('appcompat', 'AppCompatCache'),
+    ('shimcache', 'AppCompatCache'), ('recentfilecache', 'RecentFileCache'),
+    ('evtxecmd', 'Event logs'), ('evtx', 'Event logs'), ('hayabusa', 'Hayabusa'),
+    ('mft', 'MFT'), ('usn', 'USN journal'), ('srum', 'SRUM'), ('shellbag', 'Shellbags'),
+    ('jumplist', 'Jump lists'), ('prefetch', 'Prefetch'), ('webcache', 'WebCache'),
+    ('browser', 'Browser history'), ('recycle', 'Recycle Bin'), ('powershell', 'PowerShell'),
+    ('wmi', 'WMI'), ('scheduled', 'Scheduled tasks'), ('rdp', 'RDP'), ('defender', 'Defender'),
+)
+
+# Stems a tool writes whatever the evidence was: they say nothing on their own.
+GENERIC_STEMS = frozenset({'export', 'exports', 'output', 'outputs', 'result', 'results', 'out',
+                           'data', 'analysis', 'analyse', 'timeline', 'events', 'records',
+                           'fireblade', 'collection', 'collecte', 'report', 'rapport', 'table'})
+
+
+def csv_kind(path):
+    """The artefact a tool-written CSV holds, from the name its parser gave it."""
+    name = parts_of(path)[-1] if parts_of(path) else ''
+    stem = Path(name).stem.casefold()
+    for prefix, label in CSV_KINDS:
+        if stem.startswith(prefix):
+            return label
+    return ''
+
 # A folder that says where something was, never what it was.
 GENERIC_FOLDERS = {
     'c', 'd', 'e', 'users', 'windows', 'system32', 'syswow64', 'appdata', 'roaming',
@@ -116,6 +143,9 @@ def kind_of(path):
     name = segments[-1].casefold()
     if name in FILES:
         return FILES[name]
+    csv_label = csv_kind(path) if name.endswith(('.csv', '.tsv', '.jsonl')) else ''
+    if csv_label:
+        return csv_label
     for suffix, label in SUFFIXES:
         if name.endswith(suffix):
             return label

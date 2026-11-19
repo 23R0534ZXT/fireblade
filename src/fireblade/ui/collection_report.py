@@ -201,7 +201,10 @@ class CollectionReport(QWidget):
             buttons.addWidget(button)
         layout.addWidget(actions_row)
         complete=QPushButton('Bilan complet');complete.clicked.connect(lambda:self.details.setPlainText(self._text))
-        tail=QHBoxLayout();tail.addWidget(complete);tail.addStretch();layout.addLayout(tail)
+        history=QPushButton('Historique…')
+        history.setToolTip('Fichier par fichier : ce qui a été importé, écarté, refusé, et pourquoi.')
+        history.clicked.connect(self.show_history)
+        tail=QHBoxLayout();tail.addWidget(complete);tail.addWidget(history);tail.addStretch();layout.addLayout(tail)
         self.splitter=QSplitter(Qt.Vertical)
         self.table=QTableView();self.model=OutcomeModel(self)
         self.proxy=OutcomeFilter(self);self.proxy.setSourceModel(self.model)
@@ -311,6 +314,20 @@ class CollectionReport(QWidget):
         current=self.table.currentIndex()
         if not current.isValid():return None
         return self.model.entries[self.proxy.mapToSource(current).row()]
+
+    def show_history(self):
+        """The whole import, one row per file, with a way to try the refusals again."""
+        if not self.report:
+            return
+        from fireblade.ui.import_history import ImportHistoryDialog
+        dialog=ImportHistoryDialog(self.report,on_retry=self.retry_paths,parent=self)
+        dialog.exec()
+        dialog.deleteLater()
+
+    def retry_paths(self,paths,reader):
+        """Hand the ticked files to the window, one reader for all of them."""
+        for path in paths:
+            self.on_analyse(path,reader)
 
     def refresh_buttons(self):
         entry=self.current_entry()

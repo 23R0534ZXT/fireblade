@@ -1,14 +1,24 @@
 """Classic header-to-group-bar drag and drop, without loading extra rows."""
 from PySide6.QtCore import QByteArray, QMimeData, Qt, QTimer, Signal, QRect
 from PySide6.QtGui import QDrag, QColor, QFontMetrics, QPalette
-from PySide6.QtWidgets import QHeaderView, QLabel, QStyle, QStyleOptionHeader, QLineEdit, QToolButton, QHBoxLayout
+from PySide6.QtWidgets import (QHeaderView, QLabel, QMenu, QStyle, QStyleOptionHeader, QLineEdit,
+                               QToolButton, QHBoxLayout)
 from fireblade.core.i18n import translate
+from fireblade.core.models import OPERATORS
 
 MIME = "application/x-fireblade-column"
 
+# One glyph per operator, so the width of the field does not depend on the operator's name.
+OPERATOR_GLYPHS = {'contains': '∈', 'not_contains': '∉', 'eq': '=', 'ne': '≠', 'starts': '^',
+                   'ends': '$', 'regex': '.*', 'empty': '∅', 'not_empty': '≠∅', 'gt': '>',
+                   'ge': '≥', 'lt': '<', 'le': '≤', 'after': '≥d', 'before': '≤d',
+                   'date_before': '<d', 'date_after': '>d', 'date_eq': '=d', 'date_ne': '≠d',
+                   'text_gt': '>a', 'text_ge': '≥a', 'text_lt': '<a', 'text_le': '≤a',
+                   'expression': '{}'}
+
 
 class GroupHeader(QHeaderView):
-    filterChanged = Signal(int, str)
+    filterChanged = Signal(int, str, str)
     sortRequested = Signal(int, bool)
     hideRequested = Signal(int)
 
@@ -18,6 +28,8 @@ class GroupHeader(QHeaderView):
         self.pressed_section = -1
         self.setSectionsClickable(True)
         self.controls = {}
+        self.operators = {}
+        self.operator_of = {}
         self.pending = {}
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
@@ -53,6 +65,20 @@ class GroupHeader(QHeaderView):
                     button.setAccessibleName(label)
                     button.clicked.connect(lambda checked=False, c=section-1, d=descending: self.sortRequested.emit(c, d))
                     buttons.append(button)
+                self.operator_of[section] = 'contains'
+                operator = QToolButton(self.viewport())
+                operator.setAutoRaise(True)
+                operator.setText(OPERATOR_GLYPHS.get('contains', '∈'))
+                operator.setToolTip(translate('Opérateur du filtre : Contient'))
+                operator.setAccessibleName(translate('Choisir l’opérateur du filtre'))
+                menu = QMenu(operator)
+                for label, code in OPERATORS:
+                    action = menu.addAction(OPERATOR_GLYPHS.get(code, '')+'  '+translate(label))
+                    action.triggered.connect(lambda checked=False, c=section-1, code=code, label=label:
+                                             self.set_operator(c, section, code, label))
+                operator.setMenu(menu)
+                operator.setPopupMode(QToolButton.InstantPopup)
+                self.operators[section] = operator
                 close = QToolButton(self.viewport())
                 close.setText('×')
                 close.setAutoRaise(True)
@@ -68,15 +94,27 @@ class GroupHeader(QHeaderView):
                 self.controls[section][0].setText(value)
         self.position_controls()
 
+    def set_operator(self, column, section, code, label):
+        """The glyph in front of the field: what the text is compared with."""
+        self.operator_of[section] = code
+        button = self.operators.get(section)
+        if button is not None:
+            button.setText(OPERATOR_GLYPHS.get(code, '?'))
+            button.setToolTip(translate('Opérateur du filtre : {}').format(translate(label)))
+        edit = self.controls.get(section, (None,))[0]
+        text = edit.text() if edit is not None else ''
+        if text:
+            self.filterChanged.emit(column, code, text)
+
     def queue_filter(self, column, text):
-        self.pending[column] = text
+        self.pending[column] = (text, self.operator_of.get(column+1, 'contains'))
         self.timer.start()
 
     def flush_filters(self):
         self.timer.stop()
         pending, self.pending = self.pending, {}
-        for column, text in pending.items():
-            self.filterChanged.emit(column, text)
+        for column, (text, operator) in pending.items():
+            self.filterChanged.emit(column, operator, text)
 
     def position_controls(self, *_):
         row_height = self.fontMetrics().height() + 12
@@ -84,7 +122,11 @@ class GroupHeader(QHeaderView):
         for section, (edit, up, down, close) in self.controls.items():
             visible = section < self.count() and not self.isSectionHidden(section)
             x, width = self.sectionViewportPosition(section), self.sectionSize(section)
-            edit.setGeometry(x+3, top_height+1, max(1, width-6), row_height-3)
+            op = self.operators.get(section)
+            if op is not None:
+                op.setGeometry(x+3, top_height+1, 17, row_height-3)
+                op.setVisible(visible and width > 60)
+            edit.setGeometry(x+22, top_height+1, max(1, width-25), row_height-3)
             up.setGeometry(x+width-36, 1, 16, top_height-2)
             down.setGeometry(x+width-19, 1, 16, top_height-2)
             close.setGeometry(x+width-53, 1, 16, top_height-2)

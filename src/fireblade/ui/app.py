@@ -882,18 +882,21 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
             widget.blockSignals(blocked)
         self.apply()
 
-    def column_search(self, column, text):
+    def column_search(self, column, operator, text):
+        """The box under a column header: one filter on that column, any operator.
+
+        The glyph in front of the field chooses how the text is compared, so an analyst
+        can ask for an exact value without leaving the grid.
+        """
         if not self.case or not 0 <= column < len(self.case.headers):
             return
         if self.busy:
             # Keep the edit pending while an import or query owns the interface.
             self.tree.header().queue_filter(column, text)
             return
-        existing = next((f for f in self.view.filters if f.column == column and f.operator == "contains"), None)
-        if existing is not None:
-            self.view.filters.remove(existing)
+        self.view.filters = [f for f in self.view.filters if f.column != column]
         if text:
-            self.view.filters.append(Filter(column, "contains", text))
+            self.view.filters.append(Filter(column, operator or 'contains', text))
         self.apply()
 
     def header_sort(self, section):

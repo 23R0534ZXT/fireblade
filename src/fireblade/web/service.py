@@ -178,6 +178,59 @@ class Library:
         return matches[0].resolve() if len(matches) == 1 else None
 
 
+    # -- IOC hunting -------------------------------------------------------
+
+    def ioc_scan(self, identifier: str, index: int, text: str, limit: int = 2000) -> dict:
+        """Match a pasted indicator list against one analysis, offline.
+
+        Same parser and same matcher as the desktop: an observation is never a
+        verdict, and the evidence values are left untouched.
+        """
+        from fireblade.core.ioc_hunt import IndicatorMatcher, parse_indicators
+
+        batch = parse_indicators(text or "")
+        indicators = batch.indicators if hasattr(batch, "indicators") else list(batch)
+        if not indicators:
+            raise ServiceError("Aucun indicateur reconnu dans ce texte.")
+        matcher = IndicatorMatcher(indicators)
+        case = self._case_for(identifier, index)
+        hits, scanned = [], 0
+        view = View()
+        with case.lock:
+            offset = 0
+            while True:
+                page = case.page(view, offset=offset, limit=1000)
+                if not page:
+                    break
+                for row in page:
+                    scanned += 1
+                    row_id = row[0]
+                    for column, value in enumerate(row[1:], start=1):
+                        if value is None:
+                            continue
+                        cell = str(value)
+                        if len(cell) > 4000:
+                            cell = cell[:4000]
+                        for number, observed, at, rule in matcher.matches(cell):
+                            item = indicators[number - 1]
+                            hits.append({"row_id": json_value(row_id), "column": column - 1,
+                                         "indicator": item.value, "kind": item.kind,
+                                         "observed": observed, "rule": rule})
+                            if len(hits) >= limit:
+                                break
+                        if len(hits) >= limit:
+                            break
+                    if len(hits) >= limit:
+                        break
+                if len(hits) >= limit:
+                    break
+                offset += len(page)
+        summary = {}
+        for hit in hits:
+            summary[hit["kind"]] = summary.get(hit["kind"], 0) + 1
+        return {"indicators": len(indicators), "scanned": scanned, "hits": hits,
+                "by_kind": summary, "truncated": len(hits) >= limit}
+
     # -- timeline ----------------------------------------------------------
 
     def _snapshots(self, identifier: str):

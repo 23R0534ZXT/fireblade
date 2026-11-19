@@ -193,3 +193,9 @@ body.dropping{outline:2px dashed #7aa9c9;outline-offset:-6px}
   border:1px solid var(--border);background:#fff;padding:2px}
 .timeline-hist .bar{flex:1;min-width:1px;background:#2d9cdb;display:flex;flex-direction:column;justify-content:flex-end}
 .timeline-hist .seg{width:100%}
+
+.ioc-bar{display:flex;gap:8px;padding:6px;flex:0 0 auto}
+.ioc-input{flex:1;height:86px;border:1px solid var(--border);background:#fff;font-family:ui-monospace,Consolas,monospace;
+  font-size:11px;padding:5px;resize:vertical;outline:none;color:var(--text)}
+.ioc-side{display:flex;flex-direction:column;gap:6px;width:210px}
+.ioc-side .note{color:#444;font-size:11px;line-height:1.4}

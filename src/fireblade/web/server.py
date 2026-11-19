@@ -76,6 +76,14 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/analyses/{index}/ioc")
+    def ioc(identifier: str, index: int, payload: dict):
+        text = (payload or {}).get("text", "")
+        try:
+            return library.ioc_scan(identifier, index, text)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/timeline")
     def timeline(identifier: str, start: int | None = None, end: int | None = None,
                  offset: int = 0, text: str = "", kind: str = "text"):

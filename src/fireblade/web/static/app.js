@@ -181,6 +181,39 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- IOC hunting ---------- */
+
+const iocState = { hits: [], summary: "" };
+
+async function runIocScan() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const text = $("ioc-input").value;
+  if (!text.trim()) { say("Paste at least one indicator", true); return; }
+  say("Scanning…");
+  try {
+    const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/ioc`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || response.statusText);
+    iocState.hits = payload.hits;
+    const kinds = Object.entries(payload.by_kind || {}).map(([k, v]) => `${v} ${k}`).join(", ");
+    const summary = `${payload.indicators} indicator(s), ${payload.scanned} row(s) scanned — ${payload.hits.length} hit(s)${kinds ? " : " + kinds : ""}${payload.truncated ? " (list truncated)" : ""}`;
+    $("ioc-summary").textContent = summary;
+    say(summary);
+    renderIoc();
+  } catch (error) {
+    say(error.message, true);
+    $("ioc-summary").textContent = error.message;
+  }
+}
+
+function renderIoc() {
+  $("ioc-rows").innerHTML = iocState.hits.map((hit) =>
+    `<tr><td>${escapeHtml(String(hit.row_id))}</td><td>${escapeHtml(hit.indicator)}</td>
+     <td>${escapeHtml(hit.observed)}</td><td>${escapeHtml(hit.rule)}</td>
+     <td>${escapeHtml(state.columns[hit.column + 1] || String(hit.column))}</td></tr>`).join("");
+}
+
 /* ---------- timeline ---------- */
 
 const TIMELINE_COLORS = ["#2d9cdb", "#e6a23c", "#27ae82", "#bb6bd9", "#eb6577", "#56bfc4", "#9fa8da", "#b4a34a"];
@@ -475,6 +508,7 @@ function showTab(name) {
   $("analysis-view").style.display = name === "analyses" ? "flex" : "none";
   $("cases-view").style.display = name === "cases" ? "flex" : "none";
   $("timeline-view").style.display = name === "timeline" ? "flex" : "none";
+  $("ioc-view").style.display = name === "ioc" ? "flex" : "none";
   $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";
   if (name === "timeline" && state.openCase) loadTimeline(!timelineState.payload);
 }
@@ -712,6 +746,7 @@ function wire() {
     uploadFiles([...event.dataTransfer.files]);
   });
 
+  $("ioc-scan").addEventListener("click", runIocScan);
   $("timeline-build").addEventListener("click", () => loadTimeline(false));
   $("timeline-search").addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;

@@ -1,3 +1,39 @@
+# Fireblade 0.7.9 — deleting a case, and imports that say what they did
+
+## Deleting a case destroys it, not just its tabs
+
+- File menu, "Delete the case…": the analyst picks three or seven DoD 5220.22-M passes, names
+  an operator and a witness, says where the certificate goes, and types the case name to arm
+  the run. Fireblade then overwrites **every file the case holds** — copied evidence, analyses,
+  tracking, sessions, register history — verifies the last pass, deletes the files, removes the
+  folders and finally the case folder itself.
+- The certificate cannot live inside the case, since that folder is what disappears: the dialog
+  asks for a destination outside and refuses one inside, and the PDF/HTML is written before the
+  folder is removed.
+- A file that cannot be deleted keeps the case folder: nothing is left half-gone without a
+  trace, and the dialog says how many files survived and why.
+- The certificate stays readable when a case holds dozens of files: the summary table lists
+  file, size and verdict on one line each, and the full path, the timing and both SHA-256
+  values go to an appendix written as paragraphs, which no longer breaks a row across pages.
+
+## An import that names what it did, per artefact
+
+- A log with no event is no longer imported as an empty grid: EvtxECmd's header-only CSV is
+  recognised, the entry says "Empty log: no entry", and the history shows it as not imported.
+- A file carrying the `.evtx` extension without the format signature says "Unreadable EVTX: no
+  signature" instead of passing for an empty log.
+- A parser that dies after writing part of its CSV keeps what it wrote: the row is marked
+  "complete with warnings" with the parser's own message, instead of losing the whole file.
+
+## Verified on this machine
+
+- Real logs: `Security.evtx` (30 749 events) and `Windows PowerShell.evtx` imported and
+  readable; `HardwareEvents.evtx` named empty; a fake `.evtx` named unreadable.
+- Three families in one import: two Prefetch, two shortcuts and one event log — 7 analyses,
+  30 753 rows, no file left unsupported.
+- The case destruction ran on a test case: every file overwritten and removed, the folder gone,
+  the certificate written outside.
+
 # Fireblade 0.7.8 — the import in full, and rules you can change
 
 ## An import history, file by file
@@ -28,6 +64,8 @@
   plus your overrides, linked so the cost is nil.
 
 # Fireblade 0.7.7 — "what launched this?", a filter operator, and names that say something
+
+(shipped inside 0.7.8; no 0.7.7 archive was published)
 
 ## From a row to what started the process
 

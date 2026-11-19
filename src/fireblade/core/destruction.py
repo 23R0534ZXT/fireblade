@@ -60,7 +60,7 @@ def sha256_file(path, progress=None):
     return digest.hexdigest()
 
 
-def plan(paths, root):
+def plan(paths, root, limit=None):
     """Validate what is about to be destroyed, and fingerprint it first.
 
     ``root`` is the case folder: nothing outside it can be listed, which is what keeps
@@ -73,8 +73,9 @@ def plan(paths, root):
         raise ValueError('The case folder does not exist')
     entries, seen = [], set()
     for value in paths:
-        if len(entries) >= MAX_FILES:
-            raise ValueError(f'At most {MAX_FILES} files can be destroyed in one operation')
+        ceiling = limit or MAX_FILES
+        if len(entries) >= ceiling:
+            raise ValueError(f'At most {ceiling} files can be destroyed in one operation')
         path = Path(value)
         if path.is_symlink():
             raise ValueError(f'{path} is a symbolic link; links are never followed')

@@ -158,6 +158,7 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         file_menu.addSeparator()
         action(file_menu, "Rapport client…", self.client_report, requires_file=False)
         action(file_menu, "Détruire des preuves…", self.destroy_evidence, requires_file=False)
+        action(file_menu, "Supprimer le case…", self.destroy_case, requires_file=False)
         file_menu.addSeparator()
         action(file_menu, "Quitter", self.close, "Alt+F4", False)
         action(edit_menu, "Copier les lignes", self.copy_rows, "Ctrl+C")

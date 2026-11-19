@@ -100,6 +100,31 @@ def atomic_json(path, value):
     os.replace(temporary, path)
 
 
+def _no_output_reason(source):
+    """Why a reader wrote nothing: an empty log, a file that is not one, or neither."""
+    source = Path(source)
+    if source.suffix.casefold() != '.evtx':
+        return str(translate('Le parseur n’a rien écrit'))
+    try:
+        with source.open('rb') as stream:
+            signature = stream.read(8)
+    except OSError as exc:
+        return str(translate('Fichier illisible : {}')).format(str(exc)[:200])
+    if signature == b'ElfFile\x00':
+        return str(translate('Journal vide : aucune entrée'))
+    return str(translate('Fichier EVTX illisible : signature absente'))
+
+
+def _empty_output(csv):
+    """True for a CSV that carries a header and no record: an empty event log, not evidence."""
+    try:
+        with Path(csv).open('rb') as stream:
+            lines = [line for _, line in zip(range(2), stream) if line.strip()]
+    except OSError:
+        return False
+    return len(lines) <= 1
+
+
 def identify(path):
     """File signatures and well-known names; never execute an input file."""
     path = Path(path)
@@ -281,6 +306,10 @@ def entry_reason(entry):
     for run in entry.get('runs') or []:
         if run.get('error'):
             reasons.append(str(run['error']))
+        if run.get('reason'):
+            reasons.append(str(run['reason']))
+        if run.get('exit_error'):
+            reasons.append(str(run['exit_error']))
         for member in (run.get('linux_logs') or {}).get('members') or []:
             if member.get('reason'):
                 reasons.append(str(member['reason']))
@@ -839,8 +868,21 @@ class Collection:
                         command = self.pack.arguments(tool, source, output)
                         run['command'] = command
                         self.progress(tool+' : '+str(source.relative_to(self.root)))
-                        execute(command, str(Path(self.pack.root)/tool), output/'parser.log')
+                        try:
+                            execute(command, str(Path(self.pack.root)/tool), output/'parser.log')
+                        except Exception as exc:  # noqa: BLE001 - a partial CSV is still evidence
+                            # A parser that dies after writing part of its CSV is not a file
+                            # with nothing in it: keep what it produced and say why.
+                            produced = sorted(output.rglob('*.csv'))
+                            if not produced:
+                                raise
+                            run['exit_error'] = str(exc)[:400]
+                            run['status'] = 'complete_with_warnings'
                         csvs = sorted(output.rglob('*.csv'))
+                        csvs = [csv for csv in csvs if not _empty_output(csv)]
+                        if not csvs and not run.get('exit_error'):
+                            run['status'] = 'no_output'
+                            run['reason'] = _no_output_reason(source)
                     for csv in csvs:
                         # The provenance travels with the import: the parser CSV is
                         # read once, and no enriched copy is written beside it.
@@ -851,7 +893,11 @@ class Collection:
                         document = self.import_result(csv, tool, register=False, evidence=evidence)
                         documents.append(document)
                         run['outputs'].append(dict(csv=str(csv), analysis=document['path'], **({'family':catscale_outputs[str(csv)]['family']} if tool in ('CatScale', 'LinuxLogs') else {})))
-                    run['status'] = ('complete_with_warnings' if run.get('warnings') else 'complete') if csvs else 'no_output'
+                    if csvs:
+                        run['status'] = ('complete_with_warnings'
+                                         if run.get('warnings') or run.get('exit_error') else 'complete')
+                    else:
+                        run.setdefault('status', 'no_output')
                     log = output/'parser.log'
                     if log.is_file():
                         warnings = []

@@ -7,6 +7,7 @@
   --sel:#cce8ff; --sel-text:#101010; --disabled:#686868; --link:#0645ad;
   --hint:#ffffe1;
   --ui-scale:1;
+  --row-height:20px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -121,7 +122,7 @@ thead th .grip{position:absolute;right:0;top:0;width:4px;height:100%;cursor:col-
 }
 .colfilter input::placeholder{color:var(--disabled)}
 .colfilter input:focus{border-color:#7aa9c9;background:#fbfdff}
-tbody td{height:20px;padding:1px 5px;border-right:1px solid #e2e2e2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+tbody td{height:var(--row-height);padding:1px 5px;border-right:1px solid #e2e2e2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 tbody tr:nth-child(even) td{background:var(--alt)}
 tbody tr:hover td{background:#eaf5ff}
 tbody tr.sel td{background:var(--sel);color:var(--sel-text)}

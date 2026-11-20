@@ -1012,7 +1012,7 @@ function renderGrid() {
       const cls = [value === null || value === "" ? "cellnull" : (index === 0 ? "rowid" : ""),
                    noted ? "noted" : ""].filter(Boolean).join(" ");
       const title = noted ? ` title="${escapeHtml(noted)}"` : "";
-      return `<td class="${cls}"${title} data-cell="${index - 1}">${escapeHtml(text)}${noted ? '<span class="notemark"></span>' : ""}</td>`;
+      return `<td class="${cls}"${title} data-cell="${index - 1}">${renderBoolean(index - 1, text)}${noted ? '<span class="notemark"></span>' : ""}</td>`;
     }).join("");
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
     const rule = rulesCache.find((item) => matchesRule(item, row));
@@ -1143,12 +1143,22 @@ function openColumnManager() {
     <label>
       <input type="checkbox" data-col="${index}" ${state.hidden.has(index) ? "" : "checked"}>
       <span>${escapeHtml(index === 0 ? "Row number" : name)}</span>
-      ${index ? `<span class="pin"><input type="checkbox" data-pin="${index}" ${state.pinned.has(index) ? "checked" : ""}> pin</span>` : ""}
+      ${index ? `<span class="pin"><input type="checkbox" data-bool="${index - 1}" ${booleanColumns().has(index - 1) ? "checked" : ""}> boolean
+        <input type="checkbox" data-pin="${index}" ${state.pinned.has(index) ? "checked" : ""}> pin</span>` : ""}
     </label>`).join("");
   list.querySelectorAll("input[data-col]").forEach((box) => {
     box.addEventListener("change", () => {
       const index = Number(box.dataset.col);
       if (box.checked) state.hidden.delete(index); else state.hidden.add(index);
+      renderGrid();
+    });
+  });
+  list.querySelectorAll("input[data-bool]").forEach((box) => {
+    box.addEventListener("change", () => {
+      const column = Number(box.dataset.bool);
+      const set = booleanColumns();
+      if (box.checked) set.add(column); else set.delete(column);
+      localStorage.setItem("fireblade.boolean", JSON.stringify([...set]));
       renderGrid();
     });
   });
@@ -1184,6 +1194,25 @@ function applyGrouping() {
 }
 
 /* ---------- display settings ---------- */
+
+function applyRowHeight() {
+  const value = localStorage.getItem("fireblade.rowHeight") || "20";
+  document.documentElement.style.setProperty("--row-height", value + "px");
+  const select = $("row-height");
+  if (select) select.value = value;
+}
+
+function booleanColumns() {
+  try { return new Set(JSON.parse(localStorage.getItem("fireblade.boolean") || "[]")); }
+  catch (_) { return new Set(); }
+}
+
+function renderBoolean(column, text) {
+  if (!booleanColumns().has(column)) return escapeHtml(text);
+  if (/^(true|vrai|1)$/i.test(text)) return "✓";
+  if (/^(false|faux|0)$/i.test(text)) return "✗";
+  return escapeHtml(text);
+}
 
 function applyScale() {
   const value = localStorage.getItem("fireblade.scale") || "1";
@@ -1423,6 +1452,10 @@ function wire() {
     if (timelineState.offset + size < (timelineState.payload?.count || 0)) { timelineState.offset += size; loadTimeline(false); }
   });
 
+  $("row-height").addEventListener("change", (event) => {
+    localStorage.setItem("fireblade.rowHeight", event.target.value);
+    applyRowHeight();
+  });
   $("prefs-scale").addEventListener("change", (event) => {
     localStorage.setItem("fireblade.scale", event.target.value);
     applyScale();
@@ -1538,6 +1571,7 @@ async function act(name) {
 
 async function boot() {
   applyScale();
+  applyRowHeight();
   wire();
   try {
     const health = await api("/health");

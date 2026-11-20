@@ -267,6 +267,34 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- process pivot ---------- */
+
+let contextRow = null;
+
+async function runPivot() {
+  if (!contextRow) return;
+  const rowId = contextRow.dataset.row;
+  $("row-menu").hidden = true;
+  try {
+    const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/pivot`,
+      { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ row_id: Number(rowId) }) });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || response.statusText);
+    const anchor = payload.anchor;
+    $("pivot-anchor").textContent =
+      `Searched “${anchor.token}”${anchor.host ? " on " + anchor.host : ""}${anchor.moment ? " around " + anchor.moment : ""}` +
+      `${anchor.parent ? " · parent process: " + anchor.parent : ""} — ${payload.total} row(s) across the case.`;
+    $("pivot-results").innerHTML = payload.matches.map((match) =>
+      `<div class="analysis-hit"><b>${escapeHtml(match.analysis)}</b> · row ${escapeHtml(String(match.row_id))}
+        <div class="hit">${escapeHtml(match.cells.filter((c) => c !== null && c !== "").slice(0, 5).join(" · ")).slice(0, 200)}</div></div>`).join("")
+      || '<div class="emptygrid">No other event mentions this process.</div>';
+    $("pivot-modal").classList.add("show");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 /* ---------- derived columns ---------- */
 
 function openDerivedDialog() {
@@ -958,6 +986,18 @@ function wire() {
     }
   });
 
+  $("body").addEventListener("contextmenu", (event) => {
+    const tr = event.target.closest("tr[data-row]");
+    if (!tr) return;
+    event.preventDefault();
+    contextRow = tr;
+    const menu = $("row-menu");
+    menu.style.left = `${event.clientX}px`;
+    menu.style.top = `${event.clientY}px`;
+    menu.hidden = false;
+  });
+  document.addEventListener("click", () => { $("row-menu").hidden = true; });
+
   $("body").addEventListener("click", (event) => {
     const group = event.target.closest("tr[data-group]");
     if (group) {
@@ -1112,6 +1152,8 @@ async function act(name) {
     case "report": $("report-modal").classList.add("show"); break;
     case "report-build": await buildReport(); break;
     case "columns": openColumnManager(); break;
+    case "pivot": await runPivot(); break;
+    case "bookmark-row": if (contextRow) toggleBookmark(contextRow.dataset.row, "bookmarked"); break;
     case "derived": openDerivedDialog(); break;
     case "derived-add": await addDerived(); break;
     case "columns-reset": state.hidden.clear(); renderGrid(); openColumnManager(); break;

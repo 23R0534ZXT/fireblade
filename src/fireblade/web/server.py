@@ -111,6 +111,17 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/analyses/{index}/pivot")
+    def pivot(identifier: str, index: int, payload: dict):
+        try:
+            row_id = int((payload or {}).get("row_id"))
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="row_id attendu.") from exc
+        try:
+            return library.pivot(identifier, index, row_id)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/analyses/{index}/derived")
     def derived_columns(identifier: str, index: int):
         return library.derived_columns(identifier, index)

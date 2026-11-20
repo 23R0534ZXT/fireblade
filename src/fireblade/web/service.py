@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import tempfile
 import threading
 import uuid
@@ -177,6 +178,76 @@ class Library:
                 break
         return matches[0].resolve() if len(matches) == 1 else None
 
+
+    # -- process pivot -----------------------------------------------------
+
+    def pivot(self, identifier: str, index: int, row_id: int) -> dict:
+        """What launched this process: the anchor the desktop derives from one row,
+        then the events around it across the case.
+
+        The anchor is read by column name, then by what the value looks like, and
+        nothing is concluded: the rows come back, the reading stays the analyst's.
+        """
+        from fireblade.core.pivot import anchor_of
+
+        case = self._case_for(identifier, index)
+        with case.lock:
+            rows = case.rows_by_ids([int(row_id)])
+            headers = list(case.headers)
+        values = None
+        if rows:
+            row = rows.get(int(row_id)) or next(iter(rows.values()))
+            values = list(row[1:]) if len(row) == len(headers) + 1 else list(row)
+        anchor = anchor_of(headers, values) if values else None
+        # EvtxECmd also fills a generic Payload column: a JSON blob is not a
+        # process, and searching it would return noise. The pivot is offered only
+        # when the row really names one.
+        if anchor and str(anchor.get("token", "")).lstrip().startswith(("{", "[")):
+            anchor = None
+        if not anchor and values:
+            # EvtxECmd keeps the process in PayloadData1..6 rather than in a named
+            # column: the first value that looks like an executable names it.
+            for value in values:
+                text = str(value or "")
+                found = re.search(r"[A-Za-z]:\\[^\"<>|\r\n]{1,240}?\.exe", text) or re.search(r"\b[\w.-]{1,80}\.exe\b", text, re.I)
+                if not found:
+                    continue
+                raw = found.group(0)
+                name = re.split(r"[\\/]", raw)[-1]
+                moment = ""
+                host = ""
+                for index, column in enumerate(headers):
+                    lowered = column.lower()
+                    if not moment and lowered in ("timecreated", "timestamp", "date", "datetime"):
+                        moment = str(values[index] or "")
+                    if not host and lowered in ("computer", "computername", "hostname"):
+                        host = str(values[index] or "")
+                anchor = {"token": name, "host": host, "parent": "", "moment": moment,
+                          "process": name, "command": text[:400]}
+                break
+        if not anchor:
+            raise ServiceError("Cette ligne ne nomme ni processus ni commande à rechercher.")
+        matches = []
+        for entry in self._analyses(self.library.read(identifier)):
+            if not entry["found"]:
+                continue
+            other = self._case_for(identifier, entry["index"])
+            with other.lock:
+                columns = list(other.headers)
+                process_index = next((i for i, name in enumerate(columns)
+                                      if name.lower() in ("image", "newprocessname", "processname",
+                                                          "parentprocessname", "creatorprocessname")), None)
+                search_view = View(search=anchor["token"])
+                found = other.page(search_view, offset=0, limit=200)
+                for row in found:
+                    pieces = row[1:]
+                    moment = str(pieces[process_index]) if process_index is not None and process_index < len(pieces) else ""
+                    matches.append({
+                        "analysis": entry["label"],
+                        "row_id": json_value(row[0]),
+                        "cells": [json_value(value) for value in pieces],
+                    })
+        return {"anchor": anchor, "matches": matches[:200], "total": len(matches)}
 
     # -- derived columns ---------------------------------------------------
 

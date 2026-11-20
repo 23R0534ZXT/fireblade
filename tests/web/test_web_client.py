@@ -97,6 +97,18 @@ def test_the_compatibility_dialog_lists_and_installs_profiles():
     assert "/profiles`" in js
 
 
+def test_the_evtx_actions_only_appear_for_an_alert_analysis():
+    js, html = _read(APP), _read(INDEX)
+    assert 'data-act="alert-context"' in html and 'data-act="alert-source"' in html
+    assert "function isAlertAnalysis(" in js
+    assert "function showAlertContext(" in js and "function openSourceEvent(" in js
+    assert "Fireblade_EVTX_Source" in js
+    # A menu entry hidden for every analysis would be a dead control.
+    assert "item.hidden = !alerts;" in js
+    assert "/rows/${contextRow.dataset.row}/context" in js
+    assert "/rows/${contextRow.dataset.row}/source" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

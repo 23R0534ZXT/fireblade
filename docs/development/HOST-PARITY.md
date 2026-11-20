@@ -7,7 +7,7 @@ every label `scripts/parity_inventory.py` finds in the Qt sources. A command is
 real desktop work this edition does not do yet, with a plan.
 
 - labels found in the Qt sources: **157**
-- of them, real commands: **102** (78 covered, 16 declared out of scope, 8 to do)
+- of them, real commands: **102** (80 covered, 16 declared out of scope, 6 to do)
 - parameter values counted as commands by the inventory: **40**
 - menu containers and dialog captions: **15**
 
@@ -70,6 +70,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Masquer cette colonne | Row menu > Hide this column, and Columns… | `test_the_row_menu_offers_every_cell_action` |
 | Modifier… | Actions & tracking > edit. | `test_tracking_actions_are_created_updated_and_exported` |
 | Ouvrir la détection EVTX | EVTX detection tab. | `test_detection_refuses_with_a_readable_reason` |
+| Ouvrir l’événement EVTX source | Alert row menu: the EVTX analysis, filtered on the record. | `test_an_alert_points_to_its_source_event` |
 | Plugins | Preferences > Profiles and plugins…: catalogue, installed plugins, errors. | `test_a_presentation_plugin_is_installed_and_listed` |
 | Qu’est-ce qui a lancé {} ? | Row menu > What launched this process? | `test_pivot_answers_what_launched_a_process` |
 | Recherche globale | Global search in the toolbar. | `test_a_global_search_finds_the_value_and_names_its_analysis` |
@@ -89,6 +90,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Tri sur plusieurs colonnes… | Shift-click a header for a second sort key. | `test_search_and_column_filter` |
 | Trier par ordre croissant | Row menu > Sort ascending, or a header click. | `test_the_row_menu_offers_every_cell_action` |
 | Trier par ordre décroissant | Row menu > Sort descending, or a header click. | `test_the_row_menu_offers_every_cell_action` |
+| Voir le contexte EVTX de cette alerte | Alert row menu: a context analysis, built by the core's alert_context. | `test_the_evtx_actions_only_appear_for_an_alert_analysis` |
 | Vérifier les imports et diagnostics… | Imports tab, with the Not imported / Error filters. | `test_the_import_history_lists_the_files_of_the_case` |
 | Éditer la note de la cellule… | Row details > note, per column. | `test_bookmarks_and_cell_notes_round_trip` |
 | Éditer la note de la sélection… | Row details note applied to the whole selection. | `test_the_grid_selects_a_range_and_a_selection` |
@@ -123,10 +125,8 @@ A line of this page is the claim; the test named beside it is the proof.
 - **Compatibilité Timeline Explorer** — Upload a .NET Timeline Explorer reader, inspect the readers it declares, and run a source through it.
 - **Date + heure (colonnes séparées)** — Same panel as above: the two-column reading of a date.
 - **Nœud libre…** — Add a free node to the attack graph, which needs the graph to be editable and stored.
-- **Ouvrir l’événement EVTX source** — Map a finding back to its source record in the EVTX analysis.
 - **Sans date / corrélation uniquement** — Same panel: build the timeline without a date column.
 - **Standard / personnalisé** — Custom palette colours, not only the desktop's two themes.
-- **Voir le contexte EVTX de cette alerte** — Same mapping as above, shown around the alert.
 
 ## What the inventory counts as a command
 

@@ -726,6 +726,54 @@ async function markSelection(note) {
     : `${limited.length} row(s) unmarked`);
 }
 
+/* An alert analysis carries the EVTX reference of the event it came from: only
+   there do the two EVTX actions mean anything. */
+function isAlertAnalysis() {
+  return state.columns.some((name) => name === "Fireblade_EVTX_Source");
+}
+
+async function showAlertContext() {
+  if (!state.openCase || contextRow === null) { say("Right-click an alert first", true); return; }
+  try {
+    const payload = await apiPost(
+      `/api/cases/${state.openCase.id}/analyses/${state.analysis}/rows/${contextRow.dataset.row}/context`);
+    state.analysis = payload.analysis;
+    state.groups = []; state.path = []; state.interval = ""; state.expression = null;
+    state.filters = []; state.search = ""; state.sort = null; state.multiSort = [];
+    showTab("analyses");
+    // The context is a new analysis of the case: refresh the tree before naming it.
+    state.openCase = await api(`/api/cases/${state.openCase.id}`);
+    renderTree();
+    await loadRows(true);
+    const notes = (payload.notes || []).length ? ` — ${payload.notes.join(" · ")}` : "";
+    say(`Context of "${payload.rule}" ±${payload.minutes} min: ${payload.events} event(s), `
+      + `${payload.references} reference(s), association ${payload.association}${notes}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function openSourceEvent() {
+  if (!state.openCase || contextRow === null) { say("Right-click an alert first", true); return; }
+  try {
+    const payload = await apiPost(
+      `/api/cases/${state.openCase.id}/analyses/${state.analysis}/rows/${contextRow.dataset.row}/source`);
+    state.analysis = payload.analysis;
+    state.groups = []; state.path = []; state.interval = "";
+    state.filters = []; state.search = ""; state.sort = null; state.multiSort = [];
+    showTab("analyses");
+    await loadRows(true);
+    const column = state.columns.findIndex((name) => name === payload.column);
+    if (column > 0) {
+      state.filters = [{ column: column - 1, operator: "eq", value: payload.value }];
+      await loadRows(true);
+    }
+    say(`Source event ${payload.column} = ${payload.value} — ${state.total} row(s) in ${payload.source.split("/").pop()}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 function contextColumnIndex() {
   return contextCell === null || contextCell === undefined ? null : Number(contextCell);
 }
@@ -2197,6 +2245,12 @@ function wire() {
     event.preventDefault();
     contextRow = tr;
     const menu = $("row-menu");
+    // The two EVTX actions only mean something in an alert analysis.
+    const alerts = isAlertAnalysis();
+    for (const action of ["alert-context", "alert-source"]) {
+      const item = menu.querySelector(`[data-act="${action}"]`);
+      if (item) item.hidden = !alerts;
+    }
     menu.style.left = `${event.clientX}px`;
     menu.style.top = `${event.clientY}px`;
     menu.hidden = false;
@@ -2411,6 +2465,8 @@ async function act(name, node) {
     case "sort-desc": sortFromCell(true); break;
     case "group-by-column": groupFromCell(); break;
     case "pin-column": pinFromCell("left"); break;
+    case "alert-context": await showAlertContext(); break;
+    case "alert-source": await openSourceEvent(); break;
     case "pin-column-right": pinFromCell("right"); break;
     case "hide-column": hideFromCell(); break;
     case "unmark-selection": await markSelection(""); break;

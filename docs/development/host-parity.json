@@ -1355,20 +1355,20 @@
     {
       "label": "Ouvrir l’événement EVTX source",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Alert row menu: the EVTX analysis, filtered on the record.",
+      "test": "test_an_alert_points_to_its_source_event",
       "reason": "",
-      "plan": "Map a finding back to its source record in the EVTX analysis."
+      "plan": ""
     },
     {
       "label": "Voir le contexte EVTX de cette alerte",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Alert row menu: a context analysis, built by the core's alert_context.",
+      "test": "test_the_evtx_actions_only_appear_for_an_alert_analysis",
       "reason": "",
-      "plan": "Same mapping as above, shown around the alert."
+      "plan": ""
     },
     {
       "label": "Plugins",

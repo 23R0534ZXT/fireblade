@@ -362,3 +362,45 @@ def test_a_profile_is_created_from_the_open_analysis(service, tmp_path):
     assert any(item["name"] == "This case's columns" for item in library.plugins()["plugins"])
     with pytest.raises(ServiceError):
         library.create_profile(identifier, 0, "   ")
+
+def test_an_alert_points_to_its_source_event(service, tmp_path):
+    """The desktop opens the EVTX event an alert came from; the Host says where it is."""
+    library, identifier = service
+    events = tmp_path / "System.csv"
+    with events.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["TimeCreated", "EventRecordId", "Computer", "EventId"])
+        writer.writerows([["2026-11-02T10:00:00Z", "4624", "PC-1", "7045"],
+                          ["2026-11-02T10:00:01Z", "4625", "PC-1", "7045"]])
+    library.import_source(identifier, events)
+    source_index = len(library.case(identifier)["analyses"]) - 1
+
+    alerts = tmp_path / "alerts.csv"
+    with alerts.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["Timestamp", "RuleTitle", "Level", "RecordID", "Fireblade_EVTX_Source"])
+        writer.writerow(["2026-11-02T10:00:00Z", "Suspicious Service", "high", "4624", str(events)])
+    library.import_source(identifier, alerts)
+    alert_index = len(library.case(identifier)["analyses"]) - 1
+
+    row_id = library.rows(identifier, alert_index, limit=1)["rows"][0][0]
+    payload = library.alert_source_event(identifier, alert_index, row_id)
+    assert payload["analysis"] == source_index
+    assert payload["column"] == "EventRecordId"
+    assert payload["value"] == "4624"
+    assert payload["matches"] == 1
+
+    # A row that is not an alert is refused, with a readable reason.
+    plain = library.rows(identifier, 0, limit=1)["rows"][0][0]
+    with pytest.raises(ServiceError):
+        library.alert_source_event(identifier, 0, plain)
+    with pytest.raises(ServiceError):
+        library.alert_context(identifier, 0, plain)
+
+
+def test_the_context_of_an_alert_needs_an_alert(service):
+    library, identifier = service
+    plain = library.rows(identifier, 0, limit=1)["rows"][0][0]
+    with pytest.raises(ServiceError) as caught:
+        library.alert_context(identifier, 0, plain, minutes=5)
+    assert "EVTX" in str(caught.value) or "alert" in str(caught.value).lower()

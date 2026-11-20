@@ -428,6 +428,22 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return FileResponse(path, media_type="text/html", filename=name)
 
+    @app.post("/api/cases/{identifier}/analyses/{index}/rows/{row_id}/context")
+    def alert_context(identifier: str, index: int, row_id: int, minutes: int = 5):
+        """The EVTX events around an alert, as a new analysis of the case."""
+        try:
+            return library.alert_context(identifier, index, row_id, minutes=minutes)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/rows/{row_id}/source")
+    def alert_source_event(identifier: str, index: int, row_id: int):
+        """Which analysis holds the event an alert came from, and how to filter on it."""
+        try:
+            return library.alert_source_event(identifier, index, row_id)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/analyses/{index}/bookmark-finding")
     def bookmark_finding(identifier: str, index: int, payload: dict):
         """Mark every alert of a finding in one gesture."""

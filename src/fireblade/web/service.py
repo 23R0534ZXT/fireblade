@@ -363,6 +363,102 @@ class Library:
                 case.bookmark(int(row[0]), text)
         return {"matched": total, "marked": min(total, 2000), "note": text}
 
+    def _row_values(self, case, row_id: int) -> dict:
+        """One row of an open analysis, by the identifier the grid shows.
+
+        The table stores the raw columns (`c0`, `c1`…) and the analysis keeps the
+        displayed names beside them: the mapping is positional, never by name.
+        """
+        with case.lock:
+            cursor = case.db.execute("SELECT * FROM events WHERE __row_id = ?", [int(row_id)])
+            row = cursor.fetchone()
+            names = [item[0] for item in cursor.description]
+        if row is None:
+            raise ServiceError("This row does not exist in the analysis.")
+        offset = names.index("__row_id") + 1 if "__row_id" in names else 0
+        values = {}
+        for position, header in enumerate(case.headers):
+            index = offset + position
+            values[str(header)] = row[index] if index < len(row) else None
+        return values
+
+    def _collection_of(self, analysis_path: str | Path) -> Path:
+        """The collection folder that wrote an analysis, two levels above it."""
+        folder = Path(analysis_path).parent.parent
+        if not (folder / "collection.json").is_file():
+            raise ServiceError("The collection that produced this alert is not beside it.")
+        return folder
+
+    def alert_context(self, identifier: str, index: int, row_id: int, minutes: int = 5) -> dict:
+        """The EVTX events around an alert, built by the core's own builder.
+
+        The desktop opens this as a new tab holding the alert's event and its
+        temporal neighbours; the Host opens it as a new analysis of the case.
+        """
+        from fireblade.core.alert_context import build_context
+        from fireblade.core.collection import Collection
+
+        if not 1 <= int(minutes) <= 1440:
+            raise ServiceError("The context window is 1 to 1440 minutes.")
+        case = self._case_for(identifier, index)
+        alert = {key: ("" if value is None else str(value))
+                 for key, value in self._row_values(case, row_id).items()}
+        if not alert.get("Fireblade_EVTX_Source"):
+            raise ServiceError("This row is not an alert: it carries no source EVTX reference.")
+        folder = self._collection_of(case.path)
+        pack = (ToolPack(Path(self.tools_root)) if self.tools_root
+                else ToolPack(Path(tempfile.gettempdir()) / "pack"))
+        # DuckDB refuses two connections with different configurations on one file.
+        self.close_case(identifier)
+        collection = Collection.reopen(folder, pack)
+        result = build_context(collection, alert, str(case.path), int(row_id),
+                              minutes=int(minutes))
+        self._merge_session(identifier, folder / "collection.fireblade-session")
+        position = self._analysis_index_of(identifier, result.get("analysis"))
+        if position is None:
+            raise ServiceError("The context was built but the case could not open it.")
+        summary = {key: result[key] for key in
+                   ("rule", "level", "minutes", "references", "events", "truncated",
+                    "association", "machines", "timestamp") if key in result}
+        summary["analysis"] = position
+        summary["notes"] = list(result.get("notes") or [])
+        return summary
+
+    def alert_source_event(self, identifier: str, index: int, row_id: int) -> dict:
+        """Where the event an alert came from lives, and how to filter on it."""
+        case = self._case_for(identifier, index)
+        alert = {key: ("" if value is None else str(value))
+                 for key, value in self._row_values(case, row_id).items()}
+        raw = alert.get("Fireblade_EVTX_Source") or ""
+        try:
+            paths = json.loads(raw) if raw.startswith("[") else [raw]
+        except ValueError as exc:
+            raise ServiceError("The EVTX reference of this alert is invalid.") from exc
+        wanted = {str(Path(str(item))) for item in paths if item}
+        if not wanted:
+            raise ServiceError("This row is not an alert: it carries no source EVTX reference.")
+        record = alert.get("RecordID") or alert.get("EventRecordId") or ""
+        analyses = self._analyses(self.library.read(identifier))
+        for position, entry in enumerate(analyses):
+            if position == index:
+                continue
+            source = str((entry.get("source_info") or {}).get("path") or "")
+            if not source or str(Path(source)) not in wanted:
+                continue
+            target = self._case_for(identifier, position)
+            headers = [str(name) for name in target.headers]
+            for name in ("EventRecordId", "RecordNumber", "RecordID"):
+                column = next((item for item in headers if item.casefold() == name.casefold()), None)
+                if column is None or not record:
+                    continue
+                view = View(filters=[Filter(headers.index(column), "eq", record)])
+                with target.lock:
+                    total = int(target.count(view))
+                if total:
+                    return {"analysis": position, "column": column, "value": record,
+                            "matches": total, "source": source}
+        raise ServiceError("The source event of this alert is not in any open analysis.")
+
     def detection_sources(self, identifier: str, collection: str) -> Path:
         """The alert CSV a detection run wrote, for the analyst to take away."""
         folder = self.library.folder(identifier) / "collections" / Path(str(collection)).name

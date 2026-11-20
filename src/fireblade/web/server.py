@@ -111,6 +111,17 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/analyses/{index}/rules")
+    def rules(identifier: str, index: int):
+        return library.rules(identifier, index)
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/rules")
+    def save_rules(identifier: str, index: int, payload: dict):
+        try:
+            return library.save_rules(identifier, index, (payload or {}).get("rules", []))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/analyses/{index}/pivot")
     def pivot(identifier: str, index: int, payload: dict):
         try:

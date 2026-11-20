@@ -267,6 +267,96 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- colour rules ---------- */
+
+let rulesCache = [];
+
+function matchesRule(rule, values) {
+  if (!rule.enabled) return false;
+  const raw = values[rule.column + 1];
+  const text = raw === null || raw === undefined ? "" : String(raw);
+  const value = rule.value ?? "";
+  switch (rule.operator) {
+    case "eq": return text.toLowerCase() === String(value).toLowerCase();
+    case "ne": return text.toLowerCase() !== String(value).toLowerCase();
+    case "starts": return text.toLowerCase().startsWith(String(value).toLowerCase());
+    case "ends": return text.toLowerCase().endsWith(String(value).toLowerCase());
+    case "gt": case "ge": case "lt": case "le": {
+      const a = Number(text), b = Number(value);
+      if (Number.isNaN(a) || Number.isNaN(b)) return false;
+      if (rule.operator === "gt") return a > b;
+      if (rule.operator === "ge") return a >= b;
+      if (rule.operator === "lt") return a < b;
+      return a <= b;
+    }
+    case "empty": return text === "";
+    case "not_empty": return text !== "";
+    default: return text.toLowerCase().includes(String(value).toLowerCase());
+  }
+}
+
+async function loadRules() {
+  if (!state.openCase) return;
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/rules`);
+    rulesCache = payload.rules || [];
+    renderGrid();
+  } catch (_) {
+    rulesCache = [];
+  }
+}
+
+function openRulesDialog() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  $("rule-column").innerHTML = state.columns.slice(1)
+    .map((name, index) => `<option value="${index}">${escapeHtml(name)}</option>`).join("");
+  renderRulesList();
+  $("rules-modal").classList.add("show");
+}
+
+function renderRulesList() {
+  $("rules-list").innerHTML = rulesCache.map((rule, index) => `
+    <label><span class="swatch" style="background:${rule.background};width:12px;height:12px;display:inline-block;border:1px solid #999"></span>
+      <span>${escapeHtml(state.columns[rule.column + 1] || "")} ${escapeHtml(rule.operator)} “${escapeHtml(rule.value)}”</span>
+      <span class="pin"><button class="btn" data-rule-remove="${index}">Remove</button></span></label>`).join("")
+    || '<div class="emptygrid">No rule yet.</div>';
+  $("rules-list").querySelectorAll("[data-rule-remove]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      rulesCache.splice(Number(button.dataset.ruleRemove), 1);
+      await persistRules();
+      renderRulesList();
+    });
+  });
+}
+
+async function persistRules() {
+  const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/rules`,
+    { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rules: rulesCache }) });
+  if (!response.ok) throw new Error((await response.json()).detail || response.statusText);
+  renderGrid();
+}
+
+async function addRule() {
+  const rule = {
+    column: Number($("rule-column").value),
+    operator: $("rule-operator").value,
+    value: $("rule-value").value,
+    background: $("rule-colour").value,
+    foreground: "#202020",
+    bold: false,
+    enabled: true,
+  };
+  rulesCache.push(rule);
+  try {
+    await persistRules();
+    renderRulesList();
+  } catch (error) {
+    rulesCache.pop();
+    say(error.message, true);
+  }
+}
+
 /* ---------- process pivot ---------- */
 
 let contextRow = null;
@@ -621,7 +711,7 @@ async function loadRows(reset) {
     state.offset = payload.offset;
     state.grouped = Boolean(payload.grouped);
     await loadBookmarks();
-    renderGrid();
+    await loadRules();
     renderPaneTabs();
   } catch (error) {
     say(error.message, true);
@@ -708,7 +798,9 @@ function renderGrid() {
       return `<td class="${cls}">${escapeHtml(text)}</td>`;
     }).join("");
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
-    return `<tr data-row="${escapeHtml(String(id))}" class="${state.selected === id ? "sel" : ""}">
+    const rule = rulesCache.find((item) => matchesRule(item, row));
+    const style = rule ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"` : "";
+    return `<tr data-row="${escapeHtml(String(id))}" class="${state.selected === id ? "sel" : ""}"${style}>
       <td class="markcell"><span class="cb ${marked}" title="Bookmark this row"></span></td>${cells}</tr>`;
   }).join("");
 
@@ -1152,6 +1244,8 @@ async function act(name) {
     case "report": $("report-modal").classList.add("show"); break;
     case "report-build": await buildReport(); break;
     case "columns": openColumnManager(); break;
+    case "rules": openRulesDialog(); break;
+    case "rule-add": await addRule(); break;
     case "pivot": await runPivot(); break;
     case "bookmark-row": if (contextRow) toggleBookmark(contextRow.dataset.row, "bookmarked"); break;
     case "derived": openDerivedDialog(); break;

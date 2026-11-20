@@ -99,6 +99,7 @@
           <div class="grow"></div>
           <button class="btn" data-act="group-column">Group…</button>
           <button class="btn" data-act="columns">Columns…</button>
+          <button class="btn" data-act="rules">Colour rules…</button>
           <button class="btn" id="details-toggle">Row details</button>
         </div>
 
@@ -281,6 +282,30 @@
 <div id="row-menu" class="row-menu" hidden>
   <div class="item" data-act="pivot">What launched this process?</div>
   <div class="item" data-act="bookmark-row">Bookmark this row</div>
+</div>
+
+<div class="modal" id="rules-modal">
+  <div class="dialog" style="min-width:700px">
+    <h3>Colour rules</h3>
+    <div class="body">
+      <div class="row"><label for="rule-column">Column</label><select id="rule-column"></select></div>
+      <div class="row"><label for="rule-operator">Operator</label>
+        <select id="rule-operator">
+          <option value="contains">contains</option><option value="ne">does not contain</option>
+          <option value="eq">equals</option><option value="starts">starts with</option>
+          <option value="ends">ends with</option><option value="gt">&gt;</option>
+          <option value="ge">&gt;=</option><option value="lt">&lt;</option>
+          <option value="le">&lt;=</option><option value="empty">empty</option>
+          <option value="not_empty">not empty</option>
+        </select>
+      </div>
+      <div class="row"><label for="rule-value">Value</label><input id="rule-value"></div>
+      <div class="row"><label for="rule-colour">Background</label><input id="rule-colour" type="color" value="#fce2e2"></div>
+      <div class="row"><button class="btn" data-act="rule-add">Add the rule</button></div>
+      <div class="columns-list" id="rules-list" style="max-height:220px"></div>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
 </div>
 
 <div class="modal" id="pivot-modal">

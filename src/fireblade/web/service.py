@@ -179,6 +179,58 @@ class Library:
         return matches[0].resolve() if len(matches) == 1 else None
 
 
+    # -- colour rules ------------------------------------------------------
+
+    RULES_VIEW = "__fireblade_rules__"
+
+    def rules(self, identifier: str, index: int) -> dict:
+        """The colour rules of this analysis, kept in its own views table."""
+        case = self._case_for(identifier, index)
+        with case.lock:
+            stored = case.views().get(self.RULES_VIEW)
+        rules = []
+        if stored is not None:
+            for rule in stored.format_rules:
+                condition = getattr(rule, "condition", None)
+                first = condition.children[0] if getattr(condition, "children", None) else None
+                rules.append({
+                    "column": getattr(first, "column", None),
+                    "operator": getattr(first, "operator", "contains"),
+                    "value": getattr(first, "value", ""),
+                    "background": rule.background,
+                    "foreground": rule.foreground,
+                    "bold": bool(rule.bold),
+                    "target": rule.target,
+                    "enabled": bool(rule.enabled),
+                })
+        return {"rules": rules}
+
+    def save_rules(self, identifier: str, index: int, rules: list) -> dict:
+        """Store the rules with the core's own FormatRule/FilterGroup objects."""
+        from fireblade.core.models import Filter, FilterGroup, FormatRule
+
+        cleaned = []
+        for item in rules or []:
+            column = item.get("column")
+            if not isinstance(column, int) or column < 0:
+                raise ServiceError("Colonne de règle invalide.")
+            operator = item.get("operator", "contains")
+            if operator not in OPERATORS:
+                raise ServiceError(f"Opérateur de règle inconnu : {operator}")
+            cleaned.append(FormatRule(
+                condition=FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))]),
+                background=str(item.get("background") or "#fce2e2"),
+                foreground=str(item.get("foreground") or "#202020"),
+                bold=bool(item.get("bold")),
+                target=item.get("target"),
+                enabled=bool(item.get("enabled", True)),
+            ))
+        case = self._case_for(identifier, index)
+        view = View(format_rules=cleaned)
+        with case.lock:
+            case.save_view(self.RULES_VIEW, view)
+        return {"rules": rules, "saved": len(cleaned)}
+
     # -- process pivot -----------------------------------------------------
 
     def pivot(self, identifier: str, index: int, row_id: int) -> dict:

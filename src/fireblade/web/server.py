@@ -1,6 +1,7 @@
 """Fireblade Host: the case library served over HTTP, next to the desktop app."""
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
@@ -224,6 +225,42 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             return library.update_action(identifier, action_id, payload or {})
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/package")
+    def export_package(identifier: str, payload: dict | None = None):
+        try:
+            return library.export_package(identifier, bool((payload or {}).get("include_sources", True)))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/package/download")
+    def package_file(identifier: str):
+        try:
+            path = library.package_file(identifier)
+        except ServiceError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return FileResponse(path, media_type="application/zip", filename=path.name)
+
+    @app.post("/api/cases/import-package")
+    def import_package(file: UploadFile = File(...)):
+        name = Path(file.filename or "case.fireblade").name
+        if not name.endswith(".fireblade"):
+            raise HTTPException(status_code=400, detail="Un paquet de case porte l'extension .fireblade.")
+        staging = Path(tempfile.mkdtemp(prefix="fireblade-import-"))
+        target = staging / name
+        with target.open("wb") as stream:
+            while chunk := file.file.read(1024 * 1024):
+                stream.write(chunk)
+        try:
+            return library.import_package(target)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        finally:
+            try:
+                target.unlink(missing_ok=True)
+                staging.rmdir()
+            except OSError:
+                pass
 
     @app.post("/api/cases/{identifier}/report")
     def report(identifier: str, payload: dict):

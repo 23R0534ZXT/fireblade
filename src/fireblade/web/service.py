@@ -279,6 +279,44 @@ class Library:
             raise ServiceError("Aucune import de ce case ne contient de journal EVTX à analyser.")
         merged = [finding for item in results for finding in item["findings"]]
         return {"runs": results, "findings": merged[:2000], "total": sum(item["total"] for item in results)}
+    # -- portable case -----------------------------------------------------
+
+    def export_package(self, identifier: str, include_sources: bool = True) -> dict:
+        """Write the case as a portable .fireblade archive and hand back a URL."""
+        from fireblade.core.case_package import export_package
+        from fireblade.core.sessions import read_session
+
+        data = self.library.read(identifier)
+        documents, active = ([], -1)
+        session = self.library.session_path(data)
+        if session and Path(session).is_file():
+            documents, active = read_session(session)
+        folder = self.library.folder(identifier)
+        target = folder / "exports" / (identifier[:8] + ".fireblade")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        self.close_case(identifier)
+        result = export_package(self.library, data, documents, active, target,
+                                include_sources=include_sources, include_case_files=True,
+                                max_bytes=4 * 1024**4)
+        return {"name": target.name, "bytes": target.stat().st_size,
+                "url": f"/api/cases/{identifier}/package/download",
+                "result": {k: str(v)[:120] for k, v in (result or {}).items()}}
+
+    def package_file(self, identifier: str) -> Path:
+        target = self.library.folder(identifier) / "exports" / (identifier[:8] + ".fireblade")
+        if not target.is_file():
+            raise ServiceError("Aucun paquet exporté pour ce case.")
+        return target
+
+    def import_package(self, source: str | Path) -> dict:
+        """Open a .fireblade archive as a new case, every byte verified first."""
+        from fireblade.core.case_package import import_package
+
+        result = import_package(self.library, Path(source), max_bytes=4 * 1024**4)
+        case = result.get("case") or {}
+        return {"id": case.get("id"), "name": case.get("name"),
+                "analyses": len(result.get("documents") or [])}
+
     # -- cell notes --------------------------------------------------------
 
     def cell_notes(self, identifier: str, index: int, row_ids: list[int] | None = None) -> dict:

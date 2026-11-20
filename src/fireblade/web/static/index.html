@@ -135,6 +135,7 @@
       <div id="graph-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="filterbar">
           <button class="btn" id="graph-build">Build the graph</button>
+          <button class="btn" id="graph-navigator">Export an ATT&CK layer…</button>
           <div class="info" id="graph-summary">The graph follows the kill chain: hosts on the left, techniques, then tactics.</div>
         </div>
         <div class="graph-wrap" id="graph-wrap">
@@ -334,6 +335,20 @@
 <div id="row-menu" class="row-menu" hidden>
   <div class="item" data-act="pivot">What launched this process?</div>
   <div class="item" data-act="bookmark-row">Bookmark this row</div>
+  <div class="item" data-act="copy-row">Copy the selected rows</div>
+  <div class="item" data-act="cell-json">Show the whole cell…</div>
+  <div class="item" data-act="rule-from-cell">Colour rule for this value…</div>
+</div>
+
+<div class="modal" id="cell-modal">
+  <div class="dialog" style="min-width:720px">
+    <h3 id="cell-modal-title">Cell</h3>
+    <div class="body"><textarea id="cell-full" rows="10" style="width:100%"></textarea></div>
+    <div class="foot">
+      <button class="btn" data-act="cell-copy">Copy</button>
+      <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal" id="prefs-modal">

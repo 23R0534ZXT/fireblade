@@ -294,6 +294,55 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- row actions ---------- */
+
+let contextCell = null;
+
+function selectedRowValues() {
+  const id = contextRow ? contextRow.dataset.row : null;
+  const row = state.rows.find((item) => String(item[0]) === String(id));
+  return row || null;
+}
+
+async function copySelectedRows() {
+  const row = selectedRowValues();
+  if (!row) { say("Select a row first", true); return; }
+  const text = state.columns.map((name, index) => `${name}: ${row[index] ?? ""}`).join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    say("Row copied to the clipboard");
+  } catch (_) {
+    say("The browser refused clipboard access", true);
+  }
+}
+
+function showCellJson() {
+  const row = selectedRowValues();
+  if (!row) { say("Select a row first", true); return; }
+  const column = contextCell === null ? 0 : Number(contextCell);
+  const name = state.columns[column + 1] || `column ${column + 1}`;
+  $("cell-modal-title").textContent = name;
+  $("cell-full").value = String(row[column + 1] ?? "");
+  $("cell-modal").classList.add("show");
+}
+
+async function ruleFromCell() {
+  const row = selectedRowValues();
+  if (!row) { say("Select a row first", true); return; }
+  const column = Number(contextCell || 0);
+  const value = String(row[column + 1] ?? "");
+  if (!value) { say("This cell is empty", true); return; }
+  rulesCache.push({ column, operator: "eq", value, background: "#ffe08a", foreground: "#202020",
+                    bold: false, enabled: true });
+  try {
+    await persistRules();
+    say(`Colour rule added for ${state.columns[column + 1]} = ${value}`);
+  } catch (error) {
+    rulesCache.pop();
+    say(error.message, true);
+  }
+}
+
 /* ---------- attack graph ---------- */
 
 async function buildGraph() {
@@ -304,6 +353,16 @@ async function buildGraph() {
     renderGraph(payload);
   } catch (error) {
     $("graph-summary").textContent = error.message;
+    say(error.message, true);
+  }
+}
+
+async function exportNavigator() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/graph?navigator=true`);
+    say(`ATT&CK layer written: ${payload.techniques} technique(s), ${Math.round(payload.bytes / 1024)} kB`);
+  } catch (error) {
     say(error.message, true);
   }
 }
@@ -1356,6 +1415,8 @@ function wire() {
   $("body").addEventListener("contextmenu", (event) => {
     const tr = event.target.closest("tr[data-row]");
     if (!tr) return;
+    const cell = event.target.closest("td[data-cell]");
+    contextCell = cell ? cell.dataset.cell : null;
     event.preventDefault();
     contextRow = tr;
     const menu = $("row-menu");
@@ -1429,6 +1490,7 @@ function wire() {
   $("derived-operation").addEventListener("change", derivedOperationChanged);
   $("hayabusa-run").addEventListener("click", runHayabusa);
   $("graph-build").addEventListener("click", buildGraph);
+  $("graph-navigator").addEventListener("click", exportNavigator);
   $("imports-refresh").addEventListener("click", loadImports);
   $("imports-status").addEventListener("change", renderImports);
   $("action-add").addEventListener("click", addAction);
@@ -1538,6 +1600,10 @@ async function act(name) {
     case "rules": openRulesDialog(); break;
     case "rule-add": await addRule(); break;
     case "pivot": await runPivot(); break;
+    case "copy-row": await copySelectedRows(); break;
+    case "cell-json": showCellJson(); break;
+    case "rule-from-cell": await ruleFromCell(); break;
+    case "cell-copy": await navigator.clipboard.writeText($("cell-full").value).then(() => say("Cell copied")); break;
     case "bookmark-row": if (contextRow) toggleBookmark(contextRow.dataset.row, "bookmarked"); break;
     case "derived": openDerivedDialog(); break;
     case "derived-add": await addDerived(); break;

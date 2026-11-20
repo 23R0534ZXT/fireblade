@@ -182,13 +182,14 @@ class Library:
 
     # -- attack graph ------------------------------------------------------
 
-    def graph(self, identifier: str) -> dict:
+    def graph(self, identifier: str, navigator: bool = False) -> dict:
         """The kill-chain graph, built from the detection findings and the case record."""
         from fireblade.core import attack_graph as ag
         from fireblade.core.case_workspace import load as load_workspace
         from fireblade.core.findings import Group
 
         folder = self.library.folder(identifier)
+        data = self.library.read(identifier)
         groups = {}
         for csv_path in sorted((folder / "collections").glob("import-*/results/hayabusa-*/hayabusa.csv")):
             with csv_path.open(encoding="utf-8", errors="replace", newline="") as stream:
@@ -217,6 +218,15 @@ class Library:
         if not groups and not (workspace.get("entities")):
             raise ServiceError("Aucun constat ni entité : lancez une détection ou déclarez une machine dans le case.")
         graph = ag.build(list(groups.values()), workspace)
+        if navigator:
+            layer = ag.navigator_layer(graph, name=data.get("name") or "Fireblade",
+                                       description=data.get("description") or "",
+                                       case=data.get("name") or "")
+            target = self.root / "exports" / (identifier[:8] + "-attack-layer.json")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(layer, ensure_ascii=False, indent=2), encoding="utf-8")
+            return {"layer": str(target), "bytes": target.stat().st_size,
+                    "techniques": len((layer.get("techniques") or []))}
         positioned = ag.layout(graph)
         return {"nodes": positioned.get("nodes", []), "edges": positioned.get("edges", []),
                 "groups": len(groups)}

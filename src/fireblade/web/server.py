@@ -114,9 +114,9 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/cases/{identifier}/graph")
-    def graph(identifier: str):
+    def graph(identifier: str, navigator: bool = False):
         try:
-            return library.graph(identifier)
+            return library.graph(identifier, navigator=navigator)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

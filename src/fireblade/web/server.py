@@ -5,13 +5,38 @@ import json
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from fireblade.web.service import Library, ServiceError, parse_filters
 
 STATIC = Path(__file__).with_name("static")
+
+
+def _store_upload(folder: Path, file: UploadFile) -> Path:
+    """Write the sent file into the case's evidence folder under a free name.
+
+    Overwriting an existing evidence file would change the bytes an earlier import
+    recorded a hash for, so a second upload of the same name becomes `name-2.ext`.
+    The collection then sees a duplicate by hash and says so, which is the truth.
+    """
+    name = Path(file.filename or "evidence").name
+    if not name or name in (".", ".."):
+        raise HTTPException(status_code=400, detail="Invalid file name.")
+    evidence = folder / "evidence"
+    evidence.mkdir(parents=True, exist_ok=True)
+    target = evidence / name
+    if target.exists():
+        stem, suffix = Path(name).stem, Path(name).suffix
+        index = 2
+        while target.exists():
+            target = evidence / f"{stem}-{index}{suffix}"
+            index += 1
+    with target.open("wb") as stream:
+        while chunk := file.file.read(1024 * 1024):
+            stream.write(chunk)
+    return target
 
 
 def create_app(root: str | Path, version: str = "", tools_root: str | Path | None = None) -> FastAPI:
@@ -80,10 +105,35 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     def import_source(identifier: str, payload: dict):
         source = (payload or {}).get("source")
         if not source:
-            raise HTTPException(status_code=400, detail="Champ 'source' attendu.")
+            raise HTTPException(status_code=400, detail="A 'source' field is required.")
         try:
             return library.import_source(identifier, source, tools_root=tools_root,
                                          organization=(payload or {}).get("organization", "files"))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/preview")
+    def preview_source(identifier: str, payload: dict):
+        """What an import of this server path would produce, before it runs."""
+        source = (payload or {}).get("source")
+        if not source:
+            raise HTTPException(status_code=400, detail="A 'source' field is required.")
+        library.library.folder(identifier)  # the case must exist
+        try:
+            return library.preview_source(source)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/preview-upload")
+    def preview_upload(identifier: str, file: UploadFile = File(...)):
+        """The browser hands the file over, the preview reads it, nothing is imported.
+
+        The bytes land in the case's own evidence folder, the same place the import
+        reads them from: confirming the preview does not send them a second time.
+        """
+        folder = library.library.folder(identifier)
+        try:
+            return library.preview_source(_store_upload(folder, file))
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -92,15 +142,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         """The browser cannot hand over a server path: the file is sent, stored in
         the case's own evidence folder, then read by the same collection."""
         folder = library.library.folder(identifier)
-        name = Path(file.filename or "evidence").name
-        if not name or name in (".", ".."):
-            raise HTTPException(status_code=400, detail="Nom de fichier invalide.")
-        evidence = folder / "evidence"
-        evidence.mkdir(parents=True, exist_ok=True)
-        target = evidence / name
-        with target.open("wb") as stream:
-            while chunk := file.file.read(1024 * 1024):
-                stream.write(chunk)
+        target = _store_upload(folder, file)
         try:
             return library.import_source(identifier, target, tools_root=tools_root,
                                          organization=organization)
@@ -153,7 +195,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             row_id = int((payload or {}).get("row_id"))
             column = int((payload or {}).get("column"))
         except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail="row_id et column attendus.") from exc
+            raise HTTPException(status_code=400, detail="row_id and column are required.") from exc
         try:
             return library.cell_note(identifier, index, row_id, column, (payload or {}).get("note", ""))
         except (ServiceError, ValueError, OSError, KeyError) as exc:
@@ -205,7 +247,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         try:
             row_id = int((payload or {}).get("row_id"))
         except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail="row_id attendu.") from exc
+            raise HTTPException(status_code=400, detail="row_id is required.") from exc
         try:
             return library.pivot(identifier, index, row_id)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
@@ -228,6 +270,21 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             return library.imports(identifier)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/profiles")
+    def profiles():
+        """The declared import profiles: read-only, the same list the desktop edits."""
+        return library.profiles()
+
+    @app.get("/api/cases/{identifier}/actions/export")
+    def export_actions(identifier: str):
+        try:
+            text = library.actions_csv(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        name = f"fireblade-{identifier[:8]}-actions.csv"
+        return Response(content=text, media_type="text/csv",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
     @app.get("/api/cases/{identifier}/workspace")
     def workspace(identifier: str):
@@ -290,7 +347,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     def import_package(file: UploadFile = File(...)):
         name = Path(file.filename or "case.fireblade").name
         if not name.endswith(".fireblade"):
-            raise HTTPException(status_code=400, detail="Un paquet de case porte l'extension .fireblade.")
+            raise HTTPException(status_code=400, detail="A case package carries the .fireblade extension.")
         staging = Path(tempfile.mkdtemp(prefix="fireblade-import-"))
         target = staging / name
         with target.open("wb") as stream:
@@ -351,7 +408,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         try:
             row_id = int((payload or {}).get("row_id"))
         except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail="row_id attendu.") from exc
+            raise HTTPException(status_code=400, detail="row_id is required.") from exc
         column = (payload or {}).get("column")
         return library.bookmark(identifier, index, row_id,
                                 (payload or {}).get("note", ""),
@@ -375,13 +432,13 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             try:
                 sorts.append((int(column), flag == "desc"))
             except ValueError as exc:
-                raise HTTPException(status_code=400, detail="Clé de tri invalide.") from exc
+                raise HTTPException(status_code=400, detail="Invalid sort key.") from exc
         expression = None
         if expression_json:
             try:
                 expression = json.loads(expression_json)
             except ValueError as exc:
-                raise HTTPException(status_code=400, detail="Expression de filtre invalide.") from exc
+                raise HTTPException(status_code=400, detail="Invalid filter expression.") from exc
         return library.rows(identifier, index, offset=offset, limit=limit, search=search,
                             sort=sort, descending=descending, bookmarks_only=bookmarks_only,
                             groups=group, path=path, sorts=sorts, interval=interval,

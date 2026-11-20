@@ -209,6 +209,7 @@
             <option value="critical">critical</option>
           </select>
           <button class="btn" id="action-add">Add</button>
+          <button class="btn" id="action-export" title="Download the tracking as a spreadsheet">Export CSV</button>
         </div>
         <div class="gridwrap" style="flex:1">
           <div class="gridbody">
@@ -345,18 +346,35 @@
   <div class="item" data-act="rule-from-cell">Colour rule for this value…</div>
 </div>
 
+<div class="modal" id="import-modal">
+  <div class="dialog" style="width:min(1040px,94vw)">
+    <h3>Import a file</h3>
+    <div class="body">
+      <div class="row">
+        <label>Files</label>
+        <button class="btn" data-act="preview-choose">Choose a file…</button>
+        <input type="file" id="preview-input" multiple hidden>
+        <span class="note" style="max-width:none">or a path on the server</span>
+        <input id="preview-server" placeholder="/data/cases/…" style="flex:1">
+        <button class="btn" data-act="preview-path">Preview the path</button>
+      </div>
+      <div class="note" id="preview-note"></div>
+      <div id="preview-body" class="preview-body"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="preview-import" id="preview-import" disabled>Import</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="expression-modal">
-  <div class="dialog" style="min-width:720px">
+  <div class="dialog" style="width:min(880px,94vw)">
     <h3>Advanced filter</h3>
     <div class="body">
-      <div class="row"><label for="expr-logic">Logic</label>
-        <select id="expr-logic"><option value="and">all of them (AND)</option>
-          <option value="or">any of them (OR)</option>
-          <option value="not">none of them (NOT)</option></select>
-      </div>
-      <div id="expr-rows"></div>
-      <div class="row"><button class="btn" data-act="expr-add">Add a condition</button></div>
-      <div class="note">Sent to the core as a FilterGroup: the same conditions the desktop builds.</div>
+      <div id="expr-root" class="expr-root"></div>
+      <div class="note">Sent to the core as a FilterGroup. A group can hold conditions and other groups;
+        the core accepts deeper trees than this dialog builds.</div>
     </div>
     <div class="foot">
       <button class="btn" data-act="expr-apply">Apply</button>
@@ -383,6 +401,8 @@
     <div class="body">
       <div class="note">What this instance runs with. Readers marked as missing are simply absent from the tool pack on this server.</div>
       <div id="prefs-runtime" class="columns-list" style="max-height:300px"></div>
+      <div class="note">Import profiles the core recognises, by their signature columns. A file whose header matches none of them is read as a plain table.</div>
+      <div id="prefs-profiles" class="columns-list" style="max-height:180px"></div>
       <div class="row"><label for="prefs-scale">Text size</label>
         <select id="prefs-scale">
           <option value="1">100 %</option><option value="1.1">110 %</option>

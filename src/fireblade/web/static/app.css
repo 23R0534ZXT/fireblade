@@ -227,3 +227,38 @@ td.noted{position:relative}
 td.noted .notemark{position:absolute;top:2px;right:2px;width:0;height:0;
   border-left:5px solid transparent;border-bottom:5px solid #c08a2e}
 .cellnote{color:#7a5c12;margin-left:8px}
+
+/* ---------- import preview ---------- */
+.preview-body{display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow:auto}
+.preview-card{border:1px solid var(--border);background:var(--base);padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.preview-head{display:flex;align-items:baseline;gap:10px;font-size:12px}
+.preview-head b{font-weight:600}
+.preview-ok{color:#2c6e2c}
+.preview-bad{color:#a33232}
+.preview-neutral{color:#666}
+.preview-size{margin-left:auto;color:#666;font-size:11px}
+.preview-card .note{max-width:none;color:#444}
+.preview-card .note ul{margin:2px 0 0 16px;padding:0}
+.preview-columns{max-height:150px;overflow:auto}
+.preview-table{font-size:11px;border-collapse:collapse;background:var(--base)}
+.preview-table th,.preview-table td{border:1px solid #d8d8d8;padding:1px 6px;text-align:left;white-space:nowrap}
+.preview-table th{background:#eee;font-weight:600}
+.preview-facts{display:flex;flex-wrap:wrap;gap:2px 16px;font-size:11px;color:#333}
+.preview-files{font-size:11px;color:#333;max-height:120px;overflow:auto}
+#preview-note{max-width:none}
+#preview-server{height:22px;border:1px solid var(--border);background:#fff;font-family:inherit;font-size:12px;padding:0 5px;outline:none}
+
+/* ---------- advanced filter editor ---------- */
+.expr-root{max-height:56vh;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.expr-group{border:1px solid #d8d8d8;border-left:3px solid #7aa9c9;background:#fbfbfb;padding:6px 8px;display:flex;flex-direction:column;gap:5px}
+.expr-group .expr-group{background:#fff}
+.expr-head{display:flex;align-items:center;gap:8px;font-size:11px;color:#444}
+.expr-head select{height:22px;border:1px solid var(--border);background:var(--base);font-family:inherit;font-size:11px}
+.expr-children{display:flex;flex-direction:column;gap:4px;padding-left:10px;border-left:1px dotted #bbb}
+.expr-row input[data-expr-value]{flex:1;height:21px;border:1px solid var(--border);background:#fff;font-family:inherit;font-size:11px;padding:0 4px;outline:none}
+.expr-row select{height:22px;border:1px solid var(--border);background:var(--base);font-family:inherit;font-size:11px;max-width:260px}
+.expr-actions{gap:6px}
+.preview-card{max-width:100%;overflow:hidden}
+.preview-sample{display:block;overflow-x:auto;max-width:100%}
+.dialog{max-width:96vw}
+#prefs-profiles .pin{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}

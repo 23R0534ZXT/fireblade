@@ -112,3 +112,63 @@ def test_export_writes_a_csv(case_with_analysis):
         service.close()
         for path in target.parent.glob("fireblade-*.csv"):
             path.unlink(missing_ok=True)
+
+
+def _write_profile_csv(path):
+    with path.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["TimeCreated", "EventId", "Level", "Provider", "Channel",
+                         "Computer", "MapDescription"])
+        writer.writerow(["2026-11-02T10:00:00Z", "4624", "Information",
+                         "Microsoft-Windows-Security-Auditing", "Security", "PC-1", "logon"])
+
+
+def test_preview_shows_columns_and_profile(case_with_analysis, tmp_path):
+    """The preview answers before the import: columns, profile, mapping, sample."""
+    root, identifier = case_with_analysis
+    source = tmp_path / "evtx-export.csv"
+    _write_profile_csv(source)
+    service = Library(root)
+    try:
+        before = len(service.case(identifier)["analyses"])
+        preview = service.preview_source(source)
+        assert preview["kind"] == "table"
+        assert preview["profile"] == "EvtxECmd"
+        # A UTF-8 BOM must not survive into the first column name.
+        assert preview["columns"][0]["name"] == "TimeCreated"
+        assert preview["columns"][0]["role"] == "timestamp"
+        assert preview["mapping"]["sort"] == "TimeCreated"
+        assert preview["mapping"]["timestamps"] == ["TimeCreated"]
+        assert preview["rows"][0][1] == "4624"
+        # Nothing was read into the case by the preview.
+        assert len(service.case(identifier)["analyses"]) == before
+    finally:
+        service.close()
+
+
+def test_preview_names_the_reader_of_an_artifact(case_with_analysis, tmp_path):
+    root, _identifier = case_with_analysis
+    source = tmp_path / "sample.evtx"
+    source.write_bytes(b"ElfFile\x00" + b"\x00" * 64)
+    service = Library(root)
+    try:
+        preview = service.preview_source(source)
+        assert preview["kind"] == "artifact"
+        assert preview["readers"] == ["EvtxECmd"]
+        assert preview["columns"] == []
+    finally:
+        service.close()
+
+
+def test_actions_export_is_a_csv(case_with_analysis):
+    root, identifier = case_with_analysis
+    service = Library(root)
+    try:
+        service.add_action(identifier, {"title": "Ask the client for DNS logs",
+                                        "owner": "client", "priority": "high"})
+        text = service.actions_csv(identifier)
+        lines = [line for line in text.splitlines() if line]
+        assert lines[0].startswith("id,title,detail,owner,status,priority")
+        assert "Ask the client for DNS logs" in lines[1]
+    finally:
+        service.close()

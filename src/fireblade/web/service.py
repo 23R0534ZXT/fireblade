@@ -11,6 +11,7 @@ Windows opens here and the other way round.
 from __future__ import annotations
 
 import csv
+import io
 import json
 import re
 import tempfile
@@ -116,13 +117,13 @@ class Library:
             return []
         folder = Path(session).parent
         if Path(session).stat().st_size > 4 * 1024 * 1024:
-            raise ServiceError("Fichier de session trop volumineux.")
+            raise ServiceError("The session file is too large.")
         payload = json.loads(Path(session).read_text(encoding="utf-8"))
         if payload.get("format") != "fireblade-session" or payload.get("version") != 1:
-            raise ServiceError("Format de session Fireblade inconnu.")
+            raise ServiceError("Unknown Fireblade session format.")
         documents = payload.get("documents") or []
         if not isinstance(documents, list) or len(documents) > 1000:
-            raise ServiceError("Session Fireblade invalide.")
+            raise ServiceError("Invalid Fireblade session.")
         active = payload.get("active", 0)
         entries = []
         for index, document in enumerate(documents):
@@ -216,7 +217,7 @@ class Library:
         except (OSError, ValueError):
             workspace = {}
         if not groups and not (workspace.get("entities")):
-            raise ServiceError("Aucun constat ni entité : lancez une détection ou déclarez une machine dans le case.")
+            raise ServiceError("No finding and no entity: run a detection or declare a machine in the case first.")
         graph = ag.build(list(groups.values()), workspace)
         if navigator:
             layer = ag.navigator_layer(graph, name=data.get("name") or "Fireblade",
@@ -241,7 +242,7 @@ class Library:
         folder, same command, same cross-file context.
         """
         if min_level not in ("informational", "low", "medium", "high", "critical"):
-            raise ServiceError("Niveau Hayabusa invalide.")
+            raise ServiceError("Invalid Hayabusa level.")
         data = self.library.read(identifier)
         reports = sorted((self.library.folder(identifier) / "collections").glob("import-*"))
         pack = ToolPack(Path(self.tools_root)) if self.tools_root else ToolPack(Path(tempfile.gettempdir()) / "pack")
@@ -286,7 +287,7 @@ class Library:
                             "warnings": (detection.get("warnings") or [])[:20],
                             "findings": rows[:2000], "total": len(rows)})
         if not results:
-            raise ServiceError("Aucune import de ce case ne contient de journal EVTX à analyser.")
+            raise ServiceError("No import of this case carries an EVTX journal to analyse.")
         merged = [finding for item in results for finding in item["findings"]]
         return {"runs": results, "findings": merged[:2000], "total": sum(item["total"] for item in results)}
     # -- archive and release -----------------------------------------------
@@ -339,6 +340,29 @@ class Library:
             "hayabusa": hayabusa,
         }
 
+    # -- import profiles ---------------------------------------------------
+
+    def profiles(self) -> dict:
+        """The declared import profiles, as the desktop's preferences list them.
+
+        Read-only on purpose: a profile is a small, editable preset in the desktop
+        edition; the Host edition shows what the core would recognise, so an
+        analyst can check a header before importing a file that does not match.
+        """
+        from fireblade.core.profiles import all_profiles
+
+        entries = []
+        for profile in all_profiles():
+            entries.append({
+                "name": profile.name,
+                "signature": list(profile.signature),
+                "timestamps": list(profile.timestamp),
+                "booleans": list(profile.booleans),
+                "columns": list(profile.columns),
+            })
+        entries.sort(key=lambda item: item["name"].casefold())
+        return {"profiles": entries, "count": len(entries)}
+
     # -- portable case -----------------------------------------------------
 
     def export_package(self, identifier: str, include_sources: bool = True) -> dict:
@@ -365,7 +389,7 @@ class Library:
     def package_file(self, identifier: str) -> Path:
         target = self.root / "exports" / (identifier[:8] + ".fireblade")
         if not target.is_file():
-            raise ServiceError("Aucun paquet exporté pour ce case.")
+            raise ServiceError("No package has been exported for this case yet.")
         return target
 
     def import_package(self, source: str | Path) -> dict:
@@ -437,7 +461,7 @@ class Library:
         """Keep the grid state under a name, with the core's own View object."""
         clean = (name or "").strip()
         if not clean or len(clean) > 120:
-            raise ServiceError("Nom de vue invalide (1 à 120 caractères).")
+            raise ServiceError("Invalid view name (1 to 120 characters).")
         saved = View(
             search=str(view.get("search") or ""),
             filters=[Filter(int(item["column"]), str(item["operator"]), str(item.get("value", "")))
@@ -458,7 +482,7 @@ class Library:
         with case.lock:
             stored = case.views().get(name)
         if stored is None:
-            raise ServiceError("Vue introuvable.")
+            raise ServiceError("View not found.")
         return {"name": name, "search": stored.search,
                 "filters": [{"column": f.column, "operator": f.operator, "value": f.value} for f in stored.filters],
                 "groups": list(stored.groups), "sort": stored.sort_column,
@@ -498,10 +522,10 @@ class Library:
         for item in rules or []:
             column = item.get("column")
             if not isinstance(column, int) or column < 0:
-                raise ServiceError("Colonne de règle invalide.")
+                raise ServiceError("Invalid rule column.")
             operator = item.get("operator", "contains")
             if operator not in OPERATORS:
-                raise ServiceError(f"Opérateur de règle inconnu : {operator}")
+                raise ServiceError(f"Unknown rule operator: {operator}")
             cleaned.append(FormatRule(
                 condition=FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))]),
                 background=str(item.get("background") or "#fce2e2"),
@@ -563,7 +587,7 @@ class Library:
                           "process": name, "command": text[:400]}
                 break
         if not anchor:
-            raise ServiceError("Cette ligne ne nomme ni processus ni commande à rechercher.")
+            raise ServiceError("This row names neither a process nor a command to look for.")
         matches = []
         for entry in self._analyses(self.library.read(identifier)):
             if not entry["found"]:
@@ -646,13 +670,172 @@ class Library:
             })
         return {"collections": collections}
 
+    # -- import preview ----------------------------------------------------
+
+    PREVIEW_BYTES = 256 * 1024
+    PREVIEW_ROWS = 6
+
+    @staticmethod
+    def _decode_head(raw: bytes, encoding: str) -> str:
+        """Decode the first block the way the import will read the file.
+
+        A byte-order mark is stripped: the import's reader is handed UTF-8 without
+        the BOM, so a header must not arrive as '\\ufeffTimestamp'. A truncated
+        multi-byte character at the end of the block is a window boundary, not a
+        corrupt file.
+        """
+        if raw.startswith(b"\xef\xbb\xbf") and encoding == "utf-8":
+            encoding = "utf-8-sig"
+        try:
+            return raw.decode(encoding, errors="replace")
+        except LookupError:
+            return raw.decode("utf-8", errors="replace")
+
+    @classmethod
+    def _delimiter(cls, text: str) -> tuple[str, list[list[str]]]:
+        """The delimiter that gives a consistent table, and its first records.
+
+        The import sniffs the schema itself; the preview must not contradict it.
+        Every candidate is parsed and the one that yields the most columns with
+        the same count on the sample lines wins. A comma file is never read as
+        one semicolon column.
+        """
+        best = None
+        csv.field_size_limit(max(csv.field_size_limit(), 16 * 1024 * 1024))
+        for delimiter in (",", "\t", ";", "|"):
+            try:
+                records = [record for record in csv.reader(text.splitlines(), delimiter=delimiter)
+                           if record and any(field.strip() for field in record)]
+            except csv.Error:
+                continue
+            if not records:
+                continue
+            width = len(records[0])
+            if width < 2:
+                continue
+            consistent = sum(1 for record in records[1:8] if len(record) == width)
+            score = (consistent, width)
+            if best is None or score > best[0]:
+                best = (score, delimiter, records)
+        if best is None:
+            return ",", []
+        return best[1], best[2]
+
+    def preview_source(self, source: str | Path) -> dict:
+        """What reading this file would produce, before anything is written.
+
+        The desktop lets the analyst look at the columns and the recognised profile
+        before confirming an import; the Host edition answers the same question over
+        HTTP. The profile lookup is the core's own `detect_profile`, and the mapping
+        is the one `profile_view` would apply, so the preview cannot drift from the
+        import. Nothing is copied, hashed or written here.
+        """
+        from fireblade.core.collection import identify
+
+        path = Path(source).resolve()
+        if not path.exists():
+            raise ServiceError("The file to preview does not exist.")
+        if path.is_dir():
+            entries = []
+            for item in sorted(path.rglob("*")):
+                if len(entries) >= 200:
+                    break
+                if item.is_file():
+                    try:
+                        tools = identify(item)
+                    except (OSError, ValueError):
+                        tools = []
+                    entries.append({"name": str(item.relative_to(path)), "readers": tools})
+            return {"kind": "folder", "name": path.name, "path": str(path),
+                    "files": entries, "count": len(entries),
+                    "note": "A folder is inventoried file by file: each format is read by its own reader."}
+
+        size = path.stat().st_size
+        try:
+            tools = identify(path)
+        except (OSError, ValueError) as exc:
+            raise ServiceError(f"The file could not be identified: {exc}") from exc
+        preview = {"kind": "unknown", "name": path.name, "path": str(path), "size": size,
+                   "readers": tools, "profile": None, "columns": [], "rows": []}
+        if not tools:
+            preview["note"] = "No reader recognises this file: it would be recorded as not imported, with its reason."
+            return preview
+        if tools != ["native"]:
+            preview["kind"] = "artifact"
+            preview["note"] = ("The reader runs on import and writes its own columns; "
+                               "there is no profile to confirm before it reads.")
+            return preview
+
+        from fireblade.core.csv_preamble import preamble_lines
+        from fireblade.core.encodings import bom_encoding
+
+        encoding = bom_encoding(path)
+        with path.open("rb") as stream:
+            raw = stream.read(self.PREVIEW_BYTES)
+        text = self._decode_head(raw, encoding)
+        lines = text.splitlines(keepends=True)
+        skip = 0
+        try:
+            skip = preamble_lines(io.StringIO(text))
+        except (csv.Error, ValueError):
+            skip = 0
+        body = "".join(lines[skip:])
+        delimiter, records = self._delimiter(body)
+        if not records:
+            preview["kind"] = "table"
+            preview["note"] = "The file carries no readable header."
+            return preview
+        headers = [str(name).strip() for name in records[0]]
+        rows = [[str(value)[:400] for value in record[:len(headers)]]
+                for record in records[1:1 + self.PREVIEW_ROWS]]
+        from fireblade.core.profiles import detect_profile, profile_view, profile_transformations
+
+        profile = detect_profile(headers)
+        columns = [{"index": index, "name": name, "role": "column"}
+                   for index, name in enumerate(headers)]
+        mapping = {"order": list(headers), "timestamps": [], "booleans": [],
+                   "derived": [], "sort": None, "format_rules": 0, "matched": [], "missing": []}
+        if profile is not None:
+            view, order = profile_view(profile, headers)
+            in_file = {name.casefold() for name in headers}
+            mapping["order"] = [headers[index] for index in order]
+            mapping["timestamps"] = [headers[index] for index in view.timestamp_columns]
+            mapping["booleans"] = [headers[index] for index in view.boolean_columns]
+            mapping["sort"] = headers[view.sort_column] if view.sort_column is not None else None
+            mapping["format_rules"] = len(view.format_rules)
+            mapping["matched"] = [name for name in profile.signature if name.casefold() in in_file]
+            mapping["missing"] = [name for name in profile.columns if name.casefold() not in in_file]
+            mapping["derived"] = [
+                {"name": item.get("name"), "operation": item.get("operation"),
+                 "columns": list(item.get("columns") or []), "format": item.get("format", "")}
+                for item in profile_transformations(profile, [h for h in headers if not h.startswith("Fireblade_")])
+            ]
+            roles = {name.casefold(): "timestamp" for name in mapping["timestamps"]}
+            roles.update({name.casefold(): "boolean" for name in mapping["booleans"]})
+            for column in columns:
+                column["role"] = roles.get(column["name"].casefold(), "column")
+            preview["kind"] = "table"
+            preview["profile"] = profile.name
+            preview["note"] = (f"Recognised profile: {profile.name}. "
+                               "The same mapping the import will apply is shown below.")
+        else:
+            preview["kind"] = "table"
+            preview["note"] = ("No declared profile matches these headers: the file is read as a "
+                               "plain table, with no timestamp or boolean mapping.")
+        preview["delimiter"] = {"\t": "tab", ",": "comma", ";": "semicolon", "|": "pipe"}[delimiter]
+        preview["encoding"] = encoding
+        preview["columns"] = columns
+        preview["rows"] = rows
+        preview["mapping"] = mapping
+        return preview
+
     # -- global search -----------------------------------------------------
 
     def search(self, identifier: str, text: str, limit: int = 50) -> dict:
         """Search every analysis of the case, and say where the hits are."""
         needle = (text or "").strip()
         if not needle:
-            raise ServiceError("Saisissez un texte à rechercher.")
+            raise ServiceError("Type some text to search for.")
         results = []
         total = 0
         for entry in self._analyses(self.library.read(identifier)):
@@ -675,6 +858,31 @@ class Library:
         return {"text": needle, "total": total, "analyses": results}
 
     # -- actions and tracking ----------------------------------------------
+
+    ACTION_COLUMNS = ("id", "title", "detail", "owner", "status", "priority", "type",
+                      "intervenant", "date", "due", "machine", "reference", "tags", "closed")
+
+    def actions_csv(self, identifier: str) -> str:
+        """The action tracking as a spreadsheet, one row per action.
+
+        The desktop exports the same columns; the order is the one the tracking
+        panel shows, so a manager can open the file and read it without a legend.
+        """
+        from fireblade.core.case_workspace import load
+
+        data = load(self.library.folder(identifier))
+        buffer = io.StringIO(newline="")
+        writer = csv.writer(buffer)
+        writer.writerow(self.ACTION_COLUMNS)
+        for item in data.get("actions", []):
+            row = []
+            for key in self.ACTION_COLUMNS:
+                value = item.get(key)
+                if isinstance(value, (list, tuple)):
+                    value = "; ".join(str(part) for part in value)
+                row.append("" if value is None else str(value))
+            writer.writerow(row)
+        return buffer.getvalue()
 
     def workspace(self, identifier: str) -> dict:
         """The operational record of the case: actions, entities, noted indicators."""
@@ -699,7 +907,7 @@ class Library:
 
         title = (fields or {}).get("title", "").strip()
         if not title:
-            raise ServiceError("Un intitulé d'action est requis.")
+            raise ServiceError("An action title is required.")
         allowed = {key: value for key, value in (fields or {}).items()
                    if key in ("detail", "owner", "status", "priority", "type", "intervenant",
                               "date", "due", "machine", "reference", "tags") and value not in (None, "")}
@@ -712,7 +920,7 @@ class Library:
                    if key in ("title", "detail", "owner", "status", "priority", "type",
                               "intervenant", "date", "due", "machine", "reference") and value is not None}
         if not allowed:
-            raise ServiceError("Rien à modifier.")
+            raise ServiceError("Nothing to change.")
         update_action(self.library.folder(identifier), action_id, **allowed)
         return self.workspace(identifier)
 
@@ -730,7 +938,7 @@ class Library:
         if description is not None:
             fields["description"] = description
         if not fields:
-            raise ServiceError("Rien à modifier.")
+            raise ServiceError("Nothing to change.")
         data = self.library.update(identifier, **fields)
         return self._summary(data)
 
@@ -741,7 +949,7 @@ class Library:
 
         data = self.library.read(identifier)
         if (confirmation or "").strip() != data.get("name", ""):
-            raise ServiceError("La confirmation doit reprendre le nom du case à l'identique.")
+            raise ServiceError("The confirmation must repeat the case name exactly.")
         folder = self.library.folder(identifier)
         certificates = self.root / "certificates"
         certificates.mkdir(parents=True, exist_ok=True)
@@ -784,7 +992,7 @@ class Library:
 
         snapshots = self._snapshots(identifier)
         if not snapshots:
-            raise ServiceError("Ce case ne contient aucune analyse.")
+            raise ServiceError("This case holds no analysis.")
         with self._lock:
             for open_key in [item for item in self._open if item[0] == identifier]:
                 try:
@@ -802,10 +1010,10 @@ class Library:
 
     def report_file(self, identifier: str, name: str) -> Path:
         if "/" in name or "\\" in name or name.startswith("."):
-            raise ServiceError("Nom de rapport invalide.")
+            raise ServiceError("Invalid report name.")
         path = self.library.folder(identifier) / "reports" / name
         if not path.is_file():
-            raise ServiceError("Rapport introuvable.")
+            raise ServiceError("Report not found.")
         return path
 
     # -- IOC hunting -------------------------------------------------------
@@ -821,7 +1029,7 @@ class Library:
         batch = parse_indicators(text or "")
         indicators = batch.indicators if hasattr(batch, "indicators") else list(batch)
         if not indicators:
-            raise ServiceError("Aucun indicateur reconnu dans ce texte.")
+            raise ServiceError("No indicator was recognised in this text.")
         matcher = IndicatorMatcher(indicators)
         case = self._case_for(identifier, index)
         hits, scanned = [], 0
@@ -889,10 +1097,10 @@ class Library:
 
     def hunt(self, identifier: str, name: str) -> dict:
         if "/" in name or "\\" in name or not name.endswith(".json"):
-            raise ServiceError("Nom de chasse invalide.")
+            raise ServiceError("Invalid hunt name.")
         path = self.library.folder(identifier) / "hunts" / name
         if not path.is_file():
-            raise ServiceError("Chasse introuvable.")
+            raise ServiceError("Hunt not found.")
         return json.loads(path.read_text(encoding="utf-8"))
 
     # -- timeline ----------------------------------------------------------
@@ -916,7 +1124,7 @@ class Library:
         if store is None:
             snapshots = self._snapshots(identifier)
             if not snapshots:
-                raise ServiceError("Ce case ne contient aucune analyse.")
+                raise ServiceError("This case holds no analysis.")
             # DuckDB refuses a second connection with another configuration: the
             # grid's open handles are closed before the timeline opens the files
             # read-only, and they reopen on the next grid request.
@@ -978,7 +1186,7 @@ class Library:
         folder = self.library.folder(identifier)
         source = Path(source).resolve()
         if not source.exists():
-            raise ServiceError("La source à importer est absente.")
+            raise ServiceError("The source to import is missing.")
         output = folder / "collections" / ("import-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
         if output.exists():
             output = folder / "collections" / ("import-" + uuid.uuid4().hex[:8])
@@ -1016,12 +1224,12 @@ class Library:
             data = self.library.read(identifier)
             analyses = self._analyses(data)
             if not 0 <= index < len(analyses):
-                raise ServiceError("Cette analyse n'existe pas dans le case.")
+                raise ServiceError("This analysis does not exist in the case.")
             entry = analyses[index]
             if not entry["found"]:
                 raise ServiceError(
-                    "Le fichier d'analyse est absent du case "
-                    f"(chemin enregistré : {entry['recorded_path']}).")
+                    "The analysis file is missing from the case "
+                    f"(recorded path: {entry['recorded_path']}).")
             path = Path(entry["path"])
             if len(self._open) >= self.MAX_OPEN:
                 oldest = next(iter(self._open))
@@ -1065,9 +1273,9 @@ class Library:
         view = View(search=search or "", filters=[], bookmarks_only=bool(bookmarks_only))
         for column, operator, value in filters or ():
             if operator not in OPERATORS:
-                raise ServiceError(f"Opérateur de filtre inconnu : {operator}")
+                raise ServiceError(f"Unknown filter operator: {operator}")
             if not 0 <= column < len(case.headers):
-                raise ServiceError("Colonne de filtre hors de l'analyse.")
+                raise ServiceError("Filter column outside the analysis.")
             view.filters.append(Filter(column, operator, value))
         if expression:
             from fireblade.core.models import condition_from_dict
@@ -1077,7 +1285,7 @@ class Library:
             keys = [(sort, bool(descending))]
         for column, _descending in keys:
             if not 0 <= int(column) < len(case.headers):
-                raise ServiceError("Colonne de tri hors de l'analyse.")
+                raise ServiceError("Sort column outside the analysis.")
         if keys:
             view.sort_column, view.descending = int(keys[0][0]), bool(keys[0][1])
             view.sort_type = "text"
@@ -1085,11 +1293,11 @@ class Library:
         if groups:
             for column in groups:
                 if not 0 <= int(column) < len(case.headers):
-                    raise ServiceError("Colonne de groupement hors de l'analyse.")
+                    raise ServiceError("Grouping column outside the analysis.")
             view.groups = [int(column) for column in groups]
             if interval:
                 if interval not in ("value", "year", "quarter", "month", "week", "day", "hour", "minute", "second"):
-                    raise ServiceError("Intervalle de groupement inconnu.")
+                    raise ServiceError("Unknown grouping interval.")
                 view.group_intervals = {str(column): interval for column in view.groups}
         limit = max(1, min(int(limit), 1000))
         offset = max(0, int(offset))
@@ -1150,11 +1358,11 @@ def parse_filters(values) -> list[tuple[int, str, str]]:
     for raw in values or ():
         parts = raw.split(":", 2)
         if len(parts) != 3:
-            raise ServiceError("Format de filtre attendu : colonne:opérateur:valeur")
+            raise ServiceError("Expected filter format: column:operator:value")
         try:
             column = int(parts[0])
         except ValueError as exc:
-            raise ServiceError("Indice de colonne invalide.") from exc
+            raise ServiceError("Invalid column index.") from exc
         filters.append((column, parts[1], parts[2]))
     return filters
 

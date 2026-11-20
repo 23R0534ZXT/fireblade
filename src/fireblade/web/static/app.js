@@ -79,34 +79,149 @@ function defaultWidth(name, index) {
   return Math.max(90, Math.min(200, name.length * 8 + 30));
 }
 
-/* ---------- import ---------- */
+/* ---------- import preview ---------- */
 
-async function uploadFiles(files) {
+const previewState = { items: [] };
+
+function openImportDialog() {
   if (!state.openCase) { say("Open a case before importing", true); return; }
-  const total = files.length;
+  previewState.items = [];
+  $("preview-input").value = "";
+  $("preview-server").value = "";
+  $("preview-note").textContent = "Choose a file, or give a path on the server: the columns and the recognised profile are shown before anything is read.";
+  $("preview-note").classList.remove("err");
+  renderPreview();
+  $("import-modal").classList.add("show");
+}
+
+async function previewFiles(files) {
+  if (!state.openCase) { say("Open a case before importing", true); return; }
+  $("import-modal").classList.add("show");
+  renderPreview();
   let done = 0;
   for (const file of files) {
-    say(`Importing ${file.name} (${done + 1}/${total})…`);
+    done += 1;
+    $("preview-note").textContent = `Reading ${file.name} (${done}/${files.length})…`;
     const body = new FormData();
     body.append("file", file);
-    body.append("organization", $("import-layout").value);
     try {
-      const response = await fetch(`/api/cases/${state.openCase.id}/upload?organization=${encodeURIComponent($("import-layout").value)}`,
-        { method: "POST", body });
+      const response = await fetch(`/api/cases/${state.openCase.id}/preview-upload`, { method: "POST", body });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || payload.error || response.statusText);
-      if (!payload.analyses) {
-        say(`${file.name}: ${payload.message || "not recognised"}`, true);
-      }
-      done += 1;
+      previewState.items.push({ name: file.name, payload });
     } catch (error) {
-      say(`${file.name}: ${error.message}`, true);
+      previewState.items.push({ name: file.name, error: error.message });
+    }
+  }
+  $("preview-note").textContent = `${previewState.items.length} file(s) ready. Nothing has been read into the case yet.`;
+  $("preview-note").classList.remove("err");
+  renderPreview();
+}
+
+async function previewServerPath() {
+  const source = $("preview-server").value.trim();
+  if (!source) { $("preview-note").textContent = "Give a path on the server first."; return; }
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/preview`, { source });
+    previewState.items.push({ name: payload.name, payload });
+    $("preview-note").textContent = "Preview ready. Nothing has been read into the case yet.";
+    $("preview-note").classList.remove("err");
+    renderPreview();
+  } catch (error) {
+    $("preview-note").textContent = error.message;
+    $("preview-note").classList.add("err");
+  }
+}
+
+function previewRoleLabel(role) {
+  return { timestamp: "timestamp", boolean: "boolean", column: "text" }[role] || "text";
+}
+
+function renderPreview() {
+  const box = $("preview-body");
+  $("preview-import").disabled = !previewState.items.length;
+  if (!previewState.items.length) { box.innerHTML = ""; return; }
+  box.innerHTML = previewState.items.map((item, index) => {
+    if (item.error) {
+      return `<div class="preview-card"><div class="preview-head"><b>${escapeHtml(item.name)}</b>
+        <span class="preview-bad">not readable</span></div>
+        <div class="note">${escapeHtml(item.error)}</div></div>`;
+    }
+    const payload = item.payload || {};
+    const size = payload.size === undefined ? "" : `${Math.max(1, Math.round(payload.size / 1024))} KB`;
+    if (payload.kind === "folder") {
+      return `<div class="preview-card"><div class="preview-head"><b>${escapeHtml(payload.name)}</b>
+        <span class="preview-ok">folder · ${payload.count} file(s)</span></div>
+        <div class="note">${escapeHtml(payload.note || "")}</div>
+        <div class="preview-files">${(payload.files || []).slice(0, 12).map((entry) =>
+          `<div>${escapeHtml(entry.name)} — ${entry.readers.length ? escapeHtml(entry.readers.join(", ")) : "no reader"}</div>`).join("")}
+          ${payload.count > 12 ? `<div>… ${payload.count - 12} more</div>` : ""}</div></div>`;
+    }
+    if (payload.kind !== "table") {
+      return `<div class="preview-card"><div class="preview-head"><b>${escapeHtml(payload.name)}</b>
+        <span class="preview-neutral">${escapeHtml(payload.kind)} · ${size}</span></div>
+        <div class="note">${escapeHtml(payload.note || "")}</div>
+        <div class="note">Readers that would run: ${(payload.readers || []).length ? escapeHtml(payload.readers.join(", ")) : "none"}</div></div>`;
+    }
+    const mapping = payload.mapping || {};
+    const columns = (payload.columns || []).map((column) =>
+      `<tr><td>${column.index + 1}</td><td>${escapeHtml(column.name)}</td><td>${previewRoleLabel(column.role)}</td></tr>`).join("");
+    const rows = payload.rows || [];
+    const sample = rows.length
+      ? `<table class="preview-table preview-sample"><thead><tr>${(payload.columns || []).map((column) =>
+          `<th>${escapeHtml(column.name)}</th>`).join("")}</tr></thead>
+          <tbody>${rows.map((row) => `<tr>${(payload.columns || []).map((_, cell) =>
+            `<td>${escapeHtml(String(row[cell] ?? "")).slice(0, 120)}</td>`).join("")}</tr>`).join("")}</tbody></table>`
+      : "<div class=\"note\">No sample row in the first block.</div>";
+    const derived = (mapping.derived || []).map((item) =>
+      `<li>${escapeHtml(item.name || "")} — ${escapeHtml(item.operation || "")}${item.format ? " (" + escapeHtml(item.format) + ")" : ""}</li>`).join("");
+    return `<div class="preview-card">
+      <div class="preview-head"><b>${escapeHtml(payload.name)}</b>
+        <span class="${payload.profile ? "preview-ok" : "preview-neutral"}">${payload.profile ? "profile: " + escapeHtml(payload.profile) : "no declared profile"}</span>
+        <span class="preview-size">${size}</span></div>
+      <div class="note">${escapeHtml(payload.note || "")}</div>
+      <div class="preview-columns"><table class="preview-table"><thead>
+        <tr><th>#</th><th>Column</th><th>Role</th></tr></thead><tbody>${columns}</tbody></table></div>
+      <div class="preview-facts">
+        <span>Delimiter: ${escapeHtml(payload.delimiter || "")}</span>
+        <span>Encoding: ${escapeHtml(payload.encoding || "")}</span>
+        <span>Sort: ${escapeHtml(mapping.sort || "none")}</span>
+        <span>Timestamps: ${escapeHtml((mapping.timestamps || []).join(", ") || "none")}</span>
+        <span>Booleans: ${escapeHtml((mapping.booleans || []).join(", ") || "none")}</span>
+        <span>Colour rules: ${mapping.format_rules || 0}</span>
+      </div>
+      ${derived ? `<div class="note">Derived on import:<ul>${derived}</ul></div>` : ""}
+      ${(mapping.missing || []).length ? `<div class="note">Profile fields absent from this file: ${escapeHtml(mapping.missing.join(", "))}</div>` : ""}
+      ${sample}
+      <input type="hidden" class="preview-source" value="${escapeHtml(payload.path || "")}">
+    </div>`;
+  }).join("");
+}
+
+async function confirmImport() {
+  if (!previewState.items.length) return;
+  const layout = $("import-layout").value;
+  let imported = 0;
+  for (const item of previewState.items) {
+    if (item.error) continue;
+    const source = item.payload && item.payload.path;
+    if (!source) continue;
+    say(`Importing ${item.name}…`);
+    try {
+      const payload = await apiPost(`/api/cases/${state.openCase.id}/import`, { source, organization: layout });
+      if (payload.analyses) imported += 1;
+      else say(`${item.name}: ${payload.message || "not recognised"}`, true);
+    } catch (error) {
+      say(`${item.name}: ${error.message}`, true);
       return;
     }
   }
+  closeModals();
   await openCase(state.openCase.id);
-  say(`${done} file(s) imported`);
+  say(`${imported} file(s) imported`);
 }
+
+/* ---------- import ---------- */
 
 /* ---------- cases ---------- */
 
@@ -324,45 +439,118 @@ function saveLayoutSoon() {
 /* ---------- advanced filter ---------- */
 
 const EXPR_OPERATORS = ["contains", "ne", "eq", "starts", "ends", "gt", "ge", "lt", "le", "empty", "not_empty"];
+const EXPR_MAX_DEPTH = 3;
 
-function addExpressionRow(column = 0, operator = "contains", value = "") {
-  const box = $("expr-rows");
+function exprConditionNode(condition = {}) {
   const row = document.createElement("div");
   row.className = "row expr-row";
+  row.dataset.kind = "condition";
   row.innerHTML = `<select data-expr-col>${state.columns.slice(1).map((name, index) =>
-      `<option value="${index}" ${index === column ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select>
+      `<option value="${index}" ${index === (condition.column ?? 0) ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select>
     <select data-expr-op>${EXPR_OPERATORS.map((code) =>
-      `<option value="${code}" ${code === operator ? "selected" : ""}>${code}</option>`).join("")}</select>
-    <input data-expr-value value="${escapeHtml(value)}" placeholder="value">
-    <button class="btn" data-expr-remove>✕</button>`;
-  row.querySelector("[data-expr-remove]").addEventListener("click", () => row.remove());
-  box.appendChild(row);
+      `<option value="${code}" ${code === (condition.operator || "contains") ? "selected" : ""}>${code}</option>`).join("")}</select>
+    <input data-expr-value value="${escapeHtml(condition.value ?? "")}" placeholder="value">
+    <button class="btn" data-expr-remove title="Remove this condition">✕</button>`;
+  row.querySelector("[data-expr-remove]").addEventListener("click", () => {
+    const box = row.closest(".expr-children");
+    row.remove();
+    if (box && !box.querySelector(":scope > *")) box.appendChild(exprConditionNode());
+  });
+  return row;
+}
+
+function exprGroupNode(group = { logic: "and", children: [] }, depth = 0) {
+  const box = document.createElement("div");
+  box.className = "expr-group";
+  box.dataset.kind = "group";
+  box.dataset.depth = String(depth);
+  const label = depth === 0 ? "Match" : "Match this group";
+  const head = document.createElement("div");
+  head.className = "expr-head";
+  head.innerHTML = `<label>${label}</label>
+    <select data-expr-logic>
+      <option value="and">all of them (AND)</option>
+      <option value="or">any of them (OR)</option>
+      <option value="not">none of them (NOT)</option>
+    </select>
+    ${depth === 0 ? "" : '<button class="btn" data-expr-group-remove title="Remove this group">✕</button>'}`;
+  head.querySelector("[data-expr-logic]").value = group.logic || "and";
+  const children = document.createElement("div");
+  children.className = "expr-children";
+  box.append(head, children);
+  if (depth > 0) {
+    head.querySelector("[data-expr-group-remove]").addEventListener("click", () => {
+      const parent = box.parentElement && box.parentElement.closest(".expr-group");
+      box.remove();
+      if (parent && !parent.querySelector(".expr-children > *")) {
+        parent.querySelector(".expr-children").appendChild(exprConditionNode());
+      }
+    });
+  }
+  for (const child of group.children || []) {
+    children.appendChild(child && child.children ? exprGroupNode(child, depth + 1) : exprConditionNode(child || {}));
+  }
+  if (!children.children.length) children.appendChild(exprConditionNode());
+  const actions = document.createElement("div");
+  actions.className = "row expr-actions";
+  actions.innerHTML = `<button class="btn" data-expr-add>Add a condition</button>
+    <button class="btn" data-expr-group-add ${depth >= EXPR_MAX_DEPTH ? "disabled" : ""}>Add a group</button>`;
+  actions.querySelector("[data-expr-add]").addEventListener("click", () => {
+    children.appendChild(exprConditionNode());
+  });
+  actions.querySelector("[data-expr-group-add]").addEventListener("click", () => {
+    const nested = exprGroupNode({ logic: "or", children: [] }, depth + 1);
+    children.appendChild(nested);
+  });
+  box.appendChild(actions);
+  return box;
+}
+
+function readExpressionGroup(node) {
+  const logic = node.querySelector(":scope > .expr-head [data-expr-logic]").value;
+  const children = [];
+  for (const child of node.querySelectorAll(":scope > .expr-children > *")) {
+    if (child.dataset.kind === "group") {
+      const nested = readExpressionGroup(child);
+      if (nested.children.length) children.push(nested);
+      continue;
+    }
+    const operator = child.querySelector("[data-expr-op]").value;
+    const value = child.querySelector("[data-expr-value]").value;
+    if (operator !== "empty" && operator !== "not_empty" && value === "") continue;
+    children.push({ column: Number(child.querySelector("[data-expr-col]").value), operator, value });
+  }
+  return { logic, children };
 }
 
 function openExpressionDialog() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
-  $("expr-rows").innerHTML = "";
-  if (state.expression && (state.expression.children || []).length) {
-    $("expr-logic").value = state.expression.logic || "and";
-    for (const child of state.expression.children) {
-      if (child && !child.children) addExpressionRow(child.column ?? 0, child.operator ?? "contains", child.value ?? "");
-    }
-  } else {
-    addExpressionRow();
+  let group = { logic: "and", children: [] };
+  if (state.expression && Array.isArray(state.expression.children) && state.expression.children.length) {
+    group = state.expression;
   }
+  const root = $("expr-root");
+  root.innerHTML = "";
+  root.appendChild(exprGroupNode(group, 0));
   $("expression-modal").classList.add("show");
 }
 
 function applyExpression() {
-  const children = [...document.querySelectorAll("#expr-rows .expr-row")].map((row) => ({
-    column: Number(row.querySelector("[data-expr-col]").value),
-    operator: row.querySelector("[data-expr-op]").value,
-    value: row.querySelector("[data-expr-value]").value,
-  })).filter((child) => child.operator === "empty" || child.operator === "not_empty" || child.value !== "");
-  state.expression = children.length ? { logic: $("expr-logic").value, children } : null;
+  const root = $("expr-root").firstElementChild;
+  if (!root) return;
+  const expression = readExpressionGroup(root);
+  state.expression = expression.children.length ? expression : null;
   closeModals();
   loadRows(true);
-  say(state.expression ? `Advanced filter: ${children.length} condition(s), ${state.expression.logic.toUpperCase()}` : "Advanced filter cleared");
+  const count = state.expression ? countConditions(state.expression) : 0;
+  say(state.expression
+    ? `Advanced filter: ${count} condition(s), ${state.expression.logic.toUpperCase()} at the top`
+    : "Advanced filter cleared");
+}
+
+function countConditions(group) {
+  return (group.children || []).reduce((sum, child) =>
+    sum + (child.children ? countConditions(child) : 1), 0);
 }
 
 /* ---------- row actions ---------- */
@@ -575,6 +763,17 @@ async function openPreferences() {
       ${readers}`;
   } catch (error) {
     $("prefs-runtime").innerHTML = `<div class="emptygrid">${escapeHtml(error.message)}</div>`;
+  }
+  $("prefs-profiles").innerHTML = '<div class="emptygrid">Reading the import profiles…</div>';
+  try {
+    const payload = await api("/api/profiles");
+    $("prefs-profiles").innerHTML = payload.profiles.map((profile) => {
+      const head = profile.signature.slice(0, 3).join(" + ");
+      const more = profile.signature.length > 3 ? ` +${profile.signature.length - 3}` : "";
+      return `<label title="${escapeHtml(profile.signature.join(" + "))}"><span>${escapeHtml(profile.name)}</span><span class="pin">${escapeHtml(head)}${more}</span></label>`;
+    }).join("");
+  } catch (error) {
+    $("prefs-profiles").innerHTML = `<div class="emptygrid">${escapeHtml(error.message)}</div>`;
   }
 }
 
@@ -1456,7 +1655,7 @@ function wire() {
   });
 
   document.querySelectorAll("[data-act]").forEach((node) => {
-    node.addEventListener("click", () => act(node.dataset.act));
+    node.addEventListener("click", () => act(node.dataset.act, node));
   });
 
   document.querySelectorAll(".tab[data-tab]").forEach((tab) => {
@@ -1623,7 +1822,12 @@ function wire() {
   $("import-input").addEventListener("change", (event) => {
     const files = [...(event.target.files || [])];
     event.target.value = "";
-    if (files.length) uploadFiles(files);
+    if (files.length) { openImportDialog(); previewFiles(files); }
+  });
+  $("preview-input").addEventListener("change", (event) => {
+    const files = [...(event.target.files || [])];
+    event.target.value = "";
+    if (files.length) previewFiles(files);
   });
 
   document.addEventListener("dragover", (event) => {
@@ -1636,7 +1840,8 @@ function wire() {
     if (!state.openCase || !event.dataTransfer?.files?.length) return;
     event.preventDefault();
     document.body.classList.remove("dropping");
-    uploadFiles([...event.dataTransfer.files]);
+    openImportDialog();
+    previewFiles([...event.dataTransfer.files]);
   });
 
   $("ioc-scan").addEventListener("click", runIocScan);
@@ -1650,6 +1855,10 @@ function wire() {
   $("imports-refresh").addEventListener("click", loadImports);
   $("imports-status").addEventListener("change", renderImports);
   $("action-add").addEventListener("click", addAction);
+  $("action-export").addEventListener("click", () => {
+    if (!state.openCase) { say("Open a case first", true); return; }
+    window.location.href = `/api/cases/${state.openCase.id}/actions/export`;
+  });
   $("action-rows").addEventListener("click", (event) => {
     const button = event.target.closest("[data-action-close]");
     if (button) toggleAction(button.dataset.actionClose);
@@ -1726,8 +1935,10 @@ async function buildReport() {
   }
 }
 
-async function act(name) {
-  closeModals();
+async function act(name, node) {
+  // A button inside a dialog belongs to that dialog: closing every modal first
+  // used to make "Add a condition" dismiss the filter it was editing.
+  if (!node || !node.closest(".dialog")) closeModals();
   switch (name) {
     case "refresh-cases": await loadCases(); if (state.openCase) await loadRows(true); break;
     case "close-case": closeCase(); break;
@@ -1736,7 +1947,10 @@ async function act(name) {
       if (!state.openCase) { say("No case open", true); break; }
       window.location.href = rowsUrl().replace("/rows?", "/export?");
       break;
-    case "import-file": $("import-input").click(); break;
+    case "import-file": openImportDialog(); break;
+    case "preview-choose": $("preview-input").click(); break;
+    case "preview-path": await previewServerPath(); break;
+    case "preview-import": await confirmImport(); break;
     case "group-column": openGroupPicker(); break;
     case "global-search": $("search-modal").classList.add("show"); break;
     case "global-run": await runGlobalSearch(); $("search-modal").classList.add("show"); break;
@@ -1752,9 +1966,14 @@ async function act(name) {
     case "columns": openColumnManager(); break;
     case "preferences": await openPreferences(); break;
     case "expression": openExpressionDialog(); break;
-    case "expr-add": addExpressionRow(); break;
     case "expr-apply": applyExpression(); break;
-    case "expr-clear": state.expression = null; $("expr-rows").innerHTML = ""; addExpressionRow(); loadRows(true); break;
+    case "expr-clear":
+      state.expression = null;
+      $("expr-root").innerHTML = "";
+      $("expr-root").appendChild(exprGroupNode({ logic: "and", children: [] }, 0));
+      loadRows(true);
+      say("Advanced filter cleared");
+      break;
     case "views": await openViewsDialog(); break;
     case "view-save": await saveCurrentView(); break;
     case "rules": openRulesDialog(); break;
@@ -1774,7 +1993,7 @@ async function act(name) {
       $("group-label").textContent = "Filters apply to the whole analysis, not just the page on screen.";
       loadRows(true); break;
     case "group-none":
-      state.groups = []; state.path = []; $("group-label").textContent = "Glissez un en-tête ici pour regrouper les résultats";
+      state.groups = []; state.path = []; $("group-label").textContent = "Drag a header here to group the results";
       loadRows(true); break;
     case "display-settings": $("settings-modal").classList.add("show"); break;
     case "settings-close": closeModals(); break;

@@ -1,25 +1,33 @@
-# Fireblade Host — the first containerised edition
+# Fireblade Host — the containerised edition
 
 Three editions share one repository:
 
 | Edition | What it is | State |
 | --- | --- | --- |
 | **Fireblade Desktop** | the Windows application (`Fireblade.exe`), the reference | shipped (0.7.9) |
-| **Fireblade Host** | the same core served over HTTP, one analyst or a small team, cases on the local disk | first slice, this document |
+| **Fireblade Host** | the same core served over HTTP, one analyst or a small team, cases on the local disk | usable slice, this document |
 | **Fireblade Server** | the multi-analyst edition: central API, one container per case, RBAC, audit log | not started |
 
 ## What is in place
 
 - `src/fireblade/web/` — a FastAPI service over `fireblade.core`, no Qt anywhere.
-  - `service.py` reads the catalogue (`InvestigationLibrary`), opens an analysis
-    read-only, pages it with the desktop's own `View`/`Filter`/`SortKey` objects,
-    and exports the current view as CSV.
-  - `server.py` exposes `/health`, `/api/cases`, `/api/cases/{id}`,
-    `/api/cases/{id}/analyses/{n}/rows`, `…/export`, and serves the interface.
+  - `service.py` reads the catalogue (`InvestigationLibrary`), opens analyses with
+    the desktop's own `View`/`Filter`/`FilterGroup`/`SortKey` objects, and covers
+    the case lifecycle (create, rename, archive, restore, destroy with certificate,
+    portable `.fireblade` export and import), reading (rows, multi-column sort,
+    filters, nested filter groups, grouping with date intervals, bookmarks, cell
+    notes, views, colour rules, derived columns, CSV export, full-text search),
+    importing (the thirteen readers plus native CSV, three layouts, per-file import
+    history, and a preview before anything is read), Hayabusa detection, IOC
+    hunting with saved hunts, the attack graph and its ATT&CK Navigator layer, the
+    HTML report, the action tracking and its CSV export, and the timeline.
+  - `server.py` exposes those operations under `/api/…` (plus `/health`,
+    `/api/profiles`, `/api/settings`) and serves the interface.
   - `cli.py` gives two commands: `serve` and `count`.
 - `src/fireblade/web/static/` — the grid, carried over from the desktop window:
   same palette from `ui/theme.py`, same density, same column filters, same
-  Root/Previous/Next pager, same status bar. Display settings scale the text.
+  Root/Previous/Next pager, same status bar. Dialogs cover the import preview, the
+  filter tree, views, colour rules, grouping and the column manager.
 - `tests/core/test_no_qt.py` — fails if any `fireblade.core` module imports Qt at
   module level, and imports every core module with PySide6 blocked.
 - `tests/web/test_web_service.py` — builds a case the way the desktop does and
@@ -43,30 +51,50 @@ FIREBLADE_CASES=/srv/fireblade/cases docker compose up -d
 # http://localhost:8080
 ```
 
-The image installs `requirements-core.txt` (no PySide6), so it stays small; the
-desktop edition keeps PySide6 as a hard dependency and is unaffected.
+The image installs `requirements-core.txt` (no PySide6) on `python:3.12-slim`, adds
+the .NET 10 runtime and ICU for the readers, runs as an unprivileged user, and
+declares a healthcheck. The desktop edition keeps PySide6 as a hard dependency and
+is unaffected.
+
+## Importing in this edition
+
+A browser cannot hand over a path on the server, so a file is sent to the case's
+own `evidence/` folder first and read from there; a path can also be given directly
+when the case folder is already on the server. All three layouts of the desktop are
+available (one grid per file, per artifact family, or one merged grid).
+
+Before the collection reads anything, **Import a file** shows a preview: the
+columns and their role, the profile `fireblade.core.profiles.detect_profile`
+recognises, the mapping `profile_view` will keep (sort column, timestamps,
+booleans, derived timestamp columns, colour rules), the profile fields the file
+does not carry, and sample rows. Nothing is hashed, copied or written during the
+preview, so confirming it starts the same import the desktop would run.
 
 ## Compatibility with the Windows edition
 
 The case folder is untouched: `case.json`, the session file and the DuckDB files
-are read where the desktop wrote them, never rewritten (the service opens
-analyses with `read_only=True`). A case created on Windows opens here and the
-other way round.
+are read where the desktop wrote them, in the same format. An analysis is opened
+writable, because the analyst books rows and writes cell notes from the grid; the
+other files of the case keep their desktop layout, and a case written here opens in
+the Windows application and the other way round.
 
 ## Not there yet, and known on purpose
 
-- **Importing artifacts.** The thirteen readers are Windows executables; until
-  phase 5 the Host edition reads cases prepared elsewhere.
-- **The other tabs.** Timeline, IOC hunting, Hayabusa, actions, attack graph and
-  the report are shown disabled in the tab strip, so the interface never pretends
-  they work.
-- **Writing anything.** Bookmarks and views are read-only for now.
+- **Overriding the detected profile at import.** The preview shows it; the core
+  applies its own choice and exposes no per-import override.
+- **Naming a saved hunt.** Hunts are timestamped and restore their indicator list,
+  so they can be replayed, but they cannot be named.
+- **Editing an import profile.** The list is shown read-only; the editor belongs to
+  the desktop preferences.
 - **Authentication.** The service binds `127.0.0.1` by default. The token and the
   RBAC arrive with the Server edition, not by quietly exposing a Host instance.
+
+The command-by-command status is in `HOST-PARITY.md`.
 
 ## Deliberate decision: no share of a Windows folder as a shortcut
 
 Mounting the desktop's case folder and calling it "containerised" would have
 looked cheap and delivered nothing: the interface is Qt, so there is nothing to
 show in a browser, and the readers are Windows binaries. The container therefore
-carries a real HTTP service and a real grid; the import step comes later.
+carries a real HTTP service and a real grid, and runs the readers it can: the
+managed .NET parsers on the .NET runtime, Hayabusa as its Linux build.

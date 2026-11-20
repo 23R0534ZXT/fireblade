@@ -267,6 +267,42 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- import history ---------- */
+
+const importState = { collections: [] };
+
+async function loadImports() {
+  if (!state.openCase) return;
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/imports`);
+    importState.collections = payload.collections;
+    renderImports();
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+function renderImports() {
+  const wanted = $("imports-status").value;
+  const rows = [];
+  let imported = 0, failed = 0;
+  for (const collection of importState.collections) {
+    for (const file of collection.files) {
+      if (file.status === "complete" || file.status === "attention" || file.status === "duplicate") imported += 1;
+      else failed += 1;
+      if (wanted && file.status !== wanted) continue;
+      rows.push(`<tr><td title="${escapeHtml(file.path)}">${escapeHtml(file.name)}</td>
+        <td>${escapeHtml(file.status)}</td>
+        <td>${escapeHtml((file.tools || []).join(", "))}</td>
+        <td title="${escapeHtml(file.reason)}">${escapeHtml(file.reason)}</td></tr>`);
+    }
+  }
+  $("imports-rows").innerHTML = rows.join("");
+  $("imports-summary").textContent =
+    `${importState.collections.length} import(s) — ${imported} file(s) read, ${failed} not read`;
+  say($("imports-summary").textContent);
+}
+
 /* ---------- global search ---------- */
 
 async function runGlobalSearch() {
@@ -674,6 +710,8 @@ function showTab(name) {
   $("timeline-view").style.display = name === "timeline" ? "flex" : "none";
   $("ioc-view").style.display = name === "ioc" ? "flex" : "none";
   $("actions-view").style.display = name === "actions" ? "flex" : "none";
+  $("imports-view").style.display = name === "imports" ? "flex" : "none";
+  if (name === "imports" && state.openCase) loadImports();
   if (name === "actions" && state.openCase) loadActions();
   $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";
   if (name === "timeline" && state.openCase) loadTimeline(!timelineState.payload);
@@ -913,6 +951,8 @@ function wire() {
   });
 
   $("ioc-scan").addEventListener("click", runIocScan);
+  $("imports-refresh").addEventListener("click", loadImports);
+  $("imports-status").addEventListener("change", renderImports);
   $("action-add").addEventListener("click", addAction);
   $("action-rows").addEventListener("click", (event) => {
     const button = event.target.closest("[data-action-close]");

@@ -178,6 +178,47 @@ class Library:
         return matches[0].resolve() if len(matches) == 1 else None
 
 
+    # -- import history ----------------------------------------------------
+
+    def imports(self, identifier: str) -> dict:
+        """Every import of the case, file by file, with its verdict and its reason.
+
+        This is the desktop's Imports panel: an analyst who sees a folder half
+        read must be able to say which file was not, and why.
+        """
+        folder = self.library.folder(identifier)
+        collections = []
+        for entry in sorted((folder / "collections").glob("import-*")) if (folder / "collections").is_dir() else []:
+            report = entry / "collection.json"
+            if not report.is_file():
+                continue
+            try:
+                data = json.loads(report.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            files = []
+            for item in data.get("files") or []:
+                files.append({
+                    "name": Path(str(item.get("path", ""))).name,
+                    "path": str(item.get("path", "")),
+                    "status": str(item.get("status", "")),
+                    "reason": str(item.get("reason") or item.get("error") or ""),
+                    "tools": list(item.get("tools") or []),
+                })
+            counts = {}
+            for item in files:
+                counts[item["status"]] = counts.get(item["status"], 0) + 1
+            collections.append({
+                "name": entry.name,
+                "status": str(data.get("status", "")),
+                "organization": data.get("organization", ""),
+                "source": str(data.get("source", "")),
+                "analyses": len(data.get("documents") or []),
+                "files": files,
+                "counts": counts,
+            })
+        return {"collections": collections}
+
     # -- global search -----------------------------------------------------
 
     def search(self, identifier: str, text: str, limit: int = 50) -> dict:

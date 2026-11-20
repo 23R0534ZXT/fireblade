@@ -57,7 +57,7 @@
 
   <div class="tabs" id="doctabs">
     <div class="tab active" data-tab="analyses">Analyses</div>
-    <div class="tab off" data-tab="imports" title="Not available in Fireblade Host yet">Imports</div>
+    <div class="tab" data-tab="imports">Imports</div>
     <div class="tab" data-tab="cases">Cases</div>
     <div class="tab" data-tab="timeline">Timeline &amp; correlations</div>
     <div class="tab" data-tab="ioc">IOC hunting</div>
@@ -113,6 +113,30 @@
           <button class="btn" id="next">Next</button>
           <div class="spacer"></div>
           <div class="info" id="pageinfo"></div>
+        </div>
+      </div>
+
+      <div id="imports-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="filterbar">
+          <select class="select" id="imports-status">
+            <option value="">All files</option>
+            <option value="complete">Imported</option>
+            <option value="attention">With warnings</option>
+            <option value="unsupported">Not imported</option>
+            <option value="duplicate">Duplicate</option>
+            <option value="error">Error</option>
+          </select>
+          <button class="btn" id="imports-refresh">Refresh</button>
+          <div class="info" id="imports-summary"></div>
+        </div>
+        <div class="gridwrap" style="flex:1">
+          <div class="gridbody">
+            <table>
+              <colgroup><col style="width:34%"><col style="width:110px"><col style="width:150px"><col></colgroup>
+              <thead><tr><th>File</th><th>State</th><th>Reader</th><th>Reason</th></tr></thead>
+              <tbody id="imports-rows"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 

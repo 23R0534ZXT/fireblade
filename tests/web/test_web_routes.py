@@ -680,3 +680,57 @@ def test_rows_without_a_date_join_the_timeline_on_request(tmp_path):
         assert "Fuseau_UTC_supposé" in data_bytes.decode("utf-8-sig").splitlines()[0]
     finally:
         library.close()
+
+
+def test_an_indicator_hunt_covers_every_analysis_and_respects_the_filters(tmp_path):
+    """The desktop's IOC tab: one list, the whole case, each view's own filters."""
+    from fireblade.core.models import Filter
+
+    root = tmp_path / "cases"
+    root.mkdir()
+    book = InvestigationLibrary(root)
+    data = book.create("Hunt case", "Indicators across two analyses", "windows")
+    identifier = data["id"]
+    folder = book.folder(identifier)
+    documents = []
+    rows = [
+        ["2026-11-02T10:00:00Z", "EVTX", "alice", "192.0.2.10"],
+        ["2026-11-02T10:01:00Z", "Prefetch", "bob", "host.evil.example.com"],
+        ["2026-11-02T10:02:00Z", "EVTX", "carol", "plain.example.com"],
+    ]
+    for number, keep in ((1, None), (2, "EVTX")):
+        analysis = folder / f"analysis-{number}.duckdb"
+        source = tmp_path / f"rows-{number}.csv"
+        with source.open("w", encoding="utf-8-sig", newline="") as stream:
+            writer = csv.writer(stream)
+            writer.writerow(["Timestamp", "Artifact", "User", "SourceIP"])
+            writer.writerows(rows)
+        case = Case(analysis)
+        try:
+            case.import_csv(source)
+            info = dict(case.info)
+        finally:
+            case.close()
+        view = View(filters=[Filter(1, "eq", keep)]) if keep else View()
+        documents.append(AnalysisSnapshot(path=str(analysis), source_info=info, view=view,
+                                          header_state=b""))
+    book.save(identifier, documents, 0, [], None, data["revision"])
+    library = Library(root)
+    try:
+        single = library.ioc_scan(identifier, 0, "192.0.2.10")
+        assert single["indicators"] == 1
+        assert len(single["hits"]) == 1, "the address is in one row of the first analysis"
+
+        whole = library.ioc_scan(identifier, 0, "192.0.2.10", all_analyses=True)
+        assert {item["analysis"] for item in whole["hits"]} == {0, 1}
+        assert whole["scanned"] == 6, "every row of both analyses is read"
+
+        filtered = library.ioc_scan(identifier, 0, "192.0.2.10", all_analyses=True, respect_filters=True)
+        assert filtered["scanned"] == 5, "the EVTX filter holds one of the six rows back"
+
+        with_sub = library.ioc_scan(identifier, 0, "evil.example.com", include_subdomains=True)
+        without_sub = library.ioc_scan(identifier, 0, "evil.example.com", include_subdomains=False)
+        assert len(with_sub["hits"]) == 1, "host.evil.example.com is found under the domain"
+        assert not without_sub["hits"], "without sub-domains the same value is not a match"
+    finally:
+        library.close()

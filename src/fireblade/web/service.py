@@ -144,6 +144,7 @@ class Library:
                 "recorded_path": recorded,
                 "found": resolved is not None,
                 "source": str(source.get("path", "")) if isinstance(source, dict) else "",
+                "view": document.get("view") if isinstance(document.get("view"), dict) else {},
                 "active": index == active,
             })
         return entries
@@ -1532,56 +1533,89 @@ class Library:
 
     # -- IOC hunting -------------------------------------------------------
 
-    def ioc_scan(self, identifier: str, index: int, text: str, limit: int = 2000) -> dict:
-        """Match a pasted indicator list against one analysis, offline.
+    def ioc_scan(self, identifier: str, index: int | None, text: str, limit: int = 2000,
+                 all_analyses: bool = False, respect_filters: bool = False,
+                 include_subdomains: bool = True, declared_format: str | None = None) -> dict:
+        """Match an indicator list against one analysis, or against the whole case.
 
         Same parser and same matcher as the desktop: an observation is never a
-        verdict, and the evidence values are left untouched.
+        verdict, and the evidence values are left untouched. `respect_filters`
+        reads each analysis through the filter its view carries; `all_analyses`
+        walks every analysis of the case instead of the one on screen.
         """
         from fireblade.core.ioc_hunt import IndicatorMatcher, parse_indicators
 
-        batch = parse_indicators(text or "")
+        batch = parse_indicators(text or "", format=declared_format)
         indicators = batch.indicators if hasattr(batch, "indicators") else list(batch)
         if not indicators:
-            raise ServiceError("No indicator was recognised in this text.")
-        matcher = IndicatorMatcher(indicators)
-        case = self._case_for(identifier, index)
+            rejected = getattr(batch, "rejected", None) or []
+            detail = f" ({len(rejected)} line(s) rejected)" if rejected else ""
+            raise ServiceError(f"No indicator was recognised in this text{detail}.")
+        matcher = IndicatorMatcher(indicators, include_subdomains=bool(include_subdomains))
+        entries = self._analyses(self.library.read(identifier))
+        if all_analyses:
+            targets = [(entry["index"], entry) for entry in entries if entry["found"]]
+        else:
+            targets = [(int(index or 0), next((entry for entry in entries
+                                               if entry["index"] == int(index or 0)), {"index": 0}))]
         hits, scanned = [], 0
-        view = View()
-        with case.lock:
-            offset = 0
-            while True:
-                page = case.page(view, offset=offset, limit=1000)
-                if not page:
-                    break
-                for row in page:
-                    scanned += 1
-                    row_id = row[0]
-                    for column, value in enumerate(row[1:], start=1):
-                        if value is None:
-                            continue
-                        cell = str(value)
-                        if len(cell) > 4000:
-                            cell = cell[:4000]
-                        for number, observed, at, rule in matcher.matches(cell):
-                            item = indicators[number - 1]
-                            hits.append({"row_id": json_value(row_id), "column": column - 1,
-                                         "indicator": item.value, "kind": item.kind,
-                                         "observed": observed, "rule": rule})
+        per_analysis = []
+        for target_index, entry in targets:
+            case = self._case_for(identifier, target_index)
+            view = View()
+            if respect_filters:
+                stored = entry.get("view") if isinstance(entry, dict) else None
+                if isinstance(stored, dict) and stored:
+                    try:
+                        view = View.from_json(json.dumps(stored))
+                    except (ValueError, TypeError, KeyError):
+                        view = View()
+            local = 0
+            with case.lock:
+                offset = 0
+                while len(hits) < limit:
+                    page = case.page(view, offset=offset, limit=1000)
+                    if not page:
+                        break
+                    for row in page:
+                        scanned += 1
+                        row_id = row[0]
+                        for column, value in enumerate(row[1:], start=1):
+                            if value is None:
+                                continue
+                            cell = str(value)
+                            if len(cell) > 4000:
+                                cell = cell[:4000]
+                            for number, observed, at, rule in matcher.matches(cell):
+                                item = indicators[number - 1]
+                                hits.append({"analysis": target_index,
+                                             "analysis_label": entry.get("label") or f"analysis {target_index}",
+                                             "row_id": json_value(row_id), "column": column - 1,
+                                             "indicator": item.value, "kind": item.kind,
+                                             "observed": observed, "rule": rule})
+                                local += 1
+                                if len(hits) >= limit:
+                                    break
                             if len(hits) >= limit:
                                 break
                         if len(hits) >= limit:
                             break
                     if len(hits) >= limit:
                         break
-                if len(hits) >= limit:
-                    break
-                offset += len(page)
+                    offset += len(page)
+            per_analysis.append({"analysis": target_index,
+                                 "label": entry.get("label") or f"analysis {target_index}",
+                                 "hits": local})
         summary = {}
         for hit in hits:
             summary[hit["kind"]] = summary.get(hit["kind"], 0) + 1
         result = {"indicators": len(indicators), "scanned": scanned, "hits": hits,
-                  "by_kind": summary, "truncated": len(hits) >= limit}
+                  "by_kind": summary, "per_analysis": per_analysis,
+                  "rejected": len(getattr(batch, "rejected", None) or []),
+                  "duplicates": int(getattr(batch, "duplicates", 0) or 0),
+                  "all_analyses": bool(all_analyses), "respect_filters": bool(respect_filters),
+                  "include_subdomains": bool(include_subdomains),
+                  "truncated": len(hits) >= limit}
         # A hunt leaves a record: the same indicators can be replayed on the case
         # later, which is what the desktop's saved hunts list is.
         hunts = self.library.folder(identifier) / "hunts"

@@ -1932,20 +1932,64 @@ async function toggleAction(actionId) {
 
 const iocState = { hits: [], summary: "" };
 
+function iocOptions() {
+  return {
+    all: $("ioc-all").checked,
+    filters: $("ioc-filters").checked,
+    subdomains: $("ioc-subdomains").checked,
+    index: state.analysis,
+  };
+}
+
+function iocSummary(payload) {
+  const kinds = Object.entries(payload.by_kind || {}).map(([k, v]) => `${v} ${k}`).join(", ");
+  const scope = payload.all_analyses ? "every analysis" : "this analysis";
+  return `${payload.indicators} indicator(s) over ${scope}, ${payload.scanned} row(s) scanned — `
+    + `${payload.hits.length} hit(s)${kinds ? " : " + kinds : ""}`
+    + (payload.respect_filters ? " (filters respected)" : "")
+    + (payload.rejected ? ` · ${payload.rejected} line(s) rejected` : "")
+    + (payload.duplicates ? ` · ${payload.duplicates} duplicate(s)` : "")
+    + (payload.truncated ? " (list truncated)" : "");
+}
+
 async function runIocScan() {
   if (!state.openCase) { say("Open a case first", true); return; }
   const text = $("ioc-input").value;
   if (!text.trim()) { say("Paste at least one indicator", true); return; }
   say("Scanning…");
   try {
-    const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/ioc`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/ioc-scan`,
+      { text, ...iocOptions() });
+    iocState.hits = payload.hits;
+    loadHuntHistory();
+    const summary = iocSummary(payload);
+    $("ioc-summary").textContent = summary;
+    say(summary);
+    renderIoc();
+  } catch (error) {
+    say(error.message, true);
+    $("ioc-summary").textContent = error.message;
+  }
+}
+
+async function runIocFile(file) {
+  if (!state.openCase || !file) return;
+  const body = new FormData();
+  body.append("file", file);
+  const options = iocOptions();
+  body.append("all_analyses", options.all ? "true" : "false");
+  body.append("respect_filters", options.filters ? "true" : "false");
+  body.append("subdomains", options.subdomains ? "true" : "false");
+  body.append("index", String(options.index));
+  say(`Reading ${file.name}…`);
+  try {
+    const response = await fetch(`/api/cases/${state.openCase.id}/ioc-file`, { method: "POST", body });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || response.statusText);
     iocState.hits = payload.hits;
+    $("ioc-input").value = "";
     loadHuntHistory();
-    const kinds = Object.entries(payload.by_kind || {}).map(([k, v]) => `${v} ${k}`).join(", ");
-    const summary = `${payload.indicators} indicator(s), ${payload.scanned} row(s) scanned — ${payload.hits.length} hit(s)${kinds ? " : " + kinds : ""}${payload.truncated ? " (list truncated)" : ""}`;
+    const summary = iocSummary(payload);
     $("ioc-summary").textContent = summary;
     say(summary);
     renderIoc();
@@ -1979,9 +2023,13 @@ async function openHunt(name) {
 
 function renderIoc() {
   $("ioc-rows").innerHTML = iocState.hits.map((hit) =>
-    `<tr><td>${escapeHtml(String(hit.row_id))}</td><td>${escapeHtml(hit.indicator)}</td>
+    `<tr><td title="${escapeHtml(hit.analysis_label || "")}">${escapeHtml(hit.analysis_label || "this analysis")}</td>
+     <td>${escapeHtml(String(hit.row_id))}</td><td>${escapeHtml(hit.indicator)}</td>
      <td>${escapeHtml(hit.observed)}</td><td>${escapeHtml(hit.rule)}</td>
-     <td>${escapeHtml(state.columns[hit.column + 1] || String(hit.column))}</td></tr>`).join("");
+     <td>${escapeHtml(hit.analysis === state.analysis
+        ? (state.columns[hit.column + 1] || String(hit.column))
+        : `column ${hit.column + 1}`)}</td></tr>`).join("")
+    || '<tr><td colspan="6" class="cellnull">No hit.</td></tr>';
 }
 
 /* ---------- timeline ---------- */
@@ -2924,6 +2972,12 @@ function wire() {
   });
 
   $("ioc-scan").addEventListener("click", runIocScan);
+  $("ioc-file-open").addEventListener("click", () => $("ioc-file").click());
+  $("ioc-file").addEventListener("change", async (event) => {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = "";
+    if (file) await runIocFile(file);
+  });
   $("ioc-history").addEventListener("change", (event) => openHunt(event.target.value));
   $("ioc-history").addEventListener("focus", loadHuntHistory);
   $("derived-operation").addEventListener("change", derivedOperationChanged);

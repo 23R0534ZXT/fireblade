@@ -212,6 +212,16 @@ def test_the_timeline_exports_and_shows_undated_rows():
     assert "timeline/export" in js
 
 
+def test_the_indicator_hunt_covers_the_case_and_reads_a_file():
+    js, html = _read(APP), _read(INDEX)
+    for name in ("ioc-all", "ioc-filters", "ioc-subdomains", "ioc-file-open", "ioc-file"):
+        assert f'id="{name}"' in html, name
+    for name in ("runIocFile", "iocOptions", "iocSummary"):
+        assert f"function {name}(" in js, name
+    assert "/ioc-scan" in js and "/ioc-file" in js
+    assert "<th>Analysis</th>" in html
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

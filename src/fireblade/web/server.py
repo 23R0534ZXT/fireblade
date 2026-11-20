@@ -622,11 +622,56 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return FileResponse(path, media_type="text/csv", filename=path.name)
 
+    def _ioc_options(payload: dict) -> dict:
+        payload = payload or {}
+        return {
+            "all_analyses": bool(payload.get("all")),
+            "respect_filters": bool(payload.get("filters")),
+            "include_subdomains": payload.get("subdomains", True) is not False,
+            "declared_format": (payload.get("format") or None),
+        }
+
     @app.post("/api/cases/{identifier}/analyses/{index}/ioc")
     def ioc(identifier: str, index: int, payload: dict):
         text = (payload or {}).get("text", "")
         try:
-            return library.ioc_scan(identifier, index, text)
+            return library.ioc_scan(identifier, index, text, **_ioc_options(payload))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/ioc-scan")
+    def ioc_scan(identifier: str, payload: dict):
+        """A hunt over one analysis or over every analysis of the case."""
+        text = (payload or {}).get("text", "")
+        try:
+            return library.ioc_scan(identifier, (payload or {}).get("index"),
+                                    text, **_ioc_options(payload))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/ioc-file")
+    def ioc_file(identifier: str, file: UploadFile = File(...), all_analyses: bool = Form(False),
+                 respect_filters: bool = Form(False), subdomains: bool = Form(True),
+                 index: int = Form(0)):
+        """A TXT, CSV or TSV list read as the desktop reads it: encoding, then format."""
+        raw = file.file.read()
+        if len(raw) > 8 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Indicator lists are limited to 8 MiB.")
+        text = None
+        for encoding in ("utf-8-sig", "cp1252", "latin-1"):
+            try:
+                text = raw.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        if text is None:
+            raise HTTPException(status_code=400, detail="This file cannot be read as text.")
+        name = (file.filename or "").casefold()
+        declared = "tsv" if name.endswith(".tsv") else ("csv" if name.endswith(".csv") else None)
+        try:
+            return library.ioc_scan(identifier, index, text, all_analyses=all_analyses,
+                                    respect_filters=respect_filters,
+                                    include_subdomains=subdomains, declared_format=declared)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -997,7 +997,7 @@ class Library:
              filters: list[tuple[int, str, str]] | None = None,
              bookmarks_only: bool = False, groups: list[int] | None = None,
              path: list[str] | None = None, sorts: list[tuple[int, bool]] | None = None,
-             interval: str = "") -> dict:
+             interval: str = "", expression: dict | None = None) -> dict:
         case = self._case_for(identifier, index)
         view = View(search=search or "", filters=[], bookmarks_only=bool(bookmarks_only))
         for column, operator, value in filters or ():
@@ -1006,6 +1006,9 @@ class Library:
             if not 0 <= column < len(case.headers):
                 raise ServiceError("Colonne de filtre hors de l'analyse.")
             view.filters.append(Filter(column, operator, value))
+        if expression:
+            from fireblade.core.models import condition_from_dict
+            view.expression = condition_from_dict(expression)
         keys = list(sorts or ())
         if not keys and sort is not None:
             keys = [(sort, bool(descending))]

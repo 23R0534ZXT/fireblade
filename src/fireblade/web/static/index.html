@@ -107,6 +107,7 @@
           <button class="btn" data-act="columns">Columns…</button>
           <button class="btn" data-act="rules">Colour rules…</button>
           <button class="btn" data-act="views">Views…</button>
+          <button class="btn" data-act="expression">Advanced filter…</button>
           <button class="btn" id="details-toggle">Row details</button>
         </div>
 
@@ -338,6 +339,27 @@
   <div class="item" data-act="copy-row">Copy the selected rows</div>
   <div class="item" data-act="cell-json">Show the whole cell…</div>
   <div class="item" data-act="rule-from-cell">Colour rule for this value…</div>
+</div>
+
+<div class="modal" id="expression-modal">
+  <div class="dialog" style="min-width:720px">
+    <h3>Advanced filter</h3>
+    <div class="body">
+      <div class="row"><label for="expr-logic">Logic</label>
+        <select id="expr-logic"><option value="and">all of them (AND)</option>
+          <option value="or">any of them (OR)</option>
+          <option value="not">none of them (NOT)</option></select>
+      </div>
+      <div id="expr-rows"></div>
+      <div class="row"><button class="btn" data-act="expr-add">Add a condition</button></div>
+      <div class="note">Sent to the core as a FilterGroup: the same conditions the desktop builds.</div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="expr-apply">Apply</button>
+      <button class="btn" data-act="expr-clear">Clear</button>
+      <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal" id="cell-modal">

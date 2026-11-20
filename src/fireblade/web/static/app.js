@@ -23,6 +23,7 @@ const state = {
   bookmarksOnly: false,
   groups: [],          // column indexes, outer first
   interval: "",        // date interval applied to the grouped column
+  expression: null,    // FilterGroup sent to the core
   path: [],            // drill-down values
   multiSort: [],       // [{column, descending}] in application order
   hidden: new Set(),    // column indexes hidden by the analyst
@@ -292,6 +293,50 @@ function closeCase() {
   clearGrid("Open a case from the Cases tab.");
   renderCases();
   say("Case closed");
+}
+
+/* ---------- advanced filter ---------- */
+
+const EXPR_OPERATORS = ["contains", "ne", "eq", "starts", "ends", "gt", "ge", "lt", "le", "empty", "not_empty"];
+
+function addExpressionRow(column = 0, operator = "contains", value = "") {
+  const box = $("expr-rows");
+  const row = document.createElement("div");
+  row.className = "row expr-row";
+  row.innerHTML = `<select data-expr-col>${state.columns.slice(1).map((name, index) =>
+      `<option value="${index}" ${index === column ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select>
+    <select data-expr-op>${EXPR_OPERATORS.map((code) =>
+      `<option value="${code}" ${code === operator ? "selected" : ""}>${code}</option>`).join("")}</select>
+    <input data-expr-value value="${escapeHtml(value)}" placeholder="value">
+    <button class="btn" data-expr-remove>✕</button>`;
+  row.querySelector("[data-expr-remove]").addEventListener("click", () => row.remove());
+  box.appendChild(row);
+}
+
+function openExpressionDialog() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  $("expr-rows").innerHTML = "";
+  if (state.expression && (state.expression.children || []).length) {
+    $("expr-logic").value = state.expression.logic || "and";
+    for (const child of state.expression.children) {
+      if (child && !child.children) addExpressionRow(child.column ?? 0, child.operator ?? "contains", child.value ?? "");
+    }
+  } else {
+    addExpressionRow();
+  }
+  $("expression-modal").classList.add("show");
+}
+
+function applyExpression() {
+  const children = [...document.querySelectorAll("#expr-rows .expr-row")].map((row) => ({
+    column: Number(row.querySelector("[data-expr-col]").value),
+    operator: row.querySelector("[data-expr-op]").value,
+    value: row.querySelector("[data-expr-value]").value,
+  })).filter((child) => child.operator === "empty" || child.operator === "not_empty" || child.value !== "");
+  state.expression = children.length ? { logic: $("expr-logic").value, children } : null;
+  closeModals();
+  loadRows(true);
+  say(state.expression ? `Advanced filter: ${children.length} condition(s), ${state.expression.logic.toUpperCase()}` : "Advanced filter cleared");
 }
 
 /* ---------- row actions ---------- */
@@ -937,6 +982,7 @@ function query() {
   if (state.bookmarksOnly) params.set("bookmarks_only", "true");
   for (const column of state.groups) params.append("group", String(column));
   if (state.interval && state.groups.length) params.set("interval", state.interval);
+  if (state.expression) params.set("expression_json", JSON.stringify(state.expression));
   for (const value of state.path) params.append("path", value === null ? "" : String(value));
   if (state.multiSort.length) {
     for (const key of state.multiSort) params.append("sortkey", `${key.column}:${key.descending ? "desc" : "asc"}`);
@@ -1595,6 +1641,10 @@ async function act(name) {
     case "report-build": await buildReport(); break;
     case "columns": openColumnManager(); break;
     case "preferences": await openPreferences(); break;
+    case "expression": openExpressionDialog(); break;
+    case "expr-add": addExpressionRow(); break;
+    case "expr-apply": applyExpression(); break;
+    case "expr-clear": state.expression = null; $("expr-rows").innerHTML = ""; addExpressionRow(); loadRows(true); break;
     case "views": await openViewsDialog(); break;
     case "view-save": await saveCurrentView(); break;
     case "rules": openRulesDialog(); break;

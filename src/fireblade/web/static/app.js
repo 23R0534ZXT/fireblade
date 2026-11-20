@@ -379,6 +379,21 @@ async function restoreCase() {
   } catch (error) { say(error.message, true); }
 }
 
+async function apiPut(path, body) {
+  const response = await fetch(path, {
+    method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}) });
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const payload = await response.json();
+      detail = payload.detail || payload.error || detail;
+    } catch (_) { /* keep the status text */ }
+    throw new Error(detail);
+  }
+  return response.json();
+}
+
 async function apiDelete(path) {
   const response = await fetch(path, { method: "DELETE", headers: { Accept: "application/json" } });
   if (!response.ok) {
@@ -1084,6 +1099,116 @@ async function markFinding(item) {
       `/api/cases/${state.openCase.id}/analyses/${run.analysis}/bookmark-finding`, { finding });
     const capped = payload.matched > payload.marked ? ` of ${payload.matched}` : "";
     say(`${payload.marked} alert(s) marked${capped}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+/* ---------- detection rules ---------- */
+
+const rulesState = { rules: [], selected: null, filter: "" };
+const RULES_SHOWN = 400;   // 5 000 rules in a table is a scrollbar, not a list
+
+async function openDetectionRules() {
+  rulesState.selected = null;
+  $("detrules-text").value = "";
+  $("detrules-name").textContent = "No rule selected";
+  for (const id of ["detrules-toggle", "detrules-reset", "detrules-save"]) $(id).disabled = true;
+  $("detrules-modal").classList.add("show");
+  await loadDetectionRules();
+}
+
+async function loadDetectionRules() {
+  try {
+    const changed = $("detrules-changed").checked ? "?changed=true" : "";
+    const payload = await api(`/api/rules${changed}`);
+    rulesState.rules = payload.rules || [];
+    rulesState.total = payload.count;
+    rulesState.base = payload.base;
+    rulesState.overrides = payload.overrides;
+    rulesState.disabled = payload.disabled;
+    renderRules();
+  } catch (error) {
+    say(error.message, true);
+    $("detrules-summary").textContent = error.message;
+  }
+}
+
+function renderRules() {
+  const needle = rulesState.filter.trim().toLowerCase();
+  const matching = needle
+    ? rulesState.rules.filter((rule) => `${rule.name} ${rule.title}`.toLowerCase().includes(needle))
+    : rulesState.rules;
+  const shown = matching.slice(0, RULES_SHOWN);
+  $("detrules-rows").innerHTML = shown.length
+    ? shown.map((rule) => `<tr data-rule="${escapeHtml(rule.name)}"
+        class="${rulesState.selected === rule.name ? "sel" : ""}">
+        <td title="${escapeHtml(rule.name)}">${escapeHtml(rule.title || rule.name)}</td>
+        <td>${escapeHtml(rule.level || "")}</td>
+        <td>${escapeHtml(rule.source === "user" ? "edited" : "pack")}</td>
+        <td>${rule.enabled ? "✔" : "✖"}</td></tr>`).join("")
+    : '<tr><td colspan="4" class="cellnull">No rule matches this filter.</td></tr>';
+  $("detrules-summary").textContent = `${matching.length} of ${rulesState.total} rule(s), `
+    + `${rulesState.overrides} edited, ${rulesState.disabled} disabled`
+    + (matching.length > shown.length ? ` — ${shown.length} shown, narrow the filter` : "")
+    + ` — ${rulesState.base}`;
+  $("detrules-rows").querySelectorAll("tr[data-rule]").forEach((row) => {
+    row.addEventListener("click", () => selectDetectionRule(row.dataset.rule));
+  });
+}
+
+async function selectDetectionRule(name) {
+  try {
+    const payload = await api(`/api/rules/${encodeURIComponent(name)}`);
+    rulesState.selected = payload.name;
+    $("detrules-name").textContent = payload.name;
+    $("detrules-text").value = payload.text;
+    const rule = rulesState.rules.find((item) => item.name === payload.name);
+    $("detrules-toggle").textContent = rule && rule.enabled === false ? "Enable" : "Disable";
+    for (const id of ["detrules-toggle", "detrules-reset", "detrules-save"]) $(id).disabled = false;
+    $("detrules-rows").querySelectorAll("tr[data-rule]").forEach((row) =>
+      row.classList.toggle("sel", row.dataset.rule === payload.name));
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function saveDetectionRule() {
+  if (!rulesState.selected) return;
+  try {
+    await apiPut(`/api/rules/${encodeURIComponent(rulesState.selected)}`,
+      { text: $("detrules-text").value });
+    $("detrules-note").textContent = "Saved beside the tool pack: the next detection uses this version.";
+    await loadDetectionRules();
+    say("Rule saved");
+  } catch (error) {
+    $("detrules-note").textContent = error.message;
+    say(error.message, true);
+  }
+}
+
+async function resetDetectionRule() {
+  if (!rulesState.selected) return;
+  try {
+    await apiPost(`/api/rules/${encodeURIComponent(rulesState.selected)}/reset`, {});
+    await loadDetectionRules();
+    await selectDetectionRule(rulesState.selected);
+    say("Rule reset to the pack's version");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function toggleDetectionRule() {
+  if (!rulesState.selected) return;
+  const rule = rulesState.rules.find((item) => item.name === rulesState.selected);
+  // The button offers the opposite of the current state, so the request is its negation.
+  const enabled = rule ? rule.enabled === false : true;
+  try {
+    await apiPost(`/api/rules/${encodeURIComponent(rulesState.selected)}/enabled`, { enabled });
+    await loadDetectionRules();
+    await selectDetectionRule(rulesState.selected);
+    say(`Rule ${enabled ? "enabled" : "disabled"}`);
   } catch (error) {
     say(error.message, true);
   }
@@ -2590,6 +2715,16 @@ function wire() {
   $("ioc-history").addEventListener("focus", loadHuntHistory);
   $("derived-operation").addEventListener("change", derivedOperationChanged);
   $("hayabusa-run").addEventListener("click", runHayabusa);
+  $("detrules-open").addEventListener("click", openDetectionRules);
+  $("detrules-reload").addEventListener("click", loadDetectionRules);
+  $("detrules-changed").addEventListener("change", loadRules);
+  $("detrules-filter").addEventListener("input", (event) => {
+    rulesState.filter = event.target.value;
+    renderRules();
+  });
+  $("detrules-save").addEventListener("click", saveDetectionRule);
+  $("detrules-reset").addEventListener("click", resetDetectionRule);
+  $("detrules-toggle").addEventListener("click", toggleDetectionRule);
   $("hayabusa-rows").addEventListener("click", (event) => {
     const button = event.target.closest("button[data-finding]");
     if (!button) return;

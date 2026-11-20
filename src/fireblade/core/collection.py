@@ -1269,8 +1269,12 @@ class Collection:
                 self.event('analysis.missing', path=document.get('path'))
         self.report['documents'] = kept
 
-    def analyze(self, min_level='low'):
-        """One Hayabusa run over verified EVTX copies, including cross-file context."""
+    def analyze(self, min_level='low', rules_base=None):
+        """One Hayabusa run over verified EVTX copies, including cross-file context.
+
+        ``rules_base`` is where the analyst's rule overrides live: the desktop keeps
+        them in the user profile, a service keeps them on its own volume.
+        """
         if min_level not in ('informational', 'low', 'medium', 'high', 'critical'):
             raise ValueError('Niveau Hayabusa invalide')
         evtx = [e for e in self.report['files'] if 'EvtxECmd' in e.get('tools', []) and 'sha256' in e]
@@ -1302,11 +1306,11 @@ class Collection:
             rules = Path(self.pack.root)/'Hayabusa'/'rules'
             try:
                 from fireblade.core import hayabusa_rules
-                if hayabusa_rules.has_changes():
+                if hayabusa_rules.has_changes(rules_base):
                     # The analyst edited or switched off rules: Hayabusa reads a folder built
                     # for this run, and the delivered pack stays untouched.
                     merged = Path(self.output)/'hayabusa-rules'
-                    receipt = hayabusa_rules.effective_rules(rules, merged)
+                    receipt = hayabusa_rules.effective_rules(rules, merged, rules_base)
                     self.progress('Règles Hayabusa : {} utilisateur · {} désactivées · {} liées'.format(
                         receipt['overrides'], receipt['skipped'], receipt['linked']))
                     rules = Path(receipt['path'])

@@ -499,3 +499,65 @@ def test_indicators_are_tracked_and_removed(service):
         library.add_indicator(identifier, "   ")
     with pytest.raises((ValueError, ServiceError)):
         library.remove_indicator(identifier, "not-an-id")
+
+RULE_TEXT = """title: Suspicious Service Path
+id: 11111111-2222-3333-4444-555555555555
+status: test
+level: high
+logsource:
+    product: windows
+    service: system
+detection:
+    selection:
+        EventID: 7045
+    condition: selection
+"""
+
+
+def _fake_pack(tmp_path):
+    pack = tmp_path / "tools"
+    rules = pack / "Hayabusa" / "rules" / "hayabusa" / "builtin"
+    rules.mkdir(parents=True)
+    (rules / "susp.yml").write_text(RULE_TEXT, encoding="utf-8")
+    return pack
+
+
+def test_detection_rules_are_listed_edited_and_toggled(service, tmp_path):
+    """The desktop's "Règles de détection" dialog, over HTTP."""
+    library, _identifier = service
+    library.tools_root = _fake_pack(tmp_path)
+    library.plugins_root = tmp_path / "plugins"
+    listing = library.rules_inventory()
+    assert listing["count"] == 1
+    rule = listing["rules"][0]
+    assert rule["title"] == "Suspicious Service Path"
+    assert rule["level"] == "high"
+    assert rule["enabled"] is True
+
+    text = library.rule_text("susp.yml")["text"]
+    assert "EventID: 7044" not in text
+    library.save_rule("susp.yml", text.replace("7045", "7044"))
+    edited = library.rules_inventory()["rules"][0]
+    assert edited["source"] == "user"
+    assert "7044" in library.rule_text("susp.yml")["text"]
+
+    library.set_rule_enabled("susp.yml", False)
+    assert library.rules_inventory()["rules"][0]["enabled"] is False
+    assert library.rules_inventory(changed_only=True)["count"] == 1
+
+    library.reset_rule("susp.yml")
+    back = library.rules_inventory()["rules"][0]
+    assert back["source"] == "pack"
+    assert "7045" in library.rule_text("susp.yml")["text"]
+
+    with pytest.raises(ValueError):
+        library.save_rule("susp.yml", "title: only a title\n")
+    with pytest.raises(ValueError):
+        library.save_rule("susp.txt", text)
+
+
+def test_the_rules_need_a_tool_pack(service):
+    library, _identifier = service
+    library.tools_root = None
+    with pytest.raises(ServiceError):
+        library.rules_inventory()

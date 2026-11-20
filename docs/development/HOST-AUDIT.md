@@ -24,7 +24,7 @@ names what the Host does for each.
 ## Verdict
 
 **The port is not complete.** Twenty-one domains are covered, but this audit found
-**17 features the Host does not have** and **9 it has partially** (two closed since the
+**16 features the Host does not have** and **9 it has partially** (two closed since the
 audit was written: machines and accounts, and tracked indicators). None of them was
 visible in the label inventory, which is why `HOST-PARITY.md` said "nothing left" —
 and that claim is withdrawn here.
@@ -64,7 +64,7 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | IOC hunting | paste, scan, results, saved hunts | **yes** |
 | IOC — extras | import TXT/CSV/TSV, all analyses at once, respect the filters, sub-domains | **no** |
 | Hayabusa | run by level, findings, tactics, dedup, mark, open, export sources | **yes** |
-| Hayabusa — rules | "Règles de détection…" (enable, disable, override) | **no** |
+| Hayabusa — rules | "Règles de détection…" (enable, disable, override) | **yes** — Hayabusa > Detection rules (filter, edit, enable/disable, reset) |
 | Hayabusa — assistant | "Explain this finding", "Ask", local model | **declared** — no model is connected |
 | Attack graph | build, layout, ATT&CK layer, PNG, free node with tags | **yes** |
 | Workspace — machines and accounts | "Machine ou compte" (declared hosts, accounts) | **yes** — Actions & tracking > Machines & accounts |

@@ -495,6 +495,42 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/rules")
+    def rules(changed: bool = False):
+        """The Hayabusa detection rules this instance would load."""
+        try:
+            return library.rules_inventory(changed_only=changed)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/rules/{name}")
+    def rule_text(name: str):
+        try:
+            return library.rule_text(name)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.put("/api/rules/{name}")
+    def save_rule(name: str, payload: dict):
+        try:
+            return library.save_rule(name, (payload or {}).get("text", ""))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/rules/{name}/reset")
+    def reset_rule(name: str):
+        try:
+            return library.reset_rule(name)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/rules/{name}/enabled")
+    def set_rule_enabled(name: str, payload: dict):
+        try:
+            return library.set_rule_enabled(name, bool((payload or {}).get("enabled", True)))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/detection/{collection}/sources")
     def detection_sources(identifier: str, collection: str):
         """The alert CSV a detection run wrote."""

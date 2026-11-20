@@ -159,6 +159,7 @@
             <option value="critical">critical</option>
           </select>
           <button class="btn" id="hayabusa-run">Run the detection</button>
+          <button class="btn" id="detrules-open" title="Enable, disable or edit the detection rules">Detection rules…</button>
           <div class="info" id="hayabusa-summary">No detection run yet.</div>
           <div class="note" style="margin-left:auto">No AI assistant is connected in this edition: the detection runs locally on the server.</div>
         </div>
@@ -281,97 +282,6 @@
             </div>
           </div>
         </div>
-      </div>
-
-      <div id="graph-view" style="display:none;flex-direction:column;flex:1;min-height:0">
-        <div class="filterbar">
-          <button class="btn" id="graph-build">Build the graph</button>
-          <button class="btn" id="graph-navigator">Export an ATT&CK layer…</button>
-          <button class="btn" id="graph-png">Export PNG…</button>
-          <button class="btn" id="graph-node">Free node…</button>
-          <div class="info" id="graph-summary">The graph follows the kill chain: hosts on the left, techniques, then tactics.</div>
-        </div>
-        <div class="graph-wrap" id="graph-wrap">
-          <svg id="graph-edges" width="100%" height="100%"></svg>
-          <div id="graph-nodes"></div>
-        </div>
-      </div>
-
-      <div id="hayabusa-view" style="display:none;flex-direction:column;flex:1;min-height:0">
-        <div class="filterbar">
-          <select class="select" id="hayabusa-level">
-            <option value="informational">informational</option>
-            <option value="low">low</option>
-            <option value="medium" selected>medium</option>
-            <option value="high">high</option>
-            <option value="critical">critical</option>
-          </select>
-          <button class="btn" id="hayabusa-run">Run the detection</button>
-          <div class="info" id="hayabusa-summary">No detection run yet.</div>
-          <div class="note" style="margin-left:auto">No AI assistant is connected in this edition: the detection runs locally on the server.</div>
-        </div>
-        <div class="gridwrap" style="flex:1">
-          <div class="gridbody">
-            <table>
-              <colgroup><col style="width:170px"><col style="width:90px"><col style="width:30%"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col><col style="width:120px"></colgroup>
-              <thead><tr><th>Timestamp</th><th>Level</th><th>Rule</th><th>Computer</th><th>Channel</th><th>EventID</th><th>Tactics</th><th>Alerts</th></tr></thead>
-              <tbody id="hayabusa-rows"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div id="imports-view" style="display:none;flex-direction:column;flex:1;min-height:0">
-        <div class="filterbar">
-          <select class="select" id="imports-status">
-            <option value="">All files</option>
-            <option value="complete">Imported</option>
-            <option value="attention">With warnings</option>
-            <option value="unsupported">Not imported</option>
-            <option value="duplicate">Duplicate</option>
-            <option value="error">Error</option>
-          </select>
-          <button class="btn" id="imports-refresh">Refresh</button>
-          <div class="info" id="imports-summary"></div>
-        </div>
-        <div class="gridwrap" style="flex:1">
-          <div class="gridbody">
-            <table>
-              <colgroup><col style="width:34%"><col style="width:110px"><col style="width:150px"><col></colgroup>
-              <thead><tr><th>File</th><th>State</th><th>Reader</th><th>Reason</th></tr></thead>
-              <tbody id="imports-rows"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div id="actions-view" style="display:none;flex-direction:column;flex:1;min-height:0">
-        <div class="filterbar">
-          <input class="search" id="action-title" placeholder="New action — what has to be done?">
-          <select class="select" id="action-owner">
-            <option value="us">us</option>
-            <option value="client">client</option>
-            <option value="third-party">third-party</option>
-          </select>
-          <select class="select" id="action-priority">
-            <option value="medium">medium</option>
-            <option value="low">low</option>
-            <option value="high">high</option>
-            <option value="critical">critical</option>
-          </select>
-          <button class="btn" id="action-add">Add</button>
-          <button class="btn" id="action-export" title="Download the tracking as a spreadsheet">Export CSV</button>
-        </div>
-        <div class="gridwrap" style="flex:1">
-          <div class="gridbody">
-            <table>
-              <colgroup><col style="width:80px"><col><col style="width:110px"><col style="width:100px"><col style="width:100px"><col style="width:120px"></colgroup>
-              <thead><tr><th>Date</th><th>Action</th><th>Owner</th><th>Priority</th><th>Status</th><th></th></tr></thead>
-              <tbody id="action-rows"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="pager"><div class="info" id="action-summary"></div></div>
       </div>
 
       <div id="ioc-view" style="display:none;flex-direction:column;flex:1;min-height:0">
@@ -570,6 +480,47 @@
     <div class="foot">
       <button class="btn" data-act="expr-apply">Apply</button>
       <button class="btn" data-act="expr-clear">Clear</button>
+      <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="detrules-modal">
+  <div class="dialog" style="width:min(980px,92vw)">
+    <h3>Detection rules</h3>
+    <div class="body" style="flex-direction:row;gap:12px;align-items:stretch">
+      <div style="display:flex;flex-direction:column;gap:6px;flex:0 0 360px;min-width:0;overflow:hidden">
+        <div class="row">
+          <input class="search" id="detrules-filter" placeholder="Filter by name or title…">
+          <label><input type="checkbox" id="detrules-changed"> Changed only</label>
+          <button class="btn" id="detrules-reload">Reload</button>
+        </div>
+        <div class="gridwrap" style="flex:1;min-height:260px">
+          <div class="gridbody">
+            <table>
+              <colgroup><col><col style="width:92px"><col style="width:64px"><col style="width:40px"></colgroup>
+              <thead><tr><th>Rule</th><th>Level</th><th>Source</th><th>On</th></tr></thead>
+              <tbody id="detrules-rows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="note" id="detrules-summary"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex:1 1 58%;min-width:0">
+        <div class="row">
+          <b id="detrules-name">No rule selected</b>
+          <div class="grow"></div>
+          <button class="btn" id="detrules-toggle" disabled>Disable</button>
+          <button class="btn" id="detrules-reset" disabled>Reset to the pack</button>
+          <button class="btn" id="detrules-save" disabled>Save</button>
+        </div>
+        <textarea id="detrules-text" spellcheck="false"
+          style="flex:1;min-height:320px;font-family:ui-monospace,Consolas,monospace;font-size:11px"></textarea>
+        <div class="note" id="detrules-note">Pick a rule on the left. An edit is kept beside the tool
+          pack: the delivered rules are never modified, and a reset brings the original back.</div>
+      </div>
+    </div>
+    <div class="foot">
       <button class="btn" data-act="settings-close">Close</button>
     </div>
   </div>

@@ -279,7 +279,7 @@ class Library:
             has_evtx = any("EvtxECmd" in (item.get("tools") or []) for item in collection.report.get("files") or [])
             if not has_evtx:
                 continue
-            collection.analyze(min_level)
+            collection.analyze(min_level, rules_base=self._rules_base())
             detection = collection.report.get("detection") or {}
             # The run imports its alerts as an analysis and saves the collection's
             # session: adding it here puts the alerts in the case's workspace, so
@@ -559,6 +559,55 @@ class Library:
             })
         entries.sort(key=lambda item: item["name"].casefold())
         return {"profiles": entries, "count": len(entries)}
+
+    def _rules_base(self) -> Path:
+        """Where this instance keeps the analyst's Hayabusa rule overrides."""
+        return self._plugins_dir() / "hayabusa"
+
+    def rules_inventory(self, changed_only: bool = False) -> dict:
+        """Every detection rule the next run would load, with its state."""
+        from fireblade.core import hayabusa_rules
+
+        pack = self._hayabusa_rules_dir()
+        base = self._rules_base()
+        rows = hayabusa_rules.inventory(pack, base)
+        if changed_only:
+            rows = [row for row in rows if row.get("source") == "user" or not row.get("enabled", True)]
+        return {"rules": rows, "count": len(rows),
+                "overrides": sum(1 for row in rows if row.get("source") == "user"),
+                "disabled": sum(1 for row in rows if not row.get("enabled", True)),
+                "base": str(base)}
+
+    def _hayabusa_rules_dir(self) -> Path:
+        if not self.tools_root:
+            raise ServiceError("This instance has no tool pack: no detection rule to read.")
+        return Path(self.tools_root) / "Hayabusa" / "rules"
+
+    def rule_text(self, name: str) -> dict:
+        from fireblade.core import hayabusa_rules
+
+        text = hayabusa_rules.read_rule(self._hayabusa_rules_dir(), name, self._rules_base())
+        return {"name": Path(str(name)).name, "text": text, "bytes": len(text.encode("utf-8"))}
+
+    def save_rule(self, name: str, text: str) -> dict:
+        """Keep an override; the delivered pack is never touched."""
+        from fireblade.core import hayabusa_rules
+
+        target = hayabusa_rules.save_rule(self._hayabusa_rules_dir(), name, text or "",
+                                          self._rules_base())
+        return {"name": target.name, "path": str(target), "overridden": True}
+
+    def reset_rule(self, name: str) -> dict:
+        from fireblade.core import hayabusa_rules
+
+        removed = hayabusa_rules.reset_rule(name, self._rules_base())
+        return {"name": Path(str(name)).name, "removed": bool(removed)}
+
+    def set_rule_enabled(self, name: str, enabled: bool) -> dict:
+        from fireblade.core import hayabusa_rules
+
+        hayabusa_rules.set_enabled(name, bool(enabled), self._rules_base())
+        return {"name": Path(str(name)).name, "enabled": bool(enabled)}
 
     def _plugins_dir(self) -> Path:
         from fireblade.core.profile_plugins import plugin_path

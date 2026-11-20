@@ -5,6 +5,7 @@ client files and fail when a menu entry exists without its handler, or when a
 handler exists without its entry. They are the cheap half of the proof; the
 browser pass is the other half.
 """
+import re
 from pathlib import Path
 
 WEB = Path(__file__).resolve().parents[2] / "src" / "fireblade" / "web"
@@ -153,6 +154,33 @@ def test_the_tracking_tab_holds_three_lists():
     assert "/entities" in js and "/iocs" in js
     assert "function addEntity(" in js and "function addIndicators(" in js
     assert "function removeIndicator(" in js
+
+
+def test_no_function_is_declared_twice():
+    """A classic script lets the last definition win, silently: one handler dies."""
+    js = _read(APP)
+    names = re.findall(r'^(?:async )?function ([A-Za-z_][\w]*)\(', js, flags=re.M)
+    duplicates = sorted({name for name in names if names.count(name) > 1})
+    assert not duplicates, f"functions declared twice: {duplicates}"
+
+
+def test_no_element_id_appears_twice():
+    """A duplicated id is a dead control: one of the two is never updated."""
+    html = _read(INDEX)
+    ids = re.findall(r'id="([^"]+)"', html)
+    duplicates = sorted({value for value in ids if ids.count(value) > 1})
+    assert not duplicates, f"duplicate ids in the window: {duplicates}"
+
+
+def test_the_detection_rules_dialog_edits_a_rule():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="detrules-open"' in html and 'id="detrules-modal"' in html
+    for name in ("openDetectionRules", "loadDetectionRules", "selectDetectionRule",
+                 "saveDetectionRule", "resetDetectionRule", "toggleDetectionRule"):
+        assert f"function {name}(" in js, name
+    assert "apiPut(" in js and "/rules/" in js
+    # An edit is kept beside the tool pack, and a reset gives the pack's rule back.
+    assert "reset to the pack" in js.lower() or "Reset to the pack" in html
 
 
 def test_the_filter_input_keeps_the_operator():

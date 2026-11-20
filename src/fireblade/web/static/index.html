@@ -30,6 +30,7 @@
     </div>
     <div class="menu" data-for="view">
       <div class="item" data-act="display-settings">Display settings…</div>
+      <div class="item" data-act="preferences">Preferences…</div>
       <div class="sep"></div>
       <div class="item" data-act="toggle-artifacts">Artifacts panel</div>
     </div>
@@ -317,6 +318,24 @@
 <div id="row-menu" class="row-menu" hidden>
   <div class="item" data-act="pivot">What launched this process?</div>
   <div class="item" data-act="bookmark-row">Bookmark this row</div>
+</div>
+
+<div class="modal" id="prefs-modal">
+  <div class="dialog" style="min-width:640px">
+    <h3>Preferences</h3>
+    <div class="body">
+      <div class="note">What this instance runs with. Readers marked as missing are simply absent from the tool pack on this server.</div>
+      <div id="prefs-runtime" class="columns-list" style="max-height:300px"></div>
+      <div class="row"><label for="prefs-scale">Text size</label>
+        <select id="prefs-scale">
+          <option value="1">100 %</option><option value="1.1">110 %</option>
+          <option value="1.25">125 %</option><option value="1.5">150 %</option>
+          <option value="1.75">175 %</option>
+        </select>
+      </div>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
 </div>
 
 <div class="modal" id="views-modal">

@@ -346,6 +346,28 @@ function renderHayabusa() {
       <td title="${escapeHtml(finding.MitreTags || "")}">${escapeHtml(finding.MitreTactics || "")}</td></tr>`).join("");
 }
 
+/* ---------- preferences ---------- */
+
+async function openPreferences() {
+  $("prefs-scale").value = localStorage.getItem("fireblade.scale") || "1";
+  $("prefs-runtime").innerHTML = '<div class="emptygrid">Reading the runtime…</div>';
+  $("prefs-modal").classList.add("show");
+  try {
+    const payload = await api("/api/settings");
+    const readers = Object.entries(payload.readers || {})
+      .map(([name, ready]) => `<label><span>${ready ? "✔" : "✖"} ${escapeHtml(name)}</span></label>`).join("");
+    $("prefs-runtime").innerHTML = `
+      <label><span>Cases folder</span><span class="pin">${escapeHtml(payload.cases_root)}</span></label>
+      <label><span>Tool pack</span><span class="pin">${escapeHtml(payload.tools_root || "none")}</span></label>
+      <label><span>Rows per page</span><span class="pin">${payload.page_size}</span></label>
+      <label><span>Hayabusa</span><span class="pin">${payload.hayabusa ? "present" : "absent"}</span></label>
+      <label><span>Readers</span><span class="pin">${payload.readers_ready}/${Object.keys(payload.readers || {}).length} present</span></label>
+      ${readers}`;
+  } catch (error) {
+    $("prefs-runtime").innerHTML = `<div class="emptygrid">${escapeHtml(error.message)}</div>`;
+  }
+}
+
 /* ---------- saved views ---------- */
 
 async function loadViews() {
@@ -1373,6 +1395,11 @@ function wire() {
     if (timelineState.offset + size < (timelineState.payload?.count || 0)) { timelineState.offset += size; loadTimeline(false); }
   });
 
+  $("prefs-scale").addEventListener("change", (event) => {
+    localStorage.setItem("fireblade.scale", event.target.value);
+    applyScale();
+    $("scale").value = event.target.value;
+  });
   $("scale").addEventListener("change", (event) => {
     localStorage.setItem("fireblade.scale", event.target.value);
     applyScale();
@@ -1442,6 +1469,7 @@ async function act(name) {
     case "report": $("report-modal").classList.add("show"); break;
     case "report-build": await buildReport(); break;
     case "columns": openColumnManager(); break;
+    case "preferences": await openPreferences(); break;
     case "views": await openViewsDialog(); break;
     case "view-save": await saveCurrentView(); break;
     case "rules": openRulesDialog(); break;

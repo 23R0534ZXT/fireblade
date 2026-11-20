@@ -279,6 +279,30 @@ class Library:
             raise ServiceError("Aucune import de ce case ne contient de journal EVTX à analyser.")
         merged = [finding for item in results for finding in item["findings"]]
         return {"runs": results, "findings": merged[:2000], "total": sum(item["total"] for item in results)}
+    # -- settings ----------------------------------------------------------
+
+    def settings(self) -> dict:
+        """What this instance runs with, and which readers are actually present."""
+        from fireblade.core.collection import PARSERS
+
+        pack = ToolPack(self.tools_root) if self.tools_root else None
+        readers = {}
+        for name in PARSERS:
+            try:
+                readers[name] = bool(pack and pack.available(name))
+            except Exception:
+                readers[name] = False
+        hayabusa = bool(pack and Path(self.tools_root or "") / "Hayabusa" / "hayabusa" and
+                        (Path(self.tools_root or "") / "Hayabusa" / "hayabusa").is_file())
+        return {
+            "cases_root": str(self.root),
+            "tools_root": str(self.tools_root or ""),
+            "page_size": Case.PAGE_SIZE,
+            "readers": readers,
+            "readers_ready": sum(1 for value in readers.values() if value),
+            "hayabusa": hayabusa,
+        }
+
     # -- portable case -----------------------------------------------------
 
     def export_package(self, identifier: str, include_sources: bool = True) -> dict:

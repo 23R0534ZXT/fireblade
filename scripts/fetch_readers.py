@@ -57,6 +57,12 @@ def install(tool: str, dest: Path) -> Path:
         if target.exists():
             shutil.rmtree(target)
         shutil.copytree(source, target)
+    # A download that stopped half-way leaves an empty folder, and an empty folder
+    # makes the pack look complete to everyone except the tool that fails at run
+    # time. The dll is the contract: no dll, no tool.
+    dll = target / f"{tool}.dll"
+    if not dll.is_file() or dll.stat().st_size < 1024:
+        raise SystemExit(f"{tool}: {dll} is missing or empty after extraction")
     return target
 
 
@@ -101,6 +107,10 @@ def main(argv=None) -> int:
     batch.mkdir(parents=True, exist_ok=True)
     (batch / "Kroll_Batch.reb").write_bytes(fetch(RECMD_BATCH))
     print(f"RECmd batch: {(batch / 'Kroll_Batch.reb').stat().st_size} bytes", flush=True)
+
+    missing = [tool for tool in args.tools if not (args.dest / tool / f"{tool}.dll").is_file()]
+    if missing:
+        raise SystemExit("incomplete pack, dll missing for: " + ", ".join(missing))
 
     if args.hayabusa:
         target = install_hayabusa(args.dest)

@@ -226,6 +226,13 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/settings")
+    def settings():
+        try:
+            return library.settings()
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/package")
     def export_package(identifier: str, payload: dict | None = None):
         try:

@@ -111,6 +111,17 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/analyses/{index}/derived")
+    def derived_columns(identifier: str, index: int):
+        return library.derived_columns(identifier, index)
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/derived")
+    def add_derived(identifier: str, index: int, payload: dict):
+        try:
+            return library.add_derived(identifier, index, payload or {})
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/imports")
     def imports(identifier: str):
         try:

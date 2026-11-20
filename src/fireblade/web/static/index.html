@@ -43,9 +43,17 @@
   </div>
 
   <div class="toolbar">
-    <div class="tb" data-act="import-file" title="Send a file to the server and read it">🗀 Import a file</div>
+    <div class="tb" data-act="import-file" title="Send a file to the server and read it">
+      <svg class="ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <path d="M1.5 4.5h5l1.2 1.5h6.8v7.5H1.5z" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
+        <path d="M1.5 4.5V3h4l1.2 1.5" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
+      </svg>Import a file</div>
     <input type="file" id="import-input" multiple hidden>
-    <div class="tb" data-act="export-csv">🖫 Export</div>
+    <div class="tb" data-act="export-csv">
+      <svg class="ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
+        <path d="M8 5v6M5.5 8.5 8 11l2.5-2.5" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
+      </svg>Export</div>
     <div class="tbsep"></div>
     <div class="casecombo" id="casecombo"><span id="casecombo-label">No case open</span><span class="arrow">▼</span></div>
     <div class="tbsep"></div>
@@ -270,6 +278,42 @@
   </div>
 </div>
 
+<div class="modal" id="derived-modal">
+  <div class="dialog">
+    <h3>Derived column</h3>
+    <div class="body">
+      <div class="row"><label for="derived-name">Name</label><input id="derived-name" placeholder="e.g. Time (UTC ISO)"></div>
+      <div class="row"><label for="derived-operation">Transformation</label>
+        <select id="derived-operation">
+          <option value="timestamp">Convert a date</option>
+          <option value="expression">Expression</option>
+          <option value="category">Category</option>
+          <option value="macb">MACB</option>
+        </select>
+      </div>
+      <div class="row" id="derived-source-row"><label for="derived-source">Source column</label>
+        <select id="derived-source"></select></div>
+      <div class="row" id="derived-format-row"><label for="derived-format">Format</label>
+        <select id="derived-format">
+          <option value="iso">ISO</option>
+          <option value="mdy">Month/day/year</option>
+          <option value="dmy">Day/month/year</option>
+          <option value="unix_s">Unix seconds</option>
+          <option value="unix_ms">Unix milliseconds</option>
+          <option value="filetime">Windows FILETIME</option>
+          <option value="webkit">WebKit</option>
+        </select></div>
+      <div class="row" id="derived-expression-row" style="display:none"><label for="derived-expression">Expression</label>
+        <input id="derived-expression" placeholder="e.g. lower(User)"></div>
+      <div class="note">The column is compiled to SQL over the raw rows and stored in the analysis, exactly as the desktop does.</div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="derived-add">Add</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="search-modal">
   <div class="dialog" style="min-width:760px">
     <h3>Global search</h3>
@@ -362,6 +406,7 @@
     </div>
     <div class="foot">
       <button class="btn" data-act="columns-reset">Show all</button>
+      <button class="btn" data-act="derived">Add a derived column…</button>
       <button class="btn" data-act="settings-close">Close</button>
     </div>
   </div>

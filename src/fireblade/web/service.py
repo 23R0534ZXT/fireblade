@@ -178,6 +178,25 @@ class Library:
         return matches[0].resolve() if len(matches) == 1 else None
 
 
+    # -- derived columns ---------------------------------------------------
+
+    def add_derived(self, identifier: str, index: int, definition: dict) -> dict:
+        """Add a computed column the way the desktop does: a validated definition,
+        compiled to SQL over the raw rows, stored in the analysis itself."""
+        from fireblade.core.derived import validate_definition
+
+        clean = validate_definition(definition or {})
+        case = self._case_for(identifier, index)
+        with case.lock:
+            case.add_derived_columns([clean])
+        return {"columns": META_COLUMNS + list(case.headers), "added": clean.get("name")}
+
+    def derived_columns(self, identifier: str, index: int) -> dict:
+        case = self._case_for(identifier, index)
+        with case.lock:
+            return {"derived": list(getattr(case, "derived", []) or []),
+                    "columns": META_COLUMNS + list(case.headers)}
+
     # -- import history ----------------------------------------------------
 
     def imports(self, identifier: str) -> dict:

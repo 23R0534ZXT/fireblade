@@ -267,6 +267,51 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- derived columns ---------- */
+
+function openDerivedDialog() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  $("derived-source").innerHTML = state.columns.slice(1)
+    .map((name, index) => `<option value="${index}">${escapeHtml(name)}</option>`).join("");
+  $("derived-name").value = "";
+  $("derived-expression").value = "";
+  $("derived-modal").classList.add("show");
+}
+
+function derivedOperationChanged() {
+  const operation = $("derived-operation").value;
+  const simple = operation === "timestamp" || operation === "category" || operation === "macb";
+  $("derived-source-row").style.display = simple ? "flex" : "none";
+  $("derived-format-row").style.display = operation === "timestamp" ? "flex" : "none";
+  $("derived-expression-row").style.display = operation === "expression" ? "flex" : "none";
+}
+
+async function addDerived() {
+  const name = $("derived-name").value.trim();
+  if (!name) { say("A name is required", true); return; }
+  const operation = $("derived-operation").value;
+  const definition = { name, operation };
+  if (operation === "expression") {
+    definition.expression = $("derived-expression").value.trim();
+    if (!definition.expression) { say("An expression is required", true); return; }
+  } else {
+    const source = state.columns[Number($("derived-source").value) + 1];
+    definition.columns = [source];
+    if (operation === "timestamp") definition.format = $("derived-format").value;
+  }
+  closeModals();
+  try {
+    const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/derived`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(definition) });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || response.statusText);
+    await loadRows(true);
+    say(`Derived column added: ${payload.added}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 /* ---------- import history ---------- */
 
 const importState = { collections: [] };
@@ -853,9 +898,32 @@ function wire() {
     loadRows(true);
   });
 
+  let resizing = null;
+  $("head").addEventListener("mousedown", (event) => {
+    const grip = event.target.closest("[data-grip]");
+    if (!grip) return;
+    event.preventDefault();
+    const index = Number(grip.dataset.grip);
+    const th = grip.closest("th");
+    resizing = { index, startX: event.clientX, startWidth: th.getBoundingClientRect().width };
+    document.body.style.cursor = "col-resize";
+  });
+  document.addEventListener("mousemove", (event) => {
+    if (!resizing) return;
+    const width = Math.max(24, Math.round(resizing.startWidth + event.clientX - resizing.startX));
+    state.widths[resizing.index] = width;
+    const cols = $("cols").children;
+    if (cols[resizing.index]) cols[resizing.index].style.width = width + "px";
+  });
+  document.addEventListener("mouseup", () => {
+    if (!resizing) return;
+    resizing = null;
+    document.body.style.cursor = "";
+  });
+
   $("head").addEventListener("click", (event) => {
     const th = event.target.closest("th[data-column]");
-    if (!th || event.target.dataset.grip !== undefined) return;
+    if (!th || event.target.closest("[data-grip]")) return;
     const index = Number(th.dataset.column);
     if (index === 0) return;
     const column = index - 1;
@@ -951,6 +1019,7 @@ function wire() {
   });
 
   $("ioc-scan").addEventListener("click", runIocScan);
+  $("derived-operation").addEventListener("change", derivedOperationChanged);
   $("imports-refresh").addEventListener("click", loadImports);
   $("imports-status").addEventListener("change", renderImports);
   $("action-add").addEventListener("click", addAction);
@@ -1043,6 +1112,8 @@ async function act(name) {
     case "report": $("report-modal").classList.add("show"); break;
     case "report-build": await buildReport(); break;
     case "columns": openColumnManager(); break;
+    case "derived": openDerivedDialog(); break;
+    case "derived-add": await addDerived(); break;
     case "columns-reset": state.hidden.clear(); renderGrid(); openColumnManager(); break;
     case "group-apply": applyGrouping(); break;
     case "group-remove":

@@ -135,6 +135,14 @@ def test_the_palette_offers_presets_and_custom_colours():
     assert "loadPalette();" in js
 
 
+def test_the_graph_takes_a_free_node():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="graph-node"' in html and 'id="graph-node-modal"' in html
+    assert "function openGraphNode(" in js and "function saveGraphNode(" in js
+    assert "/graph/nodes" in js
+    assert "await buildGraph();" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

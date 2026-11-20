@@ -140,6 +140,7 @@
           <button class="btn" id="graph-build">Build the graph</button>
           <button class="btn" id="graph-navigator">Export an ATT&CK layer…</button>
           <button class="btn" id="graph-png">Export PNG…</button>
+          <button class="btn" id="graph-node">Free node…</button>
           <div class="info" id="graph-summary">The graph follows the kill chain: hosts on the left, techniques, then tactics.</div>
         </div>
         <div class="graph-wrap" id="graph-wrap">
@@ -422,6 +423,24 @@
       <button class="btn" data-act="expr-apply">Apply</button>
       <button class="btn" data-act="expr-clear">Clear</button>
       <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="graph-node-modal">
+  <div class="dialog" style="min-width:460px">
+    <h3>Free node</h3>
+    <div class="body">
+      <div class="note">A machine or a step the findings do not carry. It joins the graph
+        with the analyst's tags and stays with the case.</div>
+      <div class="row"><label for="graph-node-label">Name</label>
+        <input id="graph-node-label" placeholder="SRV-EXCHANGE, VPN, step in the kill chain…"></div>
+      <div class="row"><label for="graph-node-tags">Tags</label>
+        <input id="graph-node-tags" placeholder="comma separated"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="graph-node-save">Add the node</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
     </div>
   </div>
 </div>

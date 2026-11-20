@@ -876,6 +876,29 @@ async function ruleFromCell() {
 
 /* ---------- attack graph ---------- */
 
+/* A node the data does not carry: the desktop's "Nœud libre…". */
+function openGraphNode() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  $("graph-node-label").value = "";
+  $("graph-node-tags").value = "";
+  $("graph-node-modal").classList.add("show");
+  $("graph-node-label").focus();
+}
+
+async function saveGraphNode() {
+  const label = $("graph-node-label").value.trim();
+  if (!label) { say("Give the node a name first", true); return; }
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/graph/nodes`,
+      { label, tags: $("graph-node-tags").value });
+    closeModals();
+    say(`Node added: ${payload.label}${payload.tags.length ? " — " + payload.tags.join(", ") : ""}`);
+    await buildGraph();
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 async function buildGraph() {
   if (!state.openCase) { say("Open a case first", true); return; }
   $("graph-summary").textContent = "Building…";
@@ -2481,6 +2504,7 @@ function wire() {
   $("graph-build").addEventListener("click", buildGraph);
   $("graph-navigator").addEventListener("click", exportNavigator);
   $("graph-png").addEventListener("click", exportGraphPng);
+  $("graph-node").addEventListener("click", openGraphNode);
   $("imports-refresh").addEventListener("click", loadImports);
   $("imports-status").addEventListener("change", renderImports);
   $("action-add").addEventListener("click", addAction);
@@ -2588,6 +2612,7 @@ async function act(name, node) {
     case "sort-desc": sortFromCell(true); break;
     case "group-by-column": groupFromCell(); break;
     case "pin-column": pinFromCell("left"); break;
+    case "graph-node-save": await saveGraphNode(); break;
     case "alert-context": await showAlertContext(); break;
     case "alert-source": await openSourceEvent(); break;
     case "pin-column-right": pinFromCell("right"); break;

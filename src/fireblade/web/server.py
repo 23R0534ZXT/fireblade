@@ -184,6 +184,17 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/graph/nodes")
+    def add_graph_node(identifier: str, payload: dict):
+        """A free node: a machine or a step the findings do not carry."""
+        label = (payload or {}).get("label")
+        try:
+            return library.add_graph_node(identifier, label,
+                                          tags=(payload or {}).get("tags") or [],
+                                          kind=(payload or {}).get("kind") or "custom")
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/graph")
     def graph(identifier: str, navigator: bool = False):
         try:

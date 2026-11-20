@@ -698,11 +698,11 @@
     {
       "label": "Compatibilité Timeline Explorer",
       "kind": "command",
-      "status": "todo",
+      "status": "declared",
       "where": "",
       "test": "",
-      "reason": "",
-      "plan": "Upload a .NET Timeline Explorer reader, inspect the readers it declares, and run a source through it."
+      "reason": "Running a third-party .NET reader inside the service needs the 129 MB plugin host in the image and the right to execute an analyst-supplied DLL there: a decision for the deployment, not a browser limit. The Host states it in its compatibility dialog.",
+      "plan": ""
     },
     {
       "label": "Copier la valeur",
@@ -1346,11 +1346,11 @@
     {
       "label": "Nœud libre…",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Attack graph > Free node…: the node joins the case workspace.",
+      "test": "test_a_free_node_joins_the_graph_and_stays_with_the_case",
       "reason": "",
-      "plan": "Add a free node to the attack graph, which needs the graph to be editable and stored."
+      "plan": ""
     },
     {
       "label": "Ouvrir l’événement EVTX source",

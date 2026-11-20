@@ -7,7 +7,7 @@ every label `scripts/parity_inventory.py` finds in the Qt sources. A command is
 real desktop work this edition does not do yet, with a plan.
 
 - labels found in the Qt sources: **157**
-- of them, real commands: **102** (84 covered, 16 declared out of scope, 2 to do)
+- of them, real commands: **102** (85 covered, 17 declared out of scope, 0 to do)
 - parameter values counted as commands by the inventory: **40**
 - menu containers and dialog captions: **15**
 
@@ -71,6 +71,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Marquer la sélection | Row menu > Mark the selection. | `test_the_grid_selects_a_range_and_a_selection` |
 | Masquer cette colonne | Row menu > Hide this column, and Columns… | `test_the_row_menu_offers_every_cell_action` |
 | Modifier… | Actions & tracking > edit. | `test_tracking_actions_are_created_updated_and_exported` |
+| Nœud libre… | Attack graph > Free node…: the node joins the case workspace. | `test_a_free_node_joins_the_graph_and_stays_with_the_case` |
 | Ouvrir la détection EVTX | EVTX detection tab. | `test_detection_refuses_with_a_readable_reason` |
 | Ouvrir l’événement EVTX source | Alert row menu: the EVTX analysis, filtered on the record. | `test_an_alert_points_to_its_source_event` |
 | Plugins | Preferences > Profiles and plugins…: catalogue, installed plugins, errors. | `test_a_presentation_plugin_is_installed_and_listed` |
@@ -111,6 +112,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Artefact actif | The desktop's artifact tree is a window layout; the browser lists the analyses of the case instead. |
 | Artefacts | The desktop's artifact tree is a window layout; the browser lists the analyses of the case instead. |
 | Barres d’outils | The browser owns the window chrome; the toolbar is fixed and always visible. |
+| Compatibilité Timeline Explorer | Running a third-party .NET reader inside the service needs the 129 MB plugin host in the image and the right to execute an analyst-supplied DLL there: a decision for the deployment, not a browser limit. The Host states it in its compatibility dialog. |
 | Détacher / afficher un panneau | Window management does not exist in a browser tab; the panels are fixed. |
 | Détacher le panneau | Window management does not exist in a browser tab. |
 | Guide de l’espace de travail | The guides are desktop markdown windows; the Host edition documents itself in Help > About. |
@@ -125,8 +127,7 @@ A line of this page is the claim; the test named beside it is the proof.
 
 ## Real work left
 
-- **Compatibilité Timeline Explorer** — Upload a .NET Timeline Explorer reader, inspect the readers it declares, and run a source through it.
-- **Nœud libre…** — Add a free node to the attack graph, which needs the graph to be editable and stored.
+Nothing: every desktop command is covered or declared.
 
 ## What the inventory counts as a command
 

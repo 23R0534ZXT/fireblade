@@ -448,3 +448,16 @@ def test_the_timeline_can_read_two_columns_as_one_date(service, tmp_path):
     assert entry["column_name"] == "date + time"
     assert entry["combined"] is True
     assert entry["dated"] == 2
+
+def test_a_free_node_joins_the_graph_and_stays_with_the_case(service):
+    library, identifier = service
+    with pytest.raises(ServiceError):
+        library.graph(identifier)          # nothing to draw yet, and it says so
+    node = library.add_graph_node(identifier, "SRV-EXCHANGE", tags="host, pivot")
+    assert node["label"] == "SRV-EXCHANGE"
+    assert node["tags"] == ["host", "pivot"]
+    assert node["id"].startswith("custom-")
+    graph = library.graph(identifier)
+    assert any(item["label"] == "SRV-EXCHANGE" for item in graph["nodes"])
+    with pytest.raises(ServiceError):
+        library.add_graph_node(identifier, "   ")

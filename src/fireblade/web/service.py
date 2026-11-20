@@ -220,8 +220,10 @@ class Library:
             workspace = load_workspace(folder)
         except (OSError, ValueError):
             workspace = {}
-        if not groups and not (workspace.get("entities")):
-            raise ServiceError("No finding and no entity: run a detection or declare a machine in the case first.")
+        manual = (workspace.get("graph") or {}).get("nodes") or []
+        if not groups and not (workspace.get("entities")) and not manual:
+            raise ServiceError("No finding, no entity and no free node: run a detection, "
+                               "declare a machine, or add a node by hand.")
         graph = ag.build(list(groups.values()), workspace)
         if navigator:
             layer = ag.navigator_layer(graph, name=data.get("name") or "Fireblade",
@@ -235,6 +237,24 @@ class Library:
         positioned = ag.layout(graph)
         return {"nodes": positioned.get("nodes", []), "edges": positioned.get("edges", []),
                 "groups": len(groups)}
+
+    def add_graph_node(self, identifier: str, label: str, tags=None, kind: str = "custom") -> dict:
+        """Add a node the data does not carry, as the desktop's free node does.
+
+        The node belongs to the case workspace, so it survives a reopen and is
+        merged with the computed graph on the next build.
+        """
+        from fireblade.core.case_workspace import tag_node
+
+        clean = (label or "").strip()
+        if not clean:
+            raise ServiceError("Give the node a name.")
+        if isinstance(tags, str):
+            tags = [item.strip() for item in tags.split(",")]
+        cleaned = [str(item).strip() for item in (tags or []) if str(item).strip()]
+        folder = self.library.folder(identifier)
+        node_id = tag_node(folder, clean, kind=kind, tags=cleaned)
+        return {"id": node_id, "label": clean, "tags": cleaned, "kind": kind}
 
     # -- Hayabusa ----------------------------------------------------------
 

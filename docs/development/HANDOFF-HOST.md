@@ -29,12 +29,12 @@ plan (architecture, phases, décisions) est dans `HANDOFF-DOCKER.md`.
 
 | Quoi | Valeur |
 | --- | --- |
-| Branche | `feat/host-edition`, **44 commits** au-dessus de `main` |
+| Branche | `feat/host-edition`, **46 commits** au-dessus de `main` |
 | `main` | intacte, jamais poussée, rien de publié |
-| Dernier commit | `8f95801 Host: parity counted, and the surface proven group by group` |
+| Dernier commit | `9ba585f Host: the grouped chart, and columns frozen on either edge` |
 | Arbre de travail | propre — les trois documents non suivis sont hors sujet |
-| Porte complète | **verte** : `1787 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 17 min 12 s |
-| Tests web | **40**, dont 6 de parité qui refusent une couverture sans test |
+| Porte complète | **verte** : `1789 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 16 min 52 s |
+| Tests web | **42**, dont 6 de parité qui refusent une couverture sans test |
 | Image | `fireblade:host`, saine sur `http://192.168.1.201:8095` |
 | Cases ouverts sur le service | 8, plus `poste-fr.csv` importé pour la recette d'encodage |
 
@@ -275,6 +275,8 @@ Quatorze commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
 ## 14. Les derniers commits
 
 ```
+9ba585f Host: the grouped chart, and columns frozen on either edge
+d774248 Docs: the Host handover, at 72 of 104 commands
 8f95801 Host: parity counted, and the surface proven group by group
 19aaae4 Host: the CSV options, a selection, and the desktop row menu
 6dda2f8 Host: preview an import before anything is read
@@ -285,7 +287,7 @@ f1d95d4 Host: the graph as a PNG
 4314305 Host: hunts leave a record
 ```
 
-`git log --oneline main..HEAD` donne les 44.
+`git log --oneline main..HEAD` donne les 46.
 
 ---
 
@@ -333,7 +335,7 @@ f1d95d4 Host: the graph as a PNG
 ## 16. Par où commencer, concrètement
 
 1. `git log --oneline -5` et `git status` sur la VM : l'arbre doit être propre.
-2. `python -m pytest -q tests/web` (8 s) : 40 verts, dont la parité.
+2. `python -m pytest -q tests/web` (8 s) : 42 verts, dont la parité.
 3. Ouvrir `HOST-PARITY.md` → « Real work left » : quatorze lignes, chacune avec
    son plan. Les prendre dans l'ordre, une par une, avec la double preuve.
 4. Après chaque lot : `scripts.dev_check` (~17 min), régénérer

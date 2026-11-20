@@ -42,6 +42,10 @@ RUN python scripts/fetch_readers.py --dest /opt/fireblade/tools \
 RUN useradd --create-home --uid 10001 fireblade \
     && mkdir -p /data/cases \
     && chown -R fireblade:fireblade /data
+# The pack is downloaded as root: the service reads it as the fireblade user, and a
+# dll it cannot stat is a reader it reports missing.
+RUN chown -R fireblade:fireblade /opt/fireblade/tools \
+    && chmod -R a+rX /opt/fireblade/tools
 USER fireblade
 
 EXPOSE 8080

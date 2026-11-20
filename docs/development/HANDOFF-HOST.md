@@ -31,10 +31,10 @@ plan (architecture, phases, décisions) est dans `HANDOFF-DOCKER.md`.
 | --- | --- |
 | Branche | `feat/host-edition`, **54 commits** au-dessus de `main` (`git rev-list --count main..HEAD`) |
 | `main` | intacte, jamais poussée, rien de publié |
-| Dernier commit de code | `26601d6 Host: the timeline reads dates the way the desktop does` |
+| Dernier commit de code | `b46eab7 Host: the desktop palette, dark and custom colours` |
 | Arbre de travail | propre — les trois documents non suivis sont hors sujet |
-| Porte complète | **verte** : `1803 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 16 min 49 s |
-| Tests web | **56**, dont 7 de parité qui refusent une couverture sans test |
+| Porte complète | **verte** : `1804 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 17 min 03 s |
+| Tests web | **57**, dont 7 de parité qui refusent une couverture sans test |
 | Image | `fireblade:host`, saine sur `http://192.168.1.201:8095` |
 | Cases ouverts sur le service | 8, plus `poste-fr.csv` importé pour la recette d'encodage |
 
@@ -92,9 +92,9 @@ Trois statuts, et un seul est une promesse :
   parité vérifie que ce test existe vraiment (`ast` sur `tests/`).
 - **declared** — impossible ou hors sujet derrière un navigateur, avec la raison
   (pas d'explorateur système, pas de gestion de fenêtres, pas d'IA branchée).
-- **todo** — vraie commande du desktop non portée, avec son plan. **3 restent.**
+- **todo** — vraie commande du desktop non portée, avec son plan. **2 restent.**
 
-État actuel : 102 commandes ⇒ 83 couvertes, 16 déclarées hors périmètre, 3 à faire.
+État actuel : 102 commandes ⇒ 84 couvertes, 16 déclarées hors périmètre, 2 à faire.
 
 ---
 
@@ -166,7 +166,9 @@ le menu de ligne ouvre l'événement EVTX source (l'analyse EVTX filtrée sur so
 analyse du case.
 
 **Transverse** — recherche globale, préférences (runtime, lecteurs, profils),
-réglages d'affichage, et **Profils et compatibilité** : catalogue des profils du
+réglages d'affichage — **palette claire, sombre ou personnalisée** (les six
+couleurs du desktop, gardées dans le navigateur de l'analyste) — et
+**Profils et compatibilité** : catalogue des profils du
 noyau, plugins de présentation installés avec leurs erreurs, installation d'un
 plugin JSON, création d'un profil depuis les colonnes de l'analyse ouverte.
 
@@ -253,12 +255,11 @@ un test qui existe**, sinon `tests/web/test_host_parity.py` échoue.
 
 ## 11. Ce qui reste, dans l'ordre du fichier de parité
 
-Trois commandes, listées avec leur plan dans `HOST-PARITY.md` :
+Deux commandes, listées avec leur plan dans `HOST-PARITY.md` :
 
 1. **Compatibilité Timeline Explorer** — téléverser une DLL de lecteur TLE,
    inspecter ses lecteurs, faire passer une source dedans.
 2. **Nœud libre** — un graphe éditable et stocké, pas seulement calculé.
-3. **Palette personnalisée** — les deux thèmes du desktop, pas de couleurs libres.
 
 ---
 
@@ -288,6 +289,7 @@ Trois commandes, listées avec leur plan dans `HOST-PARITY.md` :
 ## 14. Les derniers commits
 
 ```
+b46eab7 Host: the desktop palette, dark and custom colours
 26601d6 Host: the timeline reads dates the way the desktop does
 3a4e4b1 Host: an alert opens its source event and its EVTX context
 0333e8b Host: profiles and presentation plugins, kept on a volume
@@ -324,6 +326,10 @@ f1d95d4 Host: the graph as a PNG
   redémarrage du conteneur.
 - **Le contexte de build doit suivre le noyau** : `collection.py` a changé, et un
   `fbctx` périmé construit une image qui ignore le changement.
+- **Les couleurs littérales se vengent** : la feuille a longtemps porté `#eaf5ff`
+  et `#e4eef6` en dur ; les remplacer partout a aussi réécrit les définitions de
+  `:root` (`--grid-line:var(--grid-line)`, une boucle). Nommer les surfaces une
+  fois, puis remplacer **uniquement après** la fin des blocs de déclaration.
 - **Les événements sont stockés en `c0`, `c1`…** : `case.headers` donne les noms
   affichés, la table garde les colonnes brutes. Toute lecture d'une ligne par son
   identifiant doit mapper **positionnellement** (`_row_values`) ; un `SELECT *`
@@ -357,8 +363,8 @@ f1d95d4 Host: the graph as a PNG
 ## 16. Par où commencer, concrètement
 
 1. `git log --oneline -5` et `git status` sur la VM : l'arbre doit être propre.
-2. `python -m pytest -q tests/web` (17 s) : 56 verts, dont la parité.
-3. Ouvrir `HOST-PARITY.md` → « Real work left » : trois lignes, chacune avec
+2. `python -m pytest -q tests/web` (13 s) : 57 verts, dont la parité.
+3. Ouvrir `HOST-PARITY.md` → « Real work left » : deux lignes, chacune avec
    son plan. Les prendre dans l'ordre, une par une, avec la double preuve.
 4. Après chaque lot : `scripts.dev_check` (~17 min), régénérer
    `HOST-PARITY.md`, mettre à jour ce document.

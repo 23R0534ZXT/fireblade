@@ -185,6 +185,8 @@
             <option value="error">Error</option>
           </select>
           <button class="btn" id="imports-refresh">Refresh</button>
+          <button class="btn" id="coverage-open"
+            title="Reopen every analysis and check what could not be attested">Import verification…</button>
           <div class="info" id="imports-summary"></div>
         </div>
         <div class="gridwrap" style="flex:1">
@@ -614,6 +616,54 @@
       <div class="row"><label for="view-name">Save as</label><input id="view-name" placeholder="e.g. Logons on FBVM"></div>
       <div class="row"><button class="btn" data-act="view-save">Save the current view</button></div>
       <div class="columns-list" id="views-list" style="max-height:240px"></div>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
+</div>
+
+<div class="modal" id="coverage-modal">
+  <div class="dialog" style="width:min(1040px,94vw)">
+    <h3>Import verification and diagnostics</h3>
+    <div class="body">
+      <div class="row">
+        <label for="coverage-profile">Expected families</label>
+        <select id="coverage-profile">
+          <option value="observed">Only what was observed</option>
+          <option value="windows">Windows collection expected</option>
+          <option value="linux">Linux collection expected</option>
+          <option value="linux_logs">Linux /var/log expected</option>
+        </select>
+        <label><input type="checkbox" id="coverage-hashes"> Recheck the SHA-256</label>
+        <label><input type="checkbox" id="coverage-deep" checked> Empty columns and identifiers</label>
+        <button class="btn" id="coverage-run">Check the coverage</button>
+        <div class="grow"></div>
+        <button class="btn" id="coverage-export-json">Export JSON</button>
+        <button class="btn" id="coverage-export-csv">Export CSV</button>
+      </div>
+      <div class="row">
+        <select id="coverage-level">
+          <option value="">Every severity</option>
+          <option value="error">Errors</option>
+          <option value="warning">To verify</option>
+          <option value="info">Information</option>
+        </select>
+        <input class="search" id="coverage-search" placeholder="Stage, file, cause…">
+        <div class="grow"></div>
+        <div class="info" id="coverage-summary"></div>
+      </div>
+      <div class="gridwrap" style="flex:1;min-height:300px">
+        <div class="gridbody">
+          <table>
+            <colgroup><col style="width:110px"><col style="width:80px"><col style="width:180px">
+              <col><col style="width:150px"><col style="width:150px"></colgroup>
+            <thead><tr><th>Stage</th><th>Severity</th><th>File</th><th>Cause</th>
+              <th>Impact</th><th>What to do</th></tr></thead>
+            <tbody id="coverage-rows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="note" id="coverage-note">Nothing checked yet on this case. An absence is a
+        point to verify, never a proof that the machine had nothing.</div>
     </div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
   </div>

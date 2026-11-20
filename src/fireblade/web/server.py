@@ -495,6 +495,28 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/coverage")
+    def coverage(identifier: str, expected: str = "observed", verify_hashes: bool = False,
+                 deep_checks: bool = True, run: bool = True):
+        """Run the coverage audit, or read the last one kept with the case."""
+        try:
+            if not run:
+                return library.coverage_report(identifier)
+            return library.coverage(identifier, expected=expected,
+                                    verify_hashes=verify_hashes, deep_checks=deep_checks)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/coverage/export")
+    def coverage_export(identifier: str, csv: bool = False):
+        try:
+            data = library.coverage_export(identifier, as_csv=csv)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        name = "coverage.csv" if csv else "coverage.json"
+        return Response(content=data, media_type="text/csv" if csv else "application/json",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
     @app.get("/api/global-rules")
     def global_rules(identifier: str = "", index: int = -1):
         """The colour rules shared by every analysis of this instance."""

@@ -1104,6 +1104,77 @@ async function markFinding(item) {
   }
 }
 
+/* ---------- coverage and diagnostics ---------- */
+
+const coverageState = { report: null };
+
+async function openCoverage() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  $("coverage-modal").classList.add("show");
+  $("coverage-rows").innerHTML = "";
+  $("coverage-note").textContent = "Reading the last check kept with this case…";
+  try {
+    const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/coverage?run=false`);
+    showCoverage(payload);
+  } catch (_) {
+    $("coverage-note").textContent = "No check kept yet: press \"Check the coverage\".";
+    $("coverage-summary").textContent = "";
+  }
+}
+
+function showCoverage(payload) {
+  coverageState.report = payload.report || null;
+  const counts = (payload.report && payload.report.counts) || {};
+  $("coverage-summary").textContent = payload.report
+    ? `${counts.error || 0} error(s), ${counts.warning || 0} to verify, ${counts.info || 0} information`
+    : "";
+  $("coverage-note").textContent = payload.report
+    ? `Checked on ${payload.report.created} — ${payload.report.expected_profile} profile.`
+      + " An absence is a point to verify, never a proof that the machine had nothing."
+    : "";
+  renderCoverage();
+}
+
+function renderCoverage() {
+  const findings = (coverageState.report && coverageState.report.findings) || [];
+  const level = $("coverage-level").value;
+  const needle = $("coverage-search").value.trim().toLowerCase();
+  const shown = findings.filter((item) =>
+    (!level || item.severity === level)
+    && (!needle || `${item.stage} ${item.path} ${item.reason} ${item.code}`
+      .toLowerCase().includes(needle)));
+  $("coverage-rows").innerHTML = shown.length
+    ? shown.slice(0, 800).map((item) => `<tr class="sev-${escapeHtml(item.severity)}">
+        <td>${escapeHtml(item.stage || "")}</td>
+        <td>${escapeHtml(item.severity || "")}</td>
+        <td title="${escapeHtml(item.path || "")}">${escapeHtml(String(item.path || "").split(/[\\/]/).pop())}</td>
+        <td title="${escapeHtml(item.reason || "")}">${escapeHtml(item.reason || "")}</td>
+        <td title="${escapeHtml(item.impact || "")}">${escapeHtml(item.impact || "")}</td>
+        <td title="${escapeHtml(item.action || "")}">${escapeHtml(item.action || "")}</td></tr>`).join("")
+    : '<tr><td colspan="6" class="cellnull">Nothing matches this filter.</td></tr>';
+  if (shown.length > 800) {
+    $("coverage-note").textContent += ` ${shown.length - 800} more finding(s): narrow the filter or export the report.`;
+  }
+}
+
+async function runCoverage() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const query = new URLSearchParams({
+    expected: $("coverage-profile").value,
+    verify_hashes: $("coverage-hashes").checked ? "true" : "false",
+    deep_checks: $("coverage-deep").checked ? "true" : "false",
+    run: "true" });
+  say("Checking every analysis: this reads them again, it can take a while…");
+  $("coverage-note").textContent = "Checking…";
+  try {
+    const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/coverage?${query}`);
+    showCoverage(payload);
+  } catch (error) {
+    $("coverage-note").textContent = error.message;
+    say(error.message, true);
+  }
+}
+
 /* ---------- detection rules ---------- */
 
 const rulesState = { rules: [], selected: null, filter: "" };
@@ -2587,6 +2658,16 @@ function wire() {
 
   document.querySelectorAll(".subtab[data-scope]").forEach((tab) => {
     tab.addEventListener("click", () => showRulesScope(tab.dataset.scope));
+  });
+  $("coverage-open").addEventListener("click", openCoverage);
+  $("coverage-run").addEventListener("click", runCoverage);
+  $("coverage-level").addEventListener("change", renderCoverage);
+  $("coverage-search").addEventListener("input", renderCoverage);
+  $("coverage-export-json").addEventListener("click", () => {
+    if (state.openCase) window.location.href = `/api/cases/${encodeURIComponent(state.openCase.id)}/coverage/export`;
+  });
+  $("coverage-export-csv").addEventListener("click", () => {
+    if (state.openCase) window.location.href = `/api/cases/${encodeURIComponent(state.openCase.id)}/coverage/export?csv=true`;
   });
   $("rule-global-enabled").addEventListener("change", async (event) => {
     try {

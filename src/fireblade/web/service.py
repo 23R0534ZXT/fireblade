@@ -1619,6 +1619,75 @@ class Library:
 
     # -- timeline ----------------------------------------------------------
 
+    # -- coverage and diagnostics ------------------------------------------
+
+    COVERAGE_PROFILES = ("observed", "windows", "linux", "linux_logs")
+
+    def _coverage_path(self, identifier: str) -> Path:
+        return self.library.folder(identifier) / "coverage-last.json"
+
+    def coverage(self, identifier: str, expected: str = "observed",
+                 expected_tools=None, verify_hashes: bool = False,
+                 deep_checks: bool = True) -> dict:
+        """The desktop's "Vérification des imports et diagnostics", over this case.
+
+        The same core audit the desktop runs: every analysis is reopened, its source
+        re-measured, its readers and families collected, and what could not be
+        attested is written down as a finding with its impact and the fix.
+        """
+        from fireblade.core import coverage as coverage_core
+        from fireblade.core.workspace_reader import WorkspaceReader
+
+        if expected not in coverage_core.EXPECTED:
+            raise ServiceError(f"Unknown coverage profile: {expected}")
+        snapshots = self._snapshots(identifier)
+        if not snapshots:
+            raise ServiceError("This case has no analysis to check yet.")
+        # DuckDB refuses a second connection with another configuration: the timeline
+        # keeps its index open, so it is closed first and rebuilt on demand.
+        for key in [item for item in self._timelines if item[0] == identifier]:
+            try:
+                self._timelines.pop(key).close()
+            except (KeyError, OSError, ValueError):
+                pass
+        reader = WorkspaceReader(snapshots)
+        report = coverage_core.audit(
+            reader, verify_hashes=bool(verify_hashes), expected=expected,
+            expected_tools=list(expected_tools) if expected_tools else None,
+            deep_checks=bool(deep_checks))
+        saved = False
+        try:
+            coverage_core.save_report(self._coverage_path(identifier), report)
+            saved = True
+        except (OSError, ValueError):
+            saved = False
+        return {"report": report, "counts": report.get("counts") or {},
+                "profiles": list(coverage_core.EXPECTED),
+                "families": list(coverage_core.EXPECTED.get(expected) or []),
+                "analyses": len(snapshots), "saved": saved}
+
+    def coverage_report(self, identifier: str) -> dict:
+        """The last check kept with the case, for reading without running one again."""
+        from fireblade.core import coverage as coverage_core
+
+        path = self._coverage_path(identifier)
+        if not path.is_file():
+            raise ServiceError("No coverage check has been kept for this case yet.")
+        report = coverage_core.load_report(path)
+        return {"report": report, "counts": report.get("counts") or {},
+                "profiles": list(coverage_core.EXPECTED), "saved": True}
+
+    def coverage_export(self, identifier: str, as_csv: bool = False) -> bytes:
+        from fireblade.core import coverage as coverage_core
+
+        path = self._coverage_path(identifier)
+        if not path.is_file():
+            raise ServiceError("Run the coverage check before exporting its report.")
+        report = coverage_core.load_report(path)
+        target = Path(tempfile.mkdtemp(prefix="fbcoverage-")) / ("coverage.csv" if as_csv else "coverage.json")
+        coverage_core.export_report(target, report)
+        return target.read_bytes()
+
     def _snapshots(self, identifier: str):
         """The case's analyses as snapshots, with the source record the timeline needs."""
         data = self.library.read(identifier)

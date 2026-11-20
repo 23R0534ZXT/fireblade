@@ -24,8 +24,9 @@ names what the Host does for each.
 ## Verdict
 
 **The port is not complete.** Twenty-one domains are covered, but this audit found
-**16 features the Host does not have** and **9 it has partially** (two closed since the
-audit was written: machines and accounts, and tracked indicators). None of them was
+**9 features the Host does not have** and **7 it has partially** (five closed since the
+audit was written: machines and accounts, tracked indicators, Hayabusa rules,
+global colour rules, import diagnostics). None of them was
 visible in the label inventory, which is why `HOST-PARITY.md` said "nothing left" —
 and that claim is withdrawn here.
 
@@ -45,15 +46,15 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Import — disk | "Analyser un disque…" (an image, not a folder) | **no** |
 | Import — cancel | "Arrêter" during a collection | **partial** — the request is synchronous |
 | Import — retry with a reader | "Relancer avec un lecteur" on an unread file | **no** |
-| Import — diagnostics | "Vérification des imports et diagnostics", "Familles attendues" | **no** — the Imports tab shows the history only |
+| Import — diagnostics | "Vérification des imports et diagnostics", "Familles attendues" | **yes** — Imports > Import verification (the core coverage audit, four expected-family profiles, JSON and CSV report) |
 | Grid — sorting | one column, multi-column, **a priority dialog** | **partial** — shift-click, no dialog |
 | Grid — filters | per column with operators, advanced ET/OU/NON | **yes** |
 | Grid — relative dates | "Filtrer une date…", "Ajouter une condition de date relative" | **no** |
 | Grid — grouping | by column, date intervals, drill-down | **yes** |
 | Grid — group summaries | "Résumés et tri des groupes" | **no** |
 | Grid — bookmarks, notes | row marks, row notes, cell notes, on a selection | **yes** |
-| Grid — colour rules | local rules, from a cell, the value chart and its statistics | **partial** — no value chart |
-| Grid — global rules | "Règles globales" shared by every analysis | **no** |
+| Grid — colour rules | local rules, from a cell, the value chart and its statistics | **partial** — colours, text colour, bold and row/cell target; no value chart |
+| Grid — global rules | "Règles globales" shared by every analysis | **yes** — Colour rules > Every analysis; the book is the desktop's own file (import and export), a rule the grid cannot evaluate is skipped, never approximated |
 | Grid — columns | hide, pin left **and right**, resize, layout in the analysis | **yes** |
 | Grid — derived columns | timestamp conversion, expressions, categories, MACB | **yes** |
 | Grid — views and profiles | named views, "Appliquer le profil détecté" | **partial** — views yes, applying a profile by hand no |

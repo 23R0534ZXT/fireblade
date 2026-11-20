@@ -194,6 +194,17 @@ def test_the_colour_rules_carry_two_scopes():
     assert 'id="rule-global-export"' in html and 'id="rule-global-import"' in html
 
 
+def test_the_import_verification_shows_what_was_not_attested():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="coverage-open"' in html and 'id="coverage-modal"' in html
+    for name in ("openCoverage", "renderCoverage", "runCoverage", "showCoverage"):
+        assert f"function {name}(" in js, name
+    assert "/coverage" in js and "coverage/export" in js
+    assert 'id="coverage-level"' in html and 'id="coverage-search"' in html
+    # the page must never present an absence as a proof
+    assert "never a proof" in html
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

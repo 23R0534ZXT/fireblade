@@ -236,6 +236,13 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 .timeline-dates .tsrc{display:flex;align-items:center;gap:6px;font-size:11px}
 .timeline-dates .tname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* The diagnostics table: six columns of prose have to stay inside the dialog. */
+#coverage-modal .gridbody table{table-layout:fixed;width:100%}
+#coverage-modal .gridbody td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#coverage-modal .gridbody tr.sev-error td{color:#8a1c1c}
+#coverage-modal .gridbody tr.sev-error td:nth-child(2){font-weight:600}
+#coverage-modal .gridbody tr.sev-warning td:nth-child(2){color:#8a5a00}
+
 /* The tracking tab carries three lists, as the desktop's panel does. */
 #indicator-values{flex:1 1 240px;min-width:160px;height:34px;resize:vertical;border:1px solid var(--border);
   background:var(--base);font-family:inherit;font-size:11px;padding:2px 4px;outline:none}

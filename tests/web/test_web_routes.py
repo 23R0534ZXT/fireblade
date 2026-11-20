@@ -598,3 +598,27 @@ def test_global_rules_reach_every_analysis_that_has_the_column(service, tmp_path
     assert imported["imported"] == 1
     with pytest.raises(ValueError):
         library.import_global_rules(b'{"format": "something else"}')
+
+
+def test_the_coverage_check_reads_the_case_and_keeps_its_report(service):
+    """The desktop's "Vérification des imports et diagnostics", over HTTP."""
+    library, identifier = service
+    result = library.coverage(identifier, expected="observed")
+    report = result["report"]
+    assert report["format"] == "fireblade-coverage"
+    assert report["expected_profile"] == "observed"
+    assert result["analyses"] == 1
+    assert result["counts"].get("error", 0) == 0 or report["findings"]
+    # every finding says what it costs and what to do about it
+    for finding in report["findings"]:
+        assert finding["stage"] and finding["severity"] in ("info", "warning", "error")
+        assert finding["reason"]
+        assert finding["action"] or finding["code"] == "operation"
+    kept = library.coverage_report(identifier)
+    assert kept["report"]["created"] == report["created"]
+    data = library.coverage_export(identifier)
+    assert b"fireblade-coverage" in data
+    flat = library.coverage_export(identifier, as_csv=True)
+    assert b"Gravit" in flat
+    with pytest.raises(ServiceError):
+        library.coverage(identifier, expected="nonsense")

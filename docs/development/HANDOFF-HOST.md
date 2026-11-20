@@ -29,12 +29,12 @@ plan (architecture, phases, décisions) est dans `HANDOFF-DOCKER.md`.
 
 | Quoi | Valeur |
 | --- | --- |
-| Branche | `feat/host-edition`, **47 commits** au-dessus de `main` |
+| Branche | `feat/host-edition`, **50 commits** au-dessus de `main` |
 | `main` | intacte, jamais poussée, rien de publié |
-| Dernier commit | `db009a6 Host: a finding opens and marks its alerts, and a run exports its sources` |
+| Dernier commit | `0333e8b Host: profiles and presentation plugins, kept on a volume` |
 | Arbre de travail | propre — les trois documents non suivis sont hors sujet |
-| Porte complète | **verte** : `1794 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 16 min 50 s |
-| Tests web | **47**, dont 7 de parité qui refusent une couverture sans test |
+| Porte complète | **verte** : `1797 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 17 min 01 s |
+| Tests web | **50**, dont 7 de parité qui refusent une couverture sans test |
 | Image | `fireblade:host`, saine sur `http://192.168.1.201:8095` |
 | Cases ouverts sur le service | 8, plus `poste-fr.csv` importé pour la recette d'encodage |
 
@@ -92,9 +92,9 @@ Trois statuts, et un seul est une promesse :
   parité vérifie que ce test existe vraiment (`ast` sur `tests/`).
 - **declared** — impossible ou hors sujet derrière un navigateur, avec la raison
   (pas d'explorateur système, pas de gestion de fenêtres, pas d'IA branchée).
-- **todo** — vraie commande du desktop non portée, avec son plan. **11 restent.**
+- **todo** — vraie commande du desktop non portée, avec son plan. **8 restent.**
 
-État actuel : 104 commandes ⇒ 77 couvertes, 16 déclarées hors périmètre, 11 à faire.
+État actuel : 102 commandes ⇒ 78 couvertes, 16 déclarées hors périmètre, 8 à faire.
 
 ---
 
@@ -160,7 +160,9 @@ sources en CSV. **Aucune IA branchée**, l'onglet le dit.
 **Détection EVTX** — moteur du noyau, à travers le conteneur.
 
 **Transverse** — recherche globale, préférences (runtime, lecteurs, profils),
-réglages d'affichage.
+réglages d'affichage, et **Profils et compatibilité** : catalogue des profils du
+noyau, plugins de présentation installés avec leurs erreurs, installation d'un
+plugin JSON, création d'un profil depuis les colonnes de l'analyse ouverte.
 
 ---
 
@@ -194,8 +196,15 @@ Amcache (WxTCmd, SQLECmd, RECmd exigent que `core/collection.py` construise la
 ligne de commande — ne jamais la taper à la main).
 
 **Piège de build** : le contexte `/root/fbctx` est un miroir ; il doit contenir
-aussi la version courante de `core/collection.py`. `/root/build_host.sh` le
-récupère par `scp` à chaque build, en plus du dossier `web`.
+aussi la version courante de `core/collection.py`, du `Dockerfile` et du
+`docker-compose.yml`. `/root/build_host.sh` les récupère par `scp` à chaque build,
+en plus du dossier `web` — un `Dockerfile` périmé construit une image sans
+`--plugins` et le dialogue affiche `/home/fireblade/…` au lieu de `/data/plugins`.
+
+**Volume des plugins** : `--plugins /data/plugins`, monté depuis
+`/srv/fbplugins` (compose : `FIREBLADE_PLUGINS`). Sans ce montage, un profil
+créé dans le navigateur disparaît au prochain conteneur. Le dossier appartient à
+l'uid 10001.
 
 ---
 
@@ -238,14 +247,14 @@ un test qui existe**, sinon `tests/web/test_host_parity.py` échoue.
 
 ## 11. Ce qui reste, dans l'ordre du fichier de parité
 
-Onze commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
+Huit commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
 
 1. **Chronologie, mode de date** (3) — même colonne, colonnes séparées, sans date.
    Le panneau choisit aujourd'hui la colonne tout seul.
-2. **Panneau de compatibilité** (3 + Plugins) — profils, sessions, en-têtes
-   Timeline Explorer, inventaire des plugins.
-3. **Contexte EVTX** (2) — ouvrir l'événement source d'une alerte, voir son
+2. **Contexte EVTX** (2) — ouvrir l'événement source d'une alerte, voir son
    contexte autour d'elle.
+3. **Compatibilité Timeline Explorer** (1) — téléverser une DLL de lecteur TLE,
+   inspecter ses lecteurs, faire passer une source dedans.
 4. **Graphe** (1) — nœud libre, qui demande un graphe éditable et stocké.
 5. **Palette personnalisée** (1) — les deux thèmes du desktop, pas de couleurs libres.
 
@@ -277,6 +286,7 @@ Onze commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
 ## 14. Les derniers commits
 
 ```
+0333e8b Host: profiles and presentation plugins, kept on a volume
 db009a6 Host: a finding opens and marks its alerts, and a run exports its sources
 9ba585f Host: the grouped chart, and columns frozen on either edge
 1bce9f1 Docs: the handover after the chart and the frozen columns
@@ -290,7 +300,7 @@ f1d95d4 Host: the graph as a PNG
 4314305 Host: hunts leave a record
 ```
 
-`git log --oneline main..HEAD` donne les 47.
+`git log --oneline main..HEAD` donne les 50.
 
 ---
 
@@ -338,8 +348,8 @@ f1d95d4 Host: the graph as a PNG
 ## 16. Par où commencer, concrètement
 
 1. `git log --oneline -5` et `git status` sur la VM : l'arbre doit être propre.
-2. `python -m pytest -q tests/web` (9 s) : 47 verts, dont la parité.
-3. Ouvrir `HOST-PARITY.md` → « Real work left » : onze lignes, chacune avec
+2. `python -m pytest -q tests/web` (10 s) : 50 verts, dont la parité.
+3. Ouvrir `HOST-PARITY.md` → « Real work left » : huit lignes, chacune avec
    son plan. Les prendre dans l'ordre, une par une, avec la double preuve.
 4. Après chaque lot : `scripts.dev_check` (~17 min), régénérer
    `HOST-PARITY.md`, mettre à jour ce document.

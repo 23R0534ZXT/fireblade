@@ -15,6 +15,8 @@ services:
       - "${FIREBLADE_PORT:-8080}:8080"
     volumes:
       - "${FIREBLADE_CASES:-./cases}:/data/cases"
+      # Profiles and presentation plugins: without this mount they die with the container.
+      - "${FIREBLADE_PLUGINS:-./plugins}:/data/plugins"
     environment:
       TZ: "${TZ:-Europe/Paris}"
     restart: unless-stopped

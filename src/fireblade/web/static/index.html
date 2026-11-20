@@ -404,6 +404,31 @@
   </div>
 </div>
 
+<div class="modal" id="compat-modal">
+  <div class="dialog" style="min-width:760px">
+    <h3>Profiles and compatibility</h3>
+    <div class="body">
+      <div class="note">A presentation plugin declares columns and their types; the source values stay
+        untouched. Profiles the core declares come first, then the plugins installed on this instance.</div>
+      <div class="note" id="compat-where"></div>
+      <div id="compat-profiles" class="columns-list" style="max-height:220px"></div>
+      <div id="compat-plugins" class="columns-list" style="max-height:160px"></div>
+      <div class="note err" id="compat-note" hidden></div>
+      <div class="row">
+        <label for="compat-name">New profile</label>
+        <input id="compat-name" placeholder="Name of the profile to create from this analysis">
+        <button class="btn" data-act="profile-create">Create from this analysis</button>
+      </div>
+      <input type="file" id="plugin-input" accept=".json" hidden>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="plugin-install">Install a JSON plugin…</button>
+      <button class="btn" data-act="compat-reload">Reload</button>
+      <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="cell-modal">
   <div class="dialog" style="min-width:720px">
     <h3 id="cell-modal-title">Cell</h3>
@@ -423,6 +448,10 @@
       <div id="prefs-runtime" class="columns-list" style="max-height:300px"></div>
       <div class="note">Import profiles the core recognises, by their signature columns. A file whose header matches none of them is read as a plain table.</div>
       <div id="prefs-profiles" class="columns-list" style="max-height:180px"></div>
+      <div class="row"><label>Profiles and plugins</label>
+        <button class="btn" data-act="compat-open">Profiles and plugins…</button>
+        <span class="note" style="max-width:none">install a presentation plugin, or describe this analysis</span>
+      </div>
       <div class="row"><label for="prefs-scale">Text size</label>
         <select id="prefs-scale">
           <option value="1">100 %</option><option value="1.1">110 %</option>

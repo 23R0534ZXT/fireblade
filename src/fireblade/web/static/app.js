@@ -1051,6 +1051,73 @@ async function openPreferences() {
   }
 }
 
+/* ---------- profiles and plugins ---------- */
+
+/* The desktop's "Profils et plugins" dialog: what the core recognises, what this
+   instance loads, and the two ways to add one. */
+async function openCompatibility() {
+  closeModals();
+  $("compat-note").hidden = true;
+  $("compat-note").textContent = "";
+  $("compat-profiles").innerHTML = '<div class="emptygrid">Reading…</div>';
+  $("compat-plugins").innerHTML = "";
+  $("compat-modal").classList.add("show");
+  await loadCompatibility();
+}
+
+async function loadCompatibility() {
+  try {
+    const [profiles, plugins] = await Promise.all([api("/api/profiles"), api("/api/plugins")]);
+    $("compat-where").textContent = `Presentation plugins folder: ${plugins.directory}` +
+      (plugins.exists ? "" : " (not created yet)");
+    $("compat-profiles").innerHTML = profiles.profiles.map((profile) =>
+      `<label><span>${escapeHtml(profile.name)}</span><span class="pin">${profile.signature.length} field(s)
+        · ${profile.columns.length} column(s) · ${profile.timestamps.length} date(s)
+        · ${profile.booleans.length} boolean(s)</span></label>`).join("");
+    $("compat-plugins").innerHTML = (plugins.plugins || []).length
+      ? plugins.plugins.map((plugin) => `<label><span>${escapeHtml(plugin.name)}</span>
+          <span class="pin">${(plugin.signature || []).length} field(s) · ${(plugin.columns || []).length} column(s)
+          · ${(plugin.transforms || []).length} transform(s)</span></label>`).join("")
+      : '<div class="emptygrid">No presentation plugin installed on this instance.</div>';
+    const errors = plugins.errors || [];
+    $("compat-note").hidden = !errors.length;
+    $("compat-note").textContent = errors.join("\n");
+  } catch (error) {
+    $("compat-note").hidden = false;
+    $("compat-note").textContent = error.message;
+  }
+}
+
+async function installPluginFile(file) {
+  try {
+    const text = await file.text();
+    if (text.length > 2 * 1024 * 1024) throw new Error("A presentation plugin is limited to 2 MB.");
+    const plugin = JSON.parse(text);
+    const payload = await apiPost("/api/plugins", { plugin });
+    say(`Plugin installed: ${payload.name}`);
+    await loadCompatibility();
+  } catch (error) {
+    $("compat-note").hidden = false;
+    $("compat-note").textContent = error.message;
+  }
+}
+
+async function createProfileFromAnalysis() {
+  if (!state.openCase || !state.columns.length) { say("Open an analysis first", true); return; }
+  const name = $("compat-name").value.trim();
+  if (!name) { say("Give the profile a name first", true); return; }
+  try {
+    const payload = await apiPost(
+      `/api/cases/${state.openCase.id}/analyses/${state.analysis}/profiles`, { name });
+    $("compat-name").value = "";
+    say(`Profile created: ${payload.name} (${payload.fields.columns} column(s))`);
+    await loadCompatibility();
+  } catch (error) {
+    $("compat-note").hidden = false;
+    $("compat-note").textContent = error.message;
+  }
+}
+
 /* ---------- saved views ---------- */
 
 async function loadViews() {
@@ -2188,6 +2255,11 @@ function wire() {
     event.target.value = "";
     if (files.length) { openImportDialog(); previewFiles(files); }
   });
+  $("plugin-input").addEventListener("change", (event) => {
+    const file = (event.target.files || [])[0];
+    event.target.value = "";
+    if (file) installPluginFile(file);
+  });
   $("preview-input").addEventListener("change", (event) => {
     const files = [...(event.target.files || [])];
     event.target.value = "";
@@ -2388,6 +2460,10 @@ async function act(name, node) {
       loadRows(true); break;
     case "display-settings": $("settings-modal").classList.add("show"); break;
     case "settings-close": closeModals(); break;
+    case "compat-open": await openCompatibility(); break;
+    case "compat-reload": await loadCompatibility(); break;
+    case "plugin-install": $("plugin-input").click(); break;
+    case "profile-create": await createProfileFromAnalysis(); break;
     case "about":
       $("about-text").textContent =
         `Fireblade Host ${$("version").textContent.replace("Fireblade ", "")} — the same core as the Windows edition, ` +

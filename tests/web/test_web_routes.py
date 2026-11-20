@@ -330,3 +330,35 @@ def test_an_analysis_is_found_by_its_path(service, tmp_path):
     analyses = library.case(identifier)["analyses"]
     assert library._analysis_index_of(identifier, analyses[-1]["path"]) == len(analyses) - 1
     assert library._analysis_index_of(identifier, "/nowhere/absent.timeline") is None
+
+DEMO_PLUGIN = {"name": "Demo profile", "signature": ["Timestamp", "User"],
+               "columns": ["Timestamp", "User"], "timestamp": ["Timestamp"],
+               "booleans": [], "transforms": []}
+
+
+def test_a_presentation_plugin_is_installed_and_listed(service, tmp_path):
+    """A plugin declares columns and types; installing it makes the core see it."""
+    library, _identifier = service
+    library.plugins_root = tmp_path / "plugins"
+    installed = library.install_plugin(DEMO_PLUGIN)
+    assert installed["name"] == "Demo profile"
+    listing = library.plugins()
+    assert [item["name"] for item in listing["plugins"]] == ["Demo profile"]
+    assert listing["files"] == [Path(installed["path"]).name]
+    assert listing["errors"] == []
+    # A broken file is reported, never silently skipped.
+    (library.plugins_root / "broken.json").write_text("{not json", encoding="utf-8")
+    assert library.plugins()["errors"]
+    with pytest.raises((ValueError, ServiceError)):
+        library.install_plugin({"name": "no signature"})
+
+
+def test_a_profile_is_created_from_the_open_analysis(service, tmp_path):
+    library, identifier = service
+    library.plugins_root = tmp_path / "plugins-created"
+    created = library.create_profile(identifier, 0, "This case's columns")
+    assert created["fields"]["columns"] >= 4
+    assert created["fields"]["signature"] == 3
+    assert any(item["name"] == "This case's columns" for item in library.plugins()["plugins"])
+    with pytest.raises(ServiceError):
+        library.create_profile(identifier, 0, "   ")

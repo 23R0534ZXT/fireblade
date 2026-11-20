@@ -66,7 +66,7 @@ def serve(args) -> int:
 
     root = Path(args.root).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    app = create_app(root, _version(), tools_root=args.tools)
+    app = create_app(root, _version(), tools_root=args.tools, plugins_root=args.plugins or None)
     print(f"Fireblade Host {_version()} on {args.host}:{args.port} — cases in {root}", flush=True)
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level)
     return 0
@@ -83,6 +83,8 @@ def main(argv=None) -> int:
     p_serve.add_argument("--port", type=int, default=8080)
     p_serve.add_argument("--tools", default="/opt/fireblade/tools",
                          help="folder holding the .NET readers and their manifest")
+    p_serve.add_argument("--plugins", default="",
+                         help="folder holding presentation plugins (mount it, or they die with the container)")
     p_serve.add_argument("--log-level", default="info")
     p_serve.set_defaults(func=serve)
 

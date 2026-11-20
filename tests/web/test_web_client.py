@@ -85,6 +85,18 @@ def test_a_hayabusa_finding_opens_and_marks_its_alerts():
     assert "state.openCase = await api(`/api/cases/${state.openCase.id}`);" in js
 
 
+def test_the_compatibility_dialog_lists_and_installs_profiles():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="compat-modal"' in html
+    assert 'data-act="plugin-install"' in html
+    assert 'data-act="profile-create"' in html
+    for name in ("openCompatibility", "loadCompatibility", "installPluginFile",
+                 "createProfileFromAnalysis"):
+        assert f"function {name}(" in js, name
+    assert '"/api/plugins"' in js
+    assert "/profiles`" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

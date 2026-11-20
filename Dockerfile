@@ -56,4 +56,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # Opening a case and counting its rows is the smoke test of this image:
 #   docker run --rm -v /srv/fireblade/cases:/data/cases fireblade:host \
 #       python -m fireblade.web count
-CMD ["python", "-m", "fireblade.web", "serve", "--root", "/data/cases", "--host", "0.0.0.0", "--port", "8080", "--tools", "/opt/fireblade/tools"]
+# Presentation plugins are instance-level: the volume keeps them across a restart.
+CMD ["python", "-m", "fireblade.web", "serve", "--root", "/data/cases", "--host", "0.0.0.0", "--port", "8080", "--tools", "/opt/fireblade/tools", "--plugins", "/data/plugins"]

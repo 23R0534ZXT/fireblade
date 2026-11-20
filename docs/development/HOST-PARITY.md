@@ -7,9 +7,9 @@ every label `scripts/parity_inventory.py` finds in the Qt sources. A command is
 real desktop work this edition does not do yet, with a plan.
 
 - labels found in the Qt sources: **157**
-- of them, real commands: **104** (77 covered, 16 declared out of scope, 11 to do)
+- of them, real commands: **102** (78 covered, 16 declared out of scope, 8 to do)
 - parameter values counted as commands by the inventory: **40**
-- menu containers and dialog captions: **13**
+- menu containers and dialog captions: **15**
 
 A line of this page is the claim; the test named beside it is the proof.
 
@@ -70,6 +70,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Masquer cette colonne | Row menu > Hide this column, and Columns… | `test_the_row_menu_offers_every_cell_action` |
 | Modifier… | Actions & tracking > edit. | `test_tracking_actions_are_created_updated_and_exported` |
 | Ouvrir la détection EVTX | EVTX detection tab. | `test_detection_refuses_with_a_readable_reason` |
+| Plugins | Preferences > Profiles and plugins…: catalogue, installed plugins, errors. | `test_a_presentation_plugin_is_installed_and_listed` |
 | Qu’est-ce qui a lancé {} ? | Row menu > What launched this process? | `test_pivot_answers_what_launched_a_process` |
 | Recherche globale | Global search in the toolbar. | `test_a_global_search_finds_the_value_and_names_its_analysis` |
 | Rechercher dans tous les artefacts | Global search in the toolbar. | `test_a_global_search_finds_the_value_and_names_its_analysis` |
@@ -119,14 +120,11 @@ A line of this page is the claim; the test named beside it is the proof.
 ## Real work left
 
 - **(date et heure dans la même colonne)** — Let the timeline choose how a date column is read: one column, two columns, or none.
-- **Compatibilité Timeline Explorer** — Expose the desktop's compatibility checks in a Compatibility panel (profiles, sessions, TLE headers).
+- **Compatibilité Timeline Explorer** — Upload a .NET Timeline Explorer reader, inspect the readers it declares, and run a source through it.
 - **Date + heure (colonnes séparées)** — Same panel as above: the two-column reading of a date.
 - **Nœud libre…** — Add a free node to the attack graph, which needs the graph to be editable and stored.
 - **Ouvrir l’événement EVTX source** — Map a finding back to its source record in the EVTX analysis.
-- **Plugins** — Inventory the plugin host from the service and show what it would load.
-- **Profils et compatibilité** — A compatibility panel: profile catalogue, reader inventory, session compatibility.
 - **Sans date / corrélation uniquement** — Same panel: build the timeline without a date column.
-- **Sessions et compatibilité** — Same panel: what a saved session would load here.
 - **Standard / personnalisé** — Custom palette colours, not only the desktop's two themes.
 - **Voir le contexte EVTX de cette alerte** — Same mapping as above, shown around the alert.
 

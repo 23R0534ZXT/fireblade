@@ -61,9 +61,13 @@ class Library:
 
     MAX_OPEN = 4
 
-    def __init__(self, root: str | Path, tools_root: str | Path | None = None):
+    def __init__(self, root: str | Path, tools_root: str | Path | None = None,
+                 plugins_root: str | Path | None = None):
         self.root = Path(root).resolve()
         self.tools_root = Path(tools_root).resolve() if tools_root else None
+        # Presentation profiles live outside the cases: an instance-level setting,
+        # which a container must mount or lose on the next run.
+        self.plugins_root = Path(plugins_root).resolve() if plugins_root else None
         self.library = InvestigationLibrary(self.root)
         self._open: dict[tuple[str, int], Case] = {}
         self._timelines: dict[tuple[str, str | None], TimelineStore] = {}
@@ -425,12 +429,7 @@ class Library:
     # -- import profiles ---------------------------------------------------
 
     def profiles(self) -> dict:
-        """The declared import profiles, as the desktop's preferences list them.
-
-        Read-only on purpose: a profile is a small, editable preset in the desktop
-        edition; the Host edition shows what the core would recognise, so an
-        analyst can check a header before importing a file that does not match.
-        """
+        """The import profiles this instance recognises, plugins included."""
         from fireblade.core.profiles import all_profiles
 
         entries = []
@@ -444,6 +443,70 @@ class Library:
             })
         entries.sort(key=lambda item: item["name"].casefold())
         return {"profiles": entries, "count": len(entries)}
+
+    def _plugins_dir(self) -> Path:
+        from fireblade.core.profile_plugins import plugin_path
+
+        return Path(self.plugins_root) if self.plugins_root else Path(plugin_path())
+
+    def plugins(self) -> dict:
+        """The presentation plugins this instance loads, and the ones it refuses.
+
+        A presentation plugin declares columns and their types; the source values
+        stay untouched. An invalid file is listed with its reason rather than
+        silently skipped, so an analyst can repair it.
+        """
+        from fireblade.core.profile_plugins import load_plugins
+
+        directory = self._plugins_dir()
+        loaded, errors = load_plugins(directory if directory.exists() else None)
+        files = sorted(path.name for path in directory.glob("*.json"))[:100] if directory.exists() else []
+        return {"directory": str(directory), "exists": directory.exists(),
+                "plugins": loaded, "errors": errors, "files": files}
+
+    def install_plugin(self, payload: dict) -> dict:
+        """Validate a presentation plugin and store it where the core will read it."""
+        import hashlib
+
+        from fireblade.core.layout import write_json
+        from fireblade.core.profile_plugins import MAX_BYTES, validate_plugin
+
+        data = validate_plugin(payload if isinstance(payload, dict) else {})
+        encoded = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        if len(encoded) > MAX_BYTES:
+            raise ServiceError("A presentation plugin is limited to 2 MB.")
+        directory = self._plugins_dir()
+        directory.mkdir(parents=True, exist_ok=True)
+        target = directory / (hashlib.sha256(data["name"].encode("utf-8")).hexdigest()[:24] + ".json")
+        write_json(target, data)
+        return {"name": data["name"], "path": str(target),
+                "fields": {key: len(data.get(key) or [])
+                           for key in ("signature", "columns", "timestamp", "booleans", "transforms")}}
+
+    def create_profile(self, identifier: str, index: int, name: str) -> dict:
+        """Build a profile from an open analysis, as the desktop's dialog does.
+
+        The signature is the first three columns, the date column is the one the
+        core would guess, and every column of the analysis is kept: a profile is a
+        presentation, it never rewrites a value.
+        """
+        clean = (name or "").strip()
+        if not clean:
+            raise ServiceError("Give the profile a name.")
+        from fireblade.core.timeline import guess_time_column
+
+        case = self._case_for(identifier, index)
+        headers = list(case.headers)
+        if not headers:
+            raise ServiceError("This analysis has no column to describe.")
+        stamp = guess_time_column(headers)
+        payload = {"name": clean,
+                   "signature": headers[:min(3, len(headers))],
+                   "columns": headers,
+                   "timestamp": [headers[stamp]] if stamp is not None else [],
+                   "booleans": [],
+                   "transforms": []}
+        return self.install_plugin(payload)
 
     # -- portable case -----------------------------------------------------
 

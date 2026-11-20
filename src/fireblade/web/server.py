@@ -39,8 +39,9 @@ def _store_upload(folder: Path, file: UploadFile) -> Path:
     return target
 
 
-def create_app(root: str | Path, version: str = "", tools_root: str | Path | None = None) -> FastAPI:
-    library = Library(root, tools_root=tools_root)
+def create_app(root: str | Path, version: str = "", tools_root: str | Path | None = None,
+               plugins_root: str | Path | None = None) -> FastAPI:
+    library = Library(root, tools_root=tools_root, plugins_root=plugins_root)
     app = FastAPI(title="Fireblade Host", version=version or "0", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
     @app.exception_handler(ServiceError)
@@ -284,6 +285,34 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     def imports(identifier: str):
         try:
             return library.imports(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/plugins")
+    def plugins():
+        """The presentation plugins this instance loads, with their errors."""
+        try:
+            return library.plugins()
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.post("/api/plugins")
+    def install_plugin(payload: dict):
+        """Install a presentation plugin: declared columns and types, no values."""
+        plugin = (payload or {}).get("plugin", payload)
+        try:
+            return library.install_plugin(plugin)
+        except (ServiceError, ValueError, TypeError, OSError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/profiles")
+    def create_profile(identifier: str, index: int, payload: dict):
+        """Turn the columns of an open analysis into a named presentation profile."""
+        name = (payload or {}).get("name")
+        if not name:
+            raise HTTPException(status_code=400, detail="A 'name' field is required.")
+        try:
+            return library.create_profile(identifier, index, name)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

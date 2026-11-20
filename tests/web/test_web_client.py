@@ -143,6 +143,18 @@ def test_the_graph_takes_a_free_node():
     assert "await buildGraph();" in js
 
 
+def test_the_tracking_tab_holds_three_lists():
+    js, html = _read(APP), _read(INDEX)
+    for sub in ("actions", "indicators", "entities"):
+        assert f'data-sub="{sub}"' in html, sub
+        assert f'id="sub-{sub}"' in html, sub
+    assert "function showWorkspaceSub(" in js
+    assert "function renderEntities(" in js and "function renderIndicators(" in js
+    assert "/entities" in js and "/iocs" in js
+    assert "function addEntity(" in js and "function addIndicators(" in js
+    assert "function removeIndicator(" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

@@ -1176,6 +1176,63 @@ class Library:
                      for item in data.get("iocs", [])],
         }
 
+    ENTITY_KINDS = ("machine", "account", "domain", "mailbox", "share")
+
+    def add_entity(self, identifier: str, fields: dict) -> dict:
+        """Declare a machine or an account in the case, as the desktop's dialog does.
+
+        The graph and the report already read these entries; this is the way to fill
+        them from the browser.
+        """
+        from fireblade.core.case_workspace import add_entity
+
+        payload = dict(fields or {})
+        kind = str(payload.pop("kind", "machine") or "machine")
+        label = str(payload.pop("label", "") or "").strip()
+        if kind not in self.ENTITY_KINDS:
+            raise ServiceError(f"Unknown entity kind: {kind}")
+        if not label:
+            raise ServiceError("Give the machine or the account a name.")
+        allowed = {key: payload.get(key) for key in ("hostname", "ip", "os", "notes", "tags")
+                   if payload.get(key) not in (None, "")}
+        if isinstance(allowed.get("tags"), str):
+            allowed["tags"] = [item.strip() for item in allowed["tags"].split(",") if item.strip()]
+        entry = add_entity(self.library.folder(identifier), kind, label, **allowed)
+        return dict({key: entry.get(key) for key in
+                     ("id", "kind", "label", "hostname", "ip", "os", "notes", "tags")})
+
+    def add_indicator(self, identifier: str, values, source: str = "", label: str = "",
+                      status: str = "new", tags=None) -> dict:
+        """Track indicators in the case: one value, or a pasted list.
+
+        A single value goes through `add_ioc`, which refuses a duplicate; a list goes
+        through `add_iocs`, which skips what the case already holds so a re-import
+        never loses what got in.
+        """
+        from fireblade.core.case_workspace import add_ioc, add_iocs
+
+        folder = self.library.folder(identifier)
+        if isinstance(values, str):
+            values = [line.strip() for line in values.splitlines()]
+        cleaned = [str(item).strip() for item in (values or []) if str(item).strip()]
+        if not cleaned:
+            raise ServiceError("Give at least one indicator.")
+        if isinstance(tags, str):
+            tags = [item.strip() for item in tags.split(",") if item.strip()]
+        if len(cleaned) == 1:
+            entry = add_ioc(folder, cleaned[0], label=label, source=source,
+                            status=status or "new", tags=tags or [])
+            return {"added": 1, "skipped": 0, "indicators": [entry]}
+        result = add_iocs(folder, cleaned, source=source)
+        return {"added": int(result.get("added") or 0), "skipped": int(result.get("skipped") or 0),
+                "indicators": list(result.get("indicators") or [])}
+
+    def remove_indicator(self, identifier: str, ioc_id: str) -> dict:
+        from fireblade.core.case_workspace import remove_ioc
+
+        remove_ioc(self.library.folder(identifier), str(ioc_id))
+        return {"removed": str(ioc_id)}
+
     def add_action(self, identifier: str, fields: dict) -> dict:
         from fireblade.core.case_workspace import add_action
 

@@ -236,6 +236,16 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 .timeline-dates .tsrc{display:flex;align-items:center;gap:6px;font-size:11px}
 .timeline-dates .tname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* The tracking tab carries three lists, as the desktop's panel does. */
+#indicator-values{flex:1 1 240px;min-width:160px;height:34px;resize:vertical;border:1px solid var(--border);
+  background:var(--base);font-family:inherit;font-size:11px;padding:2px 4px;outline:none}
+#sub-entities .filterbar input{flex:1 1 90px;min-width:0}
+.subtabs{display:flex;gap:2px;padding:2px 6px 0;border-bottom:1px solid var(--border);background:var(--window)}
+.subtab{padding:2px 12px;border:1px solid var(--border);border-bottom:none;background:var(--header);
+  font-size:11px;line-height:18px;cursor:default;border-radius:2px 2px 0 0}
+.subtab.active{background:var(--base)}
+.subtab:hover:not(.active){background:var(--btn-hover)}
+
 /* Custom colours: the desktop's six keys, in the order its dialog presents them. */
 .pcol{display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:11px}
 .pcol input[type=color]{width:26px;height:20px;padding:0;border:1px solid var(--border-soft);background:var(--base)}

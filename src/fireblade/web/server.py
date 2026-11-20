@@ -349,6 +349,34 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/entities")
+    def add_entity(identifier: str, payload: dict):
+        """Declare a machine or an account: the graph and the report read them."""
+        try:
+            return library.add_entity(identifier, payload)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/iocs")
+    def add_indicators(identifier: str, payload: dict):
+        """Track one indicator, or a pasted list, in the case."""
+        values = (payload or {}).get("values") or (payload or {}).get("value") or ""
+        try:
+            return library.add_indicator(identifier, values,
+                                         source=(payload or {}).get("source") or "",
+                                         label=(payload or {}).get("label") or "",
+                                         status=(payload or {}).get("status") or "new",
+                                         tags=(payload or {}).get("tags") or [])
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.delete("/api/cases/{identifier}/iocs/{ioc_id}")
+    def remove_indicator(identifier: str, ioc_id: str):
+        try:
+            return library.remove_indicator(identifier, ioc_id)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/actions")
     def add_action(identifier: str, payload: dict):
         try:

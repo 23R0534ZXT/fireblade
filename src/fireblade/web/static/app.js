@@ -1481,12 +1481,115 @@ async function runGlobalSearch() {
 
 const actionState = { items: [] };
 
+const workspaceState = { entities: [], indicators: [], selected: null };
+
 async function loadActions() {
   if (!state.openCase) return;
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/workspace`);
     actionState.items = payload.actions;
+    workspaceState.entities = payload.entities || [];
+    workspaceState.indicators = payload.iocs || [];
     renderActions();
+    renderEntities();
+    renderIndicators();
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+function showWorkspaceSub(name) {
+  document.querySelectorAll(".subtab[data-sub]").forEach((tab) =>
+    tab.classList.toggle("active", tab.dataset.sub === name));
+  for (const view of ["actions", "indicators", "entities"]) {
+    const box = $(`sub-${view}`);
+    if (box) box.style.display = view === name ? "flex" : "none";
+  }
+}
+
+function renderEntities() {
+  $("entity-rows").innerHTML = workspaceState.entities.length
+    ? workspaceState.entities.map((item) => `<tr>
+        <td>${escapeHtml(item.kind || "")}</td>
+        <td>${escapeHtml(item.label || "")}</td>
+        <td>${escapeHtml(item.hostname || "")}</td>
+        <td>${escapeHtml(item.ip || "")}</td>
+        <td>${escapeHtml(item.os || "")}</td></tr>`).join("")
+    : '<tr><td colspan="5" class="cellnull">No machine or account declared in this case.</td></tr>';
+  const hosts = workspaceState.entities.filter((item) => item.kind === "machine").length;
+  const accounts = workspaceState.entities.filter((item) => item.kind === "account").length;
+  const total = workspaceState.entities.length;
+  $("entity-summary").textContent = `${total} entr${total === 1 ? "y" : "ies"} — `
+    + `${hosts} machine(s), ${accounts} account(s)`;
+}
+
+function renderIndicators() {
+  $("indicator-rows").innerHTML = workspaceState.indicators.length
+    ? workspaceState.indicators.map((item) => `<tr data-indicator="${escapeHtml(item.id)}"
+        class="${workspaceState.selected === item.id ? "sel" : ""}">
+        <td>${escapeHtml(item.kind || "")}</td>
+        <td title="${escapeHtml(item.value || "")}">${escapeHtml(item.value || "")}</td>
+        <td>${escapeHtml(item.label || "")}</td>
+        <td>${escapeHtml(item.status || "")}</td></tr>`).join("")
+    : '<tr><td colspan="4" class="cellnull">No indicator tracked in this case.</td></tr>';
+  $("indicator-remove").disabled = !workspaceState.selected;
+  $("indicator-summary").textContent = `${workspaceState.indicators.length} indicator(s) tracked`;
+  $("indicator-rows").querySelectorAll("tr[data-indicator]").forEach((row) => {
+    row.addEventListener("click", () => {
+      workspaceState.selected = (workspaceState.selected === row.dataset.indicator)
+        ? null : row.dataset.indicator;
+      renderIndicators();
+    });
+  });
+}
+
+async function addEntity() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const label = $("entity-label").value.trim();
+  if (!label) { say("Give the machine or the account a name", true); return; }
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/entities`, {
+      kind: $("entity-kind").value, label,
+      hostname: $("entity-hostname").value.trim(),
+      ip: $("entity-ip").value.trim(),
+      os: $("entity-os").value.trim(),
+    });
+    $("entity-label").value = "";
+    $("entity-hostname").value = "";
+    $("entity-ip").value = "";
+    $("entity-os").value = "";
+    await loadActions();
+    say(`${payload.kind} added: ${payload.label}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function addIndicators() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const values = $("indicator-values").value.trim();
+  if (!values) { say("Paste at least one indicator", true); return; }
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/iocs`, {
+      values, label: $("indicator-label").value.trim(), source: "typed in the Host edition",
+    });
+    $("indicator-values").value = "";
+    $("indicator-label").value = "";
+    await loadActions();
+    say(`${payload.added} indicator(s) tracked`
+      + (payload.skipped ? `, ${payload.skipped} skipped (already there or unreadable)` : ""));
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function removeIndicator() {
+  if (!state.openCase || !workspaceState.selected) return;
+  try {
+    await apiDelete(`/api/cases/${state.openCase.id}/iocs/${encodeURIComponent(workspaceState.selected)}`);
+    workspaceState.selected = null;
+    await loadActions();
+    say("Indicator removed");
   } catch (error) {
     say(error.message, true);
   }
@@ -2508,6 +2611,12 @@ function wire() {
   $("imports-refresh").addEventListener("click", loadImports);
   $("imports-status").addEventListener("change", renderImports);
   $("action-add").addEventListener("click", addAction);
+  document.querySelectorAll(".subtab[data-sub]").forEach((tab) => {
+    tab.addEventListener("click", () => showWorkspaceSub(tab.dataset.sub));
+  });
+  $("entity-add").addEventListener("click", addEntity);
+  $("indicator-add").addEventListener("click", addIndicators);
+  $("indicator-remove").addEventListener("click", removeIndicator);
   $("action-export").addEventListener("click", () => {
     if (!state.openCase) { say("Open a case first", true); return; }
     window.location.href = `/api/cases/${state.openCase.id}/actions/export`;

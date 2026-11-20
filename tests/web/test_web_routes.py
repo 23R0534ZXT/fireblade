@@ -461,3 +461,41 @@ def test_a_free_node_joins_the_graph_and_stays_with_the_case(service):
     assert any(item["label"] == "SRV-EXCHANGE" for item in graph["nodes"])
     with pytest.raises(ServiceError):
         library.add_graph_node(identifier, "   ")
+
+def test_a_machine_is_declared_and_reaches_the_graph(service):
+    """The desktop's "Machine ou compte" dialog, and what the graph reads."""
+    library, identifier = service
+    machine = library.add_entity(identifier, {"kind": "machine", "label": "SRV-DC01",
+                                              "hostname": "srv-dc01", "ip": "10.0.0.5",
+                                              "os": "Windows Server 2022"})
+    assert machine["kind"] == "machine"
+    assert machine["hostname"] == "srv-dc01"
+    account = library.add_entity(identifier, {"kind": "account", "label": "admin.svc"})
+    assert account["kind"] == "account"
+    workspace = library.workspace(identifier)
+    assert {item["label"] for item in workspace["entities"]} == {"SRV-DC01", "admin.svc"}
+    graph = library.graph(identifier)
+    assert any(item["label"] == "SRV-DC01" for item in graph["nodes"])
+    with pytest.raises(ServiceError):
+        library.add_entity(identifier, {"kind": "machine", "label": "  "})
+    with pytest.raises(ServiceError):
+        library.add_entity(identifier, {"kind": "nonsense", "label": "x"})
+
+
+def test_indicators_are_tracked_and_removed(service):
+    """A tracked list, not only a pasted scan: the case remembers it."""
+    library, identifier = service
+    single = library.add_indicator(identifier, "192.0.2.66", label="C2 candidate")
+    assert single["added"] == 1
+    batch = library.add_indicator(identifier, "192.0.2.66\nevil.example.com\nnot-an-ioc!!")
+    assert batch["added"] == 1 or batch["skipped"] >= 1
+    tracked = library.workspace(identifier)["iocs"]
+    assert any(item["value"] == "192.0.2.66" for item in tracked)
+    assert any(item["value"] == "evil.example.com" for item in tracked)
+    identity = next(item["id"] for item in tracked if item["value"] == "192.0.2.66")
+    library.remove_indicator(identifier, identity)
+    assert all(item["value"] != "192.0.2.66" for item in library.workspace(identifier)["iocs"])
+    with pytest.raises(ServiceError):
+        library.add_indicator(identifier, "   ")
+    with pytest.raises((ValueError, ServiceError)):
+        library.remove_indicator(identifier, "not-an-id")

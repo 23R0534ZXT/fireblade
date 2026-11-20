@@ -23,8 +23,9 @@ names what the Host does for each.
 
 ## Verdict
 
-**The port is not complete.** Twenty domains are covered, but this audit found
-**19 features the Host does not have** and **9 it has partially**. None of them was
+**The port is not complete.** Twenty-one domains are covered, but this audit found
+**17 features the Host does not have** and **9 it has partially** (two closed since the
+audit was written: machines and accounts, and tracked indicators). None of them was
 visible in the label inventory, which is why `HOST-PARITY.md` said "nothing left" —
 and that claim is withdrawn here.
 
@@ -66,8 +67,8 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Hayabusa — rules | "Règles de détection…" (enable, disable, override) | **no** |
 | Hayabusa — assistant | "Explain this finding", "Ask", local model | **declared** — no model is connected |
 | Attack graph | build, layout, ATT&CK layer, PNG, free node with tags | **yes** |
-| Workspace — machines and accounts | "Machine ou compte" (declared hosts, accounts) | **no** |
-| Workspace — indicators | "Indicateurs": a stored list in the case, "Importer une liste" | **partial** — a pasted scan, nothing stored |
+| Workspace — machines and accounts | "Machine ou compte" (declared hosts, accounts) | **yes** — Actions & tracking > Machines & accounts |
+| Workspace — indicators | "Indicateurs": a stored list in the case, "Importer une liste" | **yes** — Actions & tracking > Indicators (add a list, remove) |
 | Client report | HTML, bookmarks-only or bounded, title and mission | **partial** — HTML only, no PDF |
 | Tracking | create, edit, close, reopen, export CSV | **yes** |
 | Preferences | runtime, readers, profiles, text scale, palette, custom colours | **partial** — no copy behaviour, date format, tab wrapping |

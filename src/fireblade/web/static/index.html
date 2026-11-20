@@ -198,6 +198,154 @@
       </div>
 
       <div id="actions-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="subtabs">
+          <div class="subtab active" data-sub="actions">Actions</div>
+          <div class="subtab" data-sub="indicators">Indicators</div>
+          <div class="subtab" data-sub="entities">Machines &amp; accounts</div>
+        </div>
+
+        <div class="subview" id="sub-actions" style="display:flex;flex-direction:column;flex:1;min-height:0">
+          <div class="filterbar">
+            <input class="search" id="action-title" placeholder="New action — what has to be done?">
+            <select class="select" id="action-owner">
+              <option value="us">us</option>
+              <option value="client">client</option>
+              <option value="third-party">third-party</option>
+            </select>
+            <select class="select" id="action-priority">
+              <option value="medium">medium</option>
+              <option value="low">low</option>
+              <option value="high">high</option>
+              <option value="critical">critical</option>
+            </select>
+            <button class="btn" id="action-add">Add</button>
+            <button class="btn" id="action-export" title="Download the tracking as a spreadsheet">Export CSV</button>
+          </div>
+          <div class="gridwrap" style="flex:1">
+            <div class="gridbody">
+              <table>
+                <colgroup><col style="width:80px"><col><col style="width:110px"><col style="width:100px"><col style="width:100px"><col style="width:120px"></colgroup>
+                <thead><tr><th>Date</th><th>Action</th><th>Owner</th><th>Priority</th><th>Status</th><th></th></tr></thead>
+                <tbody id="action-rows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="pager"><div class="info" id="action-summary"></div></div>
+        </div>
+
+        <div class="subview" id="sub-indicators" style="display:none;flex-direction:column;flex:1;min-height:0">
+          <div class="filterbar">
+            <textarea id="indicator-values" rows="2"
+              placeholder="One indicator, or a pasted list — one per line"></textarea>
+            <input id="indicator-label" placeholder="label (optional)">
+            <button class="btn" id="indicator-add">Track</button>
+            <button class="btn" id="indicator-remove" disabled>Remove selected</button>
+            <div class="grow"></div>
+            <div class="info" id="indicator-summary"></div>
+          </div>
+          <div class="gridwrap" style="flex:1">
+            <div class="gridbody">
+              <table>
+                <colgroup><col style="width:90px"><col><col style="width:200px"><col style="width:110px"></colgroup>
+                <thead><tr><th>Kind</th><th>Indicator</th><th>Label</th><th>Status</th></tr></thead>
+                <tbody id="indicator-rows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="subview" id="sub-entities" style="display:none;flex-direction:column;flex:1;min-height:0">
+          <div class="filterbar">
+            <select class="select" id="entity-kind">
+              <option value="machine">machine</option>
+              <option value="account">account</option>
+              <option value="domain">domain</option>
+              <option value="mailbox">mailbox</option>
+              <option value="share">share</option>
+            </select>
+            <input id="entity-label" placeholder="Name">
+            <input id="entity-hostname" placeholder="Hostname (optional)">
+            <input id="entity-ip" placeholder="IP (optional)">
+            <input id="entity-os" placeholder="OS (optional)">
+            <button class="btn" id="entity-add">Add</button>
+            <div class="grow"></div>
+            <div class="info" id="entity-summary"></div>
+          </div>
+          <div class="gridwrap" style="flex:1">
+            <div class="gridbody">
+              <table>
+                <colgroup><col style="width:90px"><col><col style="width:150px"><col style="width:130px"><col style="width:90px"></colgroup>
+                <thead><tr><th>Kind</th><th>Name</th><th>Hostname</th><th>IP</th><th>OS</th></tr></thead>
+                <tbody id="entity-rows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="graph-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="filterbar">
+          <button class="btn" id="graph-build">Build the graph</button>
+          <button class="btn" id="graph-navigator">Export an ATT&CK layer…</button>
+          <button class="btn" id="graph-png">Export PNG…</button>
+          <button class="btn" id="graph-node">Free node…</button>
+          <div class="info" id="graph-summary">The graph follows the kill chain: hosts on the left, techniques, then tactics.</div>
+        </div>
+        <div class="graph-wrap" id="graph-wrap">
+          <svg id="graph-edges" width="100%" height="100%"></svg>
+          <div id="graph-nodes"></div>
+        </div>
+      </div>
+
+      <div id="hayabusa-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="filterbar">
+          <select class="select" id="hayabusa-level">
+            <option value="informational">informational</option>
+            <option value="low">low</option>
+            <option value="medium" selected>medium</option>
+            <option value="high">high</option>
+            <option value="critical">critical</option>
+          </select>
+          <button class="btn" id="hayabusa-run">Run the detection</button>
+          <div class="info" id="hayabusa-summary">No detection run yet.</div>
+          <div class="note" style="margin-left:auto">No AI assistant is connected in this edition: the detection runs locally on the server.</div>
+        </div>
+        <div class="gridwrap" style="flex:1">
+          <div class="gridbody">
+            <table>
+              <colgroup><col style="width:170px"><col style="width:90px"><col style="width:30%"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col><col style="width:120px"></colgroup>
+              <thead><tr><th>Timestamp</th><th>Level</th><th>Rule</th><th>Computer</th><th>Channel</th><th>EventID</th><th>Tactics</th><th>Alerts</th></tr></thead>
+              <tbody id="hayabusa-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="imports-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="filterbar">
+          <select class="select" id="imports-status">
+            <option value="">All files</option>
+            <option value="complete">Imported</option>
+            <option value="attention">With warnings</option>
+            <option value="unsupported">Not imported</option>
+            <option value="duplicate">Duplicate</option>
+            <option value="error">Error</option>
+          </select>
+          <button class="btn" id="imports-refresh">Refresh</button>
+          <div class="info" id="imports-summary"></div>
+        </div>
+        <div class="gridwrap" style="flex:1">
+          <div class="gridbody">
+            <table>
+              <colgroup><col style="width:34%"><col style="width:110px"><col style="width:150px"><col></colgroup>
+              <thead><tr><th>File</th><th>State</th><th>Reader</th><th>Reason</th></tr></thead>
+              <tbody id="imports-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="actions-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="filterbar">
           <input class="search" id="action-title" placeholder="New action — what has to be done?">
           <select class="select" id="action-owner">
@@ -454,6 +602,9 @@
       <div class="note" id="compat-where"></div>
       <div id="compat-profiles" class="columns-list" style="max-height:220px"></div>
       <div id="compat-plugins" class="columns-list" style="max-height:160px"></div>
+      <div class="note">Timeline Explorer reader DLLs: not available in this edition — the image does
+        not carry the .NET plugin host, and running a third-party DLL inside the service container is
+        a decision to take, not an oversight.</div>
       <div class="note err" id="compat-note" hidden></div>
       <div class="row">
         <label for="compat-name">New profile</label>

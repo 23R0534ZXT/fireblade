@@ -179,6 +179,29 @@ async function runDestroy() {
   }
 }
 
+async function archiveCase() {
+  if (!state.openCase) { say("Open the case to archive first", true); return; }
+  if (!window.confirm(`Archive "${state.openCase.name}" and free its working folder?`)) return;
+  say("Archiving the case…");
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/archive`, {});
+    state.openCase = null;
+    await loadCases();
+    showTab("cases");
+    say(`Archived: ${Math.round(payload.bytes / 1024 / 1024)} MB kept, ${Math.round(payload.removed_bytes / 1024 / 1024)} MB freed`);
+  } catch (error) { say(error.message, true); }
+}
+
+async function restoreCase() {
+  if (!state.openCase) { say("Open the archived case first", true); return; }
+  say("Restoring…");
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/restore`, {});
+    await loadCases();
+    say(`Case restored: ${payload.analyses} analysis(es)`);
+  } catch (error) { say(error.message, true); }
+}
+
 async function apiPost(path, body) {
   const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" },
                                        body: JSON.stringify(body) });
@@ -1469,6 +1492,8 @@ async function act(name) {
     case "new-case": openCaseDialog("create"); break;
     case "rename-case": openCaseDialog("rename"); break;
     case "case-save": await saveCase(); break;
+    case "archive-case": await archiveCase(); break;
+    case "restore-case": await restoreCase(); break;
     case "destroy-case": openDestroyDialog(); break;
     case "destroy-run": await runDestroy(); break;
     case "report": $("report-modal").classList.add("show"); break;

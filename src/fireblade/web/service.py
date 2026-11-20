@@ -279,6 +279,32 @@ class Library:
             raise ServiceError("Aucune import de ce case ne contient de journal EVTX à analyser.")
         merged = [finding for item in results for finding in item["findings"]]
         return {"runs": results, "findings": merged[:2000], "total": sum(item["total"] for item in results)}
+    # -- archive and release -----------------------------------------------
+
+    def archive_case(self, identifier: str) -> dict:
+        """Pack the case into an archive outside its folder, then free the folder."""
+        from fireblade.core.case_storage import archive_and_release
+
+        target = self.root / "archives" / (identifier[:8] + ".fireblade-archive.zip")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        self.close_case(identifier)
+        result = archive_and_release(self.library, identifier, target)
+        return {"archive": str(target), "bytes": target.stat().st_size,
+                "removed_bytes": int(result.get("removed_bytes") or 0)}
+
+    def restore_case(self, identifier: str) -> dict:
+        """Re-open an archive as a new case: the archive is the retained copy, and
+        the emptied folder stays as the catalogue entry that points at it."""
+        from fireblade.core.case_storage import restore_archive
+
+        if not self.library.read(identifier).get("storage_archive"):
+            raise ServiceError("This case is not archived: there is nothing to restore.")
+        result = restore_archive(self.library, identifier)
+        case = result.get("case") or {}
+        restored = self.library.case(case.get("id")) if case.get("id") else {}
+        return {"id": case.get("id"), "name": case.get("name"),
+                "analyses": len(restored.get("analyses") or [])}
+
     # -- settings ----------------------------------------------------------
 
     def settings(self) -> dict:

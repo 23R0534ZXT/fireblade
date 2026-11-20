@@ -227,6 +227,20 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/archive")
+    def archive_case(identifier: str):
+        try:
+            return library.archive_case(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/restore")
+    def restore_case(identifier: str):
+        try:
+            return library.restore_case(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/settings")
     def settings():
         try:

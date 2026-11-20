@@ -28,6 +28,8 @@ const state = {
   multiSort: [],       // [{column, descending}] in application order
   hidden: new Set(),    // column indexes hidden by the analyst
   pinned: new Set(),    // column indexes frozen on the left
+  selection: new Set(), // row ids selected on this page (Shift extends, Ctrl toggles)
+  anchor: null,         // the row a Shift-click extends from
 };
 
 /* ---------- small helpers ---------- */
@@ -53,6 +55,13 @@ function say(message, error) {
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+const FILTER_PREFIX = { eq: "= ", ne: "!= ", gt: "> ", ge: ">= ", lt: "< ", le: "<= ",
+                       starts: "^ ", ends: "$ ", contains: "", empty: "empty", not_empty: "notempty" };
+
+function filterPrefix(operator) {
+  return FILTER_PREFIX[operator] === undefined ? "" : FILTER_PREFIX[operator];
 }
 
 function parseFilterValue(raw) {
@@ -83,11 +92,37 @@ function defaultWidth(name, index) {
 
 const previewState = { items: [] };
 
+const DELIMITER_NAMES = { ",": "comma", "\t": "tab", ";": "semicolon", "|": "pipe" };
+
+/* The desktop's import dialog offers a separator and an encoding; the preview must
+   answer with the same choices, and the import must read the file with them. */
+async function fillCsvOptions() {
+  const delimiter = $("preview-delimiter");
+  if (delimiter.dataset.ready) return;
+  let payload = {};
+  try { payload = await api("/api/settings"); } catch (_) { payload = {}; }
+  const delimiters = payload.csv_delimiters || [",", "\t", ";", "|"];
+  delimiter.innerHTML = ['<option value="">automatic</option>'].concat(delimiters.map((code) =>
+    `<option value="${escapeHtml(code)}">${escapeHtml(DELIMITER_NAMES[code] || code)}</option>`)).join("");
+  const encodings = payload.csv_encodings || ["auto", "utf-8", "utf-16", "utf-32", "cp1252", "latin-1"];
+  $("preview-encoding").innerHTML = encodings.map((code) =>
+    `<option value="${escapeHtml(code)}">${code === "auto" ? "automatic (BOM)" : escapeHtml(code)}</option>`).join("");
+  delimiter.dataset.ready = "1";
+}
+
+function csvOptions() {
+  return { delimiter: $("preview-delimiter").value || null,
+           encoding: $("preview-encoding").value || "auto" };
+}
+
 function openImportDialog() {
   if (!state.openCase) { say("Open a case before importing", true); return; }
   previewState.items = [];
   $("preview-input").value = "";
   $("preview-server").value = "";
+  $("preview-delimiter").value = "";
+  $("preview-encoding").value = "auto";
+  fillCsvOptions();
   $("preview-note").textContent = "Choose a file, or give a path on the server: the columns and the recognised profile are shown before anything is read.";
   $("preview-note").classList.remove("err");
   renderPreview();
@@ -104,6 +139,9 @@ async function previewFiles(files) {
     $("preview-note").textContent = `Reading ${file.name} (${done}/${files.length})…`;
     const body = new FormData();
     body.append("file", file);
+    const options = csvOptions();
+    if (options.delimiter) body.append("delimiter", options.delimiter);
+    if (options.encoding) body.append("encoding", options.encoding);
     try {
       const response = await fetch(`/api/cases/${state.openCase.id}/preview-upload`, { method: "POST", body });
       const payload = await response.json().catch(() => ({}));
@@ -122,7 +160,7 @@ async function previewServerPath() {
   const source = $("preview-server").value.trim();
   if (!source) { $("preview-note").textContent = "Give a path on the server first."; return; }
   try {
-    const payload = await apiPost(`/api/cases/${state.openCase.id}/preview`, { source });
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/preview`, { source, ...csvOptions() });
     previewState.items.push({ name: payload.name, payload });
     $("preview-note").textContent = "Preview ready. Nothing has been read into the case yet.";
     $("preview-note").classList.remove("err");
@@ -198,9 +236,30 @@ function renderPreview() {
   }).join("");
 }
 
+/* A new separator or encoding changes what the file would become: re-read the
+   previews already on screen rather than importing under the old reading. */
+async function refreshPreviews() {
+  if (!previewState.items.length) return;
+  const options = csvOptions();
+  for (const item of previewState.items) {
+    const source = item.payload && item.payload.path;
+    if (!source) continue;
+    try {
+      item.payload = await apiPost(`/api/cases/${state.openCase.id}/preview`, { source, ...options });
+      delete item.error;
+    } catch (error) {
+      item.error = error.message;
+    }
+  }
+  $("preview-note").textContent = `Re-read with the chosen options: ${previewState.items.length} file(s). Nothing has been read into the case yet.`;
+  $("preview-note").classList.remove("err");
+  renderPreview();
+}
+
 async function confirmImport() {
   if (!previewState.items.length) return;
   const layout = $("import-layout").value;
+  const options = csvOptions();
   let imported = 0;
   for (const item of previewState.items) {
     if (item.error) continue;
@@ -208,7 +267,8 @@ async function confirmImport() {
     if (!source) continue;
     say(`Importing ${item.name}…`);
     try {
-      const payload = await apiPost(`/api/cases/${state.openCase.id}/import`, { source, organization: layout });
+      const payload = await apiPost(`/api/cases/${state.openCase.id}/import`,
+        { source, organization: layout, ...options });
       if (payload.analyses) imported += 1;
       else say(`${item.name}: ${payload.message || "not recognised"}`, true);
     } catch (error) {
@@ -563,16 +623,161 @@ function selectedRowValues() {
   return row || null;
 }
 
+function rowSelected(id) {
+  return state.selection.has(String(id));
+}
+
+function paintSelection() {
+  $("body").querySelectorAll("tr[data-row]").forEach((node) => {
+    node.classList.toggle("sel", rowSelected(node.dataset.row));
+  });
+}
+
+/* The desktop selects a range with Shift and adds one row with Ctrl; the actions
+   that follow (copy, mark, note) apply to the whole selection. */
+function selectRow(tr, event) {
+  const id = String(tr.dataset.row);
+  const row = state.rows.find((item) => String(item[0]) === id);
+  if (event.shiftKey && state.anchor !== null) {
+    const ids = state.rows.map((item) => String(item[0]));
+    const from = ids.indexOf(String(state.anchor));
+    const to = ids.indexOf(id);
+    if (from >= 0 && to >= 0) {
+      state.selection = new Set(ids.slice(Math.min(from, to), Math.max(from, to) + 1));
+    }
+  } else if (event.ctrlKey || event.metaKey) {
+    if (state.selection.has(id)) state.selection.delete(id); else state.selection.add(id);
+    state.anchor = id;
+  } else {
+    state.selection = new Set([id]);
+    state.anchor = id;
+  }
+  state.selection.add(id);
+  state.selected = row ? row[0] : null;
+  paintSelection();
+  showDetails(row);
+  say(state.selection.size > 1 ? `${state.selection.size} rows selected` : "1 row selected");
+}
+
+function selectedIds() {
+  const ids = [...state.selection];
+  if (ids.length) return ids;
+  return state.selected === null || state.selected === undefined ? [] : [String(state.selected)];
+}
+
 async function copySelectedRows() {
-  const row = selectedRowValues();
-  if (!row) { say("Select a row first", true); return; }
-  const text = state.columns.map((name, index) => `${name}: ${row[index] ?? ""}`).join("\n");
+  const ids = selectedIds();
+  if (!ids.length) { say("Select a row first", true); return; }
+  const blocks = ids.map((id) => {
+    const row = state.rows.find((item) => String(item[0]) === id);
+    return row ? state.columns.map((name, index) => `${name}: ${row[index] ?? ""}`).join("\n") : "";
+  }).filter(Boolean);
   try {
-    await navigator.clipboard.writeText(text);
-    say("Row copied to the clipboard");
+    await navigator.clipboard.writeText(blocks.join("\n\n"));
+    say(`${blocks.length} row(s) copied to the clipboard`);
   } catch (_) {
     say("The browser refused clipboard access", true);
   }
+}
+
+async function postBookmark(rowId, note) {
+  const body = JSON.stringify({ row_id: Number(rowId), note: note ?? "" });
+  const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/bookmark`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.detail || response.statusText);
+  if ((note || "").trim()) state.bookmarks.set(String(rowId), note);
+  else state.bookmarks.delete(String(rowId));
+  return payload;
+}
+
+/* A mark is a note: the core removes it when the note is empty. One call per row,
+   capped so a selection of a whole page cannot hang the window. */
+async function markSelection(note) {
+  const ids = selectedIds();
+  if (!ids.length) { say("Select a row first", true); return; }
+  const limited = ids.slice(0, 200);
+  try {
+    for (const id of limited) await postBookmark(id, note ?? "");
+  } catch (error) {
+    say(error.message, true);
+    renderGrid();
+    return;
+  }
+  renderGrid();
+  say((note || "").trim()
+    ? `${limited.length} row(s) marked`
+    : `${limited.length} row(s) unmarked`);
+}
+
+function contextColumnIndex() {
+  return contextCell === null || contextCell === undefined ? null : Number(contextCell);
+}
+
+async function copyCellValue() {
+  const column = contextColumnIndex();
+  if (column === null) { say("Right-click a cell first", true); return; }
+  const row = selectedRowValues();
+  const value = row ? String(row[column + 1] ?? "") : "";
+  try {
+    await navigator.clipboard.writeText(value);
+    say("Value copied to the clipboard");
+  } catch (_) {
+    say("The browser refused clipboard access", true);
+  }
+}
+
+function filterFromCell(operator) {
+  const column = contextColumnIndex();
+  if (column === null) { say("Right-click a cell first", true); return; }
+  const row = selectedRowValues();
+  const value = row ? String(row[column + 1] ?? "") : "";
+  state.filters = state.filters.filter((item) => item.column !== column);
+  if (operator === "empty" || operator === "not_empty" || value !== "") {
+    state.filters.push({ column, operator, value });
+  }
+  const input = document.querySelector(`input[data-filter="${column}"]`);
+  if (input) input.value = filterPrefix(operator) + value;
+  loadRows(true);
+  say(`${operator === "ne" ? "Excluding" : "Filtering on"} ${state.columns[column + 1]} ${operator === "ne" ? "≠" : "="} ${value || "(empty)"}`);
+}
+
+function sortFromCell(descending) {
+  const column = contextColumnIndex();
+  if (column === null) { say("Right-click a cell first", true); return; }
+  state.multiSort = [];
+  state.sort = column;
+  state.descending = Boolean(descending);
+  loadRows(true);
+  say(`Sorted by ${state.columns[column + 1]} ${descending ? "descending" : "ascending"}`);
+}
+
+function groupFromCell() {
+  const column = contextColumnIndex();
+  if (column === null) { say("Right-click a cell first", true); return; }
+  state.groups = [column];
+  state.interval = "";
+  state.path = [];
+  $("group-label").textContent = `Grouped by ${state.columns[column + 1]}`;
+  loadRows(true);
+}
+
+function pinFromCell() {
+  const column = contextColumnIndex();
+  if (column === null) { say("Right-click a cell first", true); return; }
+  if (state.pinned.has(column)) state.pinned.delete(column); else state.pinned.add(column);
+  saveLayoutSoon();
+  renderGrid();
+  say(`${state.pinned.has(column) ? "Pinned" : "Unpinned"} ${state.columns[column + 1]}`);
+}
+
+function hideFromCell() {
+  const column = contextColumnIndex();
+  if (column === null) { say("Right-click a cell first", true); return; }
+  state.hidden.add(column);
+  saveLayoutSoon();
+  renderGrid();
+  say(`Hid ${state.columns[column + 1]} — Columns… brings it back`);
 }
 
 function showCellJson() {
@@ -1306,6 +1511,10 @@ function rowsUrl(extra) {
 async function loadRows(reset) {
   if (!state.openCase) return;
   if (reset) state.offset = 0;
+  // A new page is a new set of rows: a selection of ids that are no longer on
+  // screen must not survive into "copy the selected rows".
+  state.selection.clear();
+  state.anchor = null;
   try {
     const payload = await api(rowsUrl());
     state.columns = payload.columns;
@@ -1349,13 +1558,7 @@ function notesForRow(rowId) {
 }
 
 async function toggleBookmark(rowId, note) {
-  const body = JSON.stringify({ row_id: Number(rowId), note: note ?? "" });
-  const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/bookmark`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.detail || response.statusText);
-  if ((payload.note || "").trim()) state.bookmarks.set(String(rowId), payload.note);
-  else state.bookmarks.delete(String(rowId));
+  await postBookmark(rowId, note);
   renderGrid();
 }
 
@@ -1404,7 +1607,10 @@ function renderGrid() {
   shown.forEach(({ index }) => {
     if (index === 0) { head.push("<th></th>"); return; }
     const current = state.filters.find((item) => item.column === index - 1);
-    head.push(`<th><input data-filter="${index - 1}" placeholder="Filter…" value="${escapeHtml(current ? current.value : "")}"></th>`);
+    // The input carries the operator's prefix, so editing the text keeps the
+    // intent: a value filtered with "=" must not silently become "contains".
+    const shownValue = current ? filterPrefix(current.operator) + current.value : "";
+    head.push(`<th><input data-filter="${index - 1}" placeholder="Filter…" value="${escapeHtml(shownValue)}"></th>`);
   });
   head.push("</tr>");
   $("head").innerHTML = head.join("");
@@ -1425,7 +1631,7 @@ function renderGrid() {
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
     const rule = rulesCache.find((item) => matchesRule(item, row));
     const style = rule ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"` : "";
-    return `<tr data-row="${escapeHtml(String(id))}" class="${state.selected === id ? "sel" : ""}"${style}>
+    return `<tr data-row="${escapeHtml(String(id))}" class="${rowSelected(id) ? "sel" : ""}"${style}>
       <td class="markcell"><span class="cb ${marked}" title="Bookmark this row"></span></td>${cells}</tr>`;
   }).join("");
 
@@ -1505,10 +1711,14 @@ function showDetails(row) {
       }
     });
   });
-  $("note-save").addEventListener("click", () => toggleBookmark(id, $("note-input").value));
-  $("note-clear").addEventListener("click", () => toggleBookmark(id, ""));
+  const saveNote = (value) => {
+    const promise = selectedIds().length > 1 ? markSelection(value) : toggleBookmark(id, value);
+    promise.catch((error) => say(error.message, true));
+  };
+  $("note-save").addEventListener("click", () => saveNote($("note-input").value));
+  $("note-clear").addEventListener("click", () => saveNote(""));
   $("note-input").addEventListener("keydown", (event) => {
-    if (event.key === "Enter") toggleBookmark(id, $("note-input").value);
+    if (event.key === "Enter") saveNote($("note-input").value);
   });
 }
 
@@ -1794,12 +2004,7 @@ function wire() {
       toggleBookmark(id, current ? "" : "bookmarked").catch((error) => say(error.message, true));
       return;
     }
-    $("body").querySelectorAll("tr.sel").forEach((node) => node.classList.remove("sel"));
-    tr.classList.add("sel");
-    const id = tr.dataset.row;
-    const row = state.rows.find((item) => String(item[0]) === String(id));
-    state.selected = row ? row[0] : null;
-    showDetails(row);
+    selectRow(tr, event);
   });
 
   $("first").addEventListener("click", () => {
@@ -1829,6 +2034,9 @@ function wire() {
     event.target.value = "";
     if (files.length) previewFiles(files);
   });
+  for (const id of ["preview-delimiter", "preview-encoding"]) {
+    $(id).addEventListener("change", refreshPreviews);
+  }
 
   document.addEventListener("dragover", (event) => {
     if (!state.openCase) return;
@@ -1951,6 +2159,15 @@ async function act(name, node) {
     case "preview-choose": $("preview-input").click(); break;
     case "preview-path": await previewServerPath(); break;
     case "preview-import": await confirmImport(); break;
+    case "copy-value": await copyCellValue(); break;
+    case "filter-value": filterFromCell("eq"); break;
+    case "exclude-value": filterFromCell("ne"); break;
+    case "sort-asc": sortFromCell(false); break;
+    case "sort-desc": sortFromCell(true); break;
+    case "group-by-column": groupFromCell(); break;
+    case "pin-column": pinFromCell(); break;
+    case "hide-column": hideFromCell(); break;
+    case "unmark-selection": await markSelection(""); break;
     case "group-column": openGroupPicker(); break;
     case "global-search": $("search-modal").classList.add("show"); break;
     case "global-run": await runGlobalSearch(); $("search-modal").classList.add("show"); break;
@@ -1983,7 +2200,7 @@ async function act(name, node) {
     case "cell-json": showCellJson(); break;
     case "rule-from-cell": await ruleFromCell(); break;
     case "cell-copy": await navigator.clipboard.writeText($("cell-full").value).then(() => say("Cell copied")); break;
-    case "bookmark-row": if (contextRow) toggleBookmark(contextRow.dataset.row, "bookmarked"); break;
+    case "bookmark-row": await markSelection("bookmarked"); break;
     case "derived": openDerivedDialog(); break;
     case "derived-add": await addDerived(); break;
     case "columns-reset": state.hidden.clear(); renderGrid(); openColumnManager(); break;

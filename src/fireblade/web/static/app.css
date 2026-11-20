@@ -211,6 +211,7 @@ body.dropping{outline:2px dashed #7aa9c9;outline-offset:-6px}
   box-shadow:2px 2px 3px rgba(0,0,0,.18);padding:3px 0}
 .row-menu .item{padding:3px 18px;line-height:17px;cursor:default;font-size:12px}
 .row-menu .item:hover{background:var(--sel);color:var(--sel-text)}
+.row-menu .sep{height:1px;background:var(--line);margin:4px 0}
 
 .graph-wrap{position:relative;flex:1;min-height:0;margin:0 6px 6px;border:1px solid var(--border);
   background:#fff;overflow:auto}

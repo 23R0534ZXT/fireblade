@@ -447,7 +447,7 @@ class Collection:
     deduplicate_content = True
 
     def __init__(self, root, output, pack, settings=None, progress=lambda _: None, organization='files',
-                 _reopening=False, index_folder=None):
+                 _reopening=False, index_folder=None, delimiter=None, encoding='auto'):
         if organization not in ('files', 'artifacts', 'combined'):
             raise ValueError('Organisation de collecte inconnue')
         self.sources = normalise_sources(root)
@@ -467,6 +467,9 @@ class Collection:
                 if self.output == folder or folder in self.output.parents:
                     raise ValueError('Choisissez un dossier de travail hors de la collecte source')
         self.pack, self.settings = pack, settings
+        # The CSV options the analyst chose before the import (None and 'auto'
+        # keep the reader's own detection). They only reach the native CSV path.
+        self.delimiter, self.encoding = delimiter, encoding
         self.emit_text = progress
         self.progress_state = CollectionProgress()
         self.ready = lambda documents: None
@@ -568,7 +571,8 @@ class Collection:
             if evidence:
                 provenance = dict(evidence)
                 provenance['working_path'] = str(csv)
-            case.import_csv(csv, encoding='auto', progress=self.progress, provenance=provenance)
+            case.import_csv(csv, delimiter=self.delimiter, encoding=self.encoding,
+                            progress=self.progress, provenance=provenance)
             view = view or View()
             # Counted on the connection that just wrote the file: opening the analysis
             # again in read-only is what collided with the workspace (DuckDB refuses two

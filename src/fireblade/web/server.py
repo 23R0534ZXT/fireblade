@@ -5,7 +5,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Query, Response, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -108,7 +108,9 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             raise HTTPException(status_code=400, detail="A 'source' field is required.")
         try:
             return library.import_source(identifier, source, tools_root=tools_root,
-                                         organization=(payload or {}).get("organization", "files"))
+                                         organization=(payload or {}).get("organization", "files"),
+                                         delimiter=(payload or {}).get("delimiter") or None,
+                                         encoding=(payload or {}).get("encoding") or None)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -120,12 +122,15 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             raise HTTPException(status_code=400, detail="A 'source' field is required.")
         library.library.folder(identifier)  # the case must exist
         try:
-            return library.preview_source(source)
+            return library.preview_source(source,
+                                          delimiter=(payload or {}).get("delimiter") or None,
+                                          encoding=(payload or {}).get("encoding") or None)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/api/cases/{identifier}/preview-upload")
-    def preview_upload(identifier: str, file: UploadFile = File(...)):
+    def preview_upload(identifier: str, file: UploadFile = File(...),
+                       delimiter: str | None = Form(None), encoding: str | None = Form(None)):
         """The browser hands the file over, the preview reads it, nothing is imported.
 
         The bytes land in the case's own evidence folder, the same place the import
@@ -133,19 +138,22 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         """
         folder = library.library.folder(identifier)
         try:
-            return library.preview_source(_store_upload(folder, file))
+            return library.preview_source(_store_upload(folder, file), delimiter=delimiter,
+                                          encoding=encoding)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/api/cases/{identifier}/upload")
-    def upload(identifier: str, organization: str = "files", file: UploadFile = File(...)):
+    def upload(identifier: str, organization: str = "files", file: UploadFile = File(...),
+               delimiter: str | None = Form(None), encoding: str | None = Form(None)):
         """The browser cannot hand over a server path: the file is sent, stored in
         the case's own evidence folder, then read by the same collection."""
         folder = library.library.folder(identifier)
         target = _store_upload(folder, file)
         try:
             return library.import_source(identifier, target, tools_root=tools_root,
-                                         organization=organization)
+                                         organization=organization, delimiter=delimiter,
+                                         encoding=encoding)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

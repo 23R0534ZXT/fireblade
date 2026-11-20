@@ -172,3 +172,54 @@ def test_actions_export_is_a_csv(case_with_analysis):
         assert "Ask the client for DNS logs" in lines[1]
     finally:
         service.close()
+
+def _write_french_csv(path, delimiter=";", encoding="cp1252"):
+    """A French export: semicolons, and an accent cp1252 alone can decode."""
+    with path.open("w", encoding=encoding, newline="") as stream:
+        writer = csv.writer(stream, delimiter=delimiter)
+        writer.writerow(["Horodatage", "Evenement", "Utilisateur"])
+        writer.writerows([["2026-11-02T10:00:00Z", "ouverture de session", "élève"],
+                          ["2026-11-02T10:01:00Z", "connexion", "bob"]])
+
+
+def test_preview_reads_the_chosen_encoding_and_separator(case_with_analysis, tmp_path):
+    """The desktop offers a separator and an encoding; the preview must honour them."""
+    root, _identifier = case_with_analysis
+    source = tmp_path / "poste-fr.csv"
+    _write_french_csv(source)
+    service = Library(root)
+    try:
+        detected = service.preview_source(source)
+        assert detected["delimiter"] == "semicolon"
+        assert detected["encoding"] in ("utf-8", "utf-8-sig")
+        # Read as UTF-8, the cp1252 accent is a replacement character.
+        assert "\ufffd" in detected["rows"][0][2]
+        chosen = service.preview_source(source, delimiter=";", encoding="cp1252")
+        assert chosen["delimiter"] == "semicolon"
+        assert chosen["encoding"] == "cp1252"
+        assert chosen["columns"][0]["name"] == "Horodatage"
+        assert chosen["rows"][0][2] == "élève"
+        # A separator that is not the file's gives one column: the analyst sees it.
+        wrong = service.preview_source(source, delimiter=",")
+        assert len(wrong["columns"]) == 1
+    finally:
+        service.close()
+
+
+def test_import_uses_the_chosen_encoding(case_with_analysis, tmp_path):
+    """The option is not only shown: the imported row carries the accent."""
+    root, identifier = case_with_analysis
+    source = tmp_path / "poste-fr-import.csv"
+    _write_french_csv(source)
+    service = Library(root)
+    try:
+        service.import_source(identifier, source, delimiter=";", encoding="cp1252")
+        detail = service.case(identifier)
+        analyses = detail["analyses"]
+        assert len(analyses) == 2
+        payload = service.rows(identifier, len(analyses) - 1, limit=20)
+        assert "Utilisateur" in payload["columns"]
+        column = payload["columns"].index("Utilisateur")
+        assert any(row[column] == "élève" for row in payload["rows"])
+    finally:
+        service.close()

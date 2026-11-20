@@ -339,11 +339,22 @@
 </div>
 
 <div id="row-menu" class="row-menu" hidden>
-  <div class="item" data-act="pivot">What launched this process?</div>
-  <div class="item" data-act="bookmark-row">Bookmark this row</div>
-  <div class="item" data-act="copy-row">Copy the selected rows</div>
   <div class="item" data-act="cell-json">Show the whole cell…</div>
+  <div class="item" data-act="copy-value">Copy this value</div>
+  <div class="item" data-act="copy-row">Copy the selected rows</div>
+  <div class="sep"></div>
+  <div class="item" data-act="filter-value">Filter on this value</div>
+  <div class="item" data-act="exclude-value">Exclude this value</div>
+  <div class="item" data-act="sort-asc">Sort ascending</div>
+  <div class="item" data-act="sort-desc">Sort descending</div>
+  <div class="item" data-act="group-by-column">Group by this column</div>
+  <div class="item" data-act="pin-column">Pin / unpin this column</div>
+  <div class="item" data-act="hide-column">Hide this column</div>
+  <div class="sep"></div>
+  <div class="item" data-act="bookmark-row">Mark the selection</div>
+  <div class="item" data-act="unmark-selection">Remove marks from the selection</div>
   <div class="item" data-act="rule-from-cell">Colour rule for this value…</div>
+  <div class="item" data-act="pivot">What launched this process?</div>
 </div>
 
 <div class="modal" id="import-modal">
@@ -357,6 +368,12 @@
         <span class="note" style="max-width:none">or a path on the server</span>
         <input id="preview-server" placeholder="/data/cases/…" style="flex:1">
         <button class="btn" data-act="preview-path">Preview the path</button>
+      </div>
+      <div class="row">
+        <label>CSV options</label>
+        <select class="select" id="preview-delimiter"></select>
+        <select class="select" id="preview-encoding"></select>
+        <span class="note" style="max-width:none">a native CSV is read with these instead of the detection</span>
       </div>
       <div class="note" id="preview-note"></div>
       <div id="preview-body" class="preview-body"></div>

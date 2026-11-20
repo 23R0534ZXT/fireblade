@@ -338,6 +338,8 @@ class Library:
             "readers": readers,
             "readers_ready": sum(1 for value in readers.values() if value),
             "hayabusa": hayabusa,
+            "csv_encodings": list(self.CSV_ENCODINGS),
+            "csv_delimiters": list(self.CSV_DELIMITERS),
         }
 
     # -- import profiles ---------------------------------------------------
@@ -674,6 +676,10 @@ class Library:
 
     PREVIEW_BYTES = 256 * 1024
     PREVIEW_ROWS = 6
+    # What the desktop's import dialog offers, and in the same order: the analyst
+    # may override what the reader detects. `auto` and `None` keep the detection.
+    CSV_ENCODINGS = ("auto", "utf-8", "utf-16", "utf-32", "cp1252", "latin-1")
+    CSV_DELIMITERS = (",", "\t", ";", "|")
 
     @staticmethod
     def _decode_head(raw: bytes, encoding: str) -> str:
@@ -692,7 +698,7 @@ class Library:
             return raw.decode("utf-8", errors="replace")
 
     @classmethod
-    def _delimiter(cls, text: str) -> tuple[str, list[list[str]]]:
+    def _delimiter(cls, text: str, forced: str | None = None) -> tuple[str, list[list[str]]]:
         """The delimiter that gives a consistent table, and its first records.
 
         The import sniffs the schema itself; the preview must not contradict it.
@@ -702,7 +708,8 @@ class Library:
         """
         best = None
         csv.field_size_limit(max(csv.field_size_limit(), 16 * 1024 * 1024))
-        for delimiter in (",", "\t", ";", "|"):
+        candidates = (forced,) if forced in cls.CSV_DELIMITERS else cls.CSV_DELIMITERS
+        for delimiter in candidates:
             try:
                 records = [record for record in csv.reader(text.splitlines(), delimiter=delimiter)
                            if record and any(field.strip() for field in record)]
@@ -711,7 +718,9 @@ class Library:
             if not records:
                 continue
             width = len(records[0])
-            if width < 2:
+            # A forced separator that yields one column is what the analyst asked
+            # for: show it instead of claiming the file has no readable header.
+            if width < (1 if forced else 2):
                 continue
             consistent = sum(1 for record in records[1:8] if len(record) == width)
             score = (consistent, width)
@@ -721,7 +730,8 @@ class Library:
             return ",", []
         return best[1], best[2]
 
-    def preview_source(self, source: str | Path) -> dict:
+    def preview_source(self, source: str | Path, delimiter: str | None = None,
+                       encoding: str | None = None) -> dict:
         """What reading this file would produce, before anything is written.
 
         The desktop lets the analyst look at the columns and the recognised profile
@@ -769,10 +779,11 @@ class Library:
         from fireblade.core.csv_preamble import preamble_lines
         from fireblade.core.encodings import bom_encoding
 
-        encoding = bom_encoding(path)
+        detected = bom_encoding(path)
+        chosen = encoding if encoding and encoding != "auto" else detected
         with path.open("rb") as stream:
             raw = stream.read(self.PREVIEW_BYTES)
-        text = self._decode_head(raw, encoding)
+        text = self._decode_head(raw, chosen)
         lines = text.splitlines(keepends=True)
         skip = 0
         try:
@@ -780,7 +791,7 @@ class Library:
         except (csv.Error, ValueError):
             skip = 0
         body = "".join(lines[skip:])
-        delimiter, records = self._delimiter(body)
+        delimiter, records = self._delimiter(body, delimiter)
         if not records:
             preview["kind"] = "table"
             preview["note"] = "The file carries no readable header."
@@ -823,7 +834,8 @@ class Library:
             preview["note"] = ("No declared profile matches these headers: the file is read as a "
                                "plain table, with no timestamp or boolean mapping.")
         preview["delimiter"] = {"\t": "tab", ",": "comma", ";": "semicolon", "|": "pipe"}[delimiter]
-        preview["encoding"] = encoding
+        preview["encoding"] = chosen
+        preview["encoding_detected"] = detected
         preview["columns"] = columns
         preview["rows"] = rows
         preview["mapping"] = mapping
@@ -1173,7 +1185,8 @@ class Library:
     # -- importing ---------------------------------------------------------
 
     def import_source(self, identifier: str, source: str | Path, tools_root: str | Path | None = None,
-                      organization: str = "files", progress=None) -> dict:
+                      organization: str = "files", progress=None, delimiter: str | None = None,
+                      encoding: str | None = None) -> dict:
         """Read a file or a folder into the case, the way the desktop does it.
 
         The orchestration is `fireblade.core.collection.Collection`: the same
@@ -1193,17 +1206,31 @@ class Library:
         output.parent.mkdir(parents=True, exist_ok=True)
         pack = ToolPack(Path(tools_root or self.tools_root)) if (tools_root or self.tools_root) else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack")
         collection = Collection(source, output, pack, progress=progress or (lambda _text: None),
-                                organization=organization)
+                                organization=organization,
+                                delimiter=delimiter if delimiter in self.CSV_DELIMITERS else None,
+                                encoding=encoding if encoding in self.CSV_ENCODINGS else "auto")
         report = collection.parse()
         session = output / "collection.fireblade-session"
         if not session.is_file():
             return {"status": report.get("status"), "analyses": 0, "files": len(report.get("files") or []),
                     "collection": str(output), "message": "No analysis produced: the format was not recognised."}
         snapshots, active = read_session(session)
+        # The session is the workspace: an import adds its analyses to the ones
+        # already loaded, exactly as the desktop does. Saving the collection's
+        # session as is would drop every earlier analysis from the case.
+        earlier: list = []
+        previous = data.get("session")
+        if previous:
+            try:
+                earlier, _earlier_active = read_session(folder / previous)
+            except (OSError, ValueError):
+                earlier = []
         collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
         collections.append({"path": str(output), "name": output.name,
                             "imported": datetime.now(timezone.utc).isoformat()})
-        self.library.save(identifier, snapshots, active if snapshots else -1, collections,
+        combined = list(earlier) + list(snapshots)
+        active_index = len(earlier) + active if snapshots else (len(earlier) - 1 if earlier else -1)
+        self.library.save(identifier, combined, active_index, collections,
                           str(output), data.get("revision"))
         self._open.pop((identifier, 0), None)
         return {

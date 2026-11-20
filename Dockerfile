@@ -37,7 +37,7 @@ COPY src/fireblade/web ./src/fireblade/web
 COPY config/forensic-toolchain.json ./config/forensic-toolchain.json
 COPY scripts/fetch_readers.py ./scripts/fetch_readers.py
 RUN python scripts/fetch_readers.py --dest /opt/fireblade/tools \
-        --manifest config/forensic-toolchain.json
+        --manifest config/forensic-toolchain.json --hayabusa
 
 RUN useradd --create-home --uid 10001 fireblade \
     && mkdir -p /data/cases \

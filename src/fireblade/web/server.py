@@ -13,7 +13,7 @@ STATIC = Path(__file__).with_name("static")
 
 
 def create_app(root: str | Path, version: str = "", tools_root: str | Path | None = None) -> FastAPI:
-    library = Library(root)
+    library = Library(root, tools_root=tools_root)
     app = FastAPI(title="Fireblade Host", version=version or "0", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
     @app.exception_handler(ServiceError)
@@ -108,6 +108,13 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     def search(identifier: str, text: str = "", limit: int = 50):
         try:
             return library.search(identifier, text, limit=limit)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/detect")
+    def detect(identifier: str, payload: dict):
+        try:
+            return library.detect(identifier, (payload or {}).get("min_level", "low"))
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

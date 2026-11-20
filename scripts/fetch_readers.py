@@ -25,6 +25,10 @@ from pathlib import Path
 BASE = "https://download.ericzimmermanstools.com/net10/{tool}.zip"
 RECMD_BATCH = ("https://raw.githubusercontent.com/EricZimmerman/RECmd/master/"
                "BatchExamples/Kroll_Batch.reb")
+# Hayabusa ships its rules inside the release archive, one folder below the binary.
+HAYABUSA_VERSION = "4.3.1"
+HAYABUSA_URL = ("https://github.com/Yamato-Security/hayabusa/releases/download/"
+                f"v{HAYABUSA_VERSION}/hayabusa-{HAYABUSA_VERSION}-lin-x64-gnu.zip")
 DEFAULT_TOOLS = (
     "EvtxECmd", "AmcacheParser", "AppCompatCacheParser", "PECmd", "MFTECmd",
     "RECmd", "LECmd", "JLECmd", "SrumECmd", "WxTCmd", "RBCmd",
@@ -56,11 +60,36 @@ def install(tool: str, dest: Path) -> Path:
     return target
 
 
+def install_hayabusa(dest: Path) -> Path:
+    """The Linux detection engine, with its rules, in the layout ToolPack expects."""
+    payload = fetch(HAYABUSA_URL, timeout=600)
+    target = dest / "Hayabusa"
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir(parents=True)
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+            archive.extractall(root)
+        binary = next((path for path in root.iterdir() if path.is_file() and path.name.startswith("hayabusa-")), None)
+        if binary is None:
+            raise SystemExit("Hayabusa: the release archive holds no binary")
+        shutil.copyfile(binary, target / "hayabusa")
+        (target / "hayabusa").chmod(0o755)
+        for folder in ("rules", "config"):
+            source = root / folder
+            if source.is_dir():
+                shutil.copytree(source, target / folder)
+    return target
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dest", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, default=Path("config/forensic-toolchain.json"))
     parser.add_argument("--tools", nargs="*", default=list(DEFAULT_TOOLS))
+    parser.add_argument("--hayabusa", action="store_true",
+                        help="also fetch the Hayabusa Linux build and its rules")
     args = parser.parse_args(argv)
 
     args.dest.mkdir(parents=True, exist_ok=True)
@@ -72,6 +101,10 @@ def main(argv=None) -> int:
     batch.mkdir(parents=True, exist_ok=True)
     (batch / "Kroll_Batch.reb").write_bytes(fetch(RECMD_BATCH))
     print(f"RECmd batch: {(batch / 'Kroll_Batch.reb').stat().st_size} bytes", flush=True)
+
+    if args.hayabusa:
+        target = install_hayabusa(args.dest)
+        print(f"Hayabusa: {target} ({len(list((target / 'rules').glob('*.yml')))} rule file(s))", flush=True)
 
     if args.manifest.is_file():
         shutil.copyfile(args.manifest, args.dest / "manifest.json")

@@ -182,9 +182,11 @@ class ToolPack:
     def command(self, name):
         root = Path(self.root).resolve()
         if name == 'Hayabusa':
-            exe = root / name / 'hayabusa.exe'
-            if exe.is_file():
-                return [str(exe)]
+            # The Windows pack ships hayabusa.exe; the Linux build is a plain binary.
+            for candidate in ('hayabusa.exe', 'hayabusa'):
+                exe = root / name / candidate
+                if exe.is_file():
+                    return [str(exe)]
         else:
             dll = root / name / (name + '.dll')
             host = self.dotnet(root)

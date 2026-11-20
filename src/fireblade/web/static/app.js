@@ -267,6 +267,39 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- Hayabusa ---------- */
+
+const hayabusaState = { findings: [] };
+
+async function runHayabusa() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const level = $("hayabusa-level").value;
+  $("hayabusa-summary").textContent = "Running the detection engine — this can take a minute…";
+  say("Hayabusa: running…");
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/detect`, { min_level: level });
+    hayabusaState.findings = payload.findings;
+    const runs = payload.runs.map((run) => `${run.collection}: ${run.summary?.detections ?? 0} detection(s)`).join(" · ");
+    $("hayabusa-summary").textContent = `${payload.total} finding(s) — ${runs}`;
+    renderHayabusa();
+    say(`Hayabusa: ${payload.total} finding(s) at level ${level}+`);
+  } catch (error) {
+    $("hayabusa-summary").textContent = error.message;
+    say(error.message, true);
+  }
+}
+
+function renderHayabusa() {
+  $("hayabusa-rows").innerHTML = hayabusaState.findings.map((finding) => `
+    <tr><td>${escapeHtml(finding.Timestamp || "")}</td>
+      <td>${escapeHtml(finding.Level || "")}</td>
+      <td title="${escapeHtml(finding.Details || "")}">${escapeHtml(finding.RuleTitle || "")}</td>
+      <td>${escapeHtml(finding.Computer || "")}</td>
+      <td>${escapeHtml(finding.Channel || "")}</td>
+      <td>${escapeHtml(String(finding.EventID || ""))}</td>
+      <td title="${escapeHtml(finding.MitreTags || "")}">${escapeHtml(finding.MitreTactics || "")}</td></tr>`).join("");
+}
+
 /* ---------- colour rules ---------- */
 
 let rulesCache = [];
@@ -876,6 +909,7 @@ function showTab(name) {
   $("ioc-view").style.display = name === "ioc" ? "flex" : "none";
   $("actions-view").style.display = name === "actions" ? "flex" : "none";
   $("imports-view").style.display = name === "imports" ? "flex" : "none";
+  $("hayabusa-view").style.display = name === "hayabusa" ? "flex" : "none";
   if (name === "imports" && state.openCase) loadImports();
   if (name === "actions" && state.openCase) loadActions();
   $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";
@@ -1152,6 +1186,7 @@ function wire() {
 
   $("ioc-scan").addEventListener("click", runIocScan);
   $("derived-operation").addEventListener("change", derivedOperationChanged);
+  $("hayabusa-run").addEventListener("click", runHayabusa);
   $("imports-refresh").addEventListener("click", loadImports);
   $("imports-status").addEventListener("change", renderImports);
   $("action-add").addEventListener("click", addAction);

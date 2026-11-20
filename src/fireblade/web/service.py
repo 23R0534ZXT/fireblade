@@ -60,8 +60,9 @@ class Library:
 
     MAX_OPEN = 4
 
-    def __init__(self, root: str | Path):
+    def __init__(self, root: str | Path, tools_root: str | Path | None = None):
         self.root = Path(root).resolve()
+        self.tools_root = Path(tools_root).resolve() if tools_root else None
         self.library = InvestigationLibrary(self.root)
         self._open: dict[tuple[str, int], Case] = {}
         self._timelines: dict[tuple[str, str | None], TimelineStore] = {}
@@ -179,6 +180,64 @@ class Library:
         return matches[0].resolve() if len(matches) == 1 else None
 
 
+    # -- Hayabusa ----------------------------------------------------------
+
+    def detect(self, identifier: str, min_level: str = "low") -> dict:
+        """Run the detection engine over the case's verified EVTX copies.
+
+        `Collection.reopen` restores the import record — the files, their hashes
+        and the toolchain — and `analyze()` is the desktop's own run: same rule
+        folder, same command, same cross-file context.
+        """
+        if min_level not in ("informational", "low", "medium", "high", "critical"):
+            raise ServiceError("Niveau Hayabusa invalide.")
+        data = self.library.read(identifier)
+        reports = sorted((self.library.folder(identifier) / "collections").glob("import-*"))
+        pack = ToolPack(Path(self.tools_root)) if self.tools_root else ToolPack(Path(tempfile.gettempdir()) / "pack")
+        results = []
+        for entry in reports:
+            if not (entry / "collection.json").is_file():
+                continue
+            self.close_case(identifier)
+            collection = Collection.reopen(entry, pack)
+            has_evtx = any("EvtxECmd" in (item.get("tools") or []) for item in collection.report.get("files") or [])
+            if not has_evtx:
+                continue
+            collection.analyze(min_level)
+            detection = collection.report.get("detection") or {}
+            rows = []
+            outputs = [Path(str(item)) for item in (detection.get("outputs") or []) if Path(str(item)).is_file()]
+            if not outputs:
+                # The run writes its CSV beside its inputs; the detection record
+                # only names it when the caller asked for per-file outputs.
+                outputs = sorted((entry / "results").glob("hayabusa-*/hayabusa.csv"))
+            for path in outputs:
+                if not path.is_file():
+                    continue
+                with path.open(encoding="utf-8", errors="replace", newline="") as stream:
+                    for record in csv.DictReader(stream):
+                        rows.append({key: record.get(key, "") for key in
+                                     ("Timestamp", "RuleTitle", "Level", "Computer", "Channel",
+                                      "EventID", "MitreTactics", "MitreTags", "Details")})
+            # The engine writes one line per rule that fired on the same event: the
+            # grid shows the event once, with the first rule that named it.
+            seen = set()
+            unique = []
+            for row in rows:
+                key = (row.get("Timestamp"), row.get("RuleTitle"), row.get("Computer"), row.get("EventID"))
+                if key in seen:
+                    continue
+                seen.add(key)
+                unique.append(row)
+            rows = unique
+            results.append({"collection": entry.name, "status": detection.get("status"),
+                            "summary": detection.get("summary") or {},
+                            "warnings": (detection.get("warnings") or [])[:20],
+                            "findings": rows[:2000], "total": len(rows)})
+        if not results:
+            raise ServiceError("Aucune import de ce case ne contient de journal EVTX à analyser.")
+        merged = [finding for item in results for finding in item["findings"]]
+        return {"runs": results, "findings": merged[:2000], "total": sum(item["total"] for item in results)}
     # -- colour rules ------------------------------------------------------
 
     RULES_VIEW = "__fireblade_rules__"
@@ -664,7 +723,7 @@ class Library:
         if output.exists():
             output = folder / "collections" / ("import-" + uuid.uuid4().hex[:8])
         output.parent.mkdir(parents=True, exist_ok=True)
-        pack = ToolPack(Path(tools_root)) if tools_root else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack")
+        pack = ToolPack(Path(tools_root or self.tools_root)) if (tools_root or self.tools_root) else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack")
         collection = Collection(source, output, pack, progress=progress or (lambda _text: None),
                                 organization=organization)
         report = collection.parse()

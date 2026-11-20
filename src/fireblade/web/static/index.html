@@ -69,7 +69,7 @@
     <div class="tab" data-tab="cases">Cases</div>
     <div class="tab" data-tab="timeline">Timeline &amp; correlations</div>
     <div class="tab" data-tab="ioc">IOC hunting</div>
-    <div class="tab off" title="Not available in Fireblade Host yet">Hayabusa + AI</div>
+    <div class="tab" data-tab="hayabusa">Hayabusa + AI</div>
     <div class="tab" data-tab="actions">Actions &amp; tracking</div>
     <div class="tab off" title="Not available in Fireblade Host yet">Attack graph</div>
     <div class="tab off" title="Not available in Fireblade Host yet">EVTX detection</div>
@@ -122,6 +122,29 @@
           <button class="btn" id="next">Next</button>
           <div class="spacer"></div>
           <div class="info" id="pageinfo"></div>
+        </div>
+      </div>
+
+      <div id="hayabusa-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="filterbar">
+          <select class="select" id="hayabusa-level">
+            <option value="informational">informational</option>
+            <option value="low">low</option>
+            <option value="medium" selected>medium</option>
+            <option value="high">high</option>
+            <option value="critical">critical</option>
+          </select>
+          <button class="btn" id="hayabusa-run">Run the detection</button>
+          <div class="info" id="hayabusa-summary">No detection run yet.</div>
+        </div>
+        <div class="gridwrap" style="flex:1">
+          <div class="gridbody">
+            <table>
+              <colgroup><col style="width:170px"><col style="width:90px"><col style="width:30%"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col></colgroup>
+              <thead><tr><th>Timestamp</th><th>Level</th><th>Rule</th><th>Computer</th><th>Channel</th><th>EventID</th><th>Tactics</th></tr></thead>
+              <tbody id="hayabusa-rows"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 

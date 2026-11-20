@@ -47,3 +47,12 @@ def test_a_missing_dll_is_refused(tmp_path, monkeypatch):
     with pytest.raises(FileNotFoundError):
         pack.command("WxTCmd")
     assert pack.available("WxTCmd") is False
+
+
+def test_hayabusa_binary_is_found_with_or_without_extension(tmp_path, monkeypatch):
+    monkeypatch.setattr(collection, "WINDOWS", False)
+    (tmp_path / "Hayabusa").mkdir(parents=True)
+    binary = tmp_path / "Hayabusa" / "hayabusa"
+    binary.write_bytes(b"")
+    pack = ToolPack(tmp_path)
+    assert pack.command("Hayabusa") == [str(binary)]

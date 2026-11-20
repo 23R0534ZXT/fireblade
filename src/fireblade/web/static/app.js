@@ -378,6 +378,19 @@ async function restoreCase() {
   } catch (error) { say(error.message, true); }
 }
 
+async function apiDelete(path) {
+  const response = await fetch(path, { method: "DELETE", headers: { Accept: "application/json" } });
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const payload = await response.json();
+      detail = payload.detail || payload.error || detail;
+    } catch (_) { /* keep the status text */ }
+    throw new Error(detail);
+  }
+  return response.json();
+}
+
 async function apiPost(path, body) {
   const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" },
                                        body: JSON.stringify(body) });
@@ -1475,7 +1488,8 @@ function renderPaneTabs() {
   if (!state.openCase) { $("pane-tabs").innerHTML = ""; return; }
   const current = state.openCase.analyses.find((item) => item.index === state.analysis);
   $("pane-tabs").innerHTML = current
-    ? `<div class="ptab active">${escapeHtml(current.label)} ✕</div>`
+    ? `<div class="ptab active" title="${escapeHtml(current.label)}">${escapeHtml(current.label)}
+         <span class="ptab-close" id="close-analysis" title="Close this analysis — the file stays in the case">✕</span></div>`
     : '<div class="ptab active">No analysis</div>';
 }
 
@@ -2019,6 +2033,17 @@ function wire() {
   $("next").addEventListener("click", () => {
     if (state.offset + PAGE < state.total) { state.offset += PAGE; loadRows(false); }
   });
+  $("pane-tabs").addEventListener("click", async (event) => {
+    if (!event.target.closest("#close-analysis") || !state.openCase) return;
+    try {
+      await apiDelete(`/api/cases/${state.openCase.id}/analyses/${state.analysis}`);
+      say("Analysis closed — its file stays in the case");
+      await openCase(state.openCase.id);
+    } catch (error) {
+      say(error.message, true);
+    }
+  });
+
   $("details-toggle").addEventListener("click", () => {
     const box = $("details");
     box.style.display = box.style.display === "none" ? "block" : "none";

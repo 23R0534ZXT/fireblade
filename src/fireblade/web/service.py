@@ -1242,6 +1242,35 @@ class Library:
 
     # -- one analysis ------------------------------------------------------
 
+    def close_analysis(self, identifier: str, index: int) -> dict:
+        """Take one analysis out of the workspace; its file stays in the case.
+
+        The desktop closes a tab the same way: the session is rewritten without
+        that entry and the `.timeline` file keeps living in the case folder, so
+        nothing is destroyed by closing a view.
+        """
+        data = self.library.read(identifier)
+        folder = self.library.folder(identifier)
+        snapshots, active = ([], -1)
+        session = data.get("session")
+        if session:
+            snapshots, active = read_session(folder / session)
+        if not 0 <= index < len(snapshots):
+            raise ServiceError("This analysis does not exist in the case.")
+        remaining = [item for position, item in enumerate(snapshots) if position != index]
+        if not remaining:
+            new_active = -1
+        elif active <= index:
+            new_active = max(0, min(active, len(remaining) - 1))
+        else:
+            new_active = active - 1
+        collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+        # Indexes shift: no cached handle may survive the rewrite.
+        self.close_case(identifier)
+        self.library.save(identifier, remaining, new_active, collections,
+                          data.get("active_collection"), data.get("revision"))
+        return {"analyses": len(remaining), "active": new_active}
+
     def _case_for(self, identifier: str, index: int) -> Case:
         key = (identifier, index)
         with self._lock:

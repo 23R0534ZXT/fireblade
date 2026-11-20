@@ -223,3 +223,23 @@ def test_import_uses_the_chosen_encoding(case_with_analysis, tmp_path):
         assert any(row[column] == "élève" for row in payload["rows"])
     finally:
         service.close()
+
+def test_closing_an_analysis_leaves_the_others_and_its_file(case_with_analysis, tmp_path):
+    """Closing a view is not deleting: the other analyses and the file survive."""
+    root, identifier = case_with_analysis
+    extra = tmp_path / "second.csv"
+    _write_csv(extra)
+    service = Library(root)
+    try:
+        service.import_source(identifier, extra)
+        assert len(service.case(identifier)["analyses"]) == 2
+        path = service.case(identifier)["analyses"][0]["path"]
+        service.close_analysis(identifier, 0)
+        remaining = service.case(identifier)["analyses"]
+        assert len(remaining) == 1
+        from pathlib import Path as _Path
+        assert _Path(path).is_file(), "closing an analysis must not delete its file"
+        # The one left is the imported analysis, not a stale copy of the closed one.
+        assert remaining[0]["path"] != path
+    finally:
+        service.close()

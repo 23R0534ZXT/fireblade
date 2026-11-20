@@ -114,6 +114,14 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.delete("/api/cases/{identifier}/analyses/{index}")
+    def close_analysis(identifier: str, index: int):
+        """Close one analysis of the workspace; the file stays in the case."""
+        try:
+            return library.close_analysis(identifier, index)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/preview")
     def preview_source(identifier: str, payload: dict):
         """What an import of this server path would produce, before it runs."""

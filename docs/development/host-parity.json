@@ -1,0 +1,1419 @@
+{
+  "format": "fireblade-host-parity",
+  "version": 1,
+  "commands": [
+    {
+      "label": "&Affichage",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The menu bar of the desktop window.",
+      "plan": ""
+    },
+    {
+      "label": "&Fichier",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The menu bar of the desktop window.",
+      "plan": ""
+    },
+    {
+      "label": "&Édition",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The menu bar of the desktop window.",
+      "plan": ""
+    },
+    {
+      "label": "A&ide",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The menu bar of the desktop window.",
+      "plan": ""
+    },
+    {
+      "label": "A&nalyse",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The menu bar of the desktop window.",
+      "plan": ""
+    },
+    {
+      "label": "Aide",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The menu bar of the desktop window.",
+      "plan": ""
+    },
+    {
+      "label": "Fi&ltres",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The menu bar of the desktop window, HTML-escaped.",
+      "plan": ""
+    },
+    {
+      "label": "E&xporter",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A submenu of the desktop window.",
+      "plan": ""
+    },
+    {
+      "label": "Affichage",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A submenu of the desktop window.",
+      "plan": ""
+    },
+    {
+      "label": "Espace de travail",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A submenu of the desktop window.",
+      "plan": ""
+    },
+    {
+      "label": "1. Quand ?",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A step caption inside the desktop's rule dialog.",
+      "plan": ""
+    },
+    {
+      "label": "2. Appliquer à",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A step caption inside the desktop's rule dialog.",
+      "plan": ""
+    },
+    {
+      "label": "3. Apparence",
+      "kind": "container",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A step caption inside the desktop's rule dialog.",
+      "plan": ""
+    },
+    {
+      "label": "Active",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A value of a condition, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "Inactive",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A value of a condition, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "En bas",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A position value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "En haut",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A position value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "À droite",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A position value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "Dans l’en-tête du groupe",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A placement value of a grouped chart.",
+      "plan": ""
+    },
+    {
+      "label": "Par groupe",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A placement value of a grouped chart.",
+      "plan": ""
+    },
+    {
+      "label": "Pied global",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A placement value of a grouped chart.",
+      "plan": ""
+    },
+    {
+      "label": "Toute la ligne",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A scope value of a note.",
+      "plan": ""
+    },
+    {
+      "label": "Ordre source",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A sort value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "Type de tri",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A sort value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "Détection automatique",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A profile value of the import.",
+      "plan": ""
+    },
+    {
+      "label": "Valeurs du champ cible",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A value list inside the pivot dialog.",
+      "plan": ""
+    },
+    {
+      "label": "Colonne de valeurs",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A field of the pivot dialog.",
+      "plan": ""
+    },
+    {
+      "label": "champs de reconnaissance ·",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A counter label of the profiles panel.",
+      "plan": ""
+    },
+    {
+      "label": "dates ·",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A counter label of the profiles panel.",
+      "plan": ""
+    },
+    {
+      "label": "booléens",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A counter label of the profiles panel.",
+      "plan": ""
+    },
+    {
+      "label": "niveaux",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A level list, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "active",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A status value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "all",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A scope value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "append",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A parameter value of a rule, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "artifacts",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A layout identifier, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "auto",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "An encoding value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "bottom",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A position value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "case",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A scope value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "dark",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A palette value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "details",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A panel identifier, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "label",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A field name, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "left",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A position value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "light",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A palette value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "mark",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A rule operation, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "name",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A field name, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "path",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A field name, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "process",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A field name, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "remove",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A rule operation, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "replace",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A rule operation, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "right",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A position value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "started",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A field name of a saved hunt, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "status",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A field name, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "top",
+      "kind": "parameter",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A position value, not a command.",
+      "plan": ""
+    },
+    {
+      "label": "&Détection",
+      "kind": "command",
+      "status": "covered",
+      "where": "Detection menu and the EVTX detection tab.",
+      "test": "test_detection_refuses_with_a_readable_reason",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Actions",
+      "kind": "command",
+      "status": "covered",
+      "where": "Actions & tracking tab.",
+      "test": "test_tracking_actions_are_created_updated_and_exported",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Actions & suivi",
+      "kind": "command",
+      "status": "covered",
+      "where": "Actions & tracking tab.",
+      "test": "test_tracking_actions_are_created_updated_and_exported",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Afficher la cellule / JSON…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Show the whole cell…",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Ajouter au groupement",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Group by this column, and the Group… dialog.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Ajouter une note à la cellule…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row details > note, per column.",
+      "test": "test_bookmarks_and_cell_notes_round_trip",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Ajouter une note à la sélection…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row details note applied to the whole selection.",
+      "test": "test_the_grid_selects_a_range_and_a_selection",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Analyses",
+      "kind": "command",
+      "status": "covered",
+      "where": "Analyses tab and the analysis tree.",
+      "test": "test_analysis_columns_and_rows",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Apparence",
+      "kind": "command",
+      "status": "covered",
+      "where": "Display settings: text size, row height, palette.",
+      "test": "test_display_layout_is_saved_in_the_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Artefact actif",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The desktop's artifact tree is a window layout; the browser lists the analyses of the case instead.",
+      "plan": ""
+    },
+    {
+      "label": "Artefacts",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The desktop's artifact tree is a window layout; the browser lists the analyses of the case instead.",
+      "plan": ""
+    },
+    {
+      "label": "Attack graph",
+      "kind": "command",
+      "status": "covered",
+      "where": "Attack graph tab, with the ATT&CK layer and the PNG.",
+      "test": "test_the_attack_graph_refuses_on_an_empty_case",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Automatique (BOM)",
+      "kind": "command",
+      "status": "covered",
+      "where": "Import dialog: CSV options, encoding.",
+      "test": "test_preview_reads_the_chosen_encoding_and_separator",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Basculer l’affichage booléen",
+      "kind": "command",
+      "status": "covered",
+      "where": "Column manager and display settings.",
+      "test": "test_display_layout_is_saved_in_the_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Calculs et conversions",
+      "kind": "command",
+      "status": "covered",
+      "where": "Derived columns dialog.",
+      "test": "test_a_derived_column_is_added_to_the_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Case courant",
+      "kind": "command",
+      "status": "covered",
+      "where": "The open case in the toolbar.",
+      "test": "test_cases_are_listed",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Cases",
+      "kind": "command",
+      "status": "covered",
+      "where": "Cases tab.",
+      "test": "test_cases_are_listed",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Chasse IOC",
+      "kind": "command",
+      "status": "covered",
+      "where": "IOC hunting tab.",
+      "test": "test_an_ioc_scan_matches_the_pasted_indicator",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Chasses enregistrées…",
+      "kind": "command",
+      "status": "covered",
+      "where": "IOC hunting > Saved hunts…",
+      "test": "test_an_ioc_hunt_is_saved_and_replayed",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Choisir les colonnes…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Columns… dialog.",
+      "test": "test_display_layout_is_saved_in_the_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Chronologie & corrélations",
+      "kind": "command",
+      "status": "covered",
+      "where": "Timeline & correlations tab.",
+      "test": "test_the_timeline_counts_the_dated_rows",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Clair",
+      "kind": "command",
+      "status": "covered",
+      "where": "Display settings > palette.",
+      "test": "test_display_layout_is_saved_in_the_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Sombre",
+      "kind": "command",
+      "status": "covered",
+      "where": "Display settings > palette.",
+      "test": "test_display_layout_is_saved_in_the_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Client et mission…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Client report dialog: title and description.",
+      "test": "test_the_client_report_is_written_and_served_back",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Compatibilité Timeline Explorer",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Expose the desktop's compatibility checks in a Compatibility panel (profiles, sessions, TLE headers)."
+    },
+    {
+      "label": "Copier la valeur",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Copy this value.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Copier la valeur complète",
+      "kind": "command",
+      "status": "covered",
+      "where": "Show the whole cell… then Copy.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Copier les lignes sélectionnées",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Copy the selected rows, over the selection.",
+      "test": "test_the_grid_selects_a_range_and_a_selection",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Corréler dans toutes les analyses",
+      "kind": "command",
+      "status": "covered",
+      "where": "Global search across every analysis of the case.",
+      "test": "test_a_global_search_finds_the_value_and_names_its_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Couche ATT&CK Navigator…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Attack graph > Export an ATT&CK layer…",
+      "test": "test_the_attack_graph_refuses_on_an_empty_case",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Créer une règle pour cette valeur…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Colour rule for this value…",
+      "test": "test_colour_rules_round_trip",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Dispositions de la grille",
+      "kind": "command",
+      "status": "covered",
+      "where": "Column layout remembered in the analysis.",
+      "test": "test_display_layout_is_saved_in_the_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Désépingler la colonne",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Pin / unpin this column.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Épingler la colonne",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Pin / unpin this column.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Épingler à gauche",
+      "kind": "command",
+      "status": "covered",
+      "where": "Pinned columns freeze on the left.",
+      "test": "test_display_layout_is_saved_in_the_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Détails de la ligne",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row details panel.",
+      "test": "test_the_grid_selects_a_range_and_a_selection",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Détection EVTX",
+      "kind": "command",
+      "status": "covered",
+      "where": "EVTX detection tab.",
+      "test": "test_detection_refuses_with_a_readable_reason",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Ouvrir la détection EVTX",
+      "kind": "command",
+      "status": "covered",
+      "where": "EVTX detection tab.",
+      "test": "test_detection_refuses_with_a_readable_reason",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Exclure cette valeur",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Exclude this value.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Exporter PNG…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Attack graph > Export PNG…",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Exporter le suivi…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Actions & tracking > Export CSV.",
+      "test": "test_actions_export_is_a_csv",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Expression ET / OU / NON · ouvrir l’éditeur pour modifier",
+      "kind": "command",
+      "status": "covered",
+      "where": "Advanced filter…, with nested groups.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Filtrer cette colonne…",
+      "kind": "command",
+      "status": "covered",
+      "where": "The filter row under the headers.",
+      "test": "test_search_and_column_filter",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Filtrer sur ce champ",
+      "kind": "command",
+      "status": "covered",
+      "where": "The filter row under the headers.",
+      "test": "test_search_and_column_filter",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Filtrer sur cette valeur",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Filter on this value.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Filtrer une date…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Advanced filter on a timestamp column, or group it by interval.",
+      "test": "test_search_and_column_filter",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Grouper par cette colonne",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Group by this column, and the Group… dialog.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Hayabusa + AI",
+      "kind": "command",
+      "status": "covered",
+      "where": "Hayabusa + AI tab; no model is connected and the tab says so.",
+      "test": "test_detection_refuses_with_a_readable_reason",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Importer une liste…",
+      "kind": "command",
+      "status": "covered",
+      "where": "IOC hunting: paste indicators.",
+      "test": "test_an_ioc_scan_matches_the_pasted_indicator",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Imports",
+      "kind": "command",
+      "status": "covered",
+      "where": "Imports tab, file by file, with the reader and the reason.",
+      "test": "test_the_import_history_lists_the_files_of_the_case",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Indicateurs",
+      "kind": "command",
+      "status": "covered",
+      "where": "IOC hunting results.",
+      "test": "test_an_ioc_scan_matches_the_pasted_indicator",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Machines et comptes",
+      "kind": "command",
+      "status": "covered",
+      "where": "Attack graph inputs.",
+      "test": "test_the_attack_graph_refuses_on_an_empty_case",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Marquer la sélection",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Mark the selection.",
+      "test": "test_the_grid_selects_a_range_and_a_selection",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Retirer les signets de la sélection",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Remove marks from the selection.",
+      "test": "test_the_grid_selects_a_range_and_a_selection",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Masquer cette colonne",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Hide this column, and Columns…",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Modifier…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Actions & tracking > edit.",
+      "test": "test_tracking_actions_are_created_updated_and_exported",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Qu’est-ce qui a lancé {} ?",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > What launched this process?",
+      "test": "test_pivot_answers_what_launched_a_process",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Recherche globale",
+      "kind": "command",
+      "status": "covered",
+      "where": "Global search in the toolbar.",
+      "test": "test_a_global_search_finds_the_value_and_names_its_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Rechercher dans tous les artefacts",
+      "kind": "command",
+      "status": "covered",
+      "where": "Global search in the toolbar.",
+      "test": "test_a_global_search_finds_the_value_and_names_its_analysis",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Rechercher des IOC",
+      "kind": "command",
+      "status": "covered",
+      "where": "IOC hunting tab.",
+      "test": "test_an_ioc_scan_matches_the_pasted_indicator",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Regrouper les dates par",
+      "kind": "command",
+      "status": "covered",
+      "where": "Group… with a date interval.",
+      "test": "test_search_and_column_filter",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Retirer",
+      "kind": "command",
+      "status": "covered",
+      "where": "Actions & tracking > remove.",
+      "test": "test_tracking_actions_are_created_updated_and_exported",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Retirer du groupement",
+      "kind": "command",
+      "status": "covered",
+      "where": "Group… > Remove grouping.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Règles",
+      "kind": "command",
+      "status": "covered",
+      "where": "Colour rules…",
+      "test": "test_colour_rules_round_trip",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Règles globales",
+      "kind": "command",
+      "status": "covered",
+      "where": "Colour rules…, stored with the analysis.",
+      "test": "test_colour_rules_round_trip",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Signet / note…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row details: bookmark note.",
+      "test": "test_bookmarks_and_cell_notes_round_trip",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Tous les artefacts",
+      "kind": "command",
+      "status": "covered",
+      "where": "Analyses tree: every analysis of the case.",
+      "test": "test_analysis_columns_and_rows",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Tous les cases",
+      "kind": "command",
+      "status": "covered",
+      "where": "Cases tab.",
+      "test": "test_cases_are_listed",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Tri sur plusieurs colonnes…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Shift-click a header for a second sort key.",
+      "test": "test_search_and_column_filter",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Trier par ordre croissant",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Sort ascending, or a header click.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Trier par ordre décroissant",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row menu > Sort descending, or a header click.",
+      "test": "test_the_row_menu_offers_every_cell_action",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Éditer la note de la cellule…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row details > note, per column.",
+      "test": "test_bookmarks_and_cell_notes_round_trip",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Éditer la note de la sélection…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Row details note applied to the whole selection.",
+      "test": "test_the_grid_selects_a_range_and_a_selection",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Vérifier les imports et diagnostics…",
+      "kind": "command",
+      "status": "covered",
+      "where": "Imports tab, with the Not imported / Error filters.",
+      "test": "test_the_import_history_lists_the_files_of_the_case",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Afficher dans l’Explorateur",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "There is no system file manager behind a browser, and the server's folders are not the analyst's machine.",
+      "plan": ""
+    },
+    {
+      "label": "Ouvrir le dossier parent",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "There is no system file manager behind a browser.",
+      "plan": ""
+    },
+    {
+      "label": "Ouvrir avec…",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The server's file associations are not the analyst's.",
+      "plan": ""
+    },
+    {
+      "label": "Animation au démarrage",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A browser tab has no splash screen; the desktop keeps its ident.",
+      "plan": ""
+    },
+    {
+      "label": "Barres d’outils",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The browser owns the window chrome; the toolbar is fixed and always visible.",
+      "plan": ""
+    },
+    {
+      "label": "Détacher / afficher un panneau",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "Window management does not exist in a browser tab; the panels are fixed.",
+      "plan": ""
+    },
+    {
+      "label": "Détacher le panneau",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "Window management does not exist in a browser tab.",
+      "plan": ""
+    },
+    {
+      "label": "Rattacher",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "Window management does not exist in a browser tab.",
+      "plan": ""
+    },
+    {
+      "label": "Organiser l’espace de travail",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The workspace presets rearrange docks; a browser tab has none.",
+      "plan": ""
+    },
+    {
+      "label": "Position de l’arbre",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A dock position; the browser has one layout.",
+      "plan": ""
+    },
+    {
+      "label": "Position des détails de ligne",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "A dock position; the browser has one layout.",
+      "plan": ""
+    },
+    {
+      "label": "Regrouper l’arbre par",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The desktop's artifact tree is a window layout the browser does not have.",
+      "plan": ""
+    },
+    {
+      "label": "Guide de l’espace de travail",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The guides are desktop markdown windows; the Host edition documents itself in Help > About.",
+      "plan": ""
+    },
+    {
+      "label": "New conversation",
+      "kind": "command",
+      "status": "declared",
+      "where": "",
+      "test": "",
+      "reason": "The AI assistant is not connected in this edition, on purpose.",
+      "plan": ""
+    },
+    {
+      "label": "(date et heure dans la même colonne)",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Let the timeline choose how a date column is read: one column, two columns, or none."
+    },
+    {
+      "label": "Date + heure (colonnes séparées)",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Same panel as above: the two-column reading of a date."
+    },
+    {
+      "label": "Sans date / corrélation uniquement",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Same panel: build the timeline without a date column."
+    },
+    {
+      "label": "Bookmark every alert of this finding",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "From a Hayabusa finding, mark the rows it came from in one action."
+    },
+    {
+      "label": "Show the alerts in the grid",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "From a Hayabusa finding, open the alert analysis filtered on its rule."
+    },
+    {
+      "label": "Exporter les sources Hayabusa…",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Export the alert sources of a detection as CSV, as the desktop does."
+    },
+    {
+      "label": "Graphique",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Chart the grouped counts: bars per group, drawn from the same request as the grid."
+    },
+    {
+      "label": "Gérer les analyses ouvertes",
+      "kind": "command",
+      "status": "covered",
+      "where": "The ✕ on the analysis tab closes it; the tree switches.",
+      "test": "test_closing_an_analysis_leaves_the_others_and_its_file",
+      "reason": "",
+      "plan": ""
+    },
+    {
+      "label": "Nœud libre…",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Add a free node to the attack graph, which needs the graph to be editable and stored."
+    },
+    {
+      "label": "Ouvrir l’événement EVTX source",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Map a finding back to its source record in the EVTX analysis."
+    },
+    {
+      "label": "Voir le contexte EVTX de cette alerte",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Same mapping as above, shown around the alert."
+    },
+    {
+      "label": "Plugins",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Inventory the plugin host from the service and show what it would load."
+    },
+    {
+      "label": "Profils et compatibilité",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "A compatibility panel: profile catalogue, reader inventory, session compatibility."
+    },
+    {
+      "label": "Sessions et compatibilité",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Same panel: what a saved session would load here."
+    },
+    {
+      "label": "Standard / personnalisé",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Custom palette colours, not only the desktop's two themes."
+    },
+    {
+      "label": "Épingler à droite",
+      "kind": "command",
+      "status": "todo",
+      "where": "",
+      "test": "",
+      "reason": "",
+      "plan": "Pin a column to the right edge of the frozen area, as the desktop does."
+    }
+  ]
+}

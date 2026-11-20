@@ -88,8 +88,10 @@ async function uploadFiles(files) {
     say(`Importing ${file.name} (${done + 1}/${total})…`);
     const body = new FormData();
     body.append("file", file);
+    body.append("organization", $("import-layout").value);
     try {
-      const response = await fetch(`/api/cases/${state.openCase.id}/upload`, { method: "POST", body });
+      const response = await fetch(`/api/cases/${state.openCase.id}/upload?organization=${encodeURIComponent($("import-layout").value)}`,
+        { method: "POST", body });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || payload.error || response.statusText);
       if (!payload.analyses) {

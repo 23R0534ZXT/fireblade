@@ -49,6 +49,11 @@
         <path d="M1.5 4.5h5l1.2 1.5h6.8v7.5H1.5z" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
         <path d="M1.5 4.5V3h4l1.2 1.5" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
       </svg>Import a file</div>
+    <select class="select" id="import-layout" title="How the results are laid out">
+      <option value="files">one grid per file</option>
+      <option value="artifacts">one grid per artifact family</option>
+      <option value="combined">one grid for everything</option>
+    </select>
     <input type="file" id="import-input" multiple hidden>
     <div class="tb" data-act="export-csv">
       <svg class="ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">

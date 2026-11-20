@@ -891,7 +891,7 @@ class Library:
         session = output / "collection.fireblade-session"
         if not session.is_file():
             return {"status": report.get("status"), "analyses": 0, "files": len(report.get("files") or []),
-                    "collection": str(output), "message": "Aucune analyse produite : format non reconnu."}
+                    "collection": str(output), "message": "No analysis produced: the format was not recognised."}
         snapshots, active = read_session(session)
         collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
         collections.append({"path": str(output), "name": output.name,

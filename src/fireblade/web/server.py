@@ -87,7 +87,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/api/cases/{identifier}/upload")
-    def upload(identifier: str, file: UploadFile = File(...)):
+    def upload(identifier: str, organization: str = "files", file: UploadFile = File(...)):
         """The browser cannot hand over a server path: the file is sent, stored in
         the case's own evidence folder, then read by the same collection."""
         folder = library.library.folder(identifier)
@@ -101,7 +101,8 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             while chunk := file.file.read(1024 * 1024):
                 stream.write(chunk)
         try:
-            return library.import_source(identifier, target, tools_root=tools_root)
+            return library.import_source(identifier, target, tools_root=tools_root,
+                                         organization=organization)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

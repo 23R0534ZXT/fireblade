@@ -284,15 +284,15 @@ class Library:
     def export_package(self, identifier: str, include_sources: bool = True) -> dict:
         """Write the case as a portable .fireblade archive and hand back a URL."""
         from fireblade.core.case_package import export_package
-        from fireblade.core.sessions import read_session
 
         data = self.library.read(identifier)
-        documents, active = ([], -1)
-        session = self.library.session_path(data)
-        if session and Path(session).is_file():
-            documents, active = read_session(session)
-        folder = self.library.folder(identifier)
-        target = folder / "exports" / (identifier[:8] + ".fireblade")
+        # The snapshots come from the repaired path resolution, so a case written
+        # on Windows packs here even though its session stores C:\… paths.
+        documents = self._snapshots(identifier)
+        active = 0 if documents else -1
+        # The archive is written outside the case folder: a file inside it would
+        # change while it is being packed, and the packer refuses that.
+        target = self.root / "exports" / (identifier[:8] + ".fireblade")
         target.parent.mkdir(parents=True, exist_ok=True)
         self.close_case(identifier)
         result = export_package(self.library, data, documents, active, target,
@@ -303,7 +303,7 @@ class Library:
                 "result": {k: str(v)[:120] for k, v in (result or {}).items()}}
 
     def package_file(self, identifier: str) -> Path:
-        target = self.library.folder(identifier) / "exports" / (identifier[:8] + ".fireblade")
+        target = self.root / "exports" / (identifier[:8] + ".fireblade")
         if not target.is_file():
             raise ServiceError("Aucun paquet exporté pour ce case.")
         return target

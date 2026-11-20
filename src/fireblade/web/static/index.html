@@ -51,6 +51,8 @@
     <div class="tbsep"></div>
     <div class="tb" data-act="refresh-cases">Refresh</div>
     <div class="tb" data-act="close-case">Close case</div>
+    <div class="tbsep"></div>
+    <div class="tb" data-act="global-search">Global search</div>
   </div>
 
   <div class="tabs" id="doctabs">
@@ -239,6 +241,21 @@
       <div class="note">The palette and the density come from the desktop theme, so a wider text size only enlarges the interface; it does not change the colours.</div>
     </div>
     <div class="foot">
+      <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="search-modal">
+  <div class="dialog" style="min-width:760px">
+    <h3>Global search</h3>
+    <div class="body">
+      <div class="row"><label for="global-text">Text</label><input id="global-text" placeholder="Search every analysis of the case"></div>
+      <div class="note" id="global-summary">Nothing searched yet.</div>
+      <div class="columns-list" id="global-results" style="max-height:320px"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="global-run">Search</button>
       <button class="btn" data-act="settings-close">Close</button>
     </div>
   </div>

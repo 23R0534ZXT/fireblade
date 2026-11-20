@@ -267,6 +267,27 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- global search ---------- */
+
+async function runGlobalSearch() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const text = $("global-text").value.trim();
+  if (!text) { say("Type something to search", true); return; }
+  $("global-summary").textContent = "Searching…";
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/search?text=${encodeURIComponent(text)}`);
+    $("global-summary").textContent = `${payload.total} hit(s) in ${payload.analyses.filter((a) => a.count).length} analysis(es)`;
+    $("global-results").innerHTML = payload.analyses.map((analysis) => {
+      if (!analysis.count) return "";
+      const rows = analysis.rows.slice(0, 8).map((row) =>
+        `<div class="hit">row ${escapeHtml(String(row.row_id))} · ${escapeHtml(row.cells.filter((c) => c !== null && c !== "").slice(0, 4).join(" · ")).slice(0, 160)}</div>`).join("");
+      return `<div class="analysis-hit"><b>${escapeHtml(analysis.label)}</b> — ${analysis.count} hit(s)${rows}</div>`;
+    }).join("") || '<div class="emptygrid">No hit.</div>';
+  } catch (error) {
+    $("global-summary").textContent = error.message;
+  }
+}
+
 /* ---------- actions and tracking ---------- */
 
 const actionState = { items: [] };
@@ -972,6 +993,8 @@ async function act(name) {
       break;
     case "import-file": $("import-input").click(); break;
     case "group-column": openGroupPicker(); break;
+    case "global-search": $("search-modal").classList.add("show"); break;
+    case "global-run": await runGlobalSearch(); $("search-modal").classList.add("show"); break;
     case "new-case": openCaseDialog("create"); break;
     case "rename-case": openCaseDialog("rename"); break;
     case "case-save": await saveCase(); break;

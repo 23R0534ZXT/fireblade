@@ -178,6 +178,34 @@ class Library:
         return matches[0].resolve() if len(matches) == 1 else None
 
 
+    # -- global search -----------------------------------------------------
+
+    def search(self, identifier: str, text: str, limit: int = 50) -> dict:
+        """Search every analysis of the case, and say where the hits are."""
+        needle = (text or "").strip()
+        if not needle:
+            raise ServiceError("Saisissez un texte à rechercher.")
+        results = []
+        total = 0
+        for entry in self._analyses(self.library.read(identifier)):
+            if not entry["found"]:
+                continue
+            case = self._case_for(identifier, entry["index"])
+            with case.lock:
+                view = View(search=needle)
+                count = int(case.count(view))
+                total += count
+                rows = []
+                if count:
+                    for row in case.page(view, offset=0, limit=min(limit, 50)):
+                        rows.append({
+                            "row_id": json_value(row[0]),
+                            "cells": [json_value(value) for value in row[1:]],
+                        })
+            results.append({"index": entry["index"], "label": entry["label"],
+                            "count": count, "rows": rows})
+        return {"text": needle, "total": total, "analyses": results}
+
     # -- actions and tracking ----------------------------------------------
 
     def workspace(self, identifier: str) -> dict:

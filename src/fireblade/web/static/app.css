@@ -202,3 +202,6 @@ body.dropping{outline:2px dashed #7aa9c9;outline-offset:-6px}
 
 .dialog textarea{border:1px solid var(--border);background:#fff;font-family:inherit;font-size:12px;padding:4px;outline:none}
 .dialog input[type=text],.dialog #report-title{height:22px;border:1px solid var(--border);background:#fff;font-family:inherit;font-size:12px;padding:0 5px;flex:1;outline:none}
+
+.analysis-hit{padding:6px 8px;border-bottom:1px solid #eee;font-size:11px}
+.analysis-hit .hit{color:#333;padding:1px 0 1px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

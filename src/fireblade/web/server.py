@@ -104,6 +104,13 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/search")
+    def search(identifier: str, text: str = "", limit: int = 50):
+        try:
+            return library.search(identifier, text, limit=limit)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/workspace")
     def workspace(identifier: str):
         try:

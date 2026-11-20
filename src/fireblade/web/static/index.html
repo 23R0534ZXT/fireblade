@@ -100,6 +100,7 @@
           <button class="btn" data-act="group-column">Group…</button>
           <button class="btn" data-act="columns">Columns…</button>
           <button class="btn" data-act="rules">Colour rules…</button>
+          <button class="btn" data-act="views">Views…</button>
           <button class="btn" id="details-toggle">Row details</button>
         </div>
 
@@ -316,6 +317,18 @@
 <div id="row-menu" class="row-menu" hidden>
   <div class="item" data-act="pivot">What launched this process?</div>
   <div class="item" data-act="bookmark-row">Bookmark this row</div>
+</div>
+
+<div class="modal" id="views-modal">
+  <div class="dialog" style="min-width:600px">
+    <h3>Saved views</h3>
+    <div class="body">
+      <div class="row"><label for="view-name">Save as</label><input id="view-name" placeholder="e.g. Logons on FBVM"></div>
+      <div class="row"><button class="btn" data-act="view-save">Save the current view</button></div>
+      <div class="columns-list" id="views-list" style="max-height:240px"></div>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
 </div>
 
 <div class="modal" id="rules-modal">

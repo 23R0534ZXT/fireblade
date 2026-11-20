@@ -345,6 +345,74 @@ function renderHayabusa() {
       <td title="${escapeHtml(finding.MitreTags || "")}">${escapeHtml(finding.MitreTactics || "")}</td></tr>`).join("");
 }
 
+/* ---------- saved views ---------- */
+
+async function loadViews() {
+  if (!state.openCase) return [];
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/views`);
+    return payload.views || [];
+  } catch (_) {
+    return [];
+  }
+}
+
+async function openViewsDialog() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  const names = await loadViews();
+  $("views-list").innerHTML = names.map((name) => `
+    <label><span>${escapeHtml(name)}</span>
+      <span class="pin"><button class="btn" data-view-apply="${escapeHtml(name)}">Apply</button></span></label>`).join("")
+    || '<div class="emptygrid">No saved view yet.</div>';
+  $("views-list").querySelectorAll("[data-view-apply]").forEach((button) => {
+    button.addEventListener("click", () => applyView(button.dataset.viewApply));
+  });
+  $("views-modal").classList.add("show");
+}
+
+async function saveCurrentView() {
+  const name = $("view-name").value.trim();
+  if (!name) { say("A name is required", true); return; }
+  try {
+    await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/views`, {
+      name,
+      view: {
+        search: state.search,
+        filters: state.filters,
+        groups: state.groups,
+        sort: state.sort,
+        descending: state.descending,
+        bookmarks_only: state.bookmarksOnly,
+      },
+    });
+    say(`View saved: ${name}`);
+    $("view-name").value = "";
+    await openViewsDialog();
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function applyView(name) {
+  try {
+    const view = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/views/${encodeURIComponent(name)}`);
+    state.search = view.search || "";
+    $("search").value = state.search;
+    state.filters = (view.filters || []).map((item) => ({ column: item.column, operator: item.operator, value: item.value }));
+    state.groups = view.groups || [];
+    state.path = [];
+    state.sort = view.sort === undefined ? null : view.sort;
+    state.descending = Boolean(view.descending);
+    state.bookmarksOnly = Boolean(view.bookmarks_only);
+    $("bookmarks-only").classList.toggle("active", state.bookmarksOnly);
+    closeModals();
+    await loadRows(true);
+    say(`View applied: ${name}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 /* ---------- colour rules ---------- */
 
 let rulesCache = [];
@@ -1330,6 +1398,8 @@ async function act(name) {
     case "report": $("report-modal").classList.add("show"); break;
     case "report-build": await buildReport(); break;
     case "columns": openColumnManager(); break;
+    case "views": await openViewsDialog(); break;
+    case "view-save": await saveCurrentView(); break;
     case "rules": openRulesDialog(); break;
     case "rule-add": await addRule(); break;
     case "pivot": await runPivot(); break;

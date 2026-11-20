@@ -279,6 +279,45 @@ class Library:
             raise ServiceError("Aucune import de ce case ne contient de journal EVTX à analyser.")
         merged = [finding for item in results for finding in item["findings"]]
         return {"runs": results, "findings": merged[:2000], "total": sum(item["total"] for item in results)}
+    # -- saved views -------------------------------------------------------
+
+    def views(self, identifier: str, index: int) -> dict:
+        case = self._case_for(identifier, index)
+        with case.lock:
+            stored = case.views()
+        return {"views": sorted(name for name in stored if not name.startswith("__"))}
+
+    def save_view(self, identifier: str, index: int, name: str, view: dict) -> dict:
+        """Keep the grid state under a name, with the core's own View object."""
+        clean = (name or "").strip()
+        if not clean or len(clean) > 120:
+            raise ServiceError("Nom de vue invalide (1 à 120 caractères).")
+        saved = View(
+            search=str(view.get("search") or ""),
+            filters=[Filter(int(item["column"]), str(item["operator"]), str(item.get("value", "")))
+                     for item in view.get("filters") or []
+                     if str(item.get("operator")) in OPERATORS],
+            groups=[int(value) for value in view.get("groups") or []],
+            sort_column=(int(view["sort"]) if view.get("sort") is not None else None),
+            descending=bool(view.get("descending")),
+            bookmarks_only=bool(view.get("bookmarks_only")),
+        )
+        case = self._case_for(identifier, index)
+        with case.lock:
+            case.save_view(clean, saved)
+        return {"name": clean}
+
+    def view(self, identifier: str, index: int, name: str) -> dict:
+        case = self._case_for(identifier, index)
+        with case.lock:
+            stored = case.views().get(name)
+        if stored is None:
+            raise ServiceError("Vue introuvable.")
+        return {"name": name, "search": stored.search,
+                "filters": [{"column": f.column, "operator": f.operator, "value": f.value} for f in stored.filters],
+                "groups": list(stored.groups), "sort": stored.sort_column,
+                "descending": stored.descending, "bookmarks_only": stored.bookmarks_only}
+
     # -- colour rules ------------------------------------------------------
 
     RULES_VIEW = "__fireblade_rules__"

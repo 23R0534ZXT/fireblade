@@ -29,12 +29,12 @@ plan (architecture, phases, décisions) est dans `HANDOFF-DOCKER.md`.
 
 | Quoi | Valeur |
 | --- | --- |
-| Branche | `feat/host-edition`, **53 commits** au-dessus de `main` (`git rev-list --count main..HEAD`) |
+| Branche | `feat/host-edition`, **54 commits** au-dessus de `main` (`git rev-list --count main..HEAD`) |
 | `main` | intacte, jamais poussée, rien de publié |
-| Dernier commit de code | `3a4e4b1 Host: an alert opens its source event and its EVTX context` |
+| Dernier commit de code | `26601d6 Host: the timeline reads dates the way the desktop does` |
 | Arbre de travail | propre — les trois documents non suivis sont hors sujet |
-| Porte complète | **verte** : `1800 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 16 min 50 s |
-| Tests web | **53**, dont 7 de parité qui refusent une couverture sans test |
+| Porte complète | **verte** : `1803 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 16 min 49 s |
+| Tests web | **56**, dont 7 de parité qui refusent une couverture sans test |
 | Image | `fireblade:host`, saine sur `http://192.168.1.201:8095` |
 | Cases ouverts sur le service | 8, plus `poste-fr.csv` importé pour la recette d'encodage |
 
@@ -92,9 +92,9 @@ Trois statuts, et un seul est une promesse :
   parité vérifie que ce test existe vraiment (`ast` sur `tests/`).
 - **declared** — impossible ou hors sujet derrière un navigateur, avec la raison
   (pas d'explorateur système, pas de gestion de fenêtres, pas d'IA branchée).
-- **todo** — vraie commande du desktop non portée, avec son plan. **6 restent.**
+- **todo** — vraie commande du desktop non portée, avec son plan. **3 restent.**
 
-État actuel : 102 commandes ⇒ 80 couvertes, 16 déclarées hors périmètre, 6 à faire.
+État actuel : 102 commandes ⇒ 83 couvertes, 16 déclarées hors périmètre, 3 à faire.
 
 ---
 
@@ -143,7 +143,9 @@ fichier par fichier avec le lecteur et la raison d'un échec.
 archivage, restauration, export/import d'un case portable `.fireblade`.
 
 **Chronologie** — `TimelineStore` du noyau, histogramme, légende des sources,
-corrélation d'une entité, pagination.
+corrélation d'une entité, pagination. Chaque analyse a son **sélecteur de date** :
+colonne détectée, colonne nommée, date + heure en deux colonnes, ou aucune
+(corrélation seule) — les trois lectures du desktop.
 
 **Chasse IOC** — collage, analyse, résultats (ligne, colonne, règle) ; chaque
 chasse laisse `hunts/<horodatage>.json` et se rejoue.
@@ -251,14 +253,12 @@ un test qui existe**, sinon `tests/web/test_host_parity.py` échoue.
 
 ## 11. Ce qui reste, dans l'ordre du fichier de parité
 
-Six commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
+Trois commandes, listées avec leur plan dans `HOST-PARITY.md` :
 
-1. **Chronologie, mode de date** (3) — même colonne, colonnes séparées, sans date.
-   Le panneau choisit aujourd'hui la colonne tout seul.
-2. **Compatibilité Timeline Explorer** (1) — téléverser une DLL de lecteur TLE,
+1. **Compatibilité Timeline Explorer** — téléverser une DLL de lecteur TLE,
    inspecter ses lecteurs, faire passer une source dedans.
-3. **Graphe** (1) — nœud libre, qui demande un graphe éditable et stocké.
-4. **Palette personnalisée** (1) — les deux thèmes du desktop, pas de couleurs libres.
+2. **Nœud libre** — un graphe éditable et stocké, pas seulement calculé.
+3. **Palette personnalisée** — les deux thèmes du desktop, pas de couleurs libres.
 
 ---
 
@@ -288,6 +288,7 @@ Six commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
 ## 14. Les derniers commits
 
 ```
+26601d6 Host: the timeline reads dates the way the desktop does
 3a4e4b1 Host: an alert opens its source event and its EVTX context
 0333e8b Host: profiles and presentation plugins, kept on a volume
 db009a6 Host: a finding opens and marks its alerts, and a run exports its sources
@@ -356,8 +357,8 @@ f1d95d4 Host: the graph as a PNG
 ## 16. Par où commencer, concrètement
 
 1. `git log --oneline -5` et `git status` sur la VM : l'arbre doit être propre.
-2. `python -m pytest -q tests/web` (11 s) : 53 verts, dont la parité.
-3. Ouvrir `HOST-PARITY.md` → « Real work left » : six lignes, chacune avec
+2. `python -m pytest -q tests/web` (17 s) : 56 verts, dont la parité.
+3. Ouvrir `HOST-PARITY.md` → « Real work left » : trois lignes, chacune avec
    son plan. Les prendre dans l'ordre, une par une, avec la double preuve.
 4. Après chaque lot : `scripts.dev_check` (~17 min), régénérer
    `HOST-PARITY.md`, mettre à jour ce document.

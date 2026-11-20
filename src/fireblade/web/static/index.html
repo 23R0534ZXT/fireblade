@@ -60,7 +60,7 @@
     <div class="tab" data-tab="timeline">Timeline &amp; correlations</div>
     <div class="tab" data-tab="ioc">IOC hunting</div>
     <div class="tab off" title="Not available in Fireblade Host yet">Hayabusa + AI</div>
-    <div class="tab off" title="Not available in Fireblade Host yet">Actions &amp; tracking</div>
+    <div class="tab" data-tab="actions">Actions &amp; tracking</div>
     <div class="tab off" title="Not available in Fireblade Host yet">Attack graph</div>
     <div class="tab off" title="Not available in Fireblade Host yet">EVTX detection</div>
     <div class="doctab docempty" id="doctab">Case</div>
@@ -112,6 +112,34 @@
           <div class="spacer"></div>
           <div class="info" id="pageinfo"></div>
         </div>
+      </div>
+
+      <div id="actions-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="filterbar">
+          <input class="search" id="action-title" placeholder="New action — what has to be done?">
+          <select class="select" id="action-owner">
+            <option value="us">us</option>
+            <option value="client">client</option>
+            <option value="third-party">third-party</option>
+          </select>
+          <select class="select" id="action-priority">
+            <option value="medium">medium</option>
+            <option value="low">low</option>
+            <option value="high">high</option>
+            <option value="critical">critical</option>
+          </select>
+          <button class="btn" id="action-add">Add</button>
+        </div>
+        <div class="gridwrap" style="flex:1">
+          <div class="gridbody">
+            <table>
+              <colgroup><col style="width:80px"><col><col style="width:110px"><col style="width:100px"><col style="width:100px"><col style="width:120px"></colgroup>
+              <thead><tr><th>Date</th><th>Action</th><th>Owner</th><th>Priority</th><th>Status</th><th></th></tr></thead>
+              <tbody id="action-rows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="pager"><div class="info" id="action-summary"></div></div>
       </div>
 
       <div id="ioc-view" style="display:none;flex-direction:column;flex:1;min-height:0">

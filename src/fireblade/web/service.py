@@ -178,6 +178,48 @@ class Library:
         return matches[0].resolve() if len(matches) == 1 else None
 
 
+    # -- actions and tracking ----------------------------------------------
+
+    def workspace(self, identifier: str) -> dict:
+        """The operational record of the case: actions, entities, noted indicators."""
+        from fireblade.core.case_workspace import load
+
+        folder = self.library.folder(identifier)
+        data = load(folder)
+        return {
+            "revision": data.get("revision"),
+            "actions": [{key: item.get(key) for key in
+                         ("id", "title", "detail", "owner", "status", "priority", "type",
+                          "intervenant", "date", "due", "machine", "reference", "tags", "closed")}
+                        for item in data.get("actions", [])],
+            "entities": [{key: item.get(key) for key in ("id", "kind", "label", "hostname", "ip", "os", "notes", "tags")}
+                         for item in data.get("entities", [])],
+            "iocs": [{key: item.get(key) for key in ("id", "value", "kind", "label", "status")}
+                     for item in data.get("iocs", [])],
+        }
+
+    def add_action(self, identifier: str, fields: dict) -> dict:
+        from fireblade.core.case_workspace import add_action
+
+        title = (fields or {}).get("title", "").strip()
+        if not title:
+            raise ServiceError("Un intitulé d'action est requis.")
+        allowed = {key: value for key, value in (fields or {}).items()
+                   if key in ("detail", "owner", "status", "priority", "type", "intervenant",
+                              "date", "due", "machine", "reference", "tags") and value not in (None, "")}
+        return add_action(self.library.folder(identifier), title, **allowed)
+
+    def update_action(self, identifier: str, action_id: str, fields: dict) -> dict:
+        from fireblade.core.case_workspace import update_action
+
+        allowed = {key: value for key, value in (fields or {}).items()
+                   if key in ("title", "detail", "owner", "status", "priority", "type",
+                              "intervenant", "date", "due", "machine", "reference") and value is not None}
+        if not allowed:
+            raise ServiceError("Rien à modifier.")
+        update_action(self.library.folder(identifier), action_id, **allowed)
+        return self.workspace(identifier)
+
     # -- case lifecycle ----------------------------------------------------
 
     def create_case(self, name: str, description: str = "", environment: str = "unspecified") -> dict:

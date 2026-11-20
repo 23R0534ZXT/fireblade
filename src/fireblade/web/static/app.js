@@ -267,6 +267,63 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- actions and tracking ---------- */
+
+const actionState = { items: [] };
+
+async function loadActions() {
+  if (!state.openCase) return;
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/workspace`);
+    actionState.items = payload.actions;
+    renderActions();
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+function renderActions() {
+  $("action-rows").innerHTML = actionState.items.map((item) => `
+    <tr data-action="${escapeHtml(item.id)}">
+      <td>${escapeHtml(item.date || "")}</td>
+      <td title="${escapeHtml(item.detail || "")}">${escapeHtml(item.title)}</td>
+      <td>${escapeHtml(item.owner || "")}</td>
+      <td>${escapeHtml(item.priority || "")}</td>
+      <td>${escapeHtml(item.status || "")}</td>
+      <td><button class="btn" data-action-close="${escapeHtml(item.id)}">${
+        item.status === "done" ? "Reopen" : "Done"}</button></td>
+    </tr>`).join("");
+  const open = actionState.items.filter((item) => item.status !== "done" && item.status !== "cancelled").length;
+  $("action-summary").textContent = `${actionState.items.length} action(s), ${open} still open`;
+}
+
+async function addAction() {
+  const title = $("action-title").value.trim();
+  if (!title) { say("An action needs a title", true); return; }
+  try {
+    await apiPost(`/api/cases/${state.openCase.id}/actions`, {
+      title, owner: $("action-owner").value, priority: $("action-priority").value,
+    });
+    $("action-title").value = "";
+    await loadActions();
+    say("Action added");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function toggleAction(actionId) {
+  const item = actionState.items.find((entry) => entry.id === actionId);
+  if (!item) return;
+  try {
+    await apiPatch(`/api/cases/${state.openCase.id}/actions/${actionId}`,
+      { status: item.status === "done" ? "todo" : "done" });
+    await loadActions();
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 /* ---------- IOC hunting ---------- */
 
 const iocState = { hits: [], summary: "" };
@@ -595,6 +652,8 @@ function showTab(name) {
   $("cases-view").style.display = name === "cases" ? "flex" : "none";
   $("timeline-view").style.display = name === "timeline" ? "flex" : "none";
   $("ioc-view").style.display = name === "ioc" ? "flex" : "none";
+  $("actions-view").style.display = name === "actions" ? "flex" : "none";
+  if (name === "actions" && state.openCase) loadActions();
   $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";
   if (name === "timeline" && state.openCase) loadTimeline(!timelineState.payload);
 }
@@ -833,6 +892,11 @@ function wire() {
   });
 
   $("ioc-scan").addEventListener("click", runIocScan);
+  $("action-add").addEventListener("click", addAction);
+  $("action-rows").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-action-close]");
+    if (button) toggleAction(button.dataset.actionClose);
+  });
   $("timeline-build").addEventListener("click", () => loadTimeline(false));
   $("timeline-search").addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;

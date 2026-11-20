@@ -104,6 +104,27 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/workspace")
+    def workspace(identifier: str):
+        try:
+            return library.workspace(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/actions")
+    def add_action(identifier: str, payload: dict):
+        try:
+            return library.add_action(identifier, payload or {})
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.patch("/api/cases/{identifier}/actions/{action_id}")
+    def update_action(identifier: str, action_id: str, payload: dict):
+        try:
+            return library.update_action(identifier, action_id, payload or {})
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/report")
     def report(identifier: str, payload: dict):
         payload = payload or {}

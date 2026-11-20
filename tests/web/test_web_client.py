@@ -183,6 +183,17 @@ def test_the_detection_rules_dialog_edits_a_rule():
     assert "reset to the pack" in js.lower() or "Reset to the pack" in html
 
 
+def test_the_colour_rules_carry_two_scopes():
+    js, html = _read(APP), _read(INDEX)
+    assert 'data-scope="analysis"' in html and 'data-scope="global"' in html
+    for name in ("showRulesScope", "loadGlobalRules", "persistGlobalRules", "globalRuleList"):
+        assert f"function {name}(" in js, name
+    assert "/api/global-rules" in js
+    # A rule the grid cannot evaluate is skipped, never approximated.
+    assert "rule.simple === false" in js
+    assert 'id="rule-global-export"' in html and 'id="rule-global-import"' in html
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

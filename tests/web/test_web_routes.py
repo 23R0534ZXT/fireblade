@@ -561,3 +561,40 @@ def test_the_rules_need_a_tool_pack(service):
     library.tools_root = None
     with pytest.raises(ServiceError):
         library.rules_inventory()
+
+
+def test_global_rules_reach_every_analysis_that_has_the_column(service, tmp_path):
+    """The desktop's "Règles globales": one book, applied wherever the column fits."""
+    library, identifier = service
+    library.plugins_root = tmp_path / "plugins"
+    saved = library.save_global_rules(
+        [{"column": "User", "operator": "eq", "value": "alice",
+          "background": "#ffe08a", "foreground": "#202020", "bold": True, "enabled": True}],
+        headers=["User", "SourceIP"])
+    assert saved["saved"] == 1
+
+    state = library.global_rules(identifier, 0)
+    assert state["stored"] == 1
+    assert state["enabled"] is True
+    assert state["applied"] == 1
+    assert state["effective"][0]["column"] == 2, state["effective"]
+    assert state["rules"][0]["column_name"] == "User"
+
+    # An analysis without that column keeps its rows uncoloured, and says why.
+    other = library.save_global_rules(
+        [{"column": "Domain", "operator": "contains", "value": "corp", "enabled": True}])
+    assert other["saved"] == 1
+    state = library.global_rules(identifier, 0)
+    assert state["applied"] == 0
+    assert state["skipped"], "a rule whose column is absent must be reported, not silently dropped"
+
+    library.set_global_rules_enabled(False)
+    assert library.global_rules(identifier, 0)["enabled"] is False
+    library.set_global_rules_enabled(True)
+
+    data = library.global_rules_file()
+    assert b"fireblade-global-rules" in data
+    imported = library.import_global_rules(data)
+    assert imported["imported"] == 1
+    with pytest.raises(ValueError):
+        library.import_global_rules(b'{"format": "something else"}')

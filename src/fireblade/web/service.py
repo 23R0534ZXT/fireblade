@@ -805,27 +805,161 @@ class Library:
 
     RULES_VIEW = "__fireblade_rules__"
 
+    @staticmethod
+    def _rule_payload(rule) -> dict:
+        """One rule as the grid can apply it: a single condition, and its colours."""
+        condition = getattr(rule, "condition", None)
+        children = list(getattr(condition, "children", None) or [])
+        first = children[0] if children else None
+        operator = getattr(first, "operator", "contains")
+        return {
+            "column": getattr(first, "column", None),
+            "operator": operator,
+            "value": getattr(first, "value", ""),
+            "background": rule.background,
+            "foreground": rule.foreground,
+            "bold": bool(rule.bold),
+            "target": rule.target,
+            "enabled": bool(rule.enabled),
+            # The grid evaluates one condition per rule; a richer one is kept, not faked.
+            "simple": len(children) == 1 and operator != "expression",
+        }
+
     def rules(self, identifier: str, index: int) -> dict:
         """The colour rules of this analysis, kept in its own views table."""
         case = self._case_for(identifier, index)
         with case.lock:
             stored = case.views().get(self.RULES_VIEW)
-        rules = []
-        if stored is not None:
-            for rule in stored.format_rules:
-                condition = getattr(rule, "condition", None)
-                first = condition.children[0] if getattr(condition, "children", None) else None
-                rules.append({
-                    "column": getattr(first, "column", None),
-                    "operator": getattr(first, "operator", "contains"),
-                    "value": getattr(first, "value", ""),
-                    "background": rule.background,
-                    "foreground": rule.foreground,
-                    "bold": bool(rule.bold),
-                    "target": rule.target,
-                    "enabled": bool(rule.enabled),
-                })
+        rules = [self._rule_payload(rule) for rule in (stored.format_rules if stored else [])]
         return {"rules": rules}
+
+    # -- global colour rules ----------------------------------------------
+
+    def _global_rules_path(self) -> Path:
+        """The file the desktop keeps beside its profile, kept on the volume here."""
+        return self._plugins_dir() / "global-rules.json"
+
+    def _global_rules_flag_path(self) -> Path:
+        return self._plugins_dir() / "global-rules.enabled.json"
+
+    def _global_rules_book(self):
+        """The book, and the store that read it: saving goes through the same one,
+        so the store's own guard against overwriting a hand-edited file holds."""
+        from fireblade.core.rule_store import RuleBook, RuleStore
+
+        store = RuleStore(self._global_rules_path())
+        if not self._global_rules_path().is_file():
+            return RuleBook(), None, store
+        try:
+            return store.load(), None, store
+        except (OSError, ValueError, KeyError) as exc:
+            return RuleBook(), str(exc), store
+
+    def global_rules(self, identifier: str | None = None, index: int | None = None) -> dict:
+        """The rules that follow the analyst from one analysis to the next."""
+        import json as _json
+
+        book, error, _store = self._global_rules_book()
+        enabled = True
+        flag = self._global_rules_flag_path()
+        if flag.is_file():
+            try:
+                enabled = bool(_json.loads(flag.read_text(encoding="utf-8")).get("enabled", True))
+            except (OSError, ValueError, AttributeError):
+                enabled = True
+        applied, skipped, headers, effective = 0, [], [], []
+        if identifier is not None and index is not None and book.rules:
+            case = self._case_for(identifier, index)
+            with case.lock:
+                headers = list(case.headers)
+            adapted, skipped = book.adapt(headers)
+            applied = sum(1 for rule in adapted if rule.enabled)
+            effective = [self._rule_payload(rule) for rule in adapted if rule.enabled]
+        return {"path": str(self._global_rules_path()), "enabled": enabled,
+                "stored": len(book.rules), "applied": applied,
+                "rules": self._book_payload(book), "book_headers": list(book.headers),
+                "effective": effective,
+                "skipped": list(skipped), "error": error, "case_headers": headers}
+
+    @staticmethod
+    def _book_payload(book) -> list:
+        """The book as its editor needs it: named columns, in the book's own order."""
+        rules = []
+        for number, rule in enumerate(book.rules, 1):
+            payload = Library._rule_payload(rule)
+            column, target = payload.get("column"), payload.get("target")
+
+            def name_of(value):
+                return book.headers[value] if isinstance(value, int) and 0 <= value < len(book.headers) else None
+
+            payload["column_name"] = name_of(column)
+            payload["target_name"] = name_of(target)
+            payload["number"] = number
+            rules.append(payload)
+        return rules
+
+    def save_global_rules(self, rules: list, headers: list | None = None) -> dict:
+        """Replace the shared book; a column absent from an analysis skips that rule."""
+        from fireblade.core.models import Filter, FilterGroup, FormatRule
+        from fireblade.core.rule_store import RuleBook, RuleStore
+
+        book, _error, store = self._global_rules_book()
+        names = list(book.headers)
+        for name in headers or []:
+            if isinstance(name, str) and name and name.casefold() not in {item.casefold() for item in names}:
+                names.append(name)
+        cleaned = []
+        for item in rules or []:
+            column = item.get("column")
+            if isinstance(column, str) and column:
+                # A rule may name a column only some analyses carry: the book keeps
+                # the name, and an analysis without it skips the rule.
+                if column.casefold() not in {name.casefold() for name in names}:
+                    names.append(column)
+                column = names.index(column)
+            if not isinstance(column, int) or not 0 <= column < len(names):
+                raise ServiceError("A global rule must name a column of the rules book.")
+            operator = item.get("operator", "contains")
+            if operator not in OPERATORS:
+                raise ServiceError(f"Unknown rule operator: {operator}")
+            target = item.get("target")
+            if isinstance(target, str) and target:
+                if target.casefold() not in {name.casefold() for name in names}:
+                    names.append(target)
+                target = names.index(target)
+            cleaned.append(FormatRule(
+                condition=FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))]),
+                background=str(item.get("background") or "#fce2e2"),
+                foreground=str(item.get("foreground") or "#202020"),
+                bold=bool(item.get("bold")),
+                target=target if isinstance(target, int) else None,
+                enabled=bool(item.get("enabled", True)),
+            ))
+        fresh = RuleBook(names, cleaned, dict(book.functions))
+        store.save(fresh)
+        return {"saved": len(fresh.rules), "path": str(self._global_rules_path())}
+
+    def set_global_rules_enabled(self, enabled: bool) -> dict:
+        import json as _json
+
+        path = self._global_rules_flag_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(_json.dumps({"enabled": bool(enabled)}), encoding="utf-8")
+        return {"enabled": bool(enabled)}
+
+    def global_rules_file(self) -> bytes:
+        """The very file the desktop imports, so the two editions exchange it."""
+        book, error, _store = self._global_rules_book()
+        if error:
+            raise ServiceError(f"The global rules are unreadable: {error}")
+        return book.to_bytes()
+
+    def import_global_rules(self, data: bytes) -> dict:
+        from fireblade.core.rule_store import RuleBook, RuleStore
+
+        book = RuleBook.from_bytes(data)
+        RuleStore(self._global_rules_path()).replace(book)
+        return {"imported": len(book.rules), "columns": len(book.headers)}
 
     def save_rules(self, identifier: str, index: int, rules: list) -> dict:
         """Store the rules with the core's own FormatRule/FilterGroup objects."""

@@ -495,6 +495,43 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/global-rules")
+    def global_rules(identifier: str = "", index: int = -1):
+        """The colour rules shared by every analysis of this instance."""
+        try:
+            return library.global_rules(identifier or None, index if index >= 0 else None)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.put("/api/global-rules")
+    def save_global_rules(payload: dict):
+        try:
+            return library.save_global_rules((payload or {}).get("rules") or [],
+                                             (payload or {}).get("headers"))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/global-rules/enabled")
+    def set_global_rules_enabled(payload: dict):
+        return library.set_global_rules_enabled(bool((payload or {}).get("enabled", True)))
+
+    @app.get("/api/global-rules/file")
+    def global_rules_file():
+        """The file the desktop imports: same format, same rules."""
+        try:
+            data = library.global_rules_file()
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return Response(content=data, media_type="application/json",
+                        headers={"Content-Disposition": 'attachment; filename="global-rules.json"'})
+
+    @app.post("/api/global-rules/import")
+    def import_global_rules(file: UploadFile = File(...)):
+        try:
+            return library.import_global_rules(file.file.read())
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/rules")
     def rules(changed: bool = False):
         """The Hayabusa detection rules this instance would load."""

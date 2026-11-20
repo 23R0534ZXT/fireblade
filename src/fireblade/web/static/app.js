@@ -1385,9 +1385,21 @@ async function applyView(name) {
 /* ---------- colour rules ---------- */
 
 let rulesCache = [];
+let globalRules = null;      // what the shared book says, once, for every analysis
+let rulesScope = "analysis";
+
+/* The book's rules reach the grid already mapped onto this analysis' columns;
+   a rule the grid cannot evaluate (two conditions, an expression) is skipped
+   rather than approximated. */
+function globalRuleList() {
+  if (!globalRules || !globalRules.enabled) return [];
+  return (globalRules.effective || []).filter((rule) => rule.simple !== false);
+}
 
 function matchesRule(rule, values) {
   if (!rule.enabled) return false;
+  if (rule.simple === false) return false;
+  if (!Number.isInteger(rule.column) || rule.column < 0) return false;
   const raw = values[rule.column + 1];
   const text = raw === null || raw === undefined ? "" : String(raw);
   const value = rule.value ?? "";
@@ -1419,29 +1431,100 @@ async function loadRules() {
   } catch (_) {
     rulesCache = [];
   }
+  await loadGlobalRules();
+}
+
+async function loadGlobalRules() {
+  if (!state.openCase) return;
+  try {
+    globalRules = await api(
+      `/api/global-rules?identifier=${encodeURIComponent(state.openCase.id)}&index=${state.analysis}`);
+    renderGrid();
+  } catch (_) {
+    globalRules = null;
+  }
+}
+
+function analysisColumnOptions() {
+  $("rule-column").innerHTML = state.columns.slice(1)
+    .map((name, index) => `<option value="${index}">${escapeHtml(name)}</option>`).join("");
 }
 
 function openRulesDialog() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
-  $("rule-column").innerHTML = state.columns.slice(1)
-    .map((name, index) => `<option value="${index}">${escapeHtml(name)}</option>`).join("");
-  renderRulesList();
   $("rules-modal").classList.add("show");
+  showRulesScope("analysis");
+  loadGlobalRules().then(() => {
+    if (rulesScope === "global") showRulesScope("global");
+    else renderRulesList();
+  });
+}
+
+function showRulesScope(scope) {
+  rulesScope = scope;
+  document.querySelectorAll(".subtab[data-scope]").forEach((tab) =>
+    tab.classList.toggle("active", tab.dataset.scope === scope));
+  $("rule-global-row").style.display = scope === "global" ? "flex" : "none";
+  if (scope === "global") {
+    // The book names its columns: a name travels between analyses, an index does not.
+    const names = [...new Set([...((globalRules && globalRules.book_headers) || []),
+                               ...state.columns.slice(1)])];
+    $("rule-column").innerHTML = names
+      .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+    $("rule-global-enabled").checked = !globalRules || globalRules.enabled !== false;
+  } else {
+    analysisColumnOptions();
+  }
+  renderRulesList();
+}
+
+function ruleColumnName(rule) {
+  if (rulesScope === "global") {
+    return rule.column_name
+      || (globalRules && (globalRules.book_headers || [])[rule.column]) || "";
+  }
+  return state.columns[rule.column + 1] || "";
 }
 
 function renderRulesList() {
-  $("rules-list").innerHTML = rulesCache.map((rule, index) => `
+  const list = rulesScope === "global" ? ((globalRules && globalRules.rules) || []) : rulesCache;
+  $("rules-list").innerHTML = list.map((rule, index) => `
     <label><span class="swatch" style="background:${rule.background};width:12px;height:12px;display:inline-block;border:1px solid #999"></span>
-      <span>${escapeHtml(state.columns[rule.column + 1] || "")} ${escapeHtml(rule.operator)} “${escapeHtml(rule.value)}”</span>
+      <span>${escapeHtml(ruleColumnName(rule))} ${escapeHtml(rule.operator)} “${escapeHtml(rule.value)}”</span>
       <span class="pin"><button class="btn" data-rule-remove="${index}">Remove</button></span></label>`).join("")
-    || '<div class="emptygrid">No rule yet.</div>';
+    || `<div class="emptygrid">${rulesScope === "global"
+        ? "No shared rule yet: a column absent from an analysis simply skips its rule."
+        : "No rule yet."}</div>`;
+  if (rulesScope === "global") {
+    const skipped = (globalRules && globalRules.skipped) || [];
+    $("rules-note").textContent = globalRules
+      ? `${globalRules.stored} shared rule(s); ${globalRules.applied} applied to this analysis`
+        + (skipped.length ? `; ${skipped.length} skipped — ${skipped.slice(0, 2).join(" · ")}` : "")
+        + (globalRules.error ? ` — unreadable: ${globalRules.error}` : "")
+      : "Shared rules not loaded yet.";
+  } else {
+    $("rules-note").textContent = rulesCache.length
+      ? `${rulesCache.length} rule(s) for this analysis only` : "No rule for this analysis yet.";
+  }
   $("rules-list").querySelectorAll("[data-rule-remove]").forEach((button) => {
     button.addEventListener("click", async () => {
-      rulesCache.splice(Number(button.dataset.ruleRemove), 1);
-      await persistRules();
+      if (rulesScope === "global") {
+        const kept = ((globalRules && globalRules.rules) || []).slice();
+        kept.splice(Number(button.dataset.ruleRemove), 1);
+        await persistGlobalRules(kept);
+      } else {
+        rulesCache.splice(Number(button.dataset.ruleRemove), 1);
+        await persistRules();
+      }
       renderRulesList();
     });
   });
+}
+
+async function persistGlobalRules(rules) {
+  await apiPut("/api/global-rules", {
+    rules, headers: (globalRules && globalRules.case_headers) || state.columns.slice(1) });
+  await loadGlobalRules();
 }
 
 async function persistRules() {
@@ -1453,15 +1536,27 @@ async function persistRules() {
 }
 
 async function addRule() {
+  const columnValue = $("rule-column").value;
   const rule = {
-    column: Number($("rule-column").value),
+    column: rulesScope === "global" ? columnValue : Number(columnValue),
     operator: $("rule-operator").value,
     value: $("rule-value").value,
     background: $("rule-colour").value,
-    foreground: "#202020",
-    bold: false,
+    foreground: $("rule-ink").value,
+    bold: $("rule-bold").checked,
+    target: rulesScope === "global" && $("rule-target").value === "cell" ? columnValue : null,
     enabled: true,
   };
+  if (rulesScope === "global") {
+    try {
+      await persistGlobalRules([...((globalRules && globalRules.rules) || []), rule]);
+      renderRulesList();
+      say("Shared rule saved: every analysis with that column will use it");
+    } catch (error) {
+      say(error.message, true);
+    }
+    return;
+  }
   rulesCache.push(rule);
   try {
     await persistRules();
@@ -2108,7 +2203,7 @@ function renderGrid() {
       return `<td class="${cls}"${title} data-cell="${index - 1}">${renderBoolean(index - 1, text)}${noted ? '<span class="notemark"></span>' : ""}</td>`;
     }).join("");
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
-    const rule = rulesCache.find((item) => matchesRule(item, row));
+    const rule = rulesCache.concat(globalRuleList()).find((item) => matchesRule(item, row));
     const style = rule ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"` : "";
     return `<tr data-row="${escapeHtml(String(id))}" class="${rowSelected(id) ? "sel" : ""}"${style}>
       <td class="markcell"><span class="cb ${marked}" title="Bookmark this row"></span></td>${cells}</tr>`;
@@ -2488,6 +2583,42 @@ function wire() {
 
   document.querySelectorAll("[data-act]").forEach((node) => {
     node.addEventListener("click", () => act(node.dataset.act, node));
+  });
+
+  document.querySelectorAll(".subtab[data-scope]").forEach((tab) => {
+    tab.addEventListener("click", () => showRulesScope(tab.dataset.scope));
+  });
+  $("rule-global-enabled").addEventListener("change", async (event) => {
+    try {
+      await apiPost("/api/global-rules/enabled", { enabled: event.target.checked });
+      await loadGlobalRules();
+      say(event.target.checked ? "Shared rules applied to this analysis"
+                               : "Shared rules left out of this analysis");
+    } catch (error) {
+      say(error.message, true);
+    }
+  });
+  $("rule-global-export").addEventListener("click", () => {
+    window.location.href = "/api/global-rules/file";
+  });
+  $("rule-global-import").addEventListener("click", () => $("rule-global-file").click());
+  $("rule-global-file").addEventListener("change", async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append("file", file);
+    try {
+      const response = await fetch("/api/global-rules/import", { method: "POST", body });
+      if (!response.ok) throw new Error((await response.json()).detail || response.statusText);
+      const payload = await response.json();
+      await loadGlobalRules();
+      renderRulesList();
+      say(`${payload.imported} shared rule(s) imported`);
+    } catch (error) {
+      say(error.message, true);
+    } finally {
+      event.target.value = "";
+    }
   });
 
   document.querySelectorAll(".tab[data-tab]").forEach((tab) => {

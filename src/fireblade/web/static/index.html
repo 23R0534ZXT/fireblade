@@ -620,9 +620,20 @@
 </div>
 
 <div class="modal" id="rules-modal">
-  <div class="dialog" style="min-width:700px">
+  <div class="dialog" style="min-width:760px">
     <h3>Colour rules</h3>
+    <div class="subtabs" style="margin-bottom:6px">
+      <div class="subtab active" data-scope="analysis">This analysis</div>
+      <div class="subtab" data-scope="global">Every analysis</div>
+    </div>
     <div class="body">
+      <div class="row" id="rule-global-row" style="display:none">
+        <label><input type="checkbox" id="rule-global-enabled"> Apply these rules to this analysis</label>
+        <div class="grow"></div>
+        <button class="btn" id="rule-global-export">Export…</button>
+        <button class="btn" id="rule-global-import">Import…</button>
+        <input type="file" id="rule-global-file" accept=".json" hidden>
+      </div>
       <div class="row"><label for="rule-column">Column</label><select id="rule-column"></select></div>
       <div class="row"><label for="rule-operator">Operator</label>
         <select id="rule-operator">
@@ -635,8 +646,14 @@
         </select>
       </div>
       <div class="row"><label for="rule-value">Value</label><input id="rule-value"></div>
-      <div class="row"><label for="rule-colour">Background</label><input id="rule-colour" type="color" value="#fce2e2"></div>
+      <div class="row"><label for="rule-colour">Background</label><input id="rule-colour" type="color" value="#fce2e2">
+        <label for="rule-ink">Text</label><input id="rule-ink" type="color" value="#202020">
+        <label><input type="checkbox" id="rule-bold"> Bold</label>
+        <label for="rule-target">Applies to</label>
+        <select id="rule-target"><option value="">the whole row</option>
+          <option value="cell">this cell only</option></select></div>
       <div class="row"><button class="btn" data-act="rule-add">Add the rule</button></div>
+      <div class="note" id="rules-note"></div>
       <div class="columns-list" id="rules-list" style="max-height:220px"></div>
     </div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>

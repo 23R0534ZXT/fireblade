@@ -295,6 +295,32 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- column layout ---------- */
+
+let layoutTimer = null;
+
+async function loadLayout() {
+  if (!state.openCase) return;
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`);
+    state.widths = payload.widths || {};
+    state.hidden = new Set(payload.hidden || []);
+    state.pinned = new Set(payload.pinned || []);
+    renderGrid();
+  } catch (_) { /* no saved layout is not an error */ }
+}
+
+function saveLayoutSoon() {
+  clearTimeout(layoutTimer);
+  layoutTimer = setTimeout(async () => {
+    if (!state.openCase) return;
+    try {
+      await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`,
+        { widths: state.widths, hidden: [...state.hidden], pinned: [...state.pinned] });
+    } catch (_) { /* a layout that cannot be saved must not interrupt the work */ }
+  }, 600);
+}
+
 /* ---------- advanced filter ---------- */
 
 const EXPR_OPERATORS = ["contains", "ne", "eq", "starts", "ends", "gt", "ge", "lt", "le", "empty", "not_empty"];
@@ -1037,6 +1063,7 @@ async function loadRows(reset) {
     await loadBookmarks();
     await loadCellNotes();
     await loadRules();
+    await loadLayout();
     renderPaneTabs();
   } catch (error) {
     say(error.message, true);
@@ -1279,6 +1306,7 @@ function openColumnManager() {
       const index = Number(box.dataset.col);
       if (box.checked) state.hidden.delete(index); else state.hidden.add(index);
       renderGrid();
+      saveLayoutSoon();
     });
   });
   list.querySelectorAll("input[data-bool]").forEach((box) => {
@@ -1295,6 +1323,7 @@ function openColumnManager() {
       const index = Number(box.dataset.pin);
       if (box.checked) state.pinned.add(index); else state.pinned.delete(index);
       applyPinning();
+      saveLayoutSoon();
     });
   });
   $("columns-modal").classList.add("show");
@@ -1442,6 +1471,7 @@ function wire() {
     if (!resizing) return;
     resizing = null;
     document.body.style.cursor = "";
+    saveLayoutSoon();
   });
 
   $("head").addEventListener("click", (event) => {

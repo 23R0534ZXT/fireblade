@@ -159,6 +159,17 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/analyses/{index}/display")
+    def display(identifier: str, index: int):
+        return library.display(identifier, index)
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/display")
+    def save_display(identifier: str, index: int, payload: dict):
+        try:
+            return library.save_display(identifier, index, payload or {})
+        except (ServiceError, ValueError, OSError, KeyError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/analyses/{index}/views")
     def views(identifier: str, index: int):
         return library.views(identifier, index)

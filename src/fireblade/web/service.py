@@ -396,6 +396,35 @@ class Library:
             case.set_cell_note(int(row_id), int(column), clean or None)
         return {"row_id": int(row_id), "column": int(column), "note": clean}
 
+    # -- column layout -----------------------------------------------------
+
+    DISPLAY_VIEW = "__fireblade_display__"
+
+    def display(self, identifier: str, index: int) -> dict:
+        """Widths, hidden and pinned columns, kept in the analysis like a view."""
+        case = self._case_for(identifier, index)
+        with case.lock:
+            stored = case.views().get(self.DISPLAY_VIEW)
+        if stored is None or not stored.header_state:
+            return {"widths": {}, "hidden": [], "pinned": []}
+        try:
+            return json.loads(stored.header_state)
+        except ValueError:
+            return {"widths": {}, "hidden": [], "pinned": []}
+
+    def save_display(self, identifier: str, index: int, layout: dict) -> dict:
+        clean = {
+            "widths": {str(key): int(value) for key, value in (layout.get("widths") or {}).items()
+                       if str(key).isdigit() and int(value) > 0},
+            "hidden": [int(value) for value in layout.get("hidden") or [] if int(value) >= 0],
+            "pinned": [int(value) for value in layout.get("pinned") or [] if int(value) >= 0],
+        }
+        case = self._case_for(identifier, index)
+        view = View(header_state=json.dumps(clean))
+        with case.lock:
+            case.save_view(self.DISPLAY_VIEW, view)
+        return clean
+
     # -- saved views -------------------------------------------------------
 
     def views(self, identifier: str, index: int) -> dict:

@@ -428,6 +428,60 @@ async function buildGraph() {
   }
 }
 
+async function exportGraphPng() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/graph`);
+    const nodes = payload.nodes || [];
+    if (!nodes.length) { say("The graph is empty", true); return; }
+    const width = Math.max(...nodes.map((node) => node.x), 400) + 260;
+    const height = Math.max(...nodes.map((node) => node.y), 200) + 80;
+    const canvas = document.createElement("canvas");
+    const scale = 2;
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const context = canvas.getContext("2d");
+    context.scale(scale, scale);
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    const positions = new Map(nodes.map((node) => [node.id, node]));
+    context.strokeStyle = "#8a9bb0";
+    for (const edge of payload.edges || []) {
+      const a = positions.get(edge.source);
+      const b = positions.get(edge.target);
+      if (!a || !b) continue;
+      context.beginPath();
+      context.moveTo(a.x + 60, a.y + 12);
+      context.lineTo(b.x, b.y + 12);
+      context.stroke();
+    }
+    const palette = { host: "#e8f4ea", technique: "#fdf0e3", stage: "#eae6f5", account: "#f7ecf2" };
+    context.font = "11px 'Segoe UI', sans-serif";
+    for (const node of nodes) {
+      const label = String(node.label || "");
+      const textWidth = context.measureText(label).width;
+      const boxWidth = Math.min(210, textWidth + 16);
+      context.fillStyle = palette[node.kind] || "#eaf1f7";
+      context.strokeStyle = "#9fb3c8";
+      context.fillRect(node.x, node.y, boxWidth, 24);
+      context.strokeRect(node.x, node.y, boxWidth, 24);
+      context.fillStyle = "#202020";
+      context.fillText(label.slice(0, 34), node.x + 6, node.y + 16);
+    }
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `fireblade-graph-${state.openCase.id.slice(0, 8)}.png`;
+      link.click();
+      URL.revokeObjectURL(url);
+      say("Graph exported as PNG");
+    }, "image/png");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 async function exportNavigator() {
   if (!state.openCase) { say("Open a case first", true); return; }
   try {
@@ -1592,6 +1646,7 @@ function wire() {
   $("hayabusa-run").addEventListener("click", runHayabusa);
   $("graph-build").addEventListener("click", buildGraph);
   $("graph-navigator").addEventListener("click", exportNavigator);
+  $("graph-png").addEventListener("click", exportGraphPng);
   $("imports-refresh").addEventListener("click", loadImports);
   $("imports-status").addEventListener("change", renderImports);
   $("action-add").addEventListener("click", addAction);

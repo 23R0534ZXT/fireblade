@@ -829,8 +829,42 @@ class Library:
         summary = {}
         for hit in hits:
             summary[hit["kind"]] = summary.get(hit["kind"], 0) + 1
-        return {"indicators": len(indicators), "scanned": scanned, "hits": hits,
-                "by_kind": summary, "truncated": len(hits) >= limit}
+        result = {"indicators": len(indicators), "scanned": scanned, "hits": hits,
+                  "by_kind": summary, "truncated": len(hits) >= limit}
+        # A hunt leaves a record: the same indicators can be replayed on the case
+        # later, which is what the desktop's saved hunts list is.
+        hunts = self.library.folder(identifier) / "hunts"
+        hunts.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        record = dict(started=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                      status="complete" if not result["truncated"] else "truncated",
+                      text=(text or "")[:20000], **result)
+        (hunts / f"{stamp}.json").write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
+        result["saved"] = f"{stamp}.json"
+        return result
+
+    def hunts(self, identifier: str) -> dict:
+        folder = self.library.folder(identifier) / "hunts"
+        entries = []
+        if folder.is_dir():
+            for path in sorted(folder.glob("*.json"), reverse=True):
+                try:
+                    data = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    continue
+                entries.append({"name": path.name, "started": data.get("started", ""),
+                                "status": data.get("status", ""),
+                                "indicators": data.get("indicators", 0),
+                                "hits": len(data.get("hits") or [])})
+        return {"hunts": entries[:50]}
+
+    def hunt(self, identifier: str, name: str) -> dict:
+        if "/" in name or "\\" in name or not name.endswith(".json"):
+            raise ServiceError("Nom de chasse invalide.")
+        path = self.library.folder(identifier) / "hunts" / name
+        if not path.is_file():
+            raise ServiceError("Chasse introuvable.")
+        return json.loads(path.read_text(encoding="utf-8"))
 
     # -- timeline ----------------------------------------------------------
 

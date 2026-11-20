@@ -114,6 +114,17 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/hunts")
+    def hunts(identifier: str):
+        return library.hunts(identifier)
+
+    @app.get("/api/cases/{identifier}/hunts/{name}")
+    def hunt(identifier: str, name: str):
+        try:
+            return library.hunt(identifier, name)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/graph")
     def graph(identifier: str, navigator: bool = False):
         try:

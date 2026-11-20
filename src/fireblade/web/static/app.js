@@ -858,6 +858,7 @@ async function runIocScan() {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || response.statusText);
     iocState.hits = payload.hits;
+    loadHuntHistory();
     const kinds = Object.entries(payload.by_kind || {}).map(([k, v]) => `${v} ${k}`).join(", ");
     const summary = `${payload.indicators} indicator(s), ${payload.scanned} row(s) scanned — ${payload.hits.length} hit(s)${kinds ? " : " + kinds : ""}${payload.truncated ? " (list truncated)" : ""}`;
     $("ioc-summary").textContent = summary;
@@ -866,6 +867,28 @@ async function runIocScan() {
   } catch (error) {
     say(error.message, true);
     $("ioc-summary").textContent = error.message;
+  }
+}
+
+async function loadHuntHistory() {
+  if (!state.openCase) return;
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/hunts`);
+    $("ioc-history").innerHTML = '<option value="">Saved hunts…</option>' +
+      payload.hunts.map((hunt) => `<option value="${escapeHtml(hunt.name)}">${escapeHtml(hunt.started)} · ${hunt.hits} hit(s) · ${escapeHtml(hunt.status)}</option>`).join("");
+  } catch (_) { /* an empty list is not an error worth a banner */ }
+}
+
+async function openHunt(name) {
+  if (!name) return;
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/hunts/${encodeURIComponent(name)}`);
+    iocState.hits = payload.hits || [];
+    $("ioc-input").value = payload.text || "";
+    $("ioc-summary").textContent = `${payload.indicators} indicator(s) · ${payload.scanned} row(s) scanned — ${iocState.hits.length} hit(s) (replayed hunt)`;
+    renderIoc();
+  } catch (error) {
+    say(error.message, true);
   }
 }
 
@@ -1533,6 +1556,8 @@ function wire() {
   });
 
   $("ioc-scan").addEventListener("click", runIocScan);
+  $("ioc-history").addEventListener("change", (event) => openHunt(event.target.value));
+  $("ioc-history").addEventListener("focus", loadHuntHistory);
   $("derived-operation").addEventListener("change", derivedOperationChanged);
   $("hayabusa-run").addEventListener("click", runHayabusa);
   $("graph-build").addEventListener("click", buildGraph);

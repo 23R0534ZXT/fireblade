@@ -29,9 +29,9 @@ plan (architecture, phases, décisions) est dans `HANDOFF-DOCKER.md`.
 
 | Quoi | Valeur |
 | --- | --- |
-| Branche | `feat/host-edition`, **52 commits** au-dessus de `main` |
+| Branche | `feat/host-edition`, **53 commits** au-dessus de `main` (`git rev-list --count main..HEAD`) |
 | `main` | intacte, jamais poussée, rien de publié |
-| Dernier commit | `3a4e4b1 Host: an alert opens its source event and its EVTX context` |
+| Dernier commit de code | `3a4e4b1 Host: an alert opens its source event and its EVTX context` |
 | Arbre de travail | propre — les trois documents non suivis sont hors sujet |
 | Porte complète | **verte** : `1800 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 16 min 50 s |
 | Tests web | **53**, dont 7 de parité qui refusent une couverture sans test |
@@ -303,7 +303,7 @@ f1d95d4 Host: the graph as a PNG
 4314305 Host: hunts leave a record
 ```
 
-`git log --oneline main..HEAD` donne les 52.
+`git log --oneline main..HEAD` donne la liste complète.
 
 ---
 

@@ -24,7 +24,7 @@ names what the Host does for each.
 ## Verdict
 
 **The port is not complete.** Twenty-one domains are covered, but this audit found
-**9 features the Host does not have** and **7 it has partially** (five closed since the
+**8 features the Host does not have** and **8 it has partially** (five closed since the
 audit was written: machines and accounts, tracked indicators, Hayabusa rules,
 global colour rules, import diagnostics). None of them was
 visible in the label inventory, which is why `HOST-PARITY.md` said "nothing left" —
@@ -61,7 +61,7 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Grid — exports | CSV, copy value / rows / cell, whole cell | **yes** |
 | Grid — pivot and EVTX | "Qu'est-ce qui a lancé", source event, EVTX context | **yes** |
 | Timeline | build, histogram, legend, correlate, page, three date readings | **yes** |
-| Timeline — extras | export, "Inclure sans date", "Appliquer les filtres des analyses", "Ouvrir la ligne source" | **no** |
+| Timeline — extras | export, "Inclure sans date", "Appliquer les filtres des analyses", "Ouvrir la ligne source" | **partial** — verified CSV export with its receipt, and rows without a date on request; the analyses' filters and the source row are missing |
 | IOC hunting | paste, scan, results, saved hunts | **yes** |
 | IOC — extras | import TXT/CSV/TSV, all analyses at once, respect the filters, sub-domains | **no** |
 | Hayabusa | run by level, findings, tactics, dedup, mark, open, export sources | **yes** |

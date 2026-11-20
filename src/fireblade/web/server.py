@@ -495,6 +495,29 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/timeline/export")
+    def timeline_export(identifier: str, start: int | None = None, end: int | None = None,
+                        text: str = "", kind: str = "text", dates: str = "",
+                        include_undated: bool = False):
+        """The timeline as a verified CSV: the receipt rides in the headers."""
+        options = None
+        if dates:
+            try:
+                options = json.loads(dates)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="'dates' must be a JSON object.") from exc
+        try:
+            data, receipt = library.timeline_export(identifier, start=start, end=end, text=text,
+                                                    kind=kind, dates=options,
+                                                    include_undated=include_undated)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        headers = {"Content-Disposition": 'attachment; filename="timeline.csv"',
+                   "X-Fireblade-Written": str(receipt.get("written", "")),
+                   "X-Fireblade-Expected": str(receipt.get("expected", "")),
+                   "X-Fireblade-Sha256": str(receipt.get("sha256", ""))}
+        return Response(content=data, media_type="text/csv", headers=headers)
+
     @app.get("/api/cases/{identifier}/coverage")
     def coverage(identifier: str, expected: str = "observed", verify_hashes: bool = False,
                  deep_checks: bool = True, run: bool = True):
@@ -609,7 +632,8 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
 
     @app.get("/api/cases/{identifier}/timeline")
     def timeline(identifier: str, start: int | None = None, end: int | None = None,
-                 offset: int = 0, text: str = "", kind: str = "text", dates: str = ""):
+                 offset: int = 0, text: str = "", kind: str = "text", dates: str = "",
+                 include_undated: bool = False):
         options = None
         if dates:
             try:
@@ -618,7 +642,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
                 raise HTTPException(status_code=400, detail="'dates' must be a JSON object.") from exc
         try:
             return library.timeline(identifier, start=start, end=end, offset=offset, text=text,
-                                    kind=kind, dates=options)
+                                    kind=kind, dates=options, include_undated=include_undated)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

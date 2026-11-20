@@ -205,6 +205,13 @@ def test_the_import_verification_shows_what_was_not_attested():
     assert "never a proof" in html
 
 
+def test_the_timeline_exports_and_shows_undated_rows():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="timeline-undated"' in html and 'id="timeline-export"' in html
+    assert 'include_undated' in js
+    assert "timeline/export" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

@@ -2040,6 +2040,7 @@ async function loadTimeline(reset) {
   if (timelineState.text) { params.set("text", timelineState.text); params.set("kind", timelineState.kind); }
   const dates = timelineDatesParam();
   if (dates) params.set("dates", dates);
+  if ($("timeline-undated").checked) params.set("include_undated", "true");
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/timeline?${params}`);
     timelineState.payload = payload;
@@ -2974,6 +2975,18 @@ function wire() {
   });
   $("timeline-dates").addEventListener("change", applyTimelineDates);
   $("timeline-build").addEventListener("click", () => loadTimeline(false));
+  $("timeline-undated").addEventListener("change", () => loadTimeline(true));
+  $("timeline-export").addEventListener("click", () => {
+    if (!state.openCase) { say("Open a case first", true); return; }
+    const params = new URLSearchParams();
+    if (timelineState.text) { params.set("text", timelineState.text); params.set("kind", timelineState.kind); }
+    const dates = timelineDatesParam();
+    if (dates) params.set("dates", dates);
+    if ($("timeline-undated").checked) params.set("include_undated", "true");
+    // The run is verified server-side; the receipt comes back in the response headers.
+    window.location.href = `/api/cases/${state.openCase.id}/timeline/export?${params}`;
+    say("Timeline exported: the file carries only rows that were written and counted");
+  });
   $("timeline-search").addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
     timelineState.text = $("timeline-search").value.trim();

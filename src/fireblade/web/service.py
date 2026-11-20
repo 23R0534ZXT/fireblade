@@ -1756,45 +1756,26 @@ class Library:
 
     def timeline(self, identifier: str, start: int | None = None, end: int | None = None,
                  offset: int = 0, text: str = "", kind: str = "text",
-                 dates: dict | None = None) -> dict:
+                 dates: dict | None = None, include_undated: bool = False) -> dict:
         """Counts the case's rows over time with the desktop's own TimelineStore.
 
         `dates` says how each analysis is read: `{"<index>": "none" | "split" |
         "<column name>"}`. An analysis it does not name keeps the detection, which
         is what the desktop does when the analyst has not chosen a column.
         """
-        options = self._date_options(identifier, dates or {})
-        key = (identifier, self.library.read(identifier).get("revision"),
-               tuple(sorted(options.items())))
-        store = self._timelines.get(key)
-        if store is None:
-            snapshots = self._snapshots(identifier)
-            if not snapshots:
-                raise ServiceError("This case holds no analysis.")
-            # DuckDB refuses a second connection with another configuration: the
-            # grid's open handles are closed before the timeline opens the files
-            # read-only, and they reopen on the next grid request.
-            with self._lock:
-                for open_key in [item for item in self._open if item[0] == identifier]:
-                    try:
-                        self._open.pop(open_key).close()
-                    except Exception:
-                        pass
-            store = TimelineStore(self._timeline_dir)
-            reader = WorkspaceReader(snapshots)
-            store.build(reader, columns={path: spec for path, spec in options.items()})
-            for old in list(self._timelines):
-                if old[0] == identifier:
-                    try:
-                        self._timelines.pop(old).close()
-                    except Exception:
-                        pass
-            self._timelines[key] = store
-        filters = {}
+        store = self._timeline_store(identifier, dates)
+        filters = {"include_undated": bool(include_undated)}
         if text:
             filters.update(text=text, kind=kind)
+        # The page and the extent follow the window the analyst is looking at; the
+        # histogram gets the window as its own bounds, not as a filter.
+        windowed = dict(filters)
+        if start is not None:
+            filters["start"] = int(start)
+        if end is not None:
+            filters["end"] = int(end)
         low, high, total, dated = store.extent(**filters)
-        page = store.page(offset, **(filters if filters else {}))
+        page = store.page(offset, **filters)
         payload = {
             "sources": [dict({k: item.get(k) for k in ("id", "name", "original", "rows", "dated",
                                                        "undated", "column", "column_name", "combined", "error")},
@@ -1812,13 +1793,66 @@ class Library:
         if low is not None and high is not None:
             window_start = int(start if start is not None else low)
             window_end = int(end if end is not None else high)
-            histogram = store.histogram(window_start, window_end, 120, **(filters if filters else {}))
+            histogram = store.histogram(window_start, window_end, 120, **windowed)
             payload["histogram"] = {"start": histogram["start"], "end": histogram["end"],
                                     "width": histogram["width"], "bins": histogram["bins"],
                                     "rows": [[int(a), int(b), int(c), int(d)]
                                                                           for a, b, c, d in histogram["rows"]]}
             payload["window"] = {"start": window_start, "end": window_end}
         return payload
+
+    def _timeline_store(self, identifier: str, dates: dict | None = None):
+        """The built index for this case and these date readings, cached."""
+        options = self._date_options(identifier, dates or {})
+        key = (identifier, self.library.read(identifier).get("revision"),
+               tuple(sorted(options.items())))
+        # DuckDB refuses a second connection to a file with another configuration:
+        # the grid's handles are closed on every call, cache hit or not, because
+        # the sources' headers are read read-only just after. They reopen on the
+        # next grid request.
+        with self._lock:
+            for open_key in [item for item in self._open if item[0] == identifier]:
+                try:
+                    self._open.pop(open_key).close()
+                except (KeyError, OSError, ValueError):
+                    pass
+        store = self._timelines.get(key)
+        if store is not None:
+            return store
+        snapshots = self._snapshots(identifier)
+        if not snapshots:
+            raise ServiceError("This case holds no analysis.")
+        store = TimelineStore(self._timeline_dir)
+        reader = WorkspaceReader(snapshots)
+        store.build(reader, columns={path: spec for path, spec in options.items()})
+        for old in list(self._timelines):
+            if old[0] == identifier:
+                try:
+                    self._timelines.pop(old).close()
+                except Exception:
+                    pass
+        self._timelines[key] = store
+        return store
+
+    def timeline_export(self, identifier: str, start: int | None = None, end: int | None = None,
+                        text: str = "", kind: str = "text", dates: dict | None = None,
+                        include_undated: bool = False) -> tuple[bytes, dict]:
+        """The timeline as the desktop exports it: verified rows, and a receipt.
+
+        `TimelineStore.export_csv` writes the file, counts what it wrote and returns
+        the SHA-256 of the content; a short write raises instead of returning.
+        """
+        store = self._timeline_store(identifier, dates)
+        filters = {"include_undated": bool(include_undated)}
+        if text:
+            filters.update(text=text, kind=kind)
+        if start is not None:
+            filters["start"] = int(start)
+        if end is not None:
+            filters["end"] = int(end)
+        target = Path(tempfile.mkdtemp(prefix="fbtimeline-")) / "timeline.csv"
+        receipt = store.export_csv(target, receipt=True, **filters)
+        return target.read_bytes(), (receipt if isinstance(receipt, dict) else {})
 
     # -- importing ---------------------------------------------------------
 

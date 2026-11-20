@@ -6,6 +6,7 @@ side: one test per group of routes, over a case written the way the desktop
 writes it, so a route cannot drift into a decorated stub without a red test.
 """
 import csv
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -622,3 +623,60 @@ def test_the_coverage_check_reads_the_case_and_keeps_its_report(service):
     assert b"Gravit" in flat
     with pytest.raises(ServiceError):
         library.coverage(identifier, expected="nonsense")
+
+
+def test_the_timeline_exports_a_verified_file(service):
+    """The desktop's "Exporter la chronologie": rows written and counted."""
+    library, identifier = service
+    payload = library.timeline(identifier)
+    assert payload["extent"]["rows"] == 3
+    data, receipt = library.timeline_export(identifier)
+    assert data.startswith(b"\xef\xbb\xbf"), "the desktop writes a BOM for Excel"
+    text = data.decode("utf-8-sig")
+    assert text.splitlines()[0].startswith("Date_UTC")
+    assert len(text.strip().splitlines()) == 4, "three rows and the header"
+    assert receipt["written"] == receipt["expected"] == 3
+    assert len(receipt["sha256"]) == 64
+
+
+def test_rows_without_a_date_join_the_timeline_on_request(tmp_path):
+    """A row the sender never dated is shown when the analyst asks for it."""
+    root = tmp_path / "cases"
+    root.mkdir()
+    book = InvestigationLibrary(root)
+    data = book.create("Undated case", "One row without a date", "windows")
+    identifier = data["id"]
+    folder = book.folder(identifier)
+    analysis = folder / "analysis-1.duckdb"
+    source = tmp_path / "undated.csv"
+    with source.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["Timestamp", "Artifact", "User", "SourceIP"])
+        writer.writerow(["2026-11-02T10:00:00Z", "EVTX", "alice", "192.0.2.10"])
+        writer.writerow(["", "Prefetch", "bob", "192.0.2.20"])
+    case = Case(analysis)
+    try:
+        case.import_csv(source)
+        info = dict(case.info)
+    finally:
+        case.close()
+    snapshot = AnalysisSnapshot(path=str(analysis), source_info=info, view=View(), header_state=b"")
+    book.save(identifier, [snapshot], 0, [], None, data["revision"])
+    library = Library(root)
+    instant = int(datetime(2026, 11, 2, 10, 0, tzinfo=timezone.utc).timestamp() * 1_000_000_000)
+    try:
+        whole = library.timeline(identifier)
+        assert whole["extent"]["rows"] == 2, "no window: every row is there"
+        assert whole["extent"]["dated"] == 1
+        # A window keeps the dated rows; the undated one joins only when asked.
+        windowed = library.timeline(identifier, start=instant, end=instant)
+        assert windowed["extent"]["rows"] == 1
+        with_undated = library.timeline(identifier, start=instant, end=instant, include_undated=True)
+        assert with_undated["extent"]["rows"] == 2
+        assert with_undated["count"] == 2
+        data_bytes, receipt = library.timeline_export(identifier, start=instant, end=instant,
+                                                      include_undated=True)
+        assert receipt["written"] == 2
+        assert "Fuseau_UTC_supposé" in data_bytes.decode("utf-8-sig").splitlines()[0]
+    finally:
+        library.close()

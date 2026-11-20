@@ -257,6 +257,17 @@ class Library:
                 continue
             collection.analyze(min_level)
             detection = collection.report.get("detection") or {}
+            # The run imports its alerts as an analysis and saves the collection's
+            # session: adding it here puts the alerts in the case's workspace, so
+            # "show the alerts in the grid" has something to open.
+            analysis_index = None
+            try:
+                self._merge_session(identifier, entry / "collection.fireblade-session")
+                alerts = (detection.get("analysis")
+                          or ((detection.get("outputs") or [{}])[0].get("analysis")))
+                analysis_index = self._analysis_index_of(identifier, alerts or "")
+            except (OSError, ValueError, ServiceError):
+                analysis_index = None
             rows = []
             outputs = [Path(str(item)) for item in (detection.get("outputs") or []) if Path(str(item)).is_file()]
             if not outputs:
@@ -282,14 +293,83 @@ class Library:
                 seen.add(key)
                 unique.append(row)
             rows = unique
+            outputs = [dict(item) for item in (detection.get("outputs") or [])
+                       if isinstance(item, dict)]
             results.append({"collection": entry.name, "status": detection.get("status"),
                             "summary": detection.get("summary") or {},
                             "warnings": (detection.get("warnings") or [])[:20],
-                            "findings": rows[:2000], "total": len(rows)})
+                            "findings": rows[:2000], "total": len(rows),
+                            "analysis": analysis_index,
+                            "sources": str(outputs[0].get("csv") or "") if outputs else ""})
         if not results:
             raise ServiceError("No import of this case carries an EVTX journal to analyse.")
         merged = [finding for item in results for finding in item["findings"]]
         return {"runs": results, "findings": merged[:2000], "total": sum(item["total"] for item in results)}
+    FINDING_COLUMNS = (("Timestamp", "TimeCreated"), ("Computer", "Hostname"),
+                       ("EventID", "EventId"), ("RuleTitle",))
+
+    def _analysis_index_of(self, identifier: str, path: str | Path) -> int | None:
+        """Where a document sits in the case session, or None when it is not open."""
+        if not path:
+            return None
+        want = str(Path(str(path)))
+        data = self.library.read(identifier)
+        session = data.get("session")
+        if not session:
+            return None
+        try:
+            snapshots, _active = read_session(self.library.folder(identifier) / session)
+        except (OSError, ValueError):
+            return None
+        for position, snapshot in enumerate(snapshots):
+            if str(Path(str(snapshot.path))) == want:
+                return position
+        return None
+
+    def bookmark_finding(self, identifier: str, index: int, finding: dict,
+                         note: str | None = None) -> dict:
+        """Mark every row of an alert analysis that the finding names.
+
+        The desktop marks the alerts of a finding in one gesture; this is the same
+        gesture over HTTP. The match is on the fields the finding carries, so a
+        rule that fired on the same event is marked once.
+        """
+        case = self._case_for(identifier, index)
+        headers = [str(name).casefold() for name in case.headers]
+        filters = []
+        for names in self.FINDING_COLUMNS:
+            value = ""
+            for name in names:
+                if finding.get(name):
+                    value = str(finding.get(name))
+                    break
+            if not value:
+                continue
+            column = next((position for position, name in enumerate(headers)
+                           if name in {item.casefold() for item in names}), None)
+            if column is not None:
+                filters.append(Filter(column, "eq", value))
+        view = View(filters=filters)
+        label = str(finding.get("RuleTitle") or "Hayabusa finding").strip()[:120]
+        text = (note or f"Hayabusa: {label}").strip()
+        with case.lock:
+            total = int(case.count(view))
+            page = case.page(view, offset=0, limit=min(total, 2000)) if total else []
+            for row in page:
+                case.bookmark(int(row[0]), text)
+        return {"matched": total, "marked": min(total, 2000), "note": text}
+
+    def detection_sources(self, identifier: str, collection: str) -> Path:
+        """The alert CSV a detection run wrote, for the analyst to take away."""
+        folder = self.library.folder(identifier) / "collections" / Path(str(collection)).name
+        if not folder.is_dir():
+            raise ServiceError("This collection does not exist in the case.")
+        for pattern in ("results/hayabusa-*/Alertes Hayabusa.csv", "results/hayabusa-*/hayabusa.csv"):
+            for path in sorted(folder.glob(pattern)):
+                if path.is_file():
+                    return path
+        raise ServiceError("This collection carries no Hayabusa output.")
+
     # -- archive and release -----------------------------------------------
 
     def archive_case(self, identifier: str) -> dict:
@@ -1187,6 +1267,50 @@ class Library:
 
     # -- importing ---------------------------------------------------------
 
+    def _merge_session(self, identifier: str, session_path: Path, collections=None,
+                       active_collection=None) -> tuple[int, int]:
+        """Add a collection's documents to the case session; return (first index, count).
+
+        `InvestigationLibrary.save` writes the list it is given: appending is the
+        caller's job. Every import and every detection goes through here, so a
+        second import or a run after an import never drops what was already open.
+        """
+        data = self.library.read(identifier)
+        folder = self.library.folder(identifier)
+        earlier: list = []
+        previous = data.get("session")
+        if previous:
+            try:
+                earlier, _earlier_active = read_session(folder / previous)
+            except (OSError, ValueError):
+                earlier = []
+        incoming, active = ([], -1)
+        if Path(session_path).is_file():
+            incoming, active = read_session(Path(session_path))
+        if not incoming:
+            return len(earlier), 0
+        # A collection's session names every document it ever produced, so a second
+        # run of the same collection would add the same analyses again. The path is
+        # the identity of an analysis file.
+        known = {str(Path(str(item.path))) for item in earlier}
+        fresh = [(position, item) for position, item in enumerate(incoming)
+                 if str(Path(str(item.path))) not in known]
+        if not fresh:
+            return len(earlier), 0
+        combined = list(earlier) + [item for _position, item in fresh]
+        new_active = next((len(earlier) + number for number, (position, _item)
+                           in enumerate(fresh) if position == active), len(combined) - 1)
+        active_index = new_active if 0 <= new_active < len(combined) else len(combined) - 1
+        known = ([entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+                 if collections is None else collections)
+        # Indexes shift: no cached handle may survive the rewrite.
+        self.close_case(identifier)
+        self.library.save(identifier, combined, active_index, known,
+                          active_collection if active_collection is not None
+                          else data.get("active_collection"),
+                          data.get("revision"))
+        return len(earlier), len(incoming)
+
     def import_source(self, identifier: str, source: str | Path, tools_root: str | Path | None = None,
                       organization: str = "files", progress=None, delimiter: str | None = None,
                       encoding: str | None = None) -> dict:
@@ -1217,28 +1341,17 @@ class Library:
         if not session.is_file():
             return {"status": report.get("status"), "analyses": 0, "files": len(report.get("files") or []),
                     "collection": str(output), "message": "No analysis produced: the format was not recognised."}
-        snapshots, active = read_session(session)
         # The session is the workspace: an import adds its analyses to the ones
-        # already loaded, exactly as the desktop does. Saving the collection's
-        # session as is would drop every earlier analysis from the case.
-        earlier: list = []
-        previous = data.get("session")
-        if previous:
-            try:
-                earlier, _earlier_active = read_session(folder / previous)
-            except (OSError, ValueError):
-                earlier = []
+        # already loaded, exactly as the desktop does.
         collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
         collections.append({"path": str(output), "name": output.name,
                             "imported": datetime.now(timezone.utc).isoformat()})
-        combined = list(earlier) + list(snapshots)
-        active_index = len(earlier) + active if snapshots else (len(earlier) - 1 if earlier else -1)
-        self.library.save(identifier, combined, active_index, collections,
-                          str(output), data.get("revision"))
-        self._open.pop((identifier, 0), None)
+        first, added = self._merge_session(identifier, session, collections=collections,
+                                           active_collection=str(output))
         return {
             "status": report.get("status", "complete"),
-            "analyses": len(snapshots),
+            "analyses": added,
+            "first_analysis": first,
             "files": len(report.get("files") or []),
             "collection": str(output),
         }

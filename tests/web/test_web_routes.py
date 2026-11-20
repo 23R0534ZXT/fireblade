@@ -6,6 +6,7 @@ side: one test per group of routes, over a case written the way the desktop
 writes it, so a route cannot drift into a decorated stub without a red test.
 """
 import csv
+from pathlib import Path
 
 import pytest
 
@@ -257,3 +258,75 @@ def test_the_unknown_case_is_refused_everywhere(service):
                  lambda: library.workspace("missing")):
         with pytest.raises((ServiceError, KeyError, OSError, ValueError)):
             call()
+
+ALERTS = [
+    ["2026-11-02T10:00:00Z", "Suspicious Logon", "high", "PC-1", "Security", "4624",
+     "Credential Access", "T1003", "logon outside hours"],
+    ["2026-11-02T10:05:00Z", "Suspicious Logon", "high", "PC-2", "Security", "4624",
+     "Credential Access", "T1003", "logon outside hours"],
+    ["2026-11-02T11:00:00Z", "LSASS access", "critical", "PC-1", "Security", "4656",
+     "Credential Access", "T1003.001", "handle to lsass"],
+]
+
+
+def _import_alerts(library, identifier, tmp_path):
+    source = tmp_path / "Alertes Hayabusa.csv"
+    with source.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["Timestamp", "RuleTitle", "Level", "Computer", "Channel",
+                         "EventID", "MitreTactics", "MitreTags", "Details"])
+        writer.writerows(ALERTS)
+    library.import_source(identifier, source)
+    return len(library.case(identifier)["analyses"]) - 1
+
+
+def test_a_finding_marks_every_alert_it_names(service, tmp_path):
+    """The desktop marks a finding's alerts in one gesture; so does the Host."""
+    library, identifier = service
+    index = _import_alerts(library, identifier, tmp_path)
+    result = library.bookmark_finding(identifier, index, {
+        "Timestamp": "2026-11-02T10:05:00Z", "Computer": "PC-2", "EventID": "4624",
+        "RuleTitle": "Suspicious Logon"})
+    assert result["matched"] == 1
+    assert result["marked"] == 1
+    marks = library.bookmarks(identifier, index)["bookmarks"]
+    assert len(marks) == 1
+    assert marks[0]["note"] == "Hayabusa: Suspicious Logon"
+    # Only the rule name: every alert it fired on is marked.
+    result = library.bookmark_finding(identifier, index, {"RuleTitle": "Suspicious Logon"})
+    assert result["matched"] == 2
+    assert len(library.bookmarks(identifier, index)["bookmarks"]) == 2
+
+
+def test_the_alert_sources_of_a_run_can_be_taken_away(service):
+    library, identifier = service
+    folder = library.library.folder(identifier) / "collections" / "import-test" / "results" / "hayabusa-abc"
+    folder.mkdir(parents=True)
+    alerts = folder / "Alertes Hayabusa.csv"
+    alerts.write_text("Timestamp,RuleTitle\n2026-11-02T10:00:00Z,Rule\n", encoding="utf-8")
+    assert library.detection_sources(identifier, "import-test") == alerts
+    with pytest.raises(ServiceError):
+        library.detection_sources(identifier, "import-missing")
+
+def test_merging_the_same_collection_twice_adds_nothing(service, tmp_path):
+    """A detection re-reads its collection: its analyses must not double up."""
+    library, identifier = service
+    source = tmp_path / "again.csv"
+    _write_csv(source)
+    imported = library.import_source(identifier, source)
+    before = len(library.case(identifier)["analyses"])
+    session = Path(imported["collection"]) / "collection.fireblade-session"
+    assert session.is_file()
+    _first, added = library._merge_session(identifier, session)
+    assert added == 0
+    assert len(library.case(identifier)["analyses"]) == before
+
+
+def test_an_analysis_is_found_by_its_path(service, tmp_path):
+    library, identifier = service
+    source = tmp_path / "located.csv"
+    _write_csv(source)
+    library.import_source(identifier, source)
+    analyses = library.case(identifier)["analyses"]
+    assert library._analysis_index_of(identifier, analyses[-1]["path"]) == len(analyses) - 1
+    assert library._analysis_index_of(identifier, "/nowhere/absent.timeline") is None

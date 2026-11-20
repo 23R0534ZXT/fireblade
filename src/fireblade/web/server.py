@@ -399,6 +399,27 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return FileResponse(path, media_type="text/html", filename=name)
 
+    @app.post("/api/cases/{identifier}/analyses/{index}/bookmark-finding")
+    def bookmark_finding(identifier: str, index: int, payload: dict):
+        """Mark every alert of a finding in one gesture."""
+        finding = (payload or {}).get("finding")
+        if not isinstance(finding, dict):
+            raise HTTPException(status_code=400, detail="A 'finding' object is required.")
+        try:
+            return library.bookmark_finding(identifier, index, finding,
+                                            note=(payload or {}).get("note") or None)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/detection/{collection}/sources")
+    def detection_sources(identifier: str, collection: str):
+        """The alert CSV a detection run wrote."""
+        try:
+            path = library.detection_sources(identifier, collection)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return FileResponse(path, media_type="text/csv", filename=path.name)
+
     @app.post("/api/cases/{identifier}/analyses/{index}/ioc")
     def ioc(identifier: str, index: int, payload: dict):
         text = (payload or {}).get("text", "")

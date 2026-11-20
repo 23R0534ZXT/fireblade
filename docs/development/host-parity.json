@@ -1301,29 +1301,29 @@
     {
       "label": "Bookmark every alert of this finding",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Hayabusa tab, the Mark button of a finding.",
+      "test": "test_a_finding_marks_every_alert_it_names",
       "reason": "",
-      "plan": "From a Hayabusa finding, mark the rows it came from in one action."
+      "plan": ""
     },
     {
       "label": "Show the alerts in the grid",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Hayabusa tab, the Show button: the alert analysis, filtered on the rule.",
+      "test": "test_a_hayabusa_finding_opens_and_marks_its_alerts",
       "reason": "",
-      "plan": "From a Hayabusa finding, open the alert analysis filtered on its rule."
+      "plan": ""
     },
     {
       "label": "Exporter les sources Hayabusa…",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Hayabusa tab, the export link of a run.",
+      "test": "test_the_alert_sources_of_a_run_can_be_taken_away",
       "reason": "",
-      "plan": "Export the alert sources of a detection as CSV, as the desktop does."
+      "plan": ""
     },
     {
       "label": "Graphique",

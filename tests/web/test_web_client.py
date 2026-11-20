@@ -74,6 +74,17 @@ def test_a_column_can_be_frozen_on_either_edge():
     assert "applyPinning();" in js
 
 
+def test_a_hayabusa_finding_opens_and_marks_its_alerts():
+    js = _read(APP)
+    assert "function showFindingInGrid(" in js
+    assert "function markFinding(" in js
+    assert 'data-want="show"' in js and 'data-want="mark"' in js
+    assert "/bookmark-finding" in js
+    assert "/detection/" in js and "/sources" in js
+    # The run adds its alert analysis to the case: the client must not leave the tab.
+    assert "state.openCase = await api(`/api/cases/${state.openCase.id}`);" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

@@ -171,10 +171,14 @@ COMMANDS = {
     "(date et heure dans la même colonne)": (Q, Q, "", "", "", "Let the timeline choose how a date column is read: one column, two columns, or none."),
     "Date + heure (colonnes séparées)": (Q, Q, "", "", "", "Same panel as above: the two-column reading of a date."),
     "Sans date / corrélation uniquement": (Q, Q, "", "", "", "Same panel: build the timeline without a date column."),
-    "Bookmark every alert of this finding": (Q, Q, "", "", "", "From a Hayabusa finding, mark the rows it came from in one action."),
-    "Show the alerts in the grid": (Q, Q, "", "", "", "From a Hayabusa finding, open the alert analysis filtered on its rule."),
-    "Exporter les sources Hayabusa…": (Q, Q, "", "", "", "Export the alert sources of a detection as CSV, as the desktop does."),
-    "Graphique": (Q, Q, "", "", "", "Chart the grouped counts: bars per group, drawn from the same request as the grid."),
+    "Bookmark every alert of this finding": (T, T, "Hayabusa tab, the Mark button of a finding.",
+                                             "test_a_finding_marks_every_alert_it_names", "", ""),
+    "Show the alerts in the grid": (T, T, "Hayabusa tab, the Show button: the alert analysis, filtered on the rule.",
+                                    "test_a_hayabusa_finding_opens_and_marks_its_alerts", "", ""),
+    "Exporter les sources Hayabusa…": (T, T, "Hayabusa tab, the export link of a run.",
+                                       "test_the_alert_sources_of_a_run_can_be_taken_away", "", ""),
+    "Graphique": (T, T, "The grouped view draws the counts of the page as bars.",
+                  "test_the_grouped_view_draws_its_chart", "", ""),
     "Gérer les analyses ouvertes": (T, T, "The ✕ on the analysis tab closes it; the tree switches.",
                                     "test_closing_an_analysis_leaves_the_others_and_its_file", "", ""),
     "Nœud libre…": (Q, Q, "", "", "", "Add a free node to the attack graph, which needs the graph to be editable and stored."),
@@ -184,7 +188,8 @@ COMMANDS = {
     "Profils et compatibilité": (Q, Q, "", "", "", "A compatibility panel: profile catalogue, reader inventory, session compatibility."),
     "Sessions et compatibilité": (Q, Q, "", "", "", "Same panel: what a saved session would load here."),
     "Standard / personnalisé": (Q, Q, "", "", "", "Custom palette colours, not only the desktop's two themes."),
-    "Épingler à droite": (Q, Q, "", "", "", "Pin a column to the right edge of the frozen area, as the desktop does."),
+    "Épingler à droite": (T, T, "Row menu > Pin on the right, and Columns… > pin right.",
+                          "test_a_column_can_be_frozen_on_either_edge", "", ""),
 }
 
 

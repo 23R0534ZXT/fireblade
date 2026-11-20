@@ -459,7 +459,7 @@ async function openCase(identifier) {
     renderTree();
     renderCases();
     if (!detail.analyses.length) {
-      clearGrid("This case holds no analysis yet. Importing needs the desktop edition for now.");
+      clearGrid("This case holds no analysis yet. Import a file to begin.");
       say("Case opened: no analysis inside", true);
       return;
     }
@@ -937,7 +937,7 @@ function renderGraph(payload) {
 
 /* ---------- Hayabusa ---------- */
 
-const hayabusaState = { findings: [] };
+const hayabusaState = { findings: [], runs: [] };
 
 async function runHayabusa() {
   if (!state.openCase) { say("Open a case first", true); return; }
@@ -946,9 +946,18 @@ async function runHayabusa() {
   say("Hayabusa: running…");
   try {
     const payload = await apiPost(`/api/cases/${state.openCase.id}/detect`, { min_level: level });
-    hayabusaState.findings = payload.findings;
-    const runs = payload.runs.map((run) => `${run.collection}: ${run.summary?.detections ?? 0} detection(s)`).join(" · ");
-    $("hayabusa-summary").textContent = `${payload.total} finding(s) — ${runs}`;
+    hayabusaState.runs = payload.runs || [];
+    // Every finding keeps the run it came from: the alert analysis is per run.
+    hayabusaState.findings = hayabusaState.runs.flatMap((run, position) =>
+      (run.findings || []).map((finding) => ({ ...finding, _run: position })));
+    const runs = hayabusaState.runs.map((run) => `${escapeHtml(run.collection)}: ${run.summary?.detections ?? 0} detection(s)` +
+      (run.analysis === null || run.analysis === undefined ? "" :
+        ` · <a href="#" class="lnk" data-sources="${escapeHtml(run.collection)}">export the sources</a>`)).join(" · ");
+    $("hayabusa-summary").innerHTML = `${payload.total} finding(s) — ${runs}`;
+    // The run adds its alert analysis to the case: refresh the tree without
+    // leaving the findings the analyst just asked for.
+    state.openCase = await api(`/api/cases/${state.openCase.id}`);
+    renderTree();
     renderHayabusa();
     say(`Hayabusa: ${payload.total} finding(s) at level ${level}+`);
   } catch (error) {
@@ -958,14 +967,55 @@ async function runHayabusa() {
 }
 
 function renderHayabusa() {
-  $("hayabusa-rows").innerHTML = hayabusaState.findings.map((finding) => `
+  $("hayabusa-rows").innerHTML = hayabusaState.findings.map((finding, position) => `
     <tr><td>${escapeHtml(finding.Timestamp || "")}</td>
       <td>${escapeHtml(finding.Level || "")}</td>
       <td title="${escapeHtml(finding.Details || "")}">${escapeHtml(finding.RuleTitle || "")}</td>
       <td>${escapeHtml(finding.Computer || "")}</td>
       <td>${escapeHtml(finding.Channel || "")}</td>
       <td>${escapeHtml(String(finding.EventID || ""))}</td>
-      <td title="${escapeHtml(finding.MitreTags || "")}">${escapeHtml(finding.MitreTactics || "")}</td></tr>`).join("");
+      <td title="${escapeHtml(finding.MitreTags || "")}">${escapeHtml(finding.MitreTactics || "")}</td>
+      <td><button class="btn" data-finding="${position}" data-want="show"
+          title="Open the alerts of this rule in the grid">Show</button>
+        <button class="btn" data-finding="${position}" data-want="mark"
+          title="Mark every alert of this finding">Mark</button></td></tr>`).join("");
+}
+
+/* The alert analysis of the run, filtered on the rule that fired. */
+async function showFindingInGrid(item) {
+  const run = hayabusaState.runs[item._run] || {};
+  if (run.analysis === null || run.analysis === undefined) {
+    say("The alert analysis of this run is not open in the case", true);
+    return;
+  }
+  state.analysis = run.analysis;
+  state.groups = []; state.path = []; state.interval = ""; state.expression = null;
+  state.filters = []; state.search = ""; state.sort = null; state.multiSort = [];
+  showTab("analyses");
+  await loadRows(true);
+  const position = state.columns.findIndex((name) => name.toLowerCase() === "ruletitle");
+  if (position > 0 && item.RuleTitle) {
+    state.filters = [{ column: position - 1, operator: "eq", value: item.RuleTitle }];
+    await loadRows(true);
+  }
+  say(`${state.total} alert(s) of this rule — ${item.RuleTitle}`);
+}
+
+async function markFinding(item) {
+  const run = hayabusaState.runs[item._run] || {};
+  if (run.analysis === null || run.analysis === undefined) {
+    say("The alert analysis of this run is not open in the case", true);
+    return;
+  }
+  const { _run, ...finding } = item;
+  try {
+    const payload = await apiPost(
+      `/api/cases/${state.openCase.id}/analyses/${run.analysis}/bookmark-finding`, { finding });
+    const capped = payload.matched > payload.marked ? ` of ${payload.matched}` : "";
+    say(`${payload.marked} alert(s) marked${capped}`);
+  } catch (error) {
+    say(error.message, true);
+  }
 }
 
 /* ---------- preferences ---------- */
@@ -2166,6 +2216,20 @@ function wire() {
   $("ioc-history").addEventListener("focus", loadHuntHistory);
   $("derived-operation").addEventListener("change", derivedOperationChanged);
   $("hayabusa-run").addEventListener("click", runHayabusa);
+  $("hayabusa-rows").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-finding]");
+    if (!button) return;
+    const item = hayabusaState.findings[Number(button.dataset.finding)];
+    if (!item) return;
+    if (button.dataset.want === "mark") markFinding(item);
+    else showFindingInGrid(item);
+  });
+  $("hayabusa-summary").addEventListener("click", (event) => {
+    const link = event.target.closest("a[data-sources]");
+    if (!link || !state.openCase) return;
+    event.preventDefault();
+    window.location = `/api/cases/${state.openCase.id}/detection/${encodeURIComponent(link.dataset.sources)}/sources`;
+  });
   $("graph-build").addEventListener("click", buildGraph);
   $("graph-navigator").addEventListener("click", exportNavigator);
   $("graph-png").addEventListener("click", exportGraphPng);

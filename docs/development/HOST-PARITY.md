@@ -7,7 +7,7 @@ every label `scripts/parity_inventory.py` finds in the Qt sources. A command is
 real desktop work this edition does not do yet, with a plan.
 
 - labels found in the Qt sources: **157**
-- of them, real commands: **104** (74 covered, 16 declared out of scope, 14 to do)
+- of them, real commands: **104** (77 covered, 16 declared out of scope, 11 to do)
 - parameter values counted as commands by the inventory: **40**
 - menu containers and dialog captions: **13**
 
@@ -29,6 +29,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Attack graph | Attack graph tab, with the ATT&CK layer and the PNG. | `test_the_attack_graph_refuses_on_an_empty_case` |
 | Automatique (BOM) | Import dialog: CSV options, encoding. | `test_preview_reads_the_chosen_encoding_and_separator` |
 | Basculer l’affichage booléen | Column manager and display settings. | `test_display_layout_is_saved_in_the_analysis` |
+| Bookmark every alert of this finding | Hayabusa tab, the Mark button of a finding. | `test_a_finding_marks_every_alert_it_names` |
 | Calculs et conversions | Derived columns dialog. | `test_a_derived_column_is_added_to_the_analysis` |
 | Case courant | The open case in the toolbar. | `test_cases_are_listed` |
 | Cases | Cases tab. | `test_cases_are_listed` |
@@ -50,6 +51,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Détection EVTX | EVTX detection tab. | `test_detection_refuses_with_a_readable_reason` |
 | Exclure cette valeur | Row menu > Exclude this value. | `test_the_row_menu_offers_every_cell_action` |
 | Exporter le suivi… | Actions & tracking > Export CSV. | `test_actions_export_is_a_csv` |
+| Exporter les sources Hayabusa… | Hayabusa tab, the export link of a run. | `test_the_alert_sources_of_a_run_can_be_taken_away` |
 | Exporter PNG… | Attack graph > Export PNG… | `test_the_row_menu_offers_every_cell_action` |
 | Expression ET / OU / NON · ouvrir l’éditeur pour modifier | Advanced filter…, with nested groups. | `test_the_row_menu_offers_every_cell_action` |
 | Filtrer cette colonne… | The filter row under the headers. | `test_search_and_column_filter` |
@@ -78,6 +80,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Retirer les signets de la sélection | Row menu > Remove marks from the selection. | `test_the_grid_selects_a_range_and_a_selection` |
 | Règles | Colour rules… | `test_colour_rules_round_trip` |
 | Règles globales | Colour rules…, stored with the analysis. | `test_colour_rules_round_trip` |
+| Show the alerts in the grid | Hayabusa tab, the Show button: the alert analysis, filtered on the rule. | `test_a_hayabusa_finding_opens_and_marks_its_alerts` |
 | Signet / note… | Row details: bookmark note. | `test_bookmarks_and_cell_notes_round_trip` |
 | Sombre | Display settings > palette. | `test_display_layout_is_saved_in_the_analysis` |
 | Tous les artefacts | Analyses tree: every analysis of the case. | `test_analysis_columns_and_rows` |
@@ -116,17 +119,14 @@ A line of this page is the claim; the test named beside it is the proof.
 ## Real work left
 
 - **(date et heure dans la même colonne)** — Let the timeline choose how a date column is read: one column, two columns, or none.
-- **Bookmark every alert of this finding** — From a Hayabusa finding, mark the rows it came from in one action.
 - **Compatibilité Timeline Explorer** — Expose the desktop's compatibility checks in a Compatibility panel (profiles, sessions, TLE headers).
 - **Date + heure (colonnes séparées)** — Same panel as above: the two-column reading of a date.
-- **Exporter les sources Hayabusa…** — Export the alert sources of a detection as CSV, as the desktop does.
 - **Nœud libre…** — Add a free node to the attack graph, which needs the graph to be editable and stored.
 - **Ouvrir l’événement EVTX source** — Map a finding back to its source record in the EVTX analysis.
 - **Plugins** — Inventory the plugin host from the service and show what it would load.
 - **Profils et compatibilité** — A compatibility panel: profile catalogue, reader inventory, session compatibility.
 - **Sans date / corrélation uniquement** — Same panel: build the timeline without a date column.
 - **Sessions et compatibilité** — Same panel: what a saved session would load here.
-- **Show the alerts in the grid** — From a Hayabusa finding, open the alert analysis filtered on its rule.
 - **Standard / personnalisé** — Custom palette colours, not only the desktop's two themes.
 - **Voir le contexte EVTX de cette alerte** — Same mapping as above, shown around the alert.
 

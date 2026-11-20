@@ -29,12 +29,12 @@ plan (architecture, phases, décisions) est dans `HANDOFF-DOCKER.md`.
 
 | Quoi | Valeur |
 | --- | --- |
-| Branche | `feat/host-edition`, **50 commits** au-dessus de `main` |
+| Branche | `feat/host-edition`, **52 commits** au-dessus de `main` |
 | `main` | intacte, jamais poussée, rien de publié |
-| Dernier commit | `0333e8b Host: profiles and presentation plugins, kept on a volume` |
+| Dernier commit | `3a4e4b1 Host: an alert opens its source event and its EVTX context` |
 | Arbre de travail | propre — les trois documents non suivis sont hors sujet |
-| Porte complète | **verte** : `1797 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 17 min 01 s |
-| Tests web | **50**, dont 7 de parité qui refusent une couverture sans test |
+| Porte complète | **verte** : `1800 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 16 min 50 s |
+| Tests web | **53**, dont 7 de parité qui refusent une couverture sans test |
 | Image | `fireblade:host`, saine sur `http://192.168.1.201:8095` |
 | Cases ouverts sur le service | 8, plus `poste-fr.csv` importé pour la recette d'encodage |
 
@@ -92,9 +92,9 @@ Trois statuts, et un seul est une promesse :
   parité vérifie que ce test existe vraiment (`ast` sur `tests/`).
 - **declared** — impossible ou hors sujet derrière un navigateur, avec la raison
   (pas d'explorateur système, pas de gestion de fenêtres, pas d'IA branchée).
-- **todo** — vraie commande du desktop non portée, avec son plan. **8 restent.**
+- **todo** — vraie commande du desktop non portée, avec son plan. **6 restent.**
 
-État actuel : 102 commandes ⇒ 78 couvertes, 16 déclarées hors périmètre, 8 à faire.
+État actuel : 102 commandes ⇒ 80 couvertes, 16 déclarées hors périmètre, 6 à faire.
 
 ---
 
@@ -157,7 +157,11 @@ sources en CSV. **Aucune IA branchée**, l'onglet le dit.
 
 **Attack graph** — construit par le noyau, couche MITRE ATT&CK Navigator, PNG.
 
-**Détection EVTX** — moteur du noyau, à travers le conteneur.
+**Détection EVTX** — moteur du noyau, à travers le conteneur. Depuis une alerte,
+le menu de ligne ouvre l'événement EVTX source (l'analyse EVTX filtrée sur son
+`EventRecordId`) ou en construit le contexte temporel (`alert_context` du noyau :
+156 événements à ±5 min sur le case de test, association exacte), qui devient une
+analyse du case.
 
 **Transverse** — recherche globale, préférences (runtime, lecteurs, profils),
 réglages d'affichage, et **Profils et compatibilité** : catalogue des profils du
@@ -247,16 +251,14 @@ un test qui existe**, sinon `tests/web/test_host_parity.py` échoue.
 
 ## 11. Ce qui reste, dans l'ordre du fichier de parité
 
-Huit commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
+Six commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
 
 1. **Chronologie, mode de date** (3) — même colonne, colonnes séparées, sans date.
    Le panneau choisit aujourd'hui la colonne tout seul.
-2. **Contexte EVTX** (2) — ouvrir l'événement source d'une alerte, voir son
-   contexte autour d'elle.
-3. **Compatibilité Timeline Explorer** (1) — téléverser une DLL de lecteur TLE,
+2. **Compatibilité Timeline Explorer** (1) — téléverser une DLL de lecteur TLE,
    inspecter ses lecteurs, faire passer une source dedans.
-4. **Graphe** (1) — nœud libre, qui demande un graphe éditable et stocké.
-5. **Palette personnalisée** (1) — les deux thèmes du desktop, pas de couleurs libres.
+3. **Graphe** (1) — nœud libre, qui demande un graphe éditable et stocké.
+4. **Palette personnalisée** (1) — les deux thèmes du desktop, pas de couleurs libres.
 
 ---
 
@@ -286,6 +288,7 @@ Huit commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
 ## 14. Les derniers commits
 
 ```
+3a4e4b1 Host: an alert opens its source event and its EVTX context
 0333e8b Host: profiles and presentation plugins, kept on a volume
 db009a6 Host: a finding opens and marks its alerts, and a run exports its sources
 9ba585f Host: the grouped chart, and columns frozen on either edge
@@ -300,7 +303,7 @@ f1d95d4 Host: the graph as a PNG
 4314305 Host: hunts leave a record
 ```
 
-`git log --oneline main..HEAD` donne les 50.
+`git log --oneline main..HEAD` donne les 52.
 
 ---
 
@@ -320,6 +323,11 @@ f1d95d4 Host: the graph as a PNG
   redémarrage du conteneur.
 - **Le contexte de build doit suivre le noyau** : `collection.py` a changé, et un
   `fbctx` périmé construit une image qui ignore le changement.
+- **Les événements sont stockés en `c0`, `c1`…** : `case.headers` donne les noms
+  affichés, la table garde les colonnes brutes. Toute lecture d'une ligne par son
+  identifiant doit mapper **positionnellement** (`_row_values`) ; un `SELECT *`
+  rendu tel quel donne des clés `c0` et une fonction qui ne trouve jamais le
+  champ qu'elle cherche.
 - **Un import ne doit jamais remplacer la session** : `InvestigationLibrary.save`
   écrit la liste qu'on lui donne. Le service relit la session précédente et
   concatène, sinon la deuxième importation efface la première.
@@ -348,8 +356,8 @@ f1d95d4 Host: the graph as a PNG
 ## 16. Par où commencer, concrètement
 
 1. `git log --oneline -5` et `git status` sur la VM : l'arbre doit être propre.
-2. `python -m pytest -q tests/web` (10 s) : 50 verts, dont la parité.
-3. Ouvrir `HOST-PARITY.md` → « Real work left » : huit lignes, chacune avec
+2. `python -m pytest -q tests/web` (11 s) : 53 verts, dont la parité.
+3. Ouvrir `HOST-PARITY.md` → « Real work left » : six lignes, chacune avec
    son plan. Les prendre dans l'ordre, une par une, avec la double preuve.
 4. Après chaque lot : `scripts.dev_check` (~17 min), régénérer
    `HOST-PARITY.md`, mettre à jour ce document.

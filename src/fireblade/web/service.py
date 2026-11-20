@@ -1370,10 +1370,73 @@ class Library:
                                               View(), b""))
         return snapshots
 
+    def _headers_of(self, path) -> list[str]:
+        """The columns of an analysis, for the date selector."""
+        if not path or not Path(str(path)).is_file():
+            return []
+        try:
+            case = Case(Path(str(path)), read_only=True)
+        except (OSError, ValueError):
+            return []
+        try:
+            return list(case.headers)
+        finally:
+            try:
+                case.close()
+            except Exception:
+                pass
+
+    def _split_available(self, path) -> bool:
+        from fireblade.core.timeline import split_date_time
+
+        headers = self._headers_of(path)
+        return bool(headers and split_date_time(headers))
+
+    def _date_options(self, identifier: str, dates: dict) -> dict[str, object]:
+        """Turn the analyst's choices into the core's per-analysis specification."""
+        from fireblade.core.timeline import DATE_TIME
+
+        if not isinstance(dates, dict):
+            raise ServiceError("The date options must be an object.")
+        analyses = self._analyses(self.library.read(identifier))
+        options: dict[str, object] = {}
+        for key, value in dates.items():
+            try:
+                index = int(key)
+            except (TypeError, ValueError) as exc:
+                raise ServiceError("A date option names no analysis.") from exc
+            if not 0 <= index < len(analyses):
+                raise ServiceError("A date option names an analysis outside the case.")
+            path = analyses[index]["path"]
+            if value in ("auto", "", None):
+                continue
+            if value == "none":
+                options[path] = None
+            elif value == "split":
+                options[path] = DATE_TIME
+            else:
+                # A column name, resolved against that analysis: the core reads an
+                # index, and a wrong one would silently make every row undated.
+                headers = self._headers_of(path)
+                match = next((position for position, name in enumerate(headers)
+                              if name.casefold() == str(value).casefold()), None)
+                if match is None:
+                    raise ServiceError(f"No column named {value} in that analysis.")
+                options[path] = match
+        return options
+
     def timeline(self, identifier: str, start: int | None = None, end: int | None = None,
-                 offset: int = 0, text: str = "", kind: str = "text") -> dict:
-        """Counts the case's rows over time with the desktop's own TimelineStore."""
-        key = (identifier, self.library.read(identifier).get("revision"))
+                 offset: int = 0, text: str = "", kind: str = "text",
+                 dates: dict | None = None) -> dict:
+        """Counts the case's rows over time with the desktop's own TimelineStore.
+
+        `dates` says how each analysis is read: `{"<index>": "none" | "split" |
+        "<column name>"}`. An analysis it does not name keeps the detection, which
+        is what the desktop does when the analyst has not chosen a column.
+        """
+        options = self._date_options(identifier, dates or {})
+        key = (identifier, self.library.read(identifier).get("revision"),
+               tuple(sorted(options.items())))
         store = self._timelines.get(key)
         if store is None:
             snapshots = self._snapshots(identifier)
@@ -1390,7 +1453,7 @@ class Library:
                         pass
             store = TimelineStore(self._timeline_dir)
             reader = WorkspaceReader(snapshots)
-            store.build(reader, columns={})
+            store.build(reader, columns={path: spec for path, spec in options.items()})
             for old in list(self._timelines):
                 if old[0] == identifier:
                     try:
@@ -1404,7 +1467,11 @@ class Library:
         low, high, total, dated = store.extent(**filters)
         page = store.page(offset, **(filters if filters else {}))
         payload = {
-            "sources": [{k: item.get(k) for k in ("id", "name", "original", "rows", "dated", "undated", "column", "error")}
+            "sources": [dict({k: item.get(k) for k in ("id", "name", "original", "rows", "dated",
+                                                       "undated", "column", "column_name", "combined", "error")},
+                             headers=list(self._headers_of(item.get("path"))),
+                             split=self._split_available(item.get("path")),
+                             chosen=(dates or {}).get(str(item.get("id")), "auto"))
                         for item in store.sources],
             "extent": {"start": low, "end": high, "rows": int(total or 0), "dated": int(dated or 0)},
             "count": int(page["count"]),

@@ -7,7 +7,7 @@ every label `scripts/parity_inventory.py` finds in the Qt sources. A command is
 real desktop work this edition does not do yet, with a plan.
 
 - labels found in the Qt sources: **157**
-- of them, real commands: **102** (80 covered, 16 declared out of scope, 6 to do)
+- of them, real commands: **102** (83 covered, 16 declared out of scope, 3 to do)
 - parameter values counted as commands by the inventory: **40**
 - menu containers and dialog captions: **15**
 
@@ -18,6 +18,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | command | where in the browser | test |
 | --- | --- | --- |
 | &Détection | Detection menu and the EVTX detection tab. | `test_detection_refuses_with_a_readable_reason` |
+| (date et heure dans la même colonne) | Timeline: the date selector of each analysis, or a named column. | `test_the_timeline_reads_a_date_the_way_the_analyst_chooses` |
 | Actions | Actions & tracking tab. | `test_tracking_actions_are_created_updated_and_exported` |
 | Actions & suivi | Actions & tracking tab. | `test_tracking_actions_are_created_updated_and_exported` |
 | Afficher la cellule / JSON… | Row menu > Show the whole cell… | `test_the_row_menu_offers_every_cell_action` |
@@ -45,6 +46,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Corréler dans toutes les analyses | Global search across every analysis of the case. | `test_a_global_search_finds_the_value_and_names_its_analysis` |
 | Couche ATT&CK Navigator… | Attack graph > Export an ATT&CK layer… | `test_the_attack_graph_refuses_on_an_empty_case` |
 | Créer une règle pour cette valeur… | Row menu > Colour rule for this value… | `test_colour_rules_round_trip` |
+| Date + heure (colonnes séparées) | Timeline: the 'date + time (separate columns)' option of a source. | `test_the_timeline_can_read_two_columns_as_one_date` |
 | Dispositions de la grille | Column layout remembered in the analysis. | `test_display_layout_is_saved_in_the_analysis` |
 | Désépingler la colonne | Row menu > Pin / unpin this column. | `test_the_row_menu_offers_every_cell_action` |
 | Détails de la ligne | Row details panel. | `test_the_grid_selects_a_range_and_a_selection` |
@@ -82,6 +84,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Retirer les signets de la sélection | Row menu > Remove marks from the selection. | `test_the_grid_selects_a_range_and_a_selection` |
 | Règles | Colour rules… | `test_colour_rules_round_trip` |
 | Règles globales | Colour rules…, stored with the analysis. | `test_colour_rules_round_trip` |
+| Sans date / corrélation uniquement | Timeline: the 'no date (correlation only)' option of a source. | `test_the_timeline_reads_a_date_the_way_the_analyst_chooses` |
 | Show the alerts in the grid | Hayabusa tab, the Show button: the alert analysis, filtered on the rule. | `test_a_hayabusa_finding_opens_and_marks_its_alerts` |
 | Signet / note… | Row details: bookmark note. | `test_bookmarks_and_cell_notes_round_trip` |
 | Sombre | Display settings > palette. | `test_display_layout_is_saved_in_the_analysis` |
@@ -121,11 +124,8 @@ A line of this page is the claim; the test named beside it is the proof.
 
 ## Real work left
 
-- **(date et heure dans la même colonne)** — Let the timeline choose how a date column is read: one column, two columns, or none.
 - **Compatibilité Timeline Explorer** — Upload a .NET Timeline Explorer reader, inspect the readers it declares, and run a source through it.
-- **Date + heure (colonnes séparées)** — Same panel as above: the two-column reading of a date.
 - **Nœud libre…** — Add a free node to the attack graph, which needs the graph to be editable and stored.
-- **Sans date / corrélation uniquement** — Same panel: build the timeline without a date column.
 - **Standard / personnalisé** — Custom palette colours, not only the desktop's two themes.
 
 ## What the inventory counts as a command

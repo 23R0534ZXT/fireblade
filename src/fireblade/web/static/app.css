@@ -212,6 +212,12 @@ body.dropping{outline:2px dashed #7aa9c9;outline-offset:-6px}
 .row-menu .item{padding:3px 18px;line-height:17px;cursor:default;font-size:12px}
 .row-menu .item:hover{background:var(--sel);color:var(--sel-text)}
 .row-menu .sep{height:1px;background:var(--line);margin:4px 0}
+/* How each analysis is read on the timeline: detected, a named column, two
+   columns, or none — the desktop's three readings. */
+.timeline-dates{display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 10px;border-bottom:1px solid var(--border)}
+.timeline-dates .tsrc{display:flex;align-items:center;gap:6px;font-size:11px}
+.timeline-dates .tname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* Frozen columns: a pinned section keeps its place on its edge while the body
    scrolls, on the header, the filter row and every cell. */
 /* The bookmark cell stays on the left, so a column pinned on the left starts

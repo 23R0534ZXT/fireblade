@@ -404,3 +404,47 @@ def test_the_context_of_an_alert_needs_an_alert(service):
     with pytest.raises(ServiceError) as caught:
         library.alert_context(identifier, 0, plain, minutes=5)
     assert "EVTX" in str(caught.value) or "alert" in str(caught.value).lower()
+
+def test_the_timeline_reads_a_date_the_way_the_analyst_chooses(service):
+    """The desktop offers three readings per analysis; so does the Host."""
+    library, identifier = service
+    auto = library.timeline(identifier)
+    assert auto["sources"][0]["dated"] == 3
+    assert auto["sources"][0]["headers"][0] == "Timestamp"
+    assert auto["sources"][0]["chosen"] == "auto"
+
+    none = library.timeline(identifier, dates={"0": "none"})
+    assert none["sources"][0]["dated"] == 0
+    assert none["sources"][0]["undated"] == 3
+
+    named = library.timeline(identifier, dates={"0": "Timestamp"})
+    assert named["sources"][0]["dated"] == 3
+    assert named["sources"][0]["chosen"] == "Timestamp"
+
+    with pytest.raises(ServiceError):
+        library.timeline(identifier, dates={"0": "NotAColumn"})
+    with pytest.raises(ServiceError):
+        library.timeline(identifier, dates={"9": "none"})
+
+def test_the_timeline_can_read_two_columns_as_one_date(service, tmp_path):
+    """IIS and W3C exports keep the date and the time apart; the desktop joins them."""
+    library, identifier = service
+    source = tmp_path / "iis.csv"
+    with source.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["timestamp", "date", "time", "User", "SourceIP"])
+        writer.writerows([["2026-11-02T00:00:00Z", "2026-11-02", "10:00:01", "alice", "192.0.2.10"],
+                          ["2026-11-02T00:00:00Z", "2026-11-02", "10:00:02", "bob", "192.0.2.20"]])
+    library.import_source(identifier, source)
+    index = len(library.case(identifier)["analyses"]) - 1
+
+    guessed = library.timeline(identifier)
+    entry = next(item for item in guessed["sources"] if item["id"] == index)
+    assert entry["column_name"] == "timestamp"
+    assert entry["split"] is True, "the two columns are there, the option must be offered"
+
+    joined = library.timeline(identifier, dates={str(index): "split"})
+    entry = next(item for item in joined["sources"] if item["id"] == index)
+    assert entry["column_name"] == "date + time"
+    assert entry["combined"] is True
+    assert entry["dated"] == 2

@@ -1274,29 +1274,29 @@
     {
       "label": "(date et heure dans la même colonne)",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Timeline: the date selector of each analysis, or a named column.",
+      "test": "test_the_timeline_reads_a_date_the_way_the_analyst_chooses",
       "reason": "",
-      "plan": "Let the timeline choose how a date column is read: one column, two columns, or none."
+      "plan": ""
     },
     {
       "label": "Date + heure (colonnes séparées)",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Timeline: the 'date + time (separate columns)' option of a source.",
+      "test": "test_the_timeline_can_read_two_columns_as_one_date",
       "reason": "",
-      "plan": "Same panel as above: the two-column reading of a date."
+      "plan": ""
     },
     {
       "label": "Sans date / corrélation uniquement",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Timeline: the 'no date (correlation only)' option of a source.",
+      "test": "test_the_timeline_reads_a_date_the_way_the_analyst_chooses",
       "reason": "",
-      "plan": "Same panel: build the timeline without a date column."
+      "plan": ""
     },
     {
       "label": "Bookmark every alert of this finding",

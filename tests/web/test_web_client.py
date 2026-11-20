@@ -109,6 +109,18 @@ def test_the_evtx_actions_only_appear_for_an_alert_analysis():
     assert "/rows/${contextRow.dataset.row}/source" in js
 
 
+def test_the_timeline_offers_the_three_date_readings():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="timeline-dates"' in html
+    assert "function renderTimelineDates(" in js
+    assert "function applyTimelineDates(" in js
+    for value in ('value="auto"', 'value="none"', 'value="split"'):
+        assert value in js, value
+    assert 'params.set("dates", dates);' in js
+    # The selectors are rebuilt with the timeline, so the choice must survive it.
+    assert "timelineState.dates[String(source.id)] || \"auto\"" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

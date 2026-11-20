@@ -1570,7 +1570,46 @@ function renderIoc() {
 /* ---------- timeline ---------- */
 
 const TIMELINE_COLORS = ["#2d9cdb", "#e6a23c", "#27ae82", "#bb6bd9", "#eb6577", "#56bfc4", "#9fa8da", "#b4a34a"];
-const timelineState = { offset: 0, text: "", kind: "text", payload: null };
+const timelineState = { offset: 0, text: "", kind: "text", payload: null, dates: {} };
+
+/* The desktop chooses, per analysis, how its dates are read. The choice travels
+   with every timeline request, so a rebuild reads the case the same way. */
+function timelineDatesParam() {
+  const chosen = {};
+  document.querySelectorAll('#timeline-dates select[data-source]').forEach((select) => {
+    if (select.value && select.value !== "auto") chosen[select.dataset.source] = select.value;
+  });
+  timelineState.dates = chosen;
+  return Object.keys(chosen).length ? JSON.stringify(chosen) : "";
+}
+
+function renderTimelineDates(payload) {
+  const box = $("timeline-dates");
+  box.innerHTML = (payload.sources || []).map((source) => {
+    const chosen = timelineState.dates[String(source.id)] || "auto";
+    const options = [
+      `<option value="auto" ${chosen === "auto" ? "selected" : ""}>detected${source.column_name ? ": " + escapeHtml(source.column_name) : ""}</option>`,
+      `<option value="none" ${chosen === "none" ? "selected" : ""}>no date (correlation only)</option>`,
+    ];
+    if (source.split) {
+      options.push(`<option value="split" ${chosen === "split" ? "selected" : ""}>date + time (separate columns)</option>`);
+    }
+    for (const name of source.headers || []) {
+      options.push(`<option value="${escapeHtml(name)}" ${chosen === name ? "selected" : ""}>${escapeHtml(name)}</option>`);
+    }
+    return `<div class="tsrc"><span class="tname" title="${escapeHtml(source.original || source.name)}">${escapeHtml(source.name)}</span>
+      <select class="select" data-source="${source.id}">${options.join("")}</select></div>`;
+  }).join("");
+}
+
+function applyTimelineDates() {
+  const chosen = {};
+  document.querySelectorAll('#timeline-dates select[data-source]').forEach((select) => {
+    if (select.value && select.value !== "auto") chosen[select.dataset.source] = select.value;
+  });
+  timelineState.dates = chosen;
+  loadTimeline(true);
+}
 
 function utcLabel(ns) {
   const ms = Number(ns) / 1e6;
@@ -1582,6 +1621,8 @@ async function loadTimeline(reset) {
   if (reset) timelineState.offset = 0;
   const params = new URLSearchParams({ offset: String(timelineState.offset) });
   if (timelineState.text) { params.set("text", timelineState.text); params.set("kind", timelineState.kind); }
+  const dates = timelineDatesParam();
+  if (dates) params.set("dates", dates);
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/timeline?${params}`);
     timelineState.payload = payload;
@@ -1592,6 +1633,7 @@ async function loadTimeline(reset) {
 }
 
 function renderTimeline(payload) {
+  renderTimelineDates(payload);
   $("timeline-legend").innerHTML = payload.sources.map((source, index) =>
     `<span class="chip"><span class="swatch" style="background:${TIMELINE_COLORS[index % 8]}"></span>${escapeHtml(source.name)} — ${source.dated} dated / ${source.rows} row(s)</span>`).join("");
 
@@ -2370,6 +2412,7 @@ function wire() {
     const button = event.target.closest("[data-action-close]");
     if (button) toggleAction(button.dataset.actionClose);
   });
+  $("timeline-dates").addEventListener("change", applyTimelineDates);
   $("timeline-build").addEventListener("click", () => loadTimeline(false));
   $("timeline-search").addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;

@@ -169,9 +169,12 @@ COMMANDS = {
     "New conversation": (D, D, "", "", "The AI assistant is not connected in this edition, on purpose.", ""),
 
     # ---- todo: real work, with a plan ----
-    "(date et heure dans la même colonne)": (Q, Q, "", "", "", "Let the timeline choose how a date column is read: one column, two columns, or none."),
-    "Date + heure (colonnes séparées)": (Q, Q, "", "", "", "Same panel as above: the two-column reading of a date."),
-    "Sans date / corrélation uniquement": (Q, Q, "", "", "", "Same panel: build the timeline without a date column."),
+    "(date et heure dans la même colonne)": (T, T, "Timeline: the date selector of each analysis, or a named column.",
+                                              "test_the_timeline_reads_a_date_the_way_the_analyst_chooses", "", ""),
+    "Date + heure (colonnes séparées)": (T, T, "Timeline: the 'date + time (separate columns)' option of a source.",
+                                         "test_the_timeline_can_read_two_columns_as_one_date", "", ""),
+    "Sans date / corrélation uniquement": (T, T, "Timeline: the 'no date (correlation only)' option of a source.",
+                                           "test_the_timeline_reads_a_date_the_way_the_analyst_chooses", "", ""),
     "Bookmark every alert of this finding": (T, T, "Hayabusa tab, the Mark button of a finding.",
                                              "test_a_finding_marks_every_alert_it_names", "", ""),
     "Show the alerts in the grid": (T, T, "Hayabusa tab, the Show button: the alert analysis, filtered on the rule.",

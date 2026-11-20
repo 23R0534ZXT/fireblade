@@ -475,9 +475,16 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
 
     @app.get("/api/cases/{identifier}/timeline")
     def timeline(identifier: str, start: int | None = None, end: int | None = None,
-                 offset: int = 0, text: str = "", kind: str = "text"):
+                 offset: int = 0, text: str = "", kind: str = "text", dates: str = ""):
+        options = None
+        if dates:
+            try:
+                options = json.loads(dates)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="'dates' must be a JSON object.") from exc
         try:
-            return library.timeline(identifier, start=start, end=end, offset=offset, text=text, kind=kind)
+            return library.timeline(identifier, start=start, end=end, offset=offset, text=text,
+                                    kind=kind, dates=options)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

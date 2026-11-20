@@ -954,9 +954,12 @@ function showTab(name) {
   $("ioc-view").style.display = name === "ioc" ? "flex" : "none";
   $("actions-view").style.display = name === "actions" ? "flex" : "none";
   $("imports-view").style.display = name === "imports" ? "flex" : "none";
-  $("hayabusa-view").style.display = name === "hayabusa" ? "flex" : "none";
+  $("hayabusa-view").style.display = (name === "hayabusa" || name === "evtx") ? "flex" : "none";
   $("graph-view").style.display = name === "graph" ? "flex" : "none";
   if (name === "graph" && state.openCase) buildGraph();
+  if (name === "evtx") {
+    $("hayabusa-summary").textContent = "EVTX detection: the engine reads the imported event logs of this case.";
+  }
   if (name === "imports" && state.openCase) loadImports();
   if (name === "actions" && state.openCase) loadActions();
   $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";

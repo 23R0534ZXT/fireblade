@@ -672,8 +672,8 @@
       "label": "Clair",
       "kind": "command",
       "status": "covered",
-      "where": "Display settings > palette.",
-      "test": "test_display_layout_is_saved_in_the_analysis",
+      "where": "Display settings > palette: Light (as the desktop).",
+      "test": "test_the_palette_offers_presets_and_custom_colours",
       "reason": "",
       "plan": ""
     },
@@ -681,8 +681,8 @@
       "label": "Sombre",
       "kind": "command",
       "status": "covered",
-      "where": "Display settings > palette.",
-      "test": "test_display_layout_is_saved_in_the_analysis",
+      "where": "Display settings > palette: Dark.",
+      "test": "test_the_palette_offers_presets_and_custom_colours",
       "reason": "",
       "plan": ""
     },
@@ -1400,11 +1400,11 @@
     {
       "label": "Standard / personnalisé",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Display settings > palette: Custom colours, the desktop's six keys.",
+      "test": "test_the_palette_offers_presets_and_custom_colours",
       "reason": "",
-      "plan": "Custom palette colours, not only the desktop's two themes."
+      "plan": ""
     },
     {
       "label": "Épingler à droite",

@@ -7,7 +7,7 @@ every label `scripts/parity_inventory.py` finds in the Qt sources. A command is
 real desktop work this edition does not do yet, with a plan.
 
 - labels found in the Qt sources: **157**
-- of them, real commands: **102** (83 covered, 16 declared out of scope, 3 to do)
+- of them, real commands: **102** (84 covered, 16 declared out of scope, 2 to do)
 - parameter values counted as commands by the inventory: **40**
 - menu containers and dialog captions: **15**
 
@@ -38,7 +38,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Chasses enregistrées… | IOC hunting > Saved hunts… | `test_an_ioc_hunt_is_saved_and_replayed` |
 | Choisir les colonnes… | Columns… dialog. | `test_display_layout_is_saved_in_the_analysis` |
 | Chronologie & corrélations | Timeline & correlations tab. | `test_the_timeline_counts_the_dated_rows` |
-| Clair | Display settings > palette. | `test_display_layout_is_saved_in_the_analysis` |
+| Clair | Display settings > palette: Light (as the desktop). | `test_the_palette_offers_presets_and_custom_colours` |
 | Client et mission… | Client report dialog: title and description. | `test_the_client_report_is_written_and_served_back` |
 | Copier la valeur | Row menu > Copy this value. | `test_the_row_menu_offers_every_cell_action` |
 | Copier la valeur complète | Show the whole cell… then Copy. | `test_the_row_menu_offers_every_cell_action` |
@@ -87,7 +87,8 @@ A line of this page is the claim; the test named beside it is the proof.
 | Sans date / corrélation uniquement | Timeline: the 'no date (correlation only)' option of a source. | `test_the_timeline_reads_a_date_the_way_the_analyst_chooses` |
 | Show the alerts in the grid | Hayabusa tab, the Show button: the alert analysis, filtered on the rule. | `test_a_hayabusa_finding_opens_and_marks_its_alerts` |
 | Signet / note… | Row details: bookmark note. | `test_bookmarks_and_cell_notes_round_trip` |
-| Sombre | Display settings > palette. | `test_display_layout_is_saved_in_the_analysis` |
+| Sombre | Display settings > palette: Dark. | `test_the_palette_offers_presets_and_custom_colours` |
+| Standard / personnalisé | Display settings > palette: Custom colours, the desktop's six keys. | `test_the_palette_offers_presets_and_custom_colours` |
 | Tous les artefacts | Analyses tree: every analysis of the case. | `test_analysis_columns_and_rows` |
 | Tous les cases | Cases tab. | `test_cases_are_listed` |
 | Tri sur plusieurs colonnes… | Shift-click a header for a second sort key. | `test_search_and_column_filter` |
@@ -126,7 +127,6 @@ A line of this page is the claim; the test named beside it is the proof.
 
 - **Compatibilité Timeline Explorer** — Upload a .NET Timeline Explorer reader, inspect the readers it declares, and run a source through it.
 - **Nœud libre…** — Add a free node to the attack graph, which needs the graph to be editable and stored.
-- **Standard / personnalisé** — Custom palette colours, not only the desktop's two themes.
 
 ## What the inventory counts as a command
 

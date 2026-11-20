@@ -324,6 +324,24 @@
         </select>
       </div>
       <div class="row">
+        <label for="palette-theme">Palette</label>
+        <select id="palette-theme">
+          <option value="light">Light (as the desktop)</option>
+          <option value="dark">Dark</option>
+          <option value="custom">Custom colours</option>
+        </select>
+        <button class="btn" id="palette-reset">Reset to the preset</button>
+      </div>
+      <div class="row" id="palette-colours" hidden>
+        <label>Colours</label>
+        <span class="pcol"><input type="color" data-colour="window"> window</span>
+        <span class="pcol"><input type="color" data-colour="text"> text</span>
+        <span class="pcol"><input type="color" data-colour="base"> grid</span>
+        <span class="pcol"><input type="color" data-colour="alternate"> alternate rows</span>
+        <span class="pcol"><input type="color" data-colour="highlight"> selection</span>
+        <span class="pcol"><input type="color" data-colour="selection_text"> selected text</span>
+      </div>
+      <div class="row">
         <label for="scale">Text size</label>
         <select id="scale">
           <option value="1">100 % — same as the desktop window</option>

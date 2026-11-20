@@ -121,6 +121,20 @@ def test_the_timeline_offers_the_three_date_readings():
     assert "timelineState.dates[String(source.id)] || \"auto\"" in js
 
 
+def test_the_palette_offers_presets_and_custom_colours():
+    js, html, css = _read(APP), _read(INDEX), (WEB / "static" / "app.css").read_text(encoding="utf-8")
+    assert 'id="palette-theme"' in html
+    for value in ('value="light"', 'value="dark"', 'value="custom"'):
+        assert value in html, value
+    # The six colours of the desktop's own dialog, in its order.
+    for key in ("window", "text", "base", "alternate", "highlight", "selection_text"):
+        assert f'data-colour="{key}"' in html, key
+    assert 'data-theme="dark"' in css and "[data-theme=\"dark\"]" in css
+    assert "function applyPalette(" in js and "function loadPalette(" in js
+    assert "localStorage.setItem(\"fireblade.palette\"" in js
+    assert "loadPalette();" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

@@ -2118,6 +2118,72 @@ function applyGrouping() {
   loadRows(true);
 }
 
+/* ---------- palette ---------- */
+
+/* The desktop offers presets and a custom palette of six colours. The Host keeps
+   the same six, in the browser: a preset swaps the variables, a custom palette
+   overrides them, and the choice belongs to the analyst's browser. */
+const PALETTE_KEYS = [["window", "--window"], ["text", "--text"], ["base", "--base"],
+                      ["alternate", "--alt"], ["highlight", "--sel"],
+                      ["selection_text", "--sel-text"]];
+const paletteState = { theme: "light", custom: {} };
+
+function currentPalette() {
+  const computed = getComputedStyle(document.documentElement);
+  const values = {};
+  for (const [key, variable] of PALETTE_KEYS) {
+    values[key] = computed.getPropertyValue(variable).trim() || "#ffffff";
+  }
+  return values;
+}
+
+function applyPalette() {
+  const root = document.documentElement;
+  root.dataset.theme = paletteState.theme === "dark" ? "dark" : "";
+  for (const [key, variable] of PALETTE_KEYS) {
+    if (paletteState.theme === "custom" && paletteState.custom[key]) {
+      root.style.setProperty(variable, paletteState.custom[key]);
+    } else {
+      root.style.removeProperty(variable);
+    }
+  }
+  const select = $("palette-theme");
+  if (select) select.value = paletteState.theme;
+  const colours = $("palette-colours");
+  if (colours) {
+    colours.hidden = paletteState.theme !== "custom";
+    for (const [key] of PALETTE_KEYS) {
+      const input = colours.querySelector(`input[data-colour="${key}"]`);
+      if (input && paletteState.custom[key]) input.value = paletteState.custom[key];
+    }
+  }
+}
+
+function savePalette() {
+  try {
+    localStorage.setItem("fireblade.palette", JSON.stringify(paletteState));
+  } catch (_) { /* a full quota must not break the window */ }
+}
+
+function loadPalette() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("fireblade.palette") || "{}");
+    if (["light", "dark", "custom"].includes(saved.theme)) paletteState.theme = saved.theme;
+    if (saved.custom && typeof saved.custom === "object") paletteState.custom = saved.custom;
+  } catch (_) { /* a broken preference falls back to the light theme */ }
+  applyPalette();
+}
+
+function choosePalette(theme) {
+  paletteState.theme = theme;
+  if (theme === "custom" && !Object.keys(paletteState.custom).length) {
+    // Start from what is on screen: the analyst edits colours, not guesses them.
+    paletteState.custom = currentPalette();
+  }
+  applyPalette();
+  savePalette();
+}
+
 /* ---------- display settings ---------- */
 
 function applyRowHeight() {
@@ -2351,6 +2417,20 @@ function wire() {
     event.target.value = "";
     if (files.length) { openImportDialog(); previewFiles(files); }
   });
+  $("palette-theme").addEventListener("change", (event) => choosePalette(event.target.value));
+  $("palette-reset").addEventListener("click", () => {
+    paletteState.custom = {};
+    if (paletteState.theme === "custom") paletteState.theme = "light";
+    applyPalette();
+    savePalette();
+  });
+  $("palette-colours").addEventListener("input", (event) => {
+    const key = event.target.dataset.colour;
+    if (!key) return;
+    paletteState.custom[key] = event.target.value;
+    applyPalette();
+    savePalette();
+  });
   $("plugin-input").addEventListener("change", (event) => {
     const file = (event.target.files || [])[0];
     event.target.value = "";
@@ -2581,6 +2661,7 @@ async function act(name, node) {
 /* ---------- boot ---------- */
 
 async function boot() {
+  loadPalette();
   applyScale();
   applyRowHeight();
   wire();

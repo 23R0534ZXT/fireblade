@@ -180,6 +180,47 @@ class Library:
         return matches[0].resolve() if len(matches) == 1 else None
 
 
+    # -- attack graph ------------------------------------------------------
+
+    def graph(self, identifier: str) -> dict:
+        """The kill-chain graph, built from the detection findings and the case record."""
+        from fireblade.core import attack_graph as ag
+        from fireblade.core.case_workspace import load as load_workspace
+        from fireblade.core.findings import Group
+
+        folder = self.library.folder(identifier)
+        groups = {}
+        for csv_path in sorted((folder / "collections").glob("import-*/results/hayabusa-*/hayabusa.csv")):
+            with csv_path.open(encoding="utf-8", errors="replace", newline="") as stream:
+                for record in csv.DictReader(stream):
+                    host = (record.get("Computer") or "").strip()
+                    title = (record.get("RuleTitle") or "").strip()
+                    if not host or not title:
+                        continue
+                    key = f"{host}|{title}"
+                    group = groups.get(key)
+                    if group is None:
+                        groups[key] = Group(key=key, title=title, level=(record.get("Level") or "").strip(),
+                                            host=host, channel=(record.get("Channel") or "").strip(),
+                                            event_ids=((record.get("EventID") or "").strip(),),
+                                            tactics=(record.get("MitreTactics") or "").strip(),
+                                            techniques=(record.get("MitreTags") or "").strip(),
+                                            rule_id=(record.get("RuleID") or "").strip(),
+                                            rule_file=(record.get("RuleFile") or "").strip(),
+                                            start=None, end=None, count=1)
+                    else:
+                        group.count += 1
+        try:
+            workspace = load_workspace(folder)
+        except (OSError, ValueError):
+            workspace = {}
+        if not groups and not (workspace.get("entities")):
+            raise ServiceError("Aucun constat ni entité : lancez une détection ou déclarez une machine dans le case.")
+        graph = ag.build(list(groups.values()), workspace)
+        positioned = ag.layout(graph)
+        return {"nodes": positioned.get("nodes", []), "edges": positioned.get("edges", []),
+                "groups": len(groups)}
+
     # -- Hayabusa ----------------------------------------------------------
 
     def detect(self, identifier: str, min_level: str = "low") -> dict:

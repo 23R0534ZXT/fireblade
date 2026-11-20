@@ -71,7 +71,7 @@
     <div class="tab" data-tab="ioc">IOC hunting</div>
     <div class="tab" data-tab="hayabusa">Hayabusa + AI</div>
     <div class="tab" data-tab="actions">Actions &amp; tracking</div>
-    <div class="tab off" title="Not available in Fireblade Host yet">Attack graph</div>
+    <div class="tab" data-tab="graph">Attack graph</div>
     <div class="tab off" title="Not available in Fireblade Host yet">EVTX detection</div>
     <div class="doctab docempty" id="doctab">Case</div>
   </div>
@@ -122,6 +122,17 @@
           <button class="btn" id="next">Next</button>
           <div class="spacer"></div>
           <div class="info" id="pageinfo"></div>
+        </div>
+      </div>
+
+      <div id="graph-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="filterbar">
+          <button class="btn" id="graph-build">Build the graph</button>
+          <div class="info" id="graph-summary">The graph follows the kill chain: hosts on the left, techniques, then tactics.</div>
+        </div>
+        <div class="graph-wrap" id="graph-wrap">
+          <svg id="graph-edges" width="100%" height="100%"></svg>
+          <div id="graph-nodes"></div>
         </div>
       </div>
 

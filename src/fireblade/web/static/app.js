@@ -267,6 +267,51 @@ function closeCase() {
   say("Case closed");
 }
 
+/* ---------- attack graph ---------- */
+
+async function buildGraph() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  $("graph-summary").textContent = "Building…";
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/graph`);
+    renderGraph(payload);
+  } catch (error) {
+    $("graph-summary").textContent = error.message;
+    say(error.message, true);
+  }
+}
+
+function renderGraph(payload) {
+  const nodes = payload.nodes;
+  const box = $("graph-nodes");
+  const wrap = $("graph-wrap");
+  const width = Math.max(...nodes.map((node) => node.x), 400) + 260;
+  const height = Math.max(...nodes.map((node) => node.y), 200) + 80;
+  wrap.querySelector("#graph-nodes").style.width = width + "px";
+  wrap.querySelector("#graph-nodes").style.height = height + "px";
+  box.innerHTML = nodes.map((node) =>
+    `<div class="gnode ${escapeHtml(node.kind)}" data-node="${escapeHtml(node.id)}"
+       style="left:${node.x}px;top:${node.y}px" title="${escapeHtml(node.label)}">${escapeHtml(node.label)}</div>`).join("");
+
+  const positions = new Map(nodes.map((node) => [node.id, node]));
+  const svg = $("graph-edges");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", width);
+  svg.setAttribute("height", height);
+  svg.innerHTML = payload.edges.filter((edge) => positions.has(edge.source) && positions.has(edge.target))
+    .map((edge) => {
+      const a = positions.get(edge.source);
+      const b = positions.get(edge.target);
+      return `<line x1="${a.x + 60}" y1="${a.y + 12}" x2="${b.x}" y2="${b.y + 12}"
+        stroke="#8a9bb0" stroke-width="1" marker-end="url(#arrow)"/>`;
+    }).join("") + '<defs><marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#8a9bb0"/></marker></defs>';
+
+  const kinds = {};
+  for (const node of nodes) kinds[node.kind] = (kinds[node.kind] || 0) + 1;
+  $("graph-summary").textContent = `${nodes.length} node(s), ${payload.edges.length} edge(s) — ` +
+    Object.entries(kinds).map(([kind, count]) => `${count} ${kind}`).join(", ");
+}
+
 /* ---------- Hayabusa ---------- */
 
 const hayabusaState = { findings: [] };
@@ -910,6 +955,8 @@ function showTab(name) {
   $("actions-view").style.display = name === "actions" ? "flex" : "none";
   $("imports-view").style.display = name === "imports" ? "flex" : "none";
   $("hayabusa-view").style.display = name === "hayabusa" ? "flex" : "none";
+  $("graph-view").style.display = name === "graph" ? "flex" : "none";
+  if (name === "graph" && state.openCase) buildGraph();
   if (name === "imports" && state.openCase) loadImports();
   if (name === "actions" && state.openCase) loadActions();
   $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";
@@ -1187,6 +1234,7 @@ function wire() {
   $("ioc-scan").addEventListener("click", runIocScan);
   $("derived-operation").addEventListener("change", derivedOperationChanged);
   $("hayabusa-run").addEventListener("click", runHayabusa);
+  $("graph-build").addEventListener("click", buildGraph);
   $("imports-refresh").addEventListener("click", loadImports);
   $("imports-status").addEventListener("change", renderImports);
   $("action-add").addEventListener("click", addAction);

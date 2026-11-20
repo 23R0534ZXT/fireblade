@@ -77,10 +77,12 @@ def test_the_profile_catalogue_is_readable(service):
 
 def test_display_layout_is_saved_in_the_analysis(service):
     library, identifier = service
-    library.save_display(identifier, 0, {"widths": {"1": 120}, "hidden": [3], "pinned": [2]})
+    library.save_display(identifier, 0, {"widths": {"1": 120}, "hidden": [3],
+                                         "pinned": [2], "pinned_right": [4]})
     restored = library.display(identifier, 0)
     assert restored["hidden"] == [3]
     assert restored["pinned"] == [2]
+    assert restored["pinned_right"] == [4]
     assert restored["widths"].get("1") == 120
 
 

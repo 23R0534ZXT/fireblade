@@ -1328,11 +1328,11 @@
     {
       "label": "Graphique",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "The grouped view draws the counts of the page as bars.",
+      "test": "test_the_grouped_view_draws_its_chart",
       "reason": "",
-      "plan": "Chart the grouped counts: bars per group, drawn from the same request as the grid."
+      "plan": ""
     },
     {
       "label": "Gérer les analyses ouvertes",
@@ -1409,11 +1409,11 @@
     {
       "label": "Épingler à droite",
       "kind": "command",
-      "status": "todo",
-      "where": "",
-      "test": "",
+      "status": "covered",
+      "where": "Row menu > Pin on the right, and Columns… > pin right.",
+      "test": "test_a_column_can_be_frozen_on_either_edge",
       "reason": "",
-      "plan": "Pin a column to the right edge of the frozen area, as the desktop does."
+      "plan": ""
     }
   ]
 }

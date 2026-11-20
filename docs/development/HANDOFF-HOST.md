@@ -92,9 +92,9 @@ Trois statuts, et un seul est une promesse :
   parité vérifie que ce test existe vraiment (`ast` sur `tests/`).
 - **declared** — impossible ou hors sujet derrière un navigateur, avec la raison
   (pas d'explorateur système, pas de gestion de fenêtres, pas d'IA branchée).
-- **todo** — vraie commande du desktop non portée, avec son plan. **16 restent.**
+- **todo** — vraie commande du desktop non portée, avec son plan. **14 restent.**
 
-État actuel : 104 commandes ⇒ 72 couvertes, 16 déclarées hors périmètre, 16 à faire.
+État actuel : 104 commandes ⇒ 74 couvertes, 16 déclarées hors périmètre, 14 à faire.
 
 ---
 
@@ -236,7 +236,7 @@ un test qui existe**, sinon `tests/web/test_host_parity.py` échoue.
 
 ## 11. Ce qui reste, dans l'ordre du fichier de parité
 
-Seize commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
+Quatorze commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
 
 1. **Chronologie, mode de date** (3 commandes) — même colonne, colonnes séparées,
    sans date. Le panneau choisit aujourd'hui la colonne tout seul.
@@ -245,8 +245,7 @@ Seize commandes, toutes listées avec leur plan dans `HOST-PARITY.md` :
 3. **Panneau de compatibilité** (3 + Plugins) — profils, sessions, en-têtes
    Timeline Explorer, inventaire des plugins.
 4. **Graphe** (2) — nœud libre, contexte EVTX d'une alerte.
-5. **Graphique** (1) — barres par groupe, sur la même requête que la grille.
-6. **Épingler à droite** (1), **palette personnalisée** (1).
+5. **Palette personnalisée** (1) — les deux thèmes du desktop, pas de couleurs libres.
 
 ---
 
@@ -335,8 +334,8 @@ f1d95d4 Host: the graph as a PNG
 
 1. `git log --oneline -5` et `git status` sur la VM : l'arbre doit être propre.
 2. `python -m pytest -q tests/web` (8 s) : 40 verts, dont la parité.
-3. Ouvrir `HOST-PARITY.md` → « Real work left » : seize lignes, chacune avec son
-   plan. Les prendre dans l'ordre, une par une, avec la double preuve.
+3. Ouvrir `HOST-PARITY.md` → « Real work left » : quatorze lignes, chacune avec
+   son plan. Les prendre dans l'ordre, une par une, avec la double preuve.
 4. Après chaque lot : `scripts.dev_check` (~17 min), régénérer
    `HOST-PARITY.md`, mettre à jour ce document.
 5. Ne pousser sur `main` que sur demande explicite de l'utilisateur.

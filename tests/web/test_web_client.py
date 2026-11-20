@@ -50,6 +50,30 @@ def test_the_grid_selects_a_range_and_a_selection():
     assert "postBookmark(" in js
 
 
+def test_the_grouped_view_draws_its_chart():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="group-chart"' in html
+    assert "function renderGroupChart(" in js
+    # Drawn from the same page of groups as the table, not from a second request.
+    assert "state.rows.slice(0, CHART_ROWS)" in js
+    assert "renderGroupChart();" in js
+    assert 'if (!state.grouped) $("group-chart").hidden = true;' in js
+    # `display:flex` beats the [hidden] attribute: the panel must hide itself.
+    css = (WEB / "static" / "app.css").read_text(encoding="utf-8")
+    assert ".group-chart[hidden]{display:none}" in css
+
+
+def test_a_column_can_be_frozen_on_either_edge():
+    js, html = _read(APP), _read(INDEX)
+    assert 'data-act="pin-column"' in html
+    assert 'data-act="pin-column-right"' in html
+    assert "function pinOffsets(" in js
+    assert "state.pinnedRight" in js
+    # The offsets accumulate real widths, or two pinned columns overlap.
+    assert "offset += widthOf(index);" in js
+    assert "applyPinning();" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

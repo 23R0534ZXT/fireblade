@@ -7,7 +7,7 @@ every label `scripts/parity_inventory.py` finds in the Qt sources. A command is
 real desktop work this edition does not do yet, with a plan.
 
 - labels found in the Qt sources: **157**
-- of them, real commands: **104** (72 covered, 16 declared out of scope, 16 to do)
+- of them, real commands: **104** (74 covered, 16 declared out of scope, 14 to do)
 - parameter values counted as commands by the inventory: **40**
 - menu containers and dialog captions: **13**
 
@@ -56,6 +56,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Filtrer sur ce champ | The filter row under the headers. | `test_search_and_column_filter` |
 | Filtrer sur cette valeur | Row menu > Filter on this value. | `test_the_row_menu_offers_every_cell_action` |
 | Filtrer une date… | Advanced filter on a timestamp column, or group it by interval. | `test_search_and_column_filter` |
+| Graphique | The grouped view draws the counts of the page as bars. | `test_the_grouped_view_draws_its_chart` |
 | Grouper par cette colonne | Row menu > Group by this column, and the Group… dialog. | `test_the_row_menu_offers_every_cell_action` |
 | Gérer les analyses ouvertes | The ✕ on the analysis tab closes it; the tree switches. | `test_closing_an_analysis_leaves_the_others_and_its_file` |
 | Hayabusa + AI | Hayabusa + AI tab; no model is connected and the tab says so. | `test_detection_refuses_with_a_readable_reason` |
@@ -88,6 +89,7 @@ A line of this page is the claim; the test named beside it is the proof.
 | Éditer la note de la cellule… | Row details > note, per column. | `test_bookmarks_and_cell_notes_round_trip` |
 | Éditer la note de la sélection… | Row details note applied to the whole selection. | `test_the_grid_selects_a_range_and_a_selection` |
 | Épingler la colonne | Row menu > Pin / unpin this column. | `test_the_row_menu_offers_every_cell_action` |
+| Épingler à droite | Row menu > Pin on the right, and Columns… > pin right. | `test_a_column_can_be_frozen_on_either_edge` |
 | Épingler à gauche | Pinned columns freeze on the left. | `test_display_layout_is_saved_in_the_analysis` |
 
 ## Out of scope in a browser, and why
@@ -118,7 +120,6 @@ A line of this page is the claim; the test named beside it is the proof.
 - **Compatibilité Timeline Explorer** — Expose the desktop's compatibility checks in a Compatibility panel (profiles, sessions, TLE headers).
 - **Date + heure (colonnes séparées)** — Same panel as above: the two-column reading of a date.
 - **Exporter les sources Hayabusa…** — Export the alert sources of a detection as CSV, as the desktop does.
-- **Graphique** — Chart the grouped counts: bars per group, drawn from the same request as the grid.
 - **Nœud libre…** — Add a free node to the attack graph, which needs the graph to be editable and stored.
 - **Ouvrir l’événement EVTX source** — Map a finding back to its source record in the EVTX analysis.
 - **Plugins** — Inventory the plugin host from the service and show what it would load.
@@ -128,7 +129,6 @@ A line of this page is the claim; the test named beside it is the proof.
 - **Show the alerts in the grid** — From a Hayabusa finding, open the alert analysis filtered on its rule.
 - **Standard / personnalisé** — Custom palette colours, not only the desktop's two themes.
 - **Voir le contexte EVTX de cette alerte** — Same mapping as above, shown around the alert.
-- **Épingler à droite** — Pin a column to the right edge of the frozen area, as the desktop does.
 
 ## What the inventory counts as a command
 

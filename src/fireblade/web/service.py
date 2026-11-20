@@ -432,11 +432,13 @@ class Library:
         with case.lock:
             stored = case.views().get(self.DISPLAY_VIEW)
         if stored is None or not stored.header_state:
-            return {"widths": {}, "hidden": [], "pinned": []}
+            return {"widths": {}, "hidden": [], "pinned": [], "pinned_right": []}
         try:
-            return json.loads(stored.header_state)
+            layout = json.loads(stored.header_state)
         except ValueError:
-            return {"widths": {}, "hidden": [], "pinned": []}
+            return {"widths": {}, "hidden": [], "pinned": [], "pinned_right": []}
+        layout.setdefault("pinned_right", [])
+        return layout
 
     def save_display(self, identifier: str, index: int, layout: dict) -> dict:
         clean = {
@@ -444,6 +446,7 @@ class Library:
                        if str(key).isdigit() and int(value) > 0},
             "hidden": [int(value) for value in layout.get("hidden") or [] if int(value) >= 0],
             "pinned": [int(value) for value in layout.get("pinned") or [] if int(value) >= 0],
+            "pinned_right": [int(value) for value in layout.get("pinned_right") or [] if int(value) >= 0],
         }
         case = self._case_for(identifier, index)
         view = View(header_state=json.dumps(clean))

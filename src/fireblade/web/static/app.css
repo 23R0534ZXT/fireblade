@@ -212,6 +212,36 @@ body.dropping{outline:2px dashed #7aa9c9;outline-offset:-6px}
 .row-menu .item{padding:3px 18px;line-height:17px;cursor:default;font-size:12px}
 .row-menu .item:hover{background:var(--sel);color:var(--sel-text)}
 .row-menu .sep{height:1px;background:var(--line);margin:4px 0}
+/* Frozen columns: a pinned section keeps its place on its edge while the body
+   scrolls, on the header, the filter row and every cell. */
+/* The bookmark cell stays on the left, so a column pinned on the left starts
+   after it instead of sliding under it. */
+thead th:first-child{position:sticky;left:0;z-index:5;background:var(--header)}
+.colfilter th:first-child{position:sticky;left:0;z-index:5;background:var(--header)}
+tbody td.markcell{position:sticky;left:0;z-index:2;background:var(--window)}
+tbody tr:nth-child(even) td.markcell{background:var(--alt)}
+tbody tr:hover td.markcell{background:#eaf5ff}
+tbody tr.sel td.markcell{background:var(--sel)}
+thead th.pinned-left,thead th.pinned-right{z-index:4;background:var(--header)}
+.colfilter th.pinned-left,.colfilter th.pinned-right{z-index:3;background:var(--header)}
+tbody td.pinned-left,tbody td.pinned-right{position:sticky;z-index:1;background:var(--window)}
+tbody tr:nth-child(even) td.pinned-left,tbody tr:nth-child(even) td.pinned-right{background:var(--alt)}
+tbody tr:hover td.pinned-left,tbody tr:hover td.pinned-right{background:#eaf5ff}
+tbody tr.sel td.pinned-left,tbody tr.sel td.pinned-right{background:var(--sel);color:var(--sel-text)}
+th.pinned-left,th.pinned-right{border-right:1px solid #9ab}
+
+/* The grouped counts, drawn from the same page of groups as the grid. */
+.group-chart{display:flex;flex-direction:column;gap:2px;max-height:170px;overflow:auto;
+  padding:6px 10px;border-top:1px solid var(--border);background:var(--window)}
+/* `display:flex` outranks the [hidden] attribute, so hiding needs its own rule. */
+.group-chart[hidden]{display:none}
+.group-chart .bar{display:flex;align-items:center;gap:8px;font-size:11px;line-height:16px}
+.group-chart .label{flex:0 0 220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.group-chart .track{flex:1 1 auto;height:11px;background:var(--base);border:1px solid var(--border)}
+.group-chart .fill{display:block;height:100%;background:#7aa9c9;border-right:1px solid #5a86a6}
+.group-chart .count{flex:0 0 70px;text-align:right;font-variant-numeric:tabular-nums}
+.group-chart .more{color:#6a6a6a;font-size:11px;padding-top:2px}
+
 .ptab-close{margin-left:8px;color:#7a7a7a;cursor:default}
 .ptab-close:hover{color:#b00020}
 

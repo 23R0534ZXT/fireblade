@@ -28,6 +28,7 @@ const state = {
   multiSort: [],       // [{column, descending}] in application order
   hidden: new Set(),    // column indexes hidden by the analyst
   pinned: new Set(),    // column indexes frozen on the left
+  pinnedRight: new Set(), // column indexes frozen on the right
   selection: new Set(), // row ids selected on this page (Shift extends, Ctrl toggles)
   anchor: null,         // the row a Shift-click extends from
 };
@@ -494,6 +495,7 @@ async function loadLayout() {
     state.widths = payload.widths || {};
     state.hidden = new Set(payload.hidden || []);
     state.pinned = new Set(payload.pinned || []);
+    state.pinnedRight = new Set(payload.pinned_right || []);
     renderGrid();
   } catch (_) { /* no saved layout is not an error */ }
 }
@@ -504,7 +506,8 @@ function saveLayoutSoon() {
     if (!state.openCase) return;
     try {
       await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`,
-        { widths: state.widths, hidden: [...state.hidden], pinned: [...state.pinned] });
+        { widths: state.widths, hidden: [...state.hidden], pinned: [...state.pinned],
+          pinned_right: [...state.pinnedRight] });
     } catch (_) { /* a layout that cannot be saved must not interrupt the work */ }
   }, 600);
 }
@@ -775,13 +778,16 @@ function groupFromCell() {
   loadRows(true);
 }
 
-function pinFromCell() {
+function pinFromCell(side = "left") {
   const column = contextColumnIndex();
   if (column === null) { say("Right-click a cell first", true); return; }
-  if (state.pinned.has(column)) state.pinned.delete(column); else state.pinned.add(column);
+  const set = side === "left" ? state.pinned : state.pinnedRight;
+  const other = side === "left" ? state.pinnedRight : state.pinned;
+  const pinned = !set.has(column);
+  if (pinned) { set.add(column); other.delete(column); } else set.delete(column);
   saveLayoutSoon();
   renderGrid();
-  say(`${state.pinned.has(column) ? "Pinned" : "Unpinned"} ${state.columns[column + 1]}`);
+  say(`${pinned ? `Pinned to the ${side}` : "Unpinned"} ${state.columns[column + 1]}`);
 }
 
 function hideFromCell() {
@@ -1591,6 +1597,7 @@ function visibleColumns() {
 
 function renderGrid() {
   const empty = $("grid-empty");
+  if (!state.grouped) $("group-chart").hidden = true;
   if (state.grouped) { renderGroupedGrid(); return; }
   const shown = visibleColumns();
   if (!state.columns.length) {
@@ -1653,6 +1660,31 @@ function renderGrid() {
   const to = Math.min(state.offset + state.rows.length, state.total);
   $("pageinfo").textContent = `${from}–${to} / ${state.total} row(s)`;
   say(`${state.total} row(s) in this analysis${state.filters.length ? ` — ${state.filters.length} filter(s)` : ""}`);
+  applyPinning();
+}
+
+/* The desktop charts the grouped counts; this is the same page of groups as the
+   grid, so the bars and the table can never disagree. */
+const CHART_ROWS = 14;
+
+function renderGroupChart() {
+  const box = $("group-chart");
+  if (!state.grouped || !state.rows.length) { box.hidden = true; box.innerHTML = ""; return; }
+  const name = state.columns?.[state.groups[state.path.length] + 1] || "group";
+  const entries = state.rows.slice(0, CHART_ROWS).map((row) => ({
+    label: row[0] === null || row[0] === "" ? "(empty)" : String(row[0]),
+    count: Number(row[1]) || 0,
+  }));
+  const peak = Math.max(1, ...entries.map((entry) => entry.count));
+  const bars = entries.map((entry) => `<div class="bar" title="${escapeHtml(entry.label)}">
+      <span class="label">${escapeHtml(entry.label)}</span>
+      <span class="track"><span class="fill" style="width:${Math.round(entry.count / peak * 100)}%"></span></span>
+      <span class="count">${entry.count}</span></div>`).join("");
+  const more = state.rows.length > CHART_ROWS
+    ? `<div class="more">… ${state.rows.length - CHART_ROWS} more group(s) on this page</div>` : "";
+  box.hidden = false;
+  box.innerHTML = `<div class="bar"><span class="label"><b>${escapeHtml(name)}</b></span>
+      <span class="track"></span><span class="count">rows</span></div>${bars}${more}`;
 }
 
 function renderGroupedGrid() {
@@ -1678,6 +1710,7 @@ function renderGroupedGrid() {
 
   const from = state.total ? state.offset + 1 : 0;
   const to = Math.min(state.offset + state.rows.length, state.total);
+  renderGroupChart();
   $("pageinfo").textContent = `${from}–${to} / ${state.rows.length} group(s) — ${state.total} row(s)`;
   say(`Grouped by ${name} — ${state.rows.length} group(s) on this page, ${state.total} row(s) in the analysis`);
 }
@@ -1776,7 +1809,8 @@ function openColumnManager() {
       <input type="checkbox" data-col="${index}" ${state.hidden.has(index) ? "" : "checked"}>
       <span>${escapeHtml(index === 0 ? "Row number" : name)}</span>
       ${index ? `<span class="pin"><input type="checkbox" data-bool="${index - 1}" ${booleanColumns().has(index - 1) ? "checked" : ""}> boolean
-        <input type="checkbox" data-pin="${index}" ${state.pinned.has(index) ? "checked" : ""}> pin</span>` : ""}
+        <input type="checkbox" data-pin="${index - 1}" ${state.pinned.has(index - 1) ? "checked" : ""}> pin left
+        <input type="checkbox" data-pinright="${index - 1}" ${state.pinnedRight.has(index - 1) ? "checked" : ""}> pin right</span>` : ""}
     </label>`).join("");
   list.querySelectorAll("input[data-col]").forEach((box) => {
     box.addEventListener("change", () => {
@@ -1797,8 +1831,20 @@ function openColumnManager() {
   });
   list.querySelectorAll("input[data-pin]").forEach((box) => {
     box.addEventListener("change", () => {
-      const index = Number(box.dataset.pin);
-      if (box.checked) state.pinned.add(index); else state.pinned.delete(index);
+      const column = Number(box.dataset.pin);
+      if (box.checked) { state.pinned.add(column); state.pinnedRight.delete(column); }
+      else state.pinned.delete(column);
+      openColumnManager();
+      applyPinning();
+      saveLayoutSoon();
+    });
+  });
+  list.querySelectorAll("input[data-pinright]").forEach((box) => {
+    box.addEventListener("change", () => {
+      const column = Number(box.dataset.pinright);
+      if (box.checked) { state.pinnedRight.add(column); state.pinned.delete(column); }
+      else state.pinnedRight.delete(column);
+      openColumnManager();
       applyPinning();
       saveLayoutSoon();
     });
@@ -1806,14 +1852,52 @@ function openColumnManager() {
   $("columns-modal").classList.add("show");
 }
 
+/* A pinned column freezes on its edge. The offsets accumulate the real widths, so
+   two pinned columns sit side by side instead of on top of each other. */
+function pinOffsets() {
+  const shown = visibleColumns();
+  const widthOf = (index) => state.widths[index] || defaultWidth(state.columns[index], index);
+  const left = new Map();
+  const right = new Map();
+  let offset = 30;                       // the mark cell, which stays on the left
+  for (const { index } of shown) {
+    if (!state.pinned.has(index - 1)) continue;
+    left.set(index - 1, offset);
+    offset += widthOf(index);
+  }
+  offset = 0;
+  for (let position = shown.length - 1; position >= 0; position -= 1) {
+    const index = shown[position].index;
+    if (!state.pinnedRight.has(index - 1)) continue;
+    right.set(index - 1, offset);
+    offset += widthOf(index);
+  }
+  return { left, right };
+}
+
 function applyPinning() {
-  $("grid").querySelectorAll("th").forEach((th) => {
-    const index = Number(th.dataset.column);
-    const pinned = state.pinned.has(index - 1);
-    th.style.position = "sticky";
-    th.style.left = pinned ? `${30 + 0}px` : "";
-    th.style.zIndex = pinned ? "3" : "";
-    th.classList.toggle("pinned", pinned);
+  if (!state.columns.length) return;
+  const grid = $("grid");
+  const { left, right } = pinOffsets();
+  const place = (node, column) => {
+    const side = left.has(column) ? "left" : (right.has(column) ? "right" : null);
+    node.style.left = side === "left" ? `${left.get(column)}px` : "";
+    node.style.right = side === "right" ? `${right.get(column)}px` : "";
+    node.classList.toggle("pinned-left", side === "left");
+    node.classList.toggle("pinned-right", side === "right");
+    return side;
+  };
+  grid.querySelectorAll("thead th[data-column]").forEach((th) => {
+    place(th, Number(th.dataset.column) - 1);
+  });
+  const shown = visibleColumns();
+  grid.querySelectorAll(".colfilter th").forEach((th, position) => {
+    if (position === 0) return;
+    const entry = shown[position - 1];
+    if (entry) place(th, entry.index - 1);
+  });
+  grid.querySelectorAll("tbody td[data-cell]").forEach((td) => {
+    place(td, Number(td.dataset.cell));
   });
 }
 
@@ -2190,7 +2274,8 @@ async function act(name, node) {
     case "sort-asc": sortFromCell(false); break;
     case "sort-desc": sortFromCell(true); break;
     case "group-by-column": groupFromCell(); break;
-    case "pin-column": pinFromCell(); break;
+    case "pin-column": pinFromCell("left"); break;
+    case "pin-column-right": pinFromCell("right"); break;
     case "hide-column": hideFromCell(); break;
     case "unmark-selection": await markSelection(""); break;
     case "group-column": openGroupPicker(); break;

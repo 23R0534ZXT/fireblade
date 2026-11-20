@@ -960,7 +960,8 @@ class Library:
              search: str = "", sort: int | None = None, descending: bool = False,
              filters: list[tuple[int, str, str]] | None = None,
              bookmarks_only: bool = False, groups: list[int] | None = None,
-             path: list[str] | None = None, sorts: list[tuple[int, bool]] | None = None) -> dict:
+             path: list[str] | None = None, sorts: list[tuple[int, bool]] | None = None,
+             interval: str = "") -> dict:
         case = self._case_for(identifier, index)
         view = View(search=search or "", filters=[], bookmarks_only=bool(bookmarks_only))
         for column, operator, value in filters or ():
@@ -984,6 +985,10 @@ class Library:
                 if not 0 <= int(column) < len(case.headers):
                     raise ServiceError("Colonne de groupement hors de l'analyse.")
             view.groups = [int(column) for column in groups]
+            if interval:
+                if interval not in ("value", "year", "quarter", "month", "week", "day", "hour", "minute", "second"):
+                    raise ServiceError("Intervalle de groupement inconnu.")
+                view.group_intervals = {str(column): interval for column in view.groups}
         limit = max(1, min(int(limit), 1000))
         offset = max(0, int(offset))
         depth = tuple(path or ())

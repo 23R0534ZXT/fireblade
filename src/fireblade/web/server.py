@@ -328,6 +328,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
              search: str = "", sort: int | None = None, descending: bool = False,
              bookmarks_only: bool = False, group: list[int] = Query(default=[]),
              path: list[str] = Query(default=[]), sortkey: list[str] = Query(default=[]),
+             interval: str = "",
              filter: list[str] = Query(default=[])):
         # sortkey=3:desc — several keys, applied in the order they are sent.
         sorts = []
@@ -339,7 +340,8 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
                 raise HTTPException(status_code=400, detail="Clé de tri invalide.") from exc
         return library.rows(identifier, index, offset=offset, limit=limit, search=search,
                             sort=sort, descending=descending, bookmarks_only=bookmarks_only,
-                            groups=group, path=path, sorts=sorts, filters=parse_filters(filter))
+                            groups=group, path=path, sorts=sorts, interval=interval,
+                            filters=parse_filters(filter))
 
     @app.get("/api/cases/{identifier}/analyses/{index}/export")
     def export(identifier: str, index: int, search: str = "", sort: int | None = None,

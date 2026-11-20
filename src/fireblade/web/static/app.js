@@ -22,6 +22,7 @@ const state = {
   cellNotes: new Map(),
   bookmarksOnly: false,
   groups: [],          // column indexes, outer first
+  interval: "",        // date interval applied to the grouped column
   path: [],            // drill-down values
   multiSort: [],       // [{column, descending}] in application order
   hidden: new Set(),    // column indexes hidden by the analyst
@@ -851,6 +852,7 @@ function query() {
   if (state.search) params.set("search", state.search);
   if (state.bookmarksOnly) params.set("bookmarks_only", "true");
   for (const column of state.groups) params.append("group", String(column));
+  if (state.interval && state.groups.length) params.set("interval", state.interval);
   for (const value of state.path) params.append("path", value === null ? "" : String(value));
   if (state.multiSort.length) {
     for (const key of state.multiSort) params.append("sortkey", `${key.column}:${key.descending ? "desc" : "asc"}`);
@@ -1149,6 +1151,7 @@ function applyPinning() {
 function applyGrouping() {
   const column = Number($("group-select").value);
   state.groups = [column];
+  state.interval = $("group-interval").value;
   state.path = [];
   $("group-label").textContent = `Grouped by ${state.columns[column + 1]}`;
   closeModals();
@@ -1481,7 +1484,8 @@ async function act(name) {
     case "columns-reset": state.hidden.clear(); renderGrid(); openColumnManager(); break;
     case "group-apply": applyGrouping(); break;
     case "group-remove":
-      state.groups = []; state.path = []; $("group-label").textContent = "Filters apply to the whole analysis, not just the page on screen.";
+      state.groups = []; state.path = []; state.interval = "";
+      $("group-label").textContent = "Filters apply to the whole analysis, not just the page on screen.";
       loadRows(true); break;
     case "group-none":
       state.groups = []; state.path = []; $("group-label").textContent = "Glissez un en-tête ici pour regrouper les résultats";

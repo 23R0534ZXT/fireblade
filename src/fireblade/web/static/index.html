@@ -149,6 +149,7 @@
           </select>
           <button class="btn" id="hayabusa-run">Run the detection</button>
           <div class="info" id="hayabusa-summary">No detection run yet.</div>
+          <div class="note" style="margin-left:auto">No AI assistant is connected in this edition: the detection runs locally on the server.</div>
         </div>
         <div class="gridwrap" style="flex:1">
           <div class="gridbody">
@@ -526,6 +527,16 @@
       <div class="row">
         <label for="group-select">Group by</label>
         <select id="group-select"></select>
+      </div>
+      <div class="row">
+        <label for="group-interval">Date interval</label>
+        <select id="group-interval">
+          <option value="">whole value</option>
+          <option value="year">year</option><option value="quarter">quarter</option>
+          <option value="month">month</option><option value="week">week</option>
+          <option value="day">day</option><option value="hour">hour</option>
+          <option value="minute">minute</option><option value="second">second</option>
+        </select>
       </div>
       <div class="note">Grouping counts every row of the analysis, not just the page on screen. Click a group to drill down, Root to come back.</div>
     </div>

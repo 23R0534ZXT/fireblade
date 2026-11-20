@@ -125,6 +125,26 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/analyses/{index}/cellnotes")
+    def cell_notes(identifier: str, index: int, payload: dict):
+        rows = (payload or {}).get("row_ids") or []
+        try:
+            return library.cell_notes(identifier, index, [int(value) for value in rows])
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/cellnote")
+    def cell_note(identifier: str, index: int, payload: dict):
+        try:
+            row_id = int((payload or {}).get("row_id"))
+            column = int((payload or {}).get("column"))
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="row_id et column attendus.") from exc
+        try:
+            return library.cell_note(identifier, index, row_id, column, (payload or {}).get("note", ""))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/analyses/{index}/views")
     def views(identifier: str, index: int):
         return library.views(identifier, index)

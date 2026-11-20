@@ -221,3 +221,8 @@ body.dropping{outline:2px dashed #7aa9c9;outline-offset:-6px}
 .gnode.technique{background:#fdf0e3;border-color:#d9b48a}
 .gnode.stage{background:#eae6f5;border-color:#a99fd0}
 .gnode.account{background:#f7ecf2;border-color:#c9a0b4}
+
+td.noted{position:relative}
+td.noted .notemark{position:absolute;top:2px;right:2px;width:0;height:0;
+  border-left:5px solid transparent;border-bottom:5px solid #c08a2e}
+.cellnote{color:#7a5c12;margin-left:8px}

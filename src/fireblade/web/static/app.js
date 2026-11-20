@@ -19,6 +19,7 @@ const state = {
   widths: {},
   selected: null,
   bookmarks: new Map(),
+  cellNotes: new Map(),
   bookmarksOnly: false,
   groups: [],          // column indexes, outer first
   path: [],            // drill-down values
@@ -857,6 +858,7 @@ async function loadRows(reset) {
     state.offset = payload.offset;
     state.grouped = Boolean(payload.grouped);
     await loadBookmarks();
+    await loadCellNotes();
     await loadRules();
     renderPaneTabs();
   } catch (error) {
@@ -871,6 +873,22 @@ async function loadBookmarks() {
   } catch (_) {
     state.bookmarks = new Map();
   }
+}
+
+async function loadCellNotes() {
+  state.cellNotes = new Map();
+  if (!state.rows.length) return;
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/cellnotes`,
+      { row_ids: state.rows.map((row) => Number(row[0])) });
+    state.cellNotes = new Map(Object.entries(payload.notes || {}));
+  } catch (_) {
+    state.cellNotes = new Map();
+  }
+}
+
+function notesForRow(rowId) {
+  return state.cellNotes.get(String(rowId)) || {};
 }
 
 async function toggleBookmark(rowId, note) {
@@ -937,11 +955,15 @@ function renderGrid() {
   $("body").innerHTML = state.rows.map((row) => {
     const id = row[0];
     // Column 0 is the row identifier: it gets its own cell, after the checkbox one.
+    const rowNotes = notesForRow(id);
     const cells = shown.map(({ index }) => {
       const value = row[index];
       const text = value === null || value === "" ? "☐" : String(value);
-      const cls = value === null || value === "" ? "cellnull" : (index === 0 ? "rowid" : "");
-      return `<td class="${cls}">${escapeHtml(text)}</td>`;
+      const noted = rowNotes[String(index - 1)];
+      const cls = [value === null || value === "" ? "cellnull" : (index === 0 ? "rowid" : ""),
+                   noted ? "noted" : ""].filter(Boolean).join(" ");
+      const title = noted ? ` title="${escapeHtml(noted)}"` : "";
+      return `<td class="${cls}"${title} data-cell="${index - 1}">${escapeHtml(text)}${noted ? '<span class="notemark"></span>' : ""}</td>`;
     }).join("");
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
     const rule = rulesCache.find((item) => matchesRule(item, row));
@@ -989,11 +1011,16 @@ function showDetails(row) {
     box.innerHTML = '<div class="ph">Details of the selected row</div>';
     return;
   }
+  const rowNotes = notesForRow(row[0]);
   const pairs = visibleColumns().map(({ name, index }) => {
     const value = row[index];
     if (index === 0) return "";
     if (value === null || value === "") return "";
-    return `<tr><td class="k">${escapeHtml(name)}</td><td>${escapeHtml(String(value))}</td></tr>`;
+    const note = rowNotes[String(index - 1)];
+    return `<tr><td class="k">${escapeHtml(name)}</td>
+      <td>${escapeHtml(String(value))}</td>
+      <td class="k"><button class="btn" data-cellnote="${index - 1}">${note ? "edit note" : "note"}</button>
+      ${note ? `<span class="cellnote">${escapeHtml(note)}</span>` : ""}</td></tr>`;
   }).join("");
   const id = String(row[0]);
   const note = state.bookmarks.get(id) || "";
@@ -1004,6 +1031,23 @@ function showDetails(row) {
       <button class="btn" id="note-save">Save</button>
       <button class="btn" id="note-clear">Remove</button>
     </div>`;
+  box.querySelectorAll("[data-cellnote]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const column = Number(button.dataset.cellnote);
+      const current = notesForRow(id)[String(column)] || "";
+      const note = window.prompt("Cell note", current);
+      if (note === null) return;
+      try {
+        await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/cellnote`,
+          { row_id: Number(id), column, note });
+        await loadCellNotes();
+        await loadRules();
+        say(note ? "Cell note saved" : "Cell note removed");
+      } catch (error) {
+        say(error.message, true);
+      }
+    });
+  });
   $("note-save").addEventListener("click", () => toggleBookmark(id, $("note-input").value));
   $("note-clear").addEventListener("click", () => toggleBookmark(id, ""));
   $("note-input").addEventListener("keydown", (event) => {

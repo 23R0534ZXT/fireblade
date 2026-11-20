@@ -279,6 +279,25 @@ class Library:
             raise ServiceError("Aucune import de ce case ne contient de journal EVTX à analyser.")
         merged = [finding for item in results for finding in item["findings"]]
         return {"runs": results, "findings": merged[:2000], "total": sum(item["total"] for item in results)}
+    # -- cell notes --------------------------------------------------------
+
+    def cell_notes(self, identifier: str, index: int, row_ids: list[int] | None = None) -> dict:
+        """Cell notes grouped by row, for the page on screen or a single row."""
+        case = self._case_for(identifier, index)
+        with case.lock:
+            notes = case.cell_notes([int(value) for value in row_ids] if row_ids else None)
+        grouped: dict[str, dict[str, str]] = {}
+        for (row, column), note in notes.items():
+            grouped.setdefault(str(row), {})[str(column)] = note
+        return {"notes": grouped}
+
+    def cell_note(self, identifier: str, index: int, row_id: int, column: int, note: str) -> dict:
+        case = self._case_for(identifier, index)
+        clean = (note or "").strip()
+        with case.lock:
+            case.set_cell_note(int(row_id), int(column), clean or None)
+        return {"row_id": int(row_id), "column": int(column), "note": clean}
+
     # -- saved views -------------------------------------------------------
 
     def views(self, identifier: str, index: int) -> dict:

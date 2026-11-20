@@ -31,10 +31,10 @@ plan (architecture, phases, décisions) est dans `HANDOFF-DOCKER.md`.
 | --- | --- |
 | Branche | `feat/host-edition`, **54 commits** au-dessus de `main` (`git rev-list --count main..HEAD`) |
 | `main` | intacte, jamais poussée, rien de publié |
-| Dernier commit de code | `b46eab7 Host: the desktop palette, dark and custom colours` |
+| Dernier commit de code | `3892fbf Host: free graph node, and parity closed` |
 | Arbre de travail | propre — les trois documents non suivis sont hors sujet |
-| Porte complète | **verte** : `1804 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 17 min 03 s |
-| Tests web | **57**, dont 7 de parité qui refusent une couverture sans test |
+| Porte complète | **verte** : `1806 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 17 min 12 s |
+| Tests web | **59**, dont 7 de parité qui refusent une couverture sans test |
 | Image | `fireblade:host`, saine sur `http://192.168.1.201:8095` |
 | Cases ouverts sur le service | 8, plus `poste-fr.csv` importé pour la recette d'encodage |
 
@@ -92,9 +92,9 @@ Trois statuts, et un seul est une promesse :
   parité vérifie que ce test existe vraiment (`ast` sur `tests/`).
 - **declared** — impossible ou hors sujet derrière un navigateur, avec la raison
   (pas d'explorateur système, pas de gestion de fenêtres, pas d'IA branchée).
-- **todo** — vraie commande du desktop non portée, avec son plan. **2 restent.**
+- **todo** — vraie commande du desktop non portée, avec son plan. **Aucune.**
 
-État actuel : 102 commandes ⇒ 84 couvertes, 16 déclarées hors périmètre, 2 à faire.
+État actuel : 102 commandes ⇒ **85 couvertes, 17 déclarées, 0 à faire** — la parité est close.
 
 ---
 
@@ -255,11 +255,16 @@ un test qui existe**, sinon `tests/web/test_host_parity.py` échoue.
 
 ## 11. Ce qui reste, dans l'ordre du fichier de parité
 
-Deux commandes, listées avec leur plan dans `HOST-PARITY.md` :
+**Aucune commande du desktop n'est absente.** Là où le navigateur ne peut pas
+suivre, la raison est écrite et visible dans l'application (le dialogue de
+compatibilité le dit pour les DLL Timeline Explorer).
 
-1. **Compatibilité Timeline Explorer** — téléverser une DLL de lecteur TLE,
-   inspecter ses lecteurs, faire passer une source dedans.
-2. **Nœud libre** — un graphe éditable et stocké, pas seulement calculé.
+Deux décisions restent ouvertes, et elles appartiennent à l'utilisateur :
+
+1. **DLL de lecteur Timeline Explorer** — l'image ne porte pas le plugin host
+   .NET (129 Mo) et exécuter une DLL fournie par l'analyste dans le conteneur du
+   service est un choix de déploiement. À trancher avant d'ajouter quoi que ce soit.
+2. **IA** — modèle local dans le conteneur ou API distante (voir §13).
 
 ---
 
@@ -289,6 +294,7 @@ Deux commandes, listées avec leur plan dans `HOST-PARITY.md` :
 ## 14. Les derniers commits
 
 ```
+3892fbf Host: free graph node, and parity closed
 b46eab7 Host: the desktop palette, dark and custom colours
 26601d6 Host: the timeline reads dates the way the desktop does
 3a4e4b1 Host: an alert opens its source event and its EVTX context
@@ -363,9 +369,9 @@ f1d95d4 Host: the graph as a PNG
 ## 16. Par où commencer, concrètement
 
 1. `git log --oneline -5` et `git status` sur la VM : l'arbre doit être propre.
-2. `python -m pytest -q tests/web` (13 s) : 57 verts, dont la parité.
-3. Ouvrir `HOST-PARITY.md` → « Real work left » : deux lignes, chacune avec
-   son plan. Les prendre dans l'ordre, une par une, avec la double preuve.
+2. `python -m pytest -q tests/web` (13 s) : 59 verts, dont la parité.
+3. Ouvrir `HOST-PARITY.md` : la page liste ce qui est couvert (avec le test qui le
+   prouve) et ce qui est déclaré (avec la raison). Plus aucune ligne « à faire ».
 4. Après chaque lot : `scripts.dev_check` (~17 min), régénérer
    `HOST-PARITY.md`, mettre à jour ce document.
 5. Ne pousser sur `main` que sur demande explicite de l'utilisateur.

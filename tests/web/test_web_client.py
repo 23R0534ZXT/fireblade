@@ -263,6 +263,12 @@ def test_an_import_is_followed_and_can_be_stopped():
     assert "/import-jobs" in js and "/unread" in js
 
 
+def test_the_report_can_be_generated_as_a_pdf():
+    js, html = _read(APP), _read(INDEX)
+    assert 'data-act="report-build-pdf"' in html
+    assert "buildReport(true)" in js and "/pdf" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

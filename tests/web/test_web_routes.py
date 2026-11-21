@@ -805,3 +805,23 @@ def test_unread_files_are_listed_with_the_readers_that_can_retry(service):
         library.retry_file(identifier, "import-nope", "/tmp/whatever", "text")
     with pytest.raises(ServiceError):
         library.retry_file(identifier, "import-x", "/tmp/whatever", "nonsense")
+
+
+def test_a_report_can_leave_as_a_pdf(service):
+    """The container has no Qt: the Host writes the PDF itself, from the same HTML."""
+    library, identifier = service
+    built = library.report(identifier, "A test report", "Written by the suite")
+    assert built["name"].endswith(".html")
+    made = library.report_pdf(identifier, built["name"])
+    assert made["name"].endswith(".pdf")
+    assert made["bytes"] > 800
+    path = library.library.folder(identifier) / "reports" / made["name"]
+    data = path.read_bytes()
+    assert data.startswith(b"%PDF-1.4")
+    assert data.rstrip().endswith(b"%%EOF")
+    assert b"/Type /Catalog" in data and b"/Type /Pages" in data
+    assert b"Fireblade Host" in data
+    # The text of the report is in the content streams, not just a header.
+    assert b"test report" in data or b"A test report" in data
+    with pytest.raises(ServiceError):
+        library.report_pdf(identifier, "../case.json")

@@ -24,7 +24,7 @@ names what the Host does for each.
 ## Verdict
 
 **The port is not complete.** Twenty-one domains are covered, but this audit found
-**1 features the Host does not have** and **6 it has partially** (five closed since the
+**1 features the Host does not have** and **5 it has partially** (five closed since the
 audit was written: machines and accounts, tracked indicators, Hayabusa rules,
 global colour rules, import diagnostics). None of them was
 visible in the label inventory, which is why `HOST-PARITY.md` said "nothing left" —
@@ -70,7 +70,7 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Attack graph | build, layout, ATT&CK layer, PNG, free node with tags | **yes** |
 | Workspace — machines and accounts | "Machine ou compte" (declared hosts, accounts) | **yes** — Actions & tracking > Machines & accounts |
 | Workspace — indicators | "Indicateurs": a stored list in the case, "Importer une liste" | **yes** — Actions & tracking > Indicators (add a list, remove) |
-| Client report | HTML, bookmarks-only or bounded, title and mission | **partial** — HTML only, no PDF |
+| Client report | HTML, bookmarks-only or bounded, title and mission | **yes** — HTML or PDF written by the Host itself (no Qt in the container), bookmarks-only or bounded, title, description and a coverage warning
 | Tracking | create, edit, close, reopen, export CSV | **yes** |
 | Preferences | runtime, readers, profiles, text scale, palette, custom colours | **partial** — no copy behaviour, date format, tab wrapping |
 | Sessions and compatibility | open/save a session file, Timeline Explorer DLLs | **declared** — sessions live with the case, no .NET host |

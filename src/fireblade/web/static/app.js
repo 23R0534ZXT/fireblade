@@ -3690,7 +3690,7 @@ function closeModals() {
   document.querySelectorAll(".menu").forEach((node) => node.classList.remove("show"));
 }
 
-async function buildReport() {
+async function buildReport(asPdf) {
   if (!state.openCase) { say("Open a case first", true); return; }
   const body = JSON.stringify({
     title: $("report-title").value || "Investigation report",
@@ -3704,8 +3704,15 @@ async function buildReport() {
       { method: "POST", headers: { "Content-Type": "application/json" }, body });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || response.statusText);
-    say(`Report: ${payload.records} finding(s) -> ${payload.name}`);
-    window.open(payload.url, "_blank");
+    if (!asPdf) {
+      say(`Report: ${payload.records} finding(s) -> ${payload.name}`);
+      window.open(payload.url, "_blank");
+      return;
+    }
+    const converted = await apiPost(
+      `/api/cases/${state.openCase.id}/reports/${encodeURIComponent(payload.name)}/pdf`, {});
+    say(`Report as PDF: ${payload.records} finding(s) -> ${converted.name}`);
+    window.open(converted.url, "_blank");
   } catch (error) {
     say(error.message, true);
   }
@@ -3751,7 +3758,8 @@ async function act(name, node) {
     case "destroy-case": openDestroyDialog(); break;
     case "destroy-run": await runDestroy(); break;
     case "report": $("report-modal").classList.add("show"); break;
-    case "report-build": await buildReport(); break;
+    case "report-build": await buildReport(false); break;
+    case "report-build-pdf": await buildReport(true); break;
     case "columns": openColumnManager(); break;
     case "preferences": await openPreferences(); break;
     case "expression": openExpressionDialog(); break;

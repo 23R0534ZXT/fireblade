@@ -557,6 +557,13 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, KeyError) as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/reports/{name}/pdf")
+    def report_pdf(identifier: str, name: str):
+        try:
+            return library.report_pdf(identifier, name)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/unread")
     def unread_files(identifier: str):
         """The files whose read did not complete, and the readers that can try again."""

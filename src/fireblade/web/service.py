@@ -1525,6 +1525,27 @@ class Library:
         return {"name": target.name, "records": report.get("records", 0),
                 "errors": report.get("errors", []), "url": f"/api/cases/{identifier}/reports/{target.name}"}
 
+    def report_pdf(self, identifier: str, name: str) -> dict:
+        """The same report as a PDF: the container has no Qt, so it is written here.
+
+        The HTML the desktop generated is the source: nothing is recomputed, so the
+        two files can never disagree about what the report says.
+        """
+        from fireblade.web.pdf import text_pdf
+
+        source = self.report_file(identifier, name)
+        if source.suffix.casefold() != ".html":
+            raise ServiceError("Only a report written by this instance can be turned into a PDF.")
+        target = source.with_suffix(".pdf")
+        title = source.stem
+        try:
+            text_pdf(source.read_text(encoding="utf-8", errors="replace"), target, title=title,
+                     subject="Client report")
+        except (OSError, ValueError) as exc:
+            raise ServiceError(f"The PDF could not be written: {exc}") from exc
+        return {"name": target.name, "bytes": target.stat().st_size,
+                "url": f"/api/cases/{identifier}/reports/{target.name}"}
+
     def report_file(self, identifier: str, name: str) -> Path:
         if "/" in name or "\\" in name or name.startswith("."):
             raise ServiceError("Invalid report name.")

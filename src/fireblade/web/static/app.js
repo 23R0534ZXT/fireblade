@@ -4121,6 +4121,21 @@ function renderTimeline(payload) {
       title="${off ? "Show this source again" : "Hide this source"}"
       style="${off ? "opacity:.45" : ""}"><span class="swatch" style="background:${TIMELINE_COLORS[index % 8]}"></span>${escapeHtml(source.name)} — ${source.dated} dated / ${source.rows} row(s)</span>`;
   }).join("");
+  const lane = $("timeline-lane");
+  if (lane && !lane.dataset.filled) {
+    lane.innerHTML = '<option value="">All lanes</option>'
+      + payload.sources.map((source) => `<option value="${source.id}">${escapeHtml(source.name)}</option>`).join("");
+    lane.dataset.filled = "1";
+    lane.addEventListener("change", () => {
+      timelineState.hidden.clear();
+      if (lane.value !== "") {
+        for (const source of payload.sources) {
+          if (String(source.id) !== lane.value) timelineState.hidden.add(source.id);
+        }
+      }
+      renderTimeline(timelineState.payload);
+    });
+  }
   $("timeline-legend").querySelectorAll("[data-tl-source-chip]").forEach((chip) => {
     chip.addEventListener("click", () => {
       const id = Number(chip.dataset.tlSourceChip);
@@ -4177,6 +4192,36 @@ function renderTimeline(payload) {
    analyst select a duration. The chart here is built from the same histogram; the
    window is a pair of buckets, the selection a pair of times, and the rows follow the
    selection because that is the filter the analyst asked for. */
+
+/* The window by two dates, the way the desktop's "Duration…" asks for them. The
+   dates are read as the rows are: ISO, and the end of the day when only a day is given. */
+function timelineDuration() {
+  const payload = timelineState.payload;
+  if (!payload || !payload.extent) { say("Build the timeline first", true); return; }
+  const band = (ns) => utcLabel(ns).slice(0, 16).replace(" ", "T").replace("Z", "");
+  const from = window.prompt(`From (UTC, ISO — leave empty for ${band(payload.extent.start)})`,
+                             band(payload.extent.start));
+  if (from === null) return;
+  const to = window.prompt(`To (UTC, ISO — leave empty for ${band(payload.extent.end)})`,
+                           band(payload.extent.end));
+  if (to === null) return;
+  const parse = (text, fallback) => {
+    if (!text.trim()) return fallback;
+    const stamp = Date.parse(text.trim().length <= 10 ? `${text.trim()}T00:00:00Z` : text.trim());
+    if (Number.isNaN(stamp)) return NaN;
+    return stamp * 1e6;
+  };
+  const start = parse(from, payload.extent.start);
+  const end = parse(to, payload.extent.end);
+  if (Number.isNaN(start) || Number.isNaN(end) || start >= end) {
+    say("Those dates do not make a duration", true);
+    return;
+  }
+  timelineState.start = Math.round(start);
+  timelineState.end = Math.round(end);
+  loadTimeline(true);
+  say(`Duration: ${band(timelineState.start)} → ${band(timelineState.end)}`);
+}
 
 function timelinePage(direction) {
   const payload = timelineState.payload;
@@ -5591,6 +5636,8 @@ async function act(name, node) {
     case "preview-path": await previewServerPath(); break;
     case "layout-export": exportLayout(); break;
     case "layout-import": $("layout-file").click(); break;
+    case "timeline-duration": timelineDuration(); break;
+    case "timeline-dates": $("timeline-dates").scrollIntoView({ block: "nearest" }); break;
     case "timeline-previous": timelinePage(-1); break;
     case "timeline-next": timelinePage(1); break;
     case "timeline-open-row": await openSelectedTimelineRow(); break;

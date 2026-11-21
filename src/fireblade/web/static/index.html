@@ -559,6 +559,15 @@
           <button class="btn" id="timeline-export" title="Verified CSV with a receipt">Export CSV</button>
         </div>
         <div class="timeline-dates" id="timeline-dates"></div>
+        <div class="filterbar">
+          <label for="timeline-lane">Lanes</label>
+          <select class="select" id="timeline-lane" title="Show one source alone, or all of them">
+            <option value="">All lanes</option>
+          </select>
+          <button class="btn" data-act="timeline-duration">Duration…</button>
+          <button class="btn" data-act="timeline-dates">Dates…</button>
+          <span class="note">Duration sets the window by two dates; Dates opens the per-analysis date readings.</span>
+        </div>
         <div class="filterbar" id="timeline-pager">
           <button class="btn" data-act="timeline-previous">Previous</button>
           <button class="btn" data-act="timeline-next">Next</button>

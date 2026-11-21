@@ -405,6 +405,14 @@ def test_a_machine_and_an_action_can_be_changed_or_removed():
     assert "data-reopen" in js and "/closed/" in js
 
 
+def test_the_timeline_has_lanes_and_a_duration():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="timeline-lane"' in html and "All lanes" in html
+    assert 'data-act="timeline-duration"' in html and 'data-act="timeline-dates"' in html
+    assert "function timelineDuration(" in js
+    assert "timelineState.hidden.add(source.id)" in js
+
+
 def test_the_timeline_has_its_overview():
     js, html = _read(APP), _read(INDEX)
     assert 'id="timeline-overview"' in html and 'id="timeline-overview-canvas"' in html

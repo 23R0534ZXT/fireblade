@@ -1090,3 +1090,42 @@ def test_a_rule_can_paint_a_scale(tmp_path):
             library.save_rules(identifier, 0, [bad])
     finally:
         library.close()
+
+
+def test_a_workbook_offers_its_sheets(tmp_path):
+    """An XLSX is a table, not an artefact: the sheet is chosen, then read."""
+    from openpyxl import Workbook
+
+    root = tmp_path / "cases"
+    root.mkdir()
+    book = InvestigationLibrary(root)
+    data = book.create("Workbook", "Two sheets", "windows")
+    identifier = data["id"]
+    workbook = tmp_path / "inventory.xlsx"
+    sheets = Workbook()
+    first = sheets.active
+    first.title = "Machines"
+    first.append(["Host", "Score"])
+    first.append(["WS-001", 7])
+    second = sheets.create_sheet("Accounts")
+    second.append(["Account", "Rights"])
+    second.append(["admin.svc", "domain admin"])
+    sheets.save(workbook)
+    library = Library(root)
+    try:
+        names = library.excel_sheets(workbook)["sheets"]
+        assert names == ["Machines", "Accounts"]
+        preview = library.preview_source(workbook)
+        assert preview["kind"] == "table"
+        assert preview["sheet"] == "Machines" and preview["sheets"] == names
+        assert [column["name"] for column in preview["columns"]] == ["Host", "Score"]
+        made = library.import_table(identifier, workbook, sheet="Accounts")
+        assert made["analyses"] == 1 and made["sheet"] == "Accounts"
+        assert made["rows"] == 1
+        opened = library.rows(identifier, 0, limit=5)
+        assert opened["columns"][1:] == ["Account", "Rights"]
+        assert opened["rows"][0][1] == "admin.svc"
+        with pytest.raises(ServiceError):
+            library.import_table(identifier, workbook, sheet="Nope")
+    finally:
+        library.close()

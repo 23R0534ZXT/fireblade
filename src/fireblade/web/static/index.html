@@ -503,6 +503,11 @@
         <select class="select" id="preview-encoding"></select>
         <span class="note" style="max-width:none">a native CSV is read with these instead of the detection</span>
       </div>
+      <div class="row" id="preview-sheet-row" style="display:none">
+        <label for="preview-sheet">Sheet</label>
+        <select class="select" id="preview-sheet"></select>
+        <span class="note" style="max-width:none">XLSX: formulas read as text. XLS: the remembered results. Styles and macros are not imported.</span>
+      </div>
       <div class="note" id="preview-note"></div>
       <div id="preview-body" class="preview-body"></div>
     </div>

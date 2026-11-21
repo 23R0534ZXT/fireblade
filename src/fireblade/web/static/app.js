@@ -464,6 +464,35 @@ function csvOptions() {
            encoding: $("preview-encoding").value || "auto" };
 }
 
+const EXCEL_SUFFIX = /\.(xlsx|xlsm|xls)$/i;
+
+/* The desktop's import asks which sheet; a workbook is a table, not an artefact. */
+async function offerSheets(payload) {
+  const row = $("preview-sheet-row");
+  if (!payload || !EXCEL_SUFFIX.test(String(payload.name || ""))) {
+    row.style.display = "none";
+    $("preview-sheet").innerHTML = "";
+    return;
+  }
+  try {
+    const sheets = await apiPost(`/api/cases/${state.openCase.id}/sheets`, { path: payload.path });
+    $("preview-sheet").innerHTML = (sheets.sheets || []).map((name) =>
+      `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+    row.style.display = "";
+    if (sheets.sheets && sheets.sheets.length > 1) {
+      $("preview-note").textContent = `${sheets.sheets.length} sheet(s) in this workbook: the first is chosen.`;
+    }
+  } catch (error) {
+    row.style.display = "none";
+    say(error.message, true);
+  }
+}
+
+function chosenSheet(payload) {
+  if (!payload || !EXCEL_SUFFIX.test(String(payload.name || ""))) return "";
+  return $("preview-sheet").value || "";
+}
+
 function openImportDialog() {
   if (!state.openCase) { say("Open a case before importing", true); return; }
   previewState.items = [];
@@ -502,6 +531,7 @@ async function previewFiles(files) {
   }
   $("preview-note").textContent = `${previewState.items.length} file(s) ready. Nothing has been read into the case yet.`;
   $("preview-note").classList.remove("err");
+  await offerSheets(previewState.items[previewState.items.length - 1].payload);
   renderPreview();
 }
 
@@ -513,6 +543,7 @@ async function previewServerPath() {
     previewState.items.push({ name: payload.name, payload });
     $("preview-note").textContent = "Preview ready. Nothing has been read into the case yet.";
     $("preview-note").classList.remove("err");
+    await offerSheets(payload);
     renderPreview();
   } catch (error) {
     $("preview-note").textContent = error.message;
@@ -609,12 +640,13 @@ const importJobState = { job: null, stopped: false };
 
 /* An import runs on the server, in the background: the window stays usable, the
    progress is visible, and the run can be stopped without losing what was read. */
-async function startImportJob(source, layout, options) {
+async function startImportJob(source, layout, options, sheet) {
   const body = new FormData();
   body.append("organization", layout);
   body.append("source", source);
   if (options.delimiter) body.append("delimiter", options.delimiter);
   if (options.encoding) body.append("encoding", options.encoding);
+  if (sheet) body.append("sheet", sheet);
   const response = await fetch(`/api/cases/${state.openCase.id}/import-jobs`, { method: "POST", body });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || response.statusText);
@@ -669,7 +701,7 @@ async function confirmImport() {
     if (!source) continue;
     say(`Importing ${item.name}…`);
     try {
-      const job = await startImportJob(source, layout, options);
+      const job = await startImportJob(source, layout, options, chosenSheet(item.payload));
       const outcome = await followImportJob(job);
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) imported += 1;
       else if (outcome.status === "cancelled") {

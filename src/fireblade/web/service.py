@@ -153,13 +153,18 @@ class Library:
 
     @staticmethod
     def _label(source, fallback) -> str:
-        """The tab label the desktop would show: the source file name, not its path."""
+        """The tab label the desktop would show: the source file name, not its path.
+
+        A sheet is named after the file and the sheet: two sheets of one workbook
+        are two analyses, and the tree must not show the same name twice.
+        """
         if isinstance(source, dict):
             raw = str(source.get("path", "") or "")
             if raw:
                 name = Path(raw.replace("\\", "/")).name
+                sheet = str(source.get("sheet", "") or "")
                 if name:
-                    return name
+                    return f"{name} — {sheet}" if sheet else name
         return Path(str(fallback).replace("\\", "/")).stem or "analysis"
 
     @staticmethod
@@ -1308,6 +1313,40 @@ class Library:
             return ",", []
         return best[1], best[2]
 
+    def _preview_workbook(self, path: Path, size: int, sheet: str = "") -> dict:
+        """The first rows of one sheet, read without importing anything."""
+        from fireblade.core.spreadsheets import sheet_names
+
+        if path.suffix.lower() == ".xls":
+            from fireblade.core.legacy_excel import sheet_names
+        names = [str(name) for name in sheet_names(path)]
+        if not names:
+            raise ServiceError("This workbook has no sheet.")
+        chosen = sheet if sheet in names else names[0]
+        columns, rows = [], []
+        try:
+            if path.suffix.lower() == ".xls":
+                from fireblade.core.legacy_excel import csv_from_sheet
+            else:
+                from fireblade.core.spreadsheets import csv_from_sheet
+            with csv_from_sheet(path, chosen, path.parent, lambda: None) as csv_path:
+                with open(csv_path, "r", encoding="utf-8", newline="") as stream:
+                    reader = csv.reader(stream)
+                    header = next(reader, [])
+                    columns = [{"index": position, "name": str(name), "role": "column"}
+                               for position, name in enumerate(header)]
+                    for row in reader:
+                        if len(rows) >= self.PREVIEW_ROWS:
+                            break
+                        rows.append(list(row))
+        except (OSError, ValueError, ImportError) as exc:
+            raise ServiceError(f"This workbook cannot be read: {exc}") from exc
+        return {"kind": "table", "name": path.name, "path": str(path), "size": size,
+                "readers": ["native"], "profile": None, "columns": columns, "rows": rows,
+                "sheet": chosen, "sheets": names, "delimiter": ",", "encoding": "utf-8",
+                "note": (f"Sheet {chosen!r} of a workbook: formulas are read as text, "
+                         "and the styles and macros are not imported.")}
+
     def preview_source(self, source: str | Path, delimiter: str | None = None,
                        encoding: str | None = None) -> dict:
         """What reading this file would produce, before anything is written.
@@ -1339,6 +1378,10 @@ class Library:
                     "note": "A folder is inventoried file by file: each format is read by its own reader."}
 
         size = path.stat().st_size
+        if path.suffix.lower() in self.EXCEL_SUFFIXES:
+            # A workbook has no reader among the collectors: it is a table, and the
+            # question the desktop asks is which sheet to read.
+            return self._preview_workbook(path, size)
         try:
             tools = identify(path)
         except (OSError, ValueError) as exc:
@@ -2233,6 +2276,83 @@ class Library:
                           data.get("revision"))
         return len(earlier), len(incoming)
 
+    EXCEL_SUFFIXES = (".xlsx", ".xlsm", ".xls")
+
+    def excel_sheets(self, source: str | Path) -> dict:
+        """The sheets of a workbook, named as the file names them.
+
+        `xlsx` goes through openpyxl, `xls` through the desktop's own reader: the
+        same two paths the desktop's import dialog offers.
+        """
+        path = Path(source).resolve()
+        if not path.is_file():
+            raise ServiceError("The workbook to read is missing.")
+        if path.suffix.lower() not in self.EXCEL_SUFFIXES:
+            raise ServiceError(f"Not a workbook: {path.name}")
+        try:
+            if path.suffix.lower() == ".xls":
+                from fireblade.core.legacy_excel import sheet_names
+            else:
+                from fireblade.core.spreadsheets import sheet_names
+            names = [str(name) for name in sheet_names(path)]
+        except (OSError, ValueError, ImportError) as exc:
+            raise ServiceError(f"This workbook cannot be read: {exc}") from exc
+        if not names:
+            raise ServiceError("This workbook has no sheet.")
+        return {"sheets": names, "default": names[0]}
+
+    def import_table(self, identifier: str, source: str | Path, sheet: str = "",
+                     label: str = "") -> dict:
+        """One table opened as an analysis: an Excel sheet, read by the core.
+
+        The desktop asks the same question before its own import — which sheet — and
+        hands the answer to `Case.import_excel`. The collection below never sees a
+        workbook: a sheet is a table, not an artefact to be parsed by a tool.
+        """
+        from fireblade.core.engine import Case
+        from fireblade.core.models import AnalysisSnapshot, View
+        from fireblade.core.sessions import write_session
+
+        data = self.library.read(identifier)
+        folder = self.library.folder(identifier)
+        path = Path(source).resolve()
+        if not path.is_file():
+            raise ServiceError("The workbook to import is missing.")
+        sheets = self.excel_sheets(path)["sheets"]
+        chosen = (sheet or "").strip() or sheets[0]
+        chosen = next((name for name in sheets if name == chosen), None)
+        if chosen is None:
+            raise ServiceError(f"No sheet is named {sheet!r} in {path.name}.")
+        output = folder / "collections" / ("table-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
+        if output.exists():
+            output = folder / "collections" / ("table-" + uuid.uuid4().hex[:8])
+        analysis = output / "analyses" / (uuid.uuid4().hex + ".duckdb")
+        analysis.parent.mkdir(parents=True, exist_ok=True)
+        case = Case(analysis)
+        try:
+            case.import_excel(path, chosen)
+            info = dict(case.info)
+            headers = list(case.headers)
+            rows = int(case.count(View()))
+        finally:
+            case.close()
+        snapshot = AnalysisSnapshot(
+            path=str(analysis),
+            source_info=dict(info, path=str(path), sheet=chosen,
+                             label=label or f"{path.stem} — {chosen}"),
+            view=View(), header_state=b"")
+        session = output / "collection.fireblade-session"
+        write_session(session, [snapshot], 0)
+        collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+        collections.append({"path": str(output), "name": output.name,
+                            "imported": datetime.now(timezone.utc).isoformat()})
+        first, added = self._merge_session(identifier, session, collections=collections,
+                                           active_collection=str(output))
+        return {"status": "complete", "analyses": added, "first_analysis": first,
+                "files": 1, "collection": str(output), "sheet": chosen,
+                "headers": len(headers), "rows": rows,
+                "label": label or f"{path.stem} — {chosen}"}
+
     def import_source(self, identifier: str, source: str | Path, tools_root: str | Path | None = None,
                       organization: str = "files", progress=None, delimiter: str | None = None,
                       encoding: str | None = None, on_collection=None) -> dict:
@@ -2451,7 +2571,7 @@ class Library:
 
     def start_import_job(self, identifier: str, source: str | Path,
                          organization: str = "files", delimiter: str | None = None,
-                         encoding: str | None = None) -> dict:
+                         encoding: str | None = None, sheet: str = "") -> dict:
         """Run an import in the background, so the window stays usable and the run
         can be stopped: a collection of a few hundred files takes minutes."""
         job_id = uuid.uuid4().hex
@@ -2477,6 +2597,26 @@ class Library:
                 job["collection"] = collection
 
         def work():
+            if Path(str(source)).suffix.lower() in self.EXCEL_SUFFIXES:
+                # A sheet is read directly, but it can still be a big one: the same
+                # job keeps the window responsive and the stop reachable.
+                try:
+                    job["message"] = "Reading the sheet…"
+                    result = self.import_table(identifier, str(source), sheet=sheet)
+                    with self._lock:
+                        job["status"] = "complete" if result.get("analyses") else "error"
+                        job["result"] = result
+                        job["message"] = (f"{result.get('rows', 0)} row(s) from sheet "
+                                          f"{result.get('sheet', '')!r}")
+                except (ServiceError, ValueError, OSError, KeyError) as exc:
+                    with self._lock:
+                        job["status"] = "error"
+                        job["error"] = str(exc)
+                        job["message"] = str(exc)
+                finally:
+                    with self._lock:
+                        job["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                return
             # The collection asks `job_cancelled()` between files: the event lives in a
             # context variable, so it must be set inside this very thread — and the
             # files themselves are parsed in worker threads that only see the

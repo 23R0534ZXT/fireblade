@@ -43,6 +43,7 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Cases | new, edit, destroy (DoD + certificate), archive, restore, portable `.fireblade` | **yes** |
 | Case history | "Historique et récupération" (the History folder) | **yes** — Case > History and recovery: the recorded states, restored after keeping the present one |
 | Import — file, folder | three layouts, preview, CSV options, history file by file | **yes** |
+| Import — workbook | an XLSX/XLS sheet, chosen by name, formulas read as text | **yes** — the preview lists the sheets and their columns, the import reads the chosen sheet through `Case.import_excel` and names the analysis after the file and the sheet |
 | Import — disk | "Analyser un disque…" (an image, not a folder) | **yes** — Analysis > Analyse a disk: a mounted volume, a disk image or a device; the walk copies its artifacts out and reports what it visited, extracted and failed on |
 | Import — cancel | "Arrêter" during a collection | **partial** — an import runs as a job with its progress line and a Stop, but the stop lands at the collection's own checkpoints: a source read in one pass finishes first |
 | Import — retry with a reader | "Relancer avec un lecteur" on an unread file | **yes** — Imports > Read a file again: the unread files, the reader to try, and the decision written in the collection report |

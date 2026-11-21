@@ -317,6 +317,14 @@ def test_the_two_report_types_share_one_dialog():
     assert "/client-report" in js
 
 
+def test_a_workbook_asks_which_sheet():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="preview-sheet"' in html and 'id="preview-sheet-row"' in html
+    assert "function offerSheets(" in js and "function chosenSheet(" in js
+    assert "/sheets" in js
+    assert 'body.append("sheet"' in js
+
+
 def test_a_rule_can_be_a_bar_a_scale_or_an_icon_set():
     js, html = _read(APP), _read(INDEX)
     assert 'id="rule-visual"' in html and 'id="rule-bound"' in html

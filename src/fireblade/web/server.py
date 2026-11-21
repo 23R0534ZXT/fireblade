@@ -108,10 +108,27 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         if not source:
             raise HTTPException(status_code=400, detail="A 'source' field is required.")
         try:
+            # A workbook is a table, not an artefact: the desktop asks which sheet
+            # and reads it directly, and so does this route.
+            if Path(str(source)).suffix.lower() in library.EXCEL_SUFFIXES:
+                return library.import_table(identifier, str(source),
+                                            sheet=(payload or {}).get("sheet") or "",
+                                            label=(payload or {}).get("label") or "")
             return library.import_source(identifier, source, tools_root=tools_root,
                                          organization=(payload or {}).get("organization", "files"),
                                          delimiter=(payload or {}).get("delimiter") or None,
                                          encoding=(payload or {}).get("encoding") or None)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/sheets")
+    def sheets(identifier: str, payload: dict):
+        """The sheets of a workbook the case already holds."""
+        source = (payload or {}).get("path")
+        if not source:
+            raise HTTPException(status_code=400, detail="A 'path' field is required.")
+        try:
+            return library.excel_sheets(source)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -573,6 +590,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     @app.post("/api/cases/{identifier}/import-jobs")
     def start_import_job(identifier: str, organization: str = Form("files"),
                          delimiter: str | None = Form(None), encoding: str | None = Form(None),
+                         sheet: str = Form(""),
                          source: str = Form(""), file: UploadFile | None = File(None)):
         """Start an import in the background; the caller polls it and can stop it."""
         library.library.folder(identifier)
@@ -584,7 +602,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             else:
                 raise HTTPException(status_code=400, detail="A file or a 'source' is required.")
             return library.start_import_job(identifier, target, organization=organization,
-                                            delimiter=delimiter, encoding=encoding)
+                                            delimiter=delimiter, encoding=encoding, sheet=sheet)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

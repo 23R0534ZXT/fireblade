@@ -192,6 +192,16 @@ What the comparison changed:
 | The reasons of the readers came back in French inside an English window | the service passes them through `core/i18n`, and the two CSV refusals are in the dictionary |
 | **The image baked a stale `src/fireblade/core`** — only `collection.py` was synced from the repository | the build now takes the whole core, the runtime and the configuration from the VM; a core fix reaches the container instead of being silently dropped |
 
+Two decisions were taken during the recette, and they are deliberate:
+
+- **the details panel stays at the bottom of the grid.** The desktop gives it a 400-pixel
+  column on the left; in a browser on a 1024-pixel screen that column takes half the grid,
+  and the details are read *after* the row, not before it.
+- **the search field has no "All artifacts" scope selector.** A scope there chooses
+  between one analysis and the whole case; the Host keeps the analysis search in the grid
+  bar and the case-wide one in Filters > Search across every analysis… (Ctrl+F), where the
+  menu names it.
+
 Still different, on purpose:
 
 - the desktop's View menu is nested (Profiles and compatibility, Columns and sorting,

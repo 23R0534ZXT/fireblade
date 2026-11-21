@@ -417,8 +417,10 @@ class Window(StartWorkflowMixin, FileCommandsMixin, ExportCommandsMixin, Timelin
         panel=getattr(self,'coverage_panel',None)
         if panel and (not panel.events or panel.events[-1]['reason']!=str(message)):
             self.coverage_notice('Analyse','error',message,str(self.case.path) if self.case else '')
-        self.statusBar().showMessage("Opération interrompue ou en erreur")
-        QMessageBox.warning(self, "Opération impossible", str(message))
+        self.statusBar().showMessage(translate("Opération interrompue ou en erreur"))
+        # The message comes from wherever the command failed: translate it here, once,
+        # so a French sentence does not land in the middle of an English window.
+        QMessageBox.warning(self, translate("Opération impossible"), translate(str(message)))
 
     def interrupt_queries(self):
         if getattr(self,'investigation_task',None):self.investigation_task.interrupt()

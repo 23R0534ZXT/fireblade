@@ -2164,6 +2164,80 @@ class Library:
         threading.Thread(target=work, name=f"import-{job_id[:8]}", daemon=True).start()
         return {"job": job_id, "status": "running"}
 
+    DISK_KINDS = ("mounted", "image", "physical")
+
+    def start_disk_job(self, identifier: str, source: str, kind: str = "mounted") -> dict:
+        """Walk a volume or an image the way the desktop's "Analyser un disque…" does.
+
+        `DiskCollection` copies the artifacts it recognises out of the source, then
+        the ordinary collection reads them: the analyses land in the case like any
+        other import, and the walk's own report (visited, extracted, errors) comes
+        back with the job.
+        """
+        if kind not in self.DISK_KINDS:
+            raise ServiceError(f"Unknown disk source: {kind}")
+        folder = self.library.folder(identifier)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        workspace = folder / "Disques" / (stamp + "-" + uuid.uuid4().hex[:8])
+        job_id = uuid.uuid4().hex
+        job = {"id": job_id, "status": "running", "message": "Preparing the disk…",
+               "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+               "finished": None, "result": None, "error": None, "log": [], "kind": "disk",
+               "collection": None, "cancel": None}
+        with self._lock:
+            self._jobs[job_id] = job
+
+        def progress(text):
+            with self._lock:
+                job["message"] = str(text)[:300]
+                job["log"].append(str(text)[:300])
+                if len(job["log"]) > 200:
+                    del job["log"][:-200]
+
+        def work():
+            import threading as _threading
+
+            from fireblade.core.disk import DiskCollection
+            from fireblade.core.errors import cancellation_scope
+
+            cancel = _threading.Event()
+            with self._lock:
+                job["cancel"] = cancel
+            try:
+                pack = (ToolPack(Path(self.tools_root)) if self.tools_root
+                        else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack"))
+                with cancellation_scope(cancel):
+                    collection = DiskCollection(source, workspace, pack, progress=progress,
+                                                source_kind=kind)
+                    with self._lock:
+                        job["collection"] = collection
+                    collection.parse()
+                    _first, merged = self._merge_session(
+                        identifier, workspace / "collection" / "collection.fireblade-session")
+                with self._lock:
+                    job["result"] = {"disk": collection.report.get("disk") or {},
+                                     "analyses_added": merged,
+                                     "workspace": str(workspace)}
+                    job["status"] = "complete"
+                    job["message"] = "Disk analysis complete."
+            except OperationCancelled:
+                with self._lock:
+                    job["status"] = "cancelled"
+                    job["message"] = "Disk analysis stopped: what was extracted stays in the case."
+            except Exception as exc:  # noqa: BLE001 — the job reports its own failure
+                with self._lock:
+                    job["status"] = "error"
+                    job["error"] = str(exc)
+                    job["message"] = str(exc)
+            finally:
+                with self._lock:
+                    job["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                    job["collection"] = None
+                    job["cancel"] = None
+
+        threading.Thread(target=work, name=f"disk-{job_id[:8]}", daemon=True).start()
+        return {"job": job_id, "status": "running", "workspace": str(workspace)}
+
     def import_job(self, job_id: str) -> dict:
         with self._lock:
             job = self._jobs.get(job_id)

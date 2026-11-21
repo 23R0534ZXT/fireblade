@@ -543,6 +543,18 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/disk-jobs")
+    def start_disk_job(identifier: str, payload: dict):
+        """Analyse a mounted volume or a disk image; the caller polls the same job API."""
+        source = str((payload or {}).get("source") or "")
+        if not source:
+            raise HTTPException(status_code=400, detail="A 'source' is required.")
+        try:
+            return library.start_disk_job(identifier, source,
+                                          str((payload or {}).get("kind") or "mounted"))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/import-jobs/{job}")
     def import_job(job: str):
         try:

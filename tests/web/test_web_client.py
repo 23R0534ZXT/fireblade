@@ -278,6 +278,14 @@ def test_the_display_preferences_are_remembered_and_applied():
     assert "localStorage.setItem(\"fireblade.display\"" in js
 
 
+def test_a_disk_can_be_analysed_from_the_window():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="disk-modal"' in html and 'data-act="disk-open"' in html
+    for name in ("openDiskDialog", "startDiskAnalysis"):
+        assert f"function {name}(" in js, name
+    assert "/disk-jobs" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

@@ -28,6 +28,7 @@
     </div>
     <div class="menu" data-for="analysis">
       <div class="item" data-act="open-analyses">Open analyses…</div>
+      <div class="item" data-act="disk-open">Analyse a disk…</div>
       <div class="item" data-act="reload-analysis">Reload the analysis</div>
       <div class="item" data-act="export-csv">Export the current view…</div>
     </div>
@@ -484,6 +485,29 @@
     </div>
     <div class="foot">
       <button class="btn" data-act="preview-import" id="preview-import" disabled>Import</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="disk-modal">
+  <div class="dialog" style="min-width:620px">
+    <h3>Analyse a disk</h3>
+    <div class="body">
+      <div class="row"><label for="disk-source">Source</label>
+        <input id="disk-source" placeholder="/data/cases/…/evidence/volume"></div>
+      <div class="row"><label for="disk-kind">What it is</label>
+        <select id="disk-kind">
+          <option value="mounted">A volume or folder mounted in this container</option>
+          <option value="image">A disk image (E01, raw)</option>
+          <option value="physical">A physical device (needs privileges)</option>
+        </select>
+      </div>
+      <div class="note">The walk copies the artifacts it recognises out of the source, then the
+        ordinary collection reads them. The case must live outside the analysed volume.</div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="disk-start">Start the analysis</button>
       <button class="btn" data-act="settings-close">Cancel</button>
     </div>
   </div>

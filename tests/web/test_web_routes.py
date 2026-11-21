@@ -825,3 +825,29 @@ def test_a_report_can_leave_as_a_pdf(service):
     assert b"test report" in data or b"A test report" in data
     with pytest.raises(ServiceError):
         library.report_pdf(identifier, "../case.json")
+
+
+def test_a_disk_is_walked_in_the_background(service, tmp_path):
+    """The desktop's "Analyser un disque…": a volume walked, its artifacts read."""
+    import time
+
+    library, identifier = service
+    volume = tmp_path / "volume"
+    (volume / "Windows" / "System32" / "winevt" / "Logs").mkdir(parents=True)
+    source = volume / "Windows" / "System32" / "winevt" / "Logs" / "System.evtx"
+    _write_csv(source)  # the extension is what the walk looks at
+    started = library.start_disk_job(identifier, str(volume), "mounted")
+    assert started["status"] == "running"
+    state = None
+    for _ in range(600):
+        state = library.import_job(started["job"])
+        if state["status"] not in ("running", "cancelling"):
+            break
+        time.sleep(0.1)
+    assert state is not None, "the job must answer"
+    assert state["status"] in ("complete", "error"), state
+    if state["status"] == "complete":
+        disk = state["result"]["disk"]
+        assert disk.get("visited", 0) >= 1
+    with pytest.raises(ServiceError):
+        library.start_disk_job(identifier, str(volume), "nonsense")

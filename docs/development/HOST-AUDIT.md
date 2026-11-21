@@ -24,7 +24,7 @@ names what the Host does for each.
 ## Verdict
 
 **The port is not complete.** Twenty-one domains are covered, but this audit found
-**1 features the Host does not have** and **4 it has partially** (five closed since the
+**0 features the Host does not have** and **4 it has partially** (five closed since the
 audit was written: machines and accounts, tracked indicators, Hayabusa rules,
 global colour rules, import diagnostics). None of them was
 visible in the label inventory, which is why `HOST-PARITY.md` said "nothing left" —
@@ -43,7 +43,7 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Cases | new, edit, destroy (DoD + certificate), archive, restore, portable `.fireblade` | **yes** |
 | Case history | "Historique et récupération" (the History folder) | **yes** — Case > History and recovery: the recorded states, restored after keeping the present one |
 | Import — file, folder | three layouts, preview, CSV options, history file by file | **yes** |
-| Import — disk | "Analyser un disque…" (an image, not a folder) | **no** |
+| Import — disk | "Analyser un disque…" (an image, not a folder) | **yes** — Analysis > Analyse a disk: a mounted volume, a disk image or a device; the walk copies its artifacts out and reports what it visited, extracted and failed on |
 | Import — cancel | "Arrêter" during a collection | **partial** — an import runs as a job with its progress line and a Stop, but the stop lands at the collection's own checkpoints: a source read in one pass finishes first |
 | Import — retry with a reader | "Relancer avec un lecteur" on an unread file | **yes** — Imports > Read a file again: the unread files, the reader to try, and the decision written in the collection report |
 | Import — diagnostics | "Vérification des imports et diagnostics", "Familles attendues" | **yes** — Imports > Import verification (the core coverage audit, four expected-family profiles, JSON and CSV report) |

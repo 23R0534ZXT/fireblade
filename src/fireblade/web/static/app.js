@@ -39,6 +39,39 @@ const state = {
   timestamps: [],       // columns the case marks as dates
 };
 
+/* ---------- analysing a disk ---------- */
+
+function openDiskDialog() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  $("disk-source").value = "";
+  $("disk-kind").value = "mounted";
+  $("disk-modal").classList.add("show");
+}
+
+async function startDiskAnalysis() {
+  const source = $("disk-source").value.trim();
+  if (!source) { say("Give the volume or image to analyse", true); return; }
+  const kind = $("disk-kind").value;
+  closeModals();
+  say("Preparing the disk walk…");
+  try {
+    const started = await apiPost(`/api/cases/${state.openCase.id}/disk-jobs`,
+      { source, kind });
+    const outcome = await followImportJob(started.job);
+    await openCase(state.openCase.id);
+    if (outcome.status === "complete") {
+      const disk = (outcome.result && outcome.result.disk) || {};
+      say(`Disk analysed: ${disk.visited ?? 0} path(s) visited, ${disk.extracted ?? 0} artifact(s), `
+        + `${(outcome.result && outcome.result.analyses_added) || 0} analysis(es) added`
+        + ((disk.errors || []).length ? `, ${disk.errors.length} error(s)` : ""));
+    } else {
+      say(outcome.message || outcome.error || outcome.status, true);
+    }
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 /* ---------- reading a file again ---------- */
 
 const retryState = { files: [], readers: [] };
@@ -580,6 +613,8 @@ async function followImportJob(job) {
       .map((line) => `<div class="message"><span>${escapeHtml(line)}</span></div>`).join("");
     if (payload.status !== "running" && payload.status !== "cancelling") {
       importJobState.job = null;
+      // The job is over: the progress window goes with it, whatever the outcome.
+      $("import-progress-modal").classList.remove("show");
       return payload;
     }
     await new Promise((resolve) => setTimeout(resolve, 1200));
@@ -3315,6 +3350,7 @@ function wire() {
   document.querySelectorAll(".subtab[data-scope]").forEach((tab) => {
     tab.addEventListener("click", () => showRulesScope(tab.dataset.scope));
   });
+  $("disk-start").addEventListener("click", startDiskAnalysis);
   $("import-progress-stop").addEventListener("click", stopImportJob);
   $("retry-open").addEventListener("click", openRetry);
   $("coverage-open").addEventListener("click", openCoverage);
@@ -3839,6 +3875,7 @@ async function act(name, node) {
     case "palette": openPalette(); break;
     case "messages": openMessages(); break;
     case "open-analyses": await openAnalysesDialog(); break;
+    case "disk-open": openDiskDialog(); break;
     case "case-history": await openCaseHistory(); break;
     case "rule-add": await addRule(); break;
     case "pivot": await runPivot(); break;

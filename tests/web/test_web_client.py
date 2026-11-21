@@ -405,6 +405,23 @@ def test_a_machine_and_an_action_can_be_changed_or_removed():
     assert "data-reopen" in js and "/closed/" in js
 
 
+def test_a_rule_without_a_visual_still_paints_its_row():
+    """`visual: "none"` is a string, and a truthy one: the row must still be coloured."""
+    js = _read(APP)
+    assert 'rule.visual === "none"' in js
+    assert "const plain = rule && (!rule.visual || rule.visual === \"none\")" in js
+
+
+def test_a_rule_combines_conditions():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="rule-logic"' in html and 'id="rule-add-condition"' in html
+    assert 'id="rule-conditions"' in html
+    for name in ("matchesConditionTree", "conditionSentence", "ruleConditionPayload",
+                 "addConditionRow"):
+        assert f"function {name}(" in js, name
+    assert '"and", "or", "not"' in js or "logic === \"not\"" in js
+
+
 def test_the_row_height_dialog_asks_the_three_heights():
     js, html = _read(APP), _read(INDEX)
     assert 'id="rowheight-modal"' in html and 'id="rowheight-wrap"' in html

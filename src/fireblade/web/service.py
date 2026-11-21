@@ -832,7 +832,9 @@ class Library:
             "bold": bool(rule.bold),
             "target": rule.target,
             "enabled": bool(rule.enabled),
-            # The grid evaluates one condition per rule; a richer one is kept, not faked.
+            # The grid evaluates the whole tree: a subgroup with AND / OR / NOT is
+            # what makes a rule express something a single comparison cannot.
+            "condition": _condition_payload(condition),
             "simple": len(children) == 1 and operator != "expression",
             # The desktop's visual formats: a colour scale, a data bar or an icon set.
             "visual": getattr(rule, "visual", "none") or "none",
@@ -1032,8 +1034,22 @@ class Library:
                 if target.casefold() not in {name.casefold() for name in names}:
                     names.append(target)
                 target = names.index(target)
+            # A tree wins over the flat fields: the desktop writes one, and a rule it
+            # wrote must come back unchanged (the analysis rules and the shared book
+            # both go through here).
+            tree = item.get("condition")
+            if isinstance(tree, dict) and "children" in tree:
+                from fireblade.core.models import condition_from_dict
+                try:
+                    condition = condition_from_dict(tree)
+                except (ValueError, TypeError) as exc:
+                    raise ServiceError(f"Invalid rule condition: {exc}") from exc
+                if not isinstance(condition, FilterGroup):
+                    condition = FilterGroup("and", [condition])
+            else:
+                condition = FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))])
             cleaned.append(FormatRule(
-                condition=FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))]),
+                condition=condition,
                 background=str(item.get("background") or "#fce2e2"),
                 foreground=str(item.get("foreground") or "#202020"),
                 bold=bool(item.get("bold")),
@@ -1096,8 +1112,22 @@ class Library:
             threshold_mode = str(item.get("icon_threshold_mode") or "percent")
             if threshold_mode not in self.THRESHOLD_MODES:
                 raise ServiceError(f"Unknown icon threshold mode: {threshold_mode}")
+            # A tree wins over the flat fields: the desktop writes one, and a rule it
+            # wrote must come back unchanged (the analysis rules and the shared book
+            # both go through here).
+            tree = item.get("condition")
+            if isinstance(tree, dict) and "children" in tree:
+                from fireblade.core.models import condition_from_dict
+                try:
+                    condition = condition_from_dict(tree)
+                except (ValueError, TypeError) as exc:
+                    raise ServiceError(f"Invalid rule condition: {exc}") from exc
+                if not isinstance(condition, FilterGroup):
+                    condition = FilterGroup("and", [condition])
+            else:
+                condition = FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))])
             cleaned.append(FormatRule(
-                condition=FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))]),
+                condition=condition,
                 background=str(item.get("background") or "#fce2e2"),
                 foreground=str(item.get("foreground") or "#202020"),
                 bold=bool(item.get("bold")),
@@ -3207,6 +3237,17 @@ class Library:
         with case.lock:
             case.export(str(target), view, include_annotations=True)
         return target
+
+
+def _condition_payload(condition) -> dict:
+    """A filter group (or a single filter) as the grid reads it: a small tree."""
+    children = getattr(condition, "children", None)
+    if children is None:
+        return {"column": getattr(condition, "column", None),
+                "operator": getattr(condition, "operator", "contains"),
+                "value": getattr(condition, "value", "")}
+    return {"logic": getattr(condition, "logic", "and") or "and",
+            "children": [_condition_payload(child) for child in children][:256]}
 
 
 def _english(text):

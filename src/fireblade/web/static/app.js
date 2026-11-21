@@ -3200,8 +3200,49 @@ function globalRuleList() {
   return (globalRules.effective || []).filter((rule) => rule.simple !== false);
 }
 
+/* One comparison, against the row's values (index 0 is the row id). */
+function matchesCondition(condition, values) {
+  if (!condition || !Number.isInteger(condition.column) || condition.column < 0) return false;
+  const raw = values[condition.column + 1];
+  const text = raw === null || raw === undefined ? "" : String(raw);
+  const value = condition.value ?? "";
+  switch (condition.operator) {
+    case "eq": return text.toLowerCase() === String(value).toLowerCase();
+    case "ne": return text.toLowerCase() !== String(value).toLowerCase();
+    case "starts": return text.toLowerCase().startsWith(String(value).toLowerCase());
+    case "ends": return text.toLowerCase().endsWith(String(value).toLowerCase());
+    case "gt": case "ge": case "lt": case "le": {
+      const a = Number(text), b = Number(value);
+      if (Number.isNaN(a) || Number.isNaN(b)) return false;
+      if (condition.operator === "gt") return a > b;
+      if (condition.operator === "ge") return a >= b;
+      if (condition.operator === "lt") return a < b;
+      return a <= b;
+    }
+    case "empty": return text === "";
+    case "not_empty": return text !== "";
+    default: return text.toLowerCase().includes(String(value).toLowerCase());
+  }
+}
+
+/* A rule's condition is a tree: a comparison, or a group of them combined with AND,
+   OR or NOT — the desktop's subgroups. */
+function matchesConditionTree(node, values, depth = 0) {
+  if (!node || depth > 24) return false;
+  if (!Array.isArray(node.children)) return matchesCondition(node, values);
+  const children = node.children;
+  const logic = node.logic || "and";
+  if (!children.length) return logic === "not";
+  if (logic === "or") return children.some((child) => matchesConditionTree(child, values, depth + 1));
+  if (logic === "not") {
+    return !children.some((child) => matchesConditionTree(child, values, depth + 1));
+  }
+  return children.every((child) => matchesConditionTree(child, values, depth + 1));
+}
+
 function matchesRule(rule, values) {
   if (!rule.enabled) return false;
+  if (rule.condition) return matchesConditionTree(rule.condition, values);
   if (rule.simple === false) return false;
   if (!Number.isInteger(rule.column) || rule.column < 0) return false;
   // A statistic names the rows it selects; the server resolved it once.
@@ -3404,7 +3445,27 @@ const RULE_OPERATORS = { contains: "contains", ne: "does not contain", eq: "equa
                          starts: "starts with", ends: "ends with", gt: ">", ge: ">=",
                          lt: "<", le: "<=", empty: "is empty", not_empty: "is not empty" };
 
+function conditionSentence(node) {
+  if (!node) return "";
+  if (Array.isArray(node.children)) {
+    const parts = node.children.map((child) => conditionSentence(child)).filter(Boolean);
+    if (!parts.length) return "";
+    const joiner = node.logic === "or" ? " or " : (node.logic === "not" ? " and not " : " and ");
+    return parts.length === 1 ? parts[0] : `(${parts.join(joiner)})`;
+  }
+  const column = state.columns[node.column + 1] || `column ${node.column + 1}`;
+  const operator = RULE_OPERATORS[node.operator] || node.operator;
+  const value = String(node.value ?? "").trim();
+  if (!value || node.operator === "empty" || node.operator === "not_empty") return `${column} ${operator}`;
+  return `${column} ${operator} “${value}”`;
+}
+
 function ruleSentence(rule) {
+  if (rule.condition) {
+    const text = conditionSentence(rule.condition);
+    const visual = rule.visual && rule.visual !== "none" ? ` — ${rule.visual}` : "";
+    return text ? `${text}${visual}` : "no condition";
+  }
   const column = ruleColumnName(rule);
   const operator = RULE_OPERATORS[rule.operator] || rule.operator;
   const value = String(rule.value === null || rule.value === undefined ? "" : rule.value).trim();
@@ -3431,6 +3492,40 @@ function showRuleVisual() {
   // A data bar reads a scale in one direction; three colours need a middle.
 }
 
+/* A group is edited as rows: each row is one comparison, and the group's logic says
+   how they combine — the desktop's "Add a subgroup" and its AND / OR / NOT. */
+function conditionRows() {
+  return [...$("rule-conditions").querySelectorAll("[data-condition]")].map((row) => ({
+    column: Number(row.querySelector("[data-cond-column]").value),
+    operator: row.querySelector("[data-cond-operator]").value,
+    value: row.querySelector("[data-cond-value]").value,
+  }));
+}
+
+function addConditionRow() {
+  const row = document.createElement("div");
+  row.className = "row";
+  row.dataset.condition = "1";
+  row.innerHTML = `<select data-cond-column>${state.columns.map((name, index) =>
+      `<option value="${index - 1}">${escapeHtml(name)}</option>`).join("")}</select>
+    <select data-cond-operator>${Object.entries(RULE_OPERATORS).map(([value, label]) =>
+      `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}</select>
+    <input data-cond-value placeholder="value">
+    <button class="btn" data-condition-remove="1">Remove</button>`;
+  row.querySelector("[data-condition-remove]").addEventListener("click", () => {
+    row.remove();
+    $("rule-logic").value = $("rule-conditions").children.length ? $("rule-logic").value : "single";
+  });
+  $("rule-conditions").append(row);
+}
+
+function ruleConditionPayload(flat) {
+  const logic = $("rule-logic").value;
+  const extra = conditionRows();
+  if (logic === "single" || !extra.length) return null;
+  return { logic, children: [flat, ...extra] };
+}
+
 async function addRule() {
   const columnValue = $("rule-column").value;
   const rule = {
@@ -3442,6 +3537,7 @@ async function addRule() {
     bold: $("rule-bold").checked,
     target: rulesScope === "global" && $("rule-target").value === "cell" ? columnValue : null,
     enabled: true,
+    condition: null,
     statistic: $("rule-statistic").value || "",
     stat_rank: $("rule-stat-rank").value || "10",
     visual: $("rule-visual").value,
@@ -3455,6 +3551,11 @@ async function addRule() {
     icon_threshold_mode: $("rule-icon-mode").value,
     icon_colors: $("rule-icon-colours").value.split(",").map((item) => item.trim()).filter(Boolean),
   };
+  // The whole group travels as one condition tree, and the flat fields stay for the
+  // server's own validation and for a client that only reads them.
+  const tree = ruleConditionPayload({ column: Number(columnValue), operator: rule.operator,
+                                       value: rule.value });
+  if (tree) rule.condition = tree;
   if (rulesScope === "global") {
     try {
       await persistGlobalRules([...((globalRules && globalRules.rules) || []), rule]);
@@ -4767,7 +4868,13 @@ function renderGrid() {
         + `${noted ? '<span class="notemark"></span>' : ""}</td>`;
     }).join("");
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
-    const style = rule && !rule.visual ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"` : "";
+    // "none" is a string, and a string is true: a rule without a visual format must
+    // still paint its row. (This cost a silent regression: every plain colour rule
+    // stopped painting the day the server started sending visual: "none".)
+    const plain = rule && (!rule.visual || rule.visual === "none");
+    const style = plain
+      ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"`
+      : "";
     return `<tr data-row="${escapeHtml(String(id))}" class="${rowSelected(id) ? "sel" : ""}"${style}>
       <td class="markcell"><span class="cb ${marked}" title="Bookmark this row"></span></td>${cells}</tr>`;
   }).join("");
@@ -5488,6 +5595,10 @@ function wire() {
     say(`Dates shown ${event.target.value}`);
   });
   $("rule-visual").addEventListener("change", showRuleVisual);
+  $("rule-add-condition").addEventListener("click", () => {
+    addConditionRow();
+    if ($("rule-logic").value === "single") $("rule-logic").value = "and";
+  });
   $("entity-cancel").addEventListener("click", stopEditingEntity);
   $("report-filter").addEventListener("change", renderRetryList);
   $("layout-file").addEventListener("change", async (event) => {

@@ -1240,3 +1240,23 @@ def test_a_collected_file_is_set_aside_then_removed(tmp_path):
         assert library.collection_files(identifier)["files"][0]["status"] == "deleted"
     finally:
         library.close()
+
+
+def test_a_rule_carries_a_group_of_conditions(service):
+    """AND / OR / NOT: the tree travels whole, and comes back whole."""
+    library, identifier = service
+    tree = {"logic": "or", "children": [
+        {"column": 0, "operator": "contains", "value": "srv"},
+        {"logic": "not", "children": [{"column": 1, "operator": "eq", "value": "done"}]},
+    ]}
+    rule = {"column": 0, "operator": "contains", "value": "srv",
+            "background": "#ffffff", "foreground": "#202020", "condition": tree}
+    library.save_rules(identifier, 0, [rule])
+    kept = library.rules(identifier, 0)["rules"][0]
+    assert kept["condition"]["logic"] == "or"
+    assert len(kept["condition"]["children"]) == 2
+    assert kept["condition"]["children"][1]["logic"] == "not"
+    assert kept["condition"]["children"][0]["value"] == "srv"
+    # A malformed tree is refused, not silently flattened.
+    with pytest.raises(Exception):
+        library.save_rules(identifier, 0, [dict(rule, condition={"logic": "xor", "children": []})])

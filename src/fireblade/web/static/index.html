@@ -1247,6 +1247,17 @@
         </select>
       </div>
       <div class="row"><label for="rule-value">Value</label><input id="rule-value"></div>
+      <div class="row">
+        <label for="rule-logic">Combine with</label>
+        <select id="rule-logic">
+          <option value="single">this condition alone</option>
+          <option value="and">all of the conditions (AND)</option>
+          <option value="or">at least one of them (OR)</option>
+          <option value="not">none of them (NOT)</option>
+        </select>
+        <button class="btn" id="rule-add-condition" title="Add a condition to the group">Add a subgroup condition…</button>
+      </div>
+      <div class="columns-list" id="rule-conditions"></div>
       <div class="row"><label for="rule-colour">Background</label><input id="rule-colour" type="color" value="#fce2e2">
         <label for="rule-ink">Text</label><input id="rule-ink" type="color" value="#202020">
         <label><input type="checkbox" id="rule-bold"> Bold</label>

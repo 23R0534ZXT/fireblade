@@ -31,6 +31,11 @@ const state = {
   pinnedRight: new Set(), // column indexes frozen on the right
   selection: new Set(), // row ids selected on this page (Shift extends, Ctrl toggles)
   anchor: null,         // the row a Shift-click extends from
+  summaries: [],        // [{column, operation, kind}] shown beside each group
+  order: "",            // how the groups are ordered: count, value or a summary
+  orderDesc: true,
+  orderSummary: 0,
+  payload: null,        // the last rows answer, kept for its summary labels
 };
 
 /* ---------- small helpers ---------- */
@@ -639,6 +644,199 @@ function applyExpression() {
     : "Advanced filter cleared");
 }
 
+/* ---------- sort priority ---------- */
+
+function sortRow(key = { column: 0, descending: false }) {
+  const row = document.createElement("tr");
+  row.innerHTML = `<td><select data-sort-column>${state.columns.slice(1).map((name, index) =>
+      `<option value="${index}" ${index === key.column ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></td>
+    <td><select data-sort-direction>
+      <option value="asc" ${key.descending ? "" : "selected"}>A → Z</option>
+      <option value="desc" ${key.descending ? "selected" : ""}>Z → A</option></select></td>
+    <td><button class="btn" data-sort-up title="Move up">↑</button></td>
+    <td><button class="btn" data-sort-remove title="Remove this key">✕</button></td>`;
+  const table = $("sort-rows");
+  row.querySelector("[data-sort-up]").addEventListener("click", () => {
+    const previous = row.previousElementSibling;
+    if (previous) table.insertBefore(row, previous);
+  });
+  row.querySelector("[data-sort-remove]").addEventListener("click", () => row.remove());
+  return row;
+}
+
+function openSortPriority() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  $("sort-rows").innerHTML = "";
+  const keys = state.multiSort.length
+    ? state.multiSort
+    : (state.sort !== null ? [{ column: state.sort, descending: state.descending }] : []);
+  for (const key of keys) $("sort-rows").appendChild(sortRow(key));
+  $("sort-modal").classList.add("show");
+}
+
+async function applySortPriority() {
+  const keys = [];
+  $("sort-rows").querySelectorAll("tr").forEach((row) => {
+    keys.push({ column: Number(row.querySelector("[data-sort-column]").value),
+                descending: row.querySelector("[data-sort-direction]").value === "desc" });
+  });
+  state.multiSort = keys;
+  if (keys.length) { state.sort = keys[0].column; state.descending = keys[0].descending; }
+  closeModals();
+  await loadRows(true);
+  say(keys.length ? `${keys.length} sort key(s), the first one decides` : "Sorting cleared");
+}
+
+/* ---------- group summaries ---------- */
+
+const SUMMARY_OPERATIONS = [
+  ["rows", "Rows"], ["count", "Not empty"], ["distinct", "Distinct values"],
+  ["sum", "Sum"], ["avg", "Average"], ["min", "Minimum"], ["max", "Maximum"],
+];
+const SUMMARY_KINDS = [["number", "Number"], ["text", "Text"], ["timestamp", "ISO date"]];
+
+function summaryRow(summary = { column: 0, operation: "count", kind: "number" }) {
+  const row = document.createElement("tr");
+  row.innerHTML = `<td><select data-summary-column>${state.columns.slice(1).map((name, index) =>
+      `<option value="${index}" ${index === summary.column ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></td>
+    <td><select data-summary-operation>${SUMMARY_OPERATIONS.map(([code, label]) =>
+      `<option value="${code}" ${code === summary.operation ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></td>
+    <td><select data-summary-kind>${SUMMARY_KINDS.map(([code, label]) =>
+      `<option value="${code}" ${code === summary.kind ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></td>
+    <td><button class="btn" data-summary-remove title="Remove this summary">✕</button></td>`;
+  row.querySelector("[data-summary-remove]").addEventListener("click", () => {
+    row.remove();
+    refreshSummaryOrderChoices();
+  });
+  return row;
+}
+
+function openSummaries() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  $("summary-rows").innerHTML = "";
+  const chosen = state.summaries.length ? state.summaries
+    : (state.groups.length ? [{ column: 0, operation: "count", kind: "number" }] : []);
+  for (const summary of chosen) $("summary-rows").appendChild(summaryRow(summary));
+  $("summary-order").value = state.order || "";
+  $("summary-desc").checked = state.orderDesc !== false;
+  refreshSummaryOrderChoices();
+  $("summaries-modal").classList.add("show");
+}
+
+function refreshSummaryOrderChoices() {
+  const count = $("summary-rows").querySelectorAll("tr").length;
+  $("summary-which").style.display = $("summary-order").value === "summary" ? "" : "none";
+  $("summary-which").innerHTML = Array.from({ length: count }, (_, index) =>
+    `<option value="${index}">summary ${index + 1}</option>`).join("")
+    || '<option value="0">no summary yet</option>';
+  $("summary-which").value = String(Math.min(state.orderSummary || 0, Math.max(0, count - 1)));
+}
+
+async function applySummaries() {
+  const summaries = [];
+  $("summary-rows").querySelectorAll("tr").forEach((row) => {
+    summaries.push({
+      column: Number(row.querySelector("[data-summary-column]").value),
+      operation: row.querySelector("[data-summary-operation]").value,
+      kind: row.querySelector("[data-summary-kind]").value,
+    });
+  });
+  state.summaries = summaries;
+  state.order = $("summary-order").value;
+  state.orderDesc = $("summary-desc").checked;
+  state.orderSummary = Number($("summary-which").value || 0);
+  closeModals();
+  await loadRows(true);
+  say(summaries.length
+    ? `${summaries.length} group summar${summaries.length === 1 ? "y" : "ies"}`
+    : "Group summaries cleared");
+}
+
+/* ---------- date windows ---------- */
+
+const dateState = { ranges: [], columns: [] };
+
+async function openDateFilter() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  const looksLikeDate = (name) => /date|time|jour|créé|created|modified|timestamp/i.test(name);
+  const columns = state.columns.slice(1).map((name, index) => ({ name, index }));
+  dateState.columns = columns;
+  $("date-column").innerHTML = columns
+    .map((item) => `<option value="${item.index}">${escapeHtml(item.name)}</option>`)
+    .join("");
+  // A date column first: the others are still offered, the analyst knows the data.
+  const first = columns.find((item) => looksLikeDate(item.name));
+  if (first) $("date-column").value = String(first.index);
+  await loadDateRanges();
+  if (!$("date-day").value) $("date-day").value = new Date().toISOString().slice(0, 10);
+  showDateMode();
+  $("date-summary").textContent = state.expression
+    ? `${countConditions(state.expression)} condition(s) already in the advanced filter`
+    : "The advanced filter is empty.";
+  $("date-modal").classList.add("show");
+}
+
+async function loadDateRanges() {
+  if (dateState.ranges.length) return;
+  try {
+    const payload = await api("/api/date-ranges");
+    dateState.ranges = payload.ranges || [];
+    $("date-range").innerHTML = dateState.ranges
+      .map((item) => `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`).join("");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+function showDateMode() {
+  const mode = $("date-mode").value;
+  $("date-range-row").style.display = mode === "range" ? "flex" : "none";
+  $("date-day-row").style.display = mode === "range" ? "none" : "flex";
+}
+
+function dateCondition() {
+  const column = Number($("date-column").value);
+  const name = state.columns[column + 1] || "";
+  const mode = $("date-mode").value;
+  const quoted = `[${String(name).replace("]", "]]")}]`;
+  if (mode === "range") {
+    const range = $("date-range").value || "Today";
+    // One condition, wrapped in a list: the caller walks a list in both branches.
+    return [[{ column, operator: "expression", value: `InDateRange(${quoted}, '${range}')` }],
+            `${name} in ${range}`];
+  }
+  const chosen = $("date-day").value;
+  if (!chosen) return [null, ""];
+  const [year, month, day] = chosen.split("-").map(Number);
+  const pad = (value) => String(value).padStart(2, "0");
+  const start = `${year}-${pad(month)}-${pad(day)}`;
+  let end;
+  if (mode === "year") end = `${year + 1}-01-01`;
+  else if (mode === "month") end = month === 12 ? `${year + 1}-01-01` : `${year}-${pad(month + 1)}-01`;
+  else {
+    const next = new Date(Date.UTC(year, month - 1, day + 1));
+    end = next.toISOString().slice(0, 10);
+  }
+  return [[{ column, operator: "ge", value: start }, { column, operator: "lt", value: end }],
+          `${name} from ${start} to ${end}`];
+}
+
+async function addDateCondition() {
+  try {
+    const [atoms, label] = dateCondition();
+    if (!atoms || !atoms.length) { say("Pick a date first", true); return; }
+    const expression = state.expression && Array.isArray(state.expression.children)
+      ? state.expression : { logic: "and", children: [] };
+    for (const atom of atoms) expression.children.push(atom);
+    state.expression = expression;
+    closeModals();
+    await loadRows(true);
+    say(`Date filter: ${label}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 function countConditions(group) {
   return (group.children || []).reduce((sum, child) =>
     sum + (child.children ? countConditions(child) : 1), 0);
@@ -754,6 +952,7 @@ async function showAlertContext() {
       `/api/cases/${state.openCase.id}/analyses/${state.analysis}/rows/${contextRow.dataset.row}/context`);
     state.analysis = payload.analysis;
     state.groups = []; state.path = []; state.interval = ""; state.expression = null;
+    state.summaries = []; state.order = "";
     state.filters = []; state.search = ""; state.sort = null; state.multiSort = [];
     showTab("analyses");
     // The context is a new analysis of the case: refresh the tree before naming it.
@@ -1076,6 +1275,7 @@ async function showFindingInGrid(item) {
   }
   state.analysis = run.analysis;
   state.groups = []; state.path = []; state.interval = ""; state.expression = null;
+  state.summaries = []; state.order = "";
   state.filters = []; state.search = ""; state.sort = null; state.multiSort = [];
   showTab("analyses");
   await loadRows(true);
@@ -1493,6 +1693,43 @@ function matchesRule(rule, values) {
   }
 }
 
+/* The values of a column, as the desktop's rules dialog charts them: the shape of
+   the data first, the rule second. Clicking a bar fills the value field. */
+async function loadRuleValues() {
+  if (!state.openCase || !state.columns.length) return;
+  const column = Number($("rule-column").value);
+  if (!Number.isInteger(column) || column < 0) return;
+  const box = $("rule-values");
+  box.innerHTML = '<div class="emptygrid">Reading the values…</div>';
+  try {
+    const params = new URLSearchParams({ offset: "0", limit: "12" });
+    params.append("group", String(column));
+    const payload = await api(
+      `/api/cases/${state.openCase.id}/analyses/${state.analysis}/rows?${params}`);
+    const rows = (payload.rows || []).map((row) => ({ value: row[0], count: Number(row[1]) || 0 }));
+    const peak = Math.max(1, ...rows.map((row) => row.count));
+    box.innerHTML = rows.map((row) => {
+      const text = row.value === null || row.value === "" ? "(empty)" : String(row.value);
+      return `<div class="value-bar" data-value="${escapeHtml(text)}" title="${escapeHtml(text)}">
+        <span class="value-name">${escapeHtml(text)}</span>
+        <span class="value-track"><span style="width:${Math.round((row.count / peak) * 100)}%"></span></span>
+        <span class="value-count">${row.count}</span></div>`;
+    }).join("") || '<div class="emptygrid">No value in this column.</div>';
+    box.querySelectorAll(".value-bar").forEach((node) => {
+      node.addEventListener("click", () => {
+        $("rule-value").value = node.dataset.value;
+        $("rule-value").focus();
+      });
+    });
+    $("rule-values-note").textContent =
+      `${rows.length} most frequent value(s) of ${state.columns[column + 1] || "this column"}`
+      + " — click one to use it";
+  } catch (error) {
+    box.innerHTML = "";
+    $("rule-values-note").textContent = error.message;
+  }
+}
+
 async function loadRules() {
   if (!state.openCase) return;
   try {
@@ -1523,6 +1760,7 @@ function analysisColumnOptions() {
 
 function openRulesDialog() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
+  setTimeout(loadRuleValues, 0);
   $("rules-modal").classList.add("show");
   showRulesScope("analysis");
   loadGlobalRules().then(() => {
@@ -2183,6 +2421,14 @@ function query() {
   for (const column of state.groups) params.append("group", String(column));
   if (state.interval && state.groups.length) params.set("interval", state.interval);
   if (state.expression) params.set("expression_json", JSON.stringify(state.expression));
+  for (const summary of state.summaries) {
+    params.append("summary", `${summary.column}:${summary.operation}:${summary.kind}`);
+  }
+  if (state.order) {
+    params.set("order", state.order);
+    params.set("order_descending", state.orderDesc === false ? "false" : "true");
+    params.set("order_summary", String(state.orderSummary || 0));
+  }
   for (const value of state.path) params.append("path", value === null ? "" : String(value));
   if (state.multiSort.length) {
     for (const key of state.multiSort) params.append("sortkey", `${key.column}:${key.descending ? "desc" : "asc"}`);
@@ -2215,6 +2461,7 @@ async function loadRows(reset) {
     state.total = payload.total;
     state.offset = payload.offset;
     state.grouped = Boolean(payload.grouped);
+    state.payload = payload;
     await loadBookmarks();
     await loadCellNotes();
     await loadRules();
@@ -2367,8 +2614,12 @@ function renderGroupedGrid() {
   empty.hidden = state.rows.length > 0;
   empty.textContent = "No group at this level.";
 
-  $("cols").innerHTML = '<col style="width:30px"><col style="width:34px"><col style="width:52%"><col style="width:120px">';
-  $("head").innerHTML = `<tr><th></th><th>Ro…</th><th>${escapeHtml(name)}</th><th style="width:120px">Rows</th></tr>`;
+  const summaries = (state.payload && state.payload.summaries) || [];
+  $("cols").innerHTML = '<col style="width:30px"><col style="width:34px"><col><col style="width:90px">'
+    + summaries.map(() => '<col style="width:130px">').join("");
+  $("head").innerHTML = `<tr><th></th><th>Ro…</th><th>${escapeHtml(name)}</th><th>Rows</th>`
+    + summaries.map((item) => `<th title="${escapeHtml(item.name)}">`
+      + `${escapeHtml(item.operation)} ${escapeHtml(item.name)}</th>`).join("") + "</tr>";
 
   $("body").innerHTML = state.rows.map((row, position) => {
     const value = row[0];
@@ -2378,7 +2629,11 @@ function renderGroupedGrid() {
       <td><span class="cb"></span></td>
       <td class="rowid">${state.offset + position + 1}</td>
       <td title="${escapeHtml(text)}">▸ ${escapeHtml(text)}</td>
-      <td>${count}</td></tr>`;
+      <td>${count}</td>
+      ${summaries.map((_item, offset) => {
+        const value = row[2 + offset];
+        return `<td>${value === null || value === undefined ? "" : escapeHtml(String(value))}</td>`;
+      }).join("")}</tr>`;
   }).join("");
 
   const from = state.total ? state.offset + 1 : 0;
@@ -2786,13 +3041,21 @@ function wire() {
   });
 
   $("clear").addEventListener("click", () => {
+    // Search and every filter go — the advanced one and its date windows too; the
+    // groups, the sort keys and the colours stay, as the desktop's own command says.
     state.search = "";
     state.filters = [];
+    state.expression = null;
     state.sort = null;
     state.descending = false;
     state.bookmarksOnly = false;
     $("bookmarks-only").classList.remove("active");
     $("search").value = "";
+    const root = $("expr-root");
+    if (root) {
+      root.innerHTML = "";
+      root.appendChild(exprGroupNode({ logic: "and", children: [] }, 0));
+    }
     loadRows(true);
   });
 
@@ -2971,6 +3234,19 @@ function wire() {
     previewFiles([...event.dataTransfer.files]);
   });
 
+  $("rule-column").addEventListener("change", loadRuleValues);
+  $("sort-add").addEventListener("click", () => {
+    $("sort-rows").appendChild(sortRow({ column: 0, descending: false }));
+  });
+  $("sort-apply").addEventListener("click", applySortPriority);
+  $("summary-add").addEventListener("click", () => {
+    $("summary-rows").appendChild(summaryRow());
+    refreshSummaryOrderChoices();
+  });
+  $("summary-order").addEventListener("change", refreshSummaryOrderChoices);
+  $("summary-apply").addEventListener("click", applySummaries);
+  $("date-mode").addEventListener("change", showDateMode);
+  $("date-add").addEventListener("click", addDateCondition);
   $("ioc-scan").addEventListener("click", runIocScan);
   $("ioc-file-open").addEventListener("click", () => $("ioc-file").click());
   $("ioc-file").addEventListener("change", async (event) => {
@@ -3167,6 +3443,9 @@ async function act(name, node) {
     case "views": await openViewsDialog(); break;
     case "view-save": await saveCurrentView(); break;
     case "rules": openRulesDialog(); break;
+    case "date-filter": await openDateFilter(); break;
+    case "summaries": openSummaries(); break;
+    case "sort-priority": openSortPriority(); break;
     case "rule-add": await addRule(); break;
     case "pivot": await runPivot(); break;
     case "copy-row": await copySelectedRows(); break;

@@ -2063,7 +2063,10 @@ class Library:
              filters: list[tuple[int, str, str]] | None = None,
              bookmarks_only: bool = False, groups: list[int] | None = None,
              path: list[str] | None = None, sorts: list[tuple[int, bool]] | None = None,
-             interval: str = "", expression: dict | None = None) -> dict:
+             interval: str = "", expression: dict | None = None,
+             summaries: list[tuple[int, str, str]] | None = None,
+             order: str = "", order_descending: bool = True,
+             order_summary: int = 0) -> dict:
         case = self._case_for(identifier, index)
         view = View(search=search or "", filters=[], bookmarks_only=bool(bookmarks_only))
         for column, operator, value in filters or ():
@@ -2094,6 +2097,29 @@ class Library:
                 if interval not in ("value", "year", "quarter", "month", "week", "day", "hour", "minute", "second"):
                     raise ServiceError("Unknown grouping interval.")
                 view.group_intervals = {str(column): interval for column in view.groups}
+        # Group summaries and their order, exactly the view fields the desktop sets.
+        from fireblade.core.models import Summary
+
+        cleaned_summaries = []
+        for column, operation, kind in summaries or ():
+            if not 0 <= int(column) < len(case.headers):
+                raise ServiceError("Summary column outside the analysis.")
+            if operation not in ("rows", "count", "distinct", "sum", "avg", "min", "max"):
+                raise ServiceError(f"Unknown summary operation: {operation}")
+            if kind not in ("number", "text", "timestamp"):
+                raise ServiceError(f"Unknown summary kind: {kind}")
+            if operation in ("sum", "avg") and kind != "number":
+                raise ServiceError("Sum and average need a numeric column.")
+            cleaned_summaries.append(Summary(int(column), operation, kind, -1))
+        view.summaries = cleaned_summaries
+        if order:
+            if order not in ("count", "value", "summary"):
+                raise ServiceError(f"Unknown group order: {order}")
+            if order == "summary" and not cleaned_summaries:
+                raise ServiceError("Ordering groups by a summary needs one summary.")
+            view.group_order = order
+            view.group_descending = bool(order_descending)
+            view.group_summary = max(0, min(int(order_summary), max(0, len(cleaned_summaries) - 1)))
         limit = max(1, min(int(limit), 1000))
         offset = max(0, int(offset))
         depth = tuple(path or ())
@@ -2110,7 +2136,19 @@ class Library:
             "limit": limit,
             "grouped": grouped,
             "path": list(depth),
+            "summaries": [{"column": item.column,
+                           "name": case.headers[item.column] if 0 <= item.column < len(case.headers) else "",
+                           "operation": item.operation, "kind": item.kind}
+                          for item in cleaned_summaries],
+            "order": view.group_order, "order_descending": view.group_descending,
         }
+
+    @staticmethod
+    def date_ranges() -> dict:
+        """The named windows the desktop offers, read from the core's own table."""
+        from fireblade.core.date_ranges import RANGES
+
+        return {"ranges": [{"name": name} for name in RANGES]}
 
     def bookmarks(self, identifier: str, index: int) -> dict:
         case = self._case_for(identifier, index)

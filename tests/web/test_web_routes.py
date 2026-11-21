@@ -734,3 +734,38 @@ def test_an_indicator_hunt_covers_every_analysis_and_respects_the_filters(tmp_pa
         assert not without_sub["hits"], "without sub-domains the same value is not a match"
     finally:
         library.close()
+
+
+def test_group_summaries_and_the_order_of_the_groups(service):
+    """The desktop's "Résumés et tri des groupes": aggregates, and how groups rank."""
+    library, identifier = service
+    plain = library.rows(identifier, 0, groups=[1], limit=10)
+    assert plain["grouped"] is True
+    assert plain["rows"] and len(plain["rows"][0]) == 2, "a group row is a value and a count"
+
+    with_summary = library.rows(identifier, 0, groups=[1], limit=10,
+                                summaries=[(2, "distinct", "text")])
+    assert with_summary["summaries"][0]["operation"] == "distinct"
+    assert with_summary["summaries"][0]["name"] == "User"
+    assert len(with_summary["rows"][0]) == 3, "the summary rides beside the count"
+
+    by_value = library.rows(identifier, 0, groups=[1], limit=10,
+                            order="value", order_descending=False)
+    values = [str(row[0]) for row in by_value["rows"]]
+    assert values == sorted(values), "groups sorted by their value, ascending"
+
+    by_count = library.rows(identifier, 0, groups=[1], limit=10, order="count", order_descending=True)
+    counts = [row[1] for row in by_count["rows"]]
+    assert counts == sorted(counts, reverse=True)
+
+    with pytest.raises(ServiceError):
+        library.rows(identifier, 0, groups=[1], summaries=[(2, "sum", "text")])
+    with pytest.raises(ServiceError):
+        library.rows(identifier, 0, groups=[1], order="summary")
+
+
+def test_the_named_date_windows_come_from_the_core(service):
+    library, _identifier = service
+    names = [item["name"] for item in library.date_ranges()["ranges"]]
+    for expected in ("Today", "Yesterday", "ThisWeek", "LastWeek", "Earlier"):
+        assert expected in names

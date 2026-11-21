@@ -222,6 +222,18 @@ def test_the_indicator_hunt_covers_the_case_and_reads_a_file():
     assert "<th>Analysis</th>" in html
 
 
+def test_the_grid_offers_dates_summaries_and_sort_priority():
+    js, html = _read(APP), _read(INDEX)
+    for name in ("date-modal", "summaries-modal", "sort-modal", "rule-values"):
+        assert f'id="{name}"' in html, name
+    for name in ("openDateFilter", "addDateCondition", "openSummaries", "applySummaries",
+                 "openSortPriority", "applySortPriority", "loadRuleValues"):
+        assert f"function {name}(" in js, name
+    assert "/api/date-ranges" in js
+    # a summary is sent as column:operation:kind, the shape the route reads
+    assert 'params.append("summary"' in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

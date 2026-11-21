@@ -236,6 +236,14 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 .timeline-dates .tsrc{display:flex;align-items:center;gap:6px;font-size:11px}
 .timeline-dates .tname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* The value chart of the rules dialog: a bar per value, its count beside it. */
+.value-bar{display:flex;align-items:center;gap:6px;padding:1px 4px;cursor:default;font-size:11px}
+.value-bar:hover{background:var(--btn-hover, #e8eef7)}
+.value-name{flex:0 0 38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.value-track{flex:1;height:10px;background:var(--border, #d4dae4);position:relative}
+.value-track>span{display:block;height:10px;background:#4a78b5}
+.value-count{flex:0 0 54px;text-align:right;color:#555}
+
 /* The diagnostics table: six columns of prose have to stay inside the dialog. */
 #coverage-modal .gridbody table{table-layout:fixed;width:100%}
 #coverage-modal .gridbody td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

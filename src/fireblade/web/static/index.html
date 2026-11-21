@@ -108,6 +108,9 @@
           <button class="btn" data-act="rules">Colour rules…</button>
           <button class="btn" data-act="views">Views…</button>
           <button class="btn" data-act="expression">Advanced filter…</button>
+          <button class="btn" data-act="date-filter" title="Today, this week, one day…">Filter a date…</button>
+          <button class="btn" data-act="summaries" title="Aggregates per group, and how groups are ordered">Group summaries…</button>
+          <button class="btn" data-act="sort-priority" title="Several sort keys, in order">Sort priority…</button>
           <button class="btn" id="details-toggle">Row details</button>
         </div>
 
@@ -478,6 +481,85 @@
   </div>
 </div>
 
+<div class="modal" id="sort-modal">
+  <div class="dialog" style="min-width:600px">
+    <h3>Sort priority</h3>
+    <div class="body">
+      <div class="note">The first key decides; the next ones break ties. Shift-clicking a column header
+        adds a key without opening this window.</div>
+      <table class="summary-table">
+        <colgroup><col style="width:44%"><col style="width:26%"><col style="width:15%"><col style="width:15%"></colgroup>
+        <thead><tr><th>Column</th><th>Direction</th><th></th><th></th></tr></thead>
+        <tbody id="sort-rows"></tbody>
+      </table>
+      <button class="btn" id="sort-add">Add a key</button>
+    </div>
+    <div class="foot">
+      <button class="btn" id="sort-apply">Apply</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="summaries-modal">
+  <div class="dialog" style="min-width:680px">
+    <h3>Group summaries</h3>
+    <div class="body">
+      <div class="note">One line per aggregate. The desktop shows them beside the group and can order the
+        groups by one of them.</div>
+      <table class="summary-table">
+        <colgroup><col style="width:38%"><col style="width:26%"><col style="width:24%"><col style="width:12%"></colgroup>
+        <thead><tr><th>Column</th><th>Aggregate</th><th>Type</th><th></th></tr></thead>
+        <tbody id="summary-rows"></tbody>
+      </table>
+      <div class="row">
+        <button class="btn" id="summary-add">Add a summary</button>
+        <div class="grow"></div>
+        <label for="summary-order">Order the groups by</label>
+        <select id="summary-order">
+          <option value="">the number of rows</option>
+          <option value="value">the group value</option>
+          <option value="summary">a summary</option>
+        </select>
+        <select id="summary-which" style="display:none"></select>
+        <label><input type="checkbox" id="summary-desc" checked> Descending</label>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="summary-apply">Apply</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="date-modal">
+  <div class="dialog" style="min-width:520px">
+    <h3>Filter a date</h3>
+    <div class="body">
+      <div class="row"><label for="date-column">Column</label><select id="date-column"></select></div>
+      <div class="row"><label for="date-mode">Window</label>
+        <select id="date-mode">
+          <option value="range">A named window (today, this week…)</option>
+          <option value="day">One day</option>
+          <option value="month">One month</option>
+          <option value="year">One year</option>
+        </select>
+      </div>
+      <div class="row" id="date-range-row"><label for="date-range">Window</label>
+        <select id="date-range"></select></div>
+      <div class="row" id="date-day-row" style="display:none"><label for="date-day">Date</label>
+        <input type="date" id="date-day"></div>
+      <div class="note" id="date-note">The condition is added to the advanced filter, so it composes with
+        the others; UTC, weeks from Monday to Sunday. A window is a question, not a conclusion.</div>
+      <div class="pager"><div class="info" id="date-summary"></div></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="date-add">Add the condition</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="expression-modal">
   <div class="dialog" style="width:min(880px,94vw)">
     <h3>Advanced filter</h3>
@@ -710,6 +792,8 @@
         <select id="rule-target"><option value="">the whole row</option>
           <option value="cell">this cell only</option></select></div>
       <div class="row"><button class="btn" data-act="rule-add">Add the rule</button></div>
+      <div class="note" id="rule-values-note">Values of the chosen column: click one to use it.</div>
+      <div class="columns-list" id="rule-values" style="max-height:120px"></div>
       <div class="note" id="rules-note"></div>
       <div class="columns-list" id="rules-list" style="max-height:220px"></div>
     </div>

@@ -518,6 +518,11 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
                    "X-Fireblade-Sha256": str(receipt.get("sha256", ""))}
         return Response(content=data, media_type="text/csv", headers=headers)
 
+    @app.get("/api/date-ranges")
+    def date_ranges():
+        """Today, Yesterday, ThisWeek… as the core defines them."""
+        return library.date_ranges()
+
     @app.get("/api/cases/{identifier}/coverage")
     def coverage(identifier: str, expected: str = "observed", verify_hashes: bool = False,
                  deep_checks: bool = True, run: bool = True):
@@ -716,6 +721,8 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
              bookmarks_only: bool = False, group: list[int] = Query(default=[]),
              path: list[str] = Query(default=[]), sortkey: list[str] = Query(default=[]),
              interval: str = "", expression_json: str = "",
+             summary: list[str] = Query(default=[]), order: str = "",
+             order_descending: bool = True, order_summary: int = 0,
              filter: list[str] = Query(default=[])):
         # sortkey=3:desc — several keys, applied in the order they are sent.
         sorts = []
@@ -725,6 +732,16 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
                 sorts.append((int(column), flag == "desc"))
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="Invalid sort key.") from exc
+        # summary=4:distinct:text — one entry per aggregate, in the order shown.
+        summaries = []
+        for raw in summary:
+            parts = raw.split(":")
+            try:
+                summaries.append((int(parts[0]),
+                                  parts[1] if len(parts) > 1 else "count",
+                                  parts[2] if len(parts) > 2 else "number"))
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="Invalid summary.") from exc
         expression = None
         if expression_json:
             try:
@@ -734,7 +751,9 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         return library.rows(identifier, index, offset=offset, limit=limit, search=search,
                             sort=sort, descending=descending, bookmarks_only=bookmarks_only,
                             groups=group, path=path, sorts=sorts, interval=interval,
-                            expression=expression, filters=parse_filters(filter))
+                            expression=expression, filters=parse_filters(filter),
+                            summaries=summaries, order=order,
+                            order_descending=order_descending, order_summary=order_summary)
 
     @app.get("/api/cases/{identifier}/analyses/{index}/export")
     def export(identifier: str, index: int, search: str = "", sort: int | None = None,

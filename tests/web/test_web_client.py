@@ -327,10 +327,15 @@ def test_every_menu_entry_has_a_handler():
     assert not missing, f"entries with no handler: {missing}"
 
 
-def test_the_six_menus_of_the_desktop():
+def test_the_eight_menus_of_the_desktop():
+    """The desktop's menu bar, in the desktop's order."""
+    import re
+
     js, html = _read(APP), _read(INDEX)
-    for name in ("case", "edit", "view", "filters", "analysis", "help"):
-        assert f'data-menu="{name}"' in html, name
+    names = re.findall(r'<div class="m" data-menu="([a-z]+)"', html)
+    assert names == ["case", "analysis", "detection", "edit", "view", "filters",
+                     "exporter", "help"], names
+    for name in names:
         assert f'data-for="{name}"' in html, name
     # A menu is not a dead label: no entry may sit on a greyed "off" class.
     assert 'class="m off"' not in html
@@ -412,6 +417,22 @@ def test_a_rule_can_be_a_bar_a_scale_or_an_icon_set():
     for name in ("visualCell", "mixColour", "colourOf"):
         assert f"function {name}(" in js, name
     assert "linear-gradient(90deg" in js, "a data bar fills from the left"
+
+
+def test_the_artifacts_tree_sits_on_the_right():
+    """The desktop's order: grid left, artifacts right."""
+    css = (WEB / "static" / "app.css").read_text(encoding="utf-8")
+    assert "order:2" in css and ".pane{order:1}" in css
+
+
+def test_the_findings_panel_reads_like_the_desktop():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="finding-search"' in html and 'id="finding-counts"' in html
+    for column in ("Time", "Level", "Rule", "Host", "Count", "Event IDs", "MITRE"):
+        assert f"<th>{column}</th>" in html, column
+    for name in ("shownFindings", "renderFindingSeverity"):
+        assert f"function {name}(" in js, name
+    assert "showing ${groups.length} of" in js
 
 
 def test_the_findings_have_three_maps():

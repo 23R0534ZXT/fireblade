@@ -951,17 +951,31 @@ async function loadCases() {
 
 function renderCases() {
   const term = ($("case-search").value || "").toLowerCase();
-  const matches = state.cases.filter((item) =>
-    !term || [item.name, item.environment, item.id, item.status].join(" ").toLowerCase().includes(term));
+  const archived = $("case-archived").checked;
+  const matches = state.cases.filter((item) => {
+    if (!archived && item.status === "archived") return false;
+    return !term || [item.name, item.description, item.environment, item.id, item.status]
+      .join(" ").toLowerCase().includes(term);
+  });
   const body = $("cases-body");
+  const when = (value) => (value ? String(value).replace("T", " ").slice(0, 19) : "—");
   body.innerHTML = matches.map((item) => `
-    <tr data-case="${escapeHtml(item.id)}" class="${state.openCase && state.openCase.id === item.id ? "sel" : ""}">
+    <tr data-case="${escapeHtml(item.id)}" class="${
+      [state.openCase && state.openCase.id === item.id ? "sel" : "",
+       state.selectedCase === item.id ? "selected" : ""].filter(Boolean).join(" ")}">
       <td title="${escapeHtml(item.description || "")}">${escapeHtml(item.name || "(unnamed)")}</td>
-      <td>${escapeHtml(item.environment || "—")}</td>
+      <td>${escapeHtml(String(item.collection_count ?? (item.collections || []).length ?? 0))}</td>
       <td>${escapeHtml(item.status || "—")}</td>
       <td>${escapeHtml(String(item.analysis_count ?? 0))}</td>
-      <td>${escapeHtml(item.updated || "—")}</td>
+      <td>${escapeHtml(when(item.created))}</td>
+      <td>${escapeHtml(when(item.updated))}</td>
+      <td>${escapeHtml(when(item.opened || item.updated))}</td>
     </tr>`).join("");
+  $("case-count").textContent = `${matches.length} case(s) displayed`;
+  const selected = matches.find((item) => state.openCase && item.id === state.openCase.id);
+  $("case-footer-description").textContent = selected
+    ? (selected.description || "No description for this case.")
+    : "Select a case to read its description.";
   $("cases-empty").hidden = matches.length > 0;
   $("cases-empty").textContent = state.cases.length
     ? "No case matches this filter."
@@ -1283,6 +1297,61 @@ function clearEveryFilter() {
   say("Filters cleared");
 }
 
+/* The bookmarks and their notes, as a CSV the analyst can keep outside the case. */
+async function exportAnnotations() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const lines = [["row_id", "note", "values"]];
+  const rows = new Map(state.rows.map((row) => [String(row[0]), row]));
+  for (const [rowId, note] of state.bookmarks.entries()) {
+    const row = rows.get(String(rowId));
+    const values = row ? row.slice(1).join(" | ") : "";
+    lines.push([rowId, String(note || ""), values]);
+  }
+  const csv = lines.map((line) => line.map((cell) =>
+    '"' + String(cell).replace(/"/g, '""') + '"').join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `bookmarks-${(state.openCase.name || "case").replace(/[^\w.-]+/g, "-")}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+  say(`${state.bookmarks.size} bookmark(s) exported`);
+}
+
+/* A portable case comes in as a file the browser sends: the server verifies every
+   byte before it becomes a case, so a truncated archive never half-opens. */
+async function uploadPortableCase(event) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = "";
+  if (!file) return;
+  const body = new FormData();
+  body.append("file", file);
+  say(`Importing ${file.name}…`);
+  try {
+    const response = await fetch("/api/cases/import-package", { method: "POST", body });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.detail || response.statusText);
+    await loadCases();
+    say(`Portable case imported: ${payload.name} (${payload.analyses} analysis(es))`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+/* The case as one .fireblade archive: every byte verified by the core's own packer. */
+async function exportPortable() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  say("Writing the portable case…");
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/package`,
+      { include_sources: true });
+    say(`Portable case: ${payload.name} — ${(payload.bytes / 1048576).toFixed(1)} MB`);
+    window.location.href = payload.url;
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 /* A note on the first cell of each selected row: added to what is there, or
    replacing it — the desktop offers both, and they are not the same promise. */
 async function noteSelection(mode) {
@@ -1497,23 +1566,51 @@ function renderFindingView() {
   $("finding-summary").textContent = findingState.groups.length
     ? `${findingState.groups.length} finding(s), ${hits} alert(s)`
       + (findingState.source ? ` — ${findingState.source}` : "")
-    : "No finding to draw yet: run the detection.";
-  if (view === "table") { renderFindingTable(); return; }
+    : "No finding yet: run the detection, or open the alert analysis.";
+  if (view === "table") { renderFindingSeverity(shownFindings()); renderFindingTable(); return; }
   drawFindingMap(view);
 }
 
+/* The findings on screen: the filter reads the rule, the host and the event ids,
+   the way the desktop's own field does. */
+function shownFindings() {
+  const term = ($("finding-search").value || "").trim().toLowerCase();
+  if (!term) return findingState.groups;
+  return findingState.groups.filter((group) =>
+    [group.title, group.host, (group.event_ids || []).join(" "), group.tactics,
+     group.techniques, group.level].join(" ").toLowerCase().includes(term));
+}
+
 function renderFindingTable() {
-  $("hayabusa-rows").innerHTML = findingState.groups.length
-    ? findingState.groups.map((group) => `<tr>
+  const groups = shownFindings();
+  $("hayabusa-rows").innerHTML = groups.length
+    ? groups.map((group) => `<tr>
         <td>${escapeHtml(group.start || "(undated)")}</td>
         <td>${escapeHtml(group.level || "")}</td>
         <td title="${escapeHtml(group.details || "")}">${escapeHtml(group.title || "")}</td>
         <td>${escapeHtml(group.host || "")}</td>
-        <td>${escapeHtml(group.channel || "")}</td>
+        <td>${group.count || 0}</td>
         <td>${escapeHtml((group.event_ids || []).join(", "))}</td>
-        <td>${escapeHtml(group.tactics || "")}</td>
-        <td>${group.count || 0}</td></tr>`).join("")
-    : '<tr><td colspan="8" class="cellnull">No finding: run the detection or open the alert analysis.</td></tr>';
+        <td title="${escapeHtml(group.tactics || "")}">${escapeHtml(group.techniques || "")}</td>
+      </tr>`).join("")
+    : '<tr><td colspan="7" class="cellnull">No finding matches this filter.</td></tr>';
+  renderFindingSeverity(groups);
+}
+
+/* The severity bar the desktop keeps under its table: one count per level, and how
+   many findings the filter left on screen. */
+function renderFindingSeverity(groups) {
+  const levels = ["critical", "high", "medium", "low", "informational"];
+  const counts = new Map(levels.map((level) => [level, 0]));
+  for (const group of groups) {
+    const level = String(group.level || "informational").toLowerCase();
+    counts.set(level, (counts.get(level) || 0) + 1);
+  }
+  $("finding-counts").innerHTML = levels.map((level) =>
+    `<span class="chip" style="opacity:${counts.get(level) ? 1 : 0.45}">`
+    + `<span class="swatch" style="background:${findingLevelColour(level)}"></span>`
+    + `${level} ${counts.get(level) || 0}</span>`).join("")
+    + `<span class="note" style="margin-left:auto">showing ${groups.length} of ${findingState.groups.length}</span>`;
 }
 
 function findingCanvas() {
@@ -1540,7 +1637,8 @@ function findingDates(group) {
 
 function drawFindingMap(view) {
   const { context, width, height } = findingCanvas();
-  if (!findingState.groups.length) {
+  findingState.visible = shownFindings();
+  if (!findingState.visible.length) {
     context.fillStyle = "#666";
     context.fillText("No finding to draw: run the detection first.", 16, 24);
     return;
@@ -1572,7 +1670,7 @@ function drawFindingLegend(context, width, keys) {
 function drawClockMap(context, width, height) {
   const centreX = width / 2;
   const centreY = height / 2 + 10;
-  const keys = [...new Set(findingState.groups.map(findingGroupKey))].sort();
+  const keys = [...new Set((findingState.visible || findingState.groups).map(findingGroupKey))].sort();
   const outer = Math.min(width, height) / 2 - 46;
   const ringStep = keys.length > 1 ? Math.min(26, (outer - 90) / keys.length) : 0;
   drawFindingLegend(context, width, keys);
@@ -1596,7 +1694,7 @@ function drawClockMap(context, width, height) {
   context.arc(centreX, centreY, outer - 8, 0, Math.PI * 2);
   context.stroke();
   let undated = 0;
-  for (const group of findingState.groups) {
+  for (const group of (findingState.visible || findingState.groups)) {
     const { start } = findingDates(group);
     if (!start) { undated += 1; continue; }
     const key = findingGroupKey(group);
@@ -1619,7 +1717,7 @@ function drawClockMap(context, width, height) {
 }
 
 function drawHeatMap(context, width, height) {
-  const keys = [...new Set(findingState.groups.map(findingGroupKey))].sort();
+  const keys = [...new Set((findingState.visible || findingState.groups).map(findingGroupKey))].sort();
   const rows = Math.max(1, keys.length);
   const left = 16;
   const labelWidth = Math.min(220, Math.max(90, width * 0.22));
@@ -1631,7 +1729,7 @@ function drawHeatMap(context, width, height) {
   drawFindingLegend(context, width, keys);
   const cells = new Map();
   let peak = 1;
-  for (const group of findingState.groups) {
+  for (const group of (findingState.visible || findingState.groups)) {
     const { start } = findingDates(group);
     if (!start) continue;
     const cell = `${findingGroupKey(group)}|${start.getUTCHours()}`;
@@ -1668,7 +1766,7 @@ function drawHeatMap(context, width, height) {
 }
 
 function drawChainMap(context, width, height) {
-  const dated = findingState.groups.filter((group) => findingDates(group).start);
+  const dated = (findingState.visible || findingState.groups).filter((group) => findingDates(group).start);
   drawFindingLegend(context, width, [...new Set(findingState.groups.map(findingGroupKey))]);
   if (!dated.length) {
     context.fillStyle = "#666";
@@ -3273,7 +3371,7 @@ async function runGlobalSearch() {
 
 /* ---------- actions and tracking ---------- */
 
-const actionState = { items: [] };
+const actionState = { items: [], shown: [], selected: null };
 
 const workspaceState = { entities: [], indicators: [], selected: null };
 
@@ -3454,21 +3552,50 @@ async function removeIndicator() {
   }
 }
 
+/* The actions on screen: the scope, the free text and "open only", as the desktop
+   filters them — the same three questions, in the same place. */
+function shownActions() {
+  const term = ($("action-search").value || "").trim().toLowerCase();
+  const openOnly = $("action-open-only").checked;
+  return actionState.items.filter((item) => {
+    if (openOnly && (item.status === "done" || item.status === "cancelled")) return false;
+    if (!term) return true;
+    return [item.title, item.detail, item.owner, item.machine, item.reference,
+            item.intervenant, item.type].join(" ").toLowerCase().includes(term);
+  });
+}
+
 function renderActions() {
-  // (re-rendered below, then bound: the Remove button belongs to the row, not the list)
-  $("action-rows").innerHTML = actionState.items.map((item) => `
-    <tr data-action="${escapeHtml(item.id)}">
+  const items = shownActions();
+  actionState.shown = items;
+  $("action-rows").innerHTML = items.length ? items.map((item) => `
+    <tr data-action="${escapeHtml(item.id)}" class="${actionState.selected === item.id ? "sel" : ""}">
       <td>${escapeHtml(item.date || "")}</td>
-      <td title="${escapeHtml(item.detail || "")}">${escapeHtml(item.title)}</td>
-      <td>${escapeHtml(item.owner || "")}</td>
       <td>${escapeHtml(item.priority || "")}</td>
       <td>${escapeHtml(item.status || "")}</td>
+      <td>${escapeHtml(item.type || "")}</td>
+      <td>${escapeHtml(item.intervenant || item.owner || "")}</td>
+      <td title="${escapeHtml(item.detail || "")}">${escapeHtml(item.title || "")}</td>
       <td><button class="btn" data-action-close="${escapeHtml(item.id)}">${
-        item.status === "done" ? "Reopen" : "Done"}</button>
-        <button class="btn" data-action-remove="${escapeHtml(item.id)}">Remove</button></td>
-    </tr>`).join("");
+        item.status === "done" ? "Reopen" : "Done"}</button></td>
+    </tr>`).join("") : '<tr><td colspan="7" class="cellnull">No action recorded in this scope.</td></tr>';
+  $("action-rows").querySelectorAll("tr[data-action]").forEach((row) => {
+    row.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-action-close]");
+      if (button) { toggleAction(button.dataset.actionClose); return; }
+      actionState.selected = row.dataset.action;
+      renderActions();
+    });
+  });
   const open = actionState.items.filter((item) => item.status !== "done" && item.status !== "cancelled").length;
-  $("action-summary").textContent = `${actionState.items.length} action(s), ${open} still open`;
+  const overdue = actionState.items.filter((item) => {
+    if (!item.due || item.status === "done" || item.status === "cancelled") return false;
+    return String(item.due) < new Date().toISOString().slice(0, 10);
+  }).length;
+  const scope = $("action-scope").value === "all" ? "every case" : "the open case";
+  $("action-summary").textContent = `${actionState.items.length} action(s) · ${open} open · `
+    + `${overdue} overdue · ${scope}`
+    + (items.length ? "" : " · No action recorded in this scope.");
 }
 
 async function removeActionRow(actionId) {
@@ -3494,6 +3621,7 @@ async function addAction() {
   try {
     await apiPost(`/api/cases/${state.openCase.id}/actions`, {
       title, owner: $("action-owner").value, priority: $("action-priority").value,
+      type: $("action-type").value,
     });
     $("action-title").value = "";
     await loadActions();
@@ -4534,6 +4662,16 @@ function applyScale() {
 
 /* ---------- events ---------- */
 
+function openMenu(name) {
+  const cell = document.querySelector(`.menubar .m[data-menu="${name}"]`);
+  const menu = document.querySelector(`.menu[data-for="${name}"]`);
+  if (!cell || !menu) return;
+  document.querySelectorAll(".menu").forEach((node) => node.classList.remove("show"));
+  menu.style.left = `${cell.getBoundingClientRect().left}px`;
+  menu.classList.add("show");
+  cell.classList.add("open");
+}
+
 function wire() {
   document.querySelectorAll('.menubar .m').forEach((node) => {
     node.addEventListener("mousedown", (event) => {
@@ -4617,7 +4755,19 @@ function wire() {
     const row = event.target.closest("tr[data-case]");
     if (row) openCase(row.dataset.case);
   });
+  $("cases-body").addEventListener("click", (event) => {
+    const row = event.target.closest("tr[data-case]");
+    if (!row) return;
+    state.selectedCase = row.dataset.case;
+    renderCases();
+  });
+  $("cases-body").addEventListener("dblclick", (event) => {
+    const row = event.target.closest("tr[data-case]");
+    if (row) openCase(row.dataset.case);
+  });
   $("case-search").addEventListener("input", renderCases);
+  $("case-archived").addEventListener("change", renderCases);
+  $("package-input").addEventListener("change", uploadPortableCase);
 
   $("tree").addEventListener("click", (event) => {
     const node = event.target.closest("[data-analysis]");
@@ -4876,6 +5026,7 @@ function wire() {
     if (file) await importLayout(file);
     event.target.value = "";
   });
+  $("finding-search").addEventListener("input", renderFindingView);
   $("finding-view").addEventListener("change", renderFindingView);
   $("finding-group").addEventListener("change", renderFindingView);
   window.addEventListener("resize", () => {
@@ -4936,11 +5087,12 @@ function wire() {
     if (!state.openCase) { say("Open a case first", true); return; }
     window.location.href = `/api/cases/${state.openCase.id}/actions/export`;
   });
-  $("action-rows").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-action-close]");
-    if (button) toggleAction(button.dataset.actionClose);
-    const remove = event.target.closest("[data-action-remove]");
-    if (remove) removeActionRow(remove.dataset.actionRemove);
+  $("action-search").addEventListener("input", renderActions);
+  $("action-open-only").addEventListener("change", renderActions);
+  $("action-scope").addEventListener("change", renderActions);
+  $("action-refresh").addEventListener("click", () => loadActions());
+  $("action-delete").addEventListener("click", () => {
+    if (actionState.selected) removeActionRow(actionState.selected);
   });
   $("timeline-dates").addEventListener("change", applyTimelineDates);
   $("timeline-build").addEventListener("click", () => loadTimeline(false));
@@ -5076,6 +5228,9 @@ async function act(name, node) {
       window.location.href = rowsUrl().replace("/rows?", "/export?");
       break;
     case "import-file": openImportDialog(); break;
+    case "import-evidence": openImportDialog(); break;
+    case "parse-folder": $("import-layout").value = "artifacts"; openImportDialog(); break;
+    case "open-view-menu": openMenu("view"); break;
     case "preview-choose": $("preview-input").click(); break;
     case "preview-path": await previewServerPath(); break;
     case "layout-export": exportLayout(); break;
@@ -5118,6 +5273,12 @@ async function act(name, node) {
     case "filter-active-cell": filterFromCell("eq"); break;
     case "expression-andor": openExpressionDialog(); break;
     case "show-timeline": showTab("timeline"); break;
+    case "show-evtx": showTab("evtx"); break;
+    case "show-ioc": showTab("ioc"); break;
+    case "detect-run": await runHayabusa(); break;
+    case "export-annotations": await exportAnnotations(); break;
+    case "export-portable": await exportPortable(); break;
+    case "import-portable": $("package-input").click(); break;
     case "show-imports": showTab("imports"); break;
     case "stop-query": stopQuery(); break;
     case "case-autosave": showHelp("autosave"); break;
@@ -5142,6 +5303,10 @@ async function act(name, node) {
     case "global-search": $("search-modal").classList.add("show"); break;
     case "global-run": await runGlobalSearch(); $("search-modal").classList.add("show"); break;
     case "new-case": openCaseDialog("create"); break;
+    case "open-selected-case":
+      if (state.selectedCase) await openCase(state.selectedCase);
+      else say("Select a case first", true);
+      break;
     case "rename-case": openCaseDialog("rename"); break;
     case "case-save": await saveCase(); break;
     case "archive-case": await archiveCase(); break;

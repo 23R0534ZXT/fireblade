@@ -11,10 +11,12 @@
 
   <div class="menubar" id="menubar">
     <div class="m" data-menu="case"><span class="mnemonic">C</span>ase</div>
+    <div class="m" data-menu="analysis">A<span class="mnemonic">n</span>alysis</div>
+    <div class="m" data-menu="detection"><span class="mnemonic">D</span>etection</div>
     <div class="m" data-menu="edit"><span class="mnemonic">E</span>dit</div>
     <div class="m" data-menu="view"><span class="mnemonic">V</span>iew</div>
     <div class="m" data-menu="filters">Fi<span class="mnemonic">l</span>ters</div>
-    <div class="m" data-menu="analysis">A<span class="mnemonic">n</span>alysis</div>
+    <div class="m" data-menu="exporter">E<span class="mnemonic">x</span>porter</div>
     <div class="m" data-menu="help"><span class="mnemonic">H</span>elp</div>
 
     <div class="menu" data-for="case">
@@ -36,6 +38,22 @@
       <div class="item" data-act="report">Reports…</div>
       <div class="item" data-act="destroy-case">Destroy the evidence…</div>
       <div class="item" data-act="delete-case">Delete the case…</div>
+    </div>
+
+    <div class="menu" data-for="detection">
+      <div class="item" data-act="detect-run">Analyze the collection with Hayabusa</div>
+      <div class="item" data-act="alert-context">Show the alert's EVTX context</div>
+      <div class="sep"></div>
+      <div class="item" data-act="show-evtx">Open EVTX detection</div>
+      <div class="item" data-act="show-ioc">Hunt IOCs</div>
+    </div>
+
+    <div class="menu" data-for="exporter">
+      <div class="item" data-act="export-csv">Export…<span class="key">Ctrl+Shift+E</span></div>
+      <div class="item" data-act="export-annotations">Export the bookmarks and notes…</div>
+      <div class="item" data-act="export-portable">Export the portable case…</div>
+      <div class="sep"></div>
+      <div class="item" data-act="report">Create an HTML / PDF report…</div>
     </div>
 
     <div class="menu" data-for="edit">
@@ -122,24 +140,32 @@
         <path d="M1.5 4.5h5l1.2 1.5h6.8v7.5H1.5z" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
         <path d="M1.5 4.5V3h4l1.2 1.5" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
       </svg>Import a file</div>
-    <select class="select" id="import-layout" title="How the results are laid out">
-      <option value="files">one grid per file</option>
-      <option value="artifacts">one grid per artifact family</option>
-      <option value="combined">one grid for everything</option>
-    </select>
-    <input type="file" id="import-input" multiple hidden>
     <div class="tb" data-act="export-csv">
       <svg class="ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
         <path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
         <path d="M8 5v6M5.5 8.5 8 11l2.5-2.5" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
       </svg>Export</div>
     <div class="tbsep"></div>
+    <div class="tb" data-act="case-save">Save case</div>
+    <div class="tb" data-act="import-evidence">Import evidence</div>
+    <div class="tb" data-act="parse-folder">Parse a folder</div>
+    <div class="tb" data-act="display-settings">Workspace…</div>
+    <div class="tb" data-act="global-search">Global search</div>
+    <div class="tb" data-act="rules">Rules</div>
+    <div class="tb" data-act="profiles-plugins">Plugins</div>
+    <div class="tbsep"></div>
+    <select class="select" id="import-layout" title="How the results are laid out">
+      <option value="files">one grid per file</option>
+      <option value="artifacts">one grid per artifact family</option>
+      <option value="combined">one grid for everything</option>
+    </select>
+    <input type="file" id="import-input" multiple hidden>
+    <input type="file" id="package-input" accept=".fireblade" hidden>
+    <input type="file" id="layout-file" accept=".json" hidden>
     <div class="casecombo" id="casecombo"><span id="casecombo-label">No case open</span><span class="arrow">▼</span></div>
     <div class="tbsep"></div>
     <div class="tb" data-act="refresh-cases">Refresh</div>
     <div class="tb" data-act="close-case">Close case</div>
-    <div class="tbsep"></div>
-    <div class="tb" data-act="global-search">Global search</div>
   </div>
 
   <div class="tabs" id="doctabs">
@@ -174,19 +200,10 @@
           <button class="btn" id="bookmarks-only" title="Show bookmarked rows only">Bookmarks</button>
         </div>
         <div class="groupbar">
-          <div class="hint" id="group-label">Filters apply to the whole analysis, not just the page on screen.</div>
+          <div class="hint" id="group-label">Drag a header here to group the results</div>
           <div class="grow"></div>
           <button class="btn" data-act="group-column">Group…</button>
-          <button class="btn" data-act="layout-export" title="Save this column layout as a file">Export the layout…</button>
-          <button class="btn" data-act="layout-import" title="Read a column layout from a file">Import a layout…</button>
-          <input type="file" id="layout-file" accept=".json" hidden>
-          <button class="btn" data-act="columns">Columns…</button>
-          <button class="btn" data-act="rules">Colour rules…</button>
-          <button class="btn" data-act="views">Views…</button>
-          <button class="btn" data-act="expression">Advanced filter…</button>
-          <button class="btn" data-act="date-filter" title="Today, this week, one day…">Filter a date…</button>
-          <button class="btn" data-act="summaries" title="Aggregates per group, and how groups are ordered">Group summaries…</button>
-          <button class="btn" data-act="sort-priority" title="Several sort keys, in order">Sort priority…</button>
+          <button class="btn" data-act="open-view-menu" title="Columns, rules, views, filters, summaries">More…</button>
           <button class="btn" id="details-toggle">Row details</button>
         </div>
 
@@ -243,6 +260,8 @@
           <div class="note" style="margin-left:auto">No AI assistant is connected in this edition: the detection runs locally on the server.</div>
         </div>
         <div class="filterbar">
+          <input class="search" id="finding-search" placeholder="filter: rule, host, event id…"
+                 style="max-width:340px">
           <label for="finding-view">View</label>
           <select class="select" id="finding-view">
             <option value="table">Table</option>
@@ -263,14 +282,17 @@
         <div class="gridwrap" style="flex:1" id="finding-table">
           <div class="gridbody">
             <table>
-              <colgroup><col style="width:170px"><col style="width:90px"><col style="width:30%"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col><col style="width:120px"></colgroup>
-              <thead><tr><th>Timestamp</th><th>Level</th><th>Rule</th><th>Computer</th><th>Channel</th><th>EventID</th><th>Tactics</th><th>Alerts</th></tr></thead>
+              <colgroup><col style="width:170px"><col style="width:80px"><col style="width:34%"><col style="width:120px"><col style="width:60px"><col style="width:100px"><col></colgroup>
+              <thead><tr><th>Time</th><th>Level</th><th>Rule</th><th>Host</th><th>Count</th><th>Event IDs</th><th>MITRE</th></tr></thead>
               <tbody id="hayabusa-rows"></tbody>
             </table>
           </div>
         </div>
         <div id="finding-map-box" style="flex:1;display:none;padding:8px">
           <canvas id="finding-map" style="width:100%;height:100%"></canvas>
+        </div>
+        <div class="filterbar" id="finding-severity">
+          <span class="info" id="finding-counts"></span>
         </div>
       </div>
 
@@ -310,6 +332,20 @@
         </div>
 
         <div class="subview" id="sub-actions" style="display:flex;flex-direction:column;flex:1;min-height:0">
+          <div class="panel-title">
+            <h2>Actions and tracking</h2>
+            <p>One action per row. The date, priority, status, type, person and details are stored in the case.</p>
+          </div>
+          <div class="filterbar">
+            <label for="action-scope">Scope</label>
+            <select class="select" id="action-scope">
+              <option value="case">the open case</option>
+              <option value="all">every case of the library</option>
+            </select>
+            <input class="search" id="action-search" placeholder="Search the details, the person, the machine…">
+            <label><input type="checkbox" id="action-open-only"> Open actions only</label>
+            <button class="btn" id="action-refresh">Refresh</button>
+          </div>
           <div class="filterbar">
             <input class="search" id="action-title" placeholder="New action — what has to be done?">
             <select class="select" id="action-owner">
@@ -323,14 +359,21 @@
               <option value="high">high</option>
               <option value="critical">critical</option>
             </select>
-            <button class="btn" id="action-add">Add</button>
+            <select class="select" id="action-type">
+              <option value="containment">containment</option>
+              <option value="investigation">investigation</option>
+              <option value="remediation">remediation</option>
+              <option value="report">report</option>
+            </select>
+            <button class="btn" id="action-add">New action…</button>
+            <button class="btn" id="action-delete">Delete</button>
             <button class="btn" id="action-export" title="Download the tracking as a spreadsheet">Export CSV</button>
           </div>
           <div class="gridwrap" style="flex:1">
             <div class="gridbody">
               <table>
-                <colgroup><col style="width:80px"><col><col style="width:110px"><col style="width:100px"><col style="width:100px"><col style="width:120px"></colgroup>
-                <thead><tr><th>Date</th><th>Action</th><th>Owner</th><th>Priority</th><th>Status</th><th></th></tr></thead>
+                <colgroup><col style="width:110px"><col style="width:90px"><col style="width:100px"><col style="width:110px"><col style="width:110px"><col><col style="width:100px"></colgroup>
+                <thead><tr><th>Date</th><th>Priority</th><th>Action status</th><th>Action type</th><th>Intervenant</th><th>Details</th><th></th></tr></thead>
                 <tbody id="action-rows"></tbody>
               </table>
             </div>
@@ -463,25 +506,42 @@
       </div>
 
       <div id="cases-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="panel-title">
+          <h2>Cases — investigation folders</h2>
+          <p>Find your investigations and their session. Only the case you open loads its analyses.</p>
+        </div>
         <div class="filterbar">
-          <input class="search" id="case-search" placeholder="Filter cases by name, environment or identifier…">
-          <button class="btn" data-act="refresh-cases">Refresh</button>
           <button class="btn" data-act="new-case">New case…</button>
-          <button class="btn" data-act="rename-case">Rename…</button>
-          <button class="btn" data-act="archive-case">Archive…</button>
+          <button class="btn" data-act="open-selected-case">Open</button>
+          <button class="btn" data-act="rename-case">Edit…</button>
+          <button class="btn" data-act="archive-case">Archive</button>
           <button class="btn" data-act="restore-case">Restore</button>
-          <button class="btn" data-act="destroy-case">Destroy…</button>
+          <button class="btn" data-act="destroy-case">Archive and free the space…</button>
+        </div>
+        <div class="filterbar">
+          <input class="search" id="case-search" placeholder="Search for a name, a description…">
+          <label><input type="checkbox" id="case-archived"> Include archived</label>
+          <button class="btn" data-act="refresh-cases">Refresh</button>
         </div>
         <div class="caseswrap">
           <table>
             <colgroup>
-              <col style="width:34%"><col style="width:16%"><col style="width:12%">
-              <col style="width:11%"><col style="width:27%">
+              <col style="width:26%"><col style="width:8%"><col style="width:9%">
+              <col style="width:8%"><col style="width:16%"><col style="width:16%"><col style="width:17%">
             </colgroup>
-            <thead><tr><th>Case</th><th>Environment</th><th>Status</th><th>Analyses</th><th>Updated</th></tr></thead>
+            <thead><tr><th>Name</th><th>Collects</th><th>Status</th><th>Analyses</th>
+              <th>Created on</th><th>Modified on</th><th>Last opened</th></tr></thead>
             <tbody id="cases-body"></tbody>
           </table>
           <div class="emptygrid" id="cases-empty" hidden></div>
+        </div>
+        <div class="filterbar" id="case-footer">
+          <span class="info" id="case-footer-description">Select a case to read its description.</span>
+          <div class="grow"></div>
+          <span class="info" id="case-count"></span>
+          <button class="btn" data-act="case-history">History / recovery…</button>
+          <button class="btn" data-act="export-portable">Export the portable case…</button>
+          <button class="btn" data-act="import-portable">Import a portable case…</button>
         </div>
       </div>
     </div>

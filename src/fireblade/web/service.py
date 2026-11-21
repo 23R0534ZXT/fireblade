@@ -96,6 +96,9 @@ class Library:
             "updated": data.get("updated", ""),
             "created": data.get("created", ""),
             "analysis_count": data.get("analysis_count", len(data.get("analyses") or [])),
+            # The number of collections is the "Collects" column of the desktop's
+            # catalogue; the list itself is only read when a case is opened.
+            "collection_count": len(data.get("collections") or []),
             "recovery_needed": bool(data.get("recovery_needed")),
         }
 

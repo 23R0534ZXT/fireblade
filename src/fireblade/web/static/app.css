@@ -85,7 +85,10 @@ body{
 .work{display:flex;flex:1;min-height:0}
 
 /* artifacts */
-.artifacts{width:212px;flex:0 0 212px;display:flex;flex-direction:column;border-right:1px solid var(--border);background:var(--window)}
+/* The desktop keeps its artifacts tree on the right, the grid on the left: the
+   same order here, so a glance moves the same way in both editions. */
+.artifacts{width:212px;flex:0 0 212px;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--window);order:2}
+.pane{order:1}
 .artifacts .head{display:flex;align-items:center;height:22px;padding:0 6px}
 .artifacts .head .x{margin-left:auto;color:var(--disabled)}
 .combo{margin:2px 4px;height:20px;border:1px solid var(--border);background:var(--base);display:flex;align-items:center;padding:0 4px;font-size:11px;gap:5px}
@@ -381,3 +384,8 @@ td .vicon { margin-right: 4px; font-size: 10px; }
 .integrity-table th{text-align:left;font-weight:600;color:var(--muted);width:150px;padding:3px 8px 3px 0;vertical-align:top}
 .integrity-table td{padding:3px 0;word-break:break-all;font-family:Consolas,'Courier New',monospace;font-size:11px}
 #help-body p{margin:0 0 8px;line-height:1.45}
+
+/* A panel's own heading, as the desktop writes it above its tables. */
+.panel-title{padding:8px 10px 2px}
+.panel-title h2{margin:0;font-size:14px;font-weight:600;color:var(--text)}
+.panel-title p{margin:3px 0 0;color:var(--muted);font-size:11.5px}

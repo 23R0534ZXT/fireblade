@@ -176,6 +176,13 @@ What the comparison changed:
 | Provenance and SHA-256 had no screen | Analysis > Provenance and SHA-256… shows the source, the hash the collection recorded, its status and the analysis file |
 | A rule printed `Score not_empty ""` | read as a sentence: `Score is not empty`, and the visual format when it has one |
 | The grid's header looped over every column while the body looped over the visible ones | both follow the same list; a hidden column takes its title, its width and its filter with it |
+| The desktop has **eight** menus (Case, Analysis, Detection, Edit, View, Filters, Exporter, Help) with real entries in Detection and Exporter | the Host's bar follows that list and order; Detection runs the detection, opens the alert's EVTX context, the EVTX tab and the IOC hunt; Exporter writes the CSV, the bookmarks and notes, the portable case and the report |
+| The toolbar had four buttons where the desktop has nine, with the same names | Import a file · Export · Save case · Import evidence · Parse a folder · Workspace… · Global search · Rules · Plugins |
+| The grid carried eleven buttons above it; the desktop keeps two and the rest in menus | Group… · More… (the View menu) · Row details |
+| The artifacts tree sat on the left; the desktop puts it on the right | order changed, the grid keeps its place |
+| The Cases panel had five columns, no heading and no footer | heading and subtitle, Name · Collects · Status · Analyses · Created on · Modified on · Last opened, Include archived, and the footer with the description, the count and the three case buttons |
+| The Actions panel had five columns and no filtering | Scope, search, "Open actions only", Refresh, and Date · Priority · Action status · Action type · Intervenant · Details, with "N action(s) · N open · N overdue · scope" |
+| The Hayabusa panel had a table of eight other columns and no filter | Time · Level · Rule · Host · Count · Event IDs · MITRE, a findings filter, and the severity bar with "showing N of M" |
 
 Still different, on purpose:
 

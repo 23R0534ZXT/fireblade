@@ -232,12 +232,26 @@
       </div>
 
       <div id="graph-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="panel-title">
+          <h2>Attack graph</h2>
+          <p>Hosts, observed techniques and tracked indicators, ordered along the attack chain.</p>
+        </div>
         <div class="filterbar">
-          <button class="btn" id="graph-build">Build the graph</button>
-          <button class="btn" id="graph-navigator">Export an ATT&CK layer…</button>
-          <button class="btn" id="graph-png">Export PNG…</button>
-          <button class="btn" id="graph-node">Free node…</button>
-          <div class="info" id="graph-summary">The graph follows the kill chain: hosts on the left, techniques, then tactics.</div>
+          <button class="btn" id="graph-build">Rebuild</button>
+          <select class="select" id="graph-level" title="Which levels of the chain to show">
+            <option value="">All levels</option>
+            <option value="host">Hosts</option>
+            <option value="technique">Techniques</option>
+            <option value="ioc">Indicators</option>
+          </select>
+          <span class="note">Zoom :</span>
+          <button class="btn" data-act="graph-zoom-out">−</button>
+          <button class="btn" data-act="graph-zoom-in">+</button>
+          <button class="btn" data-act="graph-recentre">Recentre</button>
+          <button class="btn" id="graph-node">Tag…</button>
+          <button class="btn" id="graph-navigator" title="ATT&amp;CK Navigator layer">…</button>
+          <button class="btn" id="graph-png" title="Export the graph as an image">PNG</button>
+          <div class="info" id="graph-summary"></div>
         </div>
         <div class="graph-wrap" id="graph-wrap">
           <svg id="graph-edges" width="100%" height="100%"></svg>

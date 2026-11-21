@@ -2540,6 +2540,28 @@ async function buildGraph() {
   }
 }
 
+/* The graph is drawn by the server; the window only scales it. A zoom keeps the
+   centre of the drawing where it is, and Recentre puts it back to 1. */
+let graphScale = 1;
+
+function graphZoom(factor) {
+  const nodes = $("graph-nodes");
+  if (!nodes || !nodes.children.length) { say("Build the graph first", true); return; }
+  graphScale = Math.max(0.4, Math.min(3, graphScale * factor));
+  nodes.style.transform = `scale(${graphScale})`;
+  nodes.style.transformOrigin = "top left";
+  $("graph-summary").textContent = `Zoom ${Math.round(graphScale * 100)} %`;
+}
+
+function graphReset() {
+  graphScale = 1;
+  const nodes = $("graph-nodes");
+  if (nodes) nodes.style.transform = "";
+  const wrap = $("graph-wrap");
+  if (wrap) wrap.scrollTo({ left: 0, top: 0 });
+  say("Graph recentred");
+}
+
 async function exportGraphPng() {
   if (!state.openCase) { say("Open a case first", true); return; }
   try {
@@ -5514,6 +5536,9 @@ async function act(name, node) {
     case "expression-andor": openExpressionDialog(); break;
     case "show-timeline": showTab("timeline"); break;
     case "show-evtx": showTab("evtx"); break;
+    case "graph-zoom-in": graphZoom(1.2); break;
+    case "graph-zoom-out": graphZoom(1 / 1.2); break;
+    case "graph-recentre": graphReset(); break;
     case "show-ioc": showTab("ioc"); break;
     case "detect-run": await runHayabusa(); break;
     case "export-annotations": await exportAnnotations(); break;

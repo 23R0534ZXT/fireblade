@@ -405,6 +405,16 @@ def test_a_machine_and_an_action_can_be_changed_or_removed():
     assert "data-reopen" in js and "/closed/" in js
 
 
+def test_the_graph_carries_the_desktop_controls():
+    js, html = _read(APP), _read(INDEX)
+    for action in ("graph-zoom-in", "graph-zoom-out", "graph-recentre"):
+        assert f'data-act="{action}"' in html, action
+    assert 'id="graph-level"' in html and "All levels" in html
+    for name in ("graphZoom", "graphReset"):
+        assert f"function {name}(" in js, name
+    assert "Attack graph" in html and "ordered along the attack chain" in html
+
+
 def test_the_ioc_panel_lists_indicators_and_matches():
     js, html = _read(APP), _read(INDEX)
     for column in ("Type", "IOC original", "Normalised", "Label", "Rows"):

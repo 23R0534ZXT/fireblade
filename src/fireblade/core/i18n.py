@@ -1736,6 +1736,10 @@ EN = {
     "Périmètre et notes de mission :": "Scope and engagement notes:",
     "Rapport client créé : {} constat(s), {} action(s) ouverte(s) · {}": "Client report created: {} finding(s), {} open action(s) · {}",
     "Rapport client…": "Client report…",
+    "Reconstruire": "Rebuild",
+    "Reconstruire depuis les constats": "Rebuild from the findings",
+    "Recentrer": "Recentre",
+    "Aucun nœud. Lancez Hayabusa sur une analyse, puis cliquez sur Reconstruire : les hôtes, les techniques et les indicateurs suivis apparaîtront ici.": "No node. Run Hayabusa on an analysis, then press Rebuild: the hosts, the techniques and the tracked indicators appear here.",
     # The reader's own refusals reach the import report; they are shown there too.
     "Détection CSV ambiguë. Choisissez le séparateur dans Options du CSV.": "Ambiguous CSV detection. Choose the separator in CSV options.",
     "La détection automatique n’a pas trouvé de séparateur cohérent. Choisissez le séparateur dans Options du CSV.": "The automatic detection found no consistent separator. Choose the separator in CSV options.",

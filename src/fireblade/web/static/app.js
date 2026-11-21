@@ -1045,6 +1045,304 @@ function applyExpression() {
     : "Advanced filter cleared");
 }
 
+/* ---------- the findings, and their three maps ---------- */
+
+const LEVEL_COLOURS = { critical: "#8b1c1c", high: "#c05621", medium: "#b7791f",
+                        low: "#2b6cb0", informational: "#4a5568" };
+const findingState = { groups: [], incidents: [], source: "", loaded: false };
+
+function findingLevelColour(level) {
+  return LEVEL_COLOURS[String(level || "informational").toLowerCase()] || LEVEL_COLOURS.informational;
+}
+
+function findingGroupKey(group) {
+  const field = $("finding-group").value;
+  const value = group[field] === undefined ? group.title : group[field];
+  return value === null || value === "" ? "(none)" : String(value);
+}
+
+async function loadFindings(force) {
+  if (!state.openCase) return;
+  if (findingState.loaded && !force) { renderFindingView(); return; }
+  try {
+    const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/findings`);
+    findingState.groups = payload.groups || [];
+    findingState.incidents = payload.incidents || [];
+    findingState.source = payload.source || "";
+    findingState.loaded = true;
+    if (payload.error) say(payload.error, true);
+    renderFindingView();
+  } catch (error) {
+    findingState.groups = [];
+    say(error.message, true);
+    renderFindingView();
+  }
+}
+
+function renderFindingView() {
+  const view = $("finding-view").value;
+  $("finding-table").style.display = view === "table" ? "" : "none";
+  $("finding-map-box").style.display = view === "table" ? "none" : "";
+  const hits = findingState.groups.reduce((sum, group) => sum + (group.count || 0), 0);
+  $("finding-summary").textContent = findingState.groups.length
+    ? `${findingState.groups.length} finding(s), ${hits} alert(s)`
+      + (findingState.source ? ` — ${findingState.source}` : "")
+    : "No finding to draw yet: run the detection.";
+  if (view === "table") { renderFindingTable(); return; }
+  drawFindingMap(view);
+}
+
+function renderFindingTable() {
+  $("hayabusa-rows").innerHTML = findingState.groups.length
+    ? findingState.groups.map((group) => `<tr>
+        <td>${escapeHtml(group.start || "(undated)")}</td>
+        <td>${escapeHtml(group.level || "")}</td>
+        <td title="${escapeHtml(group.details || "")}">${escapeHtml(group.title || "")}</td>
+        <td>${escapeHtml(group.host || "")}</td>
+        <td>${escapeHtml(group.channel || "")}</td>
+        <td>${escapeHtml((group.event_ids || []).join(", "))}</td>
+        <td>${escapeHtml(group.tactics || "")}</td>
+        <td>${group.count || 0}</td></tr>`).join("")
+    : '<tr><td colspan="8" class="cellnull">No finding: run the detection or open the alert analysis.</td></tr>';
+}
+
+function findingCanvas() {
+  const canvas = $("finding-map");
+  const ratio = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth || 900;
+  const height = canvas.clientHeight || 380;
+  canvas.width = Math.round(width * ratio);
+  canvas.height = Math.round(height * ratio);
+  const context = canvas.getContext("2d");
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.clearRect(0, 0, width, height);
+  context.font = "11px Segoe UI, Arial, sans-serif";
+  context.textBaseline = "middle";
+  return { context, width, height };
+}
+
+function findingDates(group) {
+  const start = group.start ? new Date(group.start) : null;
+  const end = group.end ? new Date(group.end) : null;
+  const ok = start && !Number.isNaN(start.getTime());
+  return { start: ok ? start : null, end: end && !Number.isNaN(end.getTime()) ? end : null };
+}
+
+function drawFindingMap(view) {
+  const { context, width, height } = findingCanvas();
+  if (!findingState.groups.length) {
+    context.fillStyle = "#666";
+    context.fillText("No finding to draw: run the detection first.", 16, 24);
+    return;
+  }
+  if (view === "clock") drawClockMap(context, width, height);
+  if (view === "heat") drawHeatMap(context, width, height);
+  if (view === "chain") drawChainMap(context, width, height);
+}
+
+function drawFindingLegend(context, width, keys) {
+  let x = 16;
+  context.fillStyle = "#333";
+  context.fillText("Levels:", x, 18);
+  x += 52;
+  for (const level of ["critical", "high", "medium", "low", "informational"]) {
+    context.fillStyle = LEVEL_COLOURS[level];
+    context.fillRect(x, 12, 10, 10);
+    context.fillStyle = "#333";
+    context.fillText(level, x + 14, 18);
+    x += 20 + context.measureText(level).width;
+  }
+  if (keys && keys.length) {
+    context.fillStyle = "#666";
+    const note = `grouped by ${$("finding-group").value} · ${keys.length} value(s)`;
+    context.fillText(note, Math.max(x + 24, width - context.measureText(note).width - 16), 18);
+  }
+}
+
+function drawClockMap(context, width, height) {
+  const centreX = width / 2;
+  const centreY = height / 2 + 10;
+  const keys = [...new Set(findingState.groups.map(findingGroupKey))].sort();
+  const outer = Math.min(width, height) / 2 - 46;
+  const ringStep = keys.length > 1 ? Math.min(26, (outer - 90) / keys.length) : 0;
+  drawFindingLegend(context, width, keys);
+  // The dial: hours radiate from midnight at the top, clockwise.
+  context.strokeStyle = "#dfe4ea";
+  for (let hour = 0; hour < 24; hour += 1) {
+    const angle = (hour / 24) * Math.PI * 2 - Math.PI / 2;
+    context.beginPath();
+    context.moveTo(centreX + Math.cos(angle) * (outer - 8), centreY + Math.sin(angle) * (outer - 8));
+    context.lineTo(centreX + Math.cos(angle) * outer, centreY + Math.sin(angle) * outer);
+    context.stroke();
+    if (hour % 3 === 0) {
+      context.fillStyle = "#666";
+      const labelX = centreX + Math.cos(angle) * (outer + 12);
+      const labelY = centreY + Math.sin(angle) * (outer + 12);
+      context.fillText(`${String(hour).padStart(2, "0")}h`, labelX - 10, labelY);
+    }
+  }
+  context.strokeStyle = "#c3cad4";
+  context.beginPath();
+  context.arc(centreX, centreY, outer - 8, 0, Math.PI * 2);
+  context.stroke();
+  let undated = 0;
+  for (const group of findingState.groups) {
+    const { start } = findingDates(group);
+    if (!start) { undated += 1; continue; }
+    const key = findingGroupKey(group);
+    const ring = keys.indexOf(key);
+    const hour = start.getUTCHours() + start.getUTCMinutes() / 60;
+    const angle = (hour / 24) * Math.PI * 2 - Math.PI / 2;
+    const radius = Math.max(34, outer - 24 - ring * ringStep);
+    const size = Math.max(3.5, Math.min(14, 3.5 + Math.log2(1 + (group.count || 1)) * 2.6));
+    context.beginPath();
+    context.fillStyle = findingLevelColour(group.level);
+    context.globalAlpha = 0.85;
+    context.arc(centreX + Math.cos(angle) * radius, centreY + Math.sin(angle) * radius,
+                size, 0, Math.PI * 2);
+    context.fill();
+    context.globalAlpha = 1;
+  }
+  context.fillStyle = "#333";
+  context.fillText(`${findingState.groups.length} group(s) on the dial`
+    + (undated ? ` · ${undated} without a date` : ""), 16, height - 14);
+}
+
+function drawHeatMap(context, width, height) {
+  const keys = [...new Set(findingState.groups.map(findingGroupKey))].sort();
+  const rows = Math.max(1, keys.length);
+  const left = 16;
+  const labelWidth = Math.min(220, Math.max(90, width * 0.22));
+  const top = 58;   // below the legend, which owns the first line
+  const gridWidth = width - left - labelWidth - 20;
+  const gridHeight = height - top - 40;
+  const columnWidth = gridWidth / 24;
+  const rowHeight = gridHeight / rows;
+  drawFindingLegend(context, width, keys);
+  const cells = new Map();
+  let peak = 1;
+  for (const group of findingState.groups) {
+    const { start } = findingDates(group);
+    if (!start) continue;
+    const cell = `${findingGroupKey(group)}|${start.getUTCHours()}`;
+    const value = (cells.get(cell) || 0) + (group.count || 1);
+    cells.set(cell, value);
+    peak = Math.max(peak, value);
+  }
+  context.fillStyle = "#666";
+  for (let hour = 0; hour < 24; hour += 3) {
+    context.fillText(`${String(hour).padStart(2, "0")}h`, left + labelWidth + hour * columnWidth, top - 10);
+  }
+  keys.forEach((key, row) => {
+    const y = top + row * rowHeight;
+    context.fillStyle = "#333";
+    const text = key.length > 24 ? `${key.slice(0, 24)}…` : key;
+    context.fillText(text, left, y + rowHeight / 2);
+    for (let hour = 0; hour < 24; hour += 1) {
+      const value = cells.get(`${key}|${hour}`) || 0;
+      const x = left + labelWidth + hour * columnWidth;
+      context.fillStyle = value ? "#174b73" : "#eef1f4";
+      context.globalAlpha = value ? 0.25 + 0.75 * (value / peak) : 1;
+      context.fillRect(x + 1, y + 2, columnWidth - 2, Math.max(4, rowHeight - 4));
+      context.globalAlpha = 1;
+      if (value && rowHeight > 22) {
+        context.fillStyle = "#fff";
+        context.fillText(String(value), x + columnWidth / 2 - 3, y + rowHeight / 2);
+      }
+    }
+  });
+  const undated = findingState.groups.filter((group) => !findingDates(group).start).length;
+  context.fillStyle = "#333";
+  context.fillText(`${findingState.groups.length} group(s), hour by hour`
+    + (undated ? ` · ${undated} without a date (not placed)` : ""), 16, height - 12);
+}
+
+function drawChainMap(context, width, height) {
+  const dated = findingState.groups.filter((group) => findingDates(group).start);
+  drawFindingLegend(context, width, [...new Set(findingState.groups.map(findingGroupKey))]);
+  if (!dated.length) {
+    context.fillStyle = "#666";
+    context.fillText("No dated finding: the chain needs a timestamp.", 16, 60);
+    return;
+  }
+  const stamps = dated.flatMap((group) => {
+    const { start, end } = findingDates(group);
+    return [start.getTime(), (end || start).getTime()];
+  });
+  const low = Math.min(...stamps);
+  const high = Math.max(...stamps);
+  const span = Math.max(1, high - low);
+  const left = 40;
+  const right = width - 24;
+  const axisY = Math.round(height * 0.45);
+  const position = (value) => left + ((value - low) / span) * (right - left);
+
+  context.strokeStyle = "#c3cad4";
+  context.beginPath();
+  context.moveTo(left, axisY);
+  context.lineTo(right, axisY);
+  context.stroke();
+
+  // The marks first: a bar per group, on the side its label will take.
+  const lanes = { up: [], down: [] };
+  let index = 0;
+  for (const group of dated) {
+    const { start, end } = findingDates(group);
+    const x = position(start.getTime());
+    const width2 = Math.max(2, position((end || start).getTime()) - x);
+    const up = index % 2 === 0;
+    index += 1;
+    context.fillStyle = findingLevelColour(group.level);
+    context.globalAlpha = 0.85;
+    context.fillRect(x, up ? axisY - 10 : axisY, Math.max(2, width2), 10);
+    context.globalAlpha = 1;
+    context.strokeStyle = findingLevelColour(group.level);
+    context.beginPath();
+    context.moveTo(x, axisY);
+    context.lineTo(x, axisY + (up ? -22 : 22));
+    context.stroke();
+    (up ? lanes.up : lanes.down).push({ x, group, end: x + width2 });
+  }
+
+  // Then the labels, lane by lane, skipping any that would overprint the previous one.
+  const label = (group) => {
+    const text = `${group.title} (${group.count})`;
+    return text.length > 34 ? `${text.slice(0, 34)}…` : text;
+  };
+  // Two rows per side: a neighbour too close moves up (or down) one row instead of
+  // losing its label.
+  let drawn = 0;
+  for (const [side, items] of Object.entries(lanes)) {
+    const cursors = [-Infinity, -Infinity];
+    for (const item of items) {
+      const text = label(item.group);
+      const textWidth = context.measureText(text).width;
+      const row = item.x >= cursors[0] + 8 ? 0 : (item.x >= cursors[1] + 8 ? 1 : -1);
+      if (row < 0) continue;
+      cursors[row] = item.x + textWidth;
+      context.fillStyle = "#333";
+      const offset = side === "up" ? -(30 + row * 18) : 34 + row * 18;
+      const x = Math.min(item.x, right - textWidth - 2);
+      context.fillText(text, x, axisY + offset);
+      drawn += 1;
+    }
+  }
+
+  // The dates go under everything, where nothing else is written.
+  context.fillStyle = "#666";
+  for (const stamp of [low, low + span / 2, high]) {
+    const text = new Date(stamp).toISOString().slice(0, 16).replace("T", " ");
+    context.fillText(text, Math.min(position(stamp), right - context.measureText(text).width),
+                     axisY + 76);
+  }
+  context.fillStyle = "#333";
+  context.fillText(`${dated.length} dated group(s) from `
+    + `${new Date(low).toISOString().slice(0, 16).replace("T", " ")} to `
+    + `${new Date(high).toISOString().slice(0, 16).replace("T", " ")}`
+    + (drawn < dated.length ? ` · ${dated.length - drawn} label(s) left out for room` : ""),
+    16, height - 12);
+}
+
 /* ---------- sort priority ---------- */
 
 function sortRow(key = { column: 0, descending: false }) {
@@ -1650,6 +1948,7 @@ async function runHayabusa() {
     state.openCase = await api(`/api/cases/${state.openCase.id}`);
     renderTree();
     renderHayabusa();
+    await loadFindings(true);
     say(`Hayabusa: ${payload.total} finding(s) at level ${level}+`);
   } catch (error) {
     $("hayabusa-summary").textContent = error.message;
@@ -3172,6 +3471,7 @@ function showTab(name) {
   $("actions-view").style.display = name === "actions" ? "flex" : "none";
   $("imports-view").style.display = name === "imports" ? "flex" : "none";
   $("hayabusa-view").style.display = (name === "hayabusa" || name === "evtx") ? "flex" : "none";
+  if (name === "hayabusa" && state.openCase) loadFindings(false);
   $("graph-view").style.display = name === "graph" ? "flex" : "none";
   if (name === "graph" && state.openCase) buildGraph();
   if (name === "evtx") {
@@ -3733,6 +4033,11 @@ function wire() {
     saveCopyPrefs();
     renderGrid();
     say(`Dates shown ${event.target.value}`);
+  });
+  $("finding-view").addEventListener("change", renderFindingView);
+  $("finding-group").addEventListener("change", renderFindingView);
+  window.addEventListener("resize", () => {
+    if ($("finding-view").value !== "table") renderFindingView();
   });
   $("report-type").addEventListener("change", showReportType);
   $("date-mode").addEventListener("change", showDateMode);

@@ -66,6 +66,7 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | IOC — extras | import TXT/CSV/TSV, all analyses at once, respect the filters, sub-domains | **yes** — IOC hunting: a file or a paste, every analysis, each view's filters, and sub-domains on or off |
 | Hayabusa | run by level, findings, tactics, dedup, mark, open, export sources | **yes** |
 | Hayabusa — rules | "Règles de détection…" (enable, disable, override) | **yes** — Hayabusa > Detection rules (filter, edit, enable/disable, reset) |
+| Hayabusa — maps | Clock, Heat map and Chain views of the findings, "Grouped by" level, computer or rule | **yes** — Hayabusa > View (Table, Clock, Heat map, Chain) and Grouped by; drawn on a canvas server-side data |
 | Hayabusa — assistant | "Explain this finding", "Ask", local model | **declared** — no model is connected |
 | Attack graph | build, layout, ATT&CK layer, PNG, free node with tags | **yes** |
 | Workspace — machines and accounts | "Machine ou compte" (declared hosts, accounts) | **yes** — Actions & tracking > Machines & accounts |

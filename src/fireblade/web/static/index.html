@@ -173,7 +173,25 @@
           <div class="info" id="hayabusa-summary">No detection run yet.</div>
           <div class="note" style="margin-left:auto">No AI assistant is connected in this edition: the detection runs locally on the server.</div>
         </div>
-        <div class="gridwrap" style="flex:1">
+        <div class="filterbar">
+          <label for="finding-view">View</label>
+          <select class="select" id="finding-view">
+            <option value="table">Table</option>
+            <option value="clock">Clock</option>
+            <option value="heat">Heat map</option>
+            <option value="chain">Chain</option>
+          </select>
+          <label for="finding-group">Grouped by</label>
+          <select class="select" id="finding-group">
+            <option value="level">level</option>
+            <option value="host">computer</option>
+            <option value="title">rule</option>
+            <option value="channel">channel</option>
+          </select>
+          <div class="grow"></div>
+          <div class="info" id="finding-summary"></div>
+        </div>
+        <div class="gridwrap" style="flex:1" id="finding-table">
           <div class="gridbody">
             <table>
               <colgroup><col style="width:170px"><col style="width:90px"><col style="width:30%"><col style="width:110px"><col style="width:110px"><col style="width:80px"><col><col style="width:120px"></colgroup>
@@ -181,6 +199,9 @@
               <tbody id="hayabusa-rows"></tbody>
             </table>
           </div>
+        </div>
+        <div id="finding-map-box" style="flex:1;display:none;padding:8px">
+          <canvas id="finding-map" style="width:100%;height:100%"></canvas>
         </div>
       </div>
 

@@ -1002,3 +1002,41 @@ def test_the_findings_of_a_detection_are_grouped_for_the_report(tmp_path):
         assert getattr(groups[0], "count", 0) >= 1
     finally:
         library.close()
+
+
+def test_the_findings_route_shapes_the_groups(tmp_path):
+    """A group carries what the maps need: a start, a level, a count, a host."""
+    root = tmp_path / "cases"
+    root.mkdir()
+    book = InvestigationLibrary(root)
+    data = book.create("Groups", "Findings for the maps", "windows")
+    identifier = data["id"]
+    folder = book.folder(identifier)
+    analysis = folder / "analysis-1.duckdb"
+    source = tmp_path / "alertes hayabusa.csv"
+    with source.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["Timestamp", "RuleTitle", "Computer", "Level", "Channel", "EventID"])
+        # A minute apart: one burst. An hour apart would be three groups, by design.
+        for minute in (0, 1, 2):
+            writer.writerow([f"2026-11-02T10:0{minute}:00Z", "Suspicious Service Path", "SRV",
+                             "high", "System", "7045"])
+    case = Case(analysis)
+    try:
+        case.import_csv(source)
+        info = dict(case.info)
+    finally:
+        case.close()
+    snapshot = AnalysisSnapshot(path=str(analysis), source_info=dict(info, path=str(source)),
+                                view=View(), header_state=b"")
+    book.save(identifier, [snapshot], 0, [], None, data["revision"])
+    library = Library(root)
+    try:
+        payload = library.findings_view(identifier)
+        assert payload["count"] == 1, "three alerts of one rule on one host are one group"
+        group = payload["groups"][0]
+        assert group["start"] and group["level"] == "high" and group["count"] == 3
+        assert group["host"] == "SRV"
+        assert payload["incidents"], "the incident window is reported too"
+    finally:
+        library.close()

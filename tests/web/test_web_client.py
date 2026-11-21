@@ -317,6 +317,16 @@ def test_the_two_report_types_share_one_dialog():
     assert "/client-report" in js
 
 
+def test_the_findings_have_three_maps():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="finding-view"' in html and 'id="finding-map"' in html
+    for value in ("clock", "heat", "chain"):
+        assert f'<option value="{value}"' in html, value
+    for name in ("loadFindings", "drawClockMap", "drawHeatMap", "drawChainMap", "drawFindingMap"):
+        assert f"function {name}(" in js, name
+    assert 'id="finding-group"' in html
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

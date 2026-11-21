@@ -3666,6 +3666,26 @@ async function runPivot() {
 }
 
 /* ---------- derived columns ---------- */
+async function checkDerivedColumns() {
+  if (!state.columns.length || state.analysis === null || state.analysis === undefined) {
+    say("Open an analysis first", true); return;
+  }
+  const list = $("derived-check-list");
+  try {
+    const found = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/derived`);
+    const rows = found.derived || [];
+    list.className = rows.length ? "" : "muted";
+    list.innerHTML = rows.length
+      ? "<ul>" + rows.map((item) => `<li><b>${escapeHtml(item.name || "")}</b> — `
+          + `${escapeHtml(item.operation || "")} `
+          + `<span class="muted">${escapeHtml(item.source || item.column || "")}</span></li>`).join("") + "</ul>"
+      : "No derived columns.";
+  } catch (error) {
+    list.className = "muted";
+    list.textContent = `The derived columns cannot be read: ${error.message}`;
+  }
+  $("derived-check-modal").classList.add("show");
+}
 
 function openDerivedDialog() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
@@ -5939,6 +5959,7 @@ async function act(name, node) {
     case "show-evtx": showTab("evtx"); break;
     case "highlight-text": openHighlight(); break;
     case "rowheight-apply": applyRowHeightPrefs(); break;
+    case "derived-check": checkDerivedColumns(); break;
     case "session-save": saveSession(); break;
     case "session-open": openSessionFile(); break;
     case "graph-zoom-in": graphZoom(1.2); break;

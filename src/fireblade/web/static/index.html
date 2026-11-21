@@ -115,6 +115,7 @@
       <div class="item" data-act="show-imports">Imports</div>
       <div class="sep"></div>
       <div class="item" data-act="derived">Date conversions and computed columns…</div>
+      <div class="item" data-act="derived-check">Check derived columns…</div>
       <div class="item" data-act="cell-json">Show the cell / JSON…</div>
       <div class="item" data-act="integrity">Provenance and SHA-256…</div>
       <div class="item" data-act="highlight-text">Highlight text…</div>
@@ -1329,6 +1330,14 @@
       <div class="note" id="pivot-anchor"></div>
       <div class="columns-list" id="pivot-results" style="max-height:340px"></div>
     </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
+</div>
+
+<div class="modal" id="derived-check-modal">
+  <div class="dialog" style="min-width:520px">
+    <h3>Derived columns</h3>
+    <div class="body"><div id="derived-check-list" class="muted">No derived columns.</div></div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
   </div>
 </div>

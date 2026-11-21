@@ -405,6 +405,16 @@ def test_a_machine_and_an_action_can_be_changed_or_removed():
     assert "data-reopen" in js and "/closed/" in js
 
 
+def test_the_evtx_tab_is_its_own_screen():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="evtx-view"' in html and 'id="evtx-level"' in html
+    assert "Minimum Hayabusa severity" in html and "Analyze with Hayabusa" in html
+    for name in ("renderEvtx", "runEvtxDetection"):
+        assert f"function {name}(" in js, name
+    # The EVTX tab no longer borrows the Hayabusa panel.
+    assert '$("hayabusa-view").style.display = name === "hayabusa"' in js
+
+
 def test_the_graph_carries_the_desktop_controls():
     js, html = _read(APP), _read(INDEX)
     for action in ("graph-zoom-in", "graph-zoom-out", "graph-recentre"):

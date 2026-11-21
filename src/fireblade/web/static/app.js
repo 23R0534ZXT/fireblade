@@ -1239,6 +1239,50 @@ function applyExpression() {
     : "Advanced filter cleared");
 }
 
+/* ---------- EVTX detection ---------- */
+
+/* The event logs of the case, what the engine read of each, and the run that turns
+   them into alerts. The desktop asks for a minimum severity and one button; so here. */
+function renderEvtx() {
+  const analyses = (state.openCase && state.openCase.analyses) || [];
+  const logs = analyses.filter((item) => /\.evtx$/i.test(String(item.source || ""))
+    || /\.evtx/i.test(String(item.label || "")));
+  const box = $("evtx-rows");
+  if (!logs.length) {
+    box.innerHTML = '<tr><td colspan="5" class="cellnull">Import a collection to enable detection.</td></tr>';
+    $("evtx-summary").textContent = "Import a collection to enable detection.";
+    return;
+  }
+  box.innerHTML = logs.map((item) =>
+    `<tr><td title="${escapeHtml(item.source || "")}">${escapeHtml(item.label || "")}</td>
+      <td>${escapeHtml(String((item.source_info && item.source_info.rows) ?? item.rows ?? ""))}</td>
+      <td>${escapeHtml(String((item.source_info && (item.source_info.dated
+        ?? item.source_info.timestamps)) ?? ""))}</td>
+      <td>${escapeHtml(((item.source_info && item.source_info.readers) || []).join(", ")
+        || "the engine")}</td>
+      <td class="cellnull"></td></tr>`).join("");
+  const alerts = analyses.filter((item) => /alertes hayabusa/i.test(String(item.label || ""))).length;
+  $("evtx-summary").textContent = `${logs.length} event log(s) read`
+    + (alerts ? ` — ${alerts} alert analysis(es) in the case` : "");
+}
+
+async function runEvtxDetection() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const level = $("evtx-level").value;
+  $("evtx-summary").textContent = `Analyzing the event logs at level ${level}…`;
+  say(`Hayabusa: running at level ${level}…`);
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/detect`, { min_level: level });
+    state.openCase = await api(`/api/cases/${state.openCase.id}`);
+    renderTree();
+    renderEvtx();
+    say(`Hayabusa: ${payload.total} finding(s) at level ${level}+`);
+  } catch (error) {
+    $("evtx-summary").textContent = error.message;
+    say(error.message, true);
+  }
+}
+
 /* ---------- the window's own commands, the ones a menu carries ---------- */
 
 /* A row height is a reading comfort, not case data: it lives in the browser. */
@@ -4688,8 +4732,10 @@ function showTab(name) {
   $("ioc-view").style.display = name === "ioc" ? "flex" : "none";
   $("actions-view").style.display = name === "actions" ? "flex" : "none";
   $("imports-view").style.display = name === "imports" ? "flex" : "none";
-  $("hayabusa-view").style.display = (name === "hayabusa" || name === "evtx") ? "flex" : "none";
+  $("hayabusa-view").style.display = name === "hayabusa" ? "flex" : "none";
+  $("evtx-view").style.display = name === "evtx" ? "flex" : "none";
   if (name === "hayabusa" && state.openCase) loadFindings(false);
+  if (name === "evtx" && state.openCase) renderEvtx();
   $("graph-view").style.display = name === "graph" ? "flex" : "none";
   if (name === "graph" && state.openCase) buildGraph();
   if (name === "evtx") {
@@ -5324,6 +5370,8 @@ function wire() {
     window.location = `/api/cases/${state.openCase.id}/detection/${encodeURIComponent(link.dataset.sources)}/sources`;
   });
   $("graph-build").addEventListener("click", buildGraph);
+  $("evtx-run").addEventListener("click", runEvtxDetection);
+  $("evtx-refresh").addEventListener("click", renderEvtx);
   $("graph-navigator").addEventListener("click", exportNavigator);
   $("graph-png").addEventListener("click", exportGraphPng);
   $("graph-node").addEventListener("click", openGraphNode);

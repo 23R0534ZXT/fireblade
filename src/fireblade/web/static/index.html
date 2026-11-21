@@ -231,6 +231,35 @@
         </div>
       </div>
 
+      <div id="evtx-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="panel-title">
+          <h2>EVTX detection</h2>
+          <p>The engine reads the imported event logs of this case and keeps every alert it raises.</p>
+        </div>
+        <div class="filterbar">
+          <label for="evtx-level">Minimum Hayabusa severity</label>
+          <select class="select" id="evtx-level">
+            <option value="informational">Informational</option>
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+          <button class="btn" id="evtx-run">Analyze with Hayabusa</button>
+          <button class="btn" id="evtx-refresh">Refresh</button>
+          <div class="info" id="evtx-summary">Import a collection to enable detection.</div>
+        </div>
+        <div class="gridwrap" style="flex:1">
+          <div class="gridbody">
+            <table>
+              <colgroup><col style="width:34%"><col style="width:120px"><col style="width:120px"><col style="width:140px"><col></colgroup>
+              <thead><tr><th>Event log</th><th>Events</th><th>Dated</th><th>Read by</th><th>Note</th></tr></thead>
+              <tbody id="evtx-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div id="graph-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="panel-title">
           <h2>Attack graph</h2>

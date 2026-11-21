@@ -1040,3 +1040,53 @@ def test_the_findings_route_shapes_the_groups(tmp_path):
         assert payload["incidents"], "the incident window is reported too"
     finally:
         library.close()
+
+
+def test_a_rule_can_paint_a_scale(tmp_path):
+    """The visual fields survive the round trip, and the bounds come back resolved."""
+    root = tmp_path / "cases"
+    root.mkdir()
+    book = InvestigationLibrary(root)
+    data = book.create("Visual", "Rules that paint", "windows")
+    identifier = data["id"]
+    folder = book.folder(identifier)
+    analysis = folder / "analysis-1.duckdb"
+    source = tmp_path / "numbers.csv"
+    with source.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["Host", "Count"])
+        for value in (5, 10, 20):
+            writer.writerow(["SRV", value])
+    case = Case(analysis)
+    try:
+        case.import_csv(source)
+        info = dict(case.info)
+    finally:
+        case.close()
+    snapshot = AnalysisSnapshot(path=str(analysis), source_info=dict(info, path=str(source)),
+                                view=View(), header_state=b"")
+    book.save(identifier, [snapshot], 0, [], None, data["revision"])
+    library = Library(root)
+    try:
+        rules = [{"column": 1, "operator": "not_empty", "value": "",
+                  "background": "#ffffff", "foreground": "#006000",
+                  "visual": "bar", "bound_mode": "auto", "target": 1}]
+        library.save_rules(identifier, 0, rules)
+        kept = library.rules(identifier, 0)["rules"][0]
+        assert kept["visual"] == "bar"
+        # "automatic" is resolved against the data: 5..20, not 0..100.
+        assert float(kept["minimum"]) == 5 and float(kept["maximum"]) == 20
+        # A three-colour scale: "50 %" becomes the middle value of the span.
+        scale = [{"column": 1, "operator": "not_empty", "value": "",
+                  "background": "#ffffff", "foreground": "#006000", "visual": "scale3",
+                  "bound_mode": "auto", "middle_mode": "percent", "middle_value": "50",
+                  "middle_color": "#ffffbf", "target": 1}]
+        library.save_rules(identifier, 0, scale)
+        kept_scale = library.rules(identifier, 0)["rules"][0]
+        assert kept_scale["visual"] == "scale3"
+        assert 12.0 <= float(kept_scale["middle_value"]) <= 13.0, kept_scale["middle_value"]
+        bad = dict(rules[0], visual="sparkline")
+        with pytest.raises(Exception):
+            library.save_rules(identifier, 0, [bad])
+    finally:
+        library.close()

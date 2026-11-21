@@ -361,3 +361,8 @@ td.noted .notemark{position:absolute;top:2px;right:2px;width:0;height:0;
 .preview-sample{display:block;overflow-x:auto;max-width:100%}
 .dialog{max-width:96vw}
 #prefs-profiles .pin{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
+
+/* The desktop's visual formats, in a cell: a bar that fills, a tint, an icon. */
+td.vbar { background-repeat: no-repeat; }
+td.viconcell { font-weight: 500; }
+td .vicon { margin-right: 4px; font-size: 10px; }

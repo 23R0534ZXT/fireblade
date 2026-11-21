@@ -1343,6 +1343,90 @@ function drawChainMap(context, width, height) {
     16, height - 12);
 }
 
+/* ---------- the desktop's visual formats, on a cell ----------
+   Exactly the desktop's arithmetic: a bounded colour scale, a data bar that fills
+   from the left, an icon set whose level comes from the thresholds. The bounds
+   arrive already resolved by the server; nothing is guessed here. */
+
+function colourOf(text) {
+  const raw = String(text || "").trim();
+  const match = raw.match(/^#([0-9a-f]{6})$/i);
+  if (!match) return [200, 200, 200];
+  const value = parseInt(match[1], 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
+
+function mixColour(from, to, weight) {
+  const a = colourOf(from);
+  const b = colourOf(to);
+  const rgb = a.map((value, index) => Math.round(value + (b[index] - value) * weight));
+  return `rgb(${rgb.join(",")})`;
+}
+
+function visualNumber(rule) {
+  const low = Number(rule.minimum);
+  const high = Number(rule.maximum);
+  if (!Number.isFinite(low) || !Number.isFinite(high) || low > high) return null;
+  return { low, high };
+}
+
+function visualCell(rule, columnIndex, raw) {
+  const visual = rule.visual || "none";
+  if (visual === "none") return null;
+  // A visual is about one column: the one the rule names, or its target.
+  const target = rule.target === null || rule.target === undefined ? rule.column : rule.target;
+  if (target !== null && target !== undefined && Number(target) !== Number(columnIndex)) return null;
+  const number = Number(String(raw === null || raw === undefined ? "" : raw).trim());
+  if (String(raw === null || raw === undefined ? "" : raw).trim() === "" || !Number.isFinite(number)) {
+    return null;
+  }
+  const bounds = visualNumber(rule);
+  if (!bounds) return null;
+  const { low, high } = bounds;
+  let fraction = low === high ? 0.5 : (number - low) / (high - low);
+  fraction = Math.max(0, Math.min(1, fraction));
+  if (visual === "bar") {
+    const colour = number < 0 ? (rule.negative_color || "#d64c4c") : mixColour(rule.background, rule.foreground, fraction);
+    return { cls: "vbar", style: `background:linear-gradient(90deg, ${colour} ${Math.round(fraction * 100)}%, transparent ${Math.round(fraction * 100)}%)`, ink: "" };
+  }
+  if (visual === "scale2") {
+    const colour = mixColour(rule.background, rule.foreground, fraction);
+    return { cls: "", style: `background:${colour}`, ink: "" };
+  }
+  if (visual === "scale3") {
+    let middle = Number(rule.middle_value);
+    if (rule.middle_mode === "percent") middle = low + (high - low) * middle / 100;
+    let colour;
+    if (low === high) colour = rule.middle_color;
+    else if (low < middle && middle < high) {
+      colour = number <= middle
+        ? mixColour(rule.background, rule.middle_color, (number - low) / (middle - low))
+        : mixColour(rule.middle_color, rule.foreground, (number - middle) / (high - middle));
+    } else if (middle <= low) colour = rule.middle_color;
+    else colour = rule.middle_color;
+    return { cls: "", style: `background:${colour}`, ink: "" };
+  }
+  if (visual === "icon") {
+    const colours = (rule.icon_colors && rule.icon_colors.length) ? rule.icon_colors : ["#c62828", "#c58b00", "#218739"];
+    const thresholds = (rule.icon_thresholds || []).map(Number);
+    let level = Math.min(colours.length - 1, Math.max(0, Math.floor(fraction * colours.length)));
+    if (thresholds.length) {
+      level = 0;
+      for (let index = thresholds.length - 1; index >= 0; index -= 1) {
+        const threshold = rule.icon_threshold_mode === "number" ? thresholds[index] : fraction * 100;
+        if (rule.icon_threshold_mode === "number" ? number >= threshold : number >= threshold) {
+          level = Math.min(colours.length - 1, index + 1);
+          break;
+        }
+      }
+    }
+    const ink = colours[Math.min(level, colours.length - 1)];
+    const glyph = ["▼", "●", "▲"][Math.min(2, level)] || "●";
+    return { cls: "viconcell", style: `background:${ink}22`, ink, icon: glyph };
+  }
+  return null;
+}
+
 /* ---------- sort priority ---------- */
 
 function sortRow(key = { column: 0, descending: false }) {
@@ -2570,6 +2654,22 @@ async function persistRules() {
   await loadRules();
 }
 
+function showRuleVisual() {
+  const visual = $("rule-visual").value;
+  $("rule-visual-row").style.display = visual === "none" ? "none" : "";
+  $("rule-icon-row").style.display = visual === "icon" ? "" : "none";
+  $("rule-middle-label").style.display = visual === "scale3" ? "" : "none";
+  $("rule-middle-value").style.display = visual === "scale3" ? "" : "none";
+  $("rule-middle-colour").style.display = visual === "scale3" ? "" : "none";
+  $("rule-middle-colour-label").style.display = visual === "scale3" ? "" : "none";
+  // The middle value and its colour speak only to a three-colour scale; a bar and
+  // an icon set read one direction, from the minimum to the maximum.
+  const middle = visual === "scale3";
+  $("rule-middle-label").style.display = middle ? "" : "none";
+  $("rule-middle-value").style.display = middle ? "" : "none";
+  // A data bar reads a scale in one direction; three colours need a middle.
+}
+
 async function addRule() {
   const columnValue = $("rule-column").value;
   const rule = {
@@ -2583,6 +2683,16 @@ async function addRule() {
     enabled: true,
     statistic: $("rule-statistic").value || "",
     stat_rank: $("rule-stat-rank").value || "10",
+    visual: $("rule-visual").value,
+    bound_mode: $("rule-bound").value,
+    minimum: $("rule-min").value || "0",
+    maximum: $("rule-max").value || "100",
+    middle_value: $("rule-middle-value").value || "50",
+    middle_color: $("rule-middle-colour").value,
+    negative_color: $("rule-negative").value,
+    icon_thresholds: $("rule-icon-thresholds").value.split(",").map((item) => item.trim()).filter(Boolean),
+    icon_threshold_mode: $("rule-icon-mode").value,
+    icon_colors: $("rule-icon-colours").value.split(",").map((item) => item.trim()).filter(Boolean),
   };
   if (rulesScope === "global") {
     try {
@@ -3316,6 +3426,8 @@ function renderGrid() {
     const id = row[0];
     // Column 0 is the row identifier: it gets its own cell, after the checkbox one.
     const rowNotes = notesForRow(id);
+    // The rule is found once, before the cells: a visual needs it per cell.
+    const rule = rulesCache.concat(globalRuleList()).find((item) => matchesRule(item, row));
     const cells = shown.map(({ index }) => {
       const value = row[index];
       // The case names its date columns when it has them; a value that reads as a
@@ -3329,11 +3441,14 @@ function renderGrid() {
       const cls = [value === null || value === "" ? "cellnull" : (index === 0 ? "rowid" : ""),
                    noted ? "noted" : ""].filter(Boolean).join(" ");
       const title = noted ? ` title="${escapeHtml(noted)}"` : "";
-      return `<td class="${cls}"${title} data-cell="${index - 1}">${renderBoolean(index - 1, text)}${noted ? '<span class="notemark"></span>' : ""}</td>`;
+      const visual = rule ? visualCell(rule, index - 1, row[index]) : null;
+      const painted = visual ? ` style="${visual.style}"` : "";
+      return `<td class="${cls}${visual ? ` ${visual.cls}` : ""}"${title}${painted} data-cell="${index - 1}">`
+        + (visual && visual.icon ? `<span class="vicon" style="color:${visual.ink}">${visual.icon}</span>` : "")
+        + `${renderBoolean(index - 1, text)}${noted ? '<span class="notemark"></span>' : ""}</td>`;
     }).join("");
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
-    const rule = rulesCache.concat(globalRuleList()).find((item) => matchesRule(item, row));
-    const style = rule ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"` : "";
+    const style = rule && !rule.visual ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"` : "";
     return `<tr data-row="${escapeHtml(String(id))}" class="${rowSelected(id) ? "sel" : ""}"${style}>
       <td class="markcell"><span class="cb ${marked}" title="Bookmark this row"></span></td>${cells}</tr>`;
   }).join("");
@@ -4034,6 +4149,7 @@ function wire() {
     renderGrid();
     say(`Dates shown ${event.target.value}`);
   });
+  $("rule-visual").addEventListener("change", showRuleVisual);
   $("finding-view").addEventListener("change", renderFindingView);
   $("finding-group").addEventListener("change", renderFindingView);
   window.addEventListener("resize", () => {

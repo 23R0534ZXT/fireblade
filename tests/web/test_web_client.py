@@ -317,6 +317,16 @@ def test_the_two_report_types_share_one_dialog():
     assert "/client-report" in js
 
 
+def test_a_rule_can_be_a_bar_a_scale_or_an_icon_set():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="rule-visual"' in html and 'id="rule-bound"' in html
+    assert 'id="rule-icon-thresholds"' in html and 'id="rule-middle-colour"' in html
+    assert 'id="rule-negative"' in html
+    for name in ("visualCell", "mixColour", "colourOf"):
+        assert f"function {name}(" in js, name
+    assert "linear-gradient(90deg" in js, "a data bar fills from the left"
+
+
 def test_the_findings_have_three_maps():
     js, html = _read(APP), _read(INDEX)
     assert 'id="finding-view"' in html and 'id="finding-map"' in html

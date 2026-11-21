@@ -826,6 +826,21 @@ class Library:
             "enabled": bool(rule.enabled),
             # The grid evaluates one condition per rule; a richer one is kept, not faked.
             "simple": len(children) == 1 and operator != "expression",
+            # The desktop's visual formats: a colour scale, a data bar or an icon set.
+            "visual": getattr(rule, "visual", "none") or "none",
+            "minimum": str(getattr(rule, "minimum", "0")),
+            "maximum": str(getattr(rule, "maximum", "100")),
+            "bound_mode": getattr(rule, "bound_mode", "fixed") or "fixed",
+            "middle_value": str(getattr(rule, "middle_value", "50")),
+            "middle_mode": getattr(rule, "middle_mode", "percent") or "percent",
+            "middle_color": getattr(rule, "middle_color", "#ffffbf"),
+            "negative_color": getattr(rule, "negative_color", "#d64c4c"),
+            "zero_based": bool(getattr(rule, "zero_based", False)),
+            "icon_thresholds": [str(value) for value in (getattr(rule, "icon_thresholds", []) or [])],
+            "icon_threshold_mode": getattr(rule, "icon_threshold_mode", "percent") or "percent",
+            "icon_colors": list(getattr(rule, "icon_colors", []) or []),
+            "icon_set": getattr(rule, "icon_set", "circles") or "circles",
+            "show_values": bool(getattr(rule, "show_values", True)),
         }
 
     def rules(self, identifier: str, index: int) -> dict:
@@ -838,8 +853,20 @@ class Library:
         case = self._case_for(identifier, index)
         with case.lock:
             stored = case.views().get(self.RULES_VIEW)
+        source = list(stored.format_rules) if stored else []
+        if any(getattr(rule, "visual", "none") not in ("", "none") for rule in source):
+            # A bound written as a percentage, a percentile or "the automatic one"
+            # means nothing to a browser: the core resolves it over the analysis' own
+            # rows, exactly as the desktop does before it paints a cell.
+            from fireblade.core.visual_bounds import resolve_rules
+
+            try:
+                with case.lock, case.operation():
+                    source = resolve_rules(case, View(), source)
+            except (ValueError, OSError, ArithmeticError, TypeError):
+                pass  # a bound that cannot be computed stays as written
         rules = []
-        for rule in (stored.format_rules if stored else []):
+        for rule in source:
             payload = self._rule_payload(rule)
             payload["statistic"] = getattr(rule, "statistic", "") or ""
             payload["stat_rank"] = str(getattr(rule, "stat_rank", "10") or "10")
@@ -851,6 +878,12 @@ class Library:
                     payload["resolved"] = resolved
             rules.append(payload)
         return {"rules": rules}
+
+    # The desktop's visual formats, and how a numeric bound is read.
+    VISUALS = ("none", "bar", "scale2", "scale3", "icon")
+    BOUND_MODES = ("fixed", "auto", "percent", "percentile")
+    # An icon threshold is read against the value or against the position in the scale.
+    THRESHOLD_MODES = ("number", "percent", "percentile")
 
     STATISTICS = ("top", "bottom", "above_avg", "below_avg", "above_eq_avg",
                   "below_eq_avg", "unique", "duplicate")
@@ -1043,6 +1076,18 @@ class Library:
             value_column = item.get("value_column")
             if value_column is not None and (not isinstance(value_column, int) or value_column < 0):
                 raise ServiceError("Invalid statistic column.")
+            visual = str(item.get("visual") or "none")
+            if visual not in self.VISUALS:
+                raise ServiceError(f"Unknown rule visual: {visual}")
+            bound_mode = str(item.get("bound_mode") or "fixed")
+            if bound_mode not in self.BOUND_MODES:
+                raise ServiceError(f"Unknown bound mode: {bound_mode}")
+            middle_mode = str(item.get("middle_mode") or "percent")
+            if middle_mode not in self.BOUND_MODES:
+                raise ServiceError(f"Unknown middle mode: {middle_mode}")
+            threshold_mode = str(item.get("icon_threshold_mode") or "percent")
+            if threshold_mode not in self.THRESHOLD_MODES:
+                raise ServiceError(f"Unknown icon threshold mode: {threshold_mode}")
             cleaned.append(FormatRule(
                 condition=FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))]),
                 background=str(item.get("background") or "#fce2e2"),
@@ -1054,6 +1099,20 @@ class Library:
                 stat_rank=str(item.get("stat_rank") or "10"),
                 stat_ignore_case=bool(item.get("stat_ignore_case")),
                 value_column=value_column,
+                visual=visual,
+                minimum=str(item.get("minimum") or "0"),
+                maximum=str(item.get("maximum") or "100"),
+                bound_mode=bound_mode,
+                middle_value=str(item.get("middle_value") or "50"),
+                middle_mode=middle_mode,
+                middle_color=str(item.get("middle_color") or "#ffffbf"),
+                negative_color=str(item.get("negative_color") or "#d64c4c"),
+                zero_based=bool(item.get("zero_based")),
+                icon_thresholds=[str(value) for value in (item.get("icon_thresholds") or [])],
+                icon_threshold_mode=threshold_mode,
+                icon_colors=[str(value) for value in (item.get("icon_colors") or [])],
+                icon_set=str(item.get("icon_set") or "circles"),
+                show_values=bool(item.get("show_values", True)),
             ))
         case = self._case_for(identifier, index)
         view = View(format_rules=cleaned)

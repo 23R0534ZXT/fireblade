@@ -54,6 +54,7 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Grid — group summaries | "Résumés et tri des groupes" | **yes** — up to 16 aggregates beside each group, and the groups ordered by count, value or a summary |
 | Grid — bookmarks, notes | row marks, row notes, cell notes, on a selection | **yes** |
 | Grid — colour rules | local rules, from a cell, the value chart and its statistics | **yes** — colours, text colour, bold, row or cell target, the value chart, and the statistics (most and least frequent, duplicates, values seen once, above or below the average) resolved on the server |
+| Grid — visual styles | data bar, two- and three-colour scales, icon sets with thresholds and percentiles | **yes** — Visual, Bounds, Minimum/Maximum/Middle and the icon thresholds in the rule editor; the bounds are resolved by the core (`resolve_rules`) and each cell is painted with the desktop's own arithmetic |
 | Grid — global rules | "Règles globales" shared by every analysis | **yes** — Colour rules > Every analysis; the book is the desktop's own file (import and export), a rule the grid cannot evaluate is skipped, never approximated |
 | Grid — columns | hide, pin left **and right**, resize, layout in the analysis | **yes** |
 | Grid — derived columns | timestamp conversion, expressions, categories, MACB | **yes** |

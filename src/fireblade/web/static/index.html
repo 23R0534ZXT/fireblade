@@ -954,6 +954,38 @@
         <label for="rule-target">Applies to</label>
         <select id="rule-target"><option value="">the whole row</option>
           <option value="cell">this cell only</option></select></div>
+      <div class="row"><label for="rule-visual">Visual</label>
+        <select id="rule-visual">
+          <option value="none">the colours only</option>
+          <option value="bar">data bar</option>
+          <option value="scale2">colour scale (two colours)</option>
+          <option value="scale3">colour scale (three colours)</option>
+          <option value="icon">icons</option>
+        </select>
+        <label for="rule-bound">Bounds</label>
+        <select id="rule-bound">
+          <option value="fixed">fixed</option>
+          <option value="auto">automatic (the data)</option>
+          <option value="percent">percent of the span</option>
+          <option value="percentile">percentile</option>
+        </select>
+      </div>
+      <div class="row" id="rule-visual-row" style="display:none">
+        <label for="rule-min">Minimum</label><input id="rule-min" value="0" style="width:80px">
+        <label for="rule-max">Maximum</label><input id="rule-max" value="100" style="width:80px">
+        <label for="rule-middle-value" id="rule-middle-label">Middle at</label><input id="rule-middle-value" value="50" style="width:60px">
+        <label for="rule-middle-colour" id="rule-middle-colour-label">Middle</label><input id="rule-middle-colour" type="color" value="#ffffbf">
+        <label for="rule-negative">Negative</label><input id="rule-negative" type="color" value="#d64c4c">
+      </div>
+      <div class="row" id="rule-icon-row" style="display:none">
+        <label for="rule-icon-thresholds">Icon thresholds</label>
+        <input id="rule-icon-thresholds" placeholder="33, 66" style="width:110px">
+        <label for="rule-icon-mode">read as</label>
+        <select id="rule-icon-mode"><option value="percent">percent</option>
+          <option value="number">numbers</option></select>
+        <label for="rule-icon-colours">Colours</label>
+        <input id="rule-icon-colours" value="#c62828,#c58b00,#218739" style="width:190px">
+      </div>
       <div class="row"><label for="rule-statistic">Statistic</label>
         <select id="rule-statistic">
           <option value="">the condition only</option>

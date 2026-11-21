@@ -21,7 +21,7 @@ def resolve_rules(case,view,rules):
         threshold_modes=rule.icon_threshold_modes or [rule.icon_threshold_mode]*len(rule.icon_thresholds)
         dynamic_icons=rule.visual=='icon' and any(mode in ('percent','percentile') for mode in threshold_modes) or rule.visual=='icon' and rule.icon_floor and rule.icon_floor_mode in ('percent','percentile')
         if not rule.enabled or rule.visual=='none' or (modes==('fixed','fixed') and not dynamic_icons and not (rule.visual=='scale3' and rule.middle_mode in ('percent','percentile'))):output.append(rule);continue
-        key=(where,tuple(args),case._bookmark_revision,getattr(case,"_visual_query_revision",0),rule.value_column if rule.value_column is not None else rule.target,modes,rule.minimum,rule.maximum,tuple(rule.icon_thresholds),tuple(threshold_modes),rule.icon_threshold_mode,rule.middle_mode,rule.middle_value,rule.icon_floor,rule.icon_floor_mode,rule.zero_based)
+        key=(where,tuple(args),case._bookmark_revision,getattr(case,"_visual_query_revision",0),rule.visual,rule.value_column if rule.value_column is not None else rule.target,modes,rule.minimum,rule.maximum,tuple(rule.icon_thresholds),tuple(threshold_modes),rule.icon_threshold_mode,rule.middle_mode,rule.middle_value,rule.icon_floor,rule.icon_floor_mode,rule.zero_based)
         with case.operation():
             if key not in cache:
                 col=case.numeric_expression(case.column(rule.value_column if rule.value_column is not None else rule.target));query=f'SELECT {col} AS v FROM events{where}'

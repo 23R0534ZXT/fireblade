@@ -96,6 +96,20 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/session")
+    def save_session(identifier: str):
+        try:
+            return library.save_session(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/session/open")
+    def open_session(identifier: str, payload: dict):
+        try:
+            return library.open_session(identifier, (payload or {}).get("content") or "")
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/destruction/attachments")
     def destruction_attachments(identifier: str, payload: dict):
         """Photos to embed in the certificate, stored before the case is destroyed."""

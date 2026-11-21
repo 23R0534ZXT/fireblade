@@ -1294,3 +1294,22 @@ def test_the_certificate_carries_the_photos_of_the_destruction(service, tmp_path
     html = Path(certificate["certificate"]).read_text(encoding="utf-8")
     assert "data:image/png;base64," in html
     assert base64.b64encode(photo.read_bytes()).decode()[:40] in html.replace("\n", "")
+
+
+def test_a_session_travels_to_the_desktop_and_back(service):
+    """Saved as the desktop's file, read back by the same core module."""
+    library, identifier = service
+    saved = library.save_session(identifier)
+    assert saved["name"].endswith(".fireblade-session")
+    assert saved["documents"] >= 1
+    assert saved["bytes"] > 0
+
+    opened = library.open_session(identifier, saved["content"])
+    assert opened["added"] == saved["documents"]
+    assert opened["missing"] == []
+    assert all(document["path"] for document in opened["documents"])
+
+    # A file that is not a session is refused, not half read.
+    import base64
+    with pytest.raises(Exception):
+        library.open_session(identifier, base64.b64encode(b"not a session").decode())

@@ -51,6 +51,8 @@
     <div class="menu" data-for="exporter">
       <div class="item" data-act="export-csv">Export…<span class="key">Ctrl+Shift+E</span></div>
       <div class="item" data-act="export-annotations">Export the bookmarks and notes…</div>
+      <div class="item" data-act="session-save">Save the session…</div>
+      <div class="item" data-act="session-open">Open a session…</div>
       <div class="item" data-act="export-portable">Export the portable case…</div>
       <div class="sep"></div>
       <div class="item" data-act="report">Create an HTML / PDF report…</div>
@@ -163,6 +165,7 @@
     </select>
     <input type="file" id="import-input" multiple hidden>
     <input type="file" id="package-input" accept=".fireblade" hidden>
+    <input type="file" id="session-file" accept=".fireblade-session" hidden>
     <input type="file" id="layout-file" accept=".json" hidden>
     <div class="casecombo" id="casecombo"><span id="casecombo-label">No case open</span><span class="arrow">▼</span></div>
     <div class="tbsep"></div>

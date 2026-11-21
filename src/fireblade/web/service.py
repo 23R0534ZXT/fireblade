@@ -13,6 +13,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 import re
 import tempfile
 import threading
@@ -1738,6 +1739,86 @@ class Library:
                 "files": len(record.get("files") or []),
                 "certificate": str(certificate),
                 "bytes": sum(int(item.get("size") or 0) for item in (record.get("files") or []))}
+
+    # --- the session: the desktop's own file, written by the core module -----------
+    SESSION_FIELDS = ("search", "groups", "sort_column", "descending", "sort_type",
+                      "bookmarks_only", "highlight", "header_state", "global_rules_enabled",
+                      "summaries", "group_order", "group_descending", "group_summary",
+                      "expand_all", "pinned_columns", "pinned_widths")
+
+    def save_session(self, identifier: str) -> dict:
+        """The case's tabs as a `.fireblade-session` the desktop opens as they are."""
+        import base64
+        import tempfile
+        from fireblade.core.sessions import AnalysisSnapshot, View, write_session
+
+        data = self.library.read(identifier)
+        session = self.library.session_path(data)
+        if not session or not Path(session).is_file():
+            raise ServiceError("This case has no session to save.")
+        payload = json.loads(Path(session).read_text(encoding="utf-8"))
+        documents = payload.get("documents") or []
+        snapshots = []
+        for document in documents:
+            if not isinstance(document, dict) or not document.get("path"):
+                continue
+            state = document.get("view") if isinstance(document.get("view"), dict) else {}
+            fields = {key: value for key, value in state.items() if key in self.SESSION_FIELDS}
+            snapshots.append(AnalysisSnapshot(
+                path=str(document["path"]),
+                source_info=document.get("source") or {},
+                view=View(**fields), header_state=b""))
+        if not snapshots:
+            raise ServiceError("This case has no analysis to put in a session.")
+        handle, raw = tempfile.mkstemp(suffix=".fireblade-session")
+        os.close(handle)
+        try:
+            write_session(raw, snapshots, int(payload.get("active") or 0))
+            content = Path(raw).read_bytes()
+        finally:
+            Path(raw).unlink(missing_ok=True)
+        name = data.get("name") or "case"
+        return {"name": f"{name.replace('/', '-')}.fireblade-session",
+                "documents": len(snapshots), "bytes": len(content),
+                "content": base64.b64encode(content).decode("ascii")}
+
+    def open_session(self, identifier: str, content: str) -> dict:
+        """Read a session file and add the tabs it names to this case."""
+        import base64
+        import tempfile
+        from fireblade.core.sessions import read_session
+
+        try:
+            raw = base64.b64decode(content or "")
+        except (ValueError, TypeError) as exc:
+            raise ServiceError("This is not a Fireblade session file.") from exc
+        handle, path = tempfile.mkstemp(suffix=".fireblade-session")
+        os.write(handle, raw)
+        os.close(handle)
+        try:
+            snapshots, _active = read_session(path)
+        except (ValueError, OSError, KeyError) as exc:
+            raise ServiceError(f"This session cannot be read: {exc}") from exc
+        finally:
+            Path(path).unlink(missing_ok=True)
+        data = self.library.read(identifier)
+        folder = self.library.folder(identifier)
+        added, missing = [], []
+        for snapshot in snapshots or []:
+            resolved = self._resolve_analysis(folder, str(snapshot.path))
+            if resolved is None:
+                missing.append(Path(str(snapshot.path)).name)
+                continue
+            added.append({"path": str(resolved),
+                          "source": snapshot.source_info or {},
+                          "view": {key: getattr(snapshot.view, key)
+                                   for key in self.SESSION_FIELDS
+                                   if getattr(snapshot.view, key, None) not in (None, [], "", {})}})
+        if not added:
+            raise ServiceError("None of the analyses of this session is in this case: "
+                               + ", ".join(missing[:5]))
+        return {"added": len(added), "missing": missing, "documents": added,
+                "case": data.get("name")}
 
     def store_destruction_attachments(self, identifier: str, sources) -> dict:
         """Photos for the certificate, copied beside the case before it is destroyed."""

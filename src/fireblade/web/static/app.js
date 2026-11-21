@@ -1561,6 +1561,42 @@ async function uploadPortableCase(event) {
 }
 
 /* The case as one .fireblade archive: every byte verified by the core's own packer. */
+async /* The session file is the desktop's own: the same tabs, the same views, read by the
+   same core module on either side. */
+async function saveSession() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  try {
+    const saved = await api(`/api/cases/${state.openCase.id}/session`);
+    const bytes = Uint8Array.from(atob(saved.content), (char) => char.charCodeAt(0));
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
+    link.download = saved.name;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    say(`Session saved: ${saved.documents} analysis(es), ${saved.bytes} bytes`);
+  } catch (error) { say(`The session was not saved: ${error.message}`, true); }
+}
+
+function openSessionFile() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  $("session-file").value = "";
+  $("session-file").click();
+}
+
+async function readSessionFile(file) {
+  const buffer = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  for (const byte of buffer) binary += String.fromCharCode(byte);
+  try {
+    const result = await api(`/api/cases/${state.openCase.id}/session/open`,
+      { method: "POST", body: JSON.stringify({ content: btoa(binary) }) });
+    const missing = (result.missing || []).length
+      ? ` — ${result.missing.length} not in this case` : "";
+    say(`Session opened: ${result.added} analysis(es)${missing}`);
+    await loadAnalyses();
+  } catch (error) { say(`The session was not opened: ${error.message}`, true); }
+}
+
 async function exportPortable() {
   if (!state.openCase) { say("Open a case first", true); return; }
   say("Writing the portable case…");
@@ -5620,6 +5656,10 @@ function wire() {
     say(`Dates shown ${event.target.value}`);
   });
   $("rule-visual").addEventListener("change", showRuleVisual);
+  $("session-file").addEventListener("change", (event) => {
+    const file = (event.target.files || [])[0];
+    if (file) readSessionFile(file);
+  });
   $("destroy-photos").addEventListener("change", async (event) => {
     if (!state.openCase) return;
     try { await uploadDestroyPhotos([...event.target.files]); }
@@ -5899,6 +5939,8 @@ async function act(name, node) {
     case "show-evtx": showTab("evtx"); break;
     case "highlight-text": openHighlight(); break;
     case "rowheight-apply": applyRowHeightPrefs(); break;
+    case "session-save": saveSession(); break;
+    case "session-open": openSessionFile(); break;
     case "graph-zoom-in": graphZoom(1.2); break;
     case "graph-zoom-out": graphZoom(1 / 1.2); break;
     case "graph-recentre": graphReset(); break;

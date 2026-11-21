@@ -405,6 +405,15 @@ def test_a_machine_and_an_action_can_be_changed_or_removed():
     assert "data-reopen" in js and "/closed/" in js
 
 
+def test_the_session_is_the_desktop_file():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="session-file"' in html and 'accept=".fireblade-session"' in html
+    assert 'data-act="session-save"' in html and 'data-act="session-open"' in html
+    for name in ("saveSession", "openSessionFile", "readSessionFile"):
+        assert f"function {name}(" in js, name
+    assert "/session/open" in js and "/session`" in js
+
+
 def test_a_rule_without_a_visual_still_paints_its_row():
     """`visual: "none"` is a string, and a truthy one: the row must still be coloured."""
     js = _read(APP)

@@ -309,6 +309,26 @@ def test_a_timeline_row_opens_its_source_line():
     assert "respect_filters" in js
 
 
+def test_every_menu_entry_has_a_handler():
+    """A menu is a promise: each entry must reach a handler, and each handler a route."""
+    import re
+
+    js, html = _read(APP), _read(INDEX)
+    acts = set(re.findall(r'data-act="([a-z0-9-]+)"', html))
+    handled = set(re.findall(r'case "([a-z0-9-]+)":', js))
+    missing = sorted(acts - handled - {"settings-close"})
+    assert not missing, f"entries with no handler: {missing}"
+
+
+def test_the_six_menus_of_the_desktop():
+    js, html = _read(APP), _read(INDEX)
+    for name in ("case", "edit", "view", "filters", "analysis", "help"):
+        assert f'data-menu="{name}"' in html, name
+        assert f'data-for="{name}"' in html, name
+    # A menu is not a dead label: no entry may sit on a greyed "off" class.
+    assert 'class="m off"' not in html
+
+
 def test_the_two_report_types_share_one_dialog():
     js, html = _read(APP), _read(INDEX)
     assert 'id="report-type"' in html and 'id="report-client-fields"' in html

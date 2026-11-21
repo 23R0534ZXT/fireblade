@@ -11,41 +11,104 @@
 
   <div class="menubar" id="menubar">
     <div class="m" data-menu="case"><span class="mnemonic">C</span>ase</div>
-    <div class="m" data-menu="analysis">A<span class="mnemonic">n</span>alysis</div>
-    <div class="m off" data-menu="detection"><span class="mnemonic">D</span>etection</div>
-    <div class="m off" data-menu="edit"><span class="mnemonic">E</span>dit</div>
+    <div class="m" data-menu="edit"><span class="mnemonic">E</span>dit</div>
     <div class="m" data-menu="view"><span class="mnemonic">V</span>iew</div>
-    <div class="m off" data-menu="filters">Fi<span class="mnemonic">l</span>ters</div>
-    <div class="m" data-menu="export">E<span class="mnemonic">x</span>port</div>
+    <div class="m" data-menu="filters">Fi<span class="mnemonic">l</span>ters</div>
+    <div class="m" data-menu="analysis">A<span class="mnemonic">n</span>alysis</div>
     <div class="m" data-menu="help"><span class="mnemonic">H</span>elp</div>
 
     <div class="menu" data-for="case">
-      <div class="item" data-act="refresh-cases">Refresh the case list<span class="key">F5</span></div>
+      <div class="item" data-act="import-file">Import evidence…<span class="key">Ctrl+O</span></div>
+      <div class="item" data-act="open-analyses">Open an analysis…<span class="key">Ctrl+Shift+O</span></div>
+      <div class="item" data-act="disk-open">Analyse a disk…</div>
       <div class="sep"></div>
+      <div class="item" data-act="new-case">New case…</div>
+      <div class="item" data-act="case-save">Save case</div>
+      <div class="item" data-act="close-case">Close the case</div>
       <div class="item" data-act="case-history">History and recovery…</div>
       <div class="sep"></div>
-      <div class="item" data-act="close-case">Close the open case</div>
+      <div class="item" data-act="compat-open">Sessions and compatibility…</div>
+      <div class="item" data-act="archive-case">Archive the case</div>
+      <div class="item" data-act="restore-case">Restore an archived case</div>
+      <div class="sep"></div>
+      <div class="item" data-act="report">Reports…</div>
+      <div class="item" data-act="destroy-case">Destroy the evidence…</div>
+      <div class="item" data-act="delete-case">Delete the case…</div>
     </div>
-    <div class="menu" data-for="analysis">
-      <div class="item" data-act="open-analyses">Open analyses…</div>
-      <div class="item" data-act="disk-open">Analyse a disk…</div>
-      <div class="item" data-act="reload-analysis">Reload the analysis</div>
-      <div class="item" data-act="export-csv">Export the current view…</div>
+
+    <div class="menu" data-for="edit">
+      <div class="item" data-act="copy-row">Copy the rows<span class="key">Ctrl+C</span></div>
+      <div class="item" data-act="bookmark-note">Bookmark / note…</div>
+      <div class="sep"></div>
+      <div class="item" data-act="mark-selection">Mark the selection<span class="key">Ctrl+Alt+B</span></div>
+      <div class="item" data-act="unmark-selection">Remove the marks of the selection</div>
+      <div class="item" data-act="note-selection">Add a note to the selection…</div>
+      <div class="item" data-act="note-replace">Replace the selection's notes…</div>
     </div>
+
     <div class="menu" data-for="view">
-      <div class="item" data-act="display-settings">Display settings…</div>
+      <div class="item" data-act="group-column">Group by…</div>
+      <div class="item" data-act="summaries">Group summaries and order…</div>
+      <div class="item" data-act="expand-groups">Expand every group</div>
+      <div class="item" data-act="collapse-groups">Collapse every group<span class="key">Ctrl+K</span></div>
+      <div class="item" data-act="columns">Columns…</div>
+      <div class="item" data-act="row-height">Row height…</div>
+      <div class="item" data-act="reset-widths">Reset the widths<span class="key">Ctrl+R</span></div>
+      <div class="sep"></div>
+      <div class="item" data-act="sort-priority">Multi-column sort…</div>
+      <div class="item" data-act="details-toggle">Row details</div>
+      <div class="sep"></div>
+      <div class="item" data-act="open-analyses">Open analyses…<span class="key">Ctrl+Shift+P</span></div>
+      <div class="item" data-act="messages">Messages…</div>
       <div class="item" data-act="preferences">Preferences…</div>
       <div class="sep"></div>
-      <div class="item" data-act="toggle-artifacts">Artifacts panel</div>
-      <div class="sep"></div>
       <div class="item" data-act="palette">Commands…<span class="key">Ctrl+K</span></div>
-      <div class="item" data-act="messages">Messages…</div>
+      <div class="item" data-act="next-tab">Next analysis<span class="key">Ctrl+Tab</span></div>
+      <div class="item" data-act="previous-tab">Previous analysis</div>
+      <div class="item" data-act="profiles-plugins">Profiles and plugins…</div>
+      <div class="item" data-act="legend">Supertimeline legend…</div>
+      <div class="item" data-act="toggle-artifacts">Artifacts panel</div>
     </div>
-    <div class="menu" data-for="export">
-      <div class="item" data-act="export-csv">Export the current view…</div>
-      <div class="item" data-act="report">Client report…</div>
+
+    <div class="menu" data-for="filters">
+      <div class="item" data-act="expression">Text expression…</div>
+      <div class="item" data-act="expression-andor">AND / OR / NOT editor…</div>
+      <div class="item" data-act="filter-active-cell">Filter on the active cell</div>
+      <div class="item" data-act="add-filter">Add a filter…</div>
+      <div class="item" data-act="clear-filters">Clear the filters<span class="key">Ctrl+E</span></div>
+      <div class="sep"></div>
+      <div class="item" data-act="global-search">Search across every analysis…<span class="key">Ctrl+F</span></div>
     </div>
+
+    <div class="menu" data-for="analysis">
+      <div class="item" data-act="views">Save the view…<span class="key">Ctrl+S</span></div>
+      <div class="item" data-act="view-load">Load a view…<span class="key">Ctrl+L</span></div>
+      <div class="item" data-act="layout-export">Export the layout…</div>
+      <div class="item" data-act="layout-import">Import a layout…</div>
+      <div class="sep"></div>
+      <div class="item" data-act="rules">Colour rules…</div>
+      <div class="item" data-act="profile-apply">Apply the detected profile</div>
+      <div class="item" data-act="show-timeline">Timeline and correlations</div>
+      <div class="item" data-act="show-imports">Imports</div>
+      <div class="sep"></div>
+      <div class="item" data-act="derived">Date conversions and computed columns…</div>
+      <div class="item" data-act="cell-json">Show the cell / JSON…</div>
+      <div class="item" data-act="integrity">Provenance and SHA-256…</div>
+      <div class="sep"></div>
+      <div class="item" data-act="detrules-open">Detection rules…</div>
+      <div class="item" data-act="coverage-open">Collection coverage…</div>
+      <div class="item" data-act="date-filter">Filter a date…</div>
+      <div class="item" data-act="reload-analysis">Reload the analysis</div>
+    </div>
+
     <div class="menu" data-for="help">
+      <div class="item" data-act="help-tutorial">Full tutorial — all features</div>
+      <div class="item" data-act="help-guide">User guide<span class="key">F1</span></div>
+      <div class="item" data-act="help-coverage">Collection coverage and diagnostics</div>
+      <div class="item" data-act="help-ioc">IOC hunting</div>
+      <div class="item" data-act="help-timeline">Timeline, backups and reports</div>
+      <div class="item" data-act="help-licenses">Licences</div>
+      <div class="sep"></div>
       <div class="item" data-act="about">About Fireblade Host</div>
     </div>
   </div>
@@ -600,6 +663,26 @@
       <div class="note">Set aside parks a file out of the counts without losing its entry. Remove deletes
         it from the evidence tree, and only when its hash is still the one collected.</div>
     </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
+</div>
+
+<div class="modal" id="integrity-modal">
+  <div class="dialog" style="min-width:640px">
+    <h3>Provenance and SHA-256</h3>
+    <div class="body">
+      <div class="note">What this analysis came from, and the fingerprint the collection recorded
+        when it read the source. Nothing is recomputed here: the report is the one the import wrote.</div>
+      <div id="integrity-body"></div>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
+</div>
+
+<div class="modal" id="help-modal">
+  <div class="dialog" style="min-width:620px">
+    <h3 id="help-title">User guide</h3>
+    <div class="body" id="help-body"></div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
   </div>
 </div>

@@ -1212,6 +1212,231 @@ function applyExpression() {
     : "Advanced filter cleared");
 }
 
+/* ---------- the window's own commands, the ones a menu carries ---------- */
+
+/* A row height is a reading comfort, not case data: it lives in the browser. */
+function toggleDetails() {
+  const box = $("details");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+function openRowHeight() {
+  const computed = getComputedStyle(document.documentElement)
+    .getPropertyValue("--row-height").trim().replace("px", "");
+  const current = localStorage.getItem("fireblade.rowHeight") || computed || "20";
+  const answer = window.prompt("Row height in pixels (14 to 40)", current);
+  if (answer === null) return;
+  const value = Math.max(14, Math.min(40, Number(answer) || Number(current) || 20));
+  document.documentElement.style.setProperty("--row-height", `${value}px`);
+  localStorage.setItem("fireblade.rowHeight", String(value));
+  renderGrid();
+  say(`Row height: ${value} px`);
+}
+
+function resetWidths() {
+  state.widths = {};
+  saveLayoutSoon();
+  renderGrid();
+  say("Column widths reset to their defaults");
+}
+
+function openAddFilter() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  const names = state.columns.map((name, index) => `${index - 1}=${name}`).join(", ");
+  const answer = window.prompt(`Filter on which column? Give its name or its index.\n${names}`);
+  if (!answer) return;
+  const text = answer.trim();
+  let column = state.columns.findIndex((name) => name.toLowerCase() === text.toLowerCase()) - 1;
+  if (column < -1 && /^\d+$/.test(text)) column = Number(text);
+  if (column < 0 || column >= state.columns.length - 1) {
+    say(`No column is named ${text}`, true);
+    return;
+  }
+  const value = window.prompt(`Value to find in ${state.columns[column + 1]}?`, "");
+  if (value === null) return;
+  state.filters = state.filters.filter((item) => item.column !== column);
+  if (value.trim()) state.filters.push({ column, operator: "contains", value: value.trim() });
+  state.offset = 0;
+  loadRows(true);
+  say(`Filter added on ${state.columns[column + 1]}`);
+}
+
+function clearEveryFilter() {
+  state.filters = [];
+  state.search = "";
+  state.offset = 0;
+  $("search").value = "";
+  loadRows(true);
+  say("Filters cleared");
+}
+
+/* A note on the first cell of each selected row: added to what is there, or
+   replacing it — the desktop offers both, and they are not the same promise. */
+async function noteSelection(mode) {
+  const ids = selectedIds();
+  if (!ids.length) { say("Select a row first", true); return; }
+  const limited = ids.slice(0, 200);
+  const text = window.prompt(mode === "replace"
+    ? "Note that replaces the one on the selected rows:"
+    : "Note to add to the selected rows:", "");
+  if (text === null || !text.trim()) return;
+  try {
+    const current = mode === "append"
+      ? await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/cellnotes`,
+                      { row_ids: limited })
+      : { notes: {} };
+    for (const id of limited) {
+      const before = (current.notes && current.notes[String(id)] && current.notes[String(id)]["0"]) || "";
+      const note = mode === "append" && before ? `${before} ${text.trim()}` : text.trim();
+      await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/cellnote`,
+                    { row_id: id, column: 0, note });
+    }
+    await loadCellNotes();
+    renderGrid();
+    say(`${limited.length} row(s) noted`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function bookmarkNote() {
+  const ids = selectedIds();
+  if (!ids.length) { say("Select a row first", true); return; }
+  const text = window.prompt("Note for this bookmark (empty keeps a plain mark):", "");
+  if (text === null) return;
+  await markSelection(text.trim());
+}
+
+/* Next and previous analysis, the way the desktop walks its tabs. */
+function stepAnalysis(direction) {
+  const analyses = (state.openCase && state.openCase.analyses) || [];
+  if (analyses.length < 2) { say("This case holds a single analysis", true); return; }
+  const here = analyses.findIndex((item) => item.index === state.analysis);
+  const next = analyses[(here + direction + analyses.length) % analyses.length];
+  state.analysis = next.index;
+  state.filters = [];
+  state.offset = 0;
+  state.selected = null;
+  state.path = [];
+  renderTree();
+  loadRows(true);
+  say(`Analysis: ${next.label}`);
+}
+
+/* The grouped grid drills down one level at a time: collapsing is the root, and
+   expanding walks into the first group of the level on screen. */
+function collapseEveryGroup() {
+  if (!state.grouped) { say("This analysis is not grouped", true); return; }
+  state.path = [];
+  state.offset = 0;
+  loadRows(true);
+  say("Every group collapsed: back to the first level");
+}
+
+async function expandEveryGroup() {
+  if (!state.grouped) { say("This analysis is not grouped", true); return; }
+  const first = state.rows[0];
+  if (!first) { say("No group on this page", true); return; }
+  state.path = [...state.path, String(first[0] ?? "")];
+  state.offset = 0;
+  await loadRows(true);
+  say("Opened the first group of this level");
+}
+
+/* Every analysis is a file the case holds: its source, its hash, its rows. */
+async function openIntegrity() {
+  if (!state.openCase || state.analysis === null) { say("Open an analysis first", true); return; }
+  const entry = state.openCase.analyses.find((item) => item.index === state.analysis);
+  const box = $("integrity-body");
+  box.innerHTML = '<div class="emptygrid">Reading the collection reports…</div>';
+  $("integrity-modal").classList.add("show");
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/collection-files`);
+    const source = String((entry && entry.source) || "");
+    const match = (payload.files || []).find((item) => item.path === source)
+      || (payload.files || []).find((item) => source.endsWith("/" + item.name));
+    const lines = [
+      ["Analysis", entry ? entry.label : ""],
+      ["Source", source || "(nothing recorded)"],
+      ["SHA-256", match ? match.sha256 || "(not recorded)" : "(this source is not in a collection report)"],
+      ["Status", match ? match.status : "unknown"],
+      ["Reason", match ? match.reason || "" : ""],
+      ["Rows read", entry ? String(entry.rows || "") : ""],
+      ["Analysis file", entry ? entry.path : ""],
+    ];
+    box.innerHTML = `<table class="integrity-table">${lines.map(([name, value]) =>
+      `<tr><th>${escapeHtml(name)}</th><td>${escapeHtml(value)}</td></tr>`).join("")}</table>`;
+  } catch (error) {
+    box.innerHTML = `<div class="emptygrid">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function showHelp(name) {
+  const pages = {
+    guide: ["Fireblade Host — user guide", [
+      "A case holds the evidence of one investigation: imported files, the analyses the",
+      "readers produced, the indicators, the machines and the actions taken.",
+      "Case > Import evidence… reads a file or a folder; the same dialog shows the columns",
+      "and the recognised profile before anything is written.",
+      "The grid filters, sorts, groups and colours rows; the rules live with the analysis,",
+      "the colour book is shared by every analysis.",
+      "The timeline correlates every dated row of the case; Reports produces the technical",
+      "report and the document the client receives.",
+    ]],
+    coverage: ["Collection coverage and diagnostics", [
+      "Analysis > Collection coverage reopens every analysis and checks what can be attested:",
+      "hashes, empty columns, dates without a timezone, rows declared against rows read.",
+      "Imports > Import report lists every collected file with its status and its reason,",
+      "and lets a file be read again, set aside, or removed after its hash is verified.",
+    ]],
+    ioc: ["IOC hunting", [
+      "The IOC tab scans one analysis or the whole case for indicators, domains and hashes.",
+      "Sub-domains are followed, the grid's filters are respected, and the format of the",
+      "list can be declared instead of guessed.",
+    ]],
+    timeline: ["Timeline, backups and reports", [
+      "The timeline draws every dated row of the case, by source, and exports a verified CSV",
+      "with its receipt. Drag on the chart to select a duration, shift-drag to pan.",
+      "History and recovery keeps a state of the case each time it changes and restores it.",
+      "Reports writes the technical report and the client report, as HTML or PDF.",
+    ]],
+    tutorial: ["Fireblade Host — full tutorial", [
+      "1. A case. Case > New case… creates one; History and recovery keeps a state of it",
+      "each time it changes. Case > Import evidence… reads a file or a folder.",
+      "2. The grid. Click a header to sort, type in the filter row to filter, right-click a",
+      "cell to copy, filter, group, pin or colour. View > Columns…, Row height…, Reset the",
+      "widths, Group by… and Group summaries… shape what you read.",
+      "3. Colour rules. Analysis > Colour rules… writes rules with this analysis; the second",
+      "tab of the same dialog edits the book shared by every analysis of the instance.",
+      "Visual formats (bar, two- and three-colour scale, icons) are set in the same rule.",
+      "4. Detection. Hayabusa + AI runs the local detection, its rules are edited beside the",
+      "pack, and its findings open as a table, a clock, a heat map or a chain.",
+      "5. Timeline. Every dated row of the case, by source: drag to select a duration,",
+      "shift-drag to pan, wheel to zoom, export a verified CSV with its receipt.",
+      "6. Investigation. Actions and tracking holds the machines, the accounts, the",
+      "indicators and the actions; the attack graph draws them.",
+      "7. Reports. Reports… writes the technical report and the document the client",
+      "receives, as HTML or as PDF.",
+      "8. Verification. Imports > Import report lists every collected file with its reason;",
+      "Analysis > Collection coverage reopens every analysis and says what it cannot attest.",
+    ]],
+    legend: ["Supertimeline legend", [
+      "Each colour is one source: the analysis the rows come from. The legend above the",
+      "chart names them and their counts, and a click on a chip hides that source.",
+      "The height of a bar is the number of events in that slice of time, split by source.",
+    ]],
+    licenses: ["Licences", [
+      "Fireblade Host — internal edition. Python, FastAPI, DuckDB, openpyxl and PySide6",
+      "(the desktop edition only) are distributed under their own licences; the case data",
+      "never leaves the machine that serves it.",
+    ]],
+  };
+  const page = pages[name] || pages.guide;
+  $("help-title").textContent = page[0];
+  $("help-body").innerHTML = page[1].map((line) => `<p>${escapeHtml(line)}</p>`).join("");
+  $("help-modal").classList.add("show");
+}
+
 /* ---------- the findings, and their three maps ---------- */
 
 const LEVEL_COLOURS = { critical: "#8b1c1c", high: "#c05621", medium: "#b7791f",
@@ -4509,10 +4734,7 @@ function wire() {
     }
   });
 
-  $("details-toggle").addEventListener("click", () => {
-    const box = $("details");
-    box.style.display = box.style.display === "none" ? "block" : "none";
-  });
+  $("details-toggle").addEventListener("click", toggleDetails);
 
   $("import-input").addEventListener("change", (event) => {
     const files = [...(event.target.files || [])];
@@ -4833,6 +5055,36 @@ async function act(name, node) {
     case "hide-column": hideFromCell(); break;
     case "unmark-selection": await markSelection(""); break;
     case "group-column": openGroupPicker(); break;
+    case "row-height": openRowHeight(); break;
+    case "coverage-open": await openCoverage(); break;
+    case "detrules-open": openRulesDialog(); break;
+    case "details-toggle": toggleDetails(); break;
+    case "reset-widths": resetWidths(); break;
+    case "add-filter": openAddFilter(); break;
+    case "clear-filters": clearEveryFilter(); break;
+    case "note-selection": await noteSelection("append"); break;
+    case "note-replace": await noteSelection("replace"); break;
+    case "filter-active-cell": filterFromCell("eq"); break;
+    case "expression-andor": openExpressionDialog(); break;
+    case "show-timeline": showTab("timeline"); break;
+    case "show-imports": showTab("imports"); break;
+    case "profiles-plugins": await openCompatibility(); break;
+    case "legend": showHelp("legend"); break;
+    case "help-tutorial": showHelp("tutorial"); break;
+    case "bookmark-note": await bookmarkNote(); break;
+    case "mark-selection": await markSelection("bookmarked"); break;
+    case "integrity": await openIntegrity(); break;
+    case "view-load": await openViewsDialog(); break;
+    case "next-tab": stepAnalysis(1); break;
+    case "previous-tab": stepAnalysis(-1); break;
+    case "expand-groups": expandEveryGroup(); break;
+    case "collapse-groups": collapseEveryGroup(); break;
+    case "delete-case": openDestroyDialog(); break;
+    case "help-guide": showHelp("guide"); break;
+    case "help-coverage": showHelp("coverage"); break;
+    case "help-ioc": showHelp("ioc"); break;
+    case "help-timeline": showHelp("timeline"); break;
+    case "help-licenses": showHelp("licenses"); break;
     case "global-search": $("search-modal").classList.add("show"); break;
     case "global-run": await runGlobalSearch(); $("search-modal").classList.add("show"); break;
     case "new-case": openCaseDialog("create"); break;

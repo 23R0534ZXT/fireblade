@@ -375,3 +375,9 @@ td .vicon { margin-right: 4px; font-size: 10px; }
 /* A closed analysis stays in the case: the tree says so, without making it look open. */
 .node.child.closed{opacity:.65;font-style:italic}
 .closed-group{margin-top:6px}
+
+/* Provenance: a two-column table, the label quiet and the value readable. */
+.integrity-table{width:100%;border-collapse:collapse;margin:6px 0}
+.integrity-table th{text-align:left;font-weight:600;color:var(--muted);width:150px;padding:3px 8px 3px 0;vertical-align:top}
+.integrity-table td{padding:3px 0;word-break:break-all;font-family:Consolas,'Courier New',monospace;font-size:11px}
+#help-body p{margin:0 0 8px;line-height:1.45}

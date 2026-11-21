@@ -453,30 +453,49 @@
       </div>
 
       <div id="ioc-view" style="display:none;flex-direction:column;flex:1;min-height:0">
-        <div class="ioc-bar">
-          <textarea id="ioc-input" class="ioc-input" spellcheck="false"
-            placeholder="Paste indicators: IP addresses, domains, URLs, hashes — one per line, or with a label."></textarea>
-          <div class="ioc-side">
-            <label><input type="checkbox" id="ioc-all"> Every analysis</label>
-            <label><input type="checkbox" id="ioc-filters"> Respect the analyses' filters</label>
-            <label><input type="checkbox" id="ioc-subdomains" checked> Include sub-domains</label>
-            <button class="btn" id="ioc-scan">Scan</button>
-            <button class="btn" id="ioc-file-open" title="TXT, CSV or TSV">Import a list…</button>
-            <input type="file" id="ioc-file" accept=".txt,.csv,.tsv" hidden>
+        <div class="panel-title">
+          <h2>Bulk IOC hunt · IPs, domains, URLs and hashes · no network request</h2>
+          <p>Paste a list or import a file. Outside an investigation folder, results are temporary.</p>
+        </div>
+        <div style="padding:0 8px">
+          <textarea id="ioc-input" class="ioc-input" spellcheck="false" rows="4"
+            placeholder="One IOC per line, or CSV: type,value,label&#10;192.0.2.10&#10;example.org"></textarea>
+        </div>
+        <div class="filterbar">
+          <button class="btn" id="ioc-file-open" title="TXT, CSV or TSV">Import TXT / CSV / TSV</button>
+          <label><input type="checkbox" id="ioc-subdomains" checked> Include sub-domains</label>
+          <label><input type="checkbox" id="ioc-filters"> Respect the analysis filters</label>
+          <label><input type="checkbox" id="ioc-all"> Hunt across every open analysis</label>
+          <button class="btn" id="ioc-scan">Hunt</button>
           <select class="select" id="ioc-history" title="Saved hunts of this case">
-            <option value="">Saved hunts…</option>
+            <option value="">History</option>
           </select>
-            <div class="note" id="ioc-summary">Nothing scanned yet.</div>
+          <input type="file" id="ioc-file" accept=".txt,.csv,.tsv" hidden>
+          <div class="info" id="ioc-summary">Nothing scanned yet.</div>
+        </div>
+        <div class="gridwrap" style="flex:0 0 34%;min-height:90px">
+          <div class="gridbody">
+            <table>
+              <colgroup><col style="width:80px"><col style="width:24%"><col style="width:24%"><col style="width:24%"><col style="width:80px"><col></colgroup>
+              <thead><tr><th>Type</th><th>IOC original</th><th>Normalised</th><th>Label</th><th>Rows</th><th>Details</th></tr></thead>
+              <tbody id="ioc-list-rows"></tbody>
+            </table>
           </div>
         </div>
         <div class="gridwrap" style="flex:1">
           <div class="gridbody">
             <table>
-              <colgroup><col style="width:170px"><col style="width:60px"><col style="width:210px"><col style="width:210px"><col><col style="width:170px"></colgroup>
-              <thead><tr><th>Analysis</th><th>Row</th><th>Indicator</th><th>Observed</th><th>Rule</th><th>Column</th></tr></thead>
+              <colgroup><col style="width:170px"><col style="width:180px"><col style="width:160px"><col style="width:90px"><col style="width:130px"><col><col style="width:170px"></colgroup>
+              <thead><tr><th>Source date</th><th>IOC</th><th>Analysis</th><th>Source row</th><th>Column</th><th>Observed value</th><th>Rule</th></tr></thead>
               <tbody id="ioc-rows"></tbody>
             </table>
           </div>
+        </div>
+        <div class="filterbar">
+          <button class="btn" data-act="ioc-export-matches">Export the matches</button>
+          <button class="btn" data-act="ioc-export-summary">Export the summary</button>
+          <div class="grow"></div>
+          <span class="info" id="ioc-status"></span>
         </div>
       </div>
 

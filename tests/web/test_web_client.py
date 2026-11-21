@@ -405,6 +405,18 @@ def test_a_machine_and_an_action_can_be_changed_or_removed():
     assert "data-reopen" in js and "/closed/" in js
 
 
+def test_the_ioc_panel_lists_indicators_and_matches():
+    js, html = _read(APP), _read(INDEX)
+    for column in ("Type", "IOC original", "Normalised", "Label", "Rows"):
+        assert f"<th>{column}</th>" in html, column
+    for column in ("Source date", "IOC", "Analysis", "Source row", "Column",
+                   "Observed value", "Rule"):
+        assert f"<th>{column}</th>" in html, column
+    for name in ("iocLines", "iocKind", "exportIocMatches", "exportIocSummary"):
+        assert f"function {name}(" in js, name
+    assert "Bulk IOC hunt" in html
+
+
 def test_the_timeline_table_reads_like_the_desktop():
     js, html = _read(APP), _read(INDEX)
     for column in ("Date UTC", "Analysis", "Source row", "Summary"):

@@ -1297,6 +1297,42 @@ function clearEveryFilter() {
   say("Filters cleared");
 }
 
+/* ---- the IOC hunt leaves as two files, as the desktop offers ---- */
+
+function downloadCsv(name, lines) {
+  const csv = lines.map((line) => line.map((cell) =>
+    '"' + String(cell === null || cell === undefined ? "" : cell).replace(/"/g, '""') + '"').join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function exportIocMatches() {
+  if (!iocState.hits.length) { say("Nothing to export: hunt first", true); return; }
+  const lines = [["indicator", "analysis", "row", "column", "observed", "rule"]];
+  for (const hit of iocState.hits) {
+    lines.push([hit.indicator, hit.analysis_label || "", hit.row_id, hit.column,
+                hit.observed, hit.rule]);
+  }
+  downloadCsv("ioc-matches.csv", lines);
+  say(`${iocState.hits.length} match(es) exported`);
+}
+
+function exportIocSummary() {
+  const counts = new Map();
+  for (const hit of iocState.hits) counts.set(hit.indicator, (counts.get(hit.indicator) || 0) + 1);
+  const lines = [["type", "indicator", "label", "rows"]];
+  for (const line of iocLines()) {
+    lines.push([line.kind || iocKind(line.value), line.value, line.label || "",
+                counts.get(line.value) || 0]);
+  }
+  downloadCsv("ioc-summary.csv", lines);
+  say(`${lines.length - 1} indicator(s) summarised`);
+}
+
 /* ---- the imports table's own commands, one file at a time ---- */
 
 function selectedCollectedFile() {
@@ -3855,15 +3891,63 @@ async function openHunt(name) {
   }
 }
 
+/* Every non-empty line of the box is an indicator: `value`, or `type,value,label` when
+   a CSV line names them, which is the shape the desktop accepts too. */
+function iocLines() {
+  const rows = [];
+  for (const raw of ($("ioc-input").value || "").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const parts = line.split(",").map((part) => part.trim());
+    if (parts.length >= 3 && /^(ip|domain|url|hash|md5|sha1|sha256)$/i.test(parts[0])) {
+      rows.push({ kind: parts[0].toLowerCase(), value: parts[1], label: parts.slice(2).join(",") });
+    } else {
+      rows.push({ kind: "", value: parts[0], label: parts.slice(1).join(",") });
+    }
+  }
+  return rows;
+}
+
+function iocKind(value) {
+  const text = String(value || "");
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(text)) return "ip";
+  if (/^[0-9a-f]{32}$/i.test(text)) return "md5";
+  if (/^[0-9a-f]{40}$/i.test(text)) return "sha1";
+  if (/^[0-9a-f]{64}$/i.test(text)) return "sha256";
+  if (/^https?:\/\//i.test(text)) return "url";
+  if (/^[\w.-]+\.[a-z]{2,}$/i.test(text)) return "domain";
+  return "text";
+}
+
 function renderIoc() {
+  // The list above the matches: what was asked, and what it found.
+  const counts = new Map();
+  for (const hit of iocState.hits) {
+    counts.set(hit.indicator, (counts.get(hit.indicator) || 0) + 1);
+  }
+  const lines = iocLines();
+  $("ioc-list-rows").innerHTML = lines.length ? lines.map((line) => {
+    const found = counts.get(line.value) || 0;
+    return `<tr><td>${escapeHtml(line.kind || iocKind(line.value))}</td>
+      <td title="${escapeHtml(line.value)}">${escapeHtml(line.value)}</td>
+      <td title="${escapeHtml(line.value)}">${escapeHtml(line.value)}</td>
+      <td>${escapeHtml(line.label || "")}</td>
+      <td>${found}</td>
+      <td>${found ? "matched" : "no hit"}</td></tr>`;
+  }).join("") : '<tr><td colspan="6" class="cellnull">Paste a list above, then Hunt.</td></tr>';
+
   $("ioc-rows").innerHTML = iocState.hits.map((hit) =>
-    `<tr><td title="${escapeHtml(hit.analysis_label || "")}">${escapeHtml(hit.analysis_label || "this analysis")}</td>
-     <td>${escapeHtml(String(hit.row_id))}</td><td>${escapeHtml(hit.indicator)}</td>
-     <td>${escapeHtml(hit.observed)}</td><td>${escapeHtml(hit.rule)}</td>
+    `<tr><td>${escapeHtml(hit.when || hit.date || "")}</td>
+     <td title="${escapeHtml(hit.indicator)}">${escapeHtml(hit.indicator)}</td>
+     <td title="${escapeHtml(hit.analysis_label || "")}">${escapeHtml(hit.analysis_label || "this analysis")}</td>
+     <td class="rowid">${escapeHtml(String(hit.row_id))}</td>
      <td>${escapeHtml(hit.analysis === state.analysis
         ? (state.columns[hit.column + 1] || String(hit.column))
-        : `column ${hit.column + 1}`)}</td></tr>`).join("")
-    || '<tr><td colspan="6" class="cellnull">No hit.</td></tr>';
+        : `column ${hit.column + 1}`)}</td>
+     <td title="${escapeHtml(hit.observed)}">${escapeHtml(hit.observed)}</td>
+     <td>${escapeHtml(hit.rule)}</td></tr>`).join("")
+    || '<tr><td colspan="7" class="cellnull">No hit.</td></tr>';
+  $("ioc-status").textContent = `${iocState.hits.length} match(es) for ${lines.length} indicator(s)`;
 }
 
 /* ---------- timeline ---------- */
@@ -5437,6 +5521,8 @@ async function act(name, node) {
     case "import-portable": $("package-input").click(); break;
     case "show-imports": showTab("imports"); break;
     case "stop-query": stopQuery(); break;
+    case "ioc-export-matches": exportIocMatches(); break;
+    case "ioc-export-summary": exportIocSummary(); break;
     case "case-autosave": showHelp("autosave"); break;
     case "cases-list": showTab("cases"); break;
     case "profiles-plugins": await openCompatibility(); break;

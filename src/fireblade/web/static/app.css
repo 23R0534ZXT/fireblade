@@ -389,3 +389,8 @@ td .vicon { margin-right: 4px; font-size: 10px; }
 .panel-title{padding:8px 10px 2px}
 .panel-title h2{margin:0;font-size:14px;font-weight:600;color:var(--text)}
 .panel-title p{margin:3px 0 0;color:var(--muted);font-size:11.5px}
+
+/* The overview strip the desktop keeps above its chart: the whole extent, and where
+   the current window sits in it. */
+.timeline-overview{margin:0 6px 2px;border:1px solid var(--border);background:var(--base);cursor:pointer}
+.timeline-overview canvas{display:block;width:100%;height:34px}

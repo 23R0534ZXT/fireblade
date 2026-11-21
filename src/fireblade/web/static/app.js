@@ -4137,6 +4137,7 @@ function renderTimeline(payload) {
     $("timeline-window").textContent = "";
   } else {
     box.innerHTML = timelineBars(hist, shown);
+    drawOverview(hist);
     timelineWindowLabel(hist);
     timelineDrag(box, hist);
   }
@@ -4224,6 +4225,54 @@ function timelineBars(hist, shown) {
       + `style="height:${Math.max(height ? 2 : 0, Math.round(height / peak * 56))}px">${inner}</span>`);
   }
   return bars.join("");
+}
+
+/* The whole extent, the events as a thin profile, and the window on screen as a band
+   the analyst can move by clicking. The desktop calls this its Overview. */
+function drawOverview(hist) {
+  const canvas = $("timeline-overview-canvas");
+  if (!canvas || !hist || !hist.bins) return;
+  const ratio = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth || 800;
+  const height = 34;
+  canvas.width = Math.round(width * ratio);
+  canvas.height = Math.round(height * ratio);
+  const context = canvas.getContext("2d");
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.clearRect(0, 0, width, height);
+
+  const totals = new Array(hist.bins).fill(0);
+  let peak = 1;
+  for (const [sourceIndex, bucket, count] of hist.rows) {
+    if (timelineState.hidden.has(sourceIndex)) continue;
+    totals[bucket] += count;
+    peak = Math.max(peak, totals[bucket]);
+  }
+  const columnWidth = width / hist.bins;
+  context.fillStyle = "#9fb3c8";
+  totals.forEach((count, bucket) => {
+    if (!count) return;
+    const bar = Math.max(1, Math.round((count / peak) * (height - 6)));
+    context.fillRect(bucket * columnWidth, height - 3 - bar, Math.max(1, columnWidth), bar);
+  });
+
+  const { start, end } = timelineRange(hist);
+  context.fillStyle = "rgba(23, 75, 115, .18)";
+  context.fillRect(start * columnWidth, 0, (end - start + 1) * columnWidth, height);
+  context.strokeStyle = "#174b73";
+  context.lineWidth = 1;
+  context.strokeRect(start * columnWidth + 0.5, 0.5,
+                     (end - start + 1) * columnWidth - 1, height - 1);
+
+  canvas.onclick = (event) => {
+    const box = canvas.getBoundingClientRect();
+    const span = end - start + 1;
+    const centre = Math.round(((event.clientX - box.left) / box.width) * hist.bins);
+    let low = Math.max(0, Math.min(hist.bins - span, centre - Math.floor(span / 2)));
+    timelineState.history.push([start, end]);
+    timelineState.window = [low, low + span - 1];
+    renderTimeline(timelineState.payload);
+  };
 }
 
 function timelineWindowLabel(hist) {

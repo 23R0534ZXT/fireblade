@@ -405,6 +405,15 @@ def test_a_machine_and_an_action_can_be_changed_or_removed():
     assert "data-reopen" in js and "/closed/" in js
 
 
+def test_the_timeline_has_its_overview():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="timeline-overview"' in html and 'id="timeline-overview-canvas"' in html
+    assert "function drawOverview(" in js
+    assert "timelineState.window = [low, low + span - 1]" in js
+    css = (WEB / "static" / "app.css").read_text(encoding="utf-8")
+    assert ".timeline-overview" in css
+
+
 def test_the_evtx_tab_is_its_own_screen():
     js, html = _read(APP), _read(INDEX)
     assert 'id="evtx-view"' in html and 'id="evtx-level"' in html

@@ -1194,3 +1194,49 @@ def test_a_machine_and_an_action_are_changed_and_removed(service):
     assert all(item["id"] != action_id for item in library.workspace(identifier)["actions"])
     with pytest.raises(Exception):
         library.remove_action(identifier, action_id)
+
+
+def test_a_collected_file_is_set_aside_then_removed(tmp_path):
+    """The bilan keeps the entry; the removal is refused when the hash changed."""
+    import hashlib
+    import json as jsonlib
+
+    root = tmp_path / "cases"
+    root.mkdir()
+    book = InvestigationLibrary(root)
+    data = book.create("Report", "Collection report", "windows")
+    identifier = data["id"]
+    folder = book.folder(identifier)
+    evidence = folder / "evidence"
+    evidence.mkdir(parents=True, exist_ok=True)
+    sample = evidence / "notes.txt"
+    sample.write_text("nothing to parse here\n", encoding="utf-8")
+    digest = hashlib.sha256(sample.read_bytes()).hexdigest()
+    collection = folder / "collections" / "import-20260101-000000"
+    collection.mkdir(parents=True)
+    (collection / "collection.json").write_text(jsonlib.dumps({
+        "status": "complete",
+        "files": [{"path": str(sample), "status": "unsupported", "reason": "no reader",
+                   "tools": [], "sha256": digest}]}, ensure_ascii=False), encoding="utf-8")
+    library = Library(root)
+    try:
+        listed = library.collection_files(identifier)
+        assert listed["count"] == 1 and listed["files"][0]["status"] == "unsupported"
+        library.set_aside_file(identifier, collection.name, str(sample), True)
+        kept = library.collection_files(identifier)["files"][0]
+        assert kept["ignored"] is True and kept["reason"] == "no reader"
+        library.set_aside_file(identifier, collection.name, str(sample), False)
+        assert library.collection_files(identifier)["files"][0]["ignored"] is False
+        # The file changed since the collection: the removal must be refused.
+        sample.write_text("changed after the collection\n", encoding="utf-8")
+        with pytest.raises(Exception):
+            library.remove_collection_file(identifier, collection.name, str(sample))
+        assert sample.is_file()
+        # Put the collected content back: the removal now goes through, and the hash stays.
+        sample.write_text("nothing to parse here\n", encoding="utf-8")
+        made = library.remove_collection_file(identifier, collection.name, str(sample))
+        assert made["status"] == "deleted" and made["sha256"] == digest
+        assert not sample.exists()
+        assert library.collection_files(identifier)["files"][0]["status"] == "deleted"
+    finally:
+        library.close()

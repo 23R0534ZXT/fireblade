@@ -684,6 +684,39 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/collection-files")
+    def collection_files(identifier: str, collection: str = ""):
+        """The bilan, file by file: status, reason, hash, and whether it was set aside."""
+        try:
+            return library.collection_files(identifier, collection=collection)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/collection-files/aside")
+    def set_aside_file(identifier: str, payload: dict):
+        """Park a file out of the counts without losing it, or bring it back."""
+        payload = payload or {}
+        for field in ("collection", "path"):
+            if not payload.get(field):
+                raise HTTPException(status_code=400, detail=f"A '{field}' field is required.")
+        try:
+            return library.set_aside_file(identifier, payload["collection"], payload["path"],
+                                          bool(payload.get("ignored", True)))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/collection-files/remove")
+    def remove_collection_file(identifier: str, payload: dict):
+        """Delete a collected file, after proving its hash is still the collected one."""
+        payload = payload or {}
+        for field in ("collection", "path"):
+            if not payload.get(field):
+                raise HTTPException(status_code=400, detail=f"A '{field}' field is required.")
+        try:
+            return library.remove_collection_file(identifier, payload["collection"], payload["path"])
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/collections/{collection_name}/retry")
     def retry_file(identifier: str, collection_name: str, payload: dict):
         try:

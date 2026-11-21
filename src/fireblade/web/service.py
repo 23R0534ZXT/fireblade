@@ -2625,6 +2625,84 @@ class Library:
         return {"files": entries, "count": len(entries),
                 "readers": list(self.RETRY_READERS)}
 
+    def _collection_report(self, folder: Path, collection_name: str) -> tuple[Path, dict]:
+        report = folder / "collections" / Path(str(collection_name)).name
+        file = report / "collection.json"
+        if not file.is_file():
+            raise ServiceError("This collection is not in the case.")
+        try:
+            return file, json.loads(file.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ServiceError(f"This collection report cannot be read: {exc}") from exc
+
+    def _write_collection_report(self, file: Path, payload: dict) -> None:
+        temporary = file.with_suffix(".json.partial")
+        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
+        temporary.replace(file)
+
+    def collection_files(self, identifier: str, collection: str = "") -> dict:
+        """Every file a collection inventoried, with its verdict — the bilan, file by file."""
+        folder = self.library.folder(identifier)
+        entries = []
+        reports = ([folder / "collections" / Path(collection).name] if collection
+                   else sorted((folder / "collections").glob("import-*")))
+        for report in reports:
+            file = report / "collection.json"
+            if not file.is_file():
+                continue
+            try:
+                payload = json.loads(file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            for item in payload.get("files") or []:
+                if not isinstance(item, dict):
+                    continue
+                entries.append({"collection": report.name,
+                                "path": str(item.get("path") or ""),
+                                "name": Path(str(item.get("path") or "")).name,
+                                "status": item.get("status") or "unknown",
+                                "reason": item.get("reason") or item.get("error") or "",
+                                "tools": item.get("tools") or [],
+                                "sha256": item.get("sha256") or "",
+                                "ignored": bool(item.get("ignored"))})
+        return {"files": entries, "count": len(entries),
+                "set_aside": sum(1 for item in entries if item["ignored"])}
+
+    def set_aside_file(self, identifier: str, collection: str, path: str,
+                       ignored: bool = True) -> dict:
+        """Park a file out of the counts, or bring it back: the desktop's "écarter"."""
+        from fireblade.core import report_actions
+
+        folder = self.library.folder(identifier)
+        file, payload = self._collection_report(folder, collection)
+        entry = next((item for item in payload.get("files") or []
+                      if isinstance(item, dict) and str(item.get("path")) == str(path)), None)
+        if entry is None:
+            raise ServiceError("This file is not in the collection report.")
+        report_actions.set_ignored(entry, bool(ignored))
+        self._write_collection_report(file, payload)
+        return {"path": str(path), "ignored": bool(ignored)}
+
+    def remove_collection_file(self, identifier: str, collection: str, path: str) -> dict:
+        """Delete a collected file after proving it is the one that was collected.
+
+        The core's `remove_source` refuses when the hash changed: the evidence tree is
+        not a place where a file is deleted blindly.
+        """
+        from fireblade.core import report_actions
+
+        folder = self.library.folder(identifier)
+        file, payload = self._collection_report(folder, collection)
+        entry = next((item for item in payload.get("files") or []
+                      if isinstance(item, dict) and str(item.get("path")) == str(path)), None)
+        if entry is None:
+            raise ServiceError("This file is not in the collection report.")
+        record = report_actions.remove_source(entry)
+        entry.update(record)
+        self._write_collection_report(file, payload)
+        return {"path": str(path), "status": record.get("status", "deleted"),
+                "sha256": record.get("sha256", "")}
+
     def retry_file(self, identifier: str, collection_name: str, path: str,
                    reader: str = "text") -> dict:
         """Read one collected file again with the reader the analyst names.

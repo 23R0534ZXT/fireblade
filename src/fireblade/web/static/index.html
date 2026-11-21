@@ -580,11 +580,22 @@
 
 <div class="modal" id="retry-modal">
   <div class="dialog" style="min-width:760px">
-    <h3>Read a file again</h3>
+    <h3>Import report</h3>
     <div class="body">
       <div class="note">A file the collection could not read stays unread until somebody asks. The source is
         read, never modified, and the choice is written in the collection's report with the file's hash.</div>
+      <div class="filterbar">
+        <label for="report-filter">Show</label>
+        <select class="select" id="report-filter">
+          <option value="unread">the files that could not be read</option>
+          <option value="all">every collected file</option>
+          <option value="aside">the files set aside</option>
+        </select>
+        <span class="info" id="report-summary"></span>
+      </div>
       <div class="columns-list" id="retry-list" style="max-height:340px"></div>
+      <div class="note">Set aside parks a file out of the counts without losing its entry. Remove deletes
+        it from the evidence tree, and only when its hash is still the one collected.</div>
     </div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
   </div>

@@ -102,37 +102,99 @@ async function startDiskAnalysis() {
 
 const retryState = { files: [], readers: [] };
 
+function reportFilter() {
+  return $("report-filter").value || "unread";
+}
+
+function renderRetryList() {
+  const filter = reportFilter();
+  const files = retryState.files.filter((item) => {
+    if (filter === "all") return true;
+    if (filter === "aside") return item.ignored;
+    return item.status !== "complete" && item.status !== "companion" && !item.ignored;
+  });
+  const aside = retryState.files.filter((item) => item.ignored).length;
+  $("report-summary").textContent = `${retryState.files.length} file(s) in the reports`
+    + (aside ? `, ${aside} set aside` : "");
+  $("retry-list").innerHTML = files.length
+    ? files.map((item) => `<div class="retry-line${item.ignored ? " aside" : ""}">
+        <span class="retry-path" title="${escapeHtml(item.path)}">${escapeHtml(item.path.split(/[\\/]/).pop())}
+          <em>${escapeHtml(item.status)}${item.ignored ? " · set aside" : ""}${item.reason ? " — " + escapeHtml(item.reason) : ""}</em></span>
+        <span class="pin">
+          <select data-retry-reader="${escapeHtml(item.path)}">${retryState.readers.map((reader) =>
+            `<option value="${reader}">${reader}</option>`).join("")}</select>
+          <button class="btn" data-retry-run="${escapeHtml(item.path)}">Read</button>
+          <button class="btn" data-report-aside="${escapeHtml(item.path)}"
+            data-collection="${escapeHtml(item.collection)}" data-ignored="${item.ignored ? "1" : ""}"
+            >${item.ignored ? "Bring back" : "Set aside"}</button>
+          <button class="btn" data-report-remove="${escapeHtml(item.path)}"
+            data-collection="${escapeHtml(item.collection)}">Remove</button>
+        </span></div>`).join("")
+    : '<div class="emptygrid">Nothing matches this filter in the collection reports.</div>';
+  $("retry-list").querySelectorAll("[data-retry-run]").forEach((node) => {
+    node.addEventListener("click", () => runRetry(node.dataset.retryRun,
+      node.parentElement.querySelector("[data-retry-reader]").value));
+  });
+  $("retry-list").querySelectorAll("[data-report-aside]").forEach((node) => {
+    node.addEventListener("click", () => setFileAside(node.dataset.collection,
+      node.dataset.reportAside, !node.dataset.ignored));
+  });
+  $("retry-list").querySelectorAll("[data-report-remove]").forEach((node) => {
+    node.addEventListener("click", () => removeCollectedFile(node.dataset.collection,
+      node.dataset.reportRemove));
+  });
+}
+
+async function loadReports() {
+  const [unread, files] = await Promise.all([
+    api(`/api/cases/${encodeURIComponent(state.openCase.id)}/unread`),
+    api(`/api/cases/${encodeURIComponent(state.openCase.id)}/collection-files`),
+  ]);
+  retryState.files = (files.files || []).length ? files.files : (unread.files || []);
+  retryState.readers = unread.readers || ["text"];
+  renderRetryList();
+}
+
+async function setFileAside(collection, path, ignored) {
+  try {
+    await apiPost(`/api/cases/${state.openCase.id}/collection-files/aside`,
+      { collection, path, ignored });
+    await loadReports();
+    say(ignored ? `Set aside: ${path.split(/[\\/]/).pop()}` : `Back in the counts: ${path.split(/[\\/]/).pop()}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function removeCollectedFile(collection, path) {
+  const name = path.split(/[\\/]/).pop();
+  if (!window.confirm(`Delete ${name} from the evidence tree? Its hash stays in the report, and the `
+    + `deletion is refused if the file changed since the collection.`)) return;
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/collection-files/remove`,
+      { collection, path });
+    await loadReports();
+    say(`Deleted: ${name} (${payload.status}, ${String(payload.sha256).slice(0, 12)}…)`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 async function openRetry() {
   if (!state.openCase) { say("Open a case first", true); return; }
   $("retry-list").innerHTML = '<div class="emptygrid">Reading the collection reports…</div>';
   $("retry-modal").classList.add("show");
   try {
-    const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/unread`);
-    retryState.files = payload.files || [];
-    retryState.readers = payload.readers || ["text"];
-    $("retry-list").innerHTML = retryState.files.length
-      ? retryState.files.map((item, position) => `<div class="retry-line">
-          <span class="retry-path" title="${escapeHtml(item.path)}">${escapeHtml(item.path.split(/[\\/]/).pop())}
-            <em>${escapeHtml(item.status)}${item.reason ? " — " + escapeHtml(item.reason) : ""}</em></span>
-          <span class="pin">
-            <select data-retry-reader="${position}">${retryState.readers.map((reader) =>
-              `<option value="${reader}">${reader}</option>`).join("")}</select>
-            <button class="btn" data-retry-run="${position}">Read</button>
-          </span></div>`).join("")
-      : '<div class="emptygrid">Every collected file was read: nothing to retry.</div>';
-    $("retry-list").querySelectorAll("[data-retry-run]").forEach((node) => {
-      node.addEventListener("click", () => runRetry(Number(node.dataset.retryRun)));
-    });
+    await loadReports();
   } catch (error) {
     $("retry-list").innerHTML = "";
     say(error.message, true);
   }
 }
 
-async function runRetry(position) {
-  const item = retryState.files[position];
+async function runRetry(path, reader) {
+  const item = retryState.files.find((entry) => entry.path === path);
   if (!item) return;
-  const reader = document.querySelector(`[data-retry-reader="${position}"]`).value;
   say(`Reading ${item.path.split(/[\\/]/).pop()} with ${reader}…`);
   try {
     const payload = await apiPost(
@@ -4466,6 +4528,7 @@ function wire() {
   });
   $("rule-visual").addEventListener("change", showRuleVisual);
   $("entity-cancel").addEventListener("click", stopEditingEntity);
+  $("report-filter").addEventListener("change", renderRetryList);
   $("finding-view").addEventListener("change", renderFindingView);
   $("finding-group").addEventListener("change", renderFindingView);
   window.addEventListener("resize", () => {

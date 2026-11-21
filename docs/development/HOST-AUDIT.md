@@ -40,6 +40,7 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Command palette | "Commandes" (a keyboard launcher over every command) | **yes** — Commands… (Ctrl+K): every command the window offers, filtered and run |
 | Messages | "Messages" (the application's own log) | **yes** — View > Messages: every line the status bar showed, newest first |
 | Open analyses | "Analyses ouvertes…" (list, close, reorder) | **yes** — Analysis > Open analyses: open, close, reorder the tabs and keep the order |
+| Open analyses — closed | a closed tab stays in the case and opens again | **yes** — the tree lists "Closed (kept in the case)"; the session keeps it in its own `closed` list, as the desktop does, and an import never drops it |
 | Cases | new, edit, destroy (DoD + certificate), archive, restore, portable `.fireblade` | **yes** |
 | Case history | "Historique et récupération" (the History folder) | **yes** — Case > History and recovery: the recorded states, restored after keeping the present one |
 | Import — file, folder | three layouts, preview, CSV options, history file by file | **yes** |
@@ -72,7 +73,8 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Hayabusa — maps | Clock, Heat map and Chain views of the findings, "Grouped by" level, computer or rule | **yes** — Hayabusa > View (Table, Clock, Heat map, Chain) and Grouped by; drawn on a canvas server-side data |
 | Hayabusa — assistant | "Explain this finding", "Ask", local model | **declared** — no model is connected |
 | Attack graph | build, layout, ATT&CK layer, PNG, free node with tags | **yes** |
-| Workspace — machines and accounts | "Machine ou compte" (declared hosts, accounts) | **yes** — Actions & tracking > Machines & accounts |
+| Workspace — machines and accounts | "Machine ou compte" (declared hosts, accounts), change one, remove one | **yes** — Actions & tracking > Machines & accounts: the form adds and saves, a row is edited in place or removed |
+| Workspace — actions | add, change (status, owner, due), remove | **yes** — Actions & tracking: the row closes or reopens, and is removed from the case with its own button |
 | Workspace — indicators | "Indicateurs": a stored list in the case, "Importer une liste" | **yes** — Actions & tracking > Indicators (add a list, remove) |
 | Investigation report | HTML, bookmarks-only or bounded, title and mission | **yes** — HTML or PDF written by the Host itself (no Qt in the container), bookmarks-only or bounded, title, description and a coverage warning
 | Client report | the document handed to the client: scope, findings by level, actions and owners, indicators, machines, destruction, PDF | **yes** — Reports > Client report, built by the desktop's own `core/client_report`; a section with no data says so

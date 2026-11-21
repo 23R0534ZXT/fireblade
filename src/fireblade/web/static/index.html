@@ -304,14 +304,15 @@
             <input id="entity-ip" placeholder="IP (optional)">
             <input id="entity-os" placeholder="OS (optional)">
             <button class="btn" id="entity-add">Add</button>
+            <button class="btn" id="entity-cancel" style="display:none">Cancel</button>
             <div class="grow"></div>
             <div class="info" id="entity-summary"></div>
           </div>
           <div class="gridwrap" style="flex:1">
             <div class="gridbody">
               <table>
-                <colgroup><col style="width:90px"><col><col style="width:150px"><col style="width:130px"><col style="width:90px"></colgroup>
-                <thead><tr><th>Kind</th><th>Name</th><th>Hostname</th><th>IP</th><th>OS</th></tr></thead>
+                <colgroup><col style="width:90px"><col><col style="width:150px"><col style="width:130px"><col style="width:90px"><col style="width:150px"></colgroup>
+                <thead><tr><th>Kind</th><th>Name</th><th>Hostname</th><th>IP</th><th>OS</th><th></th></tr></thead>
                 <tbody id="entity-rows"></tbody>
               </table>
             </div>

@@ -366,6 +366,43 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.patch("/api/cases/{identifier}/entities/{entity_id}")
+    def edit_entity(identifier: str, entity_id: str, payload: dict):
+        """Change a machine or an account."""
+        try:
+            return library.edit_entity(identifier, entity_id, payload or {})
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.delete("/api/cases/{identifier}/entities/{entity_id}")
+    def remove_entity(identifier: str, entity_id: str):
+        try:
+            return library.remove_entity(identifier, entity_id)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.delete("/api/cases/{identifier}/actions/{action_id}")
+    def remove_action(identifier: str, action_id: str):
+        try:
+            return library.remove_action(identifier, action_id)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/closed")
+    def closed_analyses(identifier: str):
+        """The analyses closed and kept: the tree lists them, and they open again."""
+        try:
+            return library.closed_analyses(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/closed/{position}/reopen")
+    def reopen_analysis(identifier: str, position: int):
+        try:
+            return library.reopen_analysis(identifier, position)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/entities")
     def add_entity(identifier: str, payload: dict):
         """Declare a machine or an account: the graph and the report read them."""

@@ -897,6 +897,13 @@ async function openCase(identifier) {
   try {
     const detail = await api(`/api/cases/${identifier}`);
     state.openCase = detail;
+    // The analyses closed and kept: the tree lists them, and they open again.
+    try {
+      const closed = await api(`/api/cases/${identifier}/closed`);
+      state.openCase.closed = closed.closed || [];
+    } catch (_) {
+      state.openCase.closed = [];
+    }
     state.analysis = detail.analyses.length ? detail.analyses[0].index : 0;
     state.filters = [];
     state.search = "";
@@ -2908,13 +2915,21 @@ function showWorkspaceSub(name) {
 
 function renderEntities() {
   $("entity-rows").innerHTML = workspaceState.entities.length
-    ? workspaceState.entities.map((item) => `<tr>
+    ? workspaceState.entities.map((item) => `<tr data-entity="${escapeHtml(item.id)}">
         <td>${escapeHtml(item.kind || "")}</td>
         <td>${escapeHtml(item.label || "")}</td>
         <td>${escapeHtml(item.hostname || "")}</td>
         <td>${escapeHtml(item.ip || "")}</td>
-        <td>${escapeHtml(item.os || "")}</td></tr>`).join("")
-    : '<tr><td colspan="5" class="cellnull">No machine or account declared in this case.</td></tr>';
+        <td>${escapeHtml(item.os || "")}</td>
+        <td><button class="btn" data-entity-edit="${escapeHtml(item.id)}">Edit</button>
+          <button class="btn" data-entity-remove="${escapeHtml(item.id)}">Remove</button></td></tr>`).join("")
+    : '<tr><td colspan="6" class="cellnull">No machine or account declared in this case.</td></tr>';
+  $("entity-rows").querySelectorAll("[data-entity-edit]").forEach((button) => {
+    button.addEventListener("click", () => loadEntityForEdit(button.dataset.entityEdit));
+  });
+  $("entity-rows").querySelectorAll("[data-entity-remove]").forEach((button) => {
+    button.addEventListener("click", () => removeEntity(button.dataset.entityRemove));
+  });
   const hosts = workspaceState.entities.filter((item) => item.kind === "machine").length;
   const accounts = workspaceState.entities.filter((item) => item.kind === "account").length;
   const total = workspaceState.entities.length;
@@ -2942,21 +2957,78 @@ function renderIndicators() {
   });
 }
 
+/* The same form adds and changes: `editing` holds the id while a row is being
+   corrected, and the button says which of the two it will do. */
+let editingEntity = null;
+
+function loadEntityForEdit(entityId) {
+  const item = workspaceState.entities.find((entry) => entry.id === entityId);
+  if (!item) return;
+  editingEntity = entityId;
+  $("entity-kind").value = item.kind || "machine";
+  $("entity-label").value = item.label || "";
+  $("entity-hostname").value = item.hostname || "";
+  $("entity-ip").value = item.ip || "";
+  $("entity-os").value = item.os || "";
+  $("entity-add").textContent = "Save";
+  $("entity-cancel").style.display = "";
+  $("entity-label").focus();
+}
+
+function stopEditingEntity() {
+  editingEntity = null;
+  $("entity-label").value = "";
+  $("entity-hostname").value = "";
+  $("entity-ip").value = "";
+  $("entity-os").value = "";
+  $("entity-add").textContent = "Add";
+  $("entity-cancel").style.display = "none";
+}
+
+async function removeEntity(entityId) {
+  const item = workspaceState.entities.find((entry) => entry.id === entityId);
+  const name = item ? `${item.kind} ${item.label}` : "this entry";
+  if (!window.confirm(`Remove ${name} from the case?`)) return;
+  try {
+    await fetch(`/api/cases/${state.openCase.id}/entities/${encodeURIComponent(entityId)}`,
+      { method: "DELETE" }).then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.detail || response.statusText);
+        return payload;
+      });
+    await loadActions();
+    say(`${name} removed from the case`);
+    if (editingEntity === entityId) stopEditingEntity();
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 async function addEntity() {
   if (!state.openCase) { say("Open a case first", true); return; }
   const label = $("entity-label").value.trim();
   if (!label) { say("Give the machine or the account a name", true); return; }
+  const fields = {
+    kind: $("entity-kind").value, label,
+    hostname: $("entity-hostname").value.trim(),
+    ip: $("entity-ip").value.trim(),
+    os: $("entity-os").value.trim(),
+  };
   try {
-    const payload = await apiPost(`/api/cases/${state.openCase.id}/entities`, {
-      kind: $("entity-kind").value, label,
-      hostname: $("entity-hostname").value.trim(),
-      ip: $("entity-ip").value.trim(),
-      os: $("entity-os").value.trim(),
-    });
-    $("entity-label").value = "";
-    $("entity-hostname").value = "";
-    $("entity-ip").value = "";
-    $("entity-os").value = "";
+    if (editingEntity) {
+      const response = await fetch(
+        `/api/cases/${state.openCase.id}/entities/${encodeURIComponent(editingEntity)}`,
+        { method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fields) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText);
+      stopEditingEntity();
+      await loadActions();
+      say(`${fields.kind} updated: ${fields.label}`);
+      return;
+    }
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/entities`, fields);
+    stopEditingEntity();
     await loadActions();
     say(`${payload.kind} added: ${payload.label}`);
   } catch (error) {
@@ -2995,6 +3067,7 @@ async function removeIndicator() {
 }
 
 function renderActions() {
+  // (re-rendered below, then bound: the Remove button belongs to the row, not the list)
   $("action-rows").innerHTML = actionState.items.map((item) => `
     <tr data-action="${escapeHtml(item.id)}">
       <td>${escapeHtml(item.date || "")}</td>
@@ -3003,10 +3076,28 @@ function renderActions() {
       <td>${escapeHtml(item.priority || "")}</td>
       <td>${escapeHtml(item.status || "")}</td>
       <td><button class="btn" data-action-close="${escapeHtml(item.id)}">${
-        item.status === "done" ? "Reopen" : "Done"}</button></td>
+        item.status === "done" ? "Reopen" : "Done"}</button>
+        <button class="btn" data-action-remove="${escapeHtml(item.id)}">Remove</button></td>
     </tr>`).join("");
   const open = actionState.items.filter((item) => item.status !== "done" && item.status !== "cancelled").length;
   $("action-summary").textContent = `${actionState.items.length} action(s), ${open} still open`;
+}
+
+async function removeActionRow(actionId) {
+  const item = actionState.items.find((entry) => entry.id === actionId);
+  const title = item ? item.title : "this action";
+  if (!window.confirm(`Remove "${title}" from the case?`)) return;
+  try {
+    const response = await fetch(
+      `/api/cases/${state.openCase.id}/actions/${encodeURIComponent(actionId)}`,
+      { method: "DELETE" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.detail || response.statusText);
+    await loadActions();
+    say(`Action removed: ${title}`);
+  } catch (error) {
+    say(error.message, true);
+  }
 }
 
 async function addAction() {
@@ -3457,12 +3548,37 @@ function renderTree() {
     tree.innerHTML = '<div class="empty">' + (state.openCase.analyses.length ? "No analysis matches this filter." : "No analysis in this case.") + "</div>";
     return;
   }
+  const closed = (state.openCase && state.openCase.closed) || [];
   tree.innerHTML = '<div class="node grp"><span class="caret">▼</span>Analyses</div>' +
     analyses.map((item) => `
       <div class="node child ${item.index === state.analysis ? "sel" : ""}" data-analysis="${item.index}"
            title="${escapeHtml(item.source || item.path)}">
         <span class="caret"></span>${escapeHtml(item.label)}
-      </div>`).join("");
+      </div>`).join("") +
+    (closed.length ? '<div class="node grp closed-group"><span class="caret">▷</span>Closed (kept in the case)</div>'
+      + closed.map((item) => `
+      <div class="node child closed" data-reopen="${item.index}"
+           title="Open this analysis again — ${escapeHtml(item.source || item.path)}">
+        <span class="caret"></span>${escapeHtml(item.label)}
+      </div>`).join("") : "");
+  tree.querySelectorAll("[data-reopen]").forEach((node) => {
+    node.addEventListener("click", () => reopenAnalysis(Number(node.dataset.reopen)));
+  });
+}
+
+async function reopenAnalysis(position) {
+  if (!state.openCase) return;
+  try {
+    const payload = await apiPost(
+      `/api/cases/${state.openCase.id}/closed/${position}/reopen`, {});
+    await openCase(state.openCase.id);
+    state.analysis = payload.index;
+    renderTree();
+    await loadRows(true);
+    say(`Analysis opened again: ${payload.analyses} tab(s), ${payload.closed} still closed`);
+  } catch (error) {
+    say(error.message, true);
+  }
 }
 
 function renderPaneTabs() {
@@ -4349,6 +4465,7 @@ function wire() {
     say(`Dates shown ${event.target.value}`);
   });
   $("rule-visual").addEventListener("change", showRuleVisual);
+  $("entity-cancel").addEventListener("click", stopEditingEntity);
   $("finding-view").addEventListener("change", renderFindingView);
   $("finding-group").addEventListener("change", renderFindingView);
   window.addEventListener("resize", () => {
@@ -4412,6 +4529,8 @@ function wire() {
   $("action-rows").addEventListener("click", (event) => {
     const button = event.target.closest("[data-action-close]");
     if (button) toggleAction(button.dataset.actionClose);
+    const remove = event.target.closest("[data-action-remove]");
+    if (remove) removeActionRow(remove.dataset.actionRemove);
   });
   $("timeline-dates").addEventListener("change", applyTimelineDates);
   $("timeline-build").addEventListener("click", () => loadTimeline(false));

@@ -317,6 +317,15 @@ def test_the_two_report_types_share_one_dialog():
     assert "/client-report" in js
 
 
+def test_a_machine_and_an_action_can_be_changed_or_removed():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="entity-cancel"' in html and 'id="entity-add"' in html
+    for name in ("loadEntityForEdit", "removeEntity", "stopEditingEntity", "removeActionRow"):
+        assert f"function {name}(" in js, name
+    assert 'method: "DELETE"' in js and 'method: "PATCH"' in js
+    assert "data-reopen" in js and "/closed/" in js
+
+
 def test_the_timeline_is_worked_by_hand():
     js, html = _read(APP), _read(INDEX)
     for action in ("tl-zoom-in", "tl-zoom-out", "tl-fit", "tl-back", "tl-isolate"):

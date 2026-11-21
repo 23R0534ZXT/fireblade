@@ -1129,3 +1129,68 @@ def test_a_workbook_offers_its_sheets(tmp_path):
             library.import_table(identifier, workbook, sheet="Nope")
     finally:
         library.close()
+
+
+def test_a_closed_analysis_stays_in_the_case(tmp_path):
+    """Closing a tab keeps the analysis in the session, and it opens again."""
+    root = tmp_path / "cases"
+    root.mkdir()
+    book = InvestigationLibrary(root)
+    data = book.create("Closed", "Two analyses", "windows")
+    identifier = data["id"]
+    folder = book.folder(identifier)
+    snapshots = []
+    for number in (1, 2):
+        analysis = folder / f"analysis-{number}.duckdb"
+        source = tmp_path / f"table-{number}.csv"
+        source.write_text("Host,Score\nSRV,1\n", encoding="utf-8")
+        case = Case(analysis)
+        try:
+            case.import_csv(source)
+            info = dict(case.info)
+        finally:
+            case.close()
+        snapshots.append(AnalysisSnapshot(path=str(analysis),
+                                          source_info=dict(info, path=str(source)),
+                                          view=View(), header_state=b""))
+    book.save(identifier, snapshots, 0, [], None, data["revision"])
+    library = Library(root)
+    try:
+        library.close_analysis(identifier, 1)
+        kept = library.closed_analyses(identifier)
+        assert len(kept["closed"]) == 1
+        assert kept["closed"][0]["label"].startswith("table-2")
+        assert library.library.read(identifier)["analysis_count"] == 1
+        made = library.reopen_analysis(identifier, 0)
+        assert made["analyses"] == 2 and made["closed"] == 0
+        assert library.closed_analyses(identifier)["closed"] == []
+        with pytest.raises(ServiceError):
+            library.reopen_analysis(identifier, 5)
+    finally:
+        library.close()
+
+
+def test_a_machine_and_an_action_are_changed_and_removed(service):
+    library, identifier = service
+    machine = library.add_entity(identifier, {"kind": "machine", "label": "SRV-OLD",
+                                              "hostname": "srv-old", "ip": "10.0.0.9"})
+    entity_id = machine["id"]
+    library.edit_entity(identifier, entity_id, {"label": "SRV-NEW", "ip": "10.0.0.10"})
+    entities = library.workspace(identifier)["entities"]
+    changed = next(item for item in entities if item["id"] == entity_id)
+    assert changed["label"] == "SRV-NEW" and changed["ip"] == "10.0.0.10"
+    assert changed["hostname"] == "srv-old", "the untouched fields stay"
+    library.remove_entity(identifier, entity_id)
+    assert all(item["id"] != entity_id for item in library.workspace(identifier)["entities"])
+    with pytest.raises(Exception):
+        library.remove_entity(identifier, entity_id)
+
+    action = library.add_action(identifier, {"title": "Contain the host", "owner": "us"})
+    action_id = action["id"]
+    library.update_action(identifier, action_id, {"status": "done", "owner": "client"})
+    kept = next(item for item in library.workspace(identifier)["actions"] if item["id"] == action_id)
+    assert kept["status"] == "done" and kept["closed"], "a finished action records its closure"
+    library.remove_action(identifier, action_id)
+    assert all(item["id"] != action_id for item in library.workspace(identifier)["actions"])
+    with pytest.raises(Exception):
+        library.remove_action(identifier, action_id)

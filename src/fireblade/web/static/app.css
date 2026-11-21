@@ -371,3 +371,7 @@ td .vicon { margin-right: 4px; font-size: 10px; }
 .timeline-hist{cursor:crosshair;user-select:none}
 .timeline-hist .bar.sel{outline:1px solid #174b73;outline-offset:-1px;background:#174b73}
 .timeline-hist .bar.sel .seg{opacity:.75}
+
+/* A closed analysis stays in the case: the tree says so, without making it look open. */
+.node.child.closed{opacity:.65;font-style:italic}
+.closed-group{margin-top:6px}

@@ -1560,6 +1560,56 @@ class Library:
         return dict({key: entry.get(key) for key in
                      ("id", "kind", "label", "hostname", "ip", "os", "notes", "tags")})
 
+    ENTITY_FIELDS = ("hostname", "ip", "os", "notes", "tags", "label", "kind")
+
+    def edit_entity(self, identifier: str, entity_id: str, fields: dict) -> dict:
+        """Change a machine or an account, the way its own dialog does."""
+        from fireblade.core import case_workspace
+
+        if not isinstance(fields, dict):
+            raise ServiceError("The fields to change are missing.")
+        values = {key: value for key, value in fields.items() if key in self.ENTITY_FIELDS}
+        if not values:
+            raise ServiceError("Nothing to change.")
+        if "kind" in values and values["kind"] not in self.ENTITY_KINDS:
+            raise ServiceError(f"Unknown entity kind: {values['kind']}")
+        if "label" in values:
+            values["label"] = str(values["label"] or "").strip()
+            if not values["label"]:
+                raise ServiceError("A machine or an account needs a name.")
+        if "tags" in values and isinstance(values["tags"], str):
+            values["tags"] = [tag.strip() for tag in values["tags"].split(",") if tag.strip()]
+        folder = self.library.folder(identifier)
+
+        def change(data):
+            target = next((item for item in data["entities"] if item["id"] == entity_id), None)
+            if target is None:
+                raise ValueError("This machine no longer exists in the case.")
+            target.update(values)
+
+        case_workspace.mutate(folder, change)
+        return {"id": entity_id, "changed": sorted(values)}
+
+    def remove_entity(self, identifier: str, entity_id: str) -> dict:
+        from fireblade.core import case_workspace
+
+        folder = self.library.folder(identifier)
+
+        def change(data):
+            before = len(data["entities"])
+            data["entities"][:] = [item for item in data["entities"] if item["id"] != entity_id]
+            if len(data["entities"]) == before:
+                raise ValueError("This machine no longer exists in the case.")
+
+        case_workspace.mutate(folder, change)
+        return {"removed": entity_id}
+
+    def remove_action(self, identifier: str, action_id: str) -> dict:
+        from fireblade.core import case_workspace
+
+        case_workspace.remove_action(self.library.folder(identifier), action_id)
+        return {"removed": action_id}
+
     def add_indicator(self, identifier: str, values, source: str = "", label: str = "",
                       status: str = "new", tags=None) -> dict:
         """Track indicators in the case: one value, or a pasted list.
@@ -2243,12 +2293,14 @@ class Library:
         data = self.library.read(identifier)
         folder = self.library.folder(identifier)
         earlier: list = []
+        earlier_closed: list = []
         previous = data.get("session")
         if previous:
             try:
-                earlier, _earlier_active = read_session(folder / previous)
+                earlier, _earlier_active, earlier_closed = read_session(
+                    folder / previous, with_closed=True)
             except (OSError, ValueError):
-                earlier = []
+                earlier, earlier_closed = [], []
         incoming, active = ([], -1)
         if Path(session_path).is_file():
             incoming, active = read_session(Path(session_path))
@@ -2270,10 +2322,11 @@ class Library:
                  if collections is None else collections)
         # Indexes shift: no cached handle may survive the rewrite.
         self.close_case(identifier)
+        # The closed analyses belong to the case too: an import must not drop them.
         self.library.save(identifier, combined, active_index, known,
                           active_collection if active_collection is not None
                           else data.get("active_collection"),
-                          data.get("revision"))
+                          data.get("revision"), closed=earlier_closed)
         return len(earlier), len(incoming)
 
     EXCEL_SUFFIXES = (".xlsx", ".xlsm", ".xls")
@@ -2427,11 +2480,46 @@ class Library:
         else:
             new_active = active - 1
         collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+        # A closed tab is not a deleted analysis: it moves to the session's own
+        # "closed" list, where the desktop keeps it so it can be opened again.
+        _open_now, _active_now, closed_now = self._session_snapshots(identifier, with_closed=True)
+        closed = list(closed_now) + [snapshots[index]]
         # Indexes shift: no cached handle may survive the rewrite.
         self.close_case(identifier)
         self.library.save(identifier, remaining, new_active, collections,
-                          data.get("active_collection"), data.get("revision"))
-        return {"analyses": len(remaining), "active": new_active}
+                          data.get("active_collection"), data.get("revision"), closed=closed)
+        return {"analyses": len(remaining), "active": new_active, "closed": len(closed)}
+
+    def _session_snapshots(self, identifier: str, with_closed: bool = False):
+        data = self.library.read(identifier)
+        folder = self.library.folder(identifier)
+        session = data.get("session")
+        if not session or not (folder / session).is_file():
+            return ([], -1, []) if with_closed else ([], -1)
+        return read_session(folder / session, with_closed=with_closed)
+
+    def closed_analyses(self, identifier: str) -> dict:
+        """The analyses closed and kept by the session, as the tree lists them."""
+        _open, _active, closed = self._session_snapshots(identifier, with_closed=True)
+        return {"closed": [{"index": position, "label": self._label(item.source_info, item.path),
+                            "path": str(item.path),
+                            "source": str((item.source_info or {}).get("path", ""))}
+                           for position, item in enumerate(closed)]}
+
+    def reopen_analysis(self, identifier: str, position: int) -> dict:
+        """Open a closed analysis again: it goes back to the end of the tabs."""
+        data = self.library.read(identifier)
+        snapshots, active, closed = self._session_snapshots(identifier, with_closed=True)
+        if not 0 <= position < len(closed):
+            raise ServiceError("This closed analysis does not exist in the case.")
+        moved = closed[position]
+        remaining = [item for offset, item in enumerate(closed) if offset != position]
+        opened = list(snapshots) + [moved]
+        collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+        self.close_case(identifier)
+        self.library.save(identifier, opened, len(opened) - 1, collections,
+                          data.get("active_collection"), data.get("revision"), closed=remaining)
+        return {"index": len(opened) - 1, "analyses": len(opened), "closed": len(remaining)}
 
     def profiles_for(self, identifier: str, index: int) -> dict:
         """The profile this analysis matches, and what applying it would set."""

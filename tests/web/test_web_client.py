@@ -405,6 +405,13 @@ def test_a_machine_and_an_action_can_be_changed_or_removed():
     assert "data-reopen" in js and "/closed/" in js
 
 
+def test_the_highlight_marks_without_breaking_escaping():
+    js = _read(APP)
+    assert "function markText(" in js and "function openHighlight(" in js
+    assert '"<mark>"' in js and "escapeHtml(raw.slice(from, at))" in js
+    assert 'state.highlight = answer.trim()' in js
+
+
 def test_the_derived_dialog_asks_what_the_desktop_asks():
     js, html = _read(APP), _read(INDEX)
     assert 'id="derived-zone"' in html and "Time zone for dates without an offset" in html

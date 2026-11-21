@@ -1673,9 +1673,24 @@ function showHelp(name) {
       "Analysis > Collection coverage reopens every analysis and says what it cannot attest.",
     ]],
     legend: ["Supertimeline legend", [
-      "Each colour is one source: the analysis the rows come from. The legend above the",
-      "chart names them and their counts, and a click on a chip hides that source.",
-      "The height of a bar is the number of events in that slice of time, split by source.",
+      "These rules apply with recognised timeline profiles. A colour alone does not prove",
+      "the nature of an event: it says which family the row belongs to.",
+      "Execution / registry — processes launched, services installed, keys written.",
+      "File / folder opening — files read, written, renamed or deleted.",
+      "Suppression — logs cleared, services stopped, accounts disabled.",
+      "Navigation Web — browsing, downloads, user agents.",
+      "Event logs — the records the machine wrote itself, by channel and event id.",
+      "Each colour in the chart is one source: the analysis the rows come from. The legend",
+      "above the chart names them and their counts, and a click on a chip hides that source.",
+    ]],
+    workspace: ["Workspace", [
+      "The window holds one case at a time. The artifacts tree on the right lists the",
+      "analyses of that case; the tabs above describe it: Analyses, Imports, Cases,",
+      "Timeline and correlations, IOC hunting, Hayabusa, Actions and tracking, Attack graph,",
+      "EVTX detection.",
+      "View > Preferences sets the theme, the language and the reading comfort;",
+      "View > Columns, Row height and Reset the widths shape the grid, and the layout",
+      "travels as a file through Analysis > Export the layout….",
     ]],
     licenses: ["Licences", [
       "Fireblade Host — internal edition. Python, FastAPI, DuckDB, openpyxl and PySide6",
@@ -4621,6 +4636,32 @@ function visibleColumns() {
   return state.columns.map((name, index) => ({ name, index })).filter((item) => !state.hidden.has(item.index));
 }
 
+/* "Highlight matches (empty = disable)", the desktop's own control: the text is cut
+   around the term, each piece escaped, and only the pieces are marked. */
+function markText(text, term) {
+  const raw = String(text === null || text === undefined ? "" : text);
+  if (!term) return escapeHtml(raw);
+  const lower = raw.toLowerCase();
+  const needle = term.toLowerCase();
+  let from = 0;
+  let out = "";
+  for (;;) {
+    const at = lower.indexOf(needle, from);
+    if (at < 0) { out += escapeHtml(raw.slice(from)); return out; }
+    out += escapeHtml(raw.slice(from, at)) + "<mark>" + escapeHtml(raw.slice(at, at + needle.length)) + "</mark>";
+    from = at + needle.length;
+  }
+}
+
+function openHighlight() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  const answer = window.prompt("Highlight matches (empty = disable)", state.highlight || "");
+  if (answer === null) return;
+  state.highlight = answer.trim();
+  renderGrid();
+  say(state.highlight ? `Highlighting “${state.highlight}”` : "Highlight off");
+}
+
 function renderGrid() {
   const empty = $("grid-empty");
   if (!state.grouped) $("group-chart").hidden = true;
@@ -4688,7 +4729,8 @@ function renderGrid() {
       const painted = visual ? ` style="${visual.style}"` : "";
       return `<td class="${cls}${visual ? ` ${visual.cls}` : ""}"${title}${painted} data-cell="${index - 1}">`
         + (visual && visual.icon ? `<span class="vicon" style="color:${visual.ink}">${visual.icon}</span>` : "")
-        + `${renderBoolean(index - 1, text)}${noted ? '<span class="notemark"></span>' : ""}</td>`;
+        + `${state.highlight ? markText(text, state.highlight) : renderBoolean(index - 1, text)}`
+        + `${noted ? '<span class="notemark"></span>' : ""}</td>`;
     }).join("");
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
     const style = rule && !rule.visual ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"` : "";
@@ -5682,6 +5724,7 @@ async function act(name, node) {
     case "expression-andor": openExpressionDialog(); break;
     case "show-timeline": showTab("timeline"); break;
     case "show-evtx": showTab("evtx"); break;
+    case "highlight-text": openHighlight(); break;
     case "graph-zoom-in": graphZoom(1.2); break;
     case "graph-zoom-out": graphZoom(1 / 1.2); break;
     case "graph-recentre": graphReset(); break;
@@ -5698,6 +5741,7 @@ async function act(name, node) {
     case "cases-list": showTab("cases"); break;
     case "profiles-plugins": await openCompatibility(); break;
     case "legend": showHelp("legend"); break;
+    case "workspace-guide": showHelp("workspace"); break;
     case "help-tutorial": showHelp("tutorial"); break;
     case "bookmark-note": await bookmarkNote(); break;
     case "mark-selection": await markSelection("bookmarked"); break;

@@ -29,12 +29,12 @@ plan (architecture, phases, décisions) est dans `HANDOFF-DOCKER.md`.
 
 | Quoi | Valeur |
 | --- | --- |
-| Branche | `feat/host-edition`, **54 commits** au-dessus de `main` (`git rev-list --count main..HEAD`) |
+| Branche | `feat/host-edition`, **75 commits** au-dessus de `main` (`git rev-list --count main..HEAD`) |
 | `main` | intacte, jamais poussée, rien de publié |
-| Dernier commit de code | `3892fbf Host: free graph node, and parity closed` |
+| Dernier commit de code | `f68cb23 Host: a profile applied by hand, and a timeline that reads the filters and opens its sources` |
 | Arbre de travail | propre — les trois documents non suivis sont hors sujet |
-| Porte complète | **verte** : `1806 passed, 28 skipped`, ruff propre, `TOUT EST VERT`, 17 min 12 s |
-| Tests web | **59**, dont 7 de parité qui refusent une couverture sans test |
+| Porte complète | **verte** : `1821 passed, 28 skipped` au dernier relevé complet, ruff propre, `TOUT EST VERT` |
+| Tests web | **97**, dont la garde anti-doublon (ids et déclarations) et la garde de parité |
 | Image | `fireblade:host`, saine sur `http://192.168.1.201:8095` |
 | Cases ouverts sur le service | 8, plus `poste-fr.csv` importé pour la recette d'encodage |
 
@@ -45,6 +45,35 @@ La commande qui répond à « est-ce que tout tient encore » :
 ```
 
 ---
+
+## 2 bis. Où en est la parité fonctionnelle (21 novembre 2026)
+
+`docs/development/HOST-AUDIT.md` est la carte de référence : il compte des
+**fonctionnalités**, pas des commandes. Dernier état : **0 fonctionnalité absente,
+1 partielle**.
+
+Fermé depuis l'audit, vérifié à l'écran et par appel API :
+
+- machines et comptes, indicateurs stockés (espace de travail du case) ;
+- règles de détection Hayabusa (5 032 règles, édition, activation, retour au pack) ;
+- règles de couleur globales, au format du desktop (import/export croisés) ;
+- vérification des imports et diagnostics (l'audit de couverture du core) ;
+- chronologie : export CSV vérifié avec reçu, lignes sans date, filtres des
+  analyses respectés, ligne source ouverte au clic ;
+- chasse aux IOC : fichier TXT/CSV/TSV, toutes les analyses, filtres, sous-domaines ;
+- grille : dates relatives (les 25 fenêtres du core), résumés et tri des groupes,
+  priorité de tri, graphique des valeurs, statistiques des règles de couleur ;
+- palette de commandes (Ctrl+K), fenêtre Messages, analyses ouvertes (ordre
+  conservé), historique et récupération du case ;
+- import en tâche de fond avec progression et arrêt, relecture d'un fichier avec
+  un autre lecteur, analyse d'un disque (volume monté ou image) ;
+- préférences : copie en tableau avec ou sans en-têtes, format de date ;
+- rapport client en PDF, écrit sans Qt (`src/fireblade/web/pdf.py`).
+
+**Reste partiel** : l'arrêt d'un import. Le job, la progression et le bouton
+existent ; l'arrêt tombe sur les points de contrôle de la collection (entre
+fichiers), et une source lue d'une traite finit avant d'être arrêtée. La raison
+est dans `HOST-AUDIT.md`, à côté de la ligne.
 
 ## 3. Ce qui a été livré dans cette passation
 

@@ -309,6 +309,14 @@ def test_a_timeline_row_opens_its_source_line():
     assert "respect_filters" in js
 
 
+def test_the_two_report_types_share_one_dialog():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="report-type"' in html and 'id="report-client-fields"' in html
+    assert 'id="client-analyst"' in html and 'id="client-coverage"' in html
+    assert "function showReportType(" in js
+    assert "/client-report" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

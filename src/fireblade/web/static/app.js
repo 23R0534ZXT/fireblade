@@ -3734,6 +3734,7 @@ function wire() {
     renderGrid();
     say(`Dates shown ${event.target.value}`);
   });
+  $("report-type").addEventListener("change", showReportType);
   $("date-mode").addEventListener("change", showDateMode);
   $("date-add").addEventListener("click", addDateCondition);
   $("ioc-scan").addEventListener("click", runIocScan);
@@ -3862,16 +3863,39 @@ function closeModals() {
   document.querySelectorAll(".menu").forEach((node) => node.classList.remove("show"));
 }
 
+function showReportType() {
+  const client = $("report-type").value === "client";
+  $("report-investigation-fields").style.display = client ? "none" : "";
+  $("report-client-fields").style.display = client ? "" : "none";
+}
+
 async function buildReport(asPdf) {
   if (!state.openCase) { say("Open a case first", true); return; }
-  const body = JSON.stringify({
-    title: $("report-title").value || "Investigation report",
-    description: $("report-description").value || "",
-    bookmarks_only: $("report-bookmarks").value === "true",
-  });
+  const client = $("report-type").value === "client";
+  const body = JSON.stringify(client
+    ? {
+        title: $("client-title").value || "",
+        analyst: $("client-analyst").value || "",
+        findings: $("client-findings").checked,
+        coverage: $("client-coverage").checked,
+        pdf: asPdf,
+      }
+    : {
+        title: $("report-title").value || "Investigation report",
+        description: $("report-description").value || "",
+        bookmarks_only: $("report-bookmarks").value === "true",
+      });
   closeModals();
-  say("Generating the report…");
+  say(client ? "Generating the client report…" : "Generating the report…");
   try {
+    if (client) {
+      const payload = await apiPost(`/api/cases/${state.openCase.id}/client-report`,
+        JSON.parse(body));
+      say(`Client report: ${payload.findings} finding(s), ${payload.actions} action(s), `
+        + `${payload.indicators} indicator(s) -> ${payload.name}`);
+      window.open(payload.url, "_blank");
+      return;
+    }
     const response = await fetch(`/api/cases/${state.openCase.id}/report`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body });
     const payload = await response.json();

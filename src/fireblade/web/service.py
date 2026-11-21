@@ -1617,6 +1617,133 @@ class Library:
         return {"name": target.name, "bytes": target.stat().st_size,
                 "url": f"/api/cases/{identifier}/reports/{target.name}"}
 
+    def client_report(self, identifier: str, title: str = "", description: str = "",
+                      analyst: str = "", include_findings: bool = True,
+                      include_coverage: bool = False, pdf: bool = False) -> dict:
+        """The document the client receives: scope, findings, actions, indicators.
+
+        `core.client_report` is the desktop's own generator — the same one its
+        "Rapport client…" command calls. It reads the case's workspace (client,
+        engagement, actions, indicators, machines, destruction records), the grouped
+        findings of the latest detection and, on request, the last coverage report.
+        Nothing is recomputed: a section with no data says so rather than vanishing.
+        """
+        from fireblade.core import case_workspace
+        from fireblade.core import client_report as client_report_core
+        from fireblade.web.pdf import text_pdf
+
+        folder = self.library.folder(identifier)
+        data = self.library.read(identifier)
+        clean = (title or "").strip() or f"Client report — {data.get('name') or identifier[:8]}"
+        workspace = case_workspace.load(folder)
+        snapshots = self._snapshots(identifier)
+        findings, incidents = ([], [])
+        if include_findings:
+            findings, incidents = self.findings(identifier)
+        coverage = None
+        if include_coverage:
+            try:
+                from fireblade.core import coverage as coverage_core
+
+                coverage = coverage_core.load_report(self._coverage_path(identifier))
+            except (OSError, ValueError, ServiceError):
+                coverage = None
+        document = client_report_core.build(
+            title=clean, case_name=data.get("name") or "", case_id=identifier,
+            workspace=workspace, documents=snapshots,
+            findings=findings, incidents=incidents, coverage=coverage,
+            destruction=workspace.get("destruction") or [], analyst=analyst)
+        target = folder / "reports" / (datetime.now(timezone.utc).strftime("client-%Y%m%d-%H%M%S") + ".html")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        client_report_core.write(target, document, pdf=False)
+        if pdf:
+            pdf_target = target.with_suffix(".pdf")
+            text_pdf(target.read_text(encoding="utf-8", errors="replace"), pdf_target,
+                     title=clean, subject="Client report")
+            target = pdf_target
+        return {"name": target.name, "path": str(target),
+                "findings": document.get("findings", 0),
+                "analyses": len(snapshots),
+                "actions": len(workspace.get("actions") or []),
+                "indicators": len(workspace.get("iocs") or []),
+                "url": f"/api/cases/{identifier}/reports/{target.name}"}
+
+    def findings(self, identifier: str) -> tuple[list, list]:
+        """The grouped findings of the case's latest detection run, as the desktop groups them."""
+        from fireblade.core.findings import group_alerts, group_alerts_sql
+
+        # The candidate is any analysis that carries the Hayabusa columns: the name of
+        # the file says nothing once it has been imported under another one.
+        entries = [item for item in self._analyses(self.library.read(identifier)) if item["found"]]
+        alerts = [entry for entry in reversed(entries)
+                  if "hayabusa" in str(entry.get("source") or "").casefold()]
+        # A detection run that found nothing writes an empty alert file: the newest
+        # one is not necessarily the one that carries findings.
+        chosen = next((entry for entry in alerts
+                       if self._rows_of(identifier, entry["index"]) > 0), None)
+        if chosen is None:
+            chosen = alerts[0] if alerts else None
+        if chosen is None:
+            # No name says it: the columns do — but they can only be read once the
+            # grid's own handles on these files are closed (DuckDB refuses a second
+            # connection with another configuration).
+            with self._lock:
+                for open_key in [item for item in self._open if item[0] == identifier]:
+                    try:
+                        self._open.pop(open_key).close()
+                    except (KeyError, OSError, ValueError):
+                        pass
+            for entry in reversed(entries):
+                headers = self._headers_of(entry["path"])
+                if any(name.casefold() == "ruletitle" for name in headers):
+                    chosen = entry
+                    break
+        if chosen is None:
+            return [], []
+        entry = chosen
+        case = self._case_for(identifier, entry["index"])
+        self._findings_error = ""
+        self._findings_debug = {"index": entry["index"], "label": entry.get("label")}
+        with case.lock, case.operation():
+            try:
+                self._findings_debug["headers"] = len(case.headers)
+                self._findings_debug["count"] = int(case.count(View()))
+                return group_alerts_sql(case)
+            except (ValueError, KeyError, OSError) as exc:
+                self._findings_error = f"{type(exc).__name__}: {exc}"[:200]
+                rows = []
+                offset = 0
+                while True:
+                    page = case.page(View(), offset=offset, limit=2000)
+                    if not page:
+                        break
+                    headers = list(case.headers)
+                    for row in page:
+                        rows.append({"__row_id": row[0],
+                                     **{name: row[position + 1] for position, name in enumerate(headers)}})
+                    offset += len(page)
+                return group_alerts(rows)
+
+    def _rows_of(self, identifier: str, index: int) -> int:
+        try:
+            case = self._case_for(identifier, index)
+            with case.lock:
+                return int(case.count(View()))
+        except (ServiceError, ValueError, OSError, KeyError):
+            return 0
+
+    def findings_view(self, identifier: str) -> dict:
+        """The grouped findings, shaped for the window, with what they were read from."""
+        groups, incidents = self.findings(identifier)
+        entries = [item for item in self._analyses(self.library.read(identifier)) if item["found"]]
+        source = next((item["label"] for item in reversed(entries)
+                       if "hayabusa" in str(item.get("source") or "").casefold()), "")
+        return {"groups": [group.as_dict() for group in groups],
+                "incidents": [item.as_dict() for item in incidents],
+                "count": len(groups), "source": source,
+                "debug": getattr(self, "_findings_debug", {}),
+                "error": getattr(self, "_findings_error", "")}
+
     def report_file(self, identifier: str, name: str) -> Path:
         if "/" in name or "\\" in name or name.startswith("."):
             raise ServiceError("Invalid report name.")

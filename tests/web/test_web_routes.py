@@ -946,3 +946,59 @@ def test_the_timeline_can_read_each_analysis_through_its_filters(service):
     filtered = library.timeline(identifier, respect_filters=True)
     assert filtered["extent"]["rows"] <= whole["extent"]["rows"]
     assert filtered["count"] >= 0
+
+
+def test_the_client_report_is_the_one_the_client_receives(service):
+    """A second document: the workspace, the findings, the destruction records."""
+    library, identifier = service
+    library.add_entity(identifier, {"kind": "machine", "label": "SRV-DC01"})
+    library.add_indicator(identifier, "192.0.2.66", label="C2 candidate")
+    made = library.client_report(identifier, title="Rapport client de test", analyst="M. Maurin")
+    assert made["name"].startswith("client-") and made["name"].endswith(".html")
+    assert made["actions"] == 0 and made["indicators"] >= 1
+    path = library.library.folder(identifier) / "reports" / made["name"]
+    text = path.read_text(encoding="utf-8")
+    assert "CONFIDENTIEL" in text
+    assert "Rapport client de test" in text
+    assert "SRV-DC01" in text, "the declared machine is in the client report"
+    assert "192.0.2.66" in text, "a tracked indicator is in the client report"
+    assert "M. Maurin" in text
+    # the PDF flavour comes from the same HTML
+    made_pdf = library.client_report(identifier, title="Rapport client PDF", pdf=True)
+    assert made_pdf["name"].endswith(".pdf")
+    data = (library.library.folder(identifier) / "reports" / made_pdf["name"]).read_bytes()
+    assert data.startswith(b"%PDF-1.4")
+
+
+def test_the_findings_of_a_detection_are_grouped_for_the_report(tmp_path):
+    """group_alerts over an analysis that carries the Hayabusa columns."""
+    root = tmp_path / "cases"
+    root.mkdir()
+    book = InvestigationLibrary(root)
+    data = book.create("Findings", "Hayabusa columns", "windows")
+    identifier = data["id"]
+    folder = book.folder(identifier)
+    analysis = folder / "analysis-1.duckdb"
+    source = tmp_path / "alerts.csv"
+    with source.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["Timestamp", "RuleTitle", "Computer", "Level", "Channel", "EventID"])
+        writer.writerow(["2026-11-02T10:00:00Z", "Suspicious Service Path", "SRV", "high", "System", "7045"])
+        writer.writerow(["2026-11-02T10:05:00Z", "Suspicious Service Path", "SRV", "high", "System", "7045"])
+    case = Case(analysis)
+    try:
+        case.import_csv(source)
+        info = dict(case.info)
+    finally:
+        case.close()
+    source_info = dict(info, path=str(source))
+    snapshot = AnalysisSnapshot(path=str(analysis), source_info=source_info, view=View(),
+                                header_state=b"")
+    book.save(identifier, [snapshot], 0, [], None, data["revision"])
+    library = Library(root)
+    try:
+        groups, incidents = library.findings(identifier)
+        assert groups, "two alerts under the same rule are one group"
+        assert getattr(groups[0], "count", 0) >= 1
+    finally:
+        library.close()

@@ -459,6 +459,29 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/findings")
+    def findings(identifier: str):
+        """The detection's findings, grouped by rule and host, as the desktop groups them."""
+        try:
+            return library.findings_view(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/client-report")
+    def client_report(identifier: str, payload: dict):
+        """The document the client receives, from the desktop's own generator."""
+        payload = payload or {}
+        try:
+            return library.client_report(
+                identifier, title=payload.get("title") or "",
+                description=payload.get("description") or "",
+                analyst=payload.get("analyst") or "",
+                include_findings=payload.get("findings", True) is not False,
+                include_coverage=bool(payload.get("coverage")),
+                pdf=bool(payload.get("pdf")))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/reports/{name}")
     def report_file(identifier: str, name: str):
         try:

@@ -24,7 +24,7 @@ names what the Host does for each.
 ## Verdict
 
 **The port is not complete.** Twenty-one domains are covered, but this audit found
-**5 features the Host does not have** and **7 it has partially** (five closed since the
+**2 features the Host does not have** and **6 it has partially** (five closed since the
 audit was written: machines and accounts, tracked indicators, Hayabusa rules,
 global colour rules, import diagnostics). None of them was
 visible in the label inventory, which is why `HOST-PARITY.md` said "nothing left" —
@@ -37,11 +37,11 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Domain | Desktop screens and commands | Host |
 | --- | --- | --- |
 | Window, menus, tabs | 9 tabs, 6 menus, status bar, toolbar | **yes** |
-| Command palette | "Commandes" (a keyboard launcher over every command) | **no** |
-| Messages | "Messages" (the application's own log) | **no** |
-| Open analyses | "Analyses ouvertes…" (list, close, reorder) | **partial** — the ✕ closes one |
+| Command palette | "Commandes" (a keyboard launcher over every command) | **yes** — Commands… (Ctrl+K): every command the window offers, filtered and run |
+| Messages | "Messages" (the application's own log) | **yes** — View > Messages: every line the status bar showed, newest first |
+| Open analyses | "Analyses ouvertes…" (list, close, reorder) | **yes** — Analysis > Open analyses: open, close, reorder the tabs and keep the order |
 | Cases | new, edit, destroy (DoD + certificate), archive, restore, portable `.fireblade` | **yes** |
-| Case history | "Historique et récupération" (the History folder) | **no** |
+| Case history | "Historique et récupération" (the History folder) | **yes** — Case > History and recovery: the recorded states, restored after keeping the present one |
 | Import — file, folder | three layouts, preview, CSV options, history file by file | **yes** |
 | Import — disk | "Analyser un disque…" (an image, not a folder) | **no** |
 | Import — cancel | "Arrêter" during a collection | **partial** — the request is synchronous |

@@ -38,6 +38,202 @@ const state = {
   payload: null,        // the last rows answer, kept for its summary labels
 };
 
+/* ---------- messages ---------- */
+
+/* The window's own log: every line the status bar showed, newest first. */
+const messageLog = [];
+
+function rememberMessage(text, error) {
+  messageLog.unshift({ when: new Date().toISOString().replace("T", " ").slice(0, 19),
+                       text: String(text || ""), error: Boolean(error) });
+  if (messageLog.length > 500) messageLog.length = 500;
+}
+
+function openMessages() {
+  $("messages-list").innerHTML = messageLog.length
+    ? messageLog.map((item) => `<div class="message ${item.error ? "bad" : ""}">
+        <span class="when">${escapeHtml(item.when)}</span>
+        <span>${escapeHtml(item.text)}</span></div>`).join("")
+    : '<div class="emptygrid">Nothing reported yet.</div>';
+  $("messages-modal").classList.add("show");
+}
+
+/* ---------- commands ---------- */
+
+/* Every command the window carries: menus, the toolbar and the grid's buttons.
+   The palette runs the same element the mouse would click, so the two cannot drift. */
+function paletteEntries() {
+  const entries = [];
+  const seen = new Set();
+  const add = (label, node) => {
+    const text = String(label || "").replace(/\s+/g, " ").trim();
+    if (!text || seen.has(text)) return;
+    seen.add(text);
+    entries.push({ label: text, node });
+  };
+  // Everything the window offers without opening a dialog first: menu items, the
+  // toolbars, the grid's own bar, the tabs. A button inside a closed dialog is not
+  // reachable from here, so it is left out rather than run blind.
+  document.querySelectorAll("[data-act]").forEach((node) => {
+    if (node.closest(".modal")) return;
+    add(node.textContent || node.getAttribute("title"), node);
+  });
+  document.querySelectorAll(".app button, .app .tab").forEach((node) => {
+    if (node.closest(".modal") || node.disabled) return;
+    add(node.textContent, node);
+  });
+  document.querySelectorAll(".tab[data-tab]").forEach((node) => add(`Show ${node.textContent}`, node));
+  return entries;
+}
+
+function renderPalette() {
+  const needle = $("palette-input").value.trim().toLowerCase();
+  const entries = paletteEntries();
+  const shown = needle
+    ? entries.filter((item) => item.label.toLowerCase().includes(needle))
+    : entries;
+  commandState.shown = shown;
+  $("palette-list").innerHTML = shown.length
+    ? shown.slice(0, 40).map((item, position) => `<div class="palette-item" data-palette="${position}">
+        ${escapeHtml(item.label)}</div>`).join("")
+    : '<div class="emptygrid">No command matches.</div>';
+  $("palette-list").querySelectorAll("[data-palette]").forEach((node) => {
+    node.addEventListener("click", () => runPalette(Number(node.dataset.palette)));
+  });
+}
+
+async function runPalette(position) {
+  const entry = commandState.shown[position];
+  if (!entry) return;
+  closeModals();
+  const node = entry.node;
+  if (node.classList && node.classList.contains("item")) node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  else node.click();
+  say(`Command: ${entry.label}`);
+}
+
+function openPalette() {
+  $("palette-input").value = "";
+  renderPalette();
+  $("palette-modal").classList.add("show");
+  setTimeout(() => $("palette-input").focus(), 30);
+}
+
+const commandState = { shown: [] };
+
+/* ---------- open analyses ---------- */
+
+const analysesState = { order: [] };
+
+async function openAnalysesDialog() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const answers = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}`);
+  analysesState.order = (answers.analyses || []).map((item) => item.index);
+  renderAnalysesDialog(answers.analyses || []);
+  $("analyses-modal").classList.add("show");
+}
+
+function renderAnalysesDialog(entries) {
+  $("analyses-list").innerHTML = entries.map((item) => `
+    <div class="analysis-line" data-analysis-line="${item.index}">
+      <span class="analysis-name${item.index === state.analysis ? " sel" : ""}"
+        title="${escapeHtml(item.path || "")}">${escapeHtml(item.label)}</span>
+      <span class="pin">
+        <button class="btn" data-analysis-open="${item.index}">Open</button>
+        <button class="btn" data-analysis-up="${item.index}">↑</button>
+        <button class="btn" data-analysis-close="${item.index}">Close</button>
+      </span></div>`).join("")
+    || '<div class="emptygrid">No analysis in this case.</div>';
+  $("analyses-list").querySelectorAll("[data-analysis-open]").forEach((node) => {
+    node.addEventListener("click", async () => {
+      state.analysis = Number(node.dataset.analysisOpen);
+      state.path = [];
+      closeModals();
+      await loadRows(true);
+      say(`Analysis ${state.analysis + 1} opened`);
+    });
+  });
+  $("analyses-list").querySelectorAll("[data-analysis-up]").forEach((node) => {
+    node.addEventListener("click", () => {
+      const index = Number(node.dataset.analysisUp);
+      const position = analysesState.order.indexOf(index);
+      if (position > 0) {
+        [analysesState.order[position - 1], analysesState.order[position]] =
+          [analysesState.order[position], analysesState.order[position - 1]];
+        const lines = [...$("analyses-list").querySelectorAll("[data-analysis-line]")];
+        const line = lines[position];
+        if (line && lines[position - 1]) line.parentElement.insertBefore(line, lines[position - 1]);
+        analysesState.order = [...$("analyses-list").querySelectorAll("[data-analysis-line]")]
+          .map((item) => Number(item.dataset.analysisLine));
+        say("Order changed — save it to keep it");
+      }
+    });
+  });
+  $("analyses-list").querySelectorAll("[data-analysis-close]").forEach((node) => {
+    node.addEventListener("click", async () => {
+      const index = Number(node.dataset.analysisClose);
+      try {
+        await apiPost(`/api/cases/${state.openCase.id}/analyses/${index}/close`, {});
+        closeModals();
+        await openCase(state.openCase.id);
+        say("Analysis closed in the case");
+      } catch (error) {
+        say(error.message, true);
+      }
+    });
+  });
+}
+
+async function saveAnalysesOrder() {
+  const order = [...$("analyses-list").querySelectorAll("[data-analysis-line]")]
+    .map((item) => Number(item.dataset.analysisLine));
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/analyses/reorder`, { order });
+    await openCase(state.openCase.id);
+    closeModals();
+    say(`Order saved: ${payload.analyses} analysis(es)`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+/* ---------- case history ---------- */
+
+async function openCaseHistory() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  $("history-list").innerHTML = '<div class="emptygrid">Reading the history…</div>';
+  $("history-modal").classList.add("show");
+  try {
+    const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/history`);
+    $("history-list").innerHTML = (payload.entries || []).length
+      ? payload.entries.map((item) => `<div class="analysis-line">
+          <span class="analysis-name" title="${escapeHtml(payload.folder)}">${escapeHtml(item.when)} — ${escapeHtml(item.name)}</span>
+          <span class="pin"><button class="btn" data-history-restore="${escapeHtml(item.name)}">Restore</button></span>
+        </div>`).join("")
+      : '<div class="emptygrid">No recorded state for this case yet.</div>';
+    $("history-list").querySelectorAll("[data-history-restore]").forEach((node) => {
+      node.addEventListener("click", () => restoreHistory(node.dataset.historyRestore));
+    });
+  } catch (error) {
+    $("history-list").innerHTML = "";
+    say(error.message, true);
+  }
+}
+
+async function restoreHistory(name) {
+  if (!state.openCase) return;
+  if (!window.confirm(`Restore the state ${name}? The present state is kept in the same folder first.`)) return;
+  try {
+    const payload = await apiPost(
+      `/api/cases/${state.openCase.id}/history/${encodeURIComponent(name)}/restore`, {});
+    closeModals();
+    await openCase(state.openCase.id);
+    say(`State restored: ${payload.analyses} analysis(es), updated ${payload.updated}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 /* ---------- small helpers ---------- */
 
 async function api(path) {
@@ -57,6 +253,8 @@ function say(message, error) {
   const node = $("status");
   node.textContent = message;
   node.classList.toggle("err", Boolean(error));
+  // The Messages window is the same log, kept: nothing is reported nowhere.
+  rememberMessage(message, error);
 }
 
 function escapeHtml(value) {
@@ -3235,6 +3433,18 @@ function wire() {
   });
 
   $("rule-column").addEventListener("change", loadRuleValues);
+  $("palette-input").addEventListener("input", renderPalette);
+  $("palette-input").addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    runPalette(0);
+  });
+  $("messages-clear").addEventListener("click", () => {
+    messageLog.length = 0;
+    openMessages();
+    say("Messages cleared");
+  });
+  $("analyses-save").addEventListener("click", saveAnalysesOrder);
   $("sort-add").addEventListener("click", () => {
     $("sort-rows").appendChild(sortRow({ column: 0, descending: false }));
   });
@@ -3353,6 +3563,11 @@ function wire() {
   });
 
   document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      openPalette();
+      return;
+    }
     if (event.key === "F5") { event.preventDefault(); loadCases(); }
     if (event.key === "Escape") closeModals();
     if (event.key === "/" && document.activeElement.tagName !== "INPUT") {
@@ -3446,6 +3661,10 @@ async function act(name, node) {
     case "date-filter": await openDateFilter(); break;
     case "summaries": openSummaries(); break;
     case "sort-priority": openSortPriority(); break;
+    case "palette": openPalette(); break;
+    case "messages": openMessages(); break;
+    case "open-analyses": await openAnalysesDialog(); break;
+    case "case-history": await openCaseHistory(); break;
     case "rule-add": await addRule(); break;
     case "pivot": await runPivot(); break;
     case "copy-row": await copySelectedRows(); break;

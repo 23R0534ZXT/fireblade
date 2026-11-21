@@ -236,6 +236,16 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 .timeline-dates .tsrc{display:flex;align-items:center;gap:6px;font-size:11px}
 .timeline-dates .tname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* Messages, the command palette and the analysis lists share one line shape. */
+.message{display:flex;gap:8px;padding:1px 4px;font-size:11px}
+.message .when{color:#777;flex:0 0 140px}
+.message.bad span:last-child{color:#8a1c1c}
+.palette-item{padding:2px 6px;font-size:11px;cursor:default}
+.palette-item:hover{background:var(--btn-hover, #e8eef7)}
+.analysis-line{display:flex;align-items:center;gap:6px;padding:1px 2px;font-size:11px}
+.analysis-line .analysis-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.analysis-line .analysis-name.sel{font-weight:600}
+
 /* The value chart of the rules dialog: a bar per value, its count beside it. */
 .value-bar{display:flex;align-items:center;gap:6px;padding:1px 4px;cursor:default;font-size:11px}
 .value-bar:hover{background:var(--btn-hover, #e8eef7)}

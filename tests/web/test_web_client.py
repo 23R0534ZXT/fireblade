@@ -164,6 +164,26 @@ def test_no_function_is_declared_twice():
     assert not duplicates, f"functions declared twice: {duplicates}"
 
 
+def test_no_top_level_name_is_declared_twice():
+    """A const or a function declared twice is a silent override, not an error."""
+    js = _read(APP)
+    names = re.findall(r'^(?:async )?function ([A-Za-z_][\w]*)\(', js, flags=re.M)
+    names += re.findall(r'^(?:const|let|var) ([A-Za-z_][\w]*)\s*=', js, flags=re.M)
+    duplicates = sorted({name for name in names if names.count(name) > 1})
+    assert not duplicates, f"declared twice at the top level: {duplicates}"
+
+
+def test_the_window_keeps_its_messages_and_its_commands():
+    js, html = _read(APP), _read(INDEX)
+    for name in ("palette-modal", "messages-modal", "analyses-modal", "history-modal"):
+        assert f'id="{name}"' in html, name
+    for name in ("openPalette", "openMessages", "openAnalysesDialog", "openCaseHistory",
+                 "restoreHistory", "saveAnalysesOrder", "paletteEntries"):
+        assert f"function {name}(" in js, name
+    assert "rememberMessage(" in js and "messageLog" in js
+    assert "/history" in js and "analyses/reorder" in js
+
+
 def test_no_element_id_appears_twice():
     """A duplicated id is a dead control: one of the two is never updated."""
     html = _read(INDEX)

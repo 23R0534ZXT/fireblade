@@ -22,9 +22,12 @@
     <div class="menu" data-for="case">
       <div class="item" data-act="refresh-cases">Refresh the case list<span class="key">F5</span></div>
       <div class="sep"></div>
+      <div class="item" data-act="case-history">History and recovery…</div>
+      <div class="sep"></div>
       <div class="item" data-act="close-case">Close the open case</div>
     </div>
     <div class="menu" data-for="analysis">
+      <div class="item" data-act="open-analyses">Open analyses…</div>
       <div class="item" data-act="reload-analysis">Reload the analysis</div>
       <div class="item" data-act="export-csv">Export the current view…</div>
     </div>
@@ -33,6 +36,9 @@
       <div class="item" data-act="preferences">Preferences…</div>
       <div class="sep"></div>
       <div class="item" data-act="toggle-artifacts">Artifacts panel</div>
+      <div class="sep"></div>
+      <div class="item" data-act="palette">Commands…<span class="key">Ctrl+K</span></div>
+      <div class="item" data-act="messages">Messages…</div>
     </div>
     <div class="menu" data-for="export">
       <div class="item" data-act="export-csv">Export the current view…</div>
@@ -478,6 +484,59 @@
       <button class="btn" data-act="preview-import" id="preview-import" disabled>Import</button>
       <button class="btn" data-act="settings-close">Cancel</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="palette-modal">
+  <div class="dialog" style="min-width:560px">
+    <h3>Commands</h3>
+    <div class="body">
+      <input class="search" id="palette-input" placeholder="Type a command, Enter runs the first one…">
+      <div class="columns-list" id="palette-list" style="max-height:340px"></div>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
+</div>
+
+<div class="modal" id="messages-modal">
+  <div class="dialog" style="min-width:640px">
+    <h3>Messages</h3>
+    <div class="body">
+      <div class="note">Everything this window reported, newest first. The server's own log stays on the
+        server.</div>
+      <div class="columns-list" id="messages-list" style="max-height:360px"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="messages-clear">Clear</button>
+      <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="analyses-modal">
+  <div class="dialog" style="min-width:640px">
+    <h3>Open analyses</h3>
+    <div class="body">
+      <div class="note">Closing an analysis takes it out of the workspace; the file stays in the case.
+        The order here is the order of the tabs.</div>
+      <div class="columns-list" id="analyses-list" style="max-height:360px"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="analyses-save">Save the order</button>
+      <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="history-modal">
+  <div class="dialog" style="min-width:680px">
+    <h3>History and recovery</h3>
+    <div class="body">
+      <div class="note">Each entry is a state the case held. Restoring one keeps the present state in the
+        same folder first, so a recovery is itself recoverable.</div>
+      <div class="columns-list" id="history-list" style="max-height:340px"></div>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
   </div>
 </div>
 

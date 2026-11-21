@@ -518,6 +518,34 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
                    "X-Fireblade-Sha256": str(receipt.get("sha256", ""))}
         return Response(content=data, media_type="text/csv", headers=headers)
 
+    @app.post("/api/cases/{identifier}/analyses/reorder")
+    def reorder_analyses(identifier: str, payload: dict):
+        try:
+            return library.reorder_analyses(identifier, (payload or {}).get("order") or [])
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/history")
+    def history(identifier: str):
+        try:
+            return library.history(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/history/{name}")
+    def history_file(identifier: str, name: str):
+        try:
+            return library.history_file(identifier, name)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/history/{name}/restore")
+    def restore_history(identifier: str, name: str):
+        try:
+            return library.restore_history(identifier, name)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/date-ranges")
     def date_ranges():
         """Today, Yesterday, ThisWeek… as the core defines them."""

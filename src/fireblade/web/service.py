@@ -2010,6 +2010,99 @@ class Library:
                           data.get("active_collection"), data.get("revision"))
         return {"analyses": len(remaining), "active": new_active}
 
+    def reorder_analyses(self, identifier: str, order: list[int]) -> dict:
+        """Put the open analyses in the order the analyst wants, as the desktop's dialog does.
+
+        `order` lists the current indexes, first to last; anything missing keeps its
+        place at the end, so a stale dialog cannot drop an analysis.
+        """
+        data = self.library.read(identifier)
+        folder = self.library.folder(identifier)
+        session = data.get("session")
+        if not session:
+            raise ServiceError("This case holds no analysis to reorder.")
+        snapshots, active = read_session(folder / session)
+        seen, ordered = set(), []
+        for position in order or []:
+            try:
+                index = int(position)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= index < len(snapshots) and index not in seen:
+                seen.add(index)
+                ordered.append(snapshots[index])
+        ordered.extend(item for position, item in enumerate(snapshots) if position not in seen)
+        if len(ordered) != len(snapshots):
+            raise ServiceError("The requested order does not match the analyses.")
+        new_active = 0 if active < 0 else min(active, len(ordered) - 1)
+        collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+        self.close_case(identifier)
+        self.library.save(identifier, ordered, new_active, collections,
+                          data.get("active_collection"), data.get("revision"))
+        return {"analyses": len(ordered), "active": new_active,
+                "labels": [self._label(item.source_info, item.path) for item in ordered]}
+
+    def history(self, identifier: str) -> dict:
+        """The case's History folder: the states the desktop lets the analyst recover."""
+        folder = self.library.folder(identifier) / "History"
+        entries = []
+        if folder.is_dir():
+            for path in sorted(folder.glob("*.json"), reverse=True)[:200]:
+                try:
+                    size = path.stat().st_size
+                except OSError:
+                    size = 0
+                when = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(timespec="seconds")
+                entries.append({"name": path.name, "bytes": size, "when": when})
+        return {"entries": entries, "folder": str(folder), "count": len(entries)}
+
+    def history_file(self, identifier: str, name: str) -> dict:
+        """One recorded state, as JSON, for reading before a recovery."""
+        folder = self.library.folder(identifier) / "History"
+        if "/" in name or "\\" in name or not name.endswith(".json"):
+            raise ServiceError("Invalid history name.")
+        path = folder / name
+        if not path.is_file() or path.stat().st_size > 8 * 1024 * 1024:
+            raise ServiceError("This history entry does not exist.")
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return {"name": path.name, "content": payload}
+
+    def restore_history(self, identifier: str, name: str) -> dict:
+        """Put a recorded state back, after keeping the current one.
+
+        The desktop's recovery does the same: the present `case.json` is written into
+        the History folder first, so a recovery is itself recoverable.
+        """
+        folder = self.library.folder(identifier)
+        if "/" in name or "\\" in name or not name.endswith(".json"):
+            raise ServiceError("Invalid history name.")
+        source = folder / "History" / name
+        if not source.is_file() or source.stat().st_size > 8 * 1024 * 1024:
+            raise ServiceError("This history entry does not exist.")
+        recorded = json.loads(source.read_text(encoding="utf-8"))
+        if not isinstance(recorded, dict) or recorded.get("format") != "fireblade-case":
+            raise ServiceError("This file is not a recorded case state.")
+        if str(recorded.get("id")) != identifier:
+            raise ServiceError("This recorded state belongs to another case.")
+        session = str(recorded.get("session") or "")
+        if session and not (folder / session).is_file():
+            raise ServiceError("The session this state points to is no longer in the case.")
+        current = folder / "case.json"
+        if current.is_file():
+            data = json.loads(current.read_text(encoding="utf-8"))
+            revision = str(data.get("revision") or "")
+            if revision:
+                keep = folder / "History" / f"{revision}.json"
+                if not keep.exists():
+                    keep.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        self.close_case(identifier)
+        temporary = current.with_suffix(".partial")
+        temporary.write_text(json.dumps(recorded, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporary.replace(current)
+        return {"restored": name, "revision": recorded.get("revision"),
+                "analyses": recorded.get("analysis_count"),
+                "updated": recorded.get("updated")}
+
     def _case_for(self, identifier: str, index: int) -> Case:
         key = (identifier, index)
         with self._lock:

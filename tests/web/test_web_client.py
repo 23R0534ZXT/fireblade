@@ -405,6 +405,16 @@ def test_a_machine_and_an_action_can_be_changed_or_removed():
     assert "data-reopen" in js and "/closed/" in js
 
 
+def test_the_timeline_table_reads_like_the_desktop():
+    js, html = _read(APP), _read(INDEX)
+    for column in ("Date UTC", "Analysis", "Source row", "Summary"):
+        assert f"<th>{column}</th>" in html, column
+    for action in ("timeline-previous", "timeline-next", "timeline-open-row"):
+        assert f'data-act="{action}"' in html, action
+    for name in ("timelinePage", "openSelectedTimelineRow"):
+        assert f"function {name}(" in js, name
+
+
 def test_the_timeline_is_worked_by_hand():
     js, html = _read(APP), _read(INDEX)
     for action in ("tl-zoom-in", "tl-zoom-out", "tl-fit", "tl-back", "tl-isolate"):

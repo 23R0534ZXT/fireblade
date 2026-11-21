@@ -3870,6 +3870,7 @@ function renderIoc() {
 
 const TIMELINE_COLORS = ["#2d9cdb", "#e6a23c", "#27ae82", "#bb6bd9", "#eb6577", "#56bfc4", "#9fa8da", "#b4a34a"];
 const timelineState = { offset: 0, text: "", kind: "text", payload: null, dates: {},
+                       row: null, source: null,
                        window: null, history: [], hidden: new Set(), start: null, end: null };
 /* The window is a pair of bucket indices, the selection a pair of times: the chart
    can be zoomed without touching the rows, and a duration is the analyst's filter. */
@@ -3995,11 +3996,22 @@ function renderTimeline(payload) {
     return `<tr data-tl-row="${rowId}" data-tl-source="${source}" title="Open the source line">
       <td>${timeNs === null ? "(undated)" : escapeHtml(utcLabel(timeNs))}</td>
       <td>${payload.sources[source] ? escapeHtml(payload.sources[source].name) : source}</td>
+      <td class="rowid">${escapeHtml(String(rowId))}</td>
       <td title="${escapeHtml(summary)}">${bookmarked ? "\u2605 " : ""}${escapeHtml(summary)}</td>
       <td>${escapeHtml(note)}</td></tr>`;
   }).join("");
   $("timeline-rows").querySelectorAll("tr[data-tl-row]").forEach((node) => {
-    node.addEventListener("click", () =>
+    node.addEventListener("click", () => {
+      // One click selects the row, a double click opens it: the desktop's own
+      // gesture, and "Open the source row" does the same on the selection.
+      $("timeline-rows").querySelectorAll("tr.sel").forEach((row) => row.classList.remove("sel"));
+      node.classList.add("sel");
+      timelineState.row = Number(node.dataset.tlRow);
+      timelineState.source = Number(node.dataset.tlSource);
+      $("timeline-info-extra").textContent =
+        `row ${node.dataset.tlRow} of ${node.dataset.tlSource}`;
+    });
+    node.addEventListener("dblclick", () =>
       openSourceRow(Number(node.dataset.tlSource), Number(node.dataset.tlRow)));
   });
 
@@ -4014,6 +4026,22 @@ function renderTimeline(payload) {
    analyst select a duration. The chart here is built from the same histogram; the
    window is a pair of buckets, the selection a pair of times, and the rows follow the
    selection because that is the filter the analyst asked for. */
+
+function timelinePage(direction) {
+  const payload = timelineState.payload;
+  if (!payload) { say("Build the timeline first", true); return; }
+  const step = payload.page_size || 250;
+  const next = timelineState.offset + direction * step;
+  if (next < 0) { say("Already on the first page", true); return; }
+  if (next >= payload.count) { say("Already on the last page", true); return; }
+  timelineState.offset = next;
+  loadTimeline(false);
+}
+
+async function openSelectedTimelineRow() {
+  if (!timelineState.row) { say("Select a row of the timeline first", true); return; }
+  await openSourceRow(timelineState.source, timelineState.row);
+}
 
 function timelineRange(hist) {
   const start = timelineState.window ? timelineState.window[0] : 0;
@@ -5360,6 +5388,9 @@ async function act(name, node) {
     case "preview-path": await previewServerPath(); break;
     case "layout-export": exportLayout(); break;
     case "layout-import": $("layout-file").click(); break;
+    case "timeline-previous": timelinePage(-1); break;
+    case "timeline-next": timelinePage(1); break;
+    case "timeline-open-row": await openSelectedTimelineRow(); break;
     case "tl-zoom-in": timelineZoom(0.6); break;
     case "tl-zoom-out": timelineZoom(1.8); break;
     case "tl-fit": timelineFit(); break;

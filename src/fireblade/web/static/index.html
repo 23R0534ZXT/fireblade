@@ -497,6 +497,13 @@
           <button class="btn" id="timeline-export" title="Verified CSV with a receipt">Export CSV</button>
         </div>
         <div class="timeline-dates" id="timeline-dates"></div>
+        <div class="filterbar" id="timeline-pager">
+          <button class="btn" data-act="timeline-previous">Previous</button>
+          <button class="btn" data-act="timeline-next">Next</button>
+          <button class="btn" data-act="timeline-open-row">Open the source row</button>
+          <div class="grow"></div>
+          <span class="info" id="timeline-info-extra"></span>
+        </div>
         <div class="filterbar" id="timeline-controls">
           <button class="btn" data-act="tl-zoom-in" title="Zoom in">Zoom +</button>
           <button class="btn" data-act="tl-zoom-out" title="Zoom out">Zoom −</button>
@@ -511,8 +518,8 @@
         <div class="gridwrap" style="flex:1">
           <div class="gridbody" id="timeline-body">
             <table>
-              <colgroup><col style="width:170px"><col style="width:130px"><col><col style="width:200px"></colgroup>
-              <thead><tr><th>Time (UTC)</th><th>Source</th><th>Summary</th><th>Note</th></tr></thead>
+              <colgroup><col style="width:170px"><col style="width:150px"><col style="width:100px"><col><col style="width:200px"></colgroup>
+              <thead><tr><th>Date UTC</th><th>Analysis</th><th>Source row</th><th>Summary</th><th>Note</th></tr></thead>
               <tbody id="timeline-rows"></tbody>
             </table>
           </div>

@@ -269,6 +269,15 @@ def test_the_report_can_be_generated_as_a_pdf():
     assert "buildReport(true)" in js and "/pdf" in js
 
 
+def test_the_display_preferences_are_remembered_and_applied():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="prefs-copy-headers"' in html and 'id="prefs-date-format"' in html
+    for name in ("loadCopyPrefs", "saveCopyPrefs", "formatTimestamp"):
+        assert f"function {name}(" in js, name
+    assert "copyPrefs.headers" in js and "state.timestamps" in js
+    assert "localStorage.setItem(\"fireblade.display\"" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

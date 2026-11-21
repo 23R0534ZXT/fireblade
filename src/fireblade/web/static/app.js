@@ -36,6 +36,7 @@ const state = {
   orderDesc: true,
   orderSummary: 0,
   payload: null,        // the last rows answer, kept for its summary labels
+  timestamps: [],       // columns the case marks as dates
 };
 
 /* ---------- reading a file again ---------- */
@@ -86,6 +87,41 @@ async function runRetry(position) {
   } catch (error) {
     say(error.message, true);
   }
+}
+
+/* ---------- display preferences ---------- */
+
+/* Kept in the browser: they say how this analyst reads the data, not what the
+   case contains. The desktop stores the same three choices in its profile. */
+const copyPrefs = { headers: true, dateFormat: "source" };
+
+function loadCopyPrefs() {
+  try {
+    const stored = JSON.parse(localStorage.getItem("fireblade.display") || "{}");
+    if (typeof stored.headers === "boolean") copyPrefs.headers = stored.headers;
+    if (["source", "iso", "iso7"].includes(stored.dateFormat)) copyPrefs.dateFormat = stored.dateFormat;
+  } catch (_) { /* a first visit, or storage disabled */ }
+}
+
+function saveCopyPrefs() {
+  try {
+    localStorage.setItem("fireblade.display", JSON.stringify(copyPrefs));
+  } catch (_) { /* nothing to do: the choice lives for this page only */ }
+}
+
+/* One timestamp, written the way the analyst asked for it. A value that is not a
+   date is left exactly as the source wrote it. */
+const DATE_TEXT = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/;
+
+function formatTimestamp(text, mode) {
+  if (mode === "source" || text === null || text === undefined) return text;
+  const raw = String(text).trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})?$/);
+  if (!match) return text;
+  const [, year, month, day, hour, minute, second, fraction = "", zone] = match;
+  const stamp = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+  const tail = mode === "iso7" ? "." + (fraction + "0000000").slice(0, 7) : "";
+  return `${stamp}${tail}${zone || "Z"}`;
 }
 
 /* ---------- messages ---------- */
@@ -1198,16 +1234,21 @@ function selectedIds() {
   return state.selected === null || state.selected === undefined ? [] : [String(state.selected)];
 }
 
+/* Rows leave as a tab-separated table, the way the desktop copies them: a
+   spreadsheet takes it directly. The header line is the analyst's choice. */
 async function copySelectedRows() {
   const ids = selectedIds();
   if (!ids.length) { say("Select a row first", true); return; }
-  const blocks = ids.map((id) => {
+  const lines = [];
+  if (copyPrefs.headers) lines.push(state.columns.map((name) => String(name)).join("\t"));
+  for (const id of ids) {
     const row = state.rows.find((item) => String(item[0]) === id);
-    return row ? state.columns.map((name, index) => `${name}: ${row[index] ?? ""}`).join("\n") : "";
-  }).filter(Boolean);
+    if (!row) continue;
+    lines.push(row.map((cell) => (cell === null || cell === undefined ? "" : String(cell))).join("\t"));
+  }
   try {
-    await navigator.clipboard.writeText(blocks.join("\n\n"));
-    say(`${blocks.length} row(s) copied to the clipboard`);
+    await navigator.clipboard.writeText(lines.join("\n"));
+    say(`${ids.length} row(s) copied as a table`);
   } catch (_) {
     say("The browser refused clipboard access", true);
   }
@@ -2766,6 +2807,7 @@ async function loadRows(reset) {
     state.offset = payload.offset;
     state.grouped = Boolean(payload.grouped);
     state.payload = payload;
+    state.timestamps = payload.timestamps || [];
     await loadBookmarks();
     await loadCellNotes();
     await loadRules();
@@ -2866,7 +2908,13 @@ function renderGrid() {
     const rowNotes = notesForRow(id);
     const cells = shown.map(({ index }) => {
       const value = row[index];
-      const text = value === null || value === "" ? "☐" : String(value);
+      // The case names its date columns when it has them; a value that reads as a
+      // full timestamp is formatted anyway, so the preference is never a no-op.
+      const isDate = (Array.isArray(state.timestamps) && state.timestamps.includes(index - 1))
+        || DATE_TEXT.test(value === null || value === undefined ? "" : String(value));
+      const text = value === null || value === ""
+        ? "☐"
+        : String(isDate ? formatTimestamp(value, copyPrefs.dateFormat) : value);
       const noted = rowNotes[String(index - 1)];
       const cls = [value === null || value === "" ? "cellnull" : (index === 0 ? "rowid" : ""),
                    noted ? "noted" : ""].filter(Boolean).join(" ");
@@ -3563,6 +3611,17 @@ function wire() {
   });
   $("summary-order").addEventListener("change", refreshSummaryOrderChoices);
   $("summary-apply").addEventListener("click", applySummaries);
+  $("prefs-copy-headers").addEventListener("change", (event) => {
+    copyPrefs.headers = event.target.checked;
+    saveCopyPrefs();
+    say(event.target.checked ? "Copy includes the headers" : "Copy leaves the headers out");
+  });
+  $("prefs-date-format").addEventListener("change", (event) => {
+    copyPrefs.dateFormat = event.target.value;
+    saveCopyPrefs();
+    renderGrid();
+    say(`Dates shown ${event.target.value}`);
+  });
   $("date-mode").addEventListener("change", showDateMode);
   $("date-add").addEventListener("click", addDateCondition);
   $("ioc-scan").addEventListener("click", runIocScan);
@@ -3823,6 +3882,7 @@ async function act(name, node) {
 /* ---------- boot ---------- */
 
 async function boot() {
+  loadCopyPrefs();
   loadPalette();
   applyScale();
   applyRowHeight();

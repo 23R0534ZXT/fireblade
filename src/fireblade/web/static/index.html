@@ -774,6 +774,18 @@
         <button class="btn" data-act="compat-open">Profiles and plugins…</button>
         <span class="note" style="max-width:none">install a presentation plugin, or describe this analysis</span>
       </div>
+      <div class="row"><label>Copy</label>
+        <label><input type="checkbox" id="prefs-copy-headers" checked> Include the headers when copying rows</label>
+        <span class="note" style="max-width:none">rows leave as a tab-separated table, ready for a spreadsheet</span>
+      </div>
+      <div class="row"><label for="prefs-date-format">Dates in the grid</label>
+        <select id="prefs-date-format">
+          <option value="source">As the source wrote them</option>
+          <option value="iso">ISO, normalised</option>
+          <option value="iso7">ISO with 7 decimals</option>
+        </select>
+        <span class="note" style="max-width:none">applies to the values that read as full timestamps</span>
+      </div>
       <div class="row"><label for="prefs-scale">Text size</label>
         <select id="prefs-scale">
           <option value="1">100 %</option><option value="1.1">110 %</option>

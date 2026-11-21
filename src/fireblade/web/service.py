@@ -2400,6 +2400,11 @@ class Library:
             view.group_order = order
             view.group_descending = bool(order_descending)
             view.group_summary = max(0, min(int(order_summary), max(0, len(cleaned_summaries) - 1)))
+        # The session's own view says which columns are dates; the grid reformats
+        # those and nothing else.
+        entry = next((item for item in self._analyses(self.library.read(identifier))
+                      if item["index"] == index), {})
+        timestamps = list((entry.get("view") or {}).get("timestamp_columns") or [])
         limit = max(1, min(int(limit), 1000))
         offset = max(0, int(offset))
         depth = tuple(path or ())
@@ -2416,6 +2421,7 @@ class Library:
             "limit": limit,
             "grouped": grouped,
             "path": list(depth),
+            "timestamps": timestamps,
             "summaries": [{"column": item.column,
                            "name": case.headers[item.column] if 0 <= item.column < len(case.headers) else "",
                            "operation": item.operation, "kind": item.kind}

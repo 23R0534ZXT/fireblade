@@ -851,3 +851,62 @@ def test_a_disk_is_walked_in_the_background(service, tmp_path):
         assert disk.get("visited", 0) >= 1
     with pytest.raises(ServiceError):
         library.start_disk_job(identifier, str(volume), "nonsense")
+
+
+def test_a_colour_rule_can_carry_a_statistic(service):
+    """The desktop's "Valeurs les plus élevées", "Doublons", "Au-dessus de la moyenne"."""
+    library, identifier = service
+    library.save_rules(identifier, 0, [
+        {"column": 1, "operator": "contains", "value": "", "statistic": "top",
+         "stat_rank": "2", "background": "#ffe08a"},
+        {"column": 1, "operator": "contains", "value": "", "statistic": "duplicate",
+         "background": "#d9f2c4"},
+    ])
+    rules = library.rules(identifier, 0)["rules"]
+    assert len(rules) == 2
+    top = rules[0]
+    assert top["statistic"] == "top"
+    assert top["resolved"]["values"], "a resolved statistic names its values"
+    assert len(top["resolved"]["values"]) <= 2
+    duplicates = rules[1]
+    assert duplicates["resolved"]["values"], "Artifact repeats, so a duplicate rule names it"
+    with pytest.raises(ServiceError):
+        library.save_rules(identifier, 0, [{"column": 1, "operator": "contains", "value": "",
+                                            "statistic": "nonsense"}])
+
+
+def test_a_rule_can_select_the_values_above_the_average(tmp_path):
+    """A numeric column, an average, and the rows above it."""
+    root = tmp_path / "cases"
+    root.mkdir()
+    book = InvestigationLibrary(root)
+    data = book.create("Averages", "Numeric column", "windows")
+    identifier = data["id"]
+    folder = book.folder(identifier)
+    analysis = folder / "analysis-1.duckdb"
+    source = tmp_path / "numbers.csv"
+    with source.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["Timestamp", "Artifact", "Bytes"])
+        writer.writerow(["2026-11-02T10:00:00Z", "EVTX", "100"])
+        writer.writerow(["2026-11-02T10:01:00Z", "EVTX", "200"])
+        writer.writerow(["2026-11-02T10:02:00Z", "Prefetch", "900"])
+    case = Case(analysis)
+    try:
+        case.import_csv(source)
+        info = dict(case.info)
+    finally:
+        case.close()
+    snapshot = AnalysisSnapshot(path=str(analysis), source_info=info, view=View(), header_state=b"")
+    book.save(identifier, [snapshot], 0, [], None, data["revision"])
+    library = Library(root)
+    try:
+        library.save_rules(identifier, 0, [
+            {"column": 2, "operator": "contains", "value": "", "statistic": "above_avg",
+             "value_column": 2, "background": "#cfe3ff"}])
+        rule = library.rules(identifier, 0)["rules"][0]
+        assert rule["resolved"]["compare"] == "ge"
+        assert rule["resolved"]["threshold"] == pytest.approx(400.0)
+        assert rule["resolved"]["strict"] is True
+    finally:
+        library.close()

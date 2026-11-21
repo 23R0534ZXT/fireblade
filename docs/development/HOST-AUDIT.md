@@ -24,7 +24,7 @@ names what the Host does for each.
 ## Verdict
 
 **The port is not complete.** Twenty-one domains are covered, but this audit found
-**0 features the Host does not have** and **4 it has partially** (five closed since the
+**0 features the Host does not have** and **3 it has partially** (five closed since the
 audit was written: machines and accounts, tracked indicators, Hayabusa rules,
 global colour rules, import diagnostics). None of them was
 visible in the label inventory, which is why `HOST-PARITY.md` said "nothing left" —
@@ -53,7 +53,7 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Grid — grouping | by column, date intervals, drill-down | **yes** |
 | Grid — group summaries | "Résumés et tri des groupes" | **yes** — up to 16 aggregates beside each group, and the groups ordered by count, value or a summary |
 | Grid — bookmarks, notes | row marks, row notes, cell notes, on a selection | **yes** |
-| Grid — colour rules | local rules, from a cell, the value chart and its statistics | **partial** — colours, text colour, bold, row/cell target and the value chart; the statistics (top, duplicates, above average) are missing |
+| Grid — colour rules | local rules, from a cell, the value chart and its statistics | **yes** — colours, text colour, bold, row or cell target, the value chart, and the statistics (most and least frequent, duplicates, values seen once, above or below the average) resolved on the server |
 | Grid — global rules | "Règles globales" shared by every analysis | **yes** — Colour rules > Every analysis; the book is the desktop's own file (import and export), a rule the grid cannot evaluate is skipped, never approximated |
 | Grid — columns | hide, pin left **and right**, resize, layout in the analysis | **yes** |
 | Grid — derived columns | timestamp conversion, expressions, categories, MACB | **yes** |

@@ -915,6 +915,19 @@
         <label for="rule-target">Applies to</label>
         <select id="rule-target"><option value="">the whole row</option>
           <option value="cell">this cell only</option></select></div>
+      <div class="row"><label for="rule-statistic">Statistic</label>
+        <select id="rule-statistic">
+          <option value="">the condition only</option>
+          <option value="top">the most frequent values</option>
+          <option value="bottom">the least frequent values</option>
+          <option value="above_avg">values above the average</option>
+          <option value="below_avg">values below the average</option>
+          <option value="unique">values that appear once</option>
+          <option value="duplicate">values that repeat</option>
+        </select>
+        <label for="rule-stat-rank">Rank</label>
+        <input id="rule-stat-rank" type="number" min="1" max="1000" value="10" style="width:80px">
+      </div>
       <div class="row"><button class="btn" data-act="rule-add">Add the rule</button></div>
       <div class="note" id="rule-values-note">Values of the chosen column: click one to use it.</div>
       <div class="columns-list" id="rule-values" style="max-height:120px"></div>

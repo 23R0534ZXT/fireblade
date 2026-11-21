@@ -2051,6 +2051,25 @@ function matchesRule(rule, values) {
   if (!rule.enabled) return false;
   if (rule.simple === false) return false;
   if (!Number.isInteger(rule.column) || rule.column < 0) return false;
+  // A statistic names the rows it selects; the server resolved it once.
+  if (rule.statistic) {
+    const column = Number.isInteger(rule.value_column) ? rule.value_column : rule.column;
+    const raw = values[column + 1];
+    const text = raw === null || raw === undefined ? "" : String(raw);
+    const resolved = rule.resolved;
+    if (!resolved) return false;
+    if (Array.isArray(resolved.values)) {
+      const needle = rule.stat_ignore_case ? text.toLowerCase() : text;
+      return resolved.values.some((value) =>
+        (rule.stat_ignore_case ? String(value).toLowerCase() : String(value)) === needle);
+    }
+    const number = Number(text);
+    if (Number.isNaN(number) || resolved.threshold === undefined) return false;
+    if (resolved.compare === "ge") {
+      return resolved.strict ? number > resolved.threshold : number >= resolved.threshold;
+    }
+    return resolved.strict ? number < resolved.threshold : number <= resolved.threshold;
+  }
   const raw = values[rule.column + 1];
   const text = raw === null || raw === undefined ? "" : String(raw);
   const value = rule.value ?? "";
@@ -2221,7 +2240,9 @@ async function persistRules() {
     { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rules: rulesCache }) });
   if (!response.ok) throw new Error((await response.json()).detail || response.statusText);
-  renderGrid();
+  // Read the rules back: a statistic is resolved on the server, and the grid can
+  // only apply what the server says it selects.
+  await loadRules();
 }
 
 async function addRule() {
@@ -2235,6 +2256,8 @@ async function addRule() {
     bold: $("rule-bold").checked,
     target: rulesScope === "global" && $("rule-target").value === "cell" ? columnValue : null,
     enabled: true,
+    statistic: $("rule-statistic").value || "",
+    stat_rank: $("rule-stat-rank").value || "10",
   };
   if (rulesScope === "global") {
     try {

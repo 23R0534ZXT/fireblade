@@ -286,6 +286,14 @@ def test_a_disk_can_be_analysed_from_the_window():
     assert "/disk-jobs" in js
 
 
+def test_a_rule_statistic_is_read_from_the_server():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="rule-statistic"' in html and 'id="rule-stat-rank"' in html
+    assert "rule.resolved" in js
+    for statistic in ("top", "duplicate", "above_avg", "unique"):
+        assert f'<option value="{statistic}"' in html, statistic
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

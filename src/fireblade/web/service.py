@@ -829,12 +829,73 @@ class Library:
         }
 
     def rules(self, identifier: str, index: int) -> dict:
-        """The colour rules of this analysis, kept in its own views table."""
+        """The colour rules of this analysis, kept in its own views table.
+
+        A rule that carries a statistic (the ten most frequent values, the ones above
+        the average, the duplicates) is resolved here, once, into the values it
+        selects: the grid then matches a value, not a query per row.
+        """
         case = self._case_for(identifier, index)
         with case.lock:
             stored = case.views().get(self.RULES_VIEW)
-        rules = [self._rule_payload(rule) for rule in (stored.format_rules if stored else [])]
+        rules = []
+        for rule in (stored.format_rules if stored else []):
+            payload = self._rule_payload(rule)
+            payload["statistic"] = getattr(rule, "statistic", "") or ""
+            payload["stat_rank"] = str(getattr(rule, "stat_rank", "10") or "10")
+            payload["stat_ignore_case"] = bool(getattr(rule, "stat_ignore_case", False))
+            payload["value_column"] = getattr(rule, "value_column", None)
+            if payload["statistic"]:
+                resolved = self._resolve_statistic(case, rule)
+                if resolved is not None:
+                    payload["resolved"] = resolved
+            rules.append(payload)
         return {"rules": rules}
+
+    STATISTICS = ("top", "bottom", "above_avg", "below_avg", "above_eq_avg",
+                  "below_eq_avg", "unique", "duplicate")
+
+    def _resolve_statistic(self, case, rule) -> dict | None:
+        """What a statistic selects, computed once over the analysis' own rows."""
+        statistic = getattr(rule, "statistic", "") or ""
+        if statistic not in self.STATISTICS:
+            return None
+        column = getattr(rule, "value_column", None)
+        if column is None:
+            column = getattr(rule, "target", None)
+        if column is None:
+            # No target and no value column: the statistic speaks about the column
+            # the condition itself reads.
+            atoms = list(getattr(getattr(rule, "condition", None), "children", None) or [])
+            column = getattr(atoms[0], "column", None) if atoms else None
+        if not isinstance(column, int) or not 0 <= column < len(case.headers):
+            return None
+        try:
+            rank = max(1, min(int(getattr(rule, "stat_rank", "10") or 10), 1000))
+        except (TypeError, ValueError):
+            rank = 10
+        expression = case.column(column)
+        with case.lock:
+            try:
+                if statistic in ("top", "bottom", "unique", "duplicate"):
+                    having = {"unique": " HAVING count(*) = 1",
+                              "duplicate": " HAVING count(*) > 1"}.get(statistic, "")
+                    order = "count(*) DESC" if statistic in ("top", "duplicate") else "count(*) ASC"
+                    rows = case.db.execute(
+                        f"SELECT {expression} AS v, count(*) AS c FROM events "
+                        f"GROUP BY 1{having} ORDER BY {order}, 1 LIMIT ?", [rank]).fetchall()
+                    values = ["" if value is None else str(value) for value, _count in rows]
+                    return {"statistic": statistic, "values": values}
+                rows = case.db.execute(
+                    f"SELECT avg(TRY_CAST({expression} AS DOUBLE)) FROM events").fetchone()
+                average = rows[0] if rows else None
+                if average is None:
+                    return None
+                compare = "ge" if statistic in ("above_avg", "above_eq_avg") else "le"
+                return {"statistic": statistic, "threshold": float(average), "compare": compare,
+                        "strict": statistic in ("above_avg", "below_avg")}
+            except (OSError, ValueError, TypeError):
+                return None
 
     # -- global colour rules ----------------------------------------------
 
@@ -976,6 +1037,12 @@ class Library:
             operator = item.get("operator", "contains")
             if operator not in OPERATORS:
                 raise ServiceError(f"Unknown rule operator: {operator}")
+            statistic = str(item.get("statistic") or "")
+            if statistic and statistic not in self.STATISTICS:
+                raise ServiceError(f"Unknown rule statistic: {statistic}")
+            value_column = item.get("value_column")
+            if value_column is not None and (not isinstance(value_column, int) or value_column < 0):
+                raise ServiceError("Invalid statistic column.")
             cleaned.append(FormatRule(
                 condition=FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))]),
                 background=str(item.get("background") or "#fce2e2"),
@@ -983,6 +1050,10 @@ class Library:
                 bold=bool(item.get("bold")),
                 target=item.get("target"),
                 enabled=bool(item.get("enabled", True)),
+                statistic=statistic,
+                stat_rank=str(item.get("stat_rank") or "10"),
+                stat_ignore_case=bool(item.get("stat_ignore_case")),
+                value_column=value_column,
             ))
         case = self._case_for(identifier, index)
         view = View(format_rules=cleaned)

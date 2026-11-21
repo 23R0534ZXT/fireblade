@@ -405,6 +405,16 @@ def test_a_machine_and_an_action_can_be_changed_or_removed():
     assert "data-reopen" in js and "/closed/" in js
 
 
+def test_the_row_height_dialog_asks_the_three_heights():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="rowheight-modal"' in html and 'id="rowheight-wrap"' in html
+    assert "Fit the height to the displayed text" in html and "Wrap the text by default" in html
+    for field in ("rowheight-rows", "rowheight-groups", "rowheight-headers"):
+        assert f'id="{field}"' in html, field
+    for name in ("applyRowHeightPrefs", "rowHeightPrefs", "applyStoredRowHeight"):
+        assert f"function {name}(" in js, name
+
+
 def test_the_highlight_marks_without_breaking_escaping():
     js = _read(APP)
     assert "function markText(" in js and "function openHighlight(" in js

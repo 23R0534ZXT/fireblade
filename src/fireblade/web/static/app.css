@@ -143,7 +143,7 @@ thead th .grip{position:absolute;right:0;top:0;width:4px;height:100%;cursor:col-
 }
 .colfilter input::placeholder{color:var(--disabled)}
 .colfilter input:focus{border-color:var(--accent);background:var(--input-focus)}
-tbody td{height:var(--row-height);padding:1px 5px;border-right:1px solid var(--grid-line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+tbody td{height:var(--row-height);padding:1px 5px;border-right:1px solid var(--grid-line);white-space:var(--wrap,nowrap);overflow:hidden;text-overflow:ellipsis}
 tbody tr:nth-child(even) td{background:var(--alt)}
 tbody tr:hover td{background:var(--row-hover)}
 tbody tr.sel td{background:var(--sel);color:var(--sel-text)}
@@ -394,3 +394,7 @@ td .vicon { margin-right: 4px; font-size: 10px; }
    the current window sits in it. */
 .timeline-overview{margin:0 6px 2px;border:1px solid var(--border);background:var(--base);cursor:pointer}
 .timeline-overview canvas{display:block;width:100%;height:34px}
+
+/* The three heights of the desktop's RowHeightDialog, one variable each. */
+:root{--group-height:22px;--head-height:22px}
+thead th{height:var(--head-height,22px)}

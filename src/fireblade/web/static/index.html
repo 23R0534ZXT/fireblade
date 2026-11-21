@@ -833,6 +833,27 @@
   </div>
 </div>
 
+<div class="modal" id="rowheight-modal">
+  <div class="dialog" style="min-width:420px">
+    <h3>Row height</h3>
+    <div class="body">
+      <label class="row"><input type="checkbox" id="rowheight-wrap"> Wrap the text by default</label>
+      <label class="row"><input type="checkbox" id="rowheight-fit"> Fit the height to the displayed text</label>
+      <div class="row"><label for="rowheight-rows">Rows (pixels)</label>
+        <input id="rowheight-rows" value="20" style="width:70px"></div>
+      <div class="row"><label for="rowheight-groups">Group headers (pixels)</label>
+        <input id="rowheight-groups" value="22" style="width:70px"></div>
+      <div class="row"><label for="rowheight-headers">Column headers (pixels)</label>
+        <input id="rowheight-headers" value="22" style="width:70px"></div>
+      <div class="note">The three heights are a reading comfort: they live in the browser, not in the case.</div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="rowheight-apply">Apply</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="integrity-modal">
   <div class="dialog" style="min-width:640px">
     <h3>Provenance and SHA-256</h3>

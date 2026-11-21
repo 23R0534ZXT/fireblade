@@ -1291,17 +1291,51 @@ function toggleDetails() {
   box.style.display = box.style.display === "none" ? "block" : "none";
 }
 
+/* The desktop's RowHeightDialog: two behaviours and three heights, each one kept as
+   a browser preference and never written into the case. */
 function openRowHeight() {
-  const computed = getComputedStyle(document.documentElement)
-    .getPropertyValue("--row-height").trim().replace("px", "");
-  const current = localStorage.getItem("fireblade.rowHeight") || computed || "20";
-  const answer = window.prompt("Row height in pixels (14 to 40)", current);
-  if (answer === null) return;
-  const value = Math.max(14, Math.min(40, Number(answer) || Number(current) || 20));
-  document.documentElement.style.setProperty("--row-height", `${value}px`);
-  localStorage.setItem("fireblade.rowHeight", String(value));
+  const prefs = rowHeightPrefs();
+  $("rowheight-wrap").checked = Boolean(prefs.wrap);
+  $("rowheight-fit").checked = Boolean(prefs.fit);
+  $("rowheight-rows").value = prefs.rows;
+  $("rowheight-groups").value = prefs.groups;
+  $("rowheight-headers").value = prefs.headers;
+  $("rowheight-modal").classList.add("show");
+}
+
+function rowHeightPrefs() {
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem("fireblade.rowHeightBox") || "{}"); } catch (_) { stored = {}; }
+  return { rows: stored.rows || 20, groups: stored.groups || 22, headers: stored.headers || 22,
+           wrap: Boolean(stored.wrap), fit: Boolean(stored.fit) };
+}
+
+function applyRowHeightPrefs() {
+  const clamp = (value, low, high, fallback) =>
+    Math.max(low, Math.min(high, Number(value) || fallback));
+  const prefs = {
+    rows: clamp($("rowheight-rows").value, 14, 120, 20),
+    groups: clamp($("rowheight-groups").value, 14, 120, 22),
+    headers: clamp($("rowheight-headers").value, 14, 120, 22),
+    wrap: $("rowheight-wrap").checked,
+    fit: $("rowheight-fit").checked,
+  };
+  localStorage.setItem("fireblade.rowHeightBox", JSON.stringify(prefs));
+  document.documentElement.style.setProperty("--row-height", `${prefs.rows}px`);
+  document.documentElement.style.setProperty("--group-height", `${prefs.groups}px`);
+  document.documentElement.style.setProperty("--head-height", `${prefs.headers}px`);
+  document.documentElement.style.setProperty("--wrap", prefs.wrap || prefs.fit ? "normal" : "nowrap");
   renderGrid();
-  say(`Row height: ${value} px`);
+  closeModals();
+  say(`Row height: ${prefs.rows} px${prefs.wrap || prefs.fit ? " — text wrapped" : ""}`);
+}
+
+function applyStoredRowHeight() {
+  const prefs = rowHeightPrefs();
+  document.documentElement.style.setProperty("--row-height", `${prefs.rows}px`);
+  document.documentElement.style.setProperty("--group-height", `${prefs.groups}px`);
+  document.documentElement.style.setProperty("--head-height", `${prefs.headers}px`);
+  document.documentElement.style.setProperty("--wrap", prefs.wrap || prefs.fit ? "normal" : "nowrap");
 }
 
 function resetWidths() {
@@ -5073,10 +5107,8 @@ function choosePalette(theme) {
 /* ---------- display settings ---------- */
 
 function applyRowHeight() {
-  const value = localStorage.getItem("fireblade.rowHeight") || "20";
-  document.documentElement.style.setProperty("--row-height", value + "px");
-  const select = $("row-height");
-  if (select) select.value = value;
+  // The three heights are one preference now: the dialog writes them together.
+  applyStoredRowHeight();
 }
 
 function booleanColumns() {
@@ -5725,6 +5757,7 @@ async function act(name, node) {
     case "show-timeline": showTab("timeline"); break;
     case "show-evtx": showTab("evtx"); break;
     case "highlight-text": openHighlight(); break;
+    case "rowheight-apply": applyRowHeightPrefs(); break;
     case "graph-zoom-in": graphZoom(1.2); break;
     case "graph-zoom-out": graphZoom(1 / 1.2); break;
     case "graph-recentre": graphReset(); break;

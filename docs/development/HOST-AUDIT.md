@@ -63,6 +63,7 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Grid — exports | CSV, copy value / rows / cell, whole cell | **yes** |
 | Grid — pivot and EVTX | "Qu'est-ce qui a lancé", source event, EVTX context | **yes** |
 | Timeline | build, histogram, legend, correlate, page, three date readings | **yes** |
+| Timeline — working the chart | zoom, pan, fit, back, isolate a source, select a duration | **yes** — Zoom +/−, Fit, Back, Show all sources, a drag that selects a duration and filters the rows below, shift-drag to pan, the wheel to zoom, a chip to hide one source |
 | Timeline — extras | export, "Inclure sans date", "Appliquer les filtres des analyses", "Ouvrir la ligne source" | **yes** — verified CSV export with its receipt, rows without a date on request, each analysis read through its own filters, and a click on a row opens its source line |
 | IOC hunting | paste, scan, results, saved hunts | **yes** |
 | IOC — extras | import TXT/CSV/TSV, all analyses at once, respect the filters, sub-domains | **yes** — IOC hunting: a file or a paste, every analysis, each view's filters, and sub-domains on or off |

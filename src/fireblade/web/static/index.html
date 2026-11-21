@@ -364,6 +364,15 @@
           <button class="btn" id="timeline-export" title="Verified CSV with a receipt">Export CSV</button>
         </div>
         <div class="timeline-dates" id="timeline-dates"></div>
+        <div class="filterbar" id="timeline-controls">
+          <button class="btn" data-act="tl-zoom-in" title="Zoom in">Zoom +</button>
+          <button class="btn" data-act="tl-zoom-out" title="Zoom out">Zoom −</button>
+          <button class="btn" data-act="tl-fit" title="Show the whole extent">Fit</button>
+          <button class="btn" data-act="tl-back" title="Back to the previous window">Back</button>
+          <button class="btn" data-act="tl-isolate" title="Show every source again">Show all sources</button>
+          <span class="info" id="timeline-window"></span>
+          <span class="note">drag on the chart to select a duration · shift-drag to pan · wheel to zoom · double-click to fit · click a legend chip to hide a source</span>
+        </div>
         <div class="timeline-legend" id="timeline-legend"></div>
         <div class="timeline-hist" id="timeline-hist"></div>
         <div class="gridwrap" style="flex:1">

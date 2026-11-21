@@ -3143,7 +3143,10 @@ function renderIoc() {
 /* ---------- timeline ---------- */
 
 const TIMELINE_COLORS = ["#2d9cdb", "#e6a23c", "#27ae82", "#bb6bd9", "#eb6577", "#56bfc4", "#9fa8da", "#b4a34a"];
-const timelineState = { offset: 0, text: "", kind: "text", payload: null, dates: {} };
+const timelineState = { offset: 0, text: "", kind: "text", payload: null, dates: {},
+                       window: null, history: [], hidden: new Set(), start: null, end: null };
+/* The window is a pair of bucket indices, the selection a pair of times: the chart
+   can be zoomed without touching the rows, and a duration is the analyst's filter. */
 
 /* The desktop chooses, per analysis, how its dates are read. The choice travels
    with every timeline request, so a rebuild reads the case the same way. */
@@ -3218,6 +3221,8 @@ async function loadTimeline(reset) {
   if (timelineState.text) { params.set("text", timelineState.text); params.set("kind", timelineState.kind); }
   const dates = timelineDatesParam();
   if (dates) params.set("dates", dates);
+  if (timelineState.start !== null) params.set("start", String(timelineState.start));
+  if (timelineState.end !== null) params.set("end", String(timelineState.end));
   if ($("timeline-undated").checked) params.set("include_undated", "true");
   if ($("timeline-filters").checked) params.set("respect_filters", "true");
   try {
@@ -3231,29 +3236,32 @@ async function loadTimeline(reset) {
 
 function renderTimeline(payload) {
   renderTimelineDates(payload);
-  $("timeline-legend").innerHTML = payload.sources.map((source, index) =>
-    `<span class="chip"><span class="swatch" style="background:${TIMELINE_COLORS[index % 8]}"></span>${escapeHtml(source.name)} — ${source.dated} dated / ${source.rows} row(s)</span>`).join("");
+  const shown = payload.sources.map((source, index) => ({ source, index }))
+    .filter(({ source }) => !timelineState.hidden.has(source.id));
+  $("timeline-legend").innerHTML = payload.sources.map((source, index) => {
+    const off = timelineState.hidden.has(source.id);
+    return `<span class="chip${off ? " off" : ""}" data-tl-source-chip="${source.id}"
+      title="${off ? "Show this source again" : "Hide this source"}"
+      style="${off ? "opacity:.45" : ""}"><span class="swatch" style="background:${TIMELINE_COLORS[index % 8]}"></span>${escapeHtml(source.name)} — ${source.dated} dated / ${source.rows} row(s)</span>`;
+  }).join("");
+  $("timeline-legend").querySelectorAll("[data-tl-source-chip]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const id = Number(chip.dataset.tlSourceChip);
+      if (timelineState.hidden.has(id)) timelineState.hidden.delete(id);
+      else timelineState.hidden.add(id);
+      renderTimeline(timelineState.payload);
+    });
+  });
 
   const hist = payload.histogram;
   const box = $("timeline-hist");
   if (!hist || !hist.rows.length) {
     box.innerHTML = '<div class="emptygrid">No dated row to chart.</div>';
+    $("timeline-window").textContent = "";
   } else {
-    const totals = new Map();
-    for (const [sourceIndex, bucket, count] of hist.rows) {
-      if (!totals.has(bucket)) totals.set(bucket, []);
-      totals.get(bucket).push([sourceIndex, count]);
-    }
-    const peak = Math.max(1, ...[...totals.values()].map((segments) => segments.reduce((sum, seg) => sum + seg[1], 0)));
-    const bars = [];
-    for (let bucket = 0; bucket < hist.bins; bucket += 1) {
-      const segments = totals.get(bucket) || [];
-      const height = segments.reduce((sum, seg) => sum + seg[1], 0);
-      const inner = segments.map(([sourceIndex, count]) =>
-        `<span class="seg" style="height:${Math.max(1, Math.round(count / peak * 56))}px;background:${TIMELINE_COLORS[sourceIndex % 8]}"></span>`).join("");
-      bars.push(`<span class="bar" title="${height} event(s)" style="height:${Math.max(height ? 2 : 0, Math.round(height / peak * 56))}px">${inner}</span>`);
-    }
-    box.innerHTML = bars.join("");
+    box.innerHTML = timelineBars(hist, shown);
+    timelineWindowLabel(hist);
+    timelineDrag(box, hist);
   }
 
   $("timeline-rows").innerHTML = payload.rows.map((row) => {
@@ -3273,6 +3281,165 @@ function renderTimeline(payload) {
   const to = Math.min(timelineState.offset + payload.rows.length, payload.count);
   $("timeline-info").textContent = `${from}\u2013${to} / ${payload.count} event(s) — ${payload.extent.dated} dated`;
   say(`Timeline: ${payload.extent.rows} row(s), ${payload.extent.dated} dated`);
+}
+
+/* ---------- the timeline chart, by hand ----------
+   The desktop's timeline zooms, pans, fits, goes back, isolates a source and lets the
+   analyst select a duration. The chart here is built from the same histogram; the
+   window is a pair of buckets, the selection a pair of times, and the rows follow the
+   selection because that is the filter the analyst asked for. */
+
+function timelineRange(hist) {
+  const start = timelineState.window ? timelineState.window[0] : 0;
+  const end = timelineState.window ? timelineState.window[1] : hist.bins - 1;
+  return { start: Math.max(0, start), end: Math.min(hist.bins - 1, end) };
+}
+
+function timelineBars(hist, shown) {
+  const totals = new Map();
+  const visible = new Set(shown.map(({ source }) => source.id));
+  for (const [sourceIndex, bucket, count] of hist.rows) {
+    // A hidden source keeps its colour slot but stops feeding the bars.
+    if (timelineState.hidden.has(sourceIndex)) continue;
+    if (!visible.has(sourceIndex)) continue;
+    if (!totals.has(bucket)) totals.set(bucket, []);
+    totals.get(bucket).push([sourceIndex, count]);
+  }
+  const { start, end } = timelineRange(hist);
+  const peak = Math.max(1, ...[...totals.entries()]
+    .filter(([bucket]) => bucket >= start && bucket <= end)
+    .map(([, segments]) => segments.reduce((sum, seg) => sum + seg[1], 0)));
+  const bars = [];
+  for (let bucket = start; bucket <= end; bucket += 1) {
+    const segments = totals.get(bucket) || [];
+    const height = segments.reduce((sum, seg) => sum + seg[1], 0);
+    const inner = segments.map(([sourceIndex, count]) =>
+      `<span class="seg" style="height:${Math.max(1, Math.round(count / peak * 56))}px;`
+      + `background:${TIMELINE_COLORS[sourceIndex % 8]}"></span>`).join("");
+    bars.push(`<span class="bar" data-bucket="${bucket}" title="${height} event(s)" `
+      + `style="height:${Math.max(height ? 2 : 0, Math.round(height / peak * 56))}px">${inner}</span>`);
+  }
+  return bars.join("");
+}
+
+function timelineWindowLabel(hist) {
+  const { start, end } = timelineRange(hist);
+  const low = hist.start + start * hist.width;
+  const high = hist.start + (end + 1) * hist.width;
+  const band = (ns) => utcLabel(ns).slice(0, 16);
+  const whole = start === 0 && end === hist.bins - 1;
+  const selection = timelineState.start !== null
+    ? ` · selection ${band(timelineState.start)} → ${band(timelineState.end)}` : "";
+  $("timeline-window").textContent =
+    `${whole ? "whole extent" : `window ${band(low)} → ${band(high)}`} (${end - start + 1}/${hist.bins} bins)${selection}`;
+}
+
+function timelineZoom(factor, anchor) {
+  const hist = timelineState.payload && timelineState.payload.histogram;
+  if (!hist) return;
+  const { start, end } = timelineRange(hist);
+  const span = end - start + 1;
+  const next = Math.max(4, Math.round(span * factor));
+  if (next === span) return;
+  const middle = anchor === undefined ? start + span / 2 : anchor;
+  let low = Math.round(middle - next / 2);
+  low = Math.max(0, Math.min(hist.bins - next, low));
+  timelineState.history.push([start, end]);
+  timelineState.window = [low, low + next - 1];
+  renderTimeline(timelineState.payload);
+}
+
+function timelineFit() {
+  if (!timelineState.window) return;
+  timelineState.history.push(timelineState.window);
+  timelineState.window = null;
+  renderTimeline(timelineState.payload);
+}
+
+function timelineBack() {
+  if (!timelineState.history.length) return;
+  timelineState.window = timelineState.history.pop();
+  renderTimeline(timelineState.payload);
+}
+
+function findingShownSources() {
+  const sources = (timelineState.payload && timelineState.payload.sources) || [];
+  return sources.map((source, index) => ({ source, index }))
+    .filter(({ source }) => !timelineState.hidden.has(source.id));
+}
+
+/* Drag on the chart: a duration, which filters the rows below. Shift-drag pans. A short drag (a click)
+   clears the selection instead of making a window of two buckets. */
+function timelineDrag(box, hist) {
+  let from = null;
+  let panning = null;
+  const bucketAt = (event) => {
+    const bars = [...box.querySelectorAll(".bar")];
+    if (!bars.length) return null;
+    const first = bars[0].getBoundingClientRect();
+    const last = bars[bars.length - 1].getBoundingClientRect();
+    const width = (last.right - first.left) / bars.length;
+    const position = Math.floor((event.clientX - first.left) / width);
+    return Math.max(0, Math.min(bars.length - 1, position));
+  };
+  box.onmousedown = (event) => {
+    if (event.button !== 0) return;
+    if (event.shiftKey) {
+      // Shift-drag slides the window: the same gesture as the desktop's pan.
+      panning = { bucket: bucketAt(event), window: timelineRange(hist) };
+    } else {
+      from = bucketAt(event);
+    }
+    event.preventDefault();
+  };
+  box.onmousemove = (event) => {
+    if (panning) {
+      const shift = bucketAt(event) - panning.bucket;
+      const span = panning.window.end - panning.window.start + 1;
+      let low = Math.max(0, Math.min(hist.bins - span, panning.window.start + shift));
+      timelineState.window = [low, low + span - 1];
+      box.innerHTML = timelineBars(hist, findingShownSources());
+      return;
+    }
+    if (from === null) return;
+    const to = bucketAt(event);
+    box.querySelectorAll(".bar.sel").forEach((bar) => bar.classList.remove("sel"));
+    const low = Math.min(from, to);
+    const high = Math.max(from, to);
+    [...box.querySelectorAll(".bar")].forEach((bar) => {
+      const bucket = Number(bar.dataset.bucket);
+      if (bucket >= low && bucket <= high) bar.classList.add("sel");
+    });
+  };
+  box.onmouseup = (event) => {
+    if (panning) {
+      panning = null;
+      box.onmousemove = null;
+      renderTimeline(timelineState.payload);
+      return;
+    }
+    if (from === null) return;
+    const to = bucketAt(event);
+    const low = Math.min(from, to);
+    const high = Math.max(from, to);
+    from = null;
+    const { start } = timelineRange(hist);
+    if (high - low < 1) {
+      // One bucket, or none: the selection is cleared, the rows come back whole.
+      timelineState.start = null;
+      timelineState.end = null;
+    } else {
+      timelineState.start = hist.start + (start + low) * hist.width;
+      timelineState.end = hist.start + (start + high + 1) * hist.width;
+    }
+    loadTimeline(true);
+  };
+  box.ondblclick = () => timelineFit();
+  box.addEventListener("wheel", (event) => {
+    if (Math.abs(event.deltaY) < 2) return;
+    event.preventDefault();
+    timelineZoom(event.deltaY < 0 ? 0.6 : 1.8, bucketAt(event));
+  }, { passive: false });
 }
 
 /* ---------- artifacts tree ---------- */
@@ -4382,6 +4549,17 @@ async function act(name, node) {
     case "import-file": openImportDialog(); break;
     case "preview-choose": $("preview-input").click(); break;
     case "preview-path": await previewServerPath(); break;
+    case "tl-zoom-in": timelineZoom(0.6); break;
+    case "tl-zoom-out": timelineZoom(1.8); break;
+    case "tl-fit": timelineFit(); break;
+    case "tl-back": timelineBack(); break;
+    case "tl-isolate":
+      // Clicking a chip hides one source, the way the desktop isolates one; this
+      // brings them all back without rebuilding anything.
+      timelineState.hidden.clear();
+      renderTimeline(timelineState.payload);
+      say("Every source is shown again");
+      break;
     case "preview-import": await confirmImport(); break;
     case "copy-value": await copyCellValue(); break;
     case "filter-value": filterFromCell("eq"); break;

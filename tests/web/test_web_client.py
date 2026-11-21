@@ -317,6 +317,15 @@ def test_the_two_report_types_share_one_dialog():
     assert "/client-report" in js
 
 
+def test_the_timeline_is_worked_by_hand():
+    js, html = _read(APP), _read(INDEX)
+    for action in ("tl-zoom-in", "tl-zoom-out", "tl-fit", "tl-back", "tl-isolate"):
+        assert f'data-act="{action}"' in html, action
+    for name in ("timelineZoom", "timelineFit", "timelineBack", "timelineDrag", "timelineBars"):
+        assert f"function {name}(" in js, name
+    assert "timelineState.start" in js and 'params.set("start"' in js
+
+
 def test_a_workbook_asks_which_sheet():
     js, html = _read(APP), _read(INDEX)
     assert 'id="preview-sheet"' in html and 'id="preview-sheet-row"' in html

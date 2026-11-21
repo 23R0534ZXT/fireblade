@@ -366,3 +366,8 @@ td.noted .notemark{position:absolute;top:2px;right:2px;width:0;height:0;
 td.vbar { background-repeat: no-repeat; }
 td.viconcell { font-weight: 500; }
 td .vicon { margin-right: 4px; font-size: 10px; }
+
+/* The timeline chart is a surface: a selected duration must read at a glance. */
+.timeline-hist{cursor:crosshair;user-select:none}
+.timeline-hist .bar.sel{outline:1px solid #174b73;outline-offset:-1px;background:#174b73}
+.timeline-hist .bar.sel .seg{opacity:.75}

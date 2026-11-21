@@ -456,6 +456,19 @@ async function api(path) {
   return response.json();
 }
 
+async function apiAbortable(path, signal) {
+  const response = await fetch(path, { headers: { Accept: "application/json" }, signal });
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const payload = await response.json();
+      detail = payload.detail || payload.error || detail;
+    } catch (_) { /* keep the status text */ }
+    throw new Error(detail);
+  }
+  return response.json();
+}
+
 function say(message, error) {
   const node = $("status");
   node.textContent = message;
@@ -1361,7 +1374,7 @@ async function openIntegrity() {
       ["SHA-256", match ? match.sha256 || "(not recorded)" : "(this source is not in a collection report)"],
       ["Status", match ? match.status : "unknown"],
       ["Reason", match ? match.reason || "" : ""],
-      ["Rows read", entry ? String(entry.rows || "") : ""],
+      ["Rows read", entry ? String((entry.source_info && entry.source_info.rows) ?? entry.rows ?? "") : ""],
       ["Analysis file", entry ? entry.path : ""],
     ];
     box.innerHTML = `<table class="integrity-table">${lines.map(([name, value]) =>
@@ -1399,6 +1412,11 @@ function showHelp(name) {
       "with its receipt. Drag on the chart to select a duration, shift-drag to pan.",
       "History and recovery keeps a state of the case each time it changes and restores it.",
       "Reports writes the technical report and the client report, as HTML or PDF.",
+    ]],
+    autosave: ["Case autosave", [
+      "There is no autosave toggle here, because there is nothing to toggle: every change",
+      "to a case — an import, a bookmark, a rule, a note, a tab closed — is written at once,",
+      "and History and recovery keeps the state it replaced.",
     ]],
     tutorial: ["Fireblade Host — full tutorial", [
       "1. A case. Case > New case… creates one; History and recovery keeps a state of it",
@@ -2997,9 +3015,11 @@ function ruleColumnName(rule) {
 
 function renderRulesList() {
   const list = rulesScope === "global" ? ((globalRules && globalRules.rules) || []) : rulesCache;
+  // A rule is read as a sentence: the operator's own name, and a value only when it
+  // means something (an empty one printed as "" was noise).
   $("rules-list").innerHTML = list.map((rule, index) => `
     <label><span class="swatch" style="background:${rule.background};width:12px;height:12px;display:inline-block;border:1px solid #999"></span>
-      <span>${escapeHtml(ruleColumnName(rule))} ${escapeHtml(rule.operator)} “${escapeHtml(rule.value)}”</span>
+      <span>${escapeHtml(ruleSentence(rule))}</span>
       <span class="pin"><button class="btn" data-rule-remove="${index}">Remove</button></span></label>`).join("")
     || `<div class="emptygrid">${rulesScope === "global"
         ? "No shared rule yet: a column absent from an analysis simply skips its rule."
@@ -3044,6 +3064,21 @@ async function persistRules() {
   // Read the rules back: a statistic is resolved on the server, and the grid can
   // only apply what the server says it selects.
   await loadRules();
+}
+
+const RULE_OPERATORS = { contains: "contains", ne: "does not contain", eq: "equals",
+                         starts: "starts with", ends: "ends with", gt: ">", ge: ">=",
+                         lt: "<", le: "<=", empty: "is empty", not_empty: "is not empty" };
+
+function ruleSentence(rule) {
+  const column = ruleColumnName(rule);
+  const operator = RULE_OPERATORS[rule.operator] || rule.operator;
+  const value = String(rule.value === null || rule.value === undefined ? "" : rule.value).trim();
+  const visual = rule.visual && rule.visual !== "none" ? ` — ${rule.visual}` : "";
+  if (!value || rule.operator === "empty" || rule.operator === "not_empty") {
+    return `${column} ${operator}${visual}`;
+  }
+  return `${column} ${operator} “${value}”${visual}`;
 }
 
 function showRuleVisual() {
@@ -3980,6 +4015,17 @@ function rowsUrl(extra) {
   return `${base}?${params.toString()}`;
 }
 
+/* One request may be in flight on the grid. The menu can stop it: the browser
+   abandons the query, the server keeps its own state, and nothing is written. */
+let rowsRequest = null;
+
+function stopQuery() {
+  if (!rowsRequest) { say("No query is running", true); return; }
+  rowsRequest.abort();
+  rowsRequest = null;
+  say("Query stopped — the page stays as it was");
+}
+
 async function loadRows(reset) {
   if (!state.openCase) return;
   if (reset) state.offset = 0;
@@ -3987,8 +4033,10 @@ async function loadRows(reset) {
   // screen must not survive into "copy the selected rows".
   state.selection.clear();
   state.anchor = null;
+  const controller = new AbortController();
+  rowsRequest = controller;
   try {
-    const payload = await api(rowsUrl());
+    const payload = await apiAbortable(rowsUrl(), controller.signal);
     state.columns = payload.columns;
     state.rows = payload.rows;
     state.total = payload.total;
@@ -4002,7 +4050,10 @@ async function loadRows(reset) {
     await loadLayout();
     renderPaneTabs();
   } catch (error) {
+    if (error.name === "AbortError") return;   // the analyst stopped it: not a failure
     say(error.message, true);
+  } finally {
+    if (rowsRequest === controller) rowsRequest = null;
   }
 }
 
@@ -5068,6 +5119,9 @@ async function act(name, node) {
     case "expression-andor": openExpressionDialog(); break;
     case "show-timeline": showTab("timeline"); break;
     case "show-imports": showTab("imports"); break;
+    case "stop-query": stopQuery(); break;
+    case "case-autosave": showHelp("autosave"); break;
+    case "cases-list": showTab("cases"); break;
     case "profiles-plugins": await openCompatibility(); break;
     case "legend": showHelp("legend"); break;
     case "help-tutorial": showHelp("tutorial"); break;

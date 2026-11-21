@@ -309,6 +309,13 @@ def test_a_timeline_row_opens_its_source_line():
     assert "respect_filters" in js
 
 
+def test_a_rule_is_read_as_a_sentence():
+    js = _read(APP)
+    assert "function ruleSentence(" in js
+    assert "is not empty" in js and "does not contain" in js
+    assert '${escapeHtml(ruleSentence(rule))}' in js
+
+
 def test_every_menu_entry_has_a_handler():
     """A menu is a promise: each entry must reach a handler, and each handler a route."""
     import re

@@ -151,6 +151,41 @@ rule's resolved bounds without the visual in the key, so a data bar and a three-
 scale on the same column shared one cache entry. The visual is now part of the key,
 and the desktop reads the same module.
 
+## The GUI recette: two inventories, taken screen by screen
+
+The audit above counts features. It does not say what the window looks like, so both
+editions were walked with a real interface and photographed:
+
+- **Desktop** — `desktop_recette.py` (Windows VM): the real `Window`, built as
+  `fireblade.ui.app.main` builds it (theme applied, language filter installed, language
+  read from the preferences), then every menu walked, every custom dialog captured with
+  `QWidget.grab()` and its visible texts written down. Native `QFileDialog`s are named
+  and not opened: closing one from a timer kills the interpreter (0xC0000409), which is
+  a property of the harness, not of Fireblade.
+- **Host** — the same walk in a real browser over HTTP: each menu opened, each dialog
+  captured, the visible texts recorded.
+
+What the comparison changed:
+
+| Found by the recette | What was done |
+| --- | --- |
+| The desktop showed French messages in an English window (`Open a case before generating its client report.` was `Ouvrez un case…`) | the strings the commands show were missing from `core/i18n`; they are in it now, and `error()` translates the title and the message once |
+| Two menu labels stayed French in an English menu (`Rapport client…`, `Expression textuelle…`) | added to the dictionary |
+| The Host's menu bar carried eight invented menus, three of them dead (`class="m off"` with no styling) | rebuilt as the desktop's six menus — Case, Edit, View, Filters, Analysis, Help — with every entry wired to a handler, and a test that refuses an entry without one |
+| Entries the Host lacked: Replace the selection's notes…, Filter on the active cell, AND / OR / NOT editor…, Timeline and correlations, Imports, Profiles and plugins…, Supertimeline legend…, Cases…, Case autosave, Stop the query, Full tutorial | added, each on a real handler; `Stop the query` aborts the grid's request with an `AbortController` |
+| Provenance and SHA-256 had no screen | Analysis > Provenance and SHA-256… shows the source, the hash the collection recorded, its status and the analysis file |
+| A rule printed `Score not_empty ""` | read as a sentence: `Score is not empty`, and the visual format when it has one |
+| The grid's header looped over every column while the body looped over the visible ones | both follow the same list; a hidden column takes its title, its width and its filter with it |
+
+Still different, on purpose:
+
+- the desktop's View menu is nested (Profiles and compatibility, Columns and sorting,
+  Groups, Views and layouts, Colours and rules, Navigation, Workspace); the Host's is
+  flat, because a browser menu is a list of items, not a tree of submenus;
+- the desktop's welcome screen offers "Parse a folder…" and "Analyse a disk…" before a
+  case exists; the Host asks for a case first;
+- the desktop opens native file dialogs where the Host uses an upload or a path field.
+
 ## How this page is checked
 
 `scripts/desktop_surface.py` regenerates the inventory:

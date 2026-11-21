@@ -769,3 +769,39 @@ def test_the_named_date_windows_come_from_the_core(service):
     names = [item["name"] for item in library.date_ranges()["ranges"]]
     for expected in ("Today", "Yesterday", "ThisWeek", "LastWeek", "Earlier"):
         assert expected in names
+
+
+def test_an_import_runs_in_the_background_and_can_be_followed(service, tmp_path):
+    """A collection takes minutes: it runs in a job, not inside the request."""
+    import time
+
+    library, identifier = service
+    source = tmp_path / "extra.csv"
+    _write_csv(source)
+    started = library.start_import_job(identifier, source)
+    assert started["status"] == "running"
+    state = None
+    for _ in range(300):
+        state = library.import_job(started["job"])
+        if state["status"] not in ("running", "cancelling"):
+            break
+        time.sleep(0.1)
+    assert state is not None and state["status"] == "complete", state
+    assert state["result"]["analyses"] >= 1
+    assert state["log"], "the job keeps the lines the collection reported"
+    # A finished job cannot be cancelled twice, and says so instead of lying.
+    again = library.cancel_import_job(started["job"])
+    assert again["cancelled"] is False
+    with pytest.raises(ServiceError):
+        library.import_job("not-a-job")
+
+
+def test_unread_files_are_listed_with_the_readers_that_can_retry(service):
+    library, identifier = service
+    listing = library.unread_files(identifier)
+    assert listing["count"] == 0, "the fixture case read everything it was given"
+    assert set(listing["readers"]) == {"text", "html", "csv", "pdf"}
+    with pytest.raises(ServiceError):
+        library.retry_file(identifier, "import-nope", "/tmp/whatever", "text")
+    with pytest.raises(ServiceError):
+        library.retry_file(identifier, "import-x", "/tmp/whatever", "nonsense")

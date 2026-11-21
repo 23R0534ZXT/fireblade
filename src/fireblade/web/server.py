@@ -525,6 +525,55 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/import-jobs")
+    def start_import_job(identifier: str, organization: str = Form("files"),
+                         delimiter: str | None = Form(None), encoding: str | None = Form(None),
+                         source: str = Form(""), file: UploadFile | None = File(None)):
+        """Start an import in the background; the caller polls it and can stop it."""
+        library.library.folder(identifier)
+        try:
+            if file is not None:
+                target = _store_upload(library.library.folder(identifier), file)
+            elif source:
+                target = source
+            else:
+                raise HTTPException(status_code=400, detail="A file or a 'source' is required.")
+            return library.start_import_job(identifier, target, organization=organization,
+                                            delimiter=delimiter, encoding=encoding)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/import-jobs/{job}")
+    def import_job(job: str):
+        try:
+            return library.import_job(job)
+        except (ServiceError, ValueError, KeyError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/import-jobs/{job}/cancel")
+    def cancel_import_job(job: str):
+        try:
+            return library.cancel_import_job(job)
+        except (ServiceError, ValueError, KeyError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/unread")
+    def unread_files(identifier: str):
+        """The files whose read did not complete, and the readers that can try again."""
+        try:
+            return library.unread_files(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/collections/{collection_name}/retry")
+    def retry_file(identifier: str, collection_name: str, payload: dict):
+        try:
+            return library.retry_file(identifier, collection_name,
+                                      str((payload or {}).get("path") or ""),
+                                      str((payload or {}).get("reader") or "text"))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/history")
     def history(identifier: str):
         try:

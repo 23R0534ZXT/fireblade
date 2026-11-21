@@ -38,6 +38,56 @@ const state = {
   payload: null,        // the last rows answer, kept for its summary labels
 };
 
+/* ---------- reading a file again ---------- */
+
+const retryState = { files: [], readers: [] };
+
+async function openRetry() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  $("retry-list").innerHTML = '<div class="emptygrid">Reading the collection reports…</div>';
+  $("retry-modal").classList.add("show");
+  try {
+    const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/unread`);
+    retryState.files = payload.files || [];
+    retryState.readers = payload.readers || ["text"];
+    $("retry-list").innerHTML = retryState.files.length
+      ? retryState.files.map((item, position) => `<div class="retry-line">
+          <span class="retry-path" title="${escapeHtml(item.path)}">${escapeHtml(item.path.split(/[\\/]/).pop())}
+            <em>${escapeHtml(item.status)}${item.reason ? " — " + escapeHtml(item.reason) : ""}</em></span>
+          <span class="pin">
+            <select data-retry-reader="${position}">${retryState.readers.map((reader) =>
+              `<option value="${reader}">${reader}</option>`).join("")}</select>
+            <button class="btn" data-retry-run="${position}">Read</button>
+          </span></div>`).join("")
+      : '<div class="emptygrid">Every collected file was read: nothing to retry.</div>';
+    $("retry-list").querySelectorAll("[data-retry-run]").forEach((node) => {
+      node.addEventListener("click", () => runRetry(Number(node.dataset.retryRun)));
+    });
+  } catch (error) {
+    $("retry-list").innerHTML = "";
+    say(error.message, true);
+  }
+}
+
+async function runRetry(position) {
+  const item = retryState.files[position];
+  if (!item) return;
+  const reader = document.querySelector(`[data-retry-reader="${position}"]`).value;
+  say(`Reading ${item.path.split(/[\\/]/).pop()} with ${reader}…`);
+  try {
+    const payload = await apiPost(
+      `/api/cases/${state.openCase.id}/collections/${encodeURIComponent(item.collection)}/retry`,
+      { path: item.path, reader });
+    closeModals();
+    await openCase(state.openCase.id);
+    say(`Read with ${payload.reader}: ${payload.status}`
+      + (payload.error ? ` — ${payload.error}` : "")
+      + `, ${payload.analyses_added} analysis(es) added`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 /* ---------- messages ---------- */
 
 /* The window's own log: every line the status bar showed, newest first. */
@@ -460,6 +510,57 @@ async function refreshPreviews() {
   renderPreview();
 }
 
+const importJobState = { job: null, stopped: false };
+
+/* An import runs on the server, in the background: the window stays usable, the
+   progress is visible, and the run can be stopped without losing what was read. */
+async function startImportJob(source, layout, options) {
+  const body = new FormData();
+  body.append("organization", layout);
+  body.append("source", source);
+  if (options.delimiter) body.append("delimiter", options.delimiter);
+  if (options.encoding) body.append("encoding", options.encoding);
+  const response = await fetch(`/api/cases/${state.openCase.id}/import-jobs`, { method: "POST", body });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.detail || response.statusText);
+  return payload.job;
+}
+
+async function followImportJob(job) {
+  importJobState.job = job;
+  importJobState.stopped = false;
+  $("import-progress-modal").classList.add("show");
+  $("import-progress-stop").disabled = false;
+  for (;;) {
+    let payload = null;
+    try {
+      payload = await api(`/api/import-jobs/${job}`);
+    } catch (error) {
+      $("import-progress-message").textContent = error.message;
+      return { status: "error", error: error.message };
+    }
+    $("import-progress-message").textContent = payload.message || payload.status;
+    $("import-progress-log").innerHTML = (payload.log || []).slice(-10).reverse()
+      .map((line) => `<div class="message"><span>${escapeHtml(line)}</span></div>`).join("");
+    if (payload.status !== "running" && payload.status !== "cancelling") {
+      importJobState.job = null;
+      return payload;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+  }
+}
+
+async function stopImportJob() {
+  if (!importJobState.job) return;
+  $("import-progress-stop").disabled = true;
+  $("import-progress-message").textContent = "Stopping…";
+  try {
+    await apiPost(`/api/import-jobs/${importJobState.job}/cancel`, {});
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 async function confirmImport() {
   if (!previewState.items.length) return;
   const layout = $("import-layout").value;
@@ -471,10 +572,15 @@ async function confirmImport() {
     if (!source) continue;
     say(`Importing ${item.name}…`);
     try {
-      const payload = await apiPost(`/api/cases/${state.openCase.id}/import`,
-        { source, organization: layout, ...options });
-      if (payload.analyses) imported += 1;
-      else say(`${item.name}: ${payload.message || "not recognised"}`, true);
+      const job = await startImportJob(source, layout, options);
+      const outcome = await followImportJob(job);
+      if (outcome.status === "complete" && outcome.result && outcome.result.analyses) imported += 1;
+      else if (outcome.status === "cancelled") {
+        say(`${item.name}: import stopped — what was written stays in the case`, true);
+        break;
+      } else {
+        say(`${item.name}: ${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
+      }
     } catch (error) {
       say(`${item.name}: ${error.message}`, true);
       return;
@@ -3161,6 +3267,8 @@ function wire() {
   document.querySelectorAll(".subtab[data-scope]").forEach((tab) => {
     tab.addEventListener("click", () => showRulesScope(tab.dataset.scope));
   });
+  $("import-progress-stop").addEventListener("click", stopImportJob);
+  $("retry-open").addEventListener("click", openRetry);
   $("coverage-open").addEventListener("click", openCoverage);
   $("coverage-run").addEventListener("click", runCoverage);
   $("coverage-level").addEventListener("change", renderCoverage);

@@ -254,6 +254,15 @@ def test_the_grid_offers_dates_summaries_and_sort_priority():
     assert 'params.append("summary"' in js
 
 
+def test_an_import_is_followed_and_can_be_stopped():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="import-progress-modal"' in html and 'id="import-progress-stop"' in html
+    assert 'id="retry-open"' in html and 'id="retry-modal"' in html
+    for name in ("startImportJob", "followImportJob", "stopImportJob", "openRetry", "runRetry"):
+        assert f"function {name}(" in js, name
+    assert "/import-jobs" in js and "/unread" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

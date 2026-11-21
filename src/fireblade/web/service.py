@@ -24,6 +24,7 @@ from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.engine import Case
 from fireblade.core.investigations import InvestigationLibrary
 from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View, analysis_label
+from fireblade.core.errors import OperationCancelled
 from fireblade.core.sessions import read_session
 from fireblade.core.timeline import TimelineStore
 from fireblade.core.workspace_reader import WorkspaceReader
@@ -73,6 +74,7 @@ class Library:
         self._timelines: dict[tuple[str, str | None], TimelineStore] = {}
         self._timeline_dir = tempfile.mkdtemp(prefix="fireblade-timelines-")
         self._lock = threading.RLock()
+        self._jobs: dict[str, dict] = {}
 
     # -- catalogue ---------------------------------------------------------
 
@@ -1936,7 +1938,7 @@ class Library:
 
     def import_source(self, identifier: str, source: str | Path, tools_root: str | Path | None = None,
                       organization: str = "files", progress=None, delimiter: str | None = None,
-                      encoding: str | None = None) -> dict:
+                      encoding: str | None = None, on_collection=None) -> dict:
         """Read a file or a folder into the case, the way the desktop does it.
 
         The orchestration is `fireblade.core.collection.Collection`: the same
@@ -1959,6 +1961,10 @@ class Library:
                                 organization=organization,
                                 delimiter=delimiter if delimiter in self.CSV_DELIMITERS else None,
                                 encoding=encoding if encoding in self.CSV_ENCODINGS else "auto")
+        if callable(on_collection):
+            # A running import can be interrupted from outside; the collection is the
+            # object that knows how.
+            on_collection(collection)
         report = collection.parse()
         session = output / "collection.fireblade-session"
         if not session.is_file():
@@ -2009,6 +2015,166 @@ class Library:
         self.library.save(identifier, remaining, new_active, collections,
                           data.get("active_collection"), data.get("revision"))
         return {"analyses": len(remaining), "active": new_active}
+
+    RETRY_READERS = ("text", "html", "csv", "pdf")
+
+    def unread_files(self, identifier: str) -> dict:
+        """Every collected file whose read did not complete, with what the tools said."""
+        data = self.library.read(identifier)
+        folder = self.library.folder(identifier)
+        entries = []
+        for report in sorted((folder / "collections").glob("import-*")):
+            file = report / "collection.json"
+            if not file.is_file():
+                continue
+            try:
+                payload = json.loads(file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            for item in payload.get("files") or []:
+                if not isinstance(item, dict):
+                    continue
+                status = item.get("status")
+                if status in ("complete", "companion"):
+                    continue
+                entries.append({"collection": report.name, "path": str(item.get("path") or ""),
+                                "status": status or "unknown",
+                                "reason": str(item.get("error") or ""),
+                                "tools": list(item.get("tools") or [])})
+        return {"files": entries, "count": len(entries),
+                "readers": list(self.RETRY_READERS)}
+
+    def retry_file(self, identifier: str, collection_name: str, path: str,
+                   reader: str = "text") -> dict:
+        """Read one collected file again with the reader the analyst names.
+
+        `Collection.analyse_single` is the desktop's own path for this: the source is
+        read, never modified, and the decision lands in the collection's report next
+        to the file's hash, so it can be reviewed and reproduced.
+        """
+        if reader not in self.RETRY_READERS:
+            raise ServiceError(f"Unknown reader: {reader}")
+        folder = self.library.folder(identifier)
+        report = folder / "collections" / Path(str(collection_name)).name
+        if not (report / "collection.json").is_file():
+            raise ServiceError("This collection is not in the case.")
+        source = Path(str(path))
+        if not source.is_file():
+            raise ServiceError("The file to read again is no longer there.")
+        pack = (ToolPack(Path(self.tools_root)) if self.tools_root
+                else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack"))
+        self.close_case(identifier)
+        collection = Collection.reopen(report, pack)
+        collection.analyse_single(source, reader)
+        entry = collection.entry_for(source)
+        merged = 0
+        try:
+            _first, merged = self._merge_session(identifier, report / "collection.fireblade-session")
+        except (ServiceError, OSError, ValueError):
+            merged = 0
+        return {"path": str(source), "reader": reader, "status": entry.get("status"),
+                "error": entry.get("error") or "", "runs": len(entry.get("runs") or []),
+                "analyses_added": merged}
+
+    def start_import_job(self, identifier: str, source: str | Path,
+                         organization: str = "files", delimiter: str | None = None,
+                         encoding: str | None = None) -> dict:
+        """Run an import in the background, so the window stays usable and the run
+        can be stopped: a collection of a few hundred files takes minutes."""
+        job_id = uuid.uuid4().hex
+        job = {"id": job_id, "status": "running", "message": "Starting…",
+               "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+               "finished": None, "result": None, "error": None, "log": [],
+               "collection": None}
+        with self._lock:
+            self._jobs[job_id] = job
+
+        def progress(text):
+            with self._lock:
+                # Never raise from here: the collection calls its progress hook from
+                # the threads it owns, and an exception there leaves a worker holding
+                # its lock. The stop is asked through the core's own checkpoints.
+                job["message"] = str(text)[:300]
+                job["log"].append(str(text)[:300])
+                if len(job["log"]) > 200:
+                    del job["log"][:-200]
+
+        def remember(collection):
+            with self._lock:
+                job["collection"] = collection
+
+        def work():
+            # The collection asks `job_cancelled()` between files: the event lives in a
+            # context variable, so it must be set inside this very thread — and the
+            # files themselves are parsed in worker threads that only see the
+            # process-wide request below.
+            import threading as _threading
+
+            from fireblade.core.errors import cancellation_scope
+
+            cancel = _threading.Event()
+            with self._lock:
+                job["cancel"] = cancel
+            try:
+                with cancellation_scope(cancel):
+                    result = self.import_source(identifier, source, tools_root=self.tools_root,
+                                                organization=organization, progress=progress,
+                                                delimiter=delimiter, encoding=encoding,
+                                                on_collection=remember)
+                with self._lock:
+                    job["result"] = result
+                    job["status"] = "complete"
+                    job["message"] = "Import complete."
+            except OperationCancelled:
+                with self._lock:
+                    job["status"] = "cancelled"
+                    job["message"] = "Import stopped: what was written stays in the case."
+            except Exception as exc:  # noqa: BLE001 — the job reports its own failure
+                with self._lock:
+                    job["status"] = "error"
+                    job["error"] = str(exc)
+                    job["message"] = str(exc)
+            finally:
+                with self._lock:
+                    job["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                    job["collection"] = None
+                    job["cancel"] = None
+
+        threading.Thread(target=work, name=f"import-{job_id[:8]}", daemon=True).start()
+        return {"job": job_id, "status": "running"}
+
+    def import_job(self, job_id: str) -> dict:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                raise ServiceError("This import job does not exist.")
+            return {"job": job_id, "status": job["status"], "message": job.get("message", ""),
+                    "started": job.get("started"), "finished": job.get("finished"),
+                    "error": job.get("error"), "log": list(job.get("log") or [])[-40:],
+                    "result": job.get("result")}
+
+    def cancel_import_job(self, job_id: str) -> dict:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                raise ServiceError("This import job does not exist.")
+            collection = job.get("collection")
+            if job["status"] != "running":
+                return {"job": job_id, "status": job["status"], "cancelled": False}
+            job["status"] = "cancelling"
+            job["stop_requested"] = True
+            job["message"] = "Stopping…"
+        # The collection copies the context into its worker threads, and the event is
+        # shared by reference: setting it here is what every parser sees.
+        event = job.get("cancel")
+        if event is not None:
+            event.set()
+        if collection is not None:
+            try:
+                collection.interrupt()
+            except (OSError, ValueError):
+                pass
+        return {"job": job_id, "status": "cancelling", "cancelled": True}
 
     def reorder_analyses(self, identifier: str, order: list[int]) -> dict:
         """Put the open analyses in the order the analyst wants, as the desktop's dialog does.

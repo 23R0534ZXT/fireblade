@@ -194,6 +194,8 @@
             <option value="error">Error</option>
           </select>
           <button class="btn" id="imports-refresh">Refresh</button>
+          <button class="btn" id="retry-open"
+            title="A file that could not be read: try another reader">Read a file again…</button>
           <button class="btn" id="coverage-open"
             title="Reopen every analysis and check what could not be attested">Import verification…</button>
           <div class="info" id="imports-summary"></div>
@@ -484,6 +486,33 @@
       <button class="btn" data-act="preview-import" id="preview-import" disabled>Import</button>
       <button class="btn" data-act="settings-close">Cancel</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="import-progress-modal">
+  <div class="dialog" style="min-width:600px">
+    <h3>Importing</h3>
+    <div class="body">
+      <div class="note" id="import-progress-message">Starting…</div>
+      <div class="columns-list" id="import-progress-log" style="max-height:200px"></div>
+      <div class="note">Stopping an import keeps what was already written in the case: nothing is deleted,
+        the half-read file stays visible in the collection report.</div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="import-progress-stop">Stop the import</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="retry-modal">
+  <div class="dialog" style="min-width:760px">
+    <h3>Read a file again</h3>
+    <div class="body">
+      <div class="note">A file the collection could not read stays unread until somebody asks. The source is
+        read, never modified, and the choice is written in the collection's report with the file's hash.</div>
+      <div class="columns-list" id="retry-list" style="max-height:340px"></div>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
   </div>
 </div>
 

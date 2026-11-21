@@ -236,7 +236,10 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 .timeline-dates .tsrc{display:flex;align-items:center;gap:6px;font-size:11px}
 .timeline-dates .tname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* Messages, the command palette and the analysis lists share one line shape. */
+/* Messages, the command palette, the analysis lists and the retry list share one shape. */
+.retry-line{display:flex;align-items:center;gap:8px;padding:1px 2px;font-size:11px}
+.retry-line .retry-path{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.retry-line .retry-path em{color:#777;font-style:normal}
 .message{display:flex;gap:8px;padding:1px 4px;font-size:11px}
 .message .when{color:#777;flex:0 0 140px}
 .message.bad span:last-child{color:#8a1c1c}

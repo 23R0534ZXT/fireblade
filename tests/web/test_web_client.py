@@ -317,6 +317,32 @@ def test_the_two_report_types_share_one_dialog():
     assert "/client-report" in js
 
 
+def test_the_header_follows_the_visible_columns():
+    """A hidden column must not leave its title, its width or its filter behind."""
+    import re
+
+    js = _read(APP)
+    body = js[js.index("function renderGrid() {"):js.index("function renderGroupChart()")]
+    assert "$(\"cols\").innerHTML" in body
+    assert "shown.map(({ index })" in body
+    assert "shown.forEach(({ index })" in body
+    # The header loop must not iterate every column any more.
+    marker = 'const head = [' + "'<tr><th></th>'];"
+    head_block = body[body.index(marker):body.index('$("head").innerHTML')]
+    assert "state.columns.forEach" not in head_block
+    # The absolute index still addresses the filter, the sort and the grip.
+    assert 'data-filter="${index - 1}"' in body and 'data-grip="${index}"' in body
+
+
+def test_a_layout_leaves_as_a_file():
+    js, html = _read(APP), _read(INDEX)
+    assert 'data-act="layout-export"' in html and 'data-act="layout-import"' in html
+    assert 'id="layout-file"' in html
+    for name in ("exportLayout", "importLayout", "layoutDocument", "saveDisplayNow"):
+        assert f"function {name}(" in js, name
+    assert "fireblade-layout" in js
+
+
 def test_the_import_report_sets_a_file_aside():
     js, html = _read(APP), _read(INDEX)
     assert 'id="report-filter"' in html and 'Set aside parks a file' in html

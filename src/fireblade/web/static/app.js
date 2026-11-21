@@ -1034,6 +1034,72 @@ function saveLayoutSoon() {
   }, 600);
 }
 
+/* A layout leaves as a file and comes back the same way: the desktop exports and
+   imports its own, and the shape here is the one the display endpoint stores. */
+function layoutDocument() {
+  return {
+    format: "fireblade-layout",
+    version: 1,
+    analysis: state.openCase ? state.openCase.analyses[state.analysis]?.label || "" : "",
+    widths: state.widths,
+    hidden: [...state.hidden],
+    pinned: [...state.pinned],
+    pinned_right: [...state.pinnedRight],
+    sort: state.sort,
+    descending: state.descending,
+    multiSort: state.multiSort,
+    groups: state.groups,
+  };
+}
+
+function exportLayout() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const document_ = layoutDocument();
+  const blob = new Blob([JSON.stringify(document_, null, 1)], { type: "application/json" });
+  const link = window.document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${(document_.analysis || "layout").replace(/[^\w.-]+/g, "-")}.layout.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+  say(`Layout exported: ${Object.keys(document_.widths || {}).length} column width(s)`);
+}
+
+async function importLayout(file) {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  let document_ = null;
+  try {
+    document_ = JSON.parse(await file.text());
+  } catch (error) {
+    say(`This file is not a layout: ${error.message}`, true);
+    return;
+  }
+  if (!document_ || document_.format !== "fireblade-layout") {
+    say("This file is not a Fireblade layout", true);
+    return;
+  }
+  state.widths = document_.widths || {};
+  state.hidden = new Set(document_.hidden || []);
+  state.pinned = new Set(document_.pinned || []);
+  state.pinnedRight = new Set(document_.pinned_right || []);
+  if (Number.isInteger(document_.sort)) state.sort = document_.sort;
+  state.descending = Boolean(document_.descending);
+  state.multiSort = Array.isArray(document_.multiSort) ? document_.multiSort : [];
+  if (Array.isArray(document_.groups)) state.groups = document_.groups;
+  state.path = [];
+  await saveDisplayNow();
+  await loadRows(true);
+  say(`Layout imported: ${Object.keys(state.widths).length} column width(s), `
+    + `${state.hidden.size} hidden, ${state.pinned.size + state.pinnedRight.size} pinned`);
+}
+
+async function saveDisplayNow() {
+  try {
+    await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`,
+      { widths: state.widths, hidden: [...state.hidden], pinned: [...state.pinned],
+        pinned_right: [...state.pinnedRight] });
+  } catch (_) { /* a layout that cannot be saved must not interrupt the work */ }
+}
+
 /* ---------- advanced filter ---------- */
 
 const EXPR_OPERATORS = ["contains", "ne", "eq", "starts", "ends", "gt", "ge", "lt", "le", "empty", "not_empty"];
@@ -3772,11 +3838,14 @@ function renderGrid() {
     ? "No row on this page."
     : (state.search || state.filters.length ? "No row matches these filters." : "This analysis is empty.");
 
-  $("cols").innerHTML = '<col style="width:30px">' + state.columns.map((name, index) =>
-    `<col style="width:${state.widths[index] || defaultWidth(name, index)}px">`).join("");
+  // The header follows `shown`, like the body: a hidden column must not leave its
+  // title behind. An absolute index keeps the filters, sorts and widths addressed.
+  $("cols").innerHTML = '<col style="width:30px">' + shown.map(({ index }) =>
+    `<col style="width:${state.widths[index] || defaultWidth(state.columns[index], index)}px">`).join("");
 
   const head = ['<tr><th></th>'];
-  state.columns.forEach((name, index) => {
+  shown.forEach(({ index }) => {
+    const name = state.columns[index];
     const multi = state.multiSort.findIndex((item) => item.column === index - 1);
     const sorted = state.sort === index || multi >= 0;
     const flag = state.sort === index ? state.descending : (multi >= 0 ? state.multiSort[multi].descending : false);
@@ -4529,6 +4598,11 @@ function wire() {
   $("rule-visual").addEventListener("change", showRuleVisual);
   $("entity-cancel").addEventListener("click", stopEditingEntity);
   $("report-filter").addEventListener("change", renderRetryList);
+  $("layout-file").addEventListener("change", async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (file) await importLayout(file);
+    event.target.value = "";
+  });
   $("finding-view").addEventListener("change", renderFindingView);
   $("finding-group").addEventListener("change", renderFindingView);
   window.addEventListener("resize", () => {
@@ -4731,6 +4805,8 @@ async function act(name, node) {
     case "import-file": openImportDialog(); break;
     case "preview-choose": $("preview-input").click(); break;
     case "preview-path": await previewServerPath(); break;
+    case "layout-export": exportLayout(); break;
+    case "layout-import": $("layout-file").click(); break;
     case "tl-zoom-in": timelineZoom(0.6); break;
     case "tl-zoom-out": timelineZoom(1.8); break;
     case "tl-fit": timelineFit(); break;

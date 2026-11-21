@@ -23,12 +23,17 @@ names what the Host does for each.
 
 ## Verdict
 
-**The port is not complete.** Twenty-one domains are covered, but this audit found
-**0 features the Host does not have** and **1 it has partially** (five closed since the
-audit was written: machines and accounts, tracked indicators, Hayabusa rules,
-global colour rules, import diagnostics). None of them was
-visible in the label inventory, which is why `HOST-PARITY.md` said "nothing left" —
-and that claim is withdrawn here.
+**No feature of the desktop is missing from the Host.** Twenty-one domains are
+covered, one feature is partial (`Import — cancel`, the stop lands at the
+collection's checkpoints), and six are declared with a reason — the .NET Timeline
+Explorer DLL, the AI assistant, French/English, file-manager and window-manager
+gestures, and destruction photo attachments. Every one of them is a decision about
+the edition, not a screen that was forgotten.
+
+This page began as an audit of 21 domains, and it found nineteen missing features.
+They were closed in eighteen batches, each proved by a real API call and a browser
+session, and each one is named at the end of this page. `HOST-PARITY.md` still counts
+**menu commands**, not features; its "nothing left" line is withdrawn and points here.
 
 ## The domains
 
@@ -91,20 +96,60 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 - `HOST-PARITY.md` stays as the **command-level** view (102 commands from the menu
   inventory, 85 covered, 17 declared). It is not the whole story, and its "nothing
   left" line is replaced by a pointer to this page.
-- The work list is the **no** and **partial** lines above: 19 missing features and 9
-  partial ones, ordered here by how much an analyst would miss them:
-  1. machines and accounts, indicators (the case workspace: the graph and the report
-     already read them, only the way to fill them is missing);
-  2. Hayabusa detection rules;
-  3. global colour rules;
-  4. import diagnostics and expected families, retry with a reader;
-  5. timeline export, include-undated, source row;
-  6. IOC across every analysis, filters respected, sub-domains, file import;
-  7. grid: multi-sort dialog, group summaries, relative dates, value chart;
-  8. command palette, messages, open-analyses dialog, case history;
-  9. disk images;
-  10. preferences: copy behaviour, date format, tab wrapping;
-  11. PDF report.
+- This page, at feature level, is the one that decides. Its verdict today: **no
+  feature of the desktop is missing from the Host**, one is partial, and six are
+  declared with a reason.
+
+### The one partial
+
+`Import — cancel`: an import runs as a job with its progress line and a Stop, but the
+stop lands at the collection's own checkpoints, so a single file read in one pass
+finishes first.
+
+### The declared ones, and why
+
+| Difference | Why it is declared, not ported |
+| --- | --- |
+| Timeline Explorer DLL | a .NET plugin of 129 MB, run by the desktop's own host; it is a deployment decision, not a missing screen |
+| The AI assistant ("Explain this finding", "Ask") | no model is connected in the Host edition; the detection is local and the button would lie |
+| French and English | English only, by product decision since 0.3.2 |
+| Show in Explorer, Open with…, parent folder | a browser has no file manager behind it |
+| Detach, dock, presets, splash | a browser tab has no window manager |
+| Destruction photo attachments | `case_destruction.destroy_case` — the core the Host calls — takes no attachments today; the desktop's own dialog fingerprints them separately. Wiring them means changing the shared core, which is a task of its own, not a display gap |
+
+Two more structural differences are worth naming, because they are visible without
+being missing features:
+
+- the grouped grid **drills down** (Root / a group / back) instead of expanding its
+  groups inline: the same groups are reachable, one level per page;
+- the graph is drawn by the server and read in the window: the nodes are not dragged
+  or zoomed like the desktop's canvas.
+
+### What the catch-up added, in the order it was done
+
+1. the case workspace (machines, accounts, indicators), feeding the graph and both reports;
+2. the detection rules, edited beside the pack and never in it;
+3. the global colour book, in the desktop's own file;
+4. the coverage check and its JSON/CSV export;
+5. the timeline: undated rows, verified export, windowed rows, the source row;
+6. IOC hunting across every analysis, with sub-domains and a declared format;
+7. the date filter, group summaries and the multi-column sort dialog;
+8. open analyses, reordering, history and recovery;
+9. reading a file again, and cancelling an import;
+10. the investigation report as HTML and as a PDF the Host writes itself;
+11. the client report, from the desktop's own `core/client_report`;
+12. the three Hayabusa maps — clock, heat map, chain — with "Grouped by";
+13. the visual formats of the rules: data bars, two- and three-colour scales, icon sets;
+14. the workbook import, with the sheet chosen by name;
+15. the timeline worked by hand: zoom, pan, fit, back, isolate, select a duration;
+16. closed analyses kept in the session, machines and actions changed or removed;
+17. the import report, file by file, with "set aside" and a hash-checked removal;
+18. the layout exported and imported as a file.
+
+One defect was found in the **shared core** on the way: `core/visual_bounds` cached a
+rule's resolved bounds without the visual in the key, so a data bar and a three-colour
+scale on the same column shared one cache entry. The visual is now part of the key,
+and the desktop reads the same module.
 
 ## How this page is checked
 

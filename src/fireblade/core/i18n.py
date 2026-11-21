@@ -1736,6 +1736,9 @@ EN = {
     "Périmètre et notes de mission :": "Scope and engagement notes:",
     "Rapport client créé : {} constat(s), {} action(s) ouverte(s) · {}": "Client report created: {} finding(s), {} open action(s) · {}",
     "Rapport client…": "Client report…",
+    # The reader's own refusals reach the import report; they are shown there too.
+    "Détection CSV ambiguë. Choisissez le séparateur dans Options du CSV.": "Ambiguous CSV detection. Choose the separator in CSV options.",
+    "La détection automatique n’a pas trouvé de séparateur cohérent. Choisissez le séparateur dans Options du CSV.": "The automatic detection found no consistent separator. Choose the separator in CSV options.",
     "Expression textuelle…": "Text expression…",
     "Ouvrez un case avant de générer son rapport client.": "Open a case before generating its client report.",
     "Ouvrez le case dont les preuves doivent être détruites.": "Open the case whose evidence must be destroyed.",

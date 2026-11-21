@@ -375,6 +375,19 @@ def test_a_layout_leaves_as_a_file():
     assert "fireblade-layout" in js
 
 
+def test_the_imports_panel_lists_files_like_the_desktop():
+    js, html = _read(APP), _read(INDEX)
+    for column in ("Status", "File", "Readers", "Reason", "Outputs"):
+        assert f"<th>{column}</th>" in html, column
+    assert 'id="imports-search"' in html
+    for action in ("import-view-file", "import-copy-unread", "import-export-list",
+                   "import-park", "import-delete"):
+        assert f'data-act="{action}"' in html, action
+    for name in ("viewCollectedFile", "copyUnprocessedFiles", "exportCollectedList",
+                 "parkCollectedFile", "deleteCollectedFile"):
+        assert f"function {name}(" in js, name
+
+
 def test_the_import_report_sets_a_file_aside():
     js, html = _read(APP), _read(INDEX)
     assert 'id="report-filter"' in html and 'Set aside parks a file' in html

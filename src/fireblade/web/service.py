@@ -2664,7 +2664,10 @@ class Library:
                                 "path": str(item.get("path") or ""),
                                 "name": Path(str(item.get("path") or "")).name,
                                 "status": item.get("status") or "unknown",
-                                "reason": item.get("reason") or item.get("error") or "",
+                                # The core writes its reasons in French; this edition
+                                # speaks English, so the sentence goes through the same
+                                # dictionary the desktop uses.
+                                "reason": _english(item.get("reason") or item.get("error") or ""),
                                 "tools": item.get("tools") or [],
                                 "sha256": item.get("sha256") or "",
                                 "ignored": bool(item.get("ignored"))})
@@ -3204,6 +3207,15 @@ class Library:
         with case.lock:
             case.export(str(target), view, include_annotations=True)
         return target
+
+
+def _english(text):
+    """A core message in the edition's language, unchanged when it is not known."""
+    try:
+        from fireblade.core.i18n import translate
+        return translate(str(text)) if text else ""
+    except (ImportError, ValueError):
+        return str(text or "")
 
 
 def parse_filters(values) -> list[tuple[int, str, str]]:

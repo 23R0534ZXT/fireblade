@@ -183,6 +183,9 @@ What the comparison changed:
 | The Cases panel had five columns, no heading and no footer | heading and subtitle, Name · Collects · Status · Analyses · Created on · Modified on · Last opened, Include archived, and the footer with the description, the count and the three case buttons |
 | The Actions panel had five columns and no filtering | Scope, search, "Open actions only", Refresh, and Date · Priority · Action status · Action type · Intervenant · Details, with "N action(s) · N open · N overdue · scope" |
 | The Hayabusa panel had a table of eight other columns and no filter | Time · Level · Rule · Host · Count · Event IDs · MITRE, a findings filter, and the severity bar with "showing N of M" |
+| The Imports panel listed collections, not files, and carried four buttons | the desktop's screen: heading and subtitle, Import evidence… / Read again with a reader… / Full report / History…, a status filter and a search, View file / Copy unprocessed files… / Export list… / Park from the report / Delete…, the table Status · File · Readers · Reason · Outputs, and the two notes at the foot |
+| The reasons of the readers came back in French inside an English window | the service passes them through `core/i18n`, and the two CSV refusals are in the dictionary |
+| **The image baked a stale `src/fireblade/core`** — only `collection.py` was synced from the repository | the build now takes the whole core, the runtime and the configuration from the VM; a core fix reaches the container instead of being silently dropped |
 
 Still different, on purpose:
 

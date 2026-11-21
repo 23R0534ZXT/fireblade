@@ -297,6 +297,18 @@
       </div>
 
       <div id="imports-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="panel-title">
+          <h2>Imports</h2>
+          <p>Windows artifacts, Linux logs and CatScale collections.</p>
+        </div>
+        <div class="filterbar">
+          <button class="btn" data-act="import-file">Import evidence…</button>
+          <button class="btn" id="retry-open" title="A file that could not be read: try another reader">Read again with a reader…</button>
+          <button class="btn" id="coverage-open" data-act="coverage-open" title="Reopen every analysis and check what could not be attested">Full report</button>
+          <button class="btn" data-act="case-history">History…</button>
+          <div class="grow"></div>
+          <span class="info" id="imports-summary"></span>
+        </div>
         <div class="filterbar">
           <select class="select" id="imports-status">
             <option value="">All files</option>
@@ -305,22 +317,30 @@
             <option value="unsupported">Not imported</option>
             <option value="duplicate">Duplicate</option>
             <option value="error">Error</option>
+            <option value="ignored">Parked from the report</option>
           </select>
+          <input class="search" id="imports-search" placeholder="Search for a file or a drive…">
           <button class="btn" id="imports-refresh">Refresh</button>
-          <button class="btn" id="retry-open"
-            title="A file that could not be read: try another reader">Read a file again…</button>
-          <button class="btn" id="coverage-open"
-            title="Reopen every analysis and check what could not be attested">Import verification…</button>
-          <div class="info" id="imports-summary"></div>
+        </div>
+        <div class="filterbar">
+          <button class="btn" data-act="import-view-file">View file</button>
+          <button class="btn" data-act="import-copy-unread">Copy unprocessed files…</button>
+          <button class="btn" data-act="import-export-list">Export list…</button>
+          <button class="btn" data-act="import-park">Park from the report</button>
+          <button class="btn" data-act="import-delete">Delete…</button>
         </div>
         <div class="gridwrap" style="flex:1">
           <div class="gridbody">
             <table>
-              <colgroup><col style="width:34%"><col style="width:110px"><col style="width:150px"><col></colgroup>
-              <thead><tr><th>File</th><th>State</th><th>Reader</th><th>Reason</th></tr></thead>
+              <colgroup><col style="width:110px"><col style="width:32%"><col style="width:110px"><col><col style="width:180px"></colgroup>
+              <thead><tr><th>Status</th><th>File</th><th>Readers</th><th>Reason</th><th>Outputs</th></tr></thead>
               <tbody id="imports-rows"></tbody>
             </table>
           </div>
+        </div>
+        <div class="panel-title">
+          <p>Built-in parsers: CatScale Linux, /var/log logs and WebCache ESE (read-only). The Windows engines are those of the pack this instance ships.</p>
+          <p>An unrecognised file, a missing engine or an error stay in the summary. An alert is a lead to verify, not a conclusion of compromise.</p>
         </div>
       </div>
 

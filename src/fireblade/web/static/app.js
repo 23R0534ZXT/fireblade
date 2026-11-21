@@ -1297,6 +1297,89 @@ function clearEveryFilter() {
   say("Filters cleared");
 }
 
+/* ---- the imports table's own commands, one file at a time ---- */
+
+function selectedCollectedFile() {
+  for (const collection of importState.collections) {
+    for (const file of collection.files || []) {
+      if (file.path === importState.selected) return { file, collection };
+    }
+  }
+  return null;
+}
+
+async function viewCollectedFile() {
+  const chosen = selectedCollectedFile();
+  if (!chosen) { say("Select a file first", true); return; }
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/preview`,
+      { source: chosen.file.path });
+    $("preview-body").innerHTML = `<div class="preview-card"><div class="preview-head">
+        <b>${escapeHtml(payload.name)}</b><span class="preview-neutral">${escapeHtml(payload.kind)}</span></div>
+      <div class="note">${escapeHtml(payload.note || "")}</div>
+      <table class="preview-table preview-sample"><thead><tr>${(payload.columns || []).map((column) =>
+        `<th>${escapeHtml(column.name)}</th>`).join("")}</tr></thead><tbody>${(payload.rows || []).map((row) =>
+        `<tr>${row.map((cell) => `<td>${escapeHtml(cell === null ? "" : String(cell))}</td>`).join("")}</tr>`).join("")}
+      </tbody></table></div>`;
+    previewState.items = [];
+    $("preview-import").disabled = true;
+    $("import-modal").classList.add("show");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function copyUnprocessedFiles() {
+  const paths = [];
+  for (const collection of importState.collections) {
+    for (const file of collection.files || []) {
+      if (!["complete", "attention", "duplicate"].includes(file.status)) paths.push(file.path);
+    }
+  }
+  if (!paths.length) { say("Every collected file was read", true); return; }
+  try {
+    await navigator.clipboard.writeText(paths.join("\n"));
+    say(`${paths.length} unprocessed path(s) copied`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+function exportCollectedList() {
+  const lines = [["collection", "status", "path", "readers", "reason", "sha256", "parked"]];
+  for (const collection of importState.collections) {
+    for (const file of collection.files || []) {
+      lines.push([collection.name, file.status, file.path, (file.tools || []).join(" "),
+                  file.reason || "", file.sha256 || "", file.ignored ? "yes" : ""]);
+    }
+  }
+  const csv = lines.map((line) => line.map((cell) =>
+    '"' + String(cell === null || cell === undefined ? "" : cell).replace(/"/g, '""') + '"').join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "imports.csv";
+  link.click();
+  URL.revokeObjectURL(link.href);
+  say(`${lines.length - 1} file(s) exported`);
+}
+
+async function parkCollectedFile() {
+  const chosen = selectedCollectedFile();
+  if (!chosen) { say("Select a file first", true); return; }
+  await setFileAside(chosen.collection.name || chosen.file.collection,
+                     chosen.file.path, !chosen.file.ignored);
+  await loadImports();
+}
+
+async function deleteCollectedFile() {
+  const chosen = selectedCollectedFile();
+  if (!chosen) { say("Select a file first", true); return; }
+  await removeCollectedFile(chosen.collection.name || chosen.file.collection, chosen.file.path);
+  importState.selected = null;
+  await loadImports();
+}
+
 /* The bookmarks and their notes, as a CSV the analyst can keep outside the case. */
 async function exportAnnotations() {
   if (!state.openCase) { say("Open a case first", true); return; }
@@ -3314,35 +3397,71 @@ async function addDerived() {
 
 /* ---------- import history ---------- */
 
-const importState = { collections: [] };
+const importState = { collections: [], selected: null, collection: "" };
 
 async function loadImports() {
   if (!state.openCase) return;
   try {
-    const payload = await api(`/api/cases/${state.openCase.id}/imports`);
-    importState.collections = payload.collections;
+    const [collections, files] = await Promise.all([
+      api(`/api/cases/${state.openCase.id}/imports`),
+      api(`/api/cases/${state.openCase.id}/collection-files`),
+    ]);
+    const byCollection = new Map();
+    for (const file of files.files || []) {
+      if (!byCollection.has(file.collection)) byCollection.set(file.collection, []);
+      byCollection.get(file.collection).push(file);
+    }
+    importState.collections = (collections.collections || []).map((collection) => ({
+      ...collection,
+      files: byCollection.get(collection.name) || collection.files || [],
+    }));
+    if (!importState.collections.length && (files.files || []).length) {
+      importState.collections = [{ name: "", files: files.files }];
+    }
     renderImports();
   } catch (error) {
     say(error.message, true);
   }
 }
 
+/* The imports table is the desktop's: one row per collected file, its status, the
+   readers that ran, the reason when it did not, and where its output went. */
 function renderImports() {
   const wanted = $("imports-status").value;
+  const term = ($("imports-search").value || "").trim().toLowerCase();
+  // What a file produced, when it produced an analysis: the desktop's "Outputs".
+  const outputs = new Map();
+  for (const analysis of (state.openCase && state.openCase.analyses) || []) {
+    if (analysis.source) outputs.set(analysis.source, analysis.label);
+  }
   const rows = [];
   let imported = 0, failed = 0;
   for (const collection of importState.collections) {
-    for (const file of collection.files) {
-      if (file.status === "complete" || file.status === "attention" || file.status === "duplicate") imported += 1;
-      else failed += 1;
-      if (wanted && file.status !== wanted) continue;
-      rows.push(`<tr><td title="${escapeHtml(file.path)}">${escapeHtml(file.name)}</td>
-        <td>${escapeHtml(file.status)}</td>
+    for (const file of collection.files || []) {
+      const ok = ["complete", "attention", "duplicate"].includes(file.status);
+      if (ok) imported += 1; else failed += 1;
+      if (wanted === "ignored" ? !file.ignored : (wanted && file.status !== wanted)) continue;
+      if (!wanted && file.ignored) continue;
+      if (term && !`${file.name} ${file.path} ${file.reason} ${(file.tools || []).join(" ")}`
+        .toLowerCase().includes(term)) continue;
+      rows.push(`<tr data-import="${escapeHtml(file.path)}" data-collection="${escapeHtml(collection.name)}"
+          class="${importState.selected === file.path ? "sel" : ""}">
+        <td>${escapeHtml(file.status)}${file.ignored ? " · parked" : ""}</td>
+        <td title="${escapeHtml(file.path)}">${escapeHtml(file.name)}</td>
         <td>${escapeHtml((file.tools || []).join(", "))}</td>
-        <td title="${escapeHtml(file.reason)}">${escapeHtml(file.reason)}</td></tr>`);
+        <td title="${escapeHtml(file.reason)}">${escapeHtml(file.reason)}</td>
+        <td title="${escapeHtml(file.sha256 || "")}">${escapeHtml(outputs.get(file.path) || file.outputs || "")}</td></tr>`);
     }
   }
-  $("imports-rows").innerHTML = rows.join("");
+  $("imports-rows").innerHTML = rows.length ? rows.join("")
+    : '<tr><td colspan="5" class="cellnull">No collected file matches this filter.</td></tr>';
+  $("imports-rows").querySelectorAll("tr[data-import]").forEach((row) => {
+    row.addEventListener("click", () => {
+      importState.selected = row.dataset.import;
+      importState.collection = row.dataset.collection;
+      renderImports();
+    });
+  });
   $("imports-summary").textContent =
     `${importState.collections.length} import(s) — ${imported} file(s) read, ${failed} not read`;
   say($("imports-summary").textContent);
@@ -5076,6 +5195,7 @@ function wire() {
   $("graph-node").addEventListener("click", openGraphNode);
   $("imports-refresh").addEventListener("click", loadImports);
   $("imports-status").addEventListener("change", renderImports);
+  $("imports-search").addEventListener("input", renderImports);
   $("action-add").addEventListener("click", addAction);
   document.querySelectorAll(".subtab[data-sub]").forEach((tab) => {
     tab.addEventListener("click", () => showWorkspaceSub(tab.dataset.sub));
@@ -5229,6 +5349,11 @@ async function act(name, node) {
       break;
     case "import-file": openImportDialog(); break;
     case "import-evidence": openImportDialog(); break;
+    case "import-view-file": await viewCollectedFile(); break;
+    case "import-copy-unread": await copyUnprocessedFiles(); break;
+    case "import-export-list": exportCollectedList(); break;
+    case "import-park": await parkCollectedFile(); break;
+    case "import-delete": await deleteCollectedFile(); break;
     case "parse-folder": $("import-layout").value = "artifacts"; openImportDialog(); break;
     case "open-view-menu": openMenu("view"); break;
     case "preview-choose": $("preview-input").click(); break;

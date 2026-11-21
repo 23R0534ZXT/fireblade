@@ -843,6 +843,30 @@ function openDestroyDialog() {
   $("destroy-modal").classList.add("show");
 }
 
+/* The photos go with the case, not with the browser: they are stored beside it and
+   fingerprinted, then embedded in the certificate by the core generator. */
+async function uploadDestroyPhotos(files) {
+  const sources = [];
+  for (const file of files) {
+    const data = new FormData();
+    data.append("file", file);
+    const response = await fetch(`/api/cases/${state.openCase.id}/preview-upload`,
+                                 { method: "POST", body: data });
+    if (!response.ok) throw new Error(await response.text());
+    const saved = await response.json();
+    sources.push(saved.path || saved.source);
+  }
+  const response = await fetch(`/api/cases/${state.openCase.id}/destruction/attachments`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sources }),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  const kept = await response.json();
+  state.destroyAttachments = kept.attachments || [];
+  $("destroy-photo-count").textContent = `${kept.count} photo(s)`;
+  say(`${kept.count} photo(s) for the certificate`);
+}
+
 async function runDestroy() {
   const confirmation = $("destroy-confirm").value.trim();
   const body = {
@@ -851,6 +875,7 @@ async function runDestroy() {
     witness: $("destroy-witness").value,
     reason: $("destroy-reason").value,
     confirmation,
+    attachments: state.destroyAttachments || [],
   };
   if (confirmation !== state.openCase.name) { say("The typed name does not match", true); return; }
   closeModals();
@@ -5595,6 +5620,11 @@ function wire() {
     say(`Dates shown ${event.target.value}`);
   });
   $("rule-visual").addEventListener("change", showRuleVisual);
+  $("destroy-photos").addEventListener("change", async (event) => {
+    if (!state.openCase) return;
+    try { await uploadDestroyPhotos([...event.target.files]); }
+    catch (error) { say(`The photos were not kept: ${error.message}`, true); }
+  });
   $("rule-add-condition").addEventListener("click", () => {
     addConditionRow();
     if ($("rule-logic").value === "single") $("rule-logic").value = "and";

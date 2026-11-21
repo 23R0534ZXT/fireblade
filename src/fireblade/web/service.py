@@ -1716,7 +1716,8 @@ class Library:
         return self._summary(data)
 
     def destroy(self, identifier: str, method: str = "dod3", operator: str = "",
-                witness: str = "", reason: str = "", confirmation: str = "") -> dict:
+                witness: str = "", reason: str = "", confirmation: str = "",
+                attachments: list | None = None) -> dict:
         """Destroy the case the way the desktop does, and keep the certificate outside."""
         from fireblade.core.case_destruction import destroy_case
 
@@ -1732,11 +1733,24 @@ class Library:
         self.close_case(identifier)
         record = destroy_case(folder, method, operator=operator, witness=witness, reason=reason,
                               certificate_path=certificate, case_name=data.get("name", ""),
-                              case_id=identifier)
+                              case_id=identifier, attachments=list(attachments or []))
         return {"id": record.get("id"), "method": record.get("method"),
                 "files": len(record.get("files") or []),
                 "certificate": str(certificate),
                 "bytes": sum(int(item.get("size") or 0) for item in (record.get("files") or []))}
+
+    def store_destruction_attachments(self, identifier: str, sources) -> dict:
+        """Photos for the certificate, copied beside the case before it is destroyed."""
+        from fireblade.core.destruction_certificate import store_attachments
+
+        # Beside the certificates, never inside the case: the case is about to be
+        # wiped, and a photo that disappears with it is no annex at all.
+        folder = self.root / "certificates" / ("annex-" + identifier[:8])
+        try:
+            stored = store_attachments(folder, list(sources or []))
+        except ValueError as exc:
+            raise ServiceError(str(exc)) from exc
+        return {"attachments": stored, "count": len(stored)}
 
     def close_case(self, identifier: str) -> None:
         """Release every handle the service holds on one case."""

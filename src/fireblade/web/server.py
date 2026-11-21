@@ -91,7 +91,17 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         try:
             return library.destroy(identifier, payload.get("method", "dod3"),
                                    payload.get("operator", ""), payload.get("witness", ""),
-                                   payload.get("reason", ""), payload.get("confirmation", ""))
+                                   payload.get("reason", ""), payload.get("confirmation", ""),
+                                   payload.get("attachments") or [])
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/destruction/attachments")
+    def destruction_attachments(identifier: str, payload: dict):
+        """Photos to embed in the certificate, stored before the case is destroyed."""
+        try:
+            return library.store_destruction_attachments(identifier,
+                                                         (payload or {}).get("sources") or [])
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -71,7 +71,8 @@ def collect(folder, *, limit=MAX_CASE_FILES):
 
 
 def destroy_case(folder, method, *, operator='', witness='', reason='', progress=None,
-                 cancel=lambda: False, certificate_path, case_name='', case_id=''):
+                 cancel=lambda: False, certificate_path, case_name='', case_id='',
+                 attachments=()):
     """Overwrite every file of a case, remove the folders, and write the certificate outside.
 
     Returns the certificate record. The victim folder is removed only when it is empty, so an
@@ -99,6 +100,10 @@ def destroy_case(folder, method, *, operator='', witness='', reason='', progress
     record['scope'] = 'case'
     record['case_name'] = case_name
     record['case_id'] = case_id
+    if attachments:
+        # Photos of the media and of the witness, already fingerprinted by
+        # store_attachments: the certificate embeds them as data URIs.
+        record['attachments'] = list(attachments)
     if links:
         record['skipped_links'] = links[:200]
     failed = [item for item in record['files'] if not item.get('deleted')]

@@ -1260,3 +1260,37 @@ def test_a_rule_carries_a_group_of_conditions(service):
     # A malformed tree is refused, not silently flattened.
     with pytest.raises(Exception):
         library.save_rules(identifier, 0, [dict(rule, condition={"logic": "xor", "children": []})])
+
+
+def test_the_certificate_carries_the_photos_of_the_destruction(service, tmp_path):
+    """Store the photos, destroy the case, read the certificate: the image is inside."""
+    import base64
+    import struct
+    import zlib
+
+    library, identifier = service
+
+    def png(path, colour):
+        # A 1x1 PNG, built by hand: no dependency, and a real image for the data URI.
+        def chunk(kind, body):
+            return (struct.pack(">I", len(body)) + kind + body
+                    + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF))
+        raw = b"\x00" + bytes(colour)
+        data = (b"\x89PNG\r\n\x1a\n"
+                + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+                + chunk(b"IDAT", zlib.compress(raw))
+                + chunk(b"IEND", b""))
+        path.write_bytes(data)
+        return path
+
+    photo = png(tmp_path / "scene.png", (200, 20, 20))
+    stored = library.store_destruction_attachments(identifier, [str(photo)])
+    assert stored["count"] == 1
+    assert stored["attachments"][0]["sha256"]
+
+    certificate = library.destroy(identifier, "dod3", "Analyst", "", "test",
+                                  library.case(identifier)["name"],
+                                  attachments=stored["attachments"])
+    html = Path(certificate["certificate"]).read_text(encoding="utf-8")
+    assert "data:image/png;base64," in html
+    assert base64.b64encode(photo.read_bytes()).decode()[:40] in html.replace("\n", "")

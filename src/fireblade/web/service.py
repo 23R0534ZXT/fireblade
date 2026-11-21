@@ -1884,14 +1884,15 @@ class Library:
 
     def timeline(self, identifier: str, start: int | None = None, end: int | None = None,
                  offset: int = 0, text: str = "", kind: str = "text",
-                 dates: dict | None = None, include_undated: bool = False) -> dict:
+                 dates: dict | None = None, include_undated: bool = False,
+                 respect_filters: bool = False) -> dict:
         """Counts the case's rows over time with the desktop's own TimelineStore.
 
         `dates` says how each analysis is read: `{"<index>": "none" | "split" |
         "<column name>"}`. An analysis it does not name keeps the detection, which
         is what the desktop does when the analyst has not chosen a column.
         """
-        store = self._timeline_store(identifier, dates)
+        store = self._timeline_store(identifier, dates, respect_filters=respect_filters)
         filters = {"include_undated": bool(include_undated)}
         if text:
             filters.update(text=text, kind=kind)
@@ -1929,11 +1930,12 @@ class Library:
             payload["window"] = {"start": window_start, "end": window_end}
         return payload
 
-    def _timeline_store(self, identifier: str, dates: dict | None = None):
+    def _timeline_store(self, identifier: str, dates: dict | None = None,
+                        respect_filters: bool = False):
         """The built index for this case and these date readings, cached."""
         options = self._date_options(identifier, dates or {})
         key = (identifier, self.library.read(identifier).get("revision"),
-               tuple(sorted(options.items())))
+               tuple(sorted(options.items())), bool(respect_filters))
         # DuckDB refuses a second connection to a file with another configuration:
         # the grid's handles are closed on every call, cache hit or not, because
         # the sources' headers are read read-only just after. They reopen on the
@@ -1952,7 +1954,8 @@ class Library:
             raise ServiceError("This case holds no analysis.")
         store = TimelineStore(self._timeline_dir)
         reader = WorkspaceReader(snapshots)
-        store.build(reader, columns={path: spec for path, spec in options.items()})
+        store.build(reader, columns={path: spec for path, spec in options.items()},
+                    respect_filters=bool(respect_filters))
         for old in list(self._timelines):
             if old[0] == identifier:
                 try:
@@ -1961,6 +1964,22 @@ class Library:
                     pass
         self._timelines[key] = store
         return store
+
+    def timeline_source_row(self, identifier: str, index: int, row_id: int) -> dict:
+        """The row a timeline entry came from, read in its own analysis."""
+        case = self._case_for(identifier, index)
+        with case.lock:
+            rows = case.rows_by_ids([int(row_id)])
+            headers = list(case.headers)
+        # rows_by_ids answers with a mapping when it is given ids, a list otherwise.
+        row = rows.get(int(row_id)) if isinstance(rows, dict) else (rows[0] if rows else None)
+        if row is None:
+            raise ServiceError("This row is no longer in the analysis.")
+        values = [json_value(value) for value in row[1:]]
+        entry = next((item for item in self._analyses(self.library.read(identifier))
+                      if item["index"] == index), {})
+        return {"analysis": index, "label": entry.get("label") or f"analysis {index}",
+                "row_id": json_value(row[0]), "columns": headers, "values": values}
 
     def timeline_export(self, identifier: str, start: int | None = None, end: int | None = None,
                         text: str = "", kind: str = "text", dates: dict | None = None,
@@ -2107,6 +2126,82 @@ class Library:
         self.library.save(identifier, remaining, new_active, collections,
                           data.get("active_collection"), data.get("revision"))
         return {"analyses": len(remaining), "active": new_active}
+
+    def profiles_for(self, identifier: str, index: int) -> dict:
+        """The profile this analysis matches, and what applying it would set."""
+        from fireblade.core.profiles import (detect_profile, profile_transformations,
+                                             profile_view)
+
+        case = self._case_for(identifier, index)
+        with case.lock:
+            headers = list(case.headers)
+        profile = detect_profile(headers)
+        if profile is None:
+            return {"matched": None, "headers": len(headers)}
+        view, order = profile_view(profile, headers)
+        derived = profile_transformations(profile, [h for h in headers
+                                                    if not h.startswith("Fireblade_")])
+        return {"matched": getattr(profile, "name", "") or getattr(profile, "signature", [""])[0],
+                "signature": list(getattr(profile, "signature", []) or []),
+                "timestamps": [headers[i] for i in view.timestamp_columns],
+                "booleans": [headers[i] for i in view.boolean_columns],
+                "sort": headers[view.sort_column] if view.sort_column is not None else None,
+                "order": len(order), "rules": len(view.format_rules),
+                "derived": [{"name": item.get("name"), "operation": item.get("operation"),
+                             "format": item.get("format", "")} for item in derived],
+                "headers": len(headers)}
+
+    def apply_profile(self, identifier: str, index: int) -> dict:
+        """Apply the recognised profile to this analysis' view, as the desktop's command does.
+
+        The date columns, the boolean columns and the default sort are written into the
+        analysis' own view, so the grid reads the file the way its profile says. The
+        profile's derived columns are reported, not invented: the Host does not build a
+        derived column behind the analyst's back.
+        """
+        from fireblade.core.profiles import detect_profile, profile_view
+
+        data = self.library.read(identifier)
+        folder = self.library.folder(identifier)
+        session = data.get("session")
+        if not session:
+            raise ServiceError("This case holds no analysis.")
+        snapshots, active = read_session(folder / session)
+        if not 0 <= index < len(snapshots):
+            raise ServiceError("This analysis does not exist in the case.")
+        case = self._case_for(identifier, index)
+        with case.lock:
+            headers = list(case.headers)
+        profile = detect_profile(headers)
+        if profile is None:
+            raise ServiceError("No import profile matches this analysis.")
+        detected, order = profile_view(profile, headers)
+        current = snapshots[index].view
+        updated = View(
+            search=getattr(current, "search", ""),
+            filters=list(getattr(current, "filters", []) or []),
+            groups=list(getattr(current, "groups", []) or []),
+            sort_column=detected.sort_column,
+            descending=bool(detected.descending),
+            sort_type=detected.sort_type,
+            bookmarks_only=bool(getattr(current, "bookmarks_only", False)),
+            expression=getattr(current, "expression", None),
+            format_rules=list(getattr(current, "format_rules", []) or []) + list(detected.format_rules),
+            timestamp_columns=list(detected.timestamp_columns),
+            boolean_columns=list(detected.boolean_columns),
+            group_intervals=dict(getattr(current, "group_intervals", {}) or {}),
+        )
+        snapshots[index] = AnalysisSnapshot(snapshots[index].path, snapshots[index].source_info,
+                                            updated, snapshots[index].header_state)
+        self.close_case(identifier)
+        self.library.save(identifier, snapshots, active,
+                          [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)],
+                          data.get("active_collection"), data.get("revision"))
+        return {"profile": getattr(profile, "name", "") or "profile",
+                "timestamps": [headers[i] for i in updated.timestamp_columns],
+                "booleans": [headers[i] for i in updated.boolean_columns],
+                "sort": headers[updated.sort_column] if updated.sort_column is not None else None,
+                "rules": len(detected.format_rules)}
 
     RETRY_READERS = ("text", "html", "csv", "pdf")
 

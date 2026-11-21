@@ -910,3 +910,39 @@ def test_a_rule_can_select_the_values_above_the_average(tmp_path):
         assert rule["resolved"]["strict"] is True
     finally:
         library.close()
+
+
+def test_the_recognised_profile_can_be_applied_to_an_analysis(service):
+    """The desktop's "Appliquer le profil détecté": dates, booleans, sort, colours."""
+    library, identifier = service
+    found = library.profiles_for(identifier, 0)
+    assert found["headers"] == 4
+    if found["matched"]:
+        applied = library.apply_profile(identifier, 0)
+        assert applied["profile"]
+        state = library.profiles_for(identifier, 0)
+        assert state["timestamps"] == found["timestamps"]
+        assert state["booleans"] == found["booleans"]
+    else:
+        with pytest.raises(ServiceError):
+            library.apply_profile(identifier, 0)
+
+
+def test_a_timeline_entry_opens_its_source_row(service):
+    library, identifier = service
+    payload = library.timeline(identifier)
+    source, row_id = payload["rows"][0][0], payload["rows"][0][1]
+    row = library.timeline_source_row(identifier, source, row_id)
+    assert row["analysis"] == source
+    assert len(row["columns"]) == len(row["values"]) == 4
+    assert row["values"][1] in ("EVTX", "Prefetch")
+    with pytest.raises(ServiceError):
+        library.timeline_source_row(identifier, source, 999999)
+
+
+def test_the_timeline_can_read_each_analysis_through_its_filters(service):
+    library, identifier = service
+    whole = library.timeline(identifier)
+    filtered = library.timeline(identifier, respect_filters=True)
+    assert filtered["extent"]["rows"] <= whole["extent"]["rows"]
+    assert filtered["count"] >= 0

@@ -337,6 +337,8 @@
           </select>
           <input class="search" id="timeline-search" placeholder="Correlate an entity across the case…  Enter to search">
           <label><input type="checkbox" id="timeline-undated"> Include rows without a date</label>
+          <label><input type="checkbox" id="timeline-filters"
+            title="Read each analysis through its own filters, as the desktop does">Respect the analyses' filters</label>
           <button class="btn" id="timeline-build">Build / refresh</button>
           <button class="btn" id="timeline-export" title="Verified CSV with a receipt">Export CSV</button>
         </div>
@@ -487,6 +489,18 @@
       <button class="btn" data-act="preview-import" id="preview-import" disabled>Import</button>
       <button class="btn" data-act="settings-close">Cancel</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="source-row-modal">
+  <div class="dialog" style="min-width:760px">
+    <h3 id="source-row-title">The source line</h3>
+    <div class="body">
+      <div class="note">The row this timeline entry came from, as its own analysis holds it. Nothing is
+        copied: the value shown is the evidence value.</div>
+      <div class="columns-list" id="source-row-list" style="max-height:360px"></div>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
   </div>
 </div>
 
@@ -827,7 +841,11 @@
     <h3>Saved views</h3>
     <div class="body">
       <div class="row"><label for="view-name">Save as</label><input id="view-name" placeholder="e.g. Logons on FBVM"></div>
-      <div class="row"><button class="btn" data-act="view-save">Save the current view</button></div>
+      <div class="row"><button class="btn" data-act="view-save">Save the current view</button>
+        <button class="btn" data-act="profile-apply"
+          title="Dates, booleans, default sort and colours of the recognised profile">Apply the detected profile</button>
+      </div>
+      <div class="note" id="profile-note"></div>
       <div class="columns-list" id="views-list" style="max-height:240px"></div>
     </div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>

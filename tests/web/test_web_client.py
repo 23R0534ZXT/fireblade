@@ -294,6 +294,21 @@ def test_a_rule_statistic_is_read_from_the_server():
         assert f'<option value="{statistic}"' in html, statistic
 
 
+def test_the_detected_profile_can_be_applied_by_hand():
+    js, html = _read(APP), _read(INDEX)
+    assert 'data-act="profile-apply"' in html and 'id="profile-note"' in html
+    assert "function applyDetectedProfile(" in js
+    assert "/profile" in js
+
+
+def test_a_timeline_row_opens_its_source_line():
+    js, html = _read(APP), _read(INDEX)
+    assert 'id="timeline-filters"' in html and 'id="source-row-modal"' in html
+    assert "function openSourceRow(" in js
+    assert "/timeline/row/" in js
+    assert "respect_filters" in js
+
+
 def test_the_filter_input_keeps_the_operator():
     """A value filtered with "=" must not silently become "contains"."""
     js = _read(APP)

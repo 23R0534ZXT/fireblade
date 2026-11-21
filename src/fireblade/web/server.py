@@ -495,6 +495,14 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/timeline/row/{index}/{row_id}")
+    def timeline_source_row(identifier: str, index: int, row_id: int):
+        """The row behind one timeline entry, as its own analysis holds it."""
+        try:
+            return library.timeline_source_row(identifier, index, row_id)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/timeline/export")
     def timeline_export(identifier: str, start: int | None = None, end: int | None = None,
                         text: str = "", kind: str = "text", dates: str = "",
@@ -517,6 +525,20 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
                    "X-Fireblade-Expected": str(receipt.get("expected", "")),
                    "X-Fireblade-Sha256": str(receipt.get("sha256", ""))}
         return Response(content=data, media_type="text/csv", headers=headers)
+
+    @app.get("/api/cases/{identifier}/analyses/{index}/profile")
+    def profile_for(identifier: str, index: int):
+        try:
+            return library.profiles_for(identifier, index)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/profile")
+    def apply_profile(identifier: str, index: int):
+        try:
+            return library.apply_profile(identifier, index)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/api/cases/{identifier}/analyses/reorder")
     def reorder_analyses(identifier: str, payload: dict):
@@ -779,7 +801,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     @app.get("/api/cases/{identifier}/timeline")
     def timeline(identifier: str, start: int | None = None, end: int | None = None,
                  offset: int = 0, text: str = "", kind: str = "text", dates: str = "",
-                 include_undated: bool = False):
+                 include_undated: bool = False, respect_filters: bool = False):
         options = None
         if dates:
             try:
@@ -788,7 +810,8 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
                 raise HTTPException(status_code=400, detail="'dates' must be a JSON object.") from exc
         try:
             return library.timeline(identifier, start=start, end=end, offset=offset, text=text,
-                                    kind=kind, dates=options, include_undated=include_undated)
+                                    kind=kind, dates=options, include_undated=include_undated,
+                                    respect_filters=respect_filters)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

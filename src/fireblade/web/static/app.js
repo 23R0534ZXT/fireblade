@@ -39,6 +39,32 @@ const state = {
   timestamps: [],       // columns the case marks as dates
 };
 
+/* ---------- the recognised import profile ---------- */
+
+async function applyDetectedProfile() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  const note = $("profile-note");
+  note.textContent = "Reading the profile…";
+  try {
+    const found = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/profile`);
+    if (!found.matched) {
+      note.textContent = "No import profile matches this analysis: its columns are read as a plain table.";
+      return;
+    }
+    const applied = await apiPost(
+      `/api/cases/${state.openCase.id}/analyses/${state.analysis}/profile`, {});
+    note.textContent = `${applied.profile}: ${applied.timestamps.length} date column(s), `
+      + `${applied.booleans.length} boolean(s)`
+      + (applied.sort ? `, sorted by ${applied.sort}` : "")
+      + `, ${applied.rules} colour rule(s) added`;
+    await loadRows(true);
+    say(`Profile applied: ${applied.profile}`);
+  } catch (error) {
+    note.textContent = error.message;
+    say(error.message, true);
+  }
+}
+
 /* ---------- analysing a disk ---------- */
 
 function openDiskDialog() {
@@ -2717,6 +2743,28 @@ function applyTimelineDates() {
   loadTimeline(true);
 }
 
+/* One timeline entry, opened in its own analysis: the value the evidence holds. */
+async function openSourceRow(index, rowId) {
+  if (!state.openCase) return;
+  $("source-row-title").textContent = "The source line";
+  $("source-row-list").innerHTML = '<div class="emptygrid">Reading the row…</div>';
+  $("source-row-modal").classList.add("show");
+  try {
+    const payload = await api(
+      `/api/cases/${state.openCase.id}/timeline/row/${index}/${rowId}`);
+    $("source-row-title").textContent = `${payload.label} — row ${payload.row_id}`;
+    $("source-row-list").innerHTML = payload.columns.map((name, position) => {
+      const value = payload.values[position];
+      const shown = value === null || value === "" ? "(empty)" : String(value).slice(0, 160);
+      return `<div class="analysis-line"><span class="analysis-name">${escapeHtml(name)}</span>
+        <span class="pin" title="${escapeHtml(value === null ? "" : String(value))}">${escapeHtml(shown)}</span></div>`;
+    }).join("");
+  } catch (error) {
+    $("source-row-list").innerHTML = "";
+    say(error.message, true);
+  }
+}
+
 function utcLabel(ns) {
   const ms = Number(ns) / 1e6;
   return new Date(ms).toISOString().replace("T", " ").replace(".000Z", "Z");
@@ -2730,6 +2778,7 @@ async function loadTimeline(reset) {
   const dates = timelineDatesParam();
   if (dates) params.set("dates", dates);
   if ($("timeline-undated").checked) params.set("include_undated", "true");
+  if ($("timeline-filters").checked) params.set("respect_filters", "true");
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/timeline?${params}`);
     timelineState.payload = payload;
@@ -2768,12 +2817,16 @@ function renderTimeline(payload) {
 
   $("timeline-rows").innerHTML = payload.rows.map((row) => {
     const [source, rowId, timeNs, sourceTime, summary, note, bookmarked] = row;
-    return `<tr data-tl-row="${rowId}" data-tl-source="${source}">
+    return `<tr data-tl-row="${rowId}" data-tl-source="${source}" title="Open the source line">
       <td>${timeNs === null ? "(undated)" : escapeHtml(utcLabel(timeNs))}</td>
       <td>${payload.sources[source] ? escapeHtml(payload.sources[source].name) : source}</td>
       <td title="${escapeHtml(summary)}">${bookmarked ? "\u2605 " : ""}${escapeHtml(summary)}</td>
       <td>${escapeHtml(note)}</td></tr>`;
   }).join("");
+  $("timeline-rows").querySelectorAll("tr[data-tl-row]").forEach((node) => {
+    node.addEventListener("click", () =>
+      openSourceRow(Number(node.dataset.tlSource), Number(node.dataset.tlRow)));
+  });
 
   const from = payload.count ? timelineState.offset + 1 : 0;
   const to = Math.min(timelineState.offset + payload.rows.length, payload.count);
@@ -3742,6 +3795,7 @@ function wire() {
   $("timeline-dates").addEventListener("change", applyTimelineDates);
   $("timeline-build").addEventListener("click", () => loadTimeline(false));
   $("timeline-undated").addEventListener("change", () => loadTimeline(true));
+  $("timeline-filters").addEventListener("change", () => loadTimeline(true));
   $("timeline-export").addEventListener("click", () => {
     if (!state.openCase) { say("Open a case first", true); return; }
     const params = new URLSearchParams();
@@ -3899,6 +3953,7 @@ async function act(name, node) {
     case "messages": openMessages(); break;
     case "open-analyses": await openAnalysesDialog(); break;
     case "disk-open": openDiskDialog(); break;
+    case "profile-apply": await applyDetectedProfile(); break;
     case "case-history": await openCaseHistory(); break;
     case "rule-add": await addRule(); break;
     case "pivot": await runPivot(); break;

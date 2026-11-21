@@ -24,7 +24,7 @@ names what the Host does for each.
 ## Verdict
 
 **The port is not complete.** Twenty-one domains are covered, but this audit found
-**0 features the Host does not have** and **3 it has partially** (five closed since the
+**0 features the Host does not have** and **1 it has partially** (five closed since the
 audit was written: machines and accounts, tracked indicators, Hayabusa rules,
 global colour rules, import diagnostics). None of them was
 visible in the label inventory, which is why `HOST-PARITY.md` said "nothing left" —
@@ -57,11 +57,11 @@ Legend: **yes** = the Host does it, **partial** = it does part of it, **no** = m
 | Grid — global rules | "Règles globales" shared by every analysis | **yes** — Colour rules > Every analysis; the book is the desktop's own file (import and export), a rule the grid cannot evaluate is skipped, never approximated |
 | Grid — columns | hide, pin left **and right**, resize, layout in the analysis | **yes** |
 | Grid — derived columns | timestamp conversion, expressions, categories, MACB | **yes** |
-| Grid — views and profiles | named views, "Appliquer le profil détecté" | **partial** — views yes, applying a profile by hand no |
+| Grid — views and profiles | named views, "Appliquer le profil détecté" | **yes** — named views, and the detected profile applied by hand (date and boolean columns, default sort, its colour rules) |
 | Grid — exports | CSV, copy value / rows / cell, whole cell | **yes** |
 | Grid — pivot and EVTX | "Qu'est-ce qui a lancé", source event, EVTX context | **yes** |
 | Timeline | build, histogram, legend, correlate, page, three date readings | **yes** |
-| Timeline — extras | export, "Inclure sans date", "Appliquer les filtres des analyses", "Ouvrir la ligne source" | **partial** — verified CSV export with its receipt, and rows without a date on request; the analyses' filters and the source row are missing |
+| Timeline — extras | export, "Inclure sans date", "Appliquer les filtres des analyses", "Ouvrir la ligne source" | **yes** — verified CSV export with its receipt, rows without a date on request, each analysis read through its own filters, and a click on a row opens its source line |
 | IOC hunting | paste, scan, results, saved hunts | **yes** |
 | IOC — extras | import TXT/CSV/TSV, all analyses at once, respect the filters, sub-domains | **yes** — IOC hunting: a file or a paste, every analysis, each view's filters, and sub-domains on or off |
 | Hayabusa | run by level, findings, tactics, dedup, mark, open, export sources | **yes** |

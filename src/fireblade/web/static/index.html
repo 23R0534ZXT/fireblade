@@ -1321,9 +1321,17 @@
           <option value="filetime">Windows FILETIME</option>
           <option value="webkit">WebKit</option>
         </select></div>
+      <div class="row" id="derived-zone-row"><label for="derived-zone">Time zone for dates without an offset</label>
+        <select id="derived-zone">
+          <option value="UTC">UTC</option>
+          <option value="local">the browser's zone</option>
+          <option value="Europe/Paris">Europe/Paris</option>
+          <option value="America/New_York">America/New_York</option>
+        </select></div>
       <div class="row" id="derived-expression-row" style="display:none"><label for="derived-expression">Expression</label>
         <input id="derived-expression" placeholder="e.g. lower(User)"></div>
-      <div class="note">The column is compiled to SQL over the raw rows and stored in the analysis, exactly as the desktop does.</div>
+      <div class="note">Source values remain intact; an invalid value becomes NULL in the new column.
+        The column is compiled to SQL over the raw rows and stored in the analysis, exactly as the desktop does.</div>
     </div>
     <div class="foot">
       <button class="btn" data-act="derived-add">Add</button>

@@ -1607,6 +1607,8 @@ async function openIntegrity() {
       ["Status", match ? match.status : "unknown"],
       ["Reason", match ? match.reason || "" : ""],
       ["Rows read", entry ? String((entry.source_info && entry.source_info.rows) ?? entry.rows ?? "") : ""],
+      ["Bytes", entry && entry.source_info && entry.source_info.size
+        ? String(entry.source_info.size) : ""],
       ["Analysis file", entry ? entry.path : ""],
     ];
     box.innerHTML = `<table class="integrity-table">${lines.map(([name, value]) =>

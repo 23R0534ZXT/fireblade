@@ -810,15 +810,19 @@
 
 <div class="modal" id="import-progress-modal">
   <div class="dialog" style="min-width:600px">
-    <h3>Importing</h3>
+    <h3 id="import-progress-title">Importing</h3>
     <div class="body">
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+        <div class="bar" id="import-progress-bar"></div>
+      </div>
+      <div class="info" id="import-progress-info">Starting…</div>
       <div class="note" id="import-progress-message">Starting…</div>
       <div class="columns-list" id="import-progress-log" style="max-height:200px"></div>
-      <div class="note">Stopping an import keeps what was already written in the case: nothing is deleted,
+      <div class="note" id="import-progress-note">Stopping an import keeps what was already written in the case: nothing is deleted,
         the half-read file stays visible in the collection report.</div>
     </div>
     <div class="foot">
-      <button class="btn" id="import-progress-stop">Stop the import</button>
+      <button class="btn" id="import-progress-stop">Stop</button>
     </div>
   </div>
 </div>

@@ -22,9 +22,13 @@ PLACEHOLDER = "{}"
 EN = {
     "Analyse absente ou dupliquée : {}": "Analysis missing or duplicated: {}",
     "Analyse remplacée : {}": "Analysis replaced: {}",
+    "Aucun exécutable dans ce fichier de préchargement": "No executable in this prefetch file",
+    "Aucune destination dans cette liste de raccourcis": "No destination in this jump list",
+    "Ce lecteur a besoin des bibliothèques ESE de Windows : il ne peut pas lire ce fichier sous Linux. Importez le CSV produit par l’édition Desktop.": "This reader needs the Windows ESE libraries: it cannot read this file on Linux. Import the CSV the desktop edition produced.",
     "Des preuves originales sont dans le case. Déplacez-les avant de libérer son espace.": "Original evidence is still in the case. Move it out before releasing its space.",
     "Format de session Fireblade inconnu": "Unknown Fireblade session format",
     "L’analyse est introuvable.": "The analysis cannot be found.",
+    "Moteur terminé avec le code {}": "Engine exited with code {}",
     "Onglet actif invalide": "Invalid active tab",
     "Suppression impossible": "Delete failed",
     "le fichier a changé depuis la collecte : suppression refusée": "the file has changed since the collection: deletion refused",

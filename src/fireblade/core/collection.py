@@ -33,6 +33,23 @@ PARSERS = ('EvtxECmd', 'AmcacheParser', 'AppCompatCacheParser', 'PECmd', 'MFTECm
 ADDITIONAL_PARSERS = ('Shellbags', 'WebCache')
 
 
+_WINDOWS_ONLY = re.compile(
+    r'Non-Windows platforms not supported|need to load ESE specific Windows libraries',
+    re.I)
+
+
+def _engine_tail(log, limit=240):
+    """The last line an engine wrote: an exit code alone says nothing."""
+    try:
+        text = Path(log).read_text(encoding='utf-8', errors='replace')
+    except OSError:
+        return ''
+    for line in reversed([item.strip() for item in text.splitlines() if item.strip()]):
+        if len(line) > 8 and not line.startswith('$ '):
+            return line[:limit]
+    return ''
+
+
 def check_cancel():
     if job_cancelled():
         raise OperationCancelled()
@@ -103,7 +120,14 @@ def atomic_json(path, value):
 def _no_output_reason(source):
     """Why a reader wrote nothing: an empty log, a file that is not one, or neither."""
     source = Path(source)
-    if source.suffix.casefold() != '.evtx':
+    suffix = source.suffix.casefold()
+    if suffix in ('.automaticdestinations-ms', '.customdestinations-ms'):
+        # A jump list with no destination is a real file, just an empty one: the
+        # analyst must not go looking for a parser failure.
+        return str(translate('Aucune destination dans cette liste de raccourcis'))
+    if suffix == '.pf':
+        return str(translate('Aucun exécutable dans ce fichier de préchargement'))
+    if suffix != '.evtx':
         return str(translate('Le parseur n’a rien écrit'))
     try:
         with source.open('rb') as stream:
@@ -300,7 +324,17 @@ def execute(command, cwd, log, timeout=3600):
                             'ou désactivez Smart App Control, puis relancez la collecte.')
                 time.sleep(.1)
             if process.returncode:
-                raise RuntimeError(f'Moteur terminé avec le code {process.returncode} ; journal : {log}')
+                tail = _engine_tail(log)
+                if _WINDOWS_ONLY.search(tail):
+                    # One engine in the pack is .NET only in name: it refuses to run
+                    # anywhere but Windows, and saying so is the whole report.
+                    raise RuntimeError(str(translate(
+                        'Ce lecteur a besoin des bibliothèques ESE de Windows : il ne peut pas '
+                        'lire ce fichier sous Linux. Importez le CSV produit par l’édition Desktop.')))
+                detail = f' : {tail}' if tail else ''
+                raise RuntimeError(str(translate('Moteur terminé avec le code {}'))
+                                   .format(process.returncode) + detail
+                                   + f' ; {translate("journal")} : {log}')
         finally:
             if process.poll() is None:
                 if os.name == 'nt':

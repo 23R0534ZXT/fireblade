@@ -521,6 +521,111 @@ function defaultWidth(name, index) {
   return Math.max(90, Math.min(200, name.length * 8 + 30));
 }
 
+/* ---------- one bar for the long commands ---------- */
+
+/* An import, a scan, a timeline, a detection, a report, a portable case: they all
+   run as a job on the service, and the window shows the percentage the job knows.
+   Without a count the bar slides — a fake number is worse than no number. */
+const taskState = { job: null, title: "", seq: 0 };
+
+function progressOpen(title) {
+  // The progress window replaces whatever dialog asked for the work: an import
+  // dialog left behind made the bar overlap the form it came from.
+  closeModals();
+  taskState.title = title || "Working…";
+  $("import-progress-title").textContent = taskState.title;
+  $("import-progress-message").textContent = "Starting…";
+  $("import-progress-info").textContent = "Starting…";
+  const bar = $("import-progress-bar");
+  bar.style.width = "0%";
+  bar.classList.add("indeterminate");
+  $("import-progress-log").innerHTML = "";
+  // The footnote belongs to what is running: an import keeps what it wrote, a
+  // task is a command on the service and only Stop ends it.
+  $("import-progress-note").textContent = title === "Importing"
+    ? "Stopping an import keeps what was already written in the case: nothing is "
+      + "deleted, the half-read file stays visible in the collection report."
+    : "The command runs on the service: closing this window does not stop it — "
+      + "Stop does, at the next checkpoint.";
+  $("import-progress-stop").disabled = false;
+  $("import-progress-modal").classList.add("show");
+}
+
+function progressPaint(payload) {
+  const progress = payload.progress || {};
+  const bar = $("import-progress-bar");
+  const message = payload.message || payload.status || "";
+  $("import-progress-message").textContent = message;
+  const percent = typeof progress.percent === "number" ? progress.percent : null;
+  if (percent === null) {
+    bar.classList.add("indeterminate");
+    bar.style.width = "35%";
+    $("import-progress-info").textContent =
+      [progress.total ? `${progress.done}/${progress.total}` : "",
+       progress.rows ? `${progress.rows} row(s)` : "",
+       progress.elapsed ? `${Math.round(progress.elapsed)} s` : ""].filter(Boolean).join(" · ")
+      || "Working…";
+  } else {
+    bar.classList.remove("indeterminate");
+    bar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    $("import-progress-info").textContent =
+      [ `${percent}%`,
+        progress.total ? `${progress.done}/${progress.total}` : "",
+        progress.rows ? `${progress.rows} row(s)` : "",
+        progress.elapsed ? `${Math.round(progress.elapsed)} s` : "",
+        progress.remaining ? `~${Math.round(progress.remaining)} s left` : "" ].filter(Boolean).join(" · ");
+  }
+  $("import-progress-log").innerHTML = (payload.log || []).slice(-8).reverse()
+    .map((line) => `<div>${escapeHtml(line)}</div>`).join("");
+}
+
+async function runTask(kind, params, title) {
+  if (!state.openCase) { say("Open a case first", true); return null; }
+  const token = ++taskState.seq;
+  progressOpen(title);
+  let started;
+  try {
+    started = await apiPost(`/api/cases/${state.openCase.id}/tasks`, { kind, params: params || {} });
+  } catch (error) {
+    $("import-progress-modal").classList.remove("show");
+    say(error.message, true);
+    throw error;
+  }
+  taskState.job = started.job;
+  for (;;) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    if (token !== taskState.seq) return null;      // another command took the window
+    let payload;
+    try { payload = await api(`/api/tasks/${taskState.job}`); }
+    catch (error) {
+      // A job the service no longer knows cannot finish: stop asking.
+      $("import-progress-message").textContent = error.message;
+      $("import-progress-modal").classList.remove("show");
+      taskState.job = null;
+      say(error.message, true);
+      return null;
+    }
+    progressPaint(payload);
+    if (payload.status === "done") {
+      $("import-progress-modal").classList.remove("show");
+      taskState.job = null;
+      return payload.result;
+    }
+    if (payload.status === "failed") {
+      $("import-progress-modal").classList.remove("show");
+      taskState.job = null;
+      say(payload.error || "The task failed", true);
+      throw new Error(payload.error || "The task failed");
+    }
+    if (payload.status === "cancelled") {
+      $("import-progress-modal").classList.remove("show");
+      taskState.job = null;
+      say(`${taskState.title}: stopped`);
+      return null;
+    }
+  }
+}
+
 /* ---------- import preview ---------- */
 
 const previewState = { items: [] };
@@ -759,8 +864,9 @@ async function startImportJob(source, layout, options, sheet) {
 async function followImportJob(job) {
   importJobState.job = job;
   importJobState.stopped = false;
-  $("import-progress-modal").classList.add("show");
-  $("import-progress-stop").disabled = false;
+  progressOpen("Importing");
+  taskState.job = null;               // an import job, not a task: the stop differs
+  taskState.seq += 1;                 // no earlier poll may paint this window
   for (;;) {
     let payload = null;
     try {
@@ -769,9 +875,9 @@ async function followImportJob(job) {
       $("import-progress-message").textContent = error.message;
       return { status: "error", error: error.message };
     }
-    $("import-progress-message").textContent = payload.message || payload.status;
-    $("import-progress-log").innerHTML = (payload.log || []).slice(-10).reverse()
-      .map((line) => `<div class="message"><span>${escapeHtml(line)}</span></div>`).join("");
+    // The collection counts files, bytes and records: the bar shows that number.
+    progressPaint({ message: payload.message || payload.status,
+                    progress: payload.progress || null, log: payload.log || [] });
     if (payload.status !== "running" && payload.status !== "cancelling") {
       importJobState.job = null;
       // The job is over: the progress window goes with it, whatever the outcome.
@@ -783,6 +889,13 @@ async function followImportJob(job) {
 }
 
 async function stopImportJob() {
+  if (taskState.job) {
+    $("import-progress-stop").disabled = true;
+    $("import-progress-message").textContent = "Stopping at the next checkpoint…";
+    try { await apiPost(`/api/tasks/${taskState.job}/cancel`, {}); }
+    catch (error) { say(error.message, true); }
+    return;
+  }
   if (!importJobState.job) return;
   $("import-progress-stop").disabled = true;
   $("import-progress-message").textContent = "Stopping…";
@@ -1325,7 +1438,8 @@ async function runEvtxDetection() {
   $("evtx-summary").textContent = `Analyzing the event logs at level ${level}…`;
   say(`Hayabusa: running at level ${level}…`);
   try {
-    const payload = await apiPost(`/api/cases/${state.openCase.id}/detect`, { min_level: level });
+    const payload = await runTask("detect", { min_level: level }, "Hayabusa");
+    if (!payload) return;
     state.openCase = await api(`/api/cases/${state.openCase.id}`);
     renderTree();
     renderEvtx();
@@ -1631,10 +1745,9 @@ async function readSessionFile(file) {
 
 async function exportPortable() {
   if (!state.openCase) { say("Open a case first", true); return; }
-  say("Writing the portable case…");
   try {
-    const payload = await apiPost(`/api/cases/${state.openCase.id}/package`,
-      { include_sources: true });
+    const payload = await runTask("package", { include_sources: true }, "Portable case");
+    if (!payload) return;
     const refreshed = (payload.repaired || []).length
       ? ` — ${payload.repaired.length} analysis fingerprint(s) refreshed from their file`
       : "";
@@ -2863,7 +2976,8 @@ async function runHayabusa() {
   $("hayabusa-summary").textContent = "Running the detection engine — this can take a minute…";
   say("Hayabusa: running…");
   try {
-    const payload = await apiPost(`/api/cases/${state.openCase.id}/detect`, { min_level: level });
+    const payload = await runTask("detect", { min_level: level }, "Hayabusa");
+    if (!payload) return;
     hayabusaState.runs = payload.runs || [];
     // Every finding keeps the run it came from: the alert analysis is per run.
     hayabusaState.findings = hayabusaState.runs.flatMap((run, position) =>
@@ -4165,10 +4279,9 @@ async function runIocScan() {
   if (!state.openCase) { say("Open a case first", true); return; }
   const text = $("ioc-input").value;
   if (!text.trim()) { say("Paste at least one indicator", true); return; }
-  say("Scanning…");
   try {
-    const payload = await apiPost(`/api/cases/${state.openCase.id}/ioc-scan`,
-      { text, ...iocOptions() });
+    const payload = await runTask("scan", { text, ...iocOptions() }, "IOC hunting");
+    if (!payload) return;
     iocState.hits = payload.hits;
     loadHuntHistory();
     const summary = iocSummary(payload);
@@ -4364,9 +4477,12 @@ function utcLabel(ns) {
   return new Date(ms).toISOString().replace("T", " ").replace(".000Z", "Z");
 }
 
-async function loadTimeline(reset) {
+async function loadTimeline(reset, force) {
   if (!state.openCase) return;
   if (reset) timelineState.offset = 0;
+  // The index is built once per revision: the first read, and a forced rebuild,
+  // are the long ones and go through the job with its bar.
+  const heavy = Boolean(force) || !timelineState.payload;
   const params = new URLSearchParams({ offset: String(timelineState.offset) });
   if (timelineState.text) { params.set("text", timelineState.text); params.set("kind", timelineState.kind); }
   const dates = timelineDatesParam();
@@ -4376,7 +4492,20 @@ async function loadTimeline(reset) {
   if ($("timeline-undated").checked) params.set("include_undated", "true");
   if ($("timeline-filters").checked) params.set("respect_filters", "true");
   try {
-    const payload = await api(`/api/cases/${state.openCase.id}/timeline?${params}`);
+    let payload;
+    if (heavy) {
+      const wanted = { offset: timelineState.offset };
+      if (timelineState.text) Object.assign(wanted, { text: timelineState.text, kind: timelineState.kind });
+      if (dates) wanted.dates = JSON.parse(dates);
+      if (timelineState.start !== null) wanted.start = timelineState.start;
+      if (timelineState.end !== null) wanted.end = timelineState.end;
+      wanted.include_undated = $("timeline-undated").checked;
+      wanted.respect_filters = $("timeline-filters").checked;
+      payload = await runTask("timeline", wanted, "Timeline");
+      if (!payload) return;
+    } else {
+      payload = await api(`/api/cases/${state.openCase.id}/timeline?${params}`);
+    }
     timelineState.payload = payload;
     renderTimeline(payload);
   } catch (error) {
@@ -5864,7 +5993,7 @@ function wire() {
     if (actionState.selected) removeActionRow(actionState.selected);
   });
   $("timeline-dates").addEventListener("change", applyTimelineDates);
-  $("timeline-build").addEventListener("click", () => loadTimeline(false));
+  $("timeline-build").addEventListener("click", () => loadTimeline(false, true));
   $("timeline-undated").addEventListener("change", () => loadTimeline(true));
   $("timeline-filters").addEventListener("change", () => loadTimeline(true));
   $("timeline-export").addEventListener("click", () => {
@@ -5943,41 +6072,36 @@ function showReportType() {
 async function buildReport(asPdf) {
   if (!state.openCase) { say("Open a case first", true); return; }
   const client = $("report-type").value === "client";
-  const body = JSON.stringify(client
-    ? {
-        title: $("client-title").value || "",
+  const params = client
+    ? { client: true, title: $("client-title").value || "",
         analyst: $("client-analyst").value || "",
-        findings: $("client-findings").checked,
-        coverage: $("client-coverage").checked,
-        pdf: asPdf,
-      }
-    : {
-        title: $("report-title").value || "Investigation report",
+        findings: $("client-findings").checked, coverage: $("client-coverage").checked,
+        pdf: asPdf }
+    : { title: $("report-title").value || "Investigation report",
         description: $("report-description").value || "",
-        bookmarks_only: $("report-bookmarks").value === "true",
-      });
+        bookmarks_only: $("report-bookmarks").value === "true" };
   closeModals();
-  say(client ? "Generating the client report…" : "Generating the report…");
   try {
     if (client) {
-      const payload = await apiPost(`/api/cases/${state.openCase.id}/client-report`,
-        JSON.parse(body));
+      // The client report is one task: it reads the workspace, groups the
+      // findings and writes the document, and the bar follows each step.
+      const payload = await runTask("report", params, "Client report");
+      if (!payload) return;
       say(`Client report: ${payload.findings} finding(s), ${payload.actions} action(s), `
         + `${payload.indicators} indicator(s) -> ${payload.name}`);
       window.open(payload.url, "_blank");
       return;
     }
-    const response = await fetch(`/api/cases/${state.openCase.id}/report`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || response.statusText);
+    const payload = await runTask("report", params, asPdf ? "Report as PDF" : "Report");
+    if (!payload) return;
     if (!asPdf) {
       say(`Report: ${payload.records} finding(s) -> ${payload.name}`);
       window.open(payload.url, "_blank");
       return;
     }
-    const converted = await apiPost(
-      `/api/cases/${state.openCase.id}/reports/${encodeURIComponent(payload.name)}/pdf`, {});
+    const converted = await runTask("report", { pdf: true, name: payload.name },
+                                    "Report as PDF");
+    if (!converted) return;
     say(`Report as PDF: ${payload.records} finding(s) -> ${converted.name}`);
     window.open(converted.url, "_blank");
   } catch (error) {

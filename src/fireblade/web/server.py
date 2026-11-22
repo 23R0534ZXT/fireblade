@@ -680,6 +680,30 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/tasks")
+    def start_task(identifier: str, payload: dict | None = None):
+        """Run a long command in the background; the window polls its percentage."""
+        body = payload or {}
+        kind = str(body.get("kind") or "")
+        try:
+            return library.start_task(identifier, kind, body.get("params") or {})
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+
+    @app.get("/api/tasks/{job}")
+    def read_task(job: str):
+        try:
+            return library.task(job)
+        except ServiceError as exc:
+            raise HTTPException(status_code=404, detail=_english(exc)) from exc
+
+    @app.post("/api/tasks/{job}/cancel")
+    def cancel_task(job: str):
+        try:
+            return library.cancel_task(job)
+        except ServiceError as exc:
+            raise HTTPException(status_code=404, detail=_english(exc)) from exc
+
     @app.get("/api/import-jobs/{job}")
     def import_job(job: str):
         try:

@@ -17,6 +17,7 @@ import os
 import re
 import tempfile
 import threading
+import time as clock
 import uuid
 from datetime import date, datetime, time, timezone
 from pathlib import Path
@@ -270,7 +271,7 @@ class Library:
 
     # -- Hayabusa ----------------------------------------------------------
 
-    def detect(self, identifier: str, min_level: str = "low") -> dict:
+    def detect(self, identifier: str, min_level: str = "low", progress=None) -> dict:
         """Run the detection engine over the case's verified EVTX copies.
 
         `Collection.reopen` restores the import record — the files, their hashes
@@ -283,11 +284,16 @@ class Library:
         reports = sorted((self.library.folder(identifier) / "collections").glob("import-*"))
         pack = ToolPack(Path(self.tools_root)) if self.tools_root else ToolPack(Path(tempfile.gettempdir()) / "pack")
         results = []
-        for entry in reports:
-            if not (entry / "collection.json").is_file():
-                continue
+        usable = [item for item in reports if (item / "collection.json").is_file()]
+        for position, entry in enumerate(usable, start=1):
+            if progress:
+                progress(f"Hayabusa · collection {position}/{len(usable)} — {entry.name}")
             self.close_case(identifier)
             collection = Collection.reopen(entry, pack)
+            if progress:
+                # Every parser message of the run goes through this hook: the rule
+                # pack, the EVTX files, the alert count.
+                collection.emit_text = progress
             has_evtx = any("EvtxECmd" in (item.get("tools") or []) for item in collection.report.get("files") or [])
             if not has_evtx:
                 continue
@@ -730,10 +736,13 @@ class Library:
             snapshots.append(AnalysisSnapshot(path, info, View(), b""))
         return snapshots, repaired
 
-    def export_package(self, identifier: str, include_sources: bool = True) -> dict:
+    def export_package(self, identifier: str, include_sources: bool = True,
+                       progress=None) -> dict:
         """Write the case as a portable .fireblade archive and hand back a URL."""
         from fireblade.core.case_package import export_package
 
+        if progress:
+            progress("Case portable · empreintes des analyses")
         data = self.library.read(identifier)
         # The snapshots come from the repaired path resolution (a case written on
         # Windows packs here even though its session stores absolute paths), and
@@ -1904,7 +1913,7 @@ class Library:
     # -- reports -----------------------------------------------------------
 
     def report(self, identifier: str, title: str, description: str = "",
-               bookmarks_only: bool = True, limit: int = 2000) -> dict:
+               bookmarks_only: bool = True, limit: int = 2000, progress=None) -> dict:
         """Build the client report with the desktop's own generator.
 
         Bookmarks are the default selection: a report is a set of explicit
@@ -1912,6 +1921,8 @@ class Library:
         """
         from fireblade.core.investigation_report import build_report, write_report
 
+        if progress:
+            progress("Rapport · lecture des analyses")
         snapshots = self._snapshots(identifier)
         if not snapshots:
             raise ServiceError("This case holds no analysis.")
@@ -1930,7 +1941,7 @@ class Library:
         return {"name": target.name, "records": report.get("records", 0),
                 "errors": report.get("errors", []), "url": f"/api/cases/{identifier}/reports/{target.name}"}
 
-    def report_pdf(self, identifier: str, name: str) -> dict:
+    def report_pdf(self, identifier: str, name: str, progress=None) -> dict:
         """The same report as a PDF: the container has no Qt, so it is written here.
 
         The HTML the desktop generated is the source: nothing is recomputed, so the
@@ -1953,7 +1964,8 @@ class Library:
 
     def client_report(self, identifier: str, title: str = "", description: str = "",
                       analyst: str = "", include_findings: bool = True,
-                      include_coverage: bool = False, pdf: bool = False) -> dict:
+                      include_coverage: bool = False, pdf: bool = False,
+                      progress=None) -> dict:
         """The document the client receives: scope, findings, actions, indicators.
 
         `core.client_report` is the desktop's own generator — the same one its
@@ -1965,6 +1977,9 @@ class Library:
         from fireblade.core import case_workspace
         from fireblade.core import client_report as client_report_core
         from fireblade.web.pdf import text_pdf
+
+        if progress:
+            progress("Rapport client · constats, actions, indicateurs")
 
         folder = self.library.folder(identifier)
         data = self.library.read(identifier)
@@ -2090,7 +2105,8 @@ class Library:
 
     def ioc_scan(self, identifier: str, index: int | None, text: str, limit: int = 2000,
                  all_analyses: bool = False, respect_filters: bool = False,
-                 include_subdomains: bool = True, declared_format: str | None = None) -> dict:
+                 include_subdomains: bool = True, declared_format: str | None = None,
+                 progress=None) -> dict:
         """Match an indicator list against one analysis, or against the whole case.
 
         Same parser and same matcher as the desktop: an observation is never a
@@ -2115,7 +2131,10 @@ class Library:
                                                if entry["index"] == int(index or 0)), {"index": 0}))]
         hits, scanned = [], 0
         per_analysis = []
-        for target_index, entry in targets:
+        for position, (target_index, entry) in enumerate(targets, start=1):
+            if progress:
+                progress(f"Chasse IOC · analyse {position}/{len(targets)} — "
+                         f"{self._label(entry.get('source_info') or {}, entry.get('path') or '')}")
             case = self._case_for(identifier, target_index)
             view = View()
             if respect_filters:
@@ -2346,14 +2365,15 @@ class Library:
     def timeline(self, identifier: str, start: int | None = None, end: int | None = None,
                  offset: int = 0, text: str = "", kind: str = "text",
                  dates: dict | None = None, include_undated: bool = False,
-                 respect_filters: bool = False) -> dict:
+                 respect_filters: bool = False, progress=None) -> dict:
         """Counts the case's rows over time with the desktop's own TimelineStore.
 
         `dates` says how each analysis is read: `{"<index>": "none" | "split" |
         "<column name>"}`. An analysis it does not name keeps the detection, which
         is what the desktop does when the analyst has not chosen a column.
         """
-        store = self._timeline_store(identifier, dates, respect_filters=respect_filters)
+        store = self._timeline_store(identifier, dates, respect_filters=respect_filters,
+                                     progress=progress)
         filters = {"include_undated": bool(include_undated)}
         if text:
             filters.update(text=text, kind=kind)
@@ -2392,7 +2412,7 @@ class Library:
         return payload
 
     def _timeline_store(self, identifier: str, dates: dict | None = None,
-                        respect_filters: bool = False):
+                        respect_filters: bool = False, progress=None):
         """The built index for this case and these date readings, cached."""
         options = self._date_options(identifier, dates or {})
         key = (identifier, self.library.read(identifier).get("revision"),
@@ -2416,7 +2436,8 @@ class Library:
         store = TimelineStore(self._timeline_dir)
         reader = WorkspaceReader(snapshots)
         store.build(reader, columns={path: spec for path, spec in options.items()},
-                    respect_filters=bool(respect_filters))
+                    respect_filters=bool(respect_filters),
+                    progress=(lambda text: progress(text)) if progress else (lambda _text: None))
         for old in list(self._timelines):
             if old[0] == identifier:
                 try:
@@ -3091,10 +3112,20 @@ class Library:
             job = self._jobs.get(job_id)
             if job is None:
                 raise ServiceError("This import job does not exist.")
+            # The collection counts its own work (files, bytes, records): the window
+            # shows that percentage instead of a spinner that says nothing.
+            snapshot = None
+            collection = job.get("collection")
+            state = getattr(collection, "progress_state", None)
+            if state is not None:
+                try:
+                    snapshot = state.snapshot()
+                except (ValueError, AttributeError):
+                    snapshot = None
             return {"job": job_id, "status": job["status"], "message": job.get("message", ""),
                     "started": job.get("started"), "finished": job.get("finished"),
                     "error": job.get("error"), "log": list(job.get("log") or [])[-40:],
-                    "result": job.get("result")}
+                    "progress": snapshot, "result": job.get("result")}
 
     def cancel_import_job(self, job_id: str) -> dict:
         with self._lock:
@@ -3117,6 +3148,142 @@ class Library:
                 collection.interrupt()
             except (OSError, ValueError):
                 pass
+        return {"job": job_id, "status": "cancelling", "cancelled": True}
+
+    # -- long tasks ---------------------------------------------------------
+
+    STEP = re.compile(r"(\d+)\s*/\s*(\d+)")
+
+    def start_task(self, identifier: str, kind: str, payload: dict | None = None) -> dict:
+        """Run a long command in the background, with the percentage the window shows.
+
+        The commands that keep a browser waiting — an IOC scan, a timeline build, a
+        Hayabusa run, a report, a portable case — share one job store and one
+        progress line. A message that carries `3/12` moves the bar; a message that
+        does not leaves it in activity mode rather than inventing a number.
+        """
+        payload = dict(payload or {})
+        work = self._task_work(identifier, kind, payload)
+        job_id = uuid.uuid4().hex
+        job = {"id": job_id, "kind": kind, "status": "running", "message": "Starting…",
+               "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+               "finished": None, "result": None, "error": None, "log": [],
+               "cancel": threading.Event(), "stop_requested": False,
+               "progress": {"done": 0, "total": 0, "percent": None, "rows": 0, "message": "Starting…"}}
+        with self._lock:
+            self._jobs[job_id] = job
+
+        def note(text):
+            text = str(text or "").strip()
+            with self._lock:
+                if text:
+                    job["message"] = text[:300]
+                    job["progress"]["message"] = text[:300]
+                    job["log"].append(text[:300])
+                    if len(job["log"]) > 200:
+                        del job["log"][:-200]
+                match = self.STEP.search(text)
+                if match:
+                    done, total = int(match.group(1)), int(match.group(2))
+                    if total > 0:
+                        job["progress"]["done"] = done
+                        job["progress"]["total"] = total
+                        job["progress"]["percent"] = round(min(99.0, 100.0 * done / total), 1)
+                stopped = job["stop_requested"] or job["cancel"].is_set()
+            if stopped:
+                raise OperationCancelled("stopped")
+
+        def run():
+            started = clock.monotonic()
+            try:
+                job["result"] = work(note)
+                with self._lock:
+                    job["status"] = "done"
+                    job["progress"]["percent"] = 100.0
+                    job["progress"]["message"] = job["progress"].get("message") or "Done"
+            except (OperationCancelled, KeyboardInterrupt):
+                with self._lock:
+                    job["status"] = "cancelled"
+                    job["message"] = "Stopped"
+            except (ServiceError, ValueError, OSError, KeyError) as exc:
+                with self._lock:
+                    job["status"] = "failed"
+                    job["error"] = _english(exc)
+                    job["message"] = job["error"]
+            except Exception as exc:                     # noqa: BLE001 - reported, not hidden
+                with self._lock:
+                    job["status"] = "failed"
+                    job["error"] = f"{type(exc).__name__}: {exc}"
+                    job["message"] = job["error"]
+            finally:
+                with self._lock:
+                    job["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                    job["progress"]["elapsed"] = round(clock.monotonic() - started, 1)
+
+        threading.Thread(target=run, name=f"task-{kind}-{job_id[:8]}", daemon=True).start()
+        return {"job": job_id, "kind": kind, "status": "running"}
+
+    def _task_work(self, identifier: str, kind: str, payload: dict):
+        """The callable a task runs, bound to the method the window already knows."""
+        if kind == "scan":
+            return lambda note: self.ioc_scan(
+                identifier, payload.get("index"), payload.get("text", ""),
+                limit=int(payload.get("limit") or 2000),
+                all_analyses=bool(payload.get("all_analyses")),
+                respect_filters=bool(payload.get("respect_filters")),
+                include_subdomains=bool(payload.get("include_subdomains", True)),
+                declared_format=payload.get("format") or None, progress=note)
+        if kind == "timeline":
+            return lambda note: self.timeline(
+                identifier, start=payload.get("start"), end=payload.get("end"),
+                offset=int(payload.get("offset") or 0), text=payload.get("text") or "",
+                kind=payload.get("kind") or "text", dates=payload.get("dates") or None,
+                include_undated=bool(payload.get("include_undated")),
+                respect_filters=bool(payload.get("respect_filters")), progress=note)
+        if kind == "detect":
+            return lambda note: self.detect(identifier, payload.get("min_level") or "low",
+                                            progress=note)
+        if kind == "report":
+            if payload.get("client"):
+                return lambda note: self.client_report(
+                    identifier, payload.get("title") or "", payload.get("description") or "",
+                    pdf=bool(payload.get("pdf")), progress=note)
+            if payload.get("pdf") and payload.get("name"):
+                return lambda note: self.report_pdf(identifier, payload["name"], progress=note)
+            return lambda note: self.report(
+                identifier, payload.get("title") or "Investigation report",
+                payload.get("description") or "",
+                bookmarks_only=bool(payload.get("bookmarks_only")), progress=note)
+        if kind == "package":
+            return lambda note: self.export_package(identifier,
+                                                    bool(payload.get("include_sources", True)),
+                                                    progress=note)
+        raise ServiceError(f"Unknown task: {kind}")
+
+    def task(self, job_id: str) -> dict:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                raise ServiceError("This task does not exist.")
+            return {"job": job_id, "kind": job.get("kind"), "status": job["status"],
+                    "message": job.get("message", ""), "started": job.get("started"),
+                    "finished": job.get("finished"), "error": job.get("error"),
+                    "progress": dict(job.get("progress") or {}),
+                    "log": list(job.get("log") or [])[-12:], "result": job.get("result")}
+
+    def cancel_task(self, job_id: str) -> dict:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None:
+                raise ServiceError("This task does not exist.")
+            if job["status"] != "running":
+                return {"job": job_id, "status": job["status"], "cancelled": False}
+            job["status"] = "cancelling"
+            job["stop_requested"] = True
+            job["message"] = "Stopping at the next checkpoint…"
+            event = job.get("cancel")
+            if event is not None:
+                event.set()
         return {"job": job_id, "status": "cancelling", "cancelled": True}
 
     def reorder_analyses(self, identifier: str, order: list[int]) -> dict:

@@ -11,6 +11,8 @@ from pathlib import Path
 WEB = Path(__file__).resolve().parents[2] / "src" / "fireblade" / "web"
 APP = WEB / "static" / "app.js"
 INDEX = WEB / "static" / "index.html"
+SERVICE = WEB / "service.py"
+SERVER = WEB / "server.py"
 
 
 def _read(path: Path) -> str:
@@ -238,7 +240,11 @@ def test_the_indicator_hunt_covers_the_case_and_reads_a_file():
         assert f'id="{name}"' in html, name
     for name in ("runIocFile", "iocOptions", "iocSummary"):
         assert f"function {name}(" in js, name
-    assert "/ioc-scan" in js and "/ioc-file" in js
+    # The scan now runs as a task: the window names the command, the service
+    # binds it to ioc_scan(); the file upload keeps its own route.
+    assert 'runTask("scan"' in js and "/ioc-file" in js
+    service = _read(SERVICE)
+    assert 'kind == "scan"' in service and "ioc_scan(" in service
     assert "<th>Analysis</th>" in html
 
 
@@ -266,7 +272,10 @@ def test_an_import_is_followed_and_can_be_stopped():
 def test_the_report_can_be_generated_as_a_pdf():
     js, html = _read(APP), _read(INDEX)
     assert 'data-act="report-build-pdf"' in html
-    assert "buildReport(true)" in js and "/pdf" in js
+    assert "buildReport(true)" in js
+    # The PDF is a second task on the same route the API exposes.
+    assert 'runTask("report", { pdf: true' in js
+    assert "report_pdf(" in _read(SERVICE) and "/pdf" in _read(SERVER)
 
 
 def test_the_display_preferences_are_remembered_and_applied():
@@ -346,7 +355,9 @@ def test_the_two_report_types_share_one_dialog():
     assert 'id="report-type"' in html and 'id="report-client-fields"' in html
     assert 'id="client-analyst"' in html and 'id="client-coverage"' in html
     assert "function showReportType(" in js
-    assert "/client-report" in js
+    assert "client: true" in js
+    assert "self.client_report(" in _read(SERVICE)
+    assert "/client-report" in _read(SERVER)
 
 
 def test_the_header_follows_the_visible_columns():

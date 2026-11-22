@@ -398,3 +398,11 @@ td .vicon { margin-right: 4px; font-size: 10px; }
 /* The three heights of the desktop's RowHeightDialog, one variable each. */
 :root{--group-height:22px;--head-height:22px}
 thead th{height:var(--head-height,22px)}
+
+/* One bar for every long command: an import, a scan, a timeline, a detection,
+   a report, a portable case. The percentage comes from the job when it knows one;
+   without a count the bar slides instead of inventing a number. */
+.progress { height: 10px; background: #e3e8ee; border-radius: 5px; overflow: hidden; margin: 8px 0 4px; }
+.progress .bar { height: 100%; width: 0%; background: #2f6fb0; transition: width .25s ease; }
+.progress .bar.indeterminate { width: 35%; background: #7aa7d4; animation: fb-slide 1.3s ease-in-out infinite; }
+@keyframes fb-slide { 0% { margin-left: 0; } 50% { margin-left: 65%; } 100% { margin-left: 0; } }

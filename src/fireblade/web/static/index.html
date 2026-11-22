@@ -50,6 +50,7 @@
 
     <div class="menu" data-for="exporter">
       <div class="item" data-act="export-csv">Export…<span class="key">Ctrl+Shift+E</span></div>
+      <div class="item" data-act="export-xlsx">Export as Excel (.xlsx)…</div>
       <div class="item" data-act="export-annotations">Export the bookmarks and notes…</div>
       <div class="item" data-act="session-save">Save the session…</div>
       <div class="item" data-act="session-open">Open a session…</div>
@@ -428,11 +429,19 @@
               <option value="high">high</option>
               <option value="critical">critical</option>
             </select>
+            <!-- The core's own vocabulary (core.case_workspace.ACTION_TYPES).
+                 The service also publishes it on /api/settings and the window
+                 rebuilds this list from there; these values are the fallback. -->
             <select class="select" id="action-type">
-              <option value="containment">containment</option>
-              <option value="investigation">investigation</option>
+              <option value="collect">collect</option>
+              <option value="analysis">analysis</option>
               <option value="remediation">remediation</option>
+              <option value="coordination">coordination</option>
+              <option value="meeting">meeting</option>
               <option value="report">report</option>
+              <option value="destruction">destruction</option>
+              <option value="legal">legal</option>
+              <option value="other">other</option>
             </select>
             <button class="btn" id="action-add">New action…</button>
             <button class="btn" id="action-delete">Delete</button>
@@ -733,7 +742,7 @@
 
 <div class="modal" id="import-modal">
   <div class="dialog" style="width:min(1040px,94vw)">
-    <h3>Import a file</h3>
+    <h3 id="import-title">Import a file</h3>
     <div class="body">
       <div class="row">
         <label>Files</label>
@@ -834,6 +843,22 @@
         it from the evidence tree, and only when its hash is still the one collected.</div>
     </div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
+</div>
+
+<!-- One text box, asked the way the desktop asks it: a dialog, not the browser's
+     own prompt (which blocks the page and cannot be styled). -->
+<div class="modal" id="ask-modal">
+  <div class="dialog" style="min-width:520px">
+    <h3 id="ask-title">Value</h3>
+    <div class="body">
+      <div class="note" id="ask-note" style="display:none"></div>
+      <div class="row"><label id="ask-label">Value</label><input id="ask-input"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="ask-ok">OK</button>
+      <button class="btn" data-act="ask-cancel">Cancel</button>
+    </div>
   </div>
 </div>
 

@@ -220,6 +220,38 @@ Still different, on purpose:
   case exists; the Host asks for a case first;
 - the desktop opens native file dialogs where the Host uses an upload or a path field.
 
+## The comparison recette, and the seven defects it closed
+
+Both editions were walked screen by screen on the same night — 212 captures on the
+Host in a real browser, 105 on the desktop's real Qt window, 326 menu entries
+opened, 52 desktop dialogs photographed — and compared domain by domain. Seven
+defects came out; each one is fixed here, with a test that names it
+(`tests/web/test_recette_regressions.py`).
+
+| # | What the analyst hit | Cause | Fix |
+| --- | --- | --- | --- |
+| 1 | The whole Host window was inert: the case list stayed empty, opening a case answered `Cannot access 'rowsRequest' before initialization` | a stray `async` before a comment in `app.js` (line 1564): the browser stopped parsing there, and every line below never ran | token removed; `scripts/dev_check.py` now parses the client with `node --check`, and the CI quality job does the same |
+| 2 | "New action…" failed with `Action type must be one of: collect, analysis, …` | the window offered `containment`/`investigation`, which the core does not know, and opened on the refused one | the window reads `/api/settings → action_types` (the core's own `ACTION_TYPES`); the static list is the fallback |
+| 3 | Closing an analysis answered `Not Found` and the tab stayed open | the client posted `/analyses/{i}/close`; the service exposes `DELETE /analyses/{i}` | the client calls DELETE; closing the **last** open analysis now says why instead of failing |
+| 4 | No way to hand a workbook to a client | the Host's export was CSV only, while both desktop export dialogs offer CSV **or** Excel | `format=xlsx` on the export route (the core already writes workbooks), and Exporter > Export as Excel (.xlsx)… |
+| 5 | French sentences in an English window (`Des preuves originales sont dans le case…`, `Analyse remplacée : …`, `L'analyse est introuvable.`) | the messages were absent from `core/i18n`, and the archive route passed the raw exception through | nine entries added (three of them templates), and the archive/package/import refusals go through `_english()` |
+| 6 | A case whose import was interrupted could not be packed (HTTP 400, `Analyse remplacée`) | the session kept the fingerprint of an analysis that had been imported again, and the packer refuses a document whose fingerprint differs | the Host packs from the files' own fingerprints and reports the corrections under `repaired`; the desktop keeps its stricter guard |
+| 7 | Importing a portable case said `(0 analysis(es))` for a case holding one | the response counted the packer's document list, not the case's tabs | the count is read from the imported case |
+
+Three behaviour differences were closed at the same time, because the comparison
+showed them next to their desktop equivalent:
+
+- the column filter now applies **while the analyst types** (it waited for Enter),
+  with the caret put back after the header is rebuilt;
+- the note, highlight, duration and filter questions use an in-window dialog
+  instead of `window.prompt()`, which blocked the page and could not be styled;
+- "View file" opens the same window under the title *Preview of a collected
+  file*, not *Import a file*.
+
+Two things are deliberately left alone: the IOC scan has no progress bar (the
+request is one call, and the message names the count when it lands), and the
+desktop keeps refusing to open a session whose analysis was replaced.
+
 ## How this page is checked
 
 `scripts/desktop_surface.py` regenerates the inventory:

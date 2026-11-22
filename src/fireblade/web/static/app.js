@@ -2,6 +2,7 @@
 "use strict";
 
 const PAGE = 200;
+let filterTimer = null;
 const $ = (id) => document.getElementById(id);
 
 const state = {
@@ -380,7 +381,15 @@ function renderAnalysesDialog(entries) {
     node.addEventListener("click", async () => {
       const index = Number(node.dataset.analysisClose);
       try {
-        await apiPost(`/api/cases/${state.openCase.id}/analyses/${index}/close`, {});
+        // The service closes with DELETE on the analysis itself; there is no
+        // "/close" route, and posting to one answered 404 while the tree kept
+        // listing the tab.
+        const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${index}`,
+                                     { method: "DELETE", headers: { Accept: "application/json" } });
+        if (!response.ok) {
+          const detail = await response.json().catch(() => ({}));
+          throw new Error(detail.detail || response.statusText);
+        }
         closeModals();
         await openCase(state.openCase.id);
         say("Analysis closed in the case");
@@ -539,6 +548,24 @@ function csvOptions() {
            encoding: $("preview-encoding").value || "auto" };
 }
 
+/* The action types are the core's, not the window's: the first version offered
+   "containment"/"investigation", which the service refuses, so the New action
+   button could never succeed with the type it opened on. */
+async function fillActionTypes() {
+  const select = $("action-type");
+  if (!select || select.dataset.ready) return;
+  let payload = {};
+  try { payload = await api("/api/settings"); } catch (_) { payload = {}; }
+  const types = Array.isArray(payload.action_types) ? payload.action_types : [];
+  if (types.length) {
+    const current = select.value;
+    select.innerHTML = types.map((name) =>
+      `<option value="${escapeHtml(name)}">${escapeHtml(String(name).replace(/_/g, " "))}</option>`).join("");
+    if (types.includes(current)) select.value = current;
+  }
+  select.dataset.ready = "1";
+}
+
 const EXCEL_SUFFIX = /\.(xlsx|xlsm|xls)$/i;
 
 /* The desktop's import asks which sheet; a workbook is a table, not an artefact. */
@@ -571,6 +598,7 @@ function chosenSheet(payload) {
 function openImportDialog() {
   if (!state.openCase) { say("Open a case before importing", true); return; }
   previewState.items = [];
+  $("import-title").textContent = "Import a file";
   $("preview-input").value = "";
   $("preview-server").value = "";
   $("preview-delimiter").value = "";
@@ -1370,10 +1398,11 @@ function resetWidths() {
   say("Column widths reset to their defaults");
 }
 
-function openAddFilter() {
+async function openAddFilter() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
   const names = state.columns.map((name, index) => `${index - 1}=${name}`).join(", ");
-  const answer = window.prompt(`Filter on which column? Give its name or its index.\n${names}`);
+  const answer = await ask({ title: "Add a filter", label: "Column, by name or by index",
+                             note: names, placeholder: "Score" });
   if (!answer) return;
   const text = answer.trim();
   let column = state.columns.findIndex((name) => name.toLowerCase() === text.toLowerCase()) - 1;
@@ -1382,7 +1411,8 @@ function openAddFilter() {
     say(`No column is named ${text}`, true);
     return;
   }
-  const value = window.prompt(`Value to find in ${state.columns[column + 1]}?`, "");
+  const value = await ask({ title: "Add a filter",
+                            label: `Value to find in ${state.columns[column + 1]}` });
   if (value === null) return;
   state.filters = state.filters.filter((item) => item.column !== column);
   if (value.trim()) state.filters.push({ column, operator: "contains", value: value.trim() });
@@ -1462,6 +1492,9 @@ async function viewCollectedFile() {
       </tbody></table></div>`;
     previewState.items = [];
     $("preview-import").disabled = true;
+    // The same window shows a preview: saying "Import a file" over a read-only
+    // view of an already collected file was the wrong title.
+    $("import-title").textContent = "Preview of a collected file";
     $("import-modal").classList.add("show");
   } catch (error) {
     say(error.message, true);
@@ -1560,8 +1593,7 @@ async function uploadPortableCase(event) {
   }
 }
 
-/* The case as one .fireblade archive: every byte verified by the core's own packer. */
-async /* The session file is the desktop's own: the same tabs, the same views, read by the
+/* The session file is the desktop's own: the same tabs, the same views, read by the
    same core module on either side. */
 async function saveSession() {
   if (!state.openCase) { say("Open a case first", true); return; }
@@ -1603,7 +1635,10 @@ async function exportPortable() {
   try {
     const payload = await apiPost(`/api/cases/${state.openCase.id}/package`,
       { include_sources: true });
-    say(`Portable case: ${payload.name} — ${(payload.bytes / 1048576).toFixed(1)} MB`);
+    const refreshed = (payload.repaired || []).length
+      ? ` — ${payload.repaired.length} analysis fingerprint(s) refreshed from their file`
+      : "";
+    say(`Portable case: ${payload.name} — ${(payload.bytes / 1048576).toFixed(1)} MB${refreshed}`);
     window.location.href = payload.url;
   } catch (error) {
     say(error.message, true);
@@ -1616,9 +1651,12 @@ async function noteSelection(mode) {
   const ids = selectedIds();
   if (!ids.length) { say("Select a row first", true); return; }
   const limited = ids.slice(0, 200);
-  const text = window.prompt(mode === "replace"
-    ? "Note that replaces the one on the selected rows:"
-    : "Note to add to the selected rows:", "");
+  const text = await ask({
+    title: mode === "replace" ? "Replace the selection's notes" : "Add a note to the selection",
+    label: mode === "replace"
+      ? "Note that replaces the one on the selected rows"
+      : "Note to add to the selected rows",
+    note: `${limited.length} row(s)` });
   if (text === null || !text.trim()) return;
   try {
     const current = mode === "append"
@@ -1642,7 +1680,9 @@ async function noteSelection(mode) {
 async function bookmarkNote() {
   const ids = selectedIds();
   if (!ids.length) { say("Select a row first", true); return; }
-  const text = window.prompt("Note for this bookmark (empty keeps a plain mark):", "");
+  const text = await ask({ title: "Bookmark / note",
+                           label: "Note for this bookmark",
+                           note: "Empty keeps a plain mark." });
   if (text === null) return;
   await markSelection(text.trim());
 }
@@ -4428,15 +4468,17 @@ function renderTimeline(payload) {
 
 /* The window by two dates, the way the desktop's "Duration…" asks for them. The
    dates are read as the rows are: ISO, and the end of the day when only a day is given. */
-function timelineDuration() {
+async function timelineDuration() {
   const payload = timelineState.payload;
   if (!payload || !payload.extent) { say("Build the timeline first", true); return; }
   const band = (ns) => utcLabel(ns).slice(0, 16).replace(" ", "T").replace("Z", "");
-  const from = window.prompt(`From (UTC, ISO — leave empty for ${band(payload.extent.start)})`,
-                             band(payload.extent.start));
+  const from = await ask({ title: "Show a duration",
+                           label: `From (UTC, ISO — empty keeps ${band(payload.extent.start)})`,
+                           value: band(payload.extent.start) });
   if (from === null) return;
-  const to = window.prompt(`To (UTC, ISO — leave empty for ${band(payload.extent.end)})`,
-                           band(payload.extent.end));
+  const to = await ask({ title: "Show a duration",
+                         label: `To (UTC, ISO — empty keeps ${band(payload.extent.end)})`,
+                         value: band(payload.extent.end) });
   if (to === null) return;
   const parse = (text, fallback) => {
     if (!text.trim()) return fallback;
@@ -4869,9 +4911,10 @@ function markText(text, term) {
   }
 }
 
-function openHighlight() {
+async function openHighlight() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
-  const answer = window.prompt("Highlight matches (empty = disable)", state.highlight || "");
+  const answer = await ask({ title: "Highlight text", label: "Text to highlight",
+                             note: "Empty turns the highlight off.", value: state.highlight || "" });
   if (answer === null) return;
   state.highlight = answer.trim();
   renderGrid();
@@ -5057,7 +5100,9 @@ function showDetails(row) {
     button.addEventListener("click", async () => {
       const column = Number(button.dataset.cellnote);
       const current = notesForRow(id)[String(column)] || "";
-      const note = window.prompt("Cell note", current);
+      const note = await ask({ title: "Cell note",
+                               label: `Note for ${state.columns[column + 1] || "this cell"}`,
+                               value: current });
       if (note === null) return;
       try {
         await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/cellnote`,
@@ -5224,6 +5269,37 @@ function applyGrouping() {
   $("group-label").textContent = `Grouped by ${state.columns[column + 1]}`;
   closeModals();
   loadRows(true);
+}
+
+/* ---------- one text box ---------- */
+
+/* window.prompt blocks the whole page — the CDP capture stops answering and the
+   browser's own box cannot be styled. This is the same question, asked in the
+   window, and it resolves null when the analyst cancels. */
+const askState = { resolve: null };
+
+function ask(options) {
+  const settings = options || {};
+  return new Promise((resolve) => {
+    $("ask-title").textContent = settings.title || "Value";
+    $("ask-label").textContent = settings.label || "Value";
+    $("ask-input").value = settings.value === undefined || settings.value === null
+      ? "" : String(settings.value);
+    $("ask-input").placeholder = settings.placeholder || "";
+    const note = $("ask-note");
+    note.textContent = settings.note || "";
+    note.style.display = settings.note ? "" : "none";
+    askState.resolve = resolve;
+    $("ask-modal").classList.add("show");
+    setTimeout(() => { $("ask-input").focus(); $("ask-input").select(); }, 30);
+  });
+}
+
+function answerAsk(value) {
+  const resolve = askState.resolve;
+  askState.resolve = null;
+  $("ask-modal").classList.remove("show");
+  if (resolve) resolve(value);
 }
 
 /* ---------- palette ---------- */
@@ -5528,6 +5604,18 @@ function wire() {
     if (input.value.trim() || parsed.operator === "empty" || parsed.operator === "not_empty") {
       state.filters.push({ column, ...parsed });
     }
+    // The desktop filters while the analyst types; this window used to wait for
+    // Enter. Every render rebuilds the filter row, so the caret is put back.
+    const caret = input.selectionStart;
+    clearTimeout(filterTimer);
+    filterTimer = setTimeout(async () => {
+      await loadRows(true);
+      const again = document.querySelector(`#head input[data-filter="${column}"]`);
+      if (!again) return;
+      again.focus();
+      const at = Math.min(caret === null ? again.value.length : caret, again.value.length);
+      again.setSelectionRange(at, at);
+    }, 320);
   });
 
   $("body").addEventListener("contextmenu", (event) => {
@@ -5643,6 +5731,14 @@ function wire() {
 
   $("rule-column").addEventListener("change", loadRuleValues);
   $("palette-input").addEventListener("input", renderPalette);
+  $("ask-input").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") { event.preventDefault(); answerAsk($("ask-input").value); }
+    if (event.key === "Escape") { event.preventDefault(); answerAsk(null); }
+  });
+  $("ask-modal").addEventListener("click", (event) => {
+    if (event.target.id === "ask-modal") answerAsk(null);
+  });
+
   $("palette-input").addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
@@ -5833,6 +5929,7 @@ function wire() {
 }
 
 function closeModals() {
+  if (askState.resolve) answerAsk(null);
   document.querySelectorAll(".modal").forEach((node) => node.classList.remove("show"));
   document.querySelectorAll(".menu").forEach((node) => node.classList.remove("show"));
 }
@@ -5900,6 +5997,11 @@ async function act(name, node) {
       if (!state.openCase) { say("No case open", true); break; }
       window.location.href = rowsUrl().replace("/rows?", "/export?");
       break;
+    case "export-xlsx":
+      if (!state.openCase) { say("No case open", true); break; }
+      window.location.href = rowsUrl().replace("/rows?", "/export?") + "&format=xlsx";
+      say("Excel export: the same rows, as a workbook");
+      break;
     case "import-file": openImportDialog(); break;
     case "import-evidence": openImportDialog(); break;
     case "import-view-file": await viewCollectedFile(); break;
@@ -5913,7 +6015,7 @@ async function act(name, node) {
     case "preview-path": await previewServerPath(); break;
     case "layout-export": exportLayout(); break;
     case "layout-import": $("layout-file").click(); break;
-    case "timeline-duration": timelineDuration(); break;
+    case "timeline-duration": await timelineDuration(); break;
     case "timeline-dates": $("timeline-dates").scrollIntoView({ block: "nearest" }); break;
     case "timeline-previous": timelinePage(-1); break;
     case "timeline-next": timelinePage(1); break;
@@ -5949,7 +6051,7 @@ async function act(name, node) {
     case "detrules-open": openRulesDialog(); break;
     case "details-toggle": toggleDetails(); break;
     case "reset-widths": resetWidths(); break;
-    case "add-filter": openAddFilter(); break;
+    case "add-filter": await openAddFilter(); break;
     case "clear-filters": clearEveryFilter(); break;
     case "note-selection": await noteSelection("append"); break;
     case "note-replace": await noteSelection("replace"); break;
@@ -5957,7 +6059,7 @@ async function act(name, node) {
     case "expression-andor": openExpressionDialog(); break;
     case "show-timeline": showTab("timeline"); break;
     case "show-evtx": showTab("evtx"); break;
-    case "highlight-text": openHighlight(); break;
+    case "highlight-text": await openHighlight(); break;
     case "rowheight-apply": applyRowHeightPrefs(); break;
     case "derived-check": checkDerivedColumns(); break;
     case "session-save": saveSession(); break;
@@ -6053,6 +6155,8 @@ async function act(name, node) {
       loadRows(true); break;
     case "display-settings": $("settings-modal").classList.add("show"); break;
     case "settings-close": closeModals(); break;
+    case "ask-ok": answerAsk($("ask-input").value); break;
+    case "ask-cancel": answerAsk(null); break;
     case "compat-open": await openCompatibility(); break;
     case "compat-reload": await loadCompatibility(); break;
     case "plugin-install": $("plugin-input").click(); break;
@@ -6080,6 +6184,7 @@ async function boot() {
   applyScale();
   applyRowHeight();
   wire();
+  fillActionTypes();
   try {
     const health = await api("/health");
     $("version").textContent = `Fireblade ${health.version}`;

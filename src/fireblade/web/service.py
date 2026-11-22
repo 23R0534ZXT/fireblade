@@ -532,6 +532,7 @@ class Library:
 
     def settings(self) -> dict:
         """What this instance runs with, and which readers are actually present."""
+        from fireblade.core.case_workspace import ACTION_TYPES
         from fireblade.core.collection import PARSERS
 
         pack = ToolPack(self.tools_root) if self.tools_root else None
@@ -547,6 +548,10 @@ class Library:
             "cases_root": str(self.root),
             "tools_root": str(self.tools_root or ""),
             "page_size": Case.PAGE_SIZE,
+            # The action types come from the core, not from the window: a list
+            # written twice is a list that drifts (the window offered
+            # "containment", which the core refuses).
+            "action_types": list(ACTION_TYPES),
             "readers": readers,
             "readers_ready": sum(1 for value in readers.values() if value),
             "hayabusa": hayabusa,
@@ -687,14 +692,53 @@ class Library:
 
     # -- portable case -----------------------------------------------------
 
+    def _living_snapshots(self, identifier: str) -> tuple[list, list[dict]]:
+        """The case's analyses with the fingerprint their files carry today.
+
+        A session written before an analysis was imported again keeps the old
+        fingerprint, and the packer then refuses it ("Analyse remplacée"). The file
+        is what the package carries, so its own info goes in and the correction is
+        reported instead of blocking the export of a whole case.
+        """
+        data = self.library.read(identifier)
+        snapshots, repaired = [], []
+        for entry in self._analyses(data):
+            if not entry["found"]:
+                continue
+            path = Path(entry["path"])
+            try:
+                case = Case(path, read_only=True)
+            except (OSError, ValueError) as exc:
+                raise ServiceError(f"The analysis cannot be read: {path}") from exc
+            try:
+                info = dict(case.info or {})
+            finally:
+                try:
+                    case.close()
+                except Exception:
+                    pass
+            recorded = entry.get("source_info") or {}
+            # Only the source fingerprint matters: a label or a path that differs
+            # because the case moved is not a repaired analysis, and reporting it
+            # as one would cry wolf on every case written on Windows.
+            fingerprint = ("sha256", "size", "rows")
+            if recorded and any(str(recorded.get(key, "")) != str(info.get(key, ""))
+                                for key in fingerprint):
+                repaired.append({"path": str(path),
+                                 "recorded": str(recorded.get("sha256", "")),
+                                 "now": str(info.get("sha256", ""))})
+            snapshots.append(AnalysisSnapshot(path, info, View(), b""))
+        return snapshots, repaired
+
     def export_package(self, identifier: str, include_sources: bool = True) -> dict:
         """Write the case as a portable .fireblade archive and hand back a URL."""
         from fireblade.core.case_package import export_package
 
         data = self.library.read(identifier)
-        # The snapshots come from the repaired path resolution, so a case written
-        # on Windows packs here even though its session stores C:\… paths.
-        documents = self._snapshots(identifier)
+        # The snapshots come from the repaired path resolution (a case written on
+        # Windows packs here even though its session stores absolute paths), and
+        # from the files themselves, so a stale session cannot block the export.
+        documents, repaired = self._living_snapshots(identifier)
         active = 0 if documents else -1
         # The archive is written outside the case folder: a file inside it would
         # change while it is being packed, and the packer refuses that.
@@ -706,6 +750,7 @@ class Library:
                                 max_bytes=4 * 1024**4)
         return {"name": target.name, "bytes": target.stat().st_size,
                 "url": f"/api/cases/{identifier}/package/download",
+                "repaired": repaired,
                 "result": {k: str(v)[:120] for k, v in (result or {}).items()}}
 
     def package_file(self, identifier: str) -> Path:
@@ -720,8 +765,17 @@ class Library:
 
         result = import_package(self.library, Path(source), max_bytes=4 * 1024**4)
         case = result.get("case") or {}
+        # Write then read: the packer's own document list is not the case's tab
+        # list (it reports 0 for a case that holds one analysis), so the count
+        # comes from the case as the catalogue sees it.
+        written = len(result.get("documents") or [])
+        if case.get("id"):
+            try:
+                written = len(self.case(case["id"]).get("analyses") or [])
+            except (ServiceError, OSError, ValueError, KeyError):
+                pass
         return {"id": case.get("id"), "name": case.get("name"),
-                "analyses": len(result.get("documents") or [])}
+                "analyses": written}
 
     # -- cell notes --------------------------------------------------------
 
@@ -2601,6 +2655,11 @@ class Library:
         if not 0 <= index < len(snapshots):
             raise ServiceError("This analysis does not exist in the case.")
         remaining = [item for position, item in enumerate(snapshots) if position != index]
+        # A case must keep one open analysis: its catalogue entry is the session,
+        # and a session with no open tab is refused when it is written back.
+        if not remaining:
+            raise ServiceError("This is the last open analysis: the case keeps it. "
+                               "Open another analysis first, or close the case.")
         if not remaining:
             new_active = -1
         elif active <= index:
@@ -3318,8 +3377,13 @@ class Library:
 
     def export(self, identifier: str, index: int, search: str = "",
                sort: int | None = None, descending: bool = False,
-               filters: list[tuple[int, str, str]] | None = None) -> Path:
-        """Write a CSV next to the OS temporary directory and return its path."""
+               filters: list[tuple[int, str, str]] | None = None,
+               as_xlsx: bool = False) -> Path:
+        """Write the rows to a temporary file and return its path.
+
+        The desktop's two export dialogs offer CSV **or** Excel; the portal offers
+        the same choice, so the same arithmetic reads the same file on either side.
+        """
         case = self._case_for(identifier, index)
         view = View(search=search or "", filters=[])
         for column, operator, value in filters or ():
@@ -3328,7 +3392,8 @@ class Library:
         if sort is not None and 0 <= sort < len(case.headers):
             view.sort_column, view.descending = sort, bool(descending)
             view.sorts = [SortKey(sort, "text", bool(descending))]
-        target = Path(tempfile.gettempdir()) / f"fireblade-{uuid.uuid4().hex}.csv"
+        suffix = ".xlsx" if as_xlsx else ".csv"
+        target = Path(tempfile.gettempdir()) / f"fireblade-{uuid.uuid4().hex}{suffix}"
         with case.lock:
             case.export(str(target), view, include_annotations=True)
         return target
@@ -3346,12 +3411,23 @@ def _condition_payload(condition) -> dict:
 
 
 def _english(text):
-    """A core message in the edition's language, unchanged when it is not known."""
+    """A core message in the edition's own language, whatever the process says.
+
+    `translate()` follows the *current* language: a process that switched to French
+    (a test, a desktop module in the same interpreter) would hand French back to an
+    English window. `english()` is the reference form, independent of that switch.
+    """
+    if not text:
+        return ""
     try:
-        from fireblade.core.i18n import translate
-        return translate(str(text)) if text else ""
-    except (ImportError, ValueError):
-        return str(text or "")
+        from fireblade.core.i18n import english
+        return english(str(text))
+    except (ImportError, ValueError, AttributeError):
+        try:
+            from fireblade.core.i18n import translate
+            return translate(str(text))
+        except (ImportError, ValueError):
+            return str(text)
 
 
 def parse_filters(values) -> list[tuple[int, str, str]]:

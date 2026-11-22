@@ -20,6 +20,12 @@ from functools import lru_cache
 PLACEHOLDER = "{}"
 
 EN = {
+    "Analyse absente ou dupliquée : {}": "Analysis missing or duplicated: {}",
+    "Analyse remplacée : {}": "Analysis replaced: {}",
+    "Des preuves originales sont dans le case. Déplacez-les avant de libérer son espace.": "Original evidence is still in the case. Move it out before releasing its space.",
+    "Format de session Fireblade inconnu": "Unknown Fireblade session format",
+    "L’analyse est introuvable.": "The analysis cannot be found.",
+    "Onglet actif invalide": "Invalid active tab",
     "Suppression impossible": "Delete failed",
     "le fichier a changé depuis la collecte : suppression refusée": "the file has changed since the collection: deletion refused",
     "Ouverture": "Opening",
@@ -32,6 +38,9 @@ EN = {
     "Chemin non sûr, fichier spécial ou ZIP chiffré": "Unsafe path, special file or encrypted ZIP",
     "Ligne 1 supérieure à 8 Mio ; lecture interrompue explicitement": "Line 1 larger than 8 MiB; read interrupted explicitly",
     "Moteur intégré absent : SQLECmd. La construction du pack forensic est nécessaire.": "Built-in engine missing: SQLECmd. The forensic pack must be built.",
+    "Une session doit contenir de 0 à 1000 analyses": "A session holds 0 to 1000 analyses",
+    "Une session doit contenir de 1 à 1000 analyses": "A session holds 1 to 1000 analyses",
+    "Une session doit contenir de 1 à 1000 analyses fermées": "A session holds 1 to 1000 closed analyses",
     "{} ligne(s) non structurée(s), conservée(s) en texte brut": "{} unstructured line(s), kept as raw text",
     "Enregistrement Linux tronqué à {} ; ABI attendu : glibc LE {} octets": "Linux record truncated at {}; expected ABI: glibc LE {} bytes",
     "Chemin non sûr, lien ou fichier spécial": "Unsafe path, link or special file",

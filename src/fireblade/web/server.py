@@ -9,7 +9,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, Response, UploadF
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from fireblade.web.service import Library, ServiceError, parse_filters
+from fireblade.web.service import Library, ServiceError, _english, parse_filters
 
 STATIC = Path(__file__).with_name("static")
 
@@ -474,14 +474,15 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         try:
             return library.archive_case(identifier)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            # The core writes its refusals in French; the window is English.
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
 
     @app.post("/api/cases/{identifier}/restore")
     def restore_case(identifier: str):
         try:
             return library.restore_case(identifier)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
 
     @app.get("/api/settings")
     def settings():
@@ -495,7 +496,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         try:
             return library.export_package(identifier, bool((payload or {}).get("include_sources", True)))
         except (ServiceError, ValueError, OSError, KeyError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
 
     @app.get("/api/cases/{identifier}/package/download")
     def package_file(identifier: str):
@@ -518,7 +519,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         try:
             return library.import_package(target)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
         finally:
             try:
                 target.unlink(missing_ok=True)
@@ -1011,11 +1012,21 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
 
     @app.get("/api/cases/{identifier}/analyses/{index}/export")
     def export(identifier: str, index: int, search: str = "", sort: int | None = None,
-               descending: bool = False, filter: list[str] = Query(default=[])):
-        target = library.export(identifier, index, search=search, sort=sort,
-                                descending=descending, filters=parse_filters(filter))
-        name = f"fireblade-{identifier[:8]}-analysis-{index}.csv"
-        return FileResponse(target, media_type="text/csv", filename=name)
+               descending: bool = False, format: str = "csv",
+               filter: list[str] = Query(default=[])):
+        wanted = (format or "csv").lower()
+        if wanted not in ("csv", "xlsx"):
+            raise HTTPException(status_code=400, detail="The export format is csv or xlsx.")
+        try:
+            target = library.export(identifier, index, search=search, sort=sort,
+                                    descending=descending, filters=parse_filters(filter),
+                                    as_xlsx=wanted == "xlsx")
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+        name = f"fireblade-{identifier[:8]}-analysis-{index}.{wanted}"
+        media = ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                 if wanted == "xlsx" else "text/csv")
+        return FileResponse(target, media_type=media, filename=name)
 
     @app.get("/")
     def index():

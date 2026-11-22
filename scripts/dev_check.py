@@ -62,6 +62,24 @@ def check_lint():
     run([*command, "check", "src", "scripts", "tests"])
 
 
+def check_client_syntax():
+    """The Host's client is JavaScript, and ruff does not read a line of it.
+
+    One stray token in app.js left the whole Host window inert — the page rendered,
+    no script ran, the case list stayed empty — while every pytest test was green.
+    node is the only parser available here; without it the gate says so instead of
+    pretending the client was checked.
+    """
+    scripts = sorted((ROOT / "src" / "fireblade" / "web" / "static").glob("*.js"))
+    node = shutil.which("node")
+    if not node:
+        print("ATTENTION : node absent du PATH, le client JavaScript n'est pas verifie")
+        return
+    for script in scripts:
+        run([node, "--check", str(script)])
+    print(f"client JavaScript : {len(scripts)} fichier(s) sans erreur de syntaxe")
+
+
 def check_smoke():
     """A real window, not just an import: the menus, panels and docks are built."""
     code = (
@@ -115,6 +133,7 @@ def main(argv=None):
     options = parser.parse_args(argv)
     check_version()
     check_lint()
+    check_client_syntax()
     check_smoke()
     if not options.quick:
         check_tests(options.platform)

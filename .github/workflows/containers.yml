@@ -47,7 +47,12 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}-host
+          # Two names, one image: `fireblade` is the short one the README promises —
+          # `docker run -p 8080:8080 ghcr.io/<owner>/fireblade` — and `fireblade-host`
+          # keeps the name the deploy notes have always used.
+          images: |
+            ghcr.io/${{ github.repository }}
+            ghcr.io/${{ github.repository }}-host
           tags: |
             type=raw,value=edge,enable={{is_default_branch}}
             type=sha,prefix=sha-

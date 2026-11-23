@@ -63,9 +63,11 @@ jobs:
         with:
           python-version: '${{ matrix.python }}'
           cache: pip
-          cache-dependency-path: requirements/runtime.txt
+          cache-dependency-path: requirements/development.txt
       - run: >-
-          python -m pip install --only-binary=:all: -r requirements/runtime.txt pytest
+          python -m pip install --only-binary=:all: -r requirements/development.txt
+        # The whole development set: the suite imports the web driver, which needs
+        # fastapi and httpx. A missing one is a collection error for every test.
       - name: Full source suite (full_validation adds the 3.11/3.13 matrix)
         shell: pwsh
         run: |

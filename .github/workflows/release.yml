@@ -1,0 +1,51 @@
+name: Publish the Host release
+
+# A version tag publishes the Host edition: that version's notes, and the images the
+# containers workflow pushes under the same tag. The desktop is frozen at 0.7.9 — no
+# executable is built or attached here.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release notes and images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write the notes of this version
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          tag = os.environ["TAG"].lstrip("v")
+          repo = os.environ.get("GITHUB_REPOSITORY", "").lower()
+          notes = Path("docs/development/RELEASE-NOTES.md").read_text(encoding="utf-8")
+          sections = re.split(r"^# ", notes, flags=re.MULTILINE)
+          body = next((item for item in sections if item.startswith(f"Fireblade {tag} ")), None)
+          if body is None:
+              raise SystemExit(f"no release notes for {tag} in docs/development/RELEASE-NOTES.md")
+          title, _, rest = body.partition("\n")
+          text = [rest.strip(), "", "---", "", "## Container images — Host edition", "",
+                  "```bash", f"docker run -p 8080:8080 ghcr.io/{repo}:{tag}", "```", "",
+                  f"One container per case (the 0.8 shape): `ghcr.io/{repo}-driver:{tag}`, "
+                  "started with its compose — see `deploy/host/README.md`.", "",
+                  "The Windows edition is frozen at 0.7.9 and is not part of this release."]
+          Path("release-body.md").write_text("\n".join(text).strip() + "\n", encoding="utf-8")
+          Path("release-title.txt").write_text(title.strip(), encoding="utf-8")
+          print(title.strip())
+          PY
+      - name: Create the release
+        run: gh release create "$TAG" --title "$(cat release-title.txt)" --notes-file release-body.md
+      - name: Say what was published
+        run: gh release view "$TAG" --json url,tagName,name --jq '"\(.tagName) \(.name) — \(.url)"'

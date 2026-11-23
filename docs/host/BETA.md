@@ -21,9 +21,9 @@ version number that means something. The Host edition has none of that yet. Sayi
   no deprecation window.
 - **The interface's details.** A screen that exists today may move tomorrow; the
   parity page tracks the intent, not a contract.
-- **The deployment.** The image is rebuilt from the repository; there is no published
-  container, no versioned tag, no upgrade path. Rebuilding picks up whatever `main`
-  holds.
+- **The deployment.** The image is published at `ghcr.io/23r0534zxt/fireblade`, with a
+  version tag per release. There is still no upgrade path: pulling a new tag replaces the
+  service, and the case format on disk is the only compatibility promise.
 - **Performance at scale.** The measured runs are honest but small: a 31 574-row EVTX,
   a 333-file collection. No claim is made beyond them.
 - **Support.** There is none. If it breaks, the repository is the documentation.
@@ -45,5 +45,6 @@ desktop's own defects into the open: the seven fixed after the recette are liste
 [HOST-AUDIT.md](HOST-AUDIT.md), and three of them were in the client the desktop's
 tests never load.
 
-The edition becomes something else the day it has a versioned image, a browser test in
-CI and its own release notes. That day is not today.
+It now has a versioned image, its own release notes and a driver that gives each case its
+container. It becomes something else the day a browser test runs in CI — that day is not
+today.

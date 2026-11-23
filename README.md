@@ -11,13 +11,14 @@ detection results grouped into findings, an attack graph, and a case that can be
 archived and reopened. Everything runs locally: no server, no upload, no cloud account,
 no API key.
 
-The same engine ships in two editions.
+The same engine ships in two editions: the **Host**, maintained, and the **Desktop**,
+frozen at 0.7.9 — its window still works, but it no longer receives changes.
 
 ## Two editions, one engine
 
 | | **Desktop** | **Host** |
 | --- | --- | --- |
-| Status | **stable — 0.7.9** | **beta of a beta — 0.8.0 on `main`** |
+| Status | **frozen — 0.7.9** | **maintained — 0.8.0** |
 | Runs on | Windows x64, one unzipped folder | a Linux container, a browser |
 | Interface | Qt window, English | web page, English |
 | Cases | on disk, portable `.fireblade` | one container per case, same format |
@@ -38,7 +39,10 @@ The same engine ships in two editions.
 filters, row details: the desktop's Qt window on the left, the Host's page on the right,
 each on its own case.*
 
-## Desktop edition — stable
+## Desktop edition — frozen at 0.7.9
+
+The Windows window is no longer updated: this is its last published build, kept for the
+cases it already reads. Everything new happens in the Host edition below.
 
 **[Download Fireblade 0.7.9 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip)**
 · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.7.9)
@@ -78,15 +82,15 @@ same case format — without Qt, without a Windows session. One analyst, one con
 per case, a browser as the window.
 
 ```bash
-# the published image: nothing to clone, nothing to build
-docker run -d --name fireblade-host -p 8080:8080 \
-    -v /srv/fireblade/cases:/data/cases \
-    -v /srv/fireblade/plugins:/data/plugins \
-    ghcr.io/23r0534zxt/fireblade-host:latest
+docker run -p 8080:8080 ghcr.io/23r0534zxt/fireblade:latest
 # then open http://localhost:8080
 ```
 
-`:edge` follows `main`; `:0.8.0` and `:latest` are the tagged releases. Building from
+That is the whole install: nothing to clone, nothing to build. Without `-v` the cases live
+inside the container; to keep them, add `-v /srv/fireblade/cases:/data/cases` (and
+`-v /srv/fireblade/plugins:/data/plugins` for the presentation plugins).
+
+`:latest` is the newest release, `:0.8.0` pins one, `:edge` follows `main`. Building from
 source stays one command: `docker build -t fireblade:host .`.
 
 One container per case — the 0.8 shape: a driver creates a container for each case opened,

@@ -83,7 +83,10 @@ jobs:
   publish:
     name: Publish standalone prototype
     needs: [quality, tests, qualification, visual, native_storage, many_documents, native_readers]
-    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_release && !inputs.profile_only) }}
+    # The Windows edition is frozen at 0.7.9: a version tag publishes the Host edition
+    # (release.yml and the container images), never this executable. The manual
+    # dispatch stays as the only way to publish it again.
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_release && !inputs.profile_only }}
     runs-on: windows-latest
     permissions:
       contents: write

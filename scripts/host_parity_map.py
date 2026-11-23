@@ -2,7 +2,7 @@
 
 One entry per label `scripts/parity_inventory.py` finds in the Qt sources, with
 the Host edition's status for it. The file is the source of truth:
-`docs/development/HOST-PARITY.md` is rendered from it, and
+`docs/host/HOST-PARITY.md` is rendered from it, and
 `tests/web/test_host_parity.py` refuses a claim that points at no test.
 
 Statuses
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     import json
     from pathlib import Path
 
-    path = Path(__file__).resolve().parents[1] / "docs" / "development" / "host-parity.json"
+    path = Path(__file__).resolve().parents[1] / "docs" / "host" / "host-parity.json"
     path.write_text(json.dumps({"format": "fireblade-host-parity", "version": 1,
                                 "commands": build()}, ensure_ascii=False, indent=2) + "\n",
                     encoding="utf-8")

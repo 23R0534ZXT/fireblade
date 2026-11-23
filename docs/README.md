@@ -3,6 +3,14 @@
 Fireblade ships with its guides inside the executable; this folder is the same material,
 plus what a contributor needs.
 
+## The two editions
+
+| Need | Document |
+|---|---|
+| Use the Windows edition | [Desktop](desktop/README.md) |
+| Understand the Host edition, its audit and its **beta of a beta** status | [Host](host/README.md) |
+| Build and run the Host image | [deploy/host](../deploy/host/README.md) |
+
 ## Use it
 
 | Need | Document |

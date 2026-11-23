@@ -48,7 +48,7 @@ La commande qui répond à « est-ce que tout tient encore » :
 
 ## 2 bis. Où en est la parité fonctionnelle (21 novembre 2026)
 
-`docs/development/HOST-AUDIT.md` est la carte de référence : il compte des
+`docs/host/HOST-AUDIT.md` est la carte de référence : il compte des
 **fonctionnalités**, pas des commandes. Dernier état : **0 fonctionnalité absente,
 1 partielle**.
 
@@ -108,7 +108,7 @@ Trois commits, chacun vérifié par un appel réel **et** un passage navigateur 
 
 ## 4. La parité, et comment elle se lit
 
-`docs/development/HOST-PARITY.md` est **généré**, jamais écrit à la main :
+`docs/host/HOST-PARITY.md` est **généré**, jamais écrit à la main :
 
 ```
 python scripts/host_parity_report.py           # régénère la page

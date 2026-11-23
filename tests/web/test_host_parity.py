@@ -1,6 +1,6 @@
 """The parity map must not lie: a claim points at a test that exists.
 
-`docs/development/host-parity.json` says what the Host edition does with every
+`docs/host/host-parity.json` says what the Host edition does with every
 label of the desktop's Qt sources. These tests hold it to three rules — nothing
 found in the sources is unaccounted for, nothing in the map is invented, and a
 covered claim names a test that really exists in this repository.
@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-MAP = ROOT / "docs" / "development" / "host-parity.json"
+MAP = ROOT / "docs" / "host" / "host-parity.json"
 UI = ROOT / "src" / "fireblade" / "ui"
 TESTS = ROOT / "tests"
 
@@ -100,7 +100,7 @@ def test_the_published_page_matches_the_map():
         import host_parity_report
     finally:
         sys.path.pop(0)
-    page = ROOT / "docs" / "development" / "HOST-PARITY.md"
+    page = ROOT / "docs" / "host" / "HOST-PARITY.md"
     assert page.is_file(), "HOST-PARITY.md is missing"
     assert page.read_text(encoding="utf-8") == host_parity_report.render(_map()), (
         "HOST-PARITY.md is stale: run scripts/host_parity_report.py")

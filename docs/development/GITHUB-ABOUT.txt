@@ -1,0 +1,1 @@
+Local DFIR workspace for parsing forensic artifacts, investigating timelines, hunting IOCs, and preserving case evidence.

@@ -1,4 +1,4 @@
-"""Render docs/development/HOST-PARITY.md from the parity map.
+"""Render docs/host/HOST-PARITY.md from the parity map.
 
 The map (`host-parity.json`) says, for every label the Qt sources expose, what the
 Host edition does with it. This script turns that into the page a reader opens,
@@ -16,8 +16,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MAP = ROOT / "docs" / "development" / "host-parity.json"
-OUT = ROOT / "docs" / "development" / "HOST-PARITY.md"
+MAP = ROOT / "docs" / "host" / "host-parity.json"
+OUT = ROOT / "docs" / "host" / "HOST-PARITY.md"
 
 
 def load() -> dict:

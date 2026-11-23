@@ -6311,7 +6311,8 @@ async function boot() {
   fillActionTypes();
   try {
     const health = await api("/health");
-    $("version").textContent = `Fireblade ${health.version}`;
+    // The edition says what it is: a beta of a beta, next to the version.
+    $("version").textContent = `Fireblade ${health.version} · Host beta`;
   } catch (_) { /* the version is cosmetic */ }
   await loadCases();
   showTab(state.cases.length === 1 ? "analyses" : "cases");

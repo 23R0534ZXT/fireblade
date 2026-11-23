@@ -78,25 +78,37 @@ same case format — without Qt, without a Windows session. One analyst, one con
 per case, a browser as the window.
 
 ```bash
-# from the repository root
-docker build -t fireblade:host .
-docker run --rm -p 8080:8080 \
+# the published image: nothing to clone, nothing to build
+docker run -d --name fireblade-host -p 8080:8080 \
     -v /srv/fireblade/cases:/data/cases \
     -v /srv/fireblade/plugins:/data/plugins \
-    fireblade:host
+    ghcr.io/23r0534zxt/fireblade-host:latest
 # then open http://localhost:8080
 ```
+
+`:edge` follows `main`; `:0.8.0` and `:latest` are the tagged releases. Building from
+source stays one command: `docker build -t fireblade:host .`.
 
 One container per case — the 0.8 shape: a driver creates a container for each case opened,
 mounts that case's volume alone, and takes the container and the volume with the case when
 it is erased. The certificate is written outside the volumes.
 
 ```bash
-FIREBLADE_VOLUMES=/srv/fireblade/volumes \
-FIREBLADE_CERTIFICATES=/srv/fireblade/certificates \
-docker compose -f deploy/host/docker-compose.driver.yml up -d --build
+docker network create fireblade-cases 2>/dev/null || true
+docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /srv/fireblade/volumes:/data/volumes \
+    -v /srv/fireblade/certificates:/data/certificates \
+    ghcr.io/23r0534zxt/fireblade-driver:latest \
+    python -m fireblade.web.agency serve \
+      --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
+      --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
+      --host 0.0.0.0 --port 8080
 # the driver's page lists the cases; each opens under /case/<id>/
 ```
+
+From a clone, the same driver comes with its compose:
+`docker compose -f deploy/host/docker-compose.driver.yml up -d --build`.
 
 The image carries the .NET 10 runtime and the thirteen pinned readers, so it reads the
 same artifacts as the desktop. A case written by the desktop opens as soon as its folder

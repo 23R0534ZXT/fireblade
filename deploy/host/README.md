@@ -13,6 +13,16 @@ the root — this folder only keeps the entry point and the instructions.
 | [`Dockerfile.driver`](Dockerfile.driver) | the driver: docker CLI, FastAPI, httpx and the core modules that destroy a case — no readers, no .NET, no DuckDB |
 | [`docker-compose.driver.yml`](docker-compose.driver.yml) | one container per case: the driver mounts the socket, the volumes and the certificates folder |
 
+## Published images
+
+```bash
+ghcr.io/23r0534zxt/fireblade-host     # the case image
+ghcr.io/23r0534zxt/fireblade-driver   # the driver: one container per case
+```
+
+`:edge` follows `main`; `:X.Y.Z`, `:X.Y` and `:latest` come from a version tag. The
+workflow is `.github/workflows/containers.yml`; nothing is built on a machine of ours.
+
 ## Build
 
 ```bash
@@ -44,12 +54,19 @@ Open <http://localhost:8080>. The health check is `/health`; the API documents i
 ## One container per case
 
 ```bash
-docker build -f deploy/host/Dockerfile.driver -t fireblade:driver .
-
-FIREBLADE_VOLUMES=/srv/fireblade/volumes \
-FIREBLADE_CERTIFICATES=/srv/fireblade/certificates \
-docker compose -f deploy/host/docker-compose.driver.yml up -d
+docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /srv/fireblade/volumes:/data/volumes \
+    -v /srv/fireblade/certificates:/data/certificates \
+    ghcr.io/23r0534zxt/fireblade-driver:latest \
+    python -m fireblade.web.agency serve \
+      --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
+      --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
+      --host 0.0.0.0 --port 8080
 ```
+
+From a clone: `docker compose -f deploy/host/docker-compose.driver.yml up -d --build`
+(built as `fireblade:driver`).
 
 The driver creates `fireblade-case-<id8>` containers from the `fireblade:host` image, joins
 them to the private `fireblade-cases` network and serves each case under `/case/<id>/`. It

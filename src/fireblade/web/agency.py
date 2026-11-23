@@ -458,7 +458,7 @@ def page(catalogue: dict, *, version: str = "", error: str = "") -> str:
             ".caseswrap td .ref{font:9px monospace;color:var(--muted);line-height:10px}"
             ".caseswrap td.when{color:var(--muted)}"
             ".caseswrap td:first-child{line-height:13px;height:30px}"
-            "a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}"
+            "a{color:var(--text);text-decoration:none}a:hover{text-decoration:underline}"
             "</style></head><body><div class=\"wrap\">"
             "<div class=\"topline\"><span class=\"brand\">Fireblade <small>Host — one container per case"
             "</small></span><span class=\"grow\"></span>"

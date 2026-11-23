@@ -17,10 +17,10 @@ The same engine ships in two editions.
 
 | | **Desktop** | **Host** |
 | --- | --- | --- |
-| Status | **stable — 0.7.9** | **beta of a beta** |
+| Status | **stable — 0.7.9** | **beta of a beta — 0.8.0 on `main`** |
 | Runs on | Windows x64, one unzipped folder | a Linux container, a browser |
 | Interface | Qt window, English | web page, English |
-| Cases | on disk, portable `.fireblade` | on a mounted folder, same format |
+| Cases | on disk, portable `.fireblade` | one container per case, same format |
 | For | one analyst at a workstation | one analyst (or a small team) on a server |
 
 > ### The Host edition is a beta of a beta
@@ -74,8 +74,8 @@ release notes, architecture, plugins.
 ## Host edition — beta of a beta
 
 The desktop's engine behind HTTP: the same `src/fireblade/core`, the same readers, the
-same case format — without Qt, without a Windows session. One analyst per container,
-cases in a folder, a browser as the window.
+same case format — without Qt, without a Windows session. One analyst, one container
+per case, a browser as the window.
 
 ```bash
 # from the repository root
@@ -85,6 +85,17 @@ docker run --rm -p 8080:8080 \
     -v /srv/fireblade/plugins:/data/plugins \
     fireblade:host
 # then open http://localhost:8080
+```
+
+One container per case — the 0.8 shape: a driver creates a container for each case opened,
+mounts that case's volume alone, and takes the container and the volume with the case when
+it is erased. The certificate is written outside the volumes.
+
+```bash
+FIREBLADE_VOLUMES=/srv/fireblade/volumes \
+FIREBLADE_CERTIFICATES=/srv/fireblade/certificates \
+docker compose -f deploy/host/docker-compose.driver.yml up -d --build
+# the driver's page lists the cases; each opens under /case/<id>/
 ```
 
 The image carries the .NET 10 runtime and the thirteen pinned readers, so it reads the

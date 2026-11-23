@@ -584,3 +584,23 @@ def test_the_filter_input_keeps_the_operator():
     js = _read(APP)
     assert "function filterPrefix(" in js
     assert 'eq: "= "' in js and 'ne: "!= "' in js
+
+
+def test_the_destroy_dialog_says_what_lives_outside_the_case():
+    """A portable package left in exports/ is the case: the dialog must say so."""
+    js = _read(APP)
+    assert "/residue`" in js, "the dialog asks the service what the case left outside"
+    assert "outside the folder" in js
+    assert "payload.outside" in js, "the result counts what was destroyed outside"
+
+
+def test_every_request_carries_the_case_prefix():
+    """Served under /case/<id>/, a bare path would reach the driver's own root."""
+    js, page = _read(APP), _read(INDEX)
+    assert "function url(" in js, "one place has to know the prefix"
+    assert not re.search(r"fetch\(\s*(?!url\()", js), "a fetch bypasses url()"
+    navigations = re.findall(r"window\.location(?:\.href)?\s*=\s*([^;]+);", js)
+    assert navigations, "downloads are navigations too: they must be prefixed"
+    assert all(value.strip().startswith("url(") for value in navigations), navigations
+    # The shell's own assets are relative, or the prefix never reaches them.
+    assert 'href="static/app.css"' in page and 'src="static/app.js"' in page

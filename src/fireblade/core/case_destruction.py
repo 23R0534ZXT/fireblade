@@ -10,9 +10,15 @@ disappears: the caller gives a destination outside, and the document is written 
 the folder is removed. A failure on one file does not stop the others; the record says which
 files were overwritten, verified and removed, and which were not, and the case folder is only
 removed when nothing is left inside it.
+
+A case also leaves things outside its folder: the portable packages it exported, its archive,
+the annex of a certificate. `outside_entries` names them, and `destroy_case(..., extras=...)`
+overwrites and removes them in the same pass, so the folder is not the only thing that
+disappears.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 from pathlib import Path
 
@@ -70,9 +76,79 @@ def collect(folder, *, limit=MAX_CASE_FILES):
     return files, folders, links
 
 
+def outside_entries(root, case_id):
+    """The library files that belong to this case but live outside its folder.
+
+    Exports, archives and the certificate annex carry the case's eight-character
+    prefix, which is what the library uses to name what it writes on a case's behalf.
+    A name that does not start with that prefix is somebody else's: it is never
+    returned, so a mistyped identifier cannot reach another case's files.
+    """
+    root = Path(root)
+    prefix = (case_id or "").strip()
+    if len(prefix) < 8:
+        return []
+    prefix = prefix[:8]
+    found = []
+    for name in ("exports", "archives"):
+        folder = root/name
+        if folder.is_dir():
+            found.extend(sorted(path for path in folder.iterdir()
+                                if path.name.startswith(prefix)))
+    annex = root/"certificates"/f"annex-{prefix}"
+    if annex.is_dir():
+        found.append(annex)
+    return found
+
+
+def _outside_files(paths):
+    """Every regular file behind the given paths, following no link."""
+    files = []
+    for value in paths:
+        path = Path(value)
+        if path.is_symlink():
+            continue
+        if path.is_dir():
+            for current, _directories, names in os.walk(path, followlinks=False):
+                for name in sorted(names):
+                    item = Path(current)/name
+                    if not item.is_symlink():
+                        files.append(str(item))
+        elif path.is_file():
+            files.append(str(path))
+    return files
+
+
+def _attachment_images(attachments, case_folder):
+    """The photos themselves, read before the annex that holds them is destroyed.
+
+    A certificate annex lives outside the case folder, so it goes with the residue; the
+    document is built afterwards and would find nothing to embed. Keys are the recorded
+    SHA-256 values, which is how the certificate names them.
+    """
+    images = {}
+    for item in attachments or []:
+        digest = item.get('sha256') or ''
+        candidates = []
+        if item.get('path'):
+            candidates.append(Path(item['path']))
+        if case_folder and item.get('relative'):
+            candidates.append(Path(case_folder)/item['relative'])
+        for source in candidates:
+            try:
+                data = source.read_bytes()
+            except OSError:
+                continue
+            if digest and hashlib.sha256(data).hexdigest() != digest:
+                continue
+            images[digest or hashlib.sha256(data).hexdigest()] = data
+            break
+    return images
+
+
 def destroy_case(folder, method, *, operator='', witness='', reason='', progress=None,
                  cancel=lambda: False, certificate_path, case_name='', case_id='',
-                 attachments=()):
+                 attachments=(), extras=()):
     """Overwrite every file of a case, remove the folders, and write the certificate outside.
 
     Returns the certificate record. The victim folder is removed only when it is empty, so an
@@ -104,6 +180,7 @@ def destroy_case(folder, method, *, operator='', witness='', reason='', progress
         # Photos of the media and of the witness, already fingerprinted by
         # store_attachments: the certificate embeds them as data URIs.
         record['attachments'] = list(attachments)
+    images = _attachment_images(record.get('attachments'), root)
     if links:
         record['skipped_links'] = links[:200]
     failed = [item for item in record['files'] if not item.get('deleted')]
@@ -119,9 +196,42 @@ def destroy_case(folder, method, *, operator='', witness='', reason='', progress
                     raise
     record['removed_folders'] = removed_folders
     record['folder_removed'] = not root.exists()
+    # What the case left outside its folder goes too: a portable package or an
+    # archive of the case is the case, and a certificate annex holds its photos.
+    paths = _outside_files(extras)
+    outside = []
+    if paths:
+        progress(f'Résidus du case : {len(paths)} fichier(s) hors du dossier')
+        plan_root = Path(os.path.commonpath([str(Path(path).resolve()) for path in paths]))
+        if not plan_root.is_dir():
+            plan_root = plan_root.parent
+        extra_entries = basis.plan(paths, plan_root, limit=MAX_CASE_FILES)
+        extra_record = basis.destroy(extra_entries, method, operator=operator, witness=witness,
+                                     reason=reason, progress=report, cancel=cancel)
+        for item in extra_record['files']:
+            item['outside'] = True
+        outside = extra_record['files']
+        # Only a folder this case owns disappears; exports/ and archives/ belong
+        # to the library and stay once they are empty.
+        for value in extras:
+            path = Path(value)
+            if path.is_dir() and path.exists():
+                for current, directories, _names in os.walk(path, topdown=False):
+                    for name in directories:
+                        try:
+                            (Path(current)/name).rmdir()
+                        except OSError:
+                            pass
+                try:
+                    path.rmdir()
+                except OSError:
+                    pass
+        record['files'] = outside + record['files']
+    record['outside'] = len(outside)
     progress('Procès-verbal : '+str(certificate_path))
     document = build_certificate(record, case_name=case_name, case_id=case_id,
-                                 case_folder=None if record['folder_removed'] else root)
+                                 case_folder=None if record['folder_removed'] else root,
+                                 images=images)
     write_certificate(certificate_path, document, pdf=certificate_path.suffix.casefold() == '.pdf')
     record['certificate'] = str(certificate_path)
     return record

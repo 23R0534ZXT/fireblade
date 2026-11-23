@@ -1,0 +1,62 @@
+# Fireblade Host — the driver, and one container per case.
+#
+#   FIREBLADE_VOLUMES=/srv/fireblade/volumes \
+#   FIREBLADE_CERTIFICATES=/srv/fireblade/certificates \
+#   docker compose -f deploy/host/docker-compose.driver.yml up -d --build
+#
+# Then open http://localhost:8080: the driver's page lists the cases and opens each one
+# under /case/<id>/, where the case container serves its own application.
+#
+# The driver mounts the docker socket: that is root on the host. It is the price of
+# "one container per case" on a single analyst's machine, and it is why the Server
+# edition will run the driver on the host instead of in a container.
+services:
+  fireblade-driver:
+    image: fireblade:driver
+    build:
+      context: ../..
+      dockerfile: deploy/host/Dockerfile.driver
+    container_name: fireblade-driver
+    ports:
+      - "${FIREBLADE_PORT:-8080}:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      # One folder per case, created by the driver; the certificates live outside them.
+      - "${FIREBLADE_VOLUMES:-/srv/fireblade/volumes}:/data/volumes"
+      - "${FIREBLADE_CERTIFICATES:-/srv/fireblade/certificates}:/data/certificates"
+    networks:
+      - fireblade-cases
+    # The driver reads /data/... and asks docker for a mount: the daemon only knows
+    # the host's own paths, so both names are given here.
+    command:
+      - python
+      - -m
+      - fireblade.web.agency
+      - serve
+      - --volumes
+      - /data/volumes
+      - --host-volumes
+      - "${FIREBLADE_VOLUMES:-/srv/fireblade/volumes}"
+      - --certificates
+      - /data/certificates
+      - --host-certificates
+      - "${FIREBLADE_CERTIFICATES:-/srv/fireblade/certificates}"
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+    environment:
+      TZ: "${TZ:-Europe/Paris}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  fireblade-cases:
+    # A private network the case containers join: the driver reaches them by name,
+    # and nothing of a case is published on the host.
+    name: fireblade-cases

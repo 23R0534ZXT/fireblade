@@ -96,6 +96,14 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/cases/{identifier}/residue")
+    def residue(identifier: str):
+        """What the case left outside its folder: shown before the destruction."""
+        try:
+            return library.residue(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/cases/{identifier}/session")
     def save_session(identifier: str):
         try:

@@ -1,0 +1,51 @@
+# Fireblade Host driver — one container per case.
+#
+# The driver creates, proxies and destroys the case containers. It analyses nothing,
+# so this image carries neither the .NET runtime, nor the readers, nor DuckDB: the
+# case image (Dockerfile) does that, and this one only needs to talk to docker.
+#
+#   docker build -f deploy/host/Dockerfile.driver -t fireblade:driver .
+#
+# It is started with the docker socket mounted; see deploy/host/docker-compose.driver.yml.
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
+
+WORKDIR /app
+
+# The docker CLI: the driver creates and destroys the case containers through it, and
+# the socket is mounted when it runs. The static binary needs no package repository.
+ARG DOCKER_CLI_VERSION=29.0.0
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && curl -fsSL "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_CLI_VERSION}.tgz" -o /tmp/docker.tgz \
+    && tar -xzf /tmp/docker.tgz -C /tmp \
+    && mv /tmp/docker/docker /usr/local/bin/docker \
+    && rm -rf /tmp/docker /tmp/docker.tgz /var/lib/apt/lists/*
+
+COPY requirements-driver.txt ./
+RUN pip install --no-cache-dir -r requirements-driver.txt
+
+COPY pyproject.toml README.md ./
+# Only what the driver imports: the core modules that describe and destroy a case.
+COPY src/fireblade/__init__.py ./src/fireblade/
+COPY src/fireblade/core ./src/fireblade/core
+COPY src/fireblade/web/__init__.py ./src/fireblade/web/
+COPY src/fireblade/web/agency.py ./src/fireblade/web/
+# The client's stylesheet: the driver's page wears the same palette, not a bare table.
+COPY src/fireblade/web/static ./src/fireblade/web/static
+
+# The socket is root on the host, whatever this image does: the driver is the one
+# process that has that privilege (Host edition, one analyst). It holds nothing else.
+USER root
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=4).status==200 else 1)"
+
+CMD ["python", "-m", "fireblade.web.agency", "serve", \
+     "--volumes", "/data/volumes", "--certificates", "/data/certificates", \
+     "--host", "0.0.0.0", "--port", "8080"]

@@ -10,6 +10,8 @@ the root — this folder only keeps the entry point and the instructions.
 | [`../../docker-compose.yml`](../../docker-compose.yml) | one service, port `${FIREBLADE_PORT:-8080}`, one volume for the cases and one for the plugins |
 | [`../../requirements-core.txt`](../../requirements-core.txt) | the core's Python dependencies, without Qt |
 | [`../../.dockerignore`](../../.dockerignore) | what the build must not carry |
+| [`Dockerfile.driver`](Dockerfile.driver) | the driver: docker CLI, FastAPI, httpx and the core modules that destroy a case — no readers, no .NET, no DuckDB |
+| [`docker-compose.driver.yml`](docker-compose.driver.yml) | one container per case: the driver mounts the socket, the volumes and the certificates folder |
 
 ## Build
 
@@ -38,6 +40,22 @@ docker run -d --name fireblade-host -p 8080:8080 \
 
 Open <http://localhost:8080>. The health check is `/health`; the API documents itself at
 `/api/docs`.
+
+## One container per case
+
+```bash
+docker build -f deploy/host/Dockerfile.driver -t fireblade:driver .
+
+FIREBLADE_VOLUMES=/srv/fireblade/volumes \
+FIREBLADE_CERTIFICATES=/srv/fireblade/certificates \
+docker compose -f deploy/host/docker-compose.driver.yml up -d
+```
+
+The driver creates `fireblade-case-<id8>` containers from the `fireblade:host` image, joins
+them to the private `fireblade-cases` network and serves each case under `/case/<id>/`. It
+needs the docker socket — that is root on the host, and the one privileged process of this
+edition (see `docs/host/HOST-EDITION.md`). The certificates are written outside the volumes,
+which is why an erasure can take the whole volume with it.
 
 ## Smoke test of an image
 

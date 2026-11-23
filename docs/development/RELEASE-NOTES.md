@@ -1,3 +1,44 @@
+# Fireblade 0.8.0 — one container per case
+
+## The Host gives each case its own container
+
+- Opening a case creates a container that mounts that case's volume and nothing else: the
+  case, its exports, its archives and its certificate annexes live in one folder, and the
+  container sees no other case. A small driver — its own image, no Qt, no .NET, no readers —
+  lists the cases, creates them, opens them and proxies `/case/<id>/` to the right container.
+- The client knows the prefix: every path it asks for goes through one function, so a case
+  served under `/case/<id>/` works exactly as before. With no prefix the single-container
+  Host behaves unchanged.
+- The number of running containers is capped (`--max-open`, three by default): the least
+  recently used one is stopped, not destroyed, so reopening it is instant.
+- A container whose case is gone is removed when the driver starts; a folder that is not a
+  case is reported on the page and never deleted.
+
+## Erasing a case erases everything it left behind
+
+- Destroying a case now also destroys what it left outside its folder: the portable packages
+  in `exports/`, the archives, and the annex holding the certificate's photos. The dialog says
+  how many files that is before the analyst commits, and the result counts them.
+- The certificate still carries its photos: they are read before the annex is destroyed, so
+  the annex disappears and the document keeps its evidence.
+- In the Host client, a case is **erased**, not archived: one button, one verb. The duplicate
+  menu entries ("Destroy the evidence", "Delete the case") are one entry again.
+
+## A fresh Host starts on a folder it can write
+
+- Mounting a cases folder from the host hands the container a directory owned by whoever
+  created it — usually root — while the service runs as uid 10001, so "New case" failed
+  with `Permission denied`. The image now takes ownership of `/data/cases` and
+  `/data/plugins` once at startup, then drops to 10001 before the service starts.
+
+## Verified on this machine
+
+- Two cases opened at once: two containers, each serving its own case only, no mixing.
+- Erasing one of them, three DoD passes: its container, volume, folder, portable package and
+  archive gone, the certificate written outside at `/srv/fbcertificates`, the other case still
+  open in its container and still readable.
+- The one-container Host, reinstalled from the same tree, still serves its nine cases.
+
 # Fireblade 0.7.9 — deleting a case, and imports that say what they did
 
 ## Deleting a case destroys it, not just its tabs

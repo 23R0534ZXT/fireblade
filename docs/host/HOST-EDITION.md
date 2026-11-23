@@ -34,6 +34,37 @@ Three editions share one repository:
   reads it back through the service.
 - `requirements-core.txt`, `Dockerfile`, `docker-compose.yml`, `.dockerignore`.
 
+## One container per case (0.8.0)
+
+The Host used to serve every case from a single container. A case is now an object of its
+own: `src/fireblade/web/agency.py` is a driver that creates one container per case opened,
+proxies `/case/<id>/` to it, and erases the container with the case.
+
+```
+navigateur ──► driver :8080 ──► fireblade-case-<id8> (image fireblade:host)
+                 │                    montage : /srv/fireblade/volumes/<id> → /data/library
+                 └─ socket docker, /srv/fireblade/certificates
+```
+
+- **One volume per case** — `/srv/fireblade/volumes/<id>/` holds the case folder, `exports/`,
+  `archives/` and the certificate annexes. The volume *is* the case's library root, which is
+  how the service reads a case directory; the container mounts it and nothing else.
+- **The driver reads nothing else than the volumes** and analyses nothing: its image
+  (`deploy/host/Dockerfile.driver`, ~320 MB) carries the docker CLI, FastAPI, httpx and the
+  core modules that describe and destroy a case — no Qt, no .NET, no readers, no DuckDB.
+- **The prefix is the client's**: every absolute path goes through `url()`, which prepends
+  `/case/<id>` when the page is served under it and leaves it alone otherwise, so the
+  single-container Host is unchanged.
+- **Erasing is the driver's job**: the prefixed `POST /api/cases/<id>/destroy` is answered by
+  the driver — the case cannot destroy its own container. It stops the container, runs the
+  same `core.case_destruction` as the desktop (residue included), writes the certificate
+  into `/srv/fireblade/certificates` and removes the volume.
+- **The ceiling**: `--max-open` (three by default) bounds the running containers; the oldest
+  unused is stopped. Reopening is a start, not a rebuild.
+- **Docker paths and uids**: a containerised driver asks the daemon for host paths
+  (`--host-volumes`, `--host-certificates`), and hands each new volume to the case image's
+  user (`--case-uid`, 10001) — without that, the case lists as a permission error.
+
 ## Running it
 
 ```bash
@@ -44,11 +75,20 @@ python -m fireblade.web count --root /data/cases
 python -m fireblade.web serve --root /data/cases --port 8080
 ```
 
-In Docker:
+In Docker, one container for the whole library (the 0.7 shape):
 
 ```bash
 FIREBLADE_CASES=/srv/fireblade/cases docker compose up -d
 # http://localhost:8080
+```
+
+One container per case, through the driver:
+
+```bash
+FIREBLADE_VOLUMES=/srv/fireblade/volumes \
+FIREBLADE_CERTIFICATES=/srv/fireblade/certificates \
+docker compose -f deploy/host/docker-compose.driver.yml up -d --build
+# http://localhost:8080 — the driver's page lists the cases
 ```
 
 The image installs `requirements-core.txt` (no PySide6) on `python:3.12-slim`, adds

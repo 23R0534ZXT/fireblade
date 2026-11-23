@@ -2,3 +2,7 @@
 pytest>=8,<10
 psutil>=6,<8
 ruff==0.14.3
+# The driver (fireblade.web.agency) proxies the case containers; the tests import it,
+# and the case image installs the service's own dependencies from requirements-core.txt.
+fastapi>=0.115,<1
+httpx>=0.27,<1

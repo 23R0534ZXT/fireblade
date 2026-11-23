@@ -46,7 +46,14 @@ RUN useradd --create-home --uid 10001 fireblade \
 # dll it cannot stat is a reader it reports missing.
 RUN chown -R fireblade:fireblade /opt/fireblade/tools \
     && chmod -R a+rX /opt/fireblade/tools
-USER fireblade
+
+# A cases folder mounted from the host arrives owned by whoever created it — usually
+# root — and a case could not be created there. The entrypoint hands it to the service's
+# user once, then drops to that user before the first import; running as root is only
+# that first step, never how the service runs.
+COPY deploy/host/docker-entrypoint.sh /usr/local/bin/fireblade-entrypoint
+RUN chmod 0755 /usr/local/bin/fireblade-entrypoint
+ENTRYPOINT ["/usr/local/bin/fireblade-entrypoint"]
 
 EXPOSE 8080
 

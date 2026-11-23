@@ -5,6 +5,16 @@ const PAGE = 200;
 let filterTimer = null;
 const $ = (id) => document.getElementById(id);
 
+/* A case is served by its own container under /case/<32 hex>/. Every absolute path
+   the client asks for goes through url(), which leaves it alone when there is no
+   prefix: the one-container Host behaves exactly as before. */
+const CASE_PREFIX = (window.location.pathname.match(/^\/case\/[0-9a-f]{32}/) || [""])[0];
+function url(path) {
+  return typeof path === "string" && path.startsWith("/") && !path.startsWith("//")
+    ? CASE_PREFIX + path
+    : path;
+}
+
 const state = {
   cases: [],
   openCase: null,      // case detail
@@ -384,7 +394,7 @@ function renderAnalysesDialog(entries) {
         // The service closes with DELETE on the analysis itself; there is no
         // "/close" route, and posting to one answered 404 while the tree kept
         // listing the tab.
-        const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${index}`,
+        const response = await fetch(url(`/api/cases/${state.openCase.id}/analyses/${index}`),
                                      { method: "DELETE", headers: { Accept: "application/json" } });
         if (!response.ok) {
           const detail = await response.json().catch(() => ({}));
@@ -453,7 +463,7 @@ async function restoreHistory(name) {
 /* ---------- small helpers ---------- */
 
 async function api(path) {
-  const response = await fetch(path, { headers: { Accept: "application/json" } });
+  const response = await fetch(url(path), { headers: { Accept: "application/json" } });
   if (!response.ok) {
     let detail = response.statusText;
     try {
@@ -466,7 +476,7 @@ async function api(path) {
 }
 
 async function apiAbortable(path, signal) {
-  const response = await fetch(path, { headers: { Accept: "application/json" }, signal });
+  const response = await fetch(url(path), { headers: { Accept: "application/json" }, signal });
   if (!response.ok) {
     let detail = response.statusText;
     try {
@@ -729,7 +739,7 @@ async function previewFiles(files) {
     if (options.delimiter) body.append("delimiter", options.delimiter);
     if (options.encoding) body.append("encoding", options.encoding);
     try {
-      const response = await fetch(`/api/cases/${state.openCase.id}/preview-upload`, { method: "POST", body });
+      const response = await fetch(url(`/api/cases/${state.openCase.id}/preview-upload`), { method: "POST", body });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || payload.error || response.statusText);
       previewState.items.push({ name: file.name, payload });
@@ -855,7 +865,7 @@ async function startImportJob(source, layout, options, sheet) {
   if (options.delimiter) body.append("delimiter", options.delimiter);
   if (options.encoding) body.append("encoding", options.encoding);
   if (sheet) body.append("sheet", sheet);
-  const response = await fetch(`/api/cases/${state.openCase.id}/import-jobs`, { method: "POST", body });
+  const response = await fetch(url(`/api/cases/${state.openCase.id}/import-jobs`), { method: "POST", body });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || response.statusText);
   return payload.job;
@@ -977,11 +987,28 @@ async function saveCase() {
   }
 }
 
-function openDestroyDialog() {
-  if (!state.openCase) { say("Open the case you want to destroy", true); return; }
-  $("destroy-target").textContent = `Case: ${state.openCase.name} — type that name to confirm.`;
+async function openDestroyDialog() {
+  if (!state.openCase) { say("Open the case you want to erase", true); return; }
+  const caseId = state.openCase.id;
+  const name = state.openCase.name;
   $("destroy-confirm").value = "";
+  $("destroy-target").textContent = `Case: ${name} — type that name to confirm.`;
   $("destroy-modal").classList.add("show");
+  /* A portable package or an archive of this case is the case: the dialog says
+     how much of it lives outside the folder, before the analyst commits. */
+  try {
+    const response = await fetch(url(`/api/cases/${caseId}/residue`));
+    if (!response.ok) return;
+    const residue = await response.json();
+    if (!state.openCase || state.openCase.id !== caseId) return;
+    const names = (residue.items || []).map(item => `${item.folder}/${item.name}`);
+    const shown = names.slice(0, 3).join(", ") + (names.length > 3 ? ", …" : "");
+    $("destroy-target").textContent = residue.files
+      ? `Case: ${name} — type that name to confirm. ${residue.files} file(s) outside the folder (${shown}) are erased with it.`
+      : `Case: ${name} — type that name to confirm. Nothing was left outside the folder.`;
+  } catch (error) {
+    /* The destruction still works without the inventory; the note stays plain. */
+  }
 }
 
 /* The photos go with the case, not with the browser: they are stored beside it and
@@ -991,13 +1018,13 @@ async function uploadDestroyPhotos(files) {
   for (const file of files) {
     const data = new FormData();
     data.append("file", file);
-    const response = await fetch(`/api/cases/${state.openCase.id}/preview-upload`,
+    const response = await fetch(url(`/api/cases/${state.openCase.id}/preview-upload`),
                                  { method: "POST", body: data });
     if (!response.ok) throw new Error(await response.text());
     const saved = await response.json();
     sources.push(saved.path || saved.source);
   }
-  const response = await fetch(`/api/cases/${state.openCase.id}/destruction/attachments`, {
+  const response = await fetch(url(`/api/cases/${state.openCase.id}/destruction/attachments`), {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sources }),
   });
@@ -1020,46 +1047,24 @@ async function runDestroy() {
   };
   if (confirmation !== state.openCase.name) { say("The typed name does not match", true); return; }
   closeModals();
-  say("Destroying the case — this takes a moment…");
+  say("Erasing the case — this takes a moment…");
   try {
-    const response = await fetch(`/api/cases/${state.openCase.id}/destroy`,
+    const response = await fetch(url(`/api/cases/${state.openCase.id}/destroy`),
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || response.statusText);
     state.openCase = null;
     await loadCases();
     showTab("cases");
-    say(`Case destroyed: ${payload.files} file(s), certificate ${payload.certificate}`);
+    const outside = payload.outside ? `, ${payload.outside} outside the folder` : "";
+    say(`Case erased: ${payload.files} file(s)${outside}, certificate ${payload.certificate}`);
   } catch (error) {
     say(error.message, true);
   }
 }
 
-async function archiveCase() {
-  if (!state.openCase) { say("Open the case to archive first", true); return; }
-  if (!window.confirm(`Archive "${state.openCase.name}" and free its working folder?`)) return;
-  say("Archiving the case…");
-  try {
-    const payload = await apiPost(`/api/cases/${state.openCase.id}/archive`, {});
-    state.openCase = null;
-    await loadCases();
-    showTab("cases");
-    say(`Archived: ${Math.round(payload.bytes / 1024 / 1024)} MB kept, ${Math.round(payload.removed_bytes / 1024 / 1024)} MB freed`);
-  } catch (error) { say(error.message, true); }
-}
-
-async function restoreCase() {
-  if (!state.openCase) { say("Open the archived case first", true); return; }
-  say("Restoring…");
-  try {
-    const payload = await apiPost(`/api/cases/${state.openCase.id}/restore`, {});
-    await loadCases();
-    say(`Case restored: ${payload.analyses} analysis(es)`);
-  } catch (error) { say(error.message, true); }
-}
-
 async function apiPut(path, body) {
-  const response = await fetch(path, {
+  const response = await fetch(url(path), {
     method: "PUT", headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body ?? {}) });
   if (!response.ok) {
@@ -1074,7 +1079,7 @@ async function apiPut(path, body) {
 }
 
 async function apiDelete(path) {
-  const response = await fetch(path, { method: "DELETE", headers: { Accept: "application/json" } });
+  const response = await fetch(url(path), { method: "DELETE", headers: { Accept: "application/json" } });
   if (!response.ok) {
     let detail = response.statusText;
     try {
@@ -1087,7 +1092,7 @@ async function apiDelete(path) {
 }
 
 async function apiPost(path, body) {
-  const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" },
+  const response = await fetch(url(path), { method: "POST", headers: { "Content-Type": "application/json" },
                                        body: JSON.stringify(body) });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.detail || response.statusText);
@@ -1095,7 +1100,7 @@ async function apiPost(path, body) {
 }
 
 async function apiPatch(path, body) {
-  const response = await fetch(path, { method: "PATCH", headers: { "Content-Type": "application/json" },
+  const response = await fetch(url(path), { method: "PATCH", headers: { "Content-Type": "application/json" },
                                        body: JSON.stringify(body) });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.detail || response.statusText);
@@ -1697,7 +1702,7 @@ async function uploadPortableCase(event) {
   body.append("file", file);
   say(`Importing ${file.name}…`);
   try {
-    const response = await fetch("/api/cases/import-package", { method: "POST", body });
+    const response = await fetch(url("/api/cases/import-package"), { method: "POST", body });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.detail || response.statusText);
     await loadCases();
@@ -1752,7 +1757,7 @@ async function exportPortable() {
       ? ` — ${payload.repaired.length} analysis fingerprint(s) refreshed from their file`
       : "";
     say(`Portable case: ${payload.name} — ${(payload.bytes / 1048576).toFixed(1)} MB${refreshed}`);
-    window.location.href = payload.url;
+    window.location.href = url(payload.url);
   } catch (error) {
     say(error.message, true);
   }
@@ -2635,7 +2640,7 @@ async function copySelectedRows() {
 
 async function postBookmark(rowId, note) {
   const body = JSON.stringify({ row_id: Number(rowId), note: note ?? "" });
-  const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/bookmark`,
+  const response = await fetch(url(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/bookmark`),
     { method: "POST", headers: { "Content-Type": "application/json" }, body });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.detail || response.statusText);
@@ -3647,7 +3652,7 @@ async function persistGlobalRules(rules) {
 }
 
 async function persistRules() {
-  const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/rules`,
+  const response = await fetch(url(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/rules`),
     { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rules: rulesCache }) });
   if (!response.ok) throw new Error((await response.json()).detail || response.statusText);
@@ -3800,7 +3805,7 @@ async function runPivot() {
   const rowId = contextRow.dataset.row;
   $("row-menu").hidden = true;
   try {
-    const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/pivot`,
+    const response = await fetch(url(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/pivot`),
       { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ row_id: Number(rowId) }) });
     const payload = await response.json();
@@ -3873,7 +3878,7 @@ async function addDerived() {
   }
   closeModals();
   try {
-    const response = await fetch(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/derived`,
+    const response = await fetch(url(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/derived`),
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(definition) });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || response.statusText);
@@ -4084,7 +4089,7 @@ async function removeEntity(entityId) {
   const name = item ? `${item.kind} ${item.label}` : "this entry";
   if (!window.confirm(`Remove ${name} from the case?`)) return;
   try {
-    await fetch(`/api/cases/${state.openCase.id}/entities/${encodeURIComponent(entityId)}`,
+    await fetch(url(`/api/cases/${state.openCase.id}/entities/${encodeURIComponent(entityId)}`),
       { method: "DELETE" }).then(async (response) => {
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.detail || response.statusText);
@@ -4110,8 +4115,8 @@ async function addEntity() {
   };
   try {
     if (editingEntity) {
-      const response = await fetch(
-        `/api/cases/${state.openCase.id}/entities/${encodeURIComponent(editingEntity)}`,
+      const response = await fetch(url(
+        `/api/cases/${state.openCase.id}/entities/${encodeURIComponent(editingEntity)}`),
         { method: "PATCH", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(fields) });
       const payload = await response.json().catch(() => ({}));
@@ -4211,8 +4216,8 @@ async function removeActionRow(actionId) {
   const title = item ? item.title : "this action";
   if (!window.confirm(`Remove "${title}" from the case?`)) return;
   try {
-    const response = await fetch(
-      `/api/cases/${state.openCase.id}/actions/${encodeURIComponent(actionId)}`,
+    const response = await fetch(url(
+      `/api/cases/${state.openCase.id}/actions/${encodeURIComponent(actionId)}`),
       { method: "DELETE" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.detail || response.statusText);
@@ -4305,7 +4310,7 @@ async function runIocFile(file) {
   body.append("index", String(options.index));
   say(`Reading ${file.name}…`);
   try {
-    const response = await fetch(`/api/cases/${state.openCase.id}/ioc-file`, { method: "POST", body });
+    const response = await fetch(url(`/api/cases/${state.openCase.id}/ioc-file`), { method: "POST", body });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || response.statusText);
     iocState.hits = payload.hits;
@@ -5571,10 +5576,10 @@ function wire() {
   $("coverage-level").addEventListener("change", renderCoverage);
   $("coverage-search").addEventListener("input", renderCoverage);
   $("coverage-export-json").addEventListener("click", () => {
-    if (state.openCase) window.location.href = `/api/cases/${encodeURIComponent(state.openCase.id)}/coverage/export`;
+    if (state.openCase) window.location.href = url(`/api/cases/${encodeURIComponent(state.openCase.id)}/coverage/export`);
   });
   $("coverage-export-csv").addEventListener("click", () => {
-    if (state.openCase) window.location.href = `/api/cases/${encodeURIComponent(state.openCase.id)}/coverage/export?csv=true`;
+    if (state.openCase) window.location.href = url(`/api/cases/${encodeURIComponent(state.openCase.id)}/coverage/export?csv=true`);
   });
   $("rule-global-enabled").addEventListener("change", async (event) => {
     try {
@@ -5587,7 +5592,7 @@ function wire() {
     }
   });
   $("rule-global-export").addEventListener("click", () => {
-    window.location.href = "/api/global-rules/file";
+    window.location.href = url("/api/global-rules/file");
   });
   $("rule-global-import").addEventListener("click", () => $("rule-global-file").click());
   $("rule-global-file").addEventListener("change", async (event) => {
@@ -5596,7 +5601,7 @@ function wire() {
     const body = new FormData();
     body.append("file", file);
     try {
-      const response = await fetch("/api/global-rules/import", { method: "POST", body });
+      const response = await fetch(url("/api/global-rules/import"), { method: "POST", body });
       if (!response.ok) throw new Error((await response.json()).detail || response.statusText);
       const payload = await response.json();
       await loadGlobalRules();
@@ -5963,7 +5968,7 @@ function wire() {
     const link = event.target.closest("a[data-sources]");
     if (!link || !state.openCase) return;
     event.preventDefault();
-    window.location = `/api/cases/${state.openCase.id}/detection/${encodeURIComponent(link.dataset.sources)}/sources`;
+    window.location = url(`/api/cases/${state.openCase.id}/detection/${encodeURIComponent(link.dataset.sources)}/sources`);
   });
   $("graph-build").addEventListener("click", buildGraph);
   $("evtx-run").addEventListener("click", runEvtxDetection);
@@ -5983,7 +5988,7 @@ function wire() {
   $("indicator-remove").addEventListener("click", removeIndicator);
   $("action-export").addEventListener("click", () => {
     if (!state.openCase) { say("Open a case first", true); return; }
-    window.location.href = `/api/cases/${state.openCase.id}/actions/export`;
+    window.location.href = url(`/api/cases/${state.openCase.id}/actions/export`);
   });
   $("action-search").addEventListener("input", renderActions);
   $("action-open-only").addEventListener("change", renderActions);
@@ -6004,7 +6009,7 @@ function wire() {
     if (dates) params.set("dates", dates);
     if ($("timeline-undated").checked) params.set("include_undated", "true");
     // The run is verified server-side; the receipt comes back in the response headers.
-    window.location.href = `/api/cases/${state.openCase.id}/timeline/export?${params}`;
+    window.location.href = url(`/api/cases/${state.openCase.id}/timeline/export?${params}`);
     say("Timeline exported: the file carries only rows that were written and counted");
   });
   $("timeline-search").addEventListener("keydown", (event) => {
@@ -6119,11 +6124,11 @@ async function act(name, node) {
     case "reload-analysis": await loadRows(true); break;
     case "export-csv":
       if (!state.openCase) { say("No case open", true); break; }
-      window.location.href = rowsUrl().replace("/rows?", "/export?");
+      window.location.href = url(rowsUrl().replace("/rows?", "/export?"));
       break;
     case "export-xlsx":
       if (!state.openCase) { say("No case open", true); break; }
-      window.location.href = rowsUrl().replace("/rows?", "/export?") + "&format=xlsx";
+      window.location.href = url(rowsUrl().replace("/rows?", "/export?") + "&format=xlsx");
       say("Excel export: the same rows, as a workbook");
       break;
     case "import-file": openImportDialog(); break;
@@ -6214,7 +6219,6 @@ async function act(name, node) {
     case "previous-tab": stepAnalysis(-1); break;
     case "expand-groups": expandEveryGroup(); break;
     case "collapse-groups": collapseEveryGroup(); break;
-    case "delete-case": openDestroyDialog(); break;
     case "help-guide": showHelp("guide"); break;
     case "help-coverage": showHelp("coverage"); break;
     case "help-ioc": showHelp("ioc"); break;
@@ -6229,8 +6233,6 @@ async function act(name, node) {
       break;
     case "rename-case": openCaseDialog("rename"); break;
     case "case-save": await saveCase(); break;
-    case "archive-case": await archiveCase(); break;
-    case "restore-case": await restoreCase(); break;
     case "destroy-case": openDestroyDialog(); break;
     case "destroy-run": await runDestroy(); break;
     case "report": $("report-modal").classList.add("show"); break;

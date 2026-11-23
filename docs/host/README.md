@@ -7,7 +7,7 @@
 
 The Host is the desktop's engine behind HTTP: the same `src/fireblade/core`, the same
 readers, the same case format on disk — without Qt, without a Windows session. One
-analyst per container, cases in a folder, a browser as the window.
+analyst, one container per case, a browser as the window.
 
 ![The Host workspace on a real case](../assets/host/host-workspace.png)
 

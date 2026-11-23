@@ -107,6 +107,7 @@ EN = {
     "Fichier illisible : {}": "Unreadable file: {}",
     "Procès-verbal : {}": "Certificate: {}",
     "Destruction du case : {} fichier(s), {} Mo": "Destroying the case: {} file(s), {} MB",
+    "Résidus du case : {} fichier(s) hors du dossier": "Case residue: {} file(s) outside the folder",
     "Case détruit : ": "Case destroyed: ",
     "Fichier par fichier : ce qui a été importé, écarté, refusé, et pourquoi.": "File by file: what was imported, set aside or refused, and why.",
     "{} fichier(s) · {} importé(s) · {} doublon(s) · {} non importé(s)": "{} file(s) · {} imported · {} duplicate(s) · {} not imported",

@@ -88,8 +88,13 @@ def _escape(value):
     return html.escape('' if value is None else str(value), quote=True)
 
 
-def build(record, *, case_name='', case_id='', client=None, generated=None, case_folder=None):
-    """The certificate as one HTML document, attachments embedded as data URIs."""
+def build(record, *, case_name='', case_id='', client=None, generated=None, case_folder=None,
+          images=None):
+    """The certificate as one HTML document, attachments embedded as data URIs.
+
+    ``images`` maps an attachment's SHA-256 to its bytes: a destruction reads the photos
+    before the annex holding them goes with the residue, so the document still embeds them.
+    """
     client = client or {}
     if case_folder:
         from fireblade.core.case_workspace import data_folder
@@ -177,14 +182,17 @@ def build(record, *, case_name='', case_id='', client=None, generated=None, case
         parts.append('<h2>3. Annexes photographiques</h2>')
         cells = []
         for item in attachments:
-            # A portable case moves the folder: the recorded relative path wins over the
-            # absolute one taken on the machine that performed the destruction.
-            source = Path(case_folder)/item['relative'] if case_folder and item.get('relative') else Path(item.get('path', ''))
-            try:
-                data = source.read_bytes()
-            except OSError:
-                cells.append('<p class="ko">Photo illisible : ' + escape(item.get('name')) + '</p>')
-                continue
+            # The bytes were read before the annex disappeared, when it did; otherwise
+            # read them here. A portable case moves the folder, so the recorded
+            # relative path wins over the absolute one taken on the destroying machine.
+            data = (images or {}).get(item.get('sha256'))
+            if data is None:
+                source = Path(case_folder)/item['relative'] if case_folder and item.get('relative') else Path(item.get('path', ''))
+                try:
+                    data = source.read_bytes()
+                except OSError:
+                    cells.append('<p class="ko">Photo illisible : ' + escape(item.get('name')) + '</p>')
+                    continue
             if hashlib.sha256(data).hexdigest() != item['sha256']:
                 cells.append('<p class="ko">Photo modifiée depuis son enregistrement : '
                              + escape(item.get('name')) + ' — non incluse.</p>')

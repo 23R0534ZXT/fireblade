@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fireblade</title>
-<link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="static/app.css">
 </head>
 <body>
 <div class="app">
@@ -32,12 +32,9 @@
       <div class="item" data-act="case-autosave">Case autosave</div>
       <div class="sep"></div>
       <div class="item" data-act="compat-open">Sessions and compatibility…</div>
-      <div class="item" data-act="archive-case">Archive the case</div>
-      <div class="item" data-act="restore-case">Restore an archived case</div>
       <div class="sep"></div>
       <div class="item" data-act="report">Reports…</div>
-      <div class="item" data-act="destroy-case">Destroy the evidence…</div>
-      <div class="item" data-act="delete-case">Delete the case…</div>
+      <div class="item" data-act="destroy-case">Erase the case…</div>
     </div>
 
     <div class="menu" data-for="detection">
@@ -630,9 +627,7 @@
           <button class="btn" data-act="new-case">New case…</button>
           <button class="btn" data-act="open-selected-case">Open</button>
           <button class="btn" data-act="rename-case">Edit…</button>
-          <button class="btn" data-act="archive-case">Archive</button>
-          <button class="btn" data-act="restore-case">Restore</button>
-          <button class="btn" data-act="destroy-case">Archive and free the space…</button>
+          <button class="btn" data-act="destroy-case">Erase the case…</button>
         </div>
         <div class="filterbar">
           <input class="search" id="case-search" placeholder="Search for a name, a description…">
@@ -1455,7 +1450,7 @@
 
 <div class="modal" id="destroy-modal">
   <div class="dialog">
-    <h3>Destroy this case</h3>
+    <h3>Erase this case</h3>
     <div class="body">
       <div class="note"><b>This cannot be undone.</b> Every file of the case is overwritten, the folders are removed, and a certificate is written outside the case folder.</div>
       <div class="row"><label for="destroy-method">Method</label>
@@ -1476,7 +1471,7 @@
       <div class="note" id="destroy-target"></div>
     </div>
     <div class="foot">
-      <button class="btn" data-act="destroy-run">Destroy</button>
+      <button class="btn" data-act="destroy-run">Erase</button>
       <button class="btn" data-act="settings-close">Cancel</button>
     </div>
   </div>
@@ -1576,6 +1571,6 @@
   </div>
 </div>
 
-<script src="/static/app.js"></script>
+<script src="static/app.js"></script>
 </body>
 </html>

@@ -1783,7 +1783,7 @@ class Library:
                 witness: str = "", reason: str = "", confirmation: str = "",
                 attachments: list | None = None) -> dict:
         """Destroy the case the way the desktop does, and keep the certificate outside."""
-        from fireblade.core.case_destruction import destroy_case
+        from fireblade.core.case_destruction import destroy_case, outside_entries
 
         data = self.library.read(identifier)
         if (confirmation or "").strip() != data.get("name", ""):
@@ -1795,13 +1795,36 @@ class Library:
         certificate = certificates / (datetime.now(timezone.utc).strftime("pv-%Y%m%d-%H%M%S-")
                                       + identifier[:8] + ".html")
         self.close_case(identifier)
+        # A portable package or an archive of this case is the case: it goes too.
+        extras = [str(path) for path in outside_entries(self.root, identifier)]
         record = destroy_case(folder, method, operator=operator, witness=witness, reason=reason,
                               certificate_path=certificate, case_name=data.get("name", ""),
-                              case_id=identifier, attachments=list(attachments or []))
+                              case_id=identifier, attachments=list(attachments or []),
+                              extras=extras)
         return {"id": record.get("id"), "method": record.get("method"),
                 "files": len(record.get("files") or []),
+                "outside": int(record.get("outside") or 0),
+                "residue": extras,
                 "certificate": str(certificate),
                 "bytes": sum(int(item.get("size") or 0) for item in (record.get("files") or []))}
+
+    def residue(self, identifier: str) -> dict:
+        """What this case left outside its folder, before anything is destroyed."""
+        from fireblade.core.case_destruction import outside_entries
+
+        self.library.read(identifier)
+        items = []
+        for path in outside_entries(self.root, identifier):
+            if path.is_dir():
+                files = [item for item in path.rglob("*") if item.is_file()]
+            else:
+                files = [path]
+            items.append({"name": path.name, "folder": path.parent.name,
+                          "files": len(files),
+                          "bytes": sum(int(item.stat().st_size) for item in files)})
+        return {"id": identifier, "items": items,
+                "files": sum(item["files"] for item in items),
+                "bytes": sum(item["bytes"] for item in items)}
 
     # --- the session: the desktop's own file, written by the core module -----------
     SESSION_FIELDS = ("search", "groups", "sort_column", "descending", "sort_type",

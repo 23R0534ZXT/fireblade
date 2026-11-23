@@ -34,8 +34,9 @@ The same engine ships in two editions.
 | --- | --- |
 | ![Desktop workspace](docs/assets/fireblade-workspace.png) | ![Host workspace](docs/assets/host/host-workspace.png) |
 
-*The same case, the same engine: the desktop's Qt window on the left, the Host's page on
-the right.*
+*The same workspace in both editions — artifact tree, filterable table, per-column
+filters, row details: the desktop's Qt window on the left, the Host's page on the right,
+each on its own case.*
 
 ## Desktop edition — stable
 

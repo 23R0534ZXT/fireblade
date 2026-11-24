@@ -1270,3 +1270,118 @@ def test_a_profile_is_created_from_the_open_analysis_and_listed(page, tmp_path, 
         "document.querySelector('.modal.show .dialog').innerText.includes('Event export')",
         timeout=15000,
     )
+
+
+# -- Colour rules ----------------------------------------------------------------------------
+
+
+def _rule(page, column, operator, value, colour="#ffcc00", target="", visual="none"):
+    page.select_option("#rule-column", label=column)
+    page.select_option("#rule-operator", operator)
+    page.fill("#rule-value", value)
+    page.evaluate(f"document.getElementById('rule-colour').value = '{colour}'")
+    page.select_option("#rule-target", target)
+    page.select_option("#rule-visual", visual)
+    page.click('[data-act="rule-add"]')
+
+
+def _painted_rows(page):
+    return page.evaluate(
+        "[...document.querySelectorAll('#body tr[data-row]')].filter(r => r.style.background).length"
+    )
+
+
+def test_a_colour_rule_paints_the_rows_it_matches_and_remove_unpaints_them(page):
+    command(page, "rules")
+    _rule(page, "Event", "eq", "4625")
+    page.wait_for_function(
+        "[...document.querySelectorAll('#body tr[data-row]')].filter(r => r.style.background).length === 20"
+    )
+    assert "Event equals" in page.inner_text("#rules-list")
+    page.click("[data-rule-remove]")
+    page.wait_for_function(
+        "[...document.querySelectorAll('#body tr[data-row]')].filter(r => r.style.background).length === 0"
+    )
+    assert page.locator("#rules-list [data-rule-remove]").count() == 0
+
+
+def test_a_rule_on_one_cell_paints_the_cell_and_not_the_row(page):
+    command(page, "rules")
+    _rule(page, "User", "eq", "carol", colour="#00ccff", target="cell")
+    page.wait_for_function(
+        "document.querySelectorAll('#body td[style*=\"background\"]').length > 0"
+    )
+    assert _painted_rows(page) == 0
+    painted = page.eval_on_selector_all(
+        "#body td[style*='background']", "els => [...new Set(els.map(e => e.innerText))]"
+    )
+    assert painted == ["carol"], painted
+
+
+def test_a_rule_can_demand_several_conditions_at_once(page):
+    command(page, "rules")
+    page.select_option("#rule-column", label="User")
+    page.select_option("#rule-operator", "eq")
+    page.fill("#rule-value", "alice")
+    page.click("#rule-add-condition")  # a second row, to be filled in
+    row = page.locator("#rule-conditions [data-condition]").first
+    options = row.locator("[data-cond-column] option").all_inner_texts()
+    assert "__row_id" not in options and options[0] == "Time", options
+    row.locator("[data-cond-column]").select_option(label="Event")
+    row.locator("[data-cond-operator]").select_option("eq")
+    row.locator("[data-cond-value]").fill("4625")
+    page.evaluate("document.getElementById('rule-colour').value = '#ff00aa'")
+    page.click('[data-act="rule-add"]')
+    # alice rows are the 4624 events: alice AND 4625 matches nothing.
+    page.wait_for_function(
+        "document.querySelectorAll('#rules-list [data-rule-remove]').length === 1"
+    )
+    assert _painted_rows(page) == 0
+    assert page.locator("#rule-conditions [data-condition]").count() == 0, (
+        "the next rule starts clean"
+    )
+    page.click("[data-rule-remove]")
+    page.click("#rule-add-condition")
+    page.select_option("#rule-logic", "or")
+    row = page.locator("#rule-conditions [data-condition]").first
+    row.locator("[data-cond-column]").select_option(label="Event")
+    row.locator("[data-cond-operator]").select_option("eq")
+    row.locator("[data-cond-value]").fill("4625")
+    page.select_option("#rule-column", label="User")
+    page.select_option("#rule-operator", "eq")
+    page.fill("#rule-value", "alice")
+    page.click('[data-act="rule-add"]')
+    # alice OR 4625: 20 + 20 rows
+    page.wait_for_function(
+        "[...document.querySelectorAll('#body tr[data-row]')].filter(r => r.style.background).length === 40"
+    )
+
+
+def test_a_condition_without_a_value_is_refused(page):
+    command(page, "rules")
+    page.select_option("#rule-column", label="User")
+    page.select_option("#rule-operator", "eq")
+    page.click('[data-act="rule-add"]')
+    page.wait_for_function("document.getElementById('status').innerText.includes('a value')")
+    assert page.locator("#rules-list [data-rule-remove]").count() == 0
+    assert _painted_rows(page) == 0
+
+
+@pytest.mark.parametrize("visual", ["bar", "scale2", "scale3", "icon"])
+def test_a_visual_format_decorates_a_number_column(page, visual):
+    command(page, "rules")
+    page.select_option("#rule-column", label="Event")
+    page.select_option("#rule-operator", "not_empty")
+    page.select_option("#rule-visual", visual)
+    page.select_option("#rule-bound", "auto")
+    page.evaluate("document.getElementById('rule-colour').value = '#3366ff'")
+    page.click('[data-act="rule-add"]')
+    page.wait_for_function(
+        'document.querySelectorAll(\'#body td[data-cell="3"][class*="v"], #body td .vicon\').length > 0 '
+        "|| [...document.querySelectorAll('#body td[data-cell=\"3\"]')].some(e => e.getAttribute('style'))",
+        timeout=15000,
+    )
+    styled = page.evaluate(
+        "[...document.querySelectorAll('#body td[data-cell=\"3\"]')].filter(e => e.getAttribute('style') || e.querySelector('.vicon')).length"
+    )
+    assert styled > 0

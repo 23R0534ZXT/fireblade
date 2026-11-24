@@ -3848,8 +3848,8 @@ function addConditionRow() {
   const row = document.createElement("div");
   row.className = "row";
   row.dataset.condition = "1";
-  row.innerHTML = `<select data-cond-column>${state.columns.map((name, index) =>
-      `<option value="${index - 1}">${escapeHtml(name)}</option>`).join("")}</select>
+  row.innerHTML = `<select data-cond-column>${state.columns.slice(1).map((name, index) =>
+      `<option value="${index}">${escapeHtml(name)}</option>`).join("")}</select>
     <select data-cond-operator>${Object.entries(RULE_OPERATORS).map(([value, label]) =>
       `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}</select>
     <input data-cond-value placeholder="value">
@@ -3877,7 +3877,9 @@ async function addRule() {
     background: $("rule-colour").value,
     foreground: $("rule-ink").value,
     bold: $("rule-bold").checked,
-    target: rulesScope === "global" && $("rule-target").value === "cell" ? columnValue : null,
+    // "This cell only" is the column of the rule, by name for a shared rule and by index here.
+    target: $("rule-target").value !== "cell" ? null
+      : (rulesScope === "global" ? columnValue : Number(columnValue)),
     enabled: true,
     condition: null,
     statistic: $("rule-statistic").value || "",
@@ -3895,6 +3897,12 @@ async function addRule() {
   };
   // The whole group travels as one condition tree, and the flat fields stay for the
   // server's own validation and for a client that only reads them.
+  // A comparison with nothing to compare would match every row: it is refused, not saved.
+  const open = (item) => !["empty", "not_empty"].includes(item.operator) && !String(item.value).trim();
+  if (open(rule) || conditionRows().some(open)) {
+    say("Give every condition of the rule a value", true);
+    return;
+  }
   const tree = ruleConditionPayload({ column: Number(columnValue), operator: rule.operator,
                                        value: rule.value });
   if (tree) rule.condition = tree;
@@ -3902,6 +3910,7 @@ async function addRule() {
     try {
       await persistGlobalRules([...((globalRules && globalRules.rules) || []), rule]);
       renderRulesList();
+      clearConditionRows();
       say("Shared rule saved: every analysis with that column will use it");
     } catch (error) {
       say(error.message, true);
@@ -3912,10 +3921,17 @@ async function addRule() {
   try {
     await persistRules();
     renderRulesList();
+    clearConditionRows();
   } catch (error) {
     rulesCache.pop();
     say(error.message, true);
   }
+}
+
+/* The extra comparisons belong to the rule just added: the next rule starts from one. */
+function clearConditionRows() {
+  $("rule-conditions").innerHTML = "";
+  $("rule-logic").value = "single";
 }
 
 /* ---------- process pivot ---------- */
@@ -5274,7 +5290,11 @@ function renderGrid() {
                    noted ? "noted" : ""].filter(Boolean).join(" ");
       const title = noted ? ` title="${escapeHtml(noted)}"` : "";
       const visual = rule ? visualCell(rule, index - 1, row[index]) : null;
-      const painted = visual ? ` style="${visual.style}"` : "";
+      // A rule aimed at one cell colours that cell and leaves the row alone.
+      const cellRule = rule && rule.target !== null && rule.target !== undefined
+        && (!rule.visual || rule.visual === "none") && Number(rule.target) === index - 1;
+      const painted = visual ? ` style="${visual.style}"`
+        : (cellRule ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"` : "");
       return `<td class="${cls}${visual ? ` ${visual.cls}` : ""}"${title}${painted} data-cell="${index - 1}">`
         + (visual && visual.icon ? `<span class="vicon" style="color:${visual.ink}">${visual.icon}</span>` : "")
         + `${state.highlight ? markText(text, state.highlight) : renderBoolean(index - 1, text)}`
@@ -5284,7 +5304,8 @@ function renderGrid() {
     // "none" is a string, and a string is true: a rule without a visual format must
     // still paint its row. (This cost a silent regression: every plain colour rule
     // stopped painting the day the server started sending visual: "none".)
-    const plain = rule && (!rule.visual || rule.visual === "none");
+    const plain = rule && (!rule.visual || rule.visual === "none")
+      && (rule.target === null || rule.target === undefined);
     const style = plain
       ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"`
       : "";

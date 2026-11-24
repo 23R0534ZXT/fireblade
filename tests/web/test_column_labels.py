@@ -158,3 +158,10 @@ def test_tables_a_reader_writes_from_one_file_are_named_by_what_the_reader_calle
         "CarsDB.db — Cars_MakeModel",
         "Single.pf",
     ]
+
+
+def test_the_alert_file_fireblade_writes_reads_in_english():
+    from fireblade.web.service import Library
+
+    source = {"path": "/case/collections/import-1/results/Alertes Hayabusa.csv"}
+    assert Library._label(source, "") == "Hayabusa alerts"

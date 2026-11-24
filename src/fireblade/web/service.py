@@ -245,6 +245,8 @@ class Library:
             if raw:
                 name = Path(raw.replace("\\", "/")).name
                 sheet = str(source.get("sheet", "") or "")
+                if name in GENERATED_NAMES:  # a file Fireblade wrote, named in its source language
+                    return GENERATED_NAMES[name]
                 if name and "/results/organisation-" in raw.replace("\\", "/"):
                     # An analysis Fireblade organised (a CatScale family): its name is the
                     # core's, in its source language. The name of a file the analyst brought
@@ -4843,6 +4845,8 @@ def _english(text):
         except (ImportError, ValueError):
             return str(text)
 
+
+GENERATED_NAMES = {"Alertes Hayabusa.csv": "Hayabusa alerts"}
 
 TIMELINE_HEADER = {
     "Date_UTC": "Date_UTC",

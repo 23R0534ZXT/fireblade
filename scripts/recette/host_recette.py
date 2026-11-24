@@ -283,7 +283,56 @@ def check_webcache(expected: dict, observed: dict) -> list[Check]:
 
 def check_evtx(expected: dict, observed: dict) -> list[Check]:
     got = sum(item["rows"] for item in observed["analyses"] if "evtx" in item["label"].lower())
-    return [item for item in [compare("evtx-events", expected.get("evtx_events"), got)] if item]
+    checks = [item for item in [compare("evtx-events", expected.get("evtx_events"), got)] if item]
+    detection = observed.get("detection")
+    if detection is not None:
+        wanted = expected.get("hayabusa_minimum_alerts")
+        alerts = int(detection.get("total", 0))
+        checks.append(
+            Check(
+                "hayabusa-alerts",
+                f">= {wanted}",
+                alerts,
+                PASS
+                if wanted is not None and alerts >= wanted
+                else (INFO if wanted is None else FAIL),
+                detection.get("error", ""),
+            )
+        )
+        nodes = int(detection.get("graph_nodes", 0))
+        checks.append(
+            Check(
+                "attack-graph",
+                ">= 1 node",
+                nodes,
+                PASS if nodes >= 1 else FAIL,
+                "the findings are drawn",
+            )
+        )
+    return checks
+
+
+def run_detection(base: str, case_id: str) -> dict:
+    """The analyst's Hayabusa run over the case, then the attack graph it feeds."""
+    started = request(
+        base,
+        "POST",
+        f"/api/cases/{case_id}/tasks",
+        data={"kind": "detect", "params": {"min_level": "low"}},
+    )
+    deadline = time.monotonic() + 900
+    state = {}
+    while time.monotonic() < deadline:
+        state = request(base, "GET", f"/api/tasks/{started['job']}")
+        if state.get("status") not in ("running", "pending", "queued"):
+            break
+        time.sleep(2)
+    result = state.get("result") or {}
+    out = {"total": result.get("total", 0), "error": state.get("error") or ""}
+    if not out["error"]:
+        graph = request(base, "GET", f"/api/cases/{case_id}/graph")
+        out["graph_nodes"] = len(graph.get("nodes", []))
+    return out
 
 
 def check_shellbags(expected: dict, observed: dict) -> list[Check]:
@@ -421,6 +470,8 @@ def run(args) -> dict:
             started = time.monotonic()
             job = import_pack(base, case["id"], f"{server_pack}/{subpath}")
             observed = observe(base, case["id"])
+            if name == "windows-evtx":
+                observed["detection"] = run_detection(base, case["id"])
             checks = base_checks(observed, count_files(source), job) + checker(expected, observed)
             scenarios.append(
                 {

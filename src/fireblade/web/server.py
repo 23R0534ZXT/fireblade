@@ -6,10 +6,12 @@ import os
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, Response, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from fireblade.web import english
 from fireblade.web.service import Library, ServiceError, _english, parse_filters
 from fireblade.web.updates import Checker
 
@@ -1127,5 +1129,17 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         return FileResponse(STATIC / "index.html")
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
+    @app.exception_handler(StarletteHTTPException)
+    async def refusal_in_english(request: Request, exc: StarletteHTTPException):
+        """Every refusal an analyst reads is in English, whichever module raised it.
+
+        The core words its refusals in its source language and the routes pass them on as
+        they are; translating here, once, means a message added to the core can never reach
+        the screen in French by way of a route that forgot to call the translator.
+        """
+        detail = english.data(exc.detail) if isinstance(exc.detail, (str, list, dict)) else exc.detail
+        return JSONResponse({"detail": detail}, status_code=exc.status_code,
+                            headers=getattr(exc, "headers", None))
+
     app.state.library = library
     return app

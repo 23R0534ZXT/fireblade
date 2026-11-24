@@ -6210,6 +6210,25 @@ function showReportType() {
   $("report-client-fields").style.display = client ? "" : "none";
 }
 
+function reportResult(message, links = []) {
+  // The result stays in the dialog, with a link the analyst clicks: a window opened after a
+  // long task is taken for a pop-up by the browser, and the report would be written for nothing.
+  const box = $("report-result");
+  box.textContent = "";
+  box.append(message);
+  for (const item of links) {
+    const link = document.createElement("a");
+    link.href = url(item.url);
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = item.label;
+    box.append(" · ", link);
+  }
+  // The progress window closed every dialog while the report was written: the dialog that
+  // asked for it comes back with the answer in it.
+  if (box.textContent) $("report-modal").classList.add("show");
+}
+
 async function buildReport(asPdf) {
   if (!state.openCase) { say("Open a case first", true); return; }
   const client = $("report-type").value === "client";
@@ -6221,31 +6240,37 @@ async function buildReport(asPdf) {
     : { title: $("report-title").value || "Investigation report",
         description: $("report-description").value || "",
         bookmarks_only: $("report-bookmarks").value === "true" };
-  closeModals();
   try {
     if (client) {
       // The client report is one task: it reads the workspace, groups the
       // findings and writes the document, and the bar follows each step.
       const payload = await runTask("report", params, "Client report");
-      if (!payload) return;
-      say(`Client report: ${payload.findings} finding(s), ${payload.actions} action(s), `
-        + `${payload.indicators} indicator(s) -> ${payload.name}`);
-      window.open(payload.url, "_blank");
+      if (!payload) { reportResult(""); return; }
+      const message = `Client report: ${payload.findings} finding(s), ${payload.actions} action(s), `
+        + `${payload.indicators} indicator(s)`;
+      say(`${message} -> ${payload.name}`);
+      reportResult(message, [{ url: payload.url, label: `Open ${payload.name}` }]);
       return;
     }
     const payload = await runTask("report", params, asPdf ? "Report as PDF" : "Report");
-    if (!payload) return;
+    if (!payload) { reportResult(""); return; }
+    const empty = !payload.records
+      ? " Nothing was selected: bookmark rows, or include every row, to fill the report." : "";
     if (!asPdf) {
       say(`Report: ${payload.records} finding(s) -> ${payload.name}`);
-      window.open(payload.url, "_blank");
+      reportResult(`Report: ${payload.records} finding(s).${empty}`,
+                   [{ url: payload.url, label: `Open ${payload.name}` }]);
       return;
     }
     const converted = await runTask("report", { pdf: true, name: payload.name },
                                     "Report as PDF");
-    if (!converted) return;
+    if (!converted) { reportResult(""); return; }
     say(`Report as PDF: ${payload.records} finding(s) -> ${converted.name}`);
-    window.open(converted.url, "_blank");
+    reportResult(`Report as PDF: ${payload.records} finding(s).${empty}`,
+                 [{ url: converted.url, label: `Open ${converted.name}` },
+                  { url: payload.url, label: "HTML version" }]);
   } catch (error) {
+    reportResult(error.message);
     say(error.message, true);
   }
 }

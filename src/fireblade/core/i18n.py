@@ -1866,7 +1866,9 @@ EN = {
 from fireblade.core.i18n_documents import DOCUMENTS as _DOCUMENTS  # noqa: E402
 from fireblade.core.i18n_documents import PHRASES as _PHRASES  # noqa: E402
 
-for _french, _english in _DOCUMENTS.items():
+from fireblade.core.i18n_errors import ERRORS as _ERRORS  # noqa: E402
+
+for _french, _english in {**_ERRORS, **_DOCUMENTS}.items():
     EN.setdefault(_french, _english)
 
 LANGUAGES = ("en", "fr")

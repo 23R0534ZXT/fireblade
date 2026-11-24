@@ -177,3 +177,107 @@ def test_the_reports_are_written_in_english(page, host):
         document = httpx.get(host + written.json()["url"]).text
         for french in ("Synthèse", "Aucun constat", "Périmètre", "Généré le", "Aucune action"):
             assert french not in document, (route, french)
+
+
+def _menu(page, menu, act):
+    """Run a menu command with the mouse, as an analyst does."""
+    box = page.locator(f'.menubar .m[data-menu="{menu}"]').bounding_box()
+    page.mouse.move(box["x"] + 5, box["y"] + 5)
+    page.mouse.down()
+    page.mouse.up()
+    item = page.locator(f'.menu.show [data-act="{act}"]').bounding_box()
+    page.mouse.move(item["x"] + 8, item["y"] + 5)
+    page.mouse.down()
+    page.mouse.up()
+
+
+def test_a_view_is_saved_and_applied_again(page):
+    _open(page, "access.log")
+    status = _column(page, "Status")
+    page.fill(f'#head input[data-filter="{status}"]', "500")
+    page.wait_for_function("!document.getElementById('pageinfo').innerText.includes('/ 400')")
+    filtered = _total(page)
+    _menu(page, "analysis", "views")
+    page.wait_for_selector("#views-modal.show")
+    page.fill("#view-name", "Server errors")
+    page.click('#views-modal [data-act="view-save"]')
+    page.wait_for_selector('#views-list [data-view-apply="Server errors"]')
+    page.click('#views-modal [data-act="settings-close"]')
+    page.click("#clear")
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 400')")
+    _menu(page, "analysis", "views")
+    page.click('[data-view-apply="Server errors"]')
+    page.wait_for_function(f"document.getElementById('pageinfo').innerText.includes('/ {filtered}')")
+    assert _total(page) == filtered
+
+
+def test_a_colour_rule_paints_the_rows_it_matches(page):
+    _open(page, "access.log")
+    _menu(page, "analysis", "rules")
+    page.wait_for_selector("#rules-modal.show")
+    page.select_option("#rule-column", label="Status")
+    page.select_option("#rule-operator", "eq")
+    page.fill("#rule-value", "404")
+    page.fill("#rule-colour", "#ff0000")
+    page.click('#rules-modal [data-act="rule-add"]')
+    page.click('#rules-modal [data-act="settings-close"] >> nth=0')
+    page.wait_for_function("""() => [...document.querySelectorAll('#body tr[data-row]')]
+        .some(tr => getComputedStyle(tr.cells[1]).backgroundColor === 'rgb(255, 0, 0)'
+                 || getComputedStyle(tr).backgroundColor === 'rgb(255, 0, 0)')""", timeout=8000)
+
+
+def test_a_derived_column_joins_the_grid(page):
+    _open(page, "access.log")
+    _menu(page, "analysis", "derived")
+    page.wait_for_selector("#derived-modal.show")
+    page.fill("#derived-name", "Method lower")
+    page.select_option("#derived-operation", "expression")
+    page.fill("#derived-expression", "lower(Method)")
+    page.click('#derived-modal [data-act="derived-add"]')
+    page.wait_for_function("[...document.querySelectorAll('#head th')].some(th => th.innerText.includes('Method lower'))",
+                           timeout=15000)
+
+
+def test_a_global_search_names_every_analysis_that_holds_the_value(page):
+    page.keyboard.press("Control+f")
+    page.wait_for_selector("#search-modal.show")
+    page.fill("#global-text", "203.0.113.7")
+    page.click('#search-modal [data-act="global-run"]')
+    page.wait_for_function("document.querySelector('#search-modal').innerText.includes('access.log')", timeout=15000)
+    text = page.inner_text("#search-modal")
+    assert "auth.log" in text and "access.log" in text
+
+
+def test_the_grid_exports_what_it_shows(page, host):
+    _open(page, "access.log")
+    status = _column(page, "Status")
+    page.fill(f'#head input[data-filter="{status}"]', "404")
+    page.wait_for_function("!document.getElementById('pageinfo').innerText.includes('/ 400')")
+    expected = _total(page)
+    with page.expect_download(timeout=20000) as download:
+        _menu(page, "exporter", "export-csv")
+    lines = open(download.value.path(), encoding="utf-8-sig").read().splitlines()
+    assert len(lines) - 1 == expected, (len(lines), expected)
+    assert "Status" in lines[0] and "Statut" not in lines[0]
+
+
+def test_both_reports_are_built_from_the_dialog_and_offered_as_links(page, host):
+    """The result stays in the dialog as a link: a window opened late is blocked as a pop-up."""
+    _menu(page, "case", "report")
+    page.wait_for_selector("#report-modal.show")
+    for kind in ("investigation", "client"):
+        page.select_option("#report-type", kind)
+        page.click('#report-modal [data-act="report-build"]')
+        page.wait_for_selector("#report-result a", timeout=60000)
+        link = page.get_attribute("#report-result a", "href")
+        document = httpx.get(host + "/" + link.lstrip("/")).text
+        assert document.startswith("<!doctype html"), kind
+        assert "Synthèse" not in document and "Généré" not in document, kind
+    page.select_option("#report-type", "investigation")
+    page.click('#report-modal [data-act="report-build-pdf"]')
+    page.wait_for_function("[...document.querySelectorAll('#report-result a')].some(a => a.href.endsWith('.pdf'))",
+                           timeout=60000)
+    pdf = [a for a in page.eval_on_selector_all("#report-result a", "els => els.map(e => e.href)")
+           if a.endswith(".pdf")][0]
+    assert httpx.get(pdf).content.startswith(b"%PDF")
+    assert "Nothing was selected" in page.inner_text("#report-result") or "finding" in page.inner_text("#report-result")

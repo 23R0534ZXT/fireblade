@@ -1311,8 +1311,14 @@ class Library:
         compiled to SQL over the raw rows, stored in the analysis itself."""
         from fireblade.core.derived import validate_definition
 
-        clean = validate_definition(definition or {})
         case = self._case_for(identifier, index)
+        definition = dict(definition or {})
+        if isinstance(definition.get("expression"), str):
+            definition["expression"] = raw_expression(case, definition["expression"])
+        if isinstance(definition.get("columns"), list):
+            definition["columns"] = [raw_name(case, name) if isinstance(name, str) else name
+                                     for name in definition["columns"]]
+        clean = validate_definition(definition)
         with case.lock:
             case.add_derived_columns([clean])
         return {"columns": META_COLUMNS + column_labels(case), "added": clean.get("name")}
@@ -3520,7 +3526,7 @@ class Library:
             view.filters.append(Filter(column, operator, value))
         if expression:
             from fireblade.core.models import condition_from_dict
-            view.expression = condition_from_dict(expression)
+            view.expression = condition_from_dict(_raw_condition(case, expression))
         keys = list(sorts or ())
         if not keys and sort is not None:
             keys = [(sort, bool(descending))]
@@ -3701,6 +3707,48 @@ def _in_english(path) -> None:
         english.rewrite(path)
     except FileNotFoundError:
         pass
+
+
+def raw_name(case, name):
+    """The stored name of a column the analyst named as it reads on screen."""
+    headers = list(case.headers)
+    if name in headers:
+        return name
+    labels = column_labels(case)
+    return headers[labels.index(name)] if name in labels else name
+
+
+def raw_expression(case, text):
+    """An expression typed with the names on screen, written with the names the core stores.
+
+    Column names are displayed in English where a reader generated them, so an analyst types
+    ``lower(Method)`` for what is stored as ``Méthode``. Text between quotes is a value and is
+    never touched; a name that already is the stored one is left alone.
+    """
+    headers, labels = list(case.headers), column_labels(case)
+    renamed = {label: raw for label, raw in zip(labels, headers) if label != raw and label not in headers}
+    if not renamed or not text:
+        return text
+    pieces = re.split(r"('(?:[^']|'')*')", text)
+    for position in range(0, len(pieces), 2):
+        segment = pieces[position]
+        for label in sorted(renamed, key=len, reverse=True):
+            escaped = re.escape(label)
+            segment = re.sub(rf"\[{escaped}\]", lambda _m, raw=renamed[label]: f"[{raw}]", segment)
+            segment = re.sub(rf"(?<![\w.\[]){escaped}(?![\w\]])", lambda _m, raw=renamed[label]: raw, segment)
+        pieces[position] = segment
+    return "".join(pieces)
+
+
+def _raw_condition(case, node):
+    """A filter tree whose expression leaves are written with the stored column names."""
+    if isinstance(node, dict):
+        node = dict(node)
+        if node.get("operator") == "expression" and isinstance(node.get("value"), str):
+            node["value"] = raw_expression(case, node["value"])
+        if isinstance(node.get("children"), list):
+            node["children"] = [_raw_condition(case, child) for child in node["children"]]
+    return node
 
 
 def column_labels(case) -> list[str]:

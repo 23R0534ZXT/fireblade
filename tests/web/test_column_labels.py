@@ -42,3 +42,27 @@ def test_a_french_csv_keeps_its_own_headers(tmp_path):
     assert columns[-3:] == ["Horodatage", "Utilisateur", "Hôte"]
     exported = client.get(f"/api/cases/{identifier}/analyses/0/export").text.lstrip("\ufeff").splitlines()[0]
     assert exported.split(",")[:3] == ["Horodatage", "Utilisateur", "Hôte"]
+
+
+def test_an_expression_is_typed_with_the_names_on_screen(tmp_path):
+    """The analyst writes lower(Method), what they read; the core stores a French name."""
+    client, identifier = _case(tmp_path)
+    _upload(client, identifier, "auth.log", AUTH)
+    base = f"/api/cases/{identifier}/analyses/0"
+    added = client.post(f"{base}/derived", json={"name": "User lower", "operation": "expression",
+                                                 "expression": "lower([Remote address])"})
+    assert added.status_code == 200, added.text
+    assert "User lower" in added.json()["columns"]
+    rows = client.get(f"{base}/rows", params={"limit": 2}).json()
+    assert rows["rows"], "the derived column evaluates over the rows"
+
+
+def test_a_refusal_is_in_english_whatever_module_raised_it(tmp_path):
+    client, identifier = _case(tmp_path)
+    _upload(client, identifier, "auth.log", AUTH)
+    base = f"/api/cases/{identifier}/analyses/0"
+    refused = client.post(f"{base}/derived", json={"name": "broken", "operation": "expression",
+                                                   "expression": "lower("})
+    assert refused.status_code == 400
+    detail = refused.json()["detail"]
+    assert not any(ch in detail for ch in "éèàçô") and "attendu" not in detail, detail

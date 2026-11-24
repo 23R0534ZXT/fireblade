@@ -115,7 +115,7 @@ def test_the_bookmarks_button_keeps_only_the_marked_rows(page):
     page.click('button:text-is("Bookmarks")')
     page.wait_for_function("document.querySelectorAll('#body tr[data-row]').length === 2")
     page.click('button:text-is("Bookmarks")')
-    page.wait_for_function(f"document.querySelectorAll('#body tr[data-row]').length > 2")
+    page.wait_for_function("document.querySelectorAll('#body tr[data-row]').length > 2")
     select(page, 0, 1)
     command(page, "unmark-selection")
 
@@ -162,7 +162,7 @@ def test_filter_on_the_active_cell_keeps_that_value(page):
     page.locator("#body tr[data-row] td[data-cell='2']").first.click()
     value = page.locator("#body tr[data-row] td[data-cell='2']").first.inner_text()
     command(page, "filter-active-cell")
-    page.wait_for_function(f"document.getElementById('pageinfo').innerText.includes('/ 20')")
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 20')")
     cells = page.eval_on_selector_all(
         "#body td[data-cell='2']", "els => [...new Set(els.map(e => e.innerText))]"
     )

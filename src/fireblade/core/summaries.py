@@ -55,8 +55,8 @@ def summary_expressions(case, view, summaries=None):
         if summary.kind == "number":
             col = case.numeric_expression(col)
         elif summary.kind == "timestamp":
-            from fireblade.core.timestamps import timestamp_key
             from fireblade.core.derived import timestamp_sql
+            from fireblade.core.timestamps import timestamp_key
 
             aggregate = f"{summary.operation}({timestamp_key(col)})"
             expressions.append(

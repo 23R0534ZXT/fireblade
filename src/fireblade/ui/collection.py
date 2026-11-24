@@ -1,34 +1,33 @@
 """Collection import and offline detection controls."""
 
+import uuid
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-import uuid
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QPalette
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QMessageBox,
-    QRadioButton,
     QFileDialog,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
+    QRadioButton,
     QVBoxLayout,
     QWidget,
 )
 
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.i18n import translate
-from fireblade.ui.language import source_text
-from fireblade.ui.alert_context import AlertContextMixin
-from fireblade.ui.folder_picker import choose_import_sources
 from fireblade.runtime.resources import resource_path
 from fireblade.runtime.windows_paths import user_directory
+from fireblade.ui.alert_context import AlertContextMixin
+from fireblade.ui.folder_picker import choose_import_sources
+from fireblade.ui.language import source_text
 
 
 class CollectionOrganizationDialog(QDialog):
@@ -105,6 +104,7 @@ class CollectionMixin(AlertContextMixin):
     def set_effort(self, level):
         """One slider for parsing and analysis, applied where they read settings."""
         from dataclasses import replace
+
         from fireblade.core.machine import effort
         from fireblade.core.preferences import save_preferences
 

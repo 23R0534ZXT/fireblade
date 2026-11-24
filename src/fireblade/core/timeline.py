@@ -1,23 +1,21 @@
 """Disk-backed cross-artifact chronology with exact UTC nanosecond keys."""
 
-from datetime import datetime, timezone, timedelta
-import json
-from pathlib import Path
+import csv
+import os
 import re
 import tempfile
 import threading
-import csv
-import os
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import duckdb
 
+from fireblade.core.csv_chunks import csv_chunks
 from fireblade.core.errors import OperationCancelled
-from fireblade.core.models import analysis_label
-from fireblade.core.models import View
+from fireblade.core.models import View, analysis_label
+from fireblade.core.paths import evidence_name
 from fireblade.core.timestamps import timestamp_key
 from fireblade.core.workspace_reader import WorkspaceReader
-from fireblade.core.csv_chunks import csv_chunks
-from fireblade.core.paths import evidence_name
 
 KINDS = {
     "text": "Tout le texte",
@@ -164,7 +162,7 @@ def utc_label(ns):
         return "Sans date"
     seconds, fraction = divmod(int(ns), 1_000_000_000)
     try:
-        date = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=seconds)
+        date = datetime(1970, 1, 1, tzinfo=UTC) + timedelta(seconds=seconds)
         return (
             f"{date.year:04}-{date.month:02}-{date.day:02} {date.hour:02}:{date.minute:02}:{date.second:02}"
             + (f".{fraction:09d}" if fraction else "")

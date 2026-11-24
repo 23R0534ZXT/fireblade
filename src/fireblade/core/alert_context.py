@@ -1,17 +1,17 @@
 """Evidence-backed links between Hayabusa alerts and imported EVTX events."""
 
-from datetime import datetime, timedelta, timezone
 import csv
 import heapq
 import json
 import os
-from pathlib import Path
 import re
 import uuid
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
+from fireblade.core.collection_organization import column_keys
 from fireblade.core.engine import Case
 from fireblade.core.models import Filter, FormatRule, View
-from fireblade.core.collection_organization import column_keys
 
 
 def path_key(value):
@@ -45,11 +45,7 @@ def parts(value):
 def instant(value):
     try:
         stamp = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
-        return (
-            stamp.replace(tzinfo=timezone.utc)
-            if stamp.tzinfo is None
-            else stamp.astimezone(timezone.utc)
-        )
+        return stamp.replace(tzinfo=UTC) if stamp.tzinfo is None else stamp.astimezone(UTC)
     except (ValueError, TypeError, OverflowError):
         return None
 
@@ -70,8 +66,8 @@ def build_context(
     source_value = alert.get("Fireblade_EVTX_Source", "")
     try:
         paths = json.loads(source_value) if source_value.startswith("[") else [source_value]
-    except (ValueError, AttributeError):
-        raise ValueError("Référence EVTX de l’alerte invalide")
+    except (ValueError, AttributeError) as exc:
+        raise ValueError("Référence EVTX de l’alerte invalide") from exc
     if not isinstance(paths, list) or not paths or not all(isinstance(p, str) and p for p in paths):
         raise ValueError("Référence EVTX de l’alerte absente")
     referenced = {path_key(p) for p in paths}
@@ -232,11 +228,11 @@ def build_context(
         try:
             start = stamp - timedelta(minutes=minutes)
         except OverflowError:
-            start = datetime.min.replace(tzinfo=timezone.utc)
+            start = datetime.min.replace(tzinfo=UTC)
         try:
             end = stamp + timedelta(minutes=minutes)
         except OverflowError:
-            end = datetime.max.replace(tzinfo=timezone.utc)
+            end = datetime.max.replace(tzinfo=UTC)
         for document, source in expected:
             check_cancel()
             case = None
@@ -301,7 +297,7 @@ def build_context(
     events = list(anchors.values()) + [item for _, _, item in heap]
     events.sort(
         key=lambda item: (
-            item["time"] or datetime.min.replace(tzinfo=timezone.utc),
+            item["time"] or datetime.min.replace(tzinfo=UTC),
             item["source"],
             item["row"],
         )

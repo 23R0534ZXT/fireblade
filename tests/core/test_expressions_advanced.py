@@ -1,8 +1,10 @@
 import csv
+
 import pytest
+
 from fireblade.core.engine import Case
 from fireblade.core.filter_text import parse_filter
-from fireblade.core.models import View, FilterGroup, Filter, FormatRule
+from fireblade.core.models import Filter, FilterGroup, FormatRule, View
 from fireblade.core.rule_store import RuleBook
 
 

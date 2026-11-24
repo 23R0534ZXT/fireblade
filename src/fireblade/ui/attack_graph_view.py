@@ -11,20 +11,17 @@ without freezing a stale list of hosts.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QBuffer, QIODevice, QPoint, QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QAction, QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
+from PySide6.QtCore import QBuffer, QIODevice, QPointF, QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
-    QFormLayout,
     QHBoxLayout,
     QInputDialog,
     QLabel,
-    QLineEdit,
     QMenu,
-    QMessageBox,
     QPlainTextEdit,
     QPushButton,
     QToolButton,
@@ -497,6 +494,7 @@ class AttackGraphPanel(QWidget):
         """The techniques of this case, as a layer the official Navigator opens."""
         import json
         from pathlib import Path
+
         from fireblade.core.attack_graph import navigator_layer
 
         graph = self.canvas.graph

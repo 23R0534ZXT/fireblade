@@ -1,7 +1,6 @@
 """Destroying a case: every file overwritten, the folder removed, the certificate outside."""
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -85,8 +84,6 @@ def test_the_record_names_every_relative_path(tmp_path):
 
 
 def test_the_certificate_keeps_its_table_readable_and_hashes_complete(tmp_path):
-    from fireblade.core import destruction_certificate
-
     folder = make_case(tmp_path)
     certificate = tmp_path / "pv.html"
     record = case_destruction.destroy_case(folder, "dod3", certificate_path=certificate)

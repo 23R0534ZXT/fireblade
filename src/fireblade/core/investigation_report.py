@@ -1,14 +1,14 @@
 """Standalone, escaped reports from explicit forensic findings."""
 
-from datetime import datetime, timezone
-import json
-import html
-import os
-from pathlib import Path
-import tempfile
 import base64
+import html
+import json
+import os
+import tempfile
+from datetime import UTC, datetime
+from pathlib import Path
 
-from fireblade.core.models import View, FilterGroup, OPERATORS
+from fireblade.core.models import OPERATORS, FilterGroup, View
 from fireblade.core.paths import evidence_name, protected_destination
 from fireblade.core.workspace_reader import WorkspaceReader
 
@@ -70,7 +70,10 @@ def build_report(
         raise ValueError("Titre de rapport requis (500 caractères maximum)")
     if type(limit) is not int or not 1 <= limit <= 10000:
         raise ValueError("Rapport limité à 1 à 10000 constats")
-    escape = lambda value: html.escape("" if value is None else str(value), quote=True)
+
+    def escape(value):
+        return html.escape("" if value is None else str(value), quote=True)
+
     result = ReportParts()
     for part in [
         '<!doctype html><html lang="fr"><head><meta charset="utf-8">',
@@ -83,7 +86,7 @@ def build_report(
         ".note{background:#fff3c4;padding:10px}.warning{color:#8b320c}.muted{color:#4f6074}",
         "@media print{body{margin:0;padding:0}h2{page-break-before:auto}table{page-break-inside:avoid}}",
         "</style></head><body><h1>" + escape(title) + "</h1>",
-        "<p>Généré le " + escape(datetime.now(timezone.utc).isoformat()) + " · UTC</p>",
+        "<p>Généré le " + escape(datetime.now(UTC).isoformat()) + " · UTC</p>",
         "<pre>" + escape(description) + "</pre>",
         '<p class="muted">Les constats ci-dessous sont des éléments à examiner. Les empreintes sources sont celles enregistrées à l’import ; leur présence ne prouve pas une nouvelle vérification de la source.</p>',
         "<p>Périmètre : "

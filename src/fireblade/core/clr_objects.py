@@ -5,6 +5,7 @@ The helper recreates the reader's graph lazily and owns its lifetime.
 """
 
 import json
+
 from fireblade.core.plugin_registry import approved_for_analysis, digest
 
 

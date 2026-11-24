@@ -1,17 +1,16 @@
 """The assistant says what it can and cannot do, and never pretends to have a model."""
 
 import json
-
 import types
 
 from fireblade.core import assistant as assistant_module
 from fireblade.core.assistant import (
-    Assistant,
     STATE_MISSING,
     STATE_NO_MEMORY,
     STATE_NO_RUNTIME,
     STATE_OFF,
     STATE_READY,
+    Assistant,
     answer,
     model_directory,
     write_manifest,

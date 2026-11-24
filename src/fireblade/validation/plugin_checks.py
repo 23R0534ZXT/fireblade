@@ -2,11 +2,12 @@
 
 import hashlib
 import os
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, Filter, FilterGroup
-from fireblade.core.tle_plugins import inspect_plugin, import_plugin, register_functions
+from fireblade.core.models import Filter, FilterGroup, View
+from fireblade.core.tle_plugins import import_plugin, inspect_plugin, register_functions
 
 
 def verify(host, fixture):
@@ -20,7 +21,8 @@ def verify(host, fixture):
             root = Path(folder)
             os.environ["LOCALAPPDATA"] = str(root / "user")
             import shutil
-            from fireblade.core.reader_detection import reader_directories, detect_reader
+
+            from fireblade.core.reader_detection import detect_reader, reader_directories
 
             readers_dir = reader_directories()[0]
             readers_dir.mkdir(parents=True)
@@ -70,6 +72,7 @@ def verify(host, fixture):
                     )
                     assert case.count(view) == 1
                 import threading
+
                 from fireblade.core.errors import OperationCancelled
 
                 timer = threading.Timer(0.15, case.interrupt)

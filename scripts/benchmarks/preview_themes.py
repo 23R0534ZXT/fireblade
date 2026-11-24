@@ -4,12 +4,13 @@ import argparse
 import csv
 import json
 import os
-from pathlib import Path
 import tempfile
 import time
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
+
 from fireblade.core.engine import Case
 from fireblade.core.themes import THEMES
 from fireblade.ui.app import Window

@@ -1,15 +1,15 @@
 import time
 
 import pytest
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPalette
 from PySide6.QtWidgets import QStyle, QStyleOptionViewItem
 
 from fireblade.core.engine import Case
 from fireblade.core.models import View
 from fireblade.core.tle_layout import read_tle_layout
-from fireblade.ui.app import Window
 from fireblade.ui.advanced_dialogs import RulesDialog
+from fireblade.ui.app import Window
 from fireblade.ui.theme import apply_theme
 from fireblade.ui.visual_rules import contrast_color
 

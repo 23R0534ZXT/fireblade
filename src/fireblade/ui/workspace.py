@@ -3,16 +3,14 @@
 import json
 from pathlib import Path
 
-from PySide6.QtWidgets import QFileDialog, QVBoxLayout, QWidget, QSplitter
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QFileDialog, QSplitter, QVBoxLayout, QWidget
 
 from fireblade.core.engine import Case
-from fireblade.core.models import AnalysisSnapshot, View, analysis_tab_labels
-from fireblade.ui.workspace_tabs import WorkspaceTabs
-
-
+from fireblade.core.models import analysis_tab_labels
 from fireblade.core.sessions import read_session, write_session
+from fireblade.ui.workspace_tabs import WorkspaceTabs
 
 
 class WorkspaceMixin:

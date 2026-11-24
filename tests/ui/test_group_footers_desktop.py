@@ -3,12 +3,12 @@ from dataclasses import replace
 from decimal import Decimal
 
 import pytest
-from PySide6.QtCore import QModelIndex, Qt
-from PySide6.QtGui import QColor, QImage, QPainter
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QImage, QPainter
 from PySide6.QtWidgets import QStyleOptionViewItem
 
 from fireblade.core.engine import Case
-from fireblade.core.models import Summary, View, Filter
+from fireblade.core.models import Filter, Summary, View
 from fireblade.core.settings import Settings
 from fireblade.ui.app import Window
 from fireblade.ui.exploration_dialogs import GroupsDialog

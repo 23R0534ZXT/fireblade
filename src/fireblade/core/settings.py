@@ -1,9 +1,9 @@
 """Small, validated resource settings; TOML support is in Python's standard library."""
 
 import os
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-import tomllib
 
 
 def auto_threads(cpu=None):

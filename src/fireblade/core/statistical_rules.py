@@ -5,10 +5,10 @@ collision/duplicate is checked against the original values, so hash collisions c
 never produce a false duplicate. Table buffers use DuckDB's normal spill budget.
 """
 
-from collections import OrderedDict
-from decimal import Decimal, localcontext, ROUND_CEILING
 import sys
 import uuid
+from collections import OrderedDict
+from decimal import ROUND_CEILING, Decimal, localcontext
 
 
 def source_column(rule):

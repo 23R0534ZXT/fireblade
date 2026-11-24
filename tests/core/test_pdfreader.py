@@ -3,9 +3,9 @@
 import csv
 
 import pytest
+from pdf_sample import build_pdf
 
 from fireblade.core import pdfreader
-from pdf_sample import build_pdf
 
 
 def test_a_pdf_with_a_text_layer_gives_its_lines_and_its_page(tmp_path):

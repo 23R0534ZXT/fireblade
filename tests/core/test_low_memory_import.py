@@ -2,10 +2,11 @@ import csv
 import hashlib
 
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, Filter
-from fireblade.core.settings import Settings
 from fireblade.core.errors import OperationCancelled
+from fireblade.core.models import Filter, View
+from fireblade.core.settings import Settings
 
 
 def wide_source(path, rows=24):

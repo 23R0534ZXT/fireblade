@@ -1,9 +1,10 @@
 import json
-from pathlib import Path
 import re
 import zipfile
+from pathlib import Path
 
 import pytest
+
 from fireblade.core.collection import PARSERS
 from scripts.windows.build_forensic_tools import unpack
 
@@ -38,6 +39,7 @@ def test_engine_archive_cannot_escape_staging_directory(tmp_path):
 def test_evtx_fixture_uses_pinned_raw_content_and_checks_digest(monkeypatch):
     import hashlib
     import io
+
     from scripts.windows.build_forensic_tools import load_evtx_fixture
 
     root = Path(__file__).parents[2]

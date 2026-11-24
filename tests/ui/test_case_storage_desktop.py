@@ -1,7 +1,8 @@
 from PySide6.QtWidgets import QFileDialog, QMessageBox
-from fireblade.ui.app import Window
+
 from fireblade.core.engine import Case
-from tests.ui.test_start_workflow import until, idle
+from fireblade.ui.app import Window
+from tests.ui.test_start_workflow import idle, until
 
 
 def test_archive_reclaims_and_restores_from_catalogue(qt_application, tmp_path, monkeypatch):

@@ -1,6 +1,7 @@
 """Bounded cell-only numeric graphics; never scan or copy the dataset."""
 
 from decimal import Decimal, InvalidOperation
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 
@@ -56,8 +57,8 @@ def contrast_color(background, base=None):
     """Choose the higher-contrast black/white text using relative luminance."""
     if background.alpha() != 255:
         if base is None:
-            from PySide6.QtWidgets import QApplication
             from PySide6.QtGui import QPalette
+            from PySide6.QtWidgets import QApplication
 
             app = QApplication.instance()
             base = app.palette().color(QPalette.Base) if app else QColor("#ffffff")
@@ -79,7 +80,9 @@ def contrast_color(background, base=None):
 
 
 from functools import lru_cache
+
 from PySide6.QtGui import QImage
+
 from fireblade.core.icon_assets import png_bytes
 
 ICON_ROLE = int(Qt.UserRole) + 92

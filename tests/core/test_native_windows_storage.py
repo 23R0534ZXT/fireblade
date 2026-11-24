@@ -3,12 +3,14 @@
 import csv
 import hashlib
 import os
-from pathlib import Path
 import subprocess
 import uuid
+from pathlib import Path
+
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, Filter
+from fireblade.core.models import Filter, View
 from fireblade.core.paths import same_file
 
 

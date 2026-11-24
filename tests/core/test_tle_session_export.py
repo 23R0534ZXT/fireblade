@@ -10,7 +10,7 @@ from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled
 from fireblade.core.models import AnalysisSnapshot, Filter, View
 from fireblade.core.settings import Settings
-from fireblade.core.tle_compat import read_tle_session, TleSessionImport
+from fireblade.core.tle_compat import TleSessionImport, read_tle_session
 from fireblade.core.tle_session_export import TleSessionExport
 
 

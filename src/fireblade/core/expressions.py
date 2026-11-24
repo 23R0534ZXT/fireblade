@@ -4,9 +4,9 @@ User text is parsed into immutable nodes. Only this module's operator/function
 registry emits SQL; literals are parameters and identifiers come from the schema.
 """
 
+import re
 from dataclasses import dataclass
 from functools import lru_cache
-import re
 
 CUSTOM_FUNCTIONS = {}
 

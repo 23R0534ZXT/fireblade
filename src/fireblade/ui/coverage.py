@@ -6,34 +6,35 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QComboBox,
     QCheckBox,
-    QLineEdit,
-    QTableView,
-    QTextBrowser,
-    QSplitter,
-    QFileDialog,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QPushButton,
+    QSplitter,
+    QTableView,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
 )
+
 from fireblade.core.coverage import (
+    EXPECTED,
     FORMAT,
     MAX_EVENTS,
-    EXPECTED,
     audit,
     event,
-    load_state,
-    save_state,
-    load_report,
-    save_report,
     export_report,
+    load_report,
+    load_state,
+    save_report,
+    save_state,
 )
 from fireblade.core.i18n import translate
 from fireblade.core.workspace_reader import WorkspaceReader

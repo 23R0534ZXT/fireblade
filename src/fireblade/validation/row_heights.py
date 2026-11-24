@@ -1,10 +1,10 @@
 """Exercise auto-sized rows, shared pin geometry and long header probing."""
 
 import csv
-from pathlib import Path
 import time
+from pathlib import Path
 
-from PySide6.QtWidgets import QApplication, QAbstractItemView
+from PySide6.QtWidgets import QAbstractItemView, QApplication
 
 from fireblade.core.engine import Case
 from fireblade.core.models import View

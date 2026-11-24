@@ -9,10 +9,9 @@ Skipped without Playwright and a Chromium; never failed for lack of them.
 
 import httpx
 import pytest
+from _browser import browser_page, serving  # noqa: E402
 
 from fireblade.core.investigations import InvestigationLibrary
-
-from _browser import browser_page, serving  # noqa: E402
 
 
 @pytest.fixture()

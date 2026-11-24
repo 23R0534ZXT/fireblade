@@ -9,6 +9,7 @@ from fireblade.core.parse_pool import ParsePool
 def test_the_worker_is_told_where_the_package_lives(monkeypatch):
     """A source checkout is not installed: the child must still import fireblade."""
     import os
+
     import fireblade
 
     monkeypatch.delenv("PYTHONPATH", raising=False)

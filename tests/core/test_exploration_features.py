@@ -1,8 +1,8 @@
 import base64
 import csv
 import json
-from pathlib import Path
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 

@@ -18,7 +18,6 @@ from pathlib import Path
 
 import httpx
 import pytest
-
 from _browser import serving  # noqa: E402
 
 pytest.importorskip("playwright.sync_api")
@@ -77,7 +76,6 @@ def serving_app(live):
     import time
 
     import uvicorn
-
     from _browser import free_port
 
     port = free_port()

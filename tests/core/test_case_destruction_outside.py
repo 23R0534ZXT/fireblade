@@ -1,7 +1,5 @@
 """A case does not end at its folder: its packages, its archive and its annex go too."""
 
-import csv
-
 import pytest
 
 from fireblade.core.case_destruction import destroy_case, outside_entries

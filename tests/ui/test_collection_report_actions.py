@@ -1,9 +1,5 @@
 """The import report must explain itself, and its preview must never fail."""
 
-from pathlib import Path
-
-import pytest
-
 from fireblade.ui import collection_report as report
 
 

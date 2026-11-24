@@ -2,6 +2,7 @@
 
 from PySide6.QtCore import QModelIndex, Qt, QTimer
 from PySide6.QtWidgets import QFrame, QHeaderView, QTreeView
+
 from fireblade.ui.grid import GridDelegate
 
 

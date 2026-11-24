@@ -1,15 +1,13 @@
 """Validate the exact downloadable ZIP with the engines from the qualified EXE."""
 
 import argparse
-import csv
 import json
 import os
-from pathlib import Path
-import shutil
 import sys
 import zipfile
+from pathlib import Path
 
-from scripts.test_pack.package import APP_SHA256, ROOT, HEADERS, ROWS, digest, verify_archive
+from scripts.test_pack.package import APP_SHA256, HEADERS, ROOT, digest, verify_archive
 
 
 def extract_engines(executable, target):
@@ -47,9 +45,10 @@ def validate(archive, executable, directory):
     if sys.platform != "win32":
         raise RuntimeError("Native Windows validation required for SRUM and SQLite")
     from PySide6.QtWidgets import QApplication
-    from fireblade.core.collection import Collection, ToolPack, PARSERS
+
+    from fireblade.core.collection import PARSERS, Collection, ToolPack
     from fireblade.core.engine import Case
-    from fireblade.core.models import View, Filter
+    from fireblade.core.models import Filter, View
     from fireblade.validation.forensic_tools import parser_result_display, verify_parser_results
 
     manifest = verify_archive(archive)

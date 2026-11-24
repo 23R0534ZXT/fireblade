@@ -1,29 +1,30 @@
 """Bulk offline indicator hunting across the open workspace."""
 
 import copy
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 from PySide6.QtCore import QAbstractTableModel, Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
     QPushButton,
-    QCheckBox,
     QSpinBox,
-    QTableView,
-    QFileDialog,
-    QComboBox,
     QSplitter,
+    QTableView,
+    QVBoxLayout,
+    QWidget,
 )
-from fireblade.core.ioc_hunt import parse_indicators, read_indicator_file, KINDS
+
 from fireblade.core.i18n import translate
-from fireblade.core.ioc_results import hunt, HuntStore, discover_hunts, batch_text
+from fireblade.core.ioc_hunt import KINDS, parse_indicators, read_indicator_file
+from fireblade.core.ioc_results import HuntStore, batch_text, discover_hunts, hunt
+from fireblade.core.models import Filter, View
 from fireblade.core.workspace_reader import WorkspaceReader
-from fireblade.core.models import View, Filter
 
 
 class Rows(QAbstractTableModel):

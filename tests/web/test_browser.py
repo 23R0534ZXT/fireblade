@@ -9,10 +9,9 @@ They need Playwright and its Chromium; without them the file is skipped, never f
 
 import httpx
 import pytest
+from _browser import browser_page, serving  # noqa: E402
 
 from fireblade.core.investigations import InvestigationLibrary
-
-from _browser import browser_page, serving  # noqa: E402
 
 
 @pytest.fixture(scope="module")

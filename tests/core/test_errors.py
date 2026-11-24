@@ -2,7 +2,6 @@
 
 from fireblade.core.errors import explain_failure
 
-
 DUCKDB = """Out of Memory Error: failed to pin block of size 256.0 KiB (60.8 MiB/61.0 MiB used)
 
 Possible solutions:

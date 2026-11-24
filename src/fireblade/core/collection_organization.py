@@ -1,9 +1,10 @@
 """Stream heterogeneous collection results into artifact tabs or one grouped table."""
 
 import csv
-import duckdb
-from pathlib import Path
 import uuid
+from pathlib import Path
+
+import duckdb
 
 from fireblade.core.engine import Case
 from fireblade.core.models import View

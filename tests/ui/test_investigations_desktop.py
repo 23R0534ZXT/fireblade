@@ -1,7 +1,5 @@
 import time
 
-from PySide6.QtCore import Qt
-
 from fireblade.core.engine import Case
 from fireblade.core.models import Filter, View
 from fireblade.ui.app import Window
@@ -94,7 +92,8 @@ def test_switching_cases_saves_session_and_releases_inactive_connection(qt_appli
         two = window.create_investigation("Two")
         settle(qt_application, window)
         assert window.case is None and not window.documents
-        import duckdb, pytest
+        import duckdb
+        import pytest
 
         with pytest.raises(duckdb.ConnectionException):
             connection.execute("SELECT 1")

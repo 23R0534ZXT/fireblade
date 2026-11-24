@@ -14,8 +14,8 @@ indicators looks like a report that found none.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import html
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fireblade.core.model_texts import (
@@ -24,8 +24,8 @@ from fireblade.core.model_texts import (
     PRIORITY_LABELS,
     STATUS_LABELS,
 )
-from fireblade.core.pdf_export import html_to_pdf
 from fireblade.core.paths import evidence_name
+from fireblade.core.pdf_export import html_to_pdf
 
 MAX_BYTES = 32 * 1024 * 1024
 
@@ -64,8 +64,8 @@ def _date(value, fallback="—"):
     except ValueError:
         return _escape(value)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
 
 def _window(group):
@@ -155,7 +155,7 @@ def build(
         + " · Référence client "
         + escape(client.get("reference") or "—")
         + " · Généré le "
-        + escape(_date(generated or datetime.now(timezone.utc).isoformat()))
+        + escape(_date(generated or datetime.now(UTC).isoformat()))
         + (" · Analyste " + escape(analyst) if analyst else "")
         + "</p></div>",
     ]:
@@ -463,7 +463,7 @@ def build(
     )
     parts.append(
         '<hr><p class="muted">Rapport généré par Fireblade le '
-        + escape(_date(generated or datetime.now(timezone.utc).isoformat()))
+        + escape(_date(generated or datetime.now(UTC).isoformat()))
         + ". Case "
         + escape(case_id or "—")
         + ".</p></body></html>"

@@ -1,8 +1,9 @@
 """Shared row heights for the bounded model window and all pinned views."""
 
-from PySide6.QtCore import Qt, QRect, QTimer
-from PySide6.QtGui import QFontMetrics
 from copy import deepcopy
+
+from PySide6.QtCore import QRect, Qt, QTimer
+from PySide6.QtGui import QFontMetrics
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -12,7 +13,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
 )
 
-from fireblade.ui.layout_styles import merge_styles, font_for
+from fireblade.ui.layout_styles import font_for, merge_styles
 
 
 class RowHeights:

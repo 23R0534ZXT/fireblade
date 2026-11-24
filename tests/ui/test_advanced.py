@@ -2,7 +2,6 @@ import csv
 import hashlib
 import json
 import os
-from pathlib import Path
 import time
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -13,13 +12,12 @@ from openpyxl import Workbook, load_workbook
 from PySide6.QtCore import QCoreApplication, QEvent, Qt
 from PySide6.QtWidgets import QApplication
 
-from fireblade.ui.advanced_dialogs import ExpressionEditor, RulesDialog, SortDialog
-from fireblade.ui.app import Window
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled
 from fireblade.core.models import Filter, FilterGroup, FormatRule, SortKey, View
 from fireblade.core.profiles import detect_profile, profile_view
-from fireblade.ui.workspace import read_session
+from fireblade.ui.advanced_dialogs import ExpressionEditor, RulesDialog, SortDialog
+from fireblade.ui.app import Window
 
 
 @pytest.fixture
@@ -332,7 +330,7 @@ def test_bookmark_highlights_whole_row_while_retaining_rule_font(case):
 def test_rules_dialog_click_creation_replaces_visible_editor_and_saves(case, monkeypatch):
     from PySide6.QtGui import QColor
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QColorDialog, QPushButton, QDialogButtonBox, QDialog
+    from PySide6.QtWidgets import QColorDialog, QDialog, QDialogButtonBox, QPushButton
 
     app = QApplication.instance() or QApplication([])
     dialog = RulesDialog(case.headers, [])
@@ -375,10 +373,11 @@ def test_rules_dialog_click_creation_replaces_visible_editor_and_saves(case, mon
 
 @pytest.mark.parametrize("mode", ["bar", "scale", "icon"])
 def test_graphical_rule_editor_model_persistence_and_paint(case, mode, tmp_path):
-    from fireblade.ui.visual_rules import VISUAL_ROLE, visual_value
-    from fireblade.core.rule_store import RuleBook
-    from PySide6.QtGui import QImage, QPainter, QColor
+    from PySide6.QtGui import QImage, QPainter
     from PySide6.QtWidgets import QStyleOptionViewItem
+
+    from fireblade.core.rule_store import RuleBook
+    from fireblade.ui.visual_rules import VISUAL_ROLE, visual_value
 
     app = QApplication.instance() or QApplication([])
     rule = FormatRule(
@@ -450,8 +449,9 @@ def test_graphical_rules_reject_ambiguous_or_nonfinite_bounds(case):
     ],
 )
 def test_graphical_scale_contrast_handles_bright_saturated_colors(background, expected):
-    from fireblade.ui.visual_rules import contrast_color
     from PySide6.QtGui import QColor
+
+    from fireblade.ui.visual_rules import contrast_color
 
     assert contrast_color(QColor(background)).name() == expected
 
@@ -523,10 +523,11 @@ def test_statistic_editor_controls_remain_on_appearance_tab(case):
 
 @pytest.mark.parametrize("shape", ["triangles", "squares", "diamonds", "stars", "ratings", "flags"])
 def test_additional_icon_presets_roundtrip_and_render(case, shape):
+    from PySide6.QtCore import QRect
+    from PySide6.QtGui import QColor, QImage, QPainter
+
     from fireblade.core.rule_store import RuleBook
     from fireblade.ui.icon_shapes import paint_shape
-    from PySide6.QtGui import QImage, QPainter, QColor
-    from PySide6.QtCore import QRect
 
     rule = FormatRule(target=1, visual="icon", icon_set=shape)
     assert RuleBook.from_bytes(RuleBook(case.headers, [rule]).to_bytes()).rules[0] == rule

@@ -1,6 +1,7 @@
-from collections import Counter
 import csv
 import hashlib
+from collections import Counter
+
 from scripts.windows.dataset import generate
 
 
@@ -22,8 +23,8 @@ def test_dataset_reference_matches_independent_CSV_readback(tmp_path, monkeypatc
     for index, values in spec["samples"].items():
         assert [v or None for v in records[int(index) - 1]] == values
     assert "\n" in records[137][14] and "日本語" in records[137][15]
-    from fireblade.core.engine import Case
     from fireblade.core import csv_chunks
+    from fireblade.core.engine import Case
     from fireblade.core.models import View
 
     case = Case(tmp_path / "roundtrip.timeline")

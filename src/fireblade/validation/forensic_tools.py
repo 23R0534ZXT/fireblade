@@ -1,13 +1,13 @@
 """Run the actual embedded engines from the relocated one-file Windows EXE."""
 
 import gzip
-import shutil
 import json
-from contextlib import contextmanager
+import shutil
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
-from fireblade.core.collection import Collection, PARSERS, ToolPack, execute
+from fireblade.core.collection import PARSERS, Collection, ToolPack, execute
 from fireblade.runtime.resources import resource_path
 
 

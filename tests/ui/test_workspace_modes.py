@@ -2,12 +2,10 @@
 
 import time
 
-import pytest
 from PySide6.QtWidgets import QDockWidget
+from test_modular_workspace import add_case, settle
 
 from fireblade.ui.app import Window
-
-from test_modular_workspace import add_case, settle
 
 
 def bars(window):

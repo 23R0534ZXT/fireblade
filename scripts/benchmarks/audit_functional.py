@@ -10,10 +10,10 @@ import csv
 import hashlib
 import json
 import os
-from pathlib import Path
 import time
 import traceback
 import zipfile
+from pathlib import Path
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -38,7 +38,7 @@ from fireblade.core.coverage import audit
 from fireblade.core.engine import Case
 from fireblade.core.investigation_report import build_report, write_report
 from fireblade.core.ioc_hunt import parse_indicators
-from fireblade.core.ioc_results import hunt, discover_hunts, HuntStore
+from fireblade.core.ioc_results import HuntStore, discover_hunts, hunt
 from fireblade.core.models import Filter, View
 from fireblade.core.workspace_reader import WorkspaceReader
 from fireblade.ui.app import Window
@@ -453,9 +453,9 @@ def accepted_dialogs(app, root):
     window, errors = loaded(app, root)
     checks = []
     try:
+        from fireblade.core.sessions import read_session
         from fireblade.ui.cross_search import SearchDialog
         from fireblade.ui.investigations import InvestigationDialog
-        from fireblade.core.sessions import read_session
 
         dialog = SearchDialog(window)
         dialog.show()
@@ -584,7 +584,7 @@ def accepted_dialogs(app, root):
 
 
 def contextual_actions(app, root):
-    from fireblade.ui.menus import header_menu, cell_menu
+    from fireblade.ui.menus import cell_menu, header_menu
 
     window, errors = loaded(app, root)
     results = []

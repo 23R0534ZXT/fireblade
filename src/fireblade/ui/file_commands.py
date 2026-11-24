@@ -48,8 +48,9 @@ class FileCommandsMixin:
     def import_with_tle_plugin(self):
         if not self.can_open_file():
             return
-        from fireblade.core.tle_plugins import inspect_plugin
         from PySide6.QtWidgets import QInputDialog
+
+        from fireblade.core.tle_plugins import inspect_plugin
 
         plugin, _ = QFileDialog.getOpenFileName(
             self, "Choisir le plugin TLE et ses dépendances", "", "Plugin TLE (*.dll)"

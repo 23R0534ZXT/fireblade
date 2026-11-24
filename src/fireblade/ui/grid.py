@@ -4,20 +4,21 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass, field
-from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal, QPoint, QRect, QEvent
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPolygon, QPalette, QBrush
-from PySide6.QtWidgets import QStyledItemDelegate, QStyle
 
-from fireblade.core.models import View
+from PySide6.QtCore import QAbstractItemModel, QEvent, QModelIndex, QPoint, QRect, Qt, Signal
+from PySide6.QtGui import QBrush, QColor, QFont, QFontMetrics, QPalette, QPolygon
+from PySide6.QtWidgets import QStyle, QStyledItemDelegate
+
 from fireblade.core.conditions import validate_format_rules
+from fireblade.core.models import View
 from fireblade.ui.visual_rules import (
-    VISUAL_ROLE,
     BAR_ROLE,
     ICON_ROLE,
-    visual_value,
+    VISUAL_ROLE,
     contrast_color,
     icon_image,
     icon_level,
+    visual_value,
 )
 from fireblade.ui.workers import Job
 
@@ -46,7 +47,7 @@ class GridDelegate(QStyledItemDelegate):
         appearance = merge_styles(*states)
         appearance.update(merge_styles(*layers, priority_only=True))
         if appearance:
-            from fireblade.ui.layout_styles import role_value, font_for
+            from fireblade.ui.layout_styles import font_for, role_value
 
             background = role_value(appearance, Qt.BackgroundRole)
             foreground = role_value(appearance, Qt.ForegroundRole)
@@ -153,8 +154,9 @@ class GridDelegate(QStyledItemDelegate):
         return size
 
     def paint(self, painter, option, index):
-        from PySide6.QtWidgets import QStyleOptionViewItem, QApplication
-        from fireblade.ui.layout_styles import paint_image, paint_border, paint_text
+        from PySide6.QtWidgets import QApplication, QStyleOptionViewItem
+
+        from fireblade.ui.layout_styles import paint_border, paint_image, paint_text
 
         appearance = self.appearance(index, option)
         custom = any(key in appearance for key in ("image", "word_wrap", "trimming", "hotkey"))
@@ -564,7 +566,7 @@ class GridModel(QAbstractItemModel):
                 else None
             )
         if orientation == Qt.Horizontal:
-            from fireblade.ui.layout_styles import role_value, merge_styles
+            from fireblade.ui.layout_styles import merge_styles, role_value
 
             style = merge_styles(
                 self.view.layout_styles.get("header", {}),

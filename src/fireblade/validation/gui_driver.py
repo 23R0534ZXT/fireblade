@@ -1,18 +1,16 @@
 """Shared native GUI exercise driver. Input is QtTest, not a human operator."""
 
-import copy
-from datetime import datetime, timezone
 import json
 import os
 import platform
-from pathlib import Path
-import statistics
 import sys
 import time
-import duckdb
+from datetime import UTC, datetime
+from pathlib import Path
 
-from PySide6.QtCore import QPoint, QTimer, Qt, qVersion
-from PySide6.QtGui import QAction, QContextMenuEvent
+import duckdb
+from PySide6.QtCore import QPoint, Qt, QTimer, qVersion
+from PySide6.QtGui import QContextMenuEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QMenu, QPushButton
 
@@ -32,7 +30,7 @@ class GuiRun:
         self.report = dict(
             status="running",
             kind=kind,
-            started_utc=datetime.now(timezone.utc).isoformat(),
+            started_utc=datetime.now(UTC).isoformat(),
             platform=sys.platform,
             frozen=bool(getattr(sys, "frozen", False)),
             qt_platform=app.platformName(),
@@ -331,6 +329,6 @@ class GuiRun:
         except Exception as cleanup:
             self.report["status"] = "failed"
             self.report["cleanup_error"] = str(cleanup)
-        self.report["finished_utc"] = datetime.now(timezone.utc).isoformat()
+        self.report["finished_utc"] = datetime.now(UTC).isoformat()
         self.flush()
         return 0 if self.report["status"] == "passed" else 1

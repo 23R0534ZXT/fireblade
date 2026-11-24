@@ -1,9 +1,8 @@
 """Bound CSV ingestion queries without splitting quoted or multiline records."""
 
 import csv
-from pathlib import Path
 import tempfile
-
+from pathlib import Path
 
 CHUNK_BYTES = 16 * 1024 * 1024
 

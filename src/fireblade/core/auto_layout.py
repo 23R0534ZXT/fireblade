@@ -2,15 +2,14 @@
 
 import hashlib
 import json
-from pathlib import Path
 import re
 import sys
+from pathlib import Path
 
 from fireblade.core.layout import read_layout, write_json
 from fireblade.core.profiles import detect_profile
 from fireblade.core.tle_layout import TleLayout, read_tle_layout
 from fireblade.runtime.windows_paths import user_directory
-
 
 LIMIT = 4 * 1024 * 1024
 

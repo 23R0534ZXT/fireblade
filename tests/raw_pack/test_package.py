@@ -1,10 +1,9 @@
 import io
-from pathlib import Path
 
 import pytest
 
-from scripts.raw_pack.package import download, safe_relative, write_linux_file
 from fireblade.core.catscale import records
+from scripts.raw_pack.package import download, safe_relative, write_linux_file
 
 
 @pytest.mark.parametrize(

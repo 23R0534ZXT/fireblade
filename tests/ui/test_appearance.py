@@ -79,6 +79,7 @@ def test_GUI_driver_uses_visible_import_and_context_menus(qt_application, tmp_pa
 
 def test_GUI_driver_sort_editor_and_note_dialog(qt_application, tmp_path):
     from PySide6.QtWidgets import QPlainTextEdit
+
     from fireblade.ui.advanced_dialogs import SortDialog
 
     source = tmp_path / "source.csv"

@@ -3,8 +3,10 @@
 import base64
 import json
 from pathlib import Path
-from PySide6.QtCore import QByteArray, QBuffer, QIODevice, Qt
-from PySide6.QtGui import QImage, QColor
+
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, Qt
+from PySide6.QtGui import QColor, QImage
+
 from fireblade.core.models import View
 from fireblade.core.tle_layout import read_tle_layout
 

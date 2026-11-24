@@ -7,9 +7,11 @@ exhaust a small DuckDB budget even when ordinary external sorts spill to disk.
 
 import json
 import uuid
-import duckdb
 from dataclasses import replace
-from fireblade.core.summaries import group_expression, summary_expressions, group_sort_terms
+
+import duckdb
+
+from fireblade.core.summaries import group_expression, group_sort_terms, summary_expressions
 
 
 def build_outline(case, view, progress=lambda _: None):

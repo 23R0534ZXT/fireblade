@@ -1,8 +1,10 @@
 import csv
 from decimal import Decimal
+
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, Summary, Filter
+from fireblade.core.models import Filter, Summary, View
 
 
 def test_complete_outline_matches_recursive_queries_and_pages_beyond_first_groups(tmp_path):

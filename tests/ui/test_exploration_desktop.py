@@ -10,7 +10,7 @@ from fireblade.core.engine import Case
 from fireblade.core.models import Filter, Summary, View
 from fireblade.ui.app import Window
 from fireblade.ui.cross_search import WorkspaceSearch
-from fireblade.ui.exploration_dialogs import GroupsDialog, DateFilterDialog
+from fireblade.ui.exploration_dialogs import DateFilterDialog, GroupsDialog
 
 
 def settle(app, window, timeout=15):
@@ -343,6 +343,7 @@ def test_complete_expansion_pages_all_groups_and_collapse_restores_tree(qt_appli
 
 def test_native_connection_work_keeps_gui_timer_running_and_uses_worker(qt_application, window):
     import threading
+
     from PySide6.QtCore import QTimer
 
     main = threading.get_ident()
@@ -466,8 +467,9 @@ def test_connection_ownership_waits_for_runnable_tail_before_reopen(
 def test_open_official_plaso_csv_applies_profile_before_showing_grid(
     qt_application, tmp_path, monkeypatch
 ):
-    from fireblade.ui.dialogs import ImportDialog
     import shutil
+
+    from fireblade.ui.dialogs import ImportDialog
 
     fixture = Path(__file__).parents[1] / "fixtures" / "tle-exports" / "SuperTimelinePlaso.csv"
     source = tmp_path / "plaso.csv"
@@ -536,8 +538,9 @@ def test_old_model_never_exposes_a_new_backend_column_before_schema_refresh(qt_a
 
 def test_right_pin_menu_shared_selection_geometry_copy_and_export(qt_application, window, tmp_path):
     import csv
-    from PySide6.QtCore import QItemSelectionModel
+
     from PySide6.QtTest import QTest
+
     from fireblade.ui.menus import header_menu
 
     window.resize(780, 500)
@@ -678,7 +681,9 @@ def test_right_pin_vertical_scroll_and_empty_filter_share_loaded_rows(
 
 
 def test_ordinary_open_detects_real_installed_reader(qt_application, tmp_path, monkeypatch):
-    import os, shutil
+    import os
+    import shutil
+
     from fireblade.core.reader_detection import reader_directories
     from fireblade.ui.dialogs import ImportDialog
 
@@ -728,6 +733,7 @@ def test_export_tle_session_from_multiple_tabs_uses_sources_and_all_tags(
     qt_application, window, tmp_path
 ):
     import json
+
     from fireblade.core.tle_compat import read_tle_session
 
     first = window.case
@@ -759,6 +765,7 @@ def test_xml_layout_export_uses_real_header_geometry_and_protects_evidence(
     qt_application, window, tmp_path, monkeypatch
 ):
     from PySide6.QtWidgets import QFileDialog
+
     from fireblade.core.tle_layout import read_tle_layout
 
     target = tmp_path / "portable.layout"

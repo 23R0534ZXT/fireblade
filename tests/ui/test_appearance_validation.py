@@ -1,5 +1,6 @@
 import pytest
 from PySide6.QtTest import QTest
+
 from fireblade.ui.advanced_dialogs import RulesDialog
 from fireblade.validation.appearance import ensure_control_visible
 

@@ -7,15 +7,13 @@ Windows GUI test or a performance comparison with Timeline Explorer.
 import argparse
 import hashlib
 import json
-import os
-from pathlib import Path
 import platform
 import shutil
 import sys
 import time
+from pathlib import Path
 
 from scripts.windows.existing_dataset import prepare
-
 
 REPEATS = 5
 

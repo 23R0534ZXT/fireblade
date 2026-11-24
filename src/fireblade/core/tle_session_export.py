@@ -4,14 +4,13 @@ import copy
 import hashlib
 import json
 import os
-from pathlib import Path
 import tempfile
 import threading
+from pathlib import Path
 
 from fireblade.core.engine import Case
-from fireblade.core.paths import same_file, protected_destination
 from fireblade.core.errors import OperationCancelled, job_cancelled
-
+from fireblade.core.paths import protected_destination, same_file
 
 MAX_SESSION_BYTES = 4 * 1024 * 1024
 

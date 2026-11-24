@@ -8,11 +8,11 @@ import argparse
 import csv
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import time
+from pathlib import Path
 
 
 def main():
@@ -30,11 +30,12 @@ def main():
         from PySide6.QtCore import Qt, QTimer
         from PySide6.QtGui import QColor, QFont, QImage, QPainter
         from PySide6.QtWidgets import QApplication, QDialog, QFileDialog
+
+        from fireblade.core.models import Filter, View
+        from fireblade.core.sessions import read_session
         from fireblade.ui.app import Window
         from fireblade.ui.dialogs import ImportDialog
         from fireblade.ui.investigation_tools import ReportDialog
-        from fireblade.core.models import Filter, View
-        from fireblade.core.sessions import read_session
 
         app = QApplication.instance() or QApplication([])
         window = Window(investigation_root=root / "cases", rule_path=root / "rules.json")

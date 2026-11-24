@@ -5,7 +5,7 @@ import csv
 import duckdb
 import pytest
 
-from fireblade.core.engine import Case, View
+from fireblade.core.engine import Case
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 """Protect immutable versions and never publish a failed upload."""
 
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 import pytest
 

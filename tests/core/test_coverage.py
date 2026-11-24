@@ -1,22 +1,22 @@
 import csv
 import hashlib
 import json
-from pathlib import Path
 import threading
+
 import pytest
+
 from fireblade.core.coverage import (
+    FORMAT,
     audit,
     event,
-    digest,
-    save_state,
-    load_state,
     export_report,
-    FORMAT,
+    load_state,
+    save_state,
 )
 from fireblade.core.engine import Case
-from fireblade.core.models import AnalysisSnapshot, View, Filter
-from fireblade.core.workspace_reader import WorkspaceReader
 from fireblade.core.errors import OperationCancelled, cancellation_scope
+from fireblade.core.models import AnalysisSnapshot, Filter, View
+from fireblade.core.workspace_reader import WorkspaceReader
 
 
 @pytest.fixture
@@ -242,6 +242,7 @@ def test_wrong_values_with_same_row_count_never_replace_previous_export(
     evidence, tmp_path, monkeypatch
 ):
     from openpyxl import Workbook
+
     import fireblade.core.spreadsheets as sheets
 
     case, _, _ = evidence
@@ -265,7 +266,7 @@ def test_wrong_values_with_same_row_count_never_replace_previous_export(
 
 
 def test_expected_families_can_be_narrowed_and_last_report_roundtrips(evidence, tmp_path):
-    from fireblade.core.coverage import save_report, load_report
+    from fireblade.core.coverage import load_report, save_report
 
     report = run(evidence, expected="windows", expected_tools=["EvtxECmd"])
     missing = [item for item in report["findings"] if item["code"] == "missing_family"]

@@ -7,8 +7,8 @@ from PySide6.QtGui import QImage
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QDialogButtonBox, QPushButton, QToolButton
 
-from fireblade.ui.advanced_dialogs import FilterDialog, RulesDialog, SortDialog
 from fireblade.core.models import FilterGroup
+from fireblade.ui.advanced_dialogs import FilterDialog, RulesDialog, SortDialog
 from fireblade.validation.gui_driver import GuiRun
 
 

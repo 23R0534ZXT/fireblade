@@ -21,15 +21,15 @@ import subprocess
 import threading
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from html import escape
 from pathlib import Path
 from urllib.parse import parse_qs, quote
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 
 from fireblade.core.case_destruction import destroy_case, outside_entries
@@ -476,7 +476,7 @@ class Agency:
         with self.lock:
             self.opened.pop(identifier, None)
         certificate = self.certificates / (
-            datetime.now(timezone.utc).strftime("pv-%Y%m%d-%H%M%S-") + identifier[:8] + ".html"
+            datetime.now(UTC).strftime("pv-%Y%m%d-%H%M%S-") + identifier[:8] + ".html"
         )
         extras = [str(path) for path in outside_entries(library_root, identifier)]
         record = destroy_case(

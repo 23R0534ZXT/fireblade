@@ -138,6 +138,7 @@ def test_the_brief_states_the_severity_of_what_it_lists():
 def test_the_assistant_only_reads_the_case():
     """A lookup that would change the case is refused before it reaches DuckDB."""
     import pytest
+
     from fireblade.core.case_tools import select_only
 
     for harmless in ("SELECT * FROM events", "select 1", "PRAGMA table_info('events')"):

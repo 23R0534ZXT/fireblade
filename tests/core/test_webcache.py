@@ -1,17 +1,15 @@
 import csv
-from datetime import datetime, timezone
 import gzip
-import hashlib
 import json
-from pathlib import Path
 import threading
+from pathlib import Path
 
 import pytest
 
 from fireblade.core.collection import Collection, ToolPack, identify, sha256
-from fireblade.core.errors import OperationCancelled, cancellation_scope
 from fireblade.core.engine import Case
-from fireblade.core.models import View, Filter
+from fireblade.core.errors import OperationCancelled, cancellation_scope
+from fireblade.core.models import Filter, View
 from fireblade.core.webcache import cell, filetime, parse
 
 
@@ -143,6 +141,7 @@ def test_cancellation_checks_before_creating_records(webcache_source, tmp_path):
 
 def test_dirty_database_and_unreadable_table_are_reported(tmp_path, monkeypatch):
     from types import SimpleNamespace
+
     import dissect.esedb
 
     class Table:

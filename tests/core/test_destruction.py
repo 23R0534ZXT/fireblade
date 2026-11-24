@@ -1,5 +1,4 @@
 import base64
-import hashlib
 import os
 from pathlib import Path
 
@@ -90,7 +89,10 @@ def test_a_verification_failure_keeps_the_file_and_says_so(tmp_path):
     folder = case_folder(tmp_path)
     path = witness_file(folder)
     original = path.read_bytes()
-    monkey = lambda *args, **kwargs: (False, "0" * 64)
+
+    def monkey(*args, **kwargs):
+        return (False, "0" * 64)
+
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(destruction, "_verify", monkey)
         record = destroy(plan([path], folder), "dod3")

@@ -1,8 +1,8 @@
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtWidgets import QApplication, QTextBrowser

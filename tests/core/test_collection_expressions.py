@@ -1,6 +1,7 @@
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, Filter, FilterGroup
+from fireblade.core.models import Filter, FilterGroup, View
 
 
 @pytest.mark.parametrize(
@@ -18,7 +19,8 @@ from fireblade.core.models import View, Filter, FilterGroup
     ],
 )
 def test_collection_criteria_share_native_filter_pipeline(tmp_path, expression):
-    import csv, json
+    import csv
+    import json
 
     source = tmp_path / "data.csv"
     with source.open("w", newline="") as f:
@@ -77,7 +79,9 @@ def test_single_rejects_multiple_objects(tmp_path):
     ],
 )
 def test_object_navigation_and_nested_collections(tmp_path, expression):
-    import csv, json
+    import csv
+    import json
+
     from fireblade.core.filter_text import parse_filter
 
     source = tmp_path / "s.csv"

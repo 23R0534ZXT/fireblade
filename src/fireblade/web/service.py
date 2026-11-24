@@ -20,14 +20,14 @@ import tempfile
 import threading
 import time as clock
 import uuid
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.engine import Case
-from fireblade.core.investigations import InvestigationLibrary
-from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View, analysis_label
 from fireblade.core.errors import OperationCancelled
+from fireblade.core.investigations import InvestigationLibrary
+from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View
 from fireblade.core.sessions import read_session
 from fireblade.core.timeline import TimelineStore
 from fireblade.core.workspace_reader import WorkspaceReader
@@ -194,7 +194,11 @@ class Library:
                     # core's, in its source language. The name of a file the analyst brought
                     # is evidence and is never translated.
                     stem, dot, extension = name.rpartition(".")
-                    name = english.english_text(stem) + dot + extension if stem else english.english_text(name)
+                    name = (
+                        english.english_text(stem) + dot + extension
+                        if stem
+                        else english.english_text(name)
+                    )
                 if name:
                     return f"{name} — {sheet}" if sheet else name
         return Path(str(fallback).replace("\\", "/")).stem or "analysis"
@@ -292,7 +296,7 @@ class Library:
             return {
                 "layer": str(target),
                 "bytes": target.stat().st_size,
-                "techniques": len((layer.get("techniques") or [])),
+                "techniques": len(layer.get("techniques") or []),
             }
         positioned = ag.layout(graph)
         return {
@@ -330,7 +334,7 @@ class Library:
         """
         if min_level not in ("informational", "low", "medium", "high", "critical"):
             raise ServiceError("Invalid Hayabusa level.")
-        data = self.library.read(identifier)
+        self.library.read(identifier)
         reports = sorted((self.library.folder(identifier) / "collections").glob("import-*"))
         pack = (
             ToolPack(Path(self.tools_root))
@@ -1307,7 +1311,7 @@ class Library:
     def save_global_rules(self, rules: list, headers: list | None = None) -> dict:
         """Replace the shared book; a column absent from an analysis skips that rule."""
         from fireblade.core.models import Filter, FilterGroup, FormatRule
-        from fireblade.core.rule_store import RuleBook, RuleStore
+        from fireblade.core.rule_store import RuleBook
 
         book, _error, store = self._global_rules_book()
         names = list(book.headers)
@@ -1723,7 +1727,7 @@ class Library:
             else:
                 from fireblade.core.spreadsheets import csv_from_sheet
             with csv_from_sheet(path, chosen, path.parent, lambda: None) as csv_path:
-                with open(csv_path, "r", encoding="utf-8", newline="") as stream:
+                with open(csv_path, encoding="utf-8", newline="") as stream:
                     reader = csv.reader(stream)
                     header = next(reader, [])
                     columns = [
@@ -1848,7 +1852,7 @@ class Library:
             [str(value)[:400] for value in record[: len(headers)]]
             for record in records[1 : 1 + self.PREVIEW_ROWS]
         ]
-        from fireblade.core.profiles import detect_profile, profile_view, profile_transformations
+        from fireblade.core.profiles import detect_profile, profile_transformations, profile_view
 
         profile = detect_profile(headers)
         columns = [
@@ -2273,7 +2277,7 @@ class Library:
             certificates.mkdir(parents=True, exist_ok=True)
         # The generator writes HTML unless the target ends in .pdf.
         certificate = certificates / (
-            datetime.now(timezone.utc).strftime("pv-%Y%m%d-%H%M%S-") + identifier[:8] + ".html"
+            datetime.now(UTC).strftime("pv-%Y%m%d-%H%M%S-") + identifier[:8] + ".html"
         )
         self.close_case(identifier)
         # A portable package or an archive of this case is the case: it goes too.
@@ -2351,6 +2355,7 @@ class Library:
         """The case's tabs as a `.fireblade-session` the desktop opens as they are."""
         import base64
         import tempfile
+
         from fireblade.core.sessions import AnalysisSnapshot, View, write_session
 
         data = self.library.read(identifier)
@@ -2394,6 +2399,7 @@ class Library:
         """Read a session file and add the tabs it names to this case."""
         import base64
         import tempfile
+
         from fireblade.core.sessions import read_session
 
         try:
@@ -2500,11 +2506,7 @@ class Library:
             reader, title, description, bookmarks_only=bookmarks_only, limit=limit
         )
         folder = self.library.folder(identifier)
-        target = (
-            folder
-            / "reports"
-            / (datetime.now(timezone.utc).strftime("report-%Y%m%d-%H%M%S") + ".html")
-        )
+        target = folder / "reports" / (datetime.now(UTC).strftime("report-%Y%m%d-%H%M%S") + ".html")
         target.parent.mkdir(parents=True, exist_ok=True)
         write_report(target, report, snapshots)
         _in_english(target)
@@ -2597,11 +2599,7 @@ class Library:
             destruction=workspace.get("destruction") or [],
             analyst=analyst,
         )
-        target = (
-            folder
-            / "reports"
-            / (datetime.now(timezone.utc).strftime("client-%Y%m%d-%H%M%S") + ".html")
-        )
+        target = folder / "reports" / (datetime.now(UTC).strftime("client-%Y%m%d-%H%M%S") + ".html")
         target.parent.mkdir(parents=True, exist_ok=True)
         client_report_core.write(target, document, pdf=False)
         _in_english(target)
@@ -2803,7 +2801,7 @@ class Library:
                             cell = str(value)
                             if len(cell) > 4000:
                                 cell = cell[:4000]
-                            for number, observed, at, rule in matcher.matches(cell):
+                            for number, observed, _at, rule in matcher.matches(cell):
                                 item = indicators[number - 1]
                                 hits.append(
                                     {
@@ -2855,9 +2853,9 @@ class Library:
         # later, which is what the desktop's saved hunts list is.
         hunts = self.library.folder(identifier) / "hunts"
         hunts.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         record = dict(
-            started=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            started=datetime.now(UTC).isoformat(timespec="seconds"),
             status="complete" if not result["truncated"] else "truncated",
             text=(text or "")[:20000],
             **result,
@@ -3386,11 +3384,7 @@ class Library:
         chosen = next((name for name in sheets if name == chosen), None)
         if chosen is None:
             raise ServiceError(f"No sheet is named {sheet!r} in {path.name}.")
-        output = (
-            folder
-            / "collections"
-            / ("table-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
-        )
+        output = folder / "collections" / ("table-" + datetime.now(UTC).strftime("%Y%m%d-%H%M%S"))
         if output.exists():
             output = folder / "collections" / ("table-" + uuid.uuid4().hex[:8])
         analysis = output / "analyses" / (uuid.uuid4().hex + ".duckdb")
@@ -3420,7 +3414,7 @@ class Library:
             {
                 "path": str(output),
                 "name": output.name,
-                "imported": datetime.now(timezone.utc).isoformat(),
+                "imported": datetime.now(UTC).isoformat(),
             }
         )
         first, added = self._merge_session(
@@ -3462,11 +3456,7 @@ class Library:
         source = Path(source).resolve()
         if not source.exists():
             raise ServiceError("The source to import is missing.")
-        output = (
-            folder
-            / "collections"
-            / ("import-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
-        )
+        output = folder / "collections" / ("import-" + datetime.now(UTC).strftime("%Y%m%d-%H%M%S"))
         if output.exists():
             output = folder / "collections" / ("import-" + uuid.uuid4().hex[:8])
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -3507,7 +3497,7 @@ class Library:
             {
                 "path": str(output),
                 "name": output.name,
-                "imported": datetime.now(timezone.utc).isoformat(),
+                "imported": datetime.now(UTC).isoformat(),
             }
         )
         first, added = self._merge_session(
@@ -3720,7 +3710,7 @@ class Library:
 
     def unread_files(self, identifier: str) -> dict:
         """Every collected file whose read did not complete, with what the tools said."""
-        data = self.library.read(identifier)
+        self.library.read(identifier)
         folder = self.library.folder(identifier)
         entries = []
         for report in sorted((folder / "collections").glob("import-*")):
@@ -3914,7 +3904,7 @@ class Library:
             "id": job_id,
             "status": "running",
             "message": "Starting…",
-            "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "started": datetime.now(UTC).isoformat(timespec="seconds"),
             "finished": None,
             "result": None,
             "error": None,
@@ -3958,7 +3948,7 @@ class Library:
                         job["message"] = str(exc)
                 finally:
                     with self._lock:
-                        job["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                        job["finished"] = datetime.now(UTC).isoformat(timespec="seconds")
                 return
             # The collection asks `job_cancelled()` between files: the event lives in a
             # context variable, so it must be set inside this very thread — and the
@@ -3998,7 +3988,7 @@ class Library:
                     job["message"] = str(exc)
             finally:
                 with self._lock:
-                    job["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                    job["finished"] = datetime.now(UTC).isoformat(timespec="seconds")
                     job["collection"] = None
                     job["cancel"] = None
 
@@ -4018,14 +4008,14 @@ class Library:
         if kind not in self.DISK_KINDS:
             raise ServiceError(f"Unknown disk source: {kind}")
         folder = self.library.folder(identifier)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         workspace = folder / "Disques" / (stamp + "-" + uuid.uuid4().hex[:8])
         job_id = uuid.uuid4().hex
         job = {
             "id": job_id,
             "status": "running",
             "message": "Preparing the disk…",
-            "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "started": datetime.now(UTC).isoformat(timespec="seconds"),
             "finished": None,
             "result": None,
             "error": None,
@@ -4088,7 +4078,7 @@ class Library:
                     job["message"] = str(exc)
             finally:
                 with self._lock:
-                    job["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                    job["finished"] = datetime.now(UTC).isoformat(timespec="seconds")
                     job["collection"] = None
                     job["cancel"] = None
 
@@ -4165,7 +4155,7 @@ class Library:
             "kind": kind,
             "status": "running",
             "message": "Starting…",
-            "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "started": datetime.now(UTC).isoformat(timespec="seconds"),
             "finished": None,
             "result": None,
             "error": None,
@@ -4221,7 +4211,7 @@ class Library:
                     job["message"] = job["error"]
             finally:
                 with self._lock:
-                    job["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+                    job["finished"] = datetime.now(UTC).isoformat(timespec="seconds")
                     job["progress"]["elapsed"] = round(clock.monotonic() - started, 1)
 
         threading.Thread(target=run, name=f"task-{kind}-{job_id[:8]}", daemon=True).start()
@@ -4394,7 +4384,7 @@ class Library:
                     size = path.stat().st_size
                 except OSError:
                     size = 0
-                when = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(
+                when = datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat(
                     timespec="seconds"
                 )
                 entries.append({"name": path.name, "bytes": size, "when": when})

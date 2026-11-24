@@ -1,8 +1,10 @@
 from dataclasses import replace
 from decimal import Decimal
+
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, FormatRule, Filter
+from fireblade.core.models import Filter, FormatRule, View
 from fireblade.core.visual_bounds import resolve_rules
 
 

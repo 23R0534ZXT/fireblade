@@ -12,7 +12,7 @@ import json
 import os
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 FOLDER = "assistant"
@@ -48,7 +48,7 @@ class Conversation:
 
 
 def _now():
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def _slug(text):
@@ -128,7 +128,7 @@ class History:
     # ------------------------------------------------------------------ writing
     def start(self, question=""):
         self.folder.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         identifier = "conversation-%s-%s" % (stamp, uuid.uuid4().hex[:6])
         conversation = Conversation(identifier=identifier, title=_slug(question), updated=_now())
         (self.folder / (identifier + ".jsonl")).write_text("", encoding="utf-8")

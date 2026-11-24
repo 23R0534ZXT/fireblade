@@ -4,9 +4,9 @@ import base64
 import gzip
 import hashlib
 import json
-from pathlib import Path
 import sqlite3
 import zipfile
+from pathlib import Path
 
 import duckdb
 import pytest

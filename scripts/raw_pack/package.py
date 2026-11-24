@@ -1,18 +1,18 @@
 """Assemble public native Windows artefacts and generated raw Linux lab logs."""
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import math
 import os
-from pathlib import Path, PurePosixPath
 import re
 import shutil
 import tempfile
 import urllib.request
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
+from pathlib import Path, PurePosixPath
 
 TAG = "raw-artifacts-v1"
 ROOT = "Fireblade-Raw-Artifacts-v1"
@@ -68,7 +68,7 @@ def download(url, target, sha256, expected_bytes=None):
 
 def write_linux_file(path, host, kind, target_bytes, sequence=0):
     path.parent.mkdir(parents=True, exist_ok=True)
-    start = datetime(2026, 11, 1, 10, tzinfo=timezone.utc)
+    start = datetime(2026, 11, 1, 10, tzinfo=UTC)
     lines = written = 0
     landmarks = []
     with path.open("wb", buffering=MIB) as stream:

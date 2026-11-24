@@ -1,7 +1,7 @@
 """Small, editable display presets. They never transform source evidence."""
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from fireblade.core.models import Filter, FilterGroup, FormatRule, View
 

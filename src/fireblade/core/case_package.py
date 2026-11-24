@@ -5,19 +5,19 @@ import copy
 import hashlib
 import json
 import os
-from pathlib import Path, PurePosixPath
+import re
 import shutil
 import stat
 import tempfile
 import zipfile
-import re
 from contextlib import nullcontext
+from pathlib import Path, PurePosixPath
 
-from fireblade.core.engine import Case
 from fireblade.core.analysis_storage import connect_analysis
+from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.models import AnalysisSnapshot, View
-from fireblade.core.paths import protected_destination, ensure_export_destination
+from fireblade.core.paths import ensure_export_destination, protected_destination
 
 MAX_FILES = 50_000
 MAX_BYTES = 64 * 1024**3
@@ -284,7 +284,7 @@ def export_package(
                                 "Références de collecte trop volumineuses pour le transport (16 Mio maximum)"
                             )
                         add(archive, path, base + "/" + path.relative_to(folder).as_posix())
-            from fireblade.core.ioc_results import discover_hunts, HuntStore
+            from fireblade.core.ioc_results import HuntStore, discover_hunts
 
             saved_hunts, hunt_errors = discover_hunts(hunt_root)
             if hunt_errors:

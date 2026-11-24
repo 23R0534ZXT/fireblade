@@ -5,7 +5,6 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDockWidget,
-    QHBoxLayout,
     QLabel,
     QPushButton,
     QSplitter,

@@ -1,7 +1,6 @@
 """The case destruction dialog: what it announces, and what it refuses."""
 
 import json
-from pathlib import Path
 from types import SimpleNamespace
 
 from fireblade.ui.case_destruction_dialog import CaseDestructionDialog, human_size

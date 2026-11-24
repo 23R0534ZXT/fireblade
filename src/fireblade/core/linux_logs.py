@@ -6,23 +6,23 @@ and malformed/truncated records are reported. Timestamps retain source semantics
 
 import bz2
 import csv
-from datetime import datetime, timedelta, timezone
 import gzip
 import io
 import ipaddress
 import json
 import lzma
 import math
-from pathlib import Path, PurePosixPath
 import re
+import stat
 import struct
 import tarfile
 import tempfile
 import zipfile
-import stat
+from datetime import UTC, datetime, timedelta
+from pathlib import Path, PurePosixPath
 
-from fireblade.core.errors import OperationCancelled
 from fireblade.core.catscale import check_cancel, safe_member
+from fireblade.core.errors import OperationCancelled
 
 HEADERS = [
     "Format",
@@ -273,8 +273,7 @@ def text_fields(text, path=""):
 def timestamp(seconds, micros=0):
     try:
         return (
-            datetime(1970, 1, 1, tzinfo=timezone.utc)
-            + timedelta(seconds=seconds, microseconds=micros)
+            datetime(1970, 1, 1, tzinfo=UTC) + timedelta(seconds=seconds, microseconds=micros)
         ).isoformat()
     except (OverflowError, ValueError):
         raise ValueError("Horodatage binaire hors plage") from None
@@ -871,6 +870,7 @@ def parse(source, output, progress=lambda _: None, span=None):
                     )
                 elif compression == "lz4":
                     import lz4.frame
+
                     from fireblade.core.linux_streams import StrictBlocks
 
                     decoder = io.BufferedReader(

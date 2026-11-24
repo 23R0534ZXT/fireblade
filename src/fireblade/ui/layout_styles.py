@@ -1,7 +1,7 @@
 """Render the small, validated appearance dictionaries stored in a View."""
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont, QBrush, QLinearGradient, QGradient
+from PySide6.QtGui import QBrush, QColor, QFont, QGradient, QLinearGradient
 
 
 def font_for(style, base=None):
@@ -115,8 +115,9 @@ def rule_style(rule):
 
 # Decoding is shared across cells and pinned views; never cache per row.
 from functools import lru_cache
-from PySide6.QtGui import QImage, QPen, QPainter, QPalette, QFontMetrics
-from PySide6.QtCore import QRect, QEvent, QObject
+
+from PySide6.QtCore import QEvent, QObject
+from PySide6.QtGui import QFontMetrics, QImage, QPainter, QPalette, QPen
 
 
 @lru_cache(maxsize=8)
@@ -303,6 +304,7 @@ def image_url(encoded):
     """Qt stylesheets require an image URL; keep the validated raster in a private temp dir."""
     import hashlib
     from pathlib import Path
+
     from PySide6.QtCore import QTemporaryDir
 
     global _image_directory

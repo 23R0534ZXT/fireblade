@@ -9,7 +9,7 @@ from scripts.qualify_large_replay import replay
 
 def test_replay_keeps_quoted_multiline_records_and_only_one_bom_header(tmp_path, monkeypatch):
     source = tmp_path / "base.csv"
-    payload = '\ufeffName,Details\r\nalice,"first\nsecond"\r\nélève,"a,b"\r\n'.encode("utf-8")
+    payload = '\ufeffName,Details\r\nalice,"first\nsecond"\r\nélève,"a,b"\r\n'.encode()
     source.write_bytes(payload)
     monkeypatch.setattr(
         shutil, "disk_usage", lambda path: shutil._ntuple_diskusage(100 * 1024**3, 0, 100 * 1024**3)

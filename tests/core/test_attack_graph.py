@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 import xml.etree.ElementTree as ElementTree
+from datetime import UTC, datetime
 
 from fireblade.core.attack_graph import TACTICS, build, layout, tactic_index, tactic_name, to_svg
 from fireblade.core.findings import Group
@@ -24,8 +24,8 @@ def group(
         techniques=techniques,
         rule_id="r1",
         rule_file="f.yml",
-        start=start or datetime(2026, 11, 10, 9, tzinfo=timezone.utc),
-        end=start or datetime(2026, 11, 10, 9, 5, tzinfo=timezone.utc),
+        start=start or datetime(2026, 11, 10, 9, tzinfo=UTC),
+        end=start or datetime(2026, 11, 10, 9, 5, tzinfo=UTC),
         count=3,
     )
 

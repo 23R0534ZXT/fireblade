@@ -3,7 +3,6 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-
 _job_cancellation = ContextVar("timeline_job_cancellation", default=None)
 
 

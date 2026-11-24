@@ -1,7 +1,7 @@
-import json
 from PySide6.QtWidgets import QFileDialog
-from tests.ui.test_investigation_tools import loaded, settle
+
 from fireblade.core.coverage import load_state
+from tests.ui.test_investigation_tools import loaded, settle
 
 
 def test_dashboard_audits_all_analyses_and_preserves_journal(qt_application, tmp_path):
@@ -107,9 +107,9 @@ def test_unreadable_journal_is_not_silently_replaced(qt_application, tmp_path):
 def test_saved_plan_report_and_cancelled_recheck_preserve_previous_result(
     qt_application, tmp_path, monkeypatch
 ):
-    from fireblade.core.errors import OperationCancelled
-    from fireblade.core.coverage import load_report
     import fireblade.ui.coverage as module
+    from fireblade.core.coverage import load_report
+    from fireblade.core.errors import OperationCancelled
 
     window, errors = loaded(qt_application, tmp_path)
     try:

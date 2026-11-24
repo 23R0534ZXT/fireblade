@@ -1,17 +1,16 @@
 """Alert-to-EVTX navigation in ordinary Fireblade analysis tabs."""
 
 import json
-from pathlib import Path
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSpinBox, QVBoxLayout, QWidget
 
+from fireblade.core.alert_context import build_context, discard_preview, retain_context, sources
 from fireblade.core.collection import Collection
-from fireblade.core.alert_context import build_context, sources, retain_context, discard_preview
 from fireblade.core.engine import Case
-from fireblade.core.models import Filter, View
 from fireblade.core.i18n import translate
+from fireblade.core.models import Filter, View
 
 
 class AlertContextMixin:

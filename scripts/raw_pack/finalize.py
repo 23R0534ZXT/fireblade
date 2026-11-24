@@ -4,9 +4,9 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
 import zipfile
+from pathlib import Path
 
 from scripts.raw_pack.package import ARCHIVE, GIB, ROOT, TAG, archive_pack, digest, safe_relative
 from scripts.test_pack.package import APP_COMMIT

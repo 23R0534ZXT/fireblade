@@ -15,9 +15,10 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QTableWidget,
     QTabWidget,
-    QWidget,
     QVBoxLayout,
+    QWidget,
 )
+
 from fireblade.core.models import Summary
 
 

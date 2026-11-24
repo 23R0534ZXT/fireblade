@@ -1,18 +1,18 @@
 """Parse every raw input with the qualified EXE engines and record diagnostics."""
 
 import argparse
-from collections import Counter
 import json
 import os
-from pathlib import Path
 import shutil
 import sys
 import tempfile
 import time
+from collections import Counter
+from pathlib import Path
 
-from scripts.raw_pack.package import ROOT, GIB, digest
-from scripts.test_pack.validate_windows import extract_engines
+from scripts.raw_pack.package import GIB, ROOT, digest
 from scripts.test_pack.package import APP_COMMIT, APP_SHA256
+from scripts.test_pack.validate_windows import extract_engines
 
 
 def verify_inputs(root, manifest):
@@ -26,7 +26,8 @@ def validate(directory, executable, output):
     if sys.platform != "win32":
         raise RuntimeError("Native Windows validation is required")
     from PySide6.QtWidgets import QApplication
-    from fireblade.core.collection import Collection, ToolPack, PARSERS
+
+    from fireblade.core.collection import PARSERS, Collection, ToolPack
     from fireblade.core.engine import Case
     from fireblade.core.models import View
     from fireblade.core.settings import Settings

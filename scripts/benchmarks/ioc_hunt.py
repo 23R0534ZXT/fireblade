@@ -1,9 +1,14 @@
-import csv, tempfile, time, json, hashlib
+import csv
+import hashlib
+import json
+import tempfile
+import time
 from pathlib import Path
+
 from fireblade.core.engine import Case
-from fireblade.core.models import AnalysisSnapshot, View
 from fireblade.core.ioc_hunt import parse_indicators
 from fireblade.core.ioc_results import hunt
+from fireblade.core.models import AnalysisSnapshot, View
 from fireblade.core.workspace_reader import WorkspaceReader
 
 with tempfile.TemporaryDirectory() as folder:

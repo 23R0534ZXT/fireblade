@@ -1,9 +1,9 @@
-from pathlib import Path
 import pytest
-from fireblade.core.case_storage import archive_and_release, restore_archive
+
 from fireblade.core.case_package import verify_package
-from fireblade.core.investigations import InvestigationLibrary
+from fireblade.core.case_storage import archive_and_release, restore_archive
 from fireblade.core.engine import Case
+from fireblade.core.investigations import InvestigationLibrary
 from fireblade.core.models import AnalysisSnapshot, View
 from fireblade.core.sessions import read_session
 

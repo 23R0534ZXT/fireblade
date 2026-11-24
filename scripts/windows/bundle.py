@@ -1,15 +1,15 @@
 """Collect embedded metadata and installed license notices from the build venv."""
 
 import argparse
-from importlib.metadata import distribution
 import json
 import os
-from pathlib import Path
 import platform
 import shutil
 import subprocess
 import sys
 import tomllib
+from importlib.metadata import distribution
+from pathlib import Path
 
 DISTRIBUTIONS = (
     "duckdb",

@@ -1,5 +1,3 @@
-import json
-
 import pytest
 
 from fireblade.core.investigations import HISTORY_LIMIT, InvestigationLibrary

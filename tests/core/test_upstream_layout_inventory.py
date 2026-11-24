@@ -2,13 +2,13 @@
 
 import hashlib
 import json
-from pathlib import Path
 import xml.etree.ElementTree as ET
 import zipfile
+from pathlib import Path
 
 import pytest
 
-from fireblade.core.tle_layout import properties, text, read_tle_layout
+from fireblade.core.tle_layout import properties, read_tle_layout, text
 from fireblade.core.tle_layout_export import write_tle_layout
 
 ROOT = Path(__file__).parents[1] / "fixtures/tle-layouts"

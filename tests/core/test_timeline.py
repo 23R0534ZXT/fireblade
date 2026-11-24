@@ -1,7 +1,5 @@
 import csv
 import hashlib
-from pathlib import Path
-import threading
 
 import pytest
 

@@ -3,25 +3,22 @@
 import copy
 import json
 import math
-from pathlib import Path
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPointF, QRectF, Qt, Signal
-from fireblade.core.models import analysis_label
-from PySide6.QtGui import QAction, QColor, QFont, QPainter, QPen, QPalette, QPolygonF
+from PySide6.QtGui import QAction, QColor, QFont, QPainter, QPalette, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QFormLayout,
+    QFileDialog,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
     QScrollArea,
-    QFileDialog,
     QSplitter,
     QStyle,
     QTableView,
@@ -33,22 +30,21 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fireblade.ui.flow_layout import FlowLayout
-from fireblade.core.layout import write_json
 from fireblade.core.i18n import translate
-from fireblade.core.models import Filter, View
+from fireblade.core.layout import write_json
+from fireblade.core.models import Filter, View, analysis_label
 from fireblade.core.timeline import (
-    KINDS,
     DATE_TIME,
+    KINDS,
     TimelineStore,
     field_kind,
-    guess_time_column,
     guess_time_columns,
     saved_columns,
     split_date_time,
     utc_label,
 )
 from fireblade.core.workspace_reader import WorkspaceReader
+from fireblade.ui.flow_layout import FlowLayout
 
 COLORS = ["#2d9cdb", "#e6a23c", "#27ae82", "#bb6bd9", "#eb6577", "#56bfc4", "#9fa8da", "#b4a34a"]
 

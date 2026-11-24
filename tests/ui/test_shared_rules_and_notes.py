@@ -7,12 +7,12 @@ import pytest
 from openpyxl import load_workbook
 from PySide6.QtCore import QItemSelectionModel, Qt
 
-from fireblade.ui.app import Window
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled
 from fireblade.core.models import Filter, FilterGroup, FormatRule, View
 from fireblade.core.rule_store import RuleBook, RuleStore, read_book
 from fireblade.core.settings import Settings
+from fireblade.ui.app import Window
 
 
 def rule(column=0, value="alice", color="#ffcccc", target=None):

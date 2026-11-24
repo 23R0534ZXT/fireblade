@@ -1,19 +1,20 @@
 """Read DevExpress XML data/layout rules without deserializing .NET objects."""
 
-from dataclasses import dataclass, field
-from pathlib import Path
 import re
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from fireblade.core.filter_text import parse_filter
 from fireblade.core.models import (
-    View,
-    SortKey,
-    Summary,
     Filter,
     FilterGroup,
     FormatRule,
     GroupSort,
+    SortKey,
+    Summary,
+    View,
 )
-from fireblade.core.filter_text import parse_filter
 
 
 @dataclass
@@ -60,9 +61,7 @@ def read_tle_layout(path, headers):
     raw = path.read_text(encoding="utf-8-sig")
     if "<!DOCTYPE" in raw.upper() or "<!ENTITY" in raw.upper():
         raise ValueError(
-            "Plan de mise en page refusé : {} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-le depuis Timeline Explorer sans DTD, puis réessayez.".format(
-                path.name
-            )
+            f"Plan de mise en page refusé : {path.name} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-le depuis Timeline Explorer sans DTD, puis réessayez."
         )
     root = ET.fromstring(raw)
     from fireblade.core.tle_styles import custom_styles
@@ -72,8 +71,8 @@ def read_tle_layout(path, headers):
     def normalize(name):
         return re.sub(r"[^a-z0-9]", "", name.casefold())
 
-    from fireblade.core.profiles import detect_profile
     from fireblade.core.profile_aliases import FIELD_ALIASES
+    from fireblade.core.profiles import detect_profile
 
     profile = detect_profile(headers)
     field_aliases = dict(FIELD_ALIASES.get(profile.name, {})) if profile else {}
@@ -547,8 +546,9 @@ def read_tle_layout(path, headers):
                 name = text(item, "ColumnApplyToName") or text(item, "ColumnName")
                 target = aliases[name] if name in aliases else resolve(name)
             predefined = text(rule_node, "PredefinedName")
+            from fireblade.core.tle_appearance import EXTRA
+            from fireblade.core.tle_appearance import appearance as read_appearance
             from fireblade.core.tle_styles import style
-            from fireblade.core.tle_appearance import appearance as read_appearance, EXTRA
 
             defaults = style(predefined, named_styles) if predefined else {}
             adapted = read_appearance(appearance, text, properties, color, warnings, defaults)

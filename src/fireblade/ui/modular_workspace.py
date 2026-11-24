@@ -15,9 +15,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
 from fireblade.core.layout import write_json
-from fireblade.ui.language import source_text
 from fireblade.runtime.windows_paths import user_directory
+from fireblade.ui.language import source_text
 
 
 class Workbench(QTabWidget):
@@ -164,8 +165,8 @@ class WorkspaceLayout:
         toolbar.addAction("Plugins", window.manage_plugins)
 
         def help_workspace():
-            from fireblade.ui.help_dialogs import show_text
             from fireblade.runtime.resources import resource_path
+            from fireblade.ui.help_dialogs import show_text
 
             path = resource_path("docs/guides/ESPACE-DE-TRAVAIL.md")
             show_text(

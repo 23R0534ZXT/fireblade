@@ -1,15 +1,16 @@
 """Native Windows source diagnostic; separate from frozen-EXE qualification."""
 
 import argparse
-from pathlib import Path
 import os
+from pathlib import Path
 
-from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from fireblade.core.models import View, Filter, SortKey
-from fireblade.validation.gui_driver import GuiRun
+from PySide6.QtWidgets import QApplication
+
+from fireblade.core.models import Filter, View
 from fireblade.ui.theme import apply_theme
+from fireblade.validation.gui_driver import GuiRun
 from scripts.windows.existing_dataset import prepare
 
 

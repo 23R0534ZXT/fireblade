@@ -9,11 +9,11 @@ import gzip
 import hashlib
 import json
 import os
-from pathlib import Path
 import shutil
 import time
+from pathlib import Path
 
-from fireblade.core.collection import Collection, PARSERS, ToolPack, execute
+from fireblade.core.collection import PARSERS, Collection, ToolPack, execute
 from fireblade.core.engine import Case
 from fireblade.core.models import View
 

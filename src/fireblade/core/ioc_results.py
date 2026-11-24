@@ -1,27 +1,25 @@
 """Persistent, bounded details and complete IOC counts for an offline hunt."""
 
-import copy
-from dataclasses import asdict
-from datetime import datetime, timezone
 import csv
 import io
-from itertools import islice
 import json
 import os
-from pathlib import Path
 import shutil
 import sqlite3
 import tempfile
 import threading
 import uuid
+from datetime import UTC, datetime
+from itertools import islice
+from pathlib import Path
 
 from fireblade.core.errors import OperationCancelled
 from fireblade.core.ioc_hunt import (
+    KINDS,
+    MAX_IOCS,
     Indicator,
     IndicatorBatch,
     IndicatorMatcher,
-    KINDS,
-    MAX_IOCS,
     check_cancelled,
     indicator,
 )
@@ -452,7 +450,7 @@ def hunt(
         store = HuntStore(folder / "results.sqlite", create=True)
         metadata = dict(
             name=str(name)[:120],
-            started=datetime.now(timezone.utc).isoformat(),
+            started=datetime.now(UTC).isoformat(),
             status="running",
             list_sha256=batch.sha256,
             origin=batch.origin,
@@ -604,7 +602,7 @@ def hunt(
         )
         for key, value in dict(
             status="partial" if errors else "complete",
-            finished=datetime.now(timezone.utc).isoformat(),
+            finished=datetime.now(UTC).isoformat(),
             scanned_rows=scanned_total,
             matching_fields=total_matches,
             stored_hits=stored_total,

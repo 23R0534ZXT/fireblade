@@ -3,11 +3,10 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import shutil
-import subprocess
 import tempfile
 import winreg
+from pathlib import Path
 
 from scripts.windows.qa_process import run_executable
 

@@ -2,15 +2,15 @@
 
 import argparse
 import csv
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
 import os
 import time
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View
 from fireblade.ui.app import Window
 from fireblade.ui.theme import apply_theme
 
@@ -55,7 +55,7 @@ def main():
             "Navigateur — WebCache",
             "Alertes — Hayabusa",
         ]
-        base = datetime(2026, 10, 26, tzinfo=timezone.utc)
+        base = datetime(2026, 10, 26, tzinfo=UTC)
         for source, name in enumerate(names):
             path = args.directory / (name + ".csv")
             with path.open("w", encoding="utf-8", newline="") as stream:

@@ -1,6 +1,8 @@
 import csv
 import io
+
 import pytest
+
 from fireblade.core.csv_preamble import HEADERS, preamble_lines
 from fireblade.core.engine import Case
 from fireblade.core.models import View

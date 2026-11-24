@@ -8,7 +8,6 @@ covered claim names a test that really exists in this repository.
 
 import ast
 import json
-import re
 from pathlib import Path
 
 import pytest

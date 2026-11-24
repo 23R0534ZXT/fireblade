@@ -7,13 +7,13 @@ reopens real DuckDB analyses. These are distinct measurements in the report.
 
 import argparse
 import csv
-from datetime import datetime, timezone
 import hashlib
 import json
-from pathlib import Path
 import tempfile
 import threading
 import time
+from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import patch
 
 import psutil
@@ -48,7 +48,7 @@ def qualify(directory, gib=32, import_rows=200000):
     report = {
         "format": "fireblade-linux-log-qualification",
         "version": 1,
-        "time": datetime.now(timezone.utc).isoformat(),
+        "time": datetime.now(UTC).isoformat(),
         "large_record_stream_mode": "decoded records verified and hashed; CSV serialization bypassed; no DuckDB import in this phase",
     }
     process = psutil.Process()
@@ -86,7 +86,6 @@ def qualify(directory, gib=32, import_rows=200000):
             expected_raw = block[:-1].decode()
             expected_detail = "A" * (len(block) - len(prefix) - 1)
             original_open = Path.open
-            original_writer = csv.writer
 
             def open_output(path, *args, **kwargs):
                 return (

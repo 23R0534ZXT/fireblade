@@ -31,7 +31,6 @@ def test_the_entry_points_reopen_once_a_case_exists(window, monkeypatch):
 
 def test_the_backstop_still_refuses_without_a_case(window, monkeypatch):
     """Even if a stray path reaches the handler, it must not start without a case."""
-    from fireblade.ui.start_workflow import StartWorkflowMixin
 
     seen = {}
     monkeypatch.setattr(window, "show_investigations", lambda: seen.setdefault("shown", True))

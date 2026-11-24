@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QDialog
 
 from fireblade.core.collection import Collection
 from fireblade.ui.app import Window
-from tests.ui.test_start_workflow import until, idle
+from tests.ui.test_start_workflow import idle, until
 
 
 @pytest.mark.parametrize("organization", ["files", "artifacts", "combined"])

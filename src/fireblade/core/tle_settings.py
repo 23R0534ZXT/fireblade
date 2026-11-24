@@ -1,9 +1,10 @@
 """Read the documented TLE_settings.xml DataContract; never execute .NET data."""
 
 import copy
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-import xml.etree.ElementTree as ET
+
 from fireblade.core.preferences import Preferences
 from fireblade.core.timestamps import date_pattern
 
@@ -21,12 +22,13 @@ def read_tle_settings(path, current=None):
     raw = path.read_text(encoding="utf-8-sig")
     if "<!DOCTYPE" in raw.upper() or "<!ENTITY" in raw.upper():
         raise ValueError(
-            "Préférences TLE refusées : {} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-les depuis Timeline Explorer sans DTD, puis réessayez.".format(
-                path.name
-            )
+            f"Préférences TLE refusées : {path.name} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-les depuis Timeline Explorer sans DTD, puis réessayez."
         )
     root = ET.fromstring(raw)
-    local = lambda tag: tag.rsplit("}", 1)[-1]
+
+    def local(tag):
+        return tag.rsplit("}", 1)[-1]
+
     if local(root.tag) != "Settings":
         raise ValueError("Ce fichier ne contient pas les préférences TLE")
     preferences = copy.deepcopy(current or Preferences())

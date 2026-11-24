@@ -2,21 +2,21 @@
 
 import json
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
-import uuid
 
-from PySide6.QtCore import QObject, QThreadPool, QTimer, Qt, Signal
+from PySide6.QtCore import QObject, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
-    QMessageBox,
     QFormLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QVBoxLayout,
@@ -24,10 +24,10 @@ from PySide6.QtWidgets import (
 )
 
 from fireblade.core.artifact_names import friendly_label
+from fireblade.core.i18n import translate
 from fireblade.core.models import AnalysisSnapshot, View
 from fireblade.ui.language import source_text
 from fireblade.ui.workers import Job
-from fireblade.core.i18n import translate
 
 
 class DiskSignals(QObject):
@@ -263,7 +263,7 @@ class StartWorkflowMixin:
         if hasattr(collection, "disk_source"):
             label = "Disque : " + collection.disk_source
         elif len(getattr(collection, "sources", ()) or ()) > 1:
-            label = "{} sources".format(len(collection.sources))
+            label = f"{len(collection.sources)} sources"
         else:
             # The tree says "Event logs", not the folder it was saved under.
             label = friendly_label(collection.root)

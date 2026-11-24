@@ -7,11 +7,12 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
+
 from fireblade.core.engine import Case
 from fireblade.core.filter_text import parse_filter
 from fireblade.core.models import Summary, View
 from fireblade.core.profiles import detect_profile, profile_view
-from fireblade.core.tle_compat import read_tle_session, TleSessionImport
+from fireblade.core.tle_compat import TleSessionImport, read_tle_session
 from fireblade.ui.cross_search import WorkspaceSearch
 
 
@@ -245,8 +246,8 @@ def check_features(window, directory, settle, check, expect, captures=None):
             ".1234567" in window.model.data(window.model.index(0, 1)),
             "Timestamp precision was lost",
         )
-        from PySide6.QtTest import QTest
         from PySide6.QtCore import QPoint
+        from PySide6.QtTest import QTest
 
         index = window.model.index(0, 0)
         window.workbench.setCurrentIndex(0)
@@ -417,12 +418,13 @@ def check_features(window, directory, settle, check, expect, captures=None):
     check("progressive_complete_header_probe_utf8_utf16_utf32", long_headers)
 
     def xml_export():
-        from fireblade.core.models import Filter, FilterGroup
-        from fireblade.core.tle_layout_export import write_tle_layout
-        from fireblade.core.tle_layout import read_tle_layout
-        from fireblade.core.tle_settings import read_tle_settings
-        from fireblade.core.preferences import default_pinned_columns
         import hashlib
+
+        from fireblade.core.models import Filter, FilterGroup
+        from fireblade.core.preferences import default_pinned_columns
+        from fireblade.core.tle_layout import read_tle_layout
+        from fireblade.core.tle_layout_export import write_tle_layout
+        from fireblade.core.tle_settings import read_tle_settings
 
         source = directory / "xml-export-source.csv"
         source.write_text("User,Value\nalice,1\nbob,2\nalice,3\n", encoding="utf-8")

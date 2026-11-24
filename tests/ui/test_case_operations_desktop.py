@@ -1,9 +1,6 @@
 import time
 
-from PySide6.QtCore import Qt
-
 from fireblade.core import case_workspace
-from fireblade.core.attack_graph import build
 from fireblade.core.findings import Group
 from fireblade.ui.app import Window
 

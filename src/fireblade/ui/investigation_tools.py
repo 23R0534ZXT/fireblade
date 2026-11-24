@@ -1,10 +1,10 @@
 """Recovery, verified transport and evidence reports for case workspaces."""
 
+import base64
 import copy
 from pathlib import Path
-import base64
 
-from PySide6.QtCore import QTimer, Qt, QBuffer, QIODevice
+from PySide6.QtCore import QBuffer, QIODevice, Qt, QTimer
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -21,7 +22,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QVBoxLayout,
-    QHBoxLayout,
 )
 
 from fireblade.core.case_package import export_package, import_package

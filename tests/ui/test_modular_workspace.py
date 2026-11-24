@@ -295,9 +295,10 @@ def test_narrow_timeline_wraps_controls_and_can_show_graph_only(qt_application, 
 
 
 def test_rule_from_cell_targets_only_that_column(qt_application, tmp_path, monkeypatch):
-    from fireblade.ui.advanced_dialogs import RulesDialog
-    from PySide6.QtWidgets import QDialog
     from PySide6.QtGui import QColor
+    from PySide6.QtWidgets import QDialog
+
+    from fireblade.ui.advanced_dialogs import RulesDialog
 
     window = Window(require_case=False)
     try:

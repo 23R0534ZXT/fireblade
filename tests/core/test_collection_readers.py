@@ -239,7 +239,7 @@ def test_an_import_that_runs_out_of_memory_is_retried_with_more(collection, monk
 
     monkeypatch.setattr(Collection, "_import_once", once)
     source = collection.root / "note.txt"
-    source.write_bytes("une ligne\n".encode("utf-8"))
+    source.write_bytes(b"une ligne\n")
 
     document = collection.import_result(str(source), "native", register=False)
 

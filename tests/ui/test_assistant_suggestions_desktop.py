@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fireblade.core.findings import Group
 from fireblade.ui.app import Window
@@ -20,8 +20,8 @@ def test_the_panel_offers_questions_and_a_click_only_fills_the_box(qt_applicatio
                 techniques="T1059.001",
                 rule_id="r",
                 rule_file="f",
-                start=datetime(2026, 11, 17, 10, tzinfo=timezone.utc),
-                end=datetime(2026, 11, 17, 10, 2, tzinfo=timezone.utc),
+                start=datetime(2026, 11, 17, 10, tzinfo=UTC),
+                end=datetime(2026, 11, 17, 10, 2, tzinfo=UTC),
                 count=3,
             )
         ]

@@ -1,14 +1,16 @@
 import csv
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from fireblade.core.engine import Case
-from fireblade.core.models import View
-from fireblade.core.filter_text import parse_filter
+
 from fireblade.core.date_ranges import RANGES
+from fireblade.core.engine import Case
+from fireblade.core.filter_text import parse_filter
+from fireblade.core.models import View
 
 
 def test_relative_dates_include_boundaries_and_reject_unknown_names(tmp_path):
-    now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     source = tmp_path / "s.csv"
     with source.open("w", newline="") as f:
         w = csv.writer(f)

@@ -6,7 +6,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QPushButton, QDialogButtonBox
+from PySide6.QtWidgets import QApplication, QDialogButtonBox, QPushButton
 
 from fireblade.core.themes import THEMES
 from fireblade.ui.preferences_dialog import PreferencesDialog

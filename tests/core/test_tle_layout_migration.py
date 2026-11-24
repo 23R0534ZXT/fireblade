@@ -1,10 +1,12 @@
-from pathlib import Path
 import csv
+from pathlib import Path
+
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.tle_layout import read_tle_layout
 from fireblade.core.profile_catalog import CATALOG
 from fireblade.core.profiles import detect_profile, profile_transformations
+from fireblade.core.tle_layout import read_tle_layout
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "tle-layouts"
 

@@ -1,12 +1,12 @@
 """User-wide format rules, bound to column names rather than file positions."""
 
 import copy
-from dataclasses import dataclass, field
 import hashlib
 import json
 import os
-from pathlib import Path
 import tempfile
+from dataclasses import dataclass, field
+from pathlib import Path
 
 from fireblade.core.conditions import validate_format_rules
 from fireblade.core.models import Filter, View
@@ -42,7 +42,6 @@ class RuleBook:
     def validate(self):
         if not isinstance(self.functions, dict) or len(self.functions) > 4096:
             raise ValueError("Métadonnées de fonctions invalides")
-        import re
 
         if any(
             not isinstance(n, str)

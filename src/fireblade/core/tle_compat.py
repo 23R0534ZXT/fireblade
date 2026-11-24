@@ -4,11 +4,11 @@ Session sources reuse DLL readers already selected by the user; arbitrary serial
 Unsupported layout expressions are rejected instead of being silently discarded.
 """
 
-from pathlib import Path
 import json
 import shutil
 import threading
 import uuid
+from pathlib import Path
 
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled

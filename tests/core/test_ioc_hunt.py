@@ -1,13 +1,15 @@
 import csv
 import hashlib
 from pathlib import Path
+
 import pytest
-from fireblade.core.ioc_hunt import parse_indicators, IndicatorMatcher, read_indicator_file
-from fireblade.core.ioc_results import hunt, HuntStore, discover_hunts
-from fireblade.core.workspace_reader import WorkspaceReader
+
 from fireblade.core.engine import Case
-from fireblade.core.models import AnalysisSnapshot, View
 from fireblade.core.errors import OperationCancelled
+from fireblade.core.ioc_hunt import IndicatorMatcher, parse_indicators, read_indicator_file
+from fireblade.core.ioc_results import HuntStore, discover_hunts, hunt
+from fireblade.core.models import AnalysisSnapshot, View
+from fireblade.core.workspace_reader import WorkspaceReader
 
 
 def matches(iocs, text, sub=True):
@@ -122,6 +124,7 @@ def test_filters_partial_and_cancel_cleanup(tmp_path):
 
 def test_cancel_during_scan_keeps_previous_hunt_and_export(tmp_path):
     import threading
+
     from fireblade.core.errors import cancellation_scope
 
     docs = make_documents(tmp_path)

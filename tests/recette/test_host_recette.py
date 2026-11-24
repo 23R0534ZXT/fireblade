@@ -41,8 +41,11 @@ def _build_pack(root: Path, volume_rows: int = 40) -> Path:
                 totals[item["family"]] = totals.get(item["family"], 0) + item["rows"]
             structured += result["structured"]
             raw += result["raw"]
-    expected = dict(catscale=dict(rows=structured + raw, families=totals), volume_rows=volume_rows,
-                    exports_rows=len(pack_builder.ROWS))
+    expected = dict(
+        catscale=dict(rows=structured + raw, families=totals),
+        volume_rows=volume_rows,
+        exports_rows=len(pack_builder.ROWS),
+    )
     (pack / "RESULTATS-ATTENDUS.json").write_text(json.dumps(expected), encoding="utf-8")
     return pack
 
@@ -52,7 +55,9 @@ def service(tmp_path):
     cases = tmp_path / "cases"
     cases.mkdir()
     port = host_recette.free_port()
-    server = uvicorn.Server(uvicorn.Config(create_app(cases), host="127.0.0.1", port=port, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(create_app(cases), host="127.0.0.1", port=port, log_level="warning")
+    )
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     deadline = time.monotonic() + 15
@@ -63,11 +68,18 @@ def service(tmp_path):
     thread.join(timeout=10)
 
 
-def test_the_host_accounts_for_every_file_of_each_source_and_reads_the_known_counts(tmp_path, service):
+def test_the_host_accounts_for_every_file_of_each_source_and_reads_the_known_counts(
+    tmp_path, service
+):
     pack = _build_pack(tmp_path)
-    args = host_recette.argparse.Namespace(pack=str(pack), url=service, server_pack=str(pack), image="")
+    args = host_recette.argparse.Namespace(
+        pack=str(pack), url=service, server_pack=str(pack), image=""
+    )
     result = host_recette.run(args)
-    seen = {scenario["scenario"]: {c["name"]: c for c in scenario["checks"]} for scenario in result["scenarios"]}
+    seen = {
+        scenario["scenario"]: {c["name"]: c for c in scenario["checks"]}
+        for scenario in result["scenarios"]
+    }
     assert set(seen) == {"catscale-folder", "catscale-archive", "volume", "exports"}
     for name, checks in seen.items():
         for pinned in ("import-completes", "every-file-accounted-for", "no-file-in-error"):
@@ -83,14 +95,25 @@ def test_the_host_accounts_for_every_file_of_each_source_and_reads_the_known_cou
 
 def test_a_difference_is_reported_and_a_pinned_failure_fails_the_run():
     expected = {"catscale": {"rows": 10, "families": {"Persistance": 10}}}
-    observed = {"files": [{"name": "a", "status": "complete"}], "statuses": {"complete": 1},
-                "analyses": [{"label": "Persistence.csv", "rows": 7, "artifact": "x", "parser": ""}]}
+    observed = {
+        "files": [{"name": "a", "status": "complete"}],
+        "statuses": {"complete": 1},
+        "analyses": [{"label": "Persistence.csv", "rows": 7, "artifact": "x", "parser": ""}],
+    }
     checks = host_recette.base_checks(observed, files_in_pack=2, job={"status": "complete"})
     checks += host_recette.check_catscale(expected, observed)
     by_name = {item.name: item for item in checks}
-    assert by_name["every-file-accounted-for"].verdict == host_recette.FAIL, "one of two files has no line"
-    assert by_name["catscale-Persistance"].verdict == host_recette.INFO and by_name["catscale-Persistance"].actual == 7
+    assert by_name["every-file-accounted-for"].verdict == host_recette.FAIL, (
+        "one of two files has no line"
+    )
+    assert (
+        by_name["catscale-Persistance"].verdict == host_recette.INFO
+        and by_name["catscale-Persistance"].actual == 7
+    )
     failing = {"scenarios": [{"checks": [vars(item) for item in checks]}]}
     assert host_recette.verdict(failing, strict=False) == 1
     only_info = {"scenarios": [{"checks": [vars(by_name["catscale-Persistance"])]}]}
-    assert host_recette.verdict(only_info, strict=False) == 0 and host_recette.verdict(only_info, strict=True) == 1
+    assert (
+        host_recette.verdict(only_info, strict=False) == 0
+        and host_recette.verdict(only_info, strict=True) == 1
+    )

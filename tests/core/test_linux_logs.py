@@ -6,11 +6,11 @@ import gzip
 import io
 import json
 import lzma
-from pathlib import Path
 import struct
 import tarfile
 import threading
 import zipfile
+from pathlib import Path
 
 import lz4.block
 import lz4.frame

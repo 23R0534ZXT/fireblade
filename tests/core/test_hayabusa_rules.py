@@ -1,7 +1,6 @@
 """Hayabusa rules the analyst can change, without touching the delivered pack."""
 
 import json
-from pathlib import Path
 
 from fireblade.core import hayabusa_rules as rules
 

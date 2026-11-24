@@ -20,7 +20,7 @@ lets a finding point at the rows it was built from.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 # A burst ends when the same rule stays silent for this long on the same host.
 GAP_SECONDS = 900
@@ -72,8 +72,8 @@ def instant(value):
         except (ValueError, TypeError, OverflowError):
             continue
         if stamp.tzinfo is None:
-            return stamp.replace(tzinfo=timezone.utc)
-        return stamp.astimezone(timezone.utc)
+            return stamp.replace(tzinfo=UTC)
+        return stamp.astimezone(UTC)
     return None
 
 
@@ -127,7 +127,7 @@ class Group:
 
     def span(self):
         """(start, end) with a usable fallback for an alert whose timestamp could not be read."""
-        floor = datetime.max.replace(tzinfo=timezone.utc)
+        floor = datetime.max.replace(tzinfo=UTC)
         return (self.start or floor, self.end or floor)
 
     def as_dict(self):
@@ -209,7 +209,7 @@ def group_alerts(rows, gap_seconds=GAP_SECONDS, incident_window=INCIDENT_WINDOW_
             bucket["stamps"].append(stamp)
 
     groups = []
-    for (title, host, channel, level), bucket in buckets.items():
+    for (_title, _host, _channel, level), bucket in buckets.items():
         stamps = sorted(bucket["stamps"])
         for start, end, members in _bursts(stamps, gap_seconds):
             event_ids = []
@@ -419,8 +419,8 @@ def group_alerts_sql(case, gap_seconds=GAP_SECONDS, incident_window=INCIDENT_WIN
     for record in cursor.fetchall():
         row = dict(zip(fields, record))
         level_name = level_of(row["lvl"])
-        start = row["start"].astimezone(timezone.utc) if row["start"] is not None else None
-        end = row["end"].astimezone(timezone.utc) if row["end"] is not None else None
+        start = row["start"].astimezone(UTC) if row["start"] is not None else None
+        end = row["end"].astimezone(UTC) if row["end"] is not None else None
         event_ids = tuple(
             value.strip()
             for value in str(row["eid"] or "").split("¦")

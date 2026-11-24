@@ -4,18 +4,17 @@ No DNS/HTTP requests, SQL patterns or user-provided regular expressions. Evidenc
 values are never rewritten. Matches are observations, not compromise verdicts.
 """
 
-from collections import defaultdict
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from functools import lru_cache
 import csv
 import hashlib
 import io
 import ipaddress
 import json
-from pathlib import Path
 import re
 import unicodedata
+from collections import defaultdict
+from dataclasses import dataclass, field
+from functools import lru_cache
+from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 import idna
@@ -119,7 +118,7 @@ def normalize_url(value):
             else normalize_domain(host)
         )
         if host.startswith("*."):
-            raise ValueError("Hôte URL générique interdit")
+            raise ValueError("Hôte URL générique interdit") from None
     port = parts.port  # Invalid/out-of-range ports raise rather than disappearing.
     if port is not None and port != {"http": 80, "https": 443}[parts.scheme.lower()]:
         host += ":" + str(port)

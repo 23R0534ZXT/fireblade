@@ -1,10 +1,9 @@
 """Additional log payload schemas; all interpretations retain source text."""
 
-from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation, ROUND_FLOOR
 import json
 import re
-
+from datetime import UTC, datetime
+from decimal import ROUND_FLOOR, Decimal, InvalidOperation
 
 MONTHS = {
     name: number
@@ -38,12 +37,12 @@ def utc_time(value, epoch=False):
                 datetime.fromisoformat(
                     f"{year}-{number:02d}-{day}T{clf[2]}{clf[3][:3]}:{clf[3][3:]}"
                 )
-                .astimezone(timezone.utc)
+                .astimezone(UTC)
                 .isoformat()
             )
         if not re.search(r"(?:Z|[+-]\d{2}:?\d{2})$", value):
             return ""
-        result = datetime.fromisoformat(value).astimezone(timezone.utc)
+        result = datetime.fromisoformat(value).astimezone(UTC)
         fraction = re.search(r"\d{2}:\d{2}:\d{2}[.,](\d+)", value)
         if fraction:
             return result.replace(microsecond=0).isoformat()[:-6] + "." + fraction[1] + "+00:00"

@@ -1,7 +1,9 @@
 """Minimal Qt background jobs; no engine or window dependency."""
 
 import threading
+
 from PySide6.QtCore import QObject, QRunnable, Signal
+
 from fireblade.core.errors import OperationCancelled, cancellation_scope
 
 

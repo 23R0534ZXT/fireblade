@@ -1,6 +1,7 @@
 """Small vector icons: no external fonts, assets or image libraries."""
 
 import math
+
 from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QColor, QPolygon
 

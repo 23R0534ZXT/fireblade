@@ -2,10 +2,10 @@
 
 import copy
 import json
-from xml.etree.ElementTree import ParseError
 from pathlib import Path
+from xml.etree.ElementTree import ParseError
 
-from PySide6.QtCore import QModelIndex, Qt, QTimer, QUrl
+from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -20,11 +20,12 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QVBoxLayout,
 )
+
 from fireblade.core.models import Filter, analysis_label
-from fireblade.core.preferences import load_preferences, save_preferences, Preferences
+from fireblade.core.preferences import Preferences, load_preferences, save_preferences
+from fireblade.ui.cross_search import SearchDialog
 from fireblade.ui.exploration_dialogs import DateFilterDialog, GroupsDialog
 from fireblade.ui.preferences_dialog import PreferencesDialog
-from fireblade.ui.cross_search import SearchDialog
 from fireblade.ui.theme import apply_theme
 
 
@@ -563,8 +564,9 @@ class ExplorationMixin:
     def save_format_layout(self):
         if not self.case or not self.model or not getattr(self, "_layout_save_enabled", False):
             return
-        from fireblade.core.auto_layout import save_auto_layout
         import base64
+
+        from fireblade.core.auto_layout import save_auto_layout
 
         try:
             self.capture_pin_widths()
@@ -635,10 +637,11 @@ class ExplorationMixin:
         dialog.deleteLater()
 
     def manage_plugins(self):
-        from fireblade.core.profiles import all_profiles
-        from fireblade.core.profile_plugins import load_plugins, plugin_path, validate_plugin
+        from PySide6.QtWidgets import QHBoxLayout, QPushButton
+
         from fireblade.core.layout import write_json
-        from PySide6.QtWidgets import QPushButton, QHBoxLayout
+        from fireblade.core.profile_plugins import load_plugins, plugin_path, validate_plugin
+        from fireblade.core.profiles import all_profiles
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Profils et plugins de présentation")
@@ -832,7 +835,7 @@ class ExplorationMixin:
             )
         if not path:
             return
-        from fireblade.core.tle_compat import read_tle_session, TleSessionImport
+        from fireblade.core.tle_compat import TleSessionImport, read_tle_session
         from fireblade.runtime.windows_paths import analyses_directory
 
         try:

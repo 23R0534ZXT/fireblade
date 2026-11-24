@@ -1,6 +1,7 @@
 """Rewrite layout column aliases without rewriting child collection properties."""
 
 import re
+
 from fireblade.core.collection_expressions import translate
 from fireblade.core.expressions import TOKEN
 

@@ -1,4 +1,3 @@
-import copy
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -7,7 +6,6 @@ from fireblade.core.engine import Case
 from fireblade.core.models import Filter, FilterGroup, FormatRule, GroupSort, SortKey, Summary, View
 from fireblade.core.tle_layout import read_tle_layout
 from fireblade.core.tle_layout_export import build_tle_layout, write_tle_layout
-
 
 HEADERS = ["User", "Value", "Time"]
 COLUMNS = [

@@ -1,11 +1,10 @@
 import json
-from pathlib import Path
+
 import pytest
 
 from fireblade.core.auto_layout import candidates, load_auto_layout, local_path, save_auto_layout
 from fireblade.core.models import View
 from fireblade.runtime.windows_paths import user_directory
-
 
 XML = """<XtraSerializer><property name="Columns"><property name="Item1"><property name="FieldName">User</property><property name="VisibleIndex">0</property><property name="Width">287</property><property name="Fixed">Right</property></property></property></XtraSerializer>"""
 HEADERS = ["EventId", "Provider", "Channel", "User"]

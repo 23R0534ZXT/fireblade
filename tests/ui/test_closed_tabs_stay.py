@@ -4,7 +4,6 @@ The complaint: closing an artifact grid made the file disappear from the tree, s
 analyst could not get it back without re-importing. Closing a tab now only closes the tab.
 """
 
-from pathlib import Path
 import time
 
 from PySide6.QtCore import Qt

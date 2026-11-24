@@ -4,12 +4,12 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import time
 import zipfile
+from pathlib import Path
 
 REPOSITORY = "23R0534ZXT/fireblade"
 TAG = "test-data-3gib"

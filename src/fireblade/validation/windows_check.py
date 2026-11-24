@@ -5,29 +5,29 @@ run; Explorer drag/drop and human use of native file pickers remain manual check
 """
 
 import csv
-from datetime import datetime, timezone
 import hashlib
 import json
 import os
-from pathlib import Path
 import platform
 import stat
 import struct
 import sys
 import tempfile
 import time
+from datetime import UTC, datetime
+from pathlib import Path
 
 import duckdb
 from PySide6 import __version__ as pyside_version
-from PySide6.QtCore import QItemSelectionModel, QTimer, Qt, qVersion
+from PySide6.QtCore import QItemSelectionModel, Qt, QTimer, qVersion
 from PySide6.QtWidgets import QDialog
 
-from fireblade.ui.app import Window
-from fireblade.ui.dialogs import ImportDialog
 from fireblade.core.models import Filter, FilterGroup, FormatRule, SortKey, View
 from fireblade.core.rule_store import RuleBook, RuleStore
-from fireblade.runtime.windows_paths import analyses_directory
 from fireblade.runtime.resources import build_info, default_config, resource_path
+from fireblade.runtime.windows_paths import analyses_directory
+from fireblade.ui.app import Window
+from fireblade.ui.dialogs import ImportDialog
 
 
 def accept_import_when_ready(app, target, errors, sheet=None, timeout=30):
@@ -103,7 +103,7 @@ def run_check(app, report_path):
         raise ValueError("Le rapport existe déjà ; choisissez un nouveau fichier.")
     report = dict(
         status="running",
-        started_utc=datetime.now(timezone.utc).isoformat(),
+        started_utc=datetime.now(UTC).isoformat(),
         platform=sys.platform,
         operating_system=platform.platform(),
         machine=platform.machine(),
@@ -790,7 +790,7 @@ def run_check(app, report_path):
             except OSError as exc:
                 report["status"] = "failed"
                 report["cleanup_error"] = str(exc)
-    report["finished_utc"] = datetime.now(timezone.utc).isoformat()
+    report["finished_utc"] = datetime.now(UTC).isoformat()
     report_path.parent.mkdir(parents=True, exist_ok=True)
     flush_report()
     return 0 if report["status"] == "passed" else 1

@@ -9,7 +9,6 @@ import hashlib
 import io
 import json
 import os
-from pathlib import Path
 import re
 import subprocess
 import sys
@@ -17,8 +16,9 @@ import tempfile
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
+from pathlib import Path
 
-from scripts.windows.verify_upstream_plugin import REVISION, ARCHIVE_SHA256
+from scripts.windows.verify_upstream_plugin import ARCHIVE_SHA256, REVISION
 
 
 def verify(host, output):

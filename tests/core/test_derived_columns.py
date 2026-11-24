@@ -1,8 +1,10 @@
 import csv
 import hashlib
+
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, Filter
+from fireblade.core.models import Filter, View
 
 
 @pytest.mark.parametrize(

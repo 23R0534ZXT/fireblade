@@ -5,7 +5,6 @@ import os
 import re
 import types
 from datetime import datetime
-from pathlib import Path
 
 from fireblade.core import client_report
 from fireblade.core.case_destruction import destroy_case

@@ -4,9 +4,9 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QFileDialog
 
-from fireblade.ui.advanced_dialogs import RulesDialog
 from fireblade.core.rule_store import RuleBook, RuleStore, atomic_write, read_book
 from fireblade.runtime.windows_paths import user_directory
+from fireblade.ui.advanced_dialogs import RulesDialog
 
 
 class SharedRulesMixin:

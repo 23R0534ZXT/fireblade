@@ -1,5 +1,3 @@
-import copy
-
 import pytest
 
 from scripts.windows.workspace import validate

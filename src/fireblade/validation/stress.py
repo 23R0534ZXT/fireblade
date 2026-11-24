@@ -4,10 +4,10 @@ import copy
 import csv
 import hashlib
 import json
-from pathlib import Path
 import time
+from pathlib import Path
 
-from PySide6.QtCore import QModelIndex, QTimer, Qt
+from PySide6.QtCore import QModelIndex, Qt, QTimer
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QLineEdit, QPlainTextEdit, QPushButton
 
@@ -720,8 +720,8 @@ def run_stress(app, spec_path, report_path):
         run.check("text_expression_and_visible_column_export_on_3_GiB", projected_export)
 
         def search_large_and_small():
-            from fireblade.ui.cross_search import WorkspaceSearch
             from fireblade.core.models import AnalysisSnapshot
+            from fireblade.ui.cross_search import WorkspaceSearch
 
             small_source = run.out / "cross-search.csv"
             small_source.write_text("User,Text\nuser042,one\nother,two\n")
@@ -872,6 +872,7 @@ def run_stress(app, spec_path, report_path):
 
         def graphical_whole_data():
             from decimal import Decimal, localcontext
+
             import numpy as np
 
             # Independent numeric oracle only: the existing CSV is never regenerated.

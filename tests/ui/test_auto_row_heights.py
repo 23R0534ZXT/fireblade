@@ -3,7 +3,6 @@ import time
 from dataclasses import replace
 
 import pytest
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QAbstractItemView
 
 from fireblade.core.engine import Case

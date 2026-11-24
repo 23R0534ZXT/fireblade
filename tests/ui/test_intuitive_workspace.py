@@ -2,10 +2,10 @@
 
 import time
 
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QColor
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QPushButton, QMessageBox
+from PySide6.QtWidgets import QMessageBox, QPushButton
 
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.engine import Case

@@ -6,13 +6,10 @@ the audit report. Only --fetch-fixtures makes network requests.
 """
 
 import argparse
-from collections import Counter
 import csv
-from datetime import datetime, timedelta, timezone
 import gzip
 import hashlib
 import json
-from pathlib import Path
 import platform
 import random
 import sqlite3
@@ -20,8 +17,11 @@ import subprocess
 import time
 import traceback
 import urllib.request
-from unittest.mock import patch
 import zipfile
+from collections import Counter
+from datetime import UTC, datetime, timedelta, timezone
+from pathlib import Path
+from unittest.mock import patch
 
 import duckdb
 
@@ -33,7 +33,6 @@ from fireblade.core.engine import Case
 from fireblade.core.investigations import InvestigationLibrary
 from fireblade.core.models import Filter, FilterGroup, View
 from fireblade.core.sessions import read_session
-
 
 PUBLIC_FIXTURES = [
     (
@@ -237,7 +236,7 @@ def filter_oracle(root):
 def timestamp_oracle(root):
     rng = random.Random(42)
     values = []
-    epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    epoch = datetime(1970, 1, 1, tzinfo=UTC)
     for _ in range(300):
         base = datetime(
             rng.choice([1601, 1969, 1970, 2026, 2263]),
@@ -251,7 +250,7 @@ def timestamp_oracle(root):
         offset = rng.choice([-720, -60, 0, 60, 330, 840])
         zone = timezone(timedelta(minutes=offset))
         stamp = base.replace(tzinfo=zone)
-        delta = stamp.astimezone(timezone.utc) - epoch
+        delta = stamp.astimezone(UTC) - epoch
         value = base.isoformat() + f".{ns:09d}" + stamp.isoformat()[-6:]
         values.append((value, (delta.days * 86400 + delta.seconds) * 10**9 + ns))
     from fireblade.core.timestamps import timestamp_key
@@ -433,7 +432,7 @@ def large_oracle(root, directory):
         with (root / "filtered.csv").open(encoding="utf-8-sig", newline="") as stream:
             reader = csv.reader(stream)
             next(reader)
-            for block in range(838):
+            for _block in range(838):
                 for row_id in expected_ids:
                     i = row_id - 1
                     assert next(reader) == [

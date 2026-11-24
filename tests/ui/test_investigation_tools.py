@@ -1,5 +1,4 @@
 import time
-from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest

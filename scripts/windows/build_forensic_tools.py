@@ -3,13 +3,13 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import urllib.request
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
+from pathlib import Path
 
 
 def unpack(archive, destination):

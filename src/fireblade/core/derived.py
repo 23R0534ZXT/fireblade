@@ -5,6 +5,7 @@ only from this registry and the scalar expression compiler, never from plugins.
 """
 
 import re
+
 from fireblade.core.expressions import compile_scalar
 
 FORMATS = {

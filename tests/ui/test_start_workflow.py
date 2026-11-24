@@ -1,8 +1,6 @@
 import threading
 import time
 
-from PySide6.QtCore import Qt
-
 from fireblade.core.disk import DiskCollection
 from fireblade.ui.app import Window
 from fireblade.ui.startup import DURATION, StartupAnimation

@@ -5,6 +5,7 @@ Existing analyses keep external access disabled, including portable import.
 """
 
 import json
+
 import duckdb
 
 from fireblade.core.paths import same_file

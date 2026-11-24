@@ -1,7 +1,6 @@
 """Investigation catalogue and explicit loading of one case workspace."""
 
 from datetime import datetime
-from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction

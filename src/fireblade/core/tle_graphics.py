@@ -1,8 +1,9 @@
 """Translate declarative DevExpress graphical rules without .NET deserialization."""
 
 from decimal import Decimal
-from fireblade.core.models import FormatRule, FilterGroup
+
 from fireblade.core.icon_assets import png_bytes
+from fireblade.core.models import FilterGroup, FormatRule
 
 
 def read_graphic(item, node, kind, text, properties, color, resolve, aliases, warnings):

@@ -1,8 +1,8 @@
 import hashlib
 import json
-from pathlib import Path
 import threading
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -182,7 +182,7 @@ def test_import_size_budget_prevents_case_creation(tmp_path, monkeypatch):
 
 def test_ioc_hunts_survive_portable_case_without_rewriting_observations(tmp_path):
     from fireblade.core.ioc_hunt import parse_indicators
-    from fireblade.core.ioc_results import hunt, HuntStore, discover_hunts
+    from fireblade.core.ioc_results import HuntStore, discover_hunts, hunt
     from fireblade.core.workspace_reader import WorkspaceReader
 
     library, data, document, case, source = prepared(tmp_path)
@@ -221,13 +221,13 @@ def test_ioc_hunts_survive_portable_case_without_rewriting_observations(tmp_path
 
 def test_coverage_history_and_last_audit_are_transported_with_references(tmp_path):
     from fireblade.core.coverage import (
+        FORMAT,
         audit,
         event,
-        save_state,
+        load_report,
         load_state,
         save_report,
-        load_report,
-        FORMAT,
+        save_state,
     )
     from fireblade.core.workspace_reader import WorkspaceReader
 

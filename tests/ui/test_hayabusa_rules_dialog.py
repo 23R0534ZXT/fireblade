@@ -1,7 +1,5 @@
 """The rules dialog: read a rule, change it, switch it off, come back to the pack's one."""
 
-from pathlib import Path
-
 from fireblade.core import hayabusa_rules
 
 RULE = """title: Suspicious PowerShell Encoded Command

@@ -1,4 +1,5 @@
 import argparse
+
 from fireblade.validation.plugin_checks import verify
 
 if __name__ == "__main__":

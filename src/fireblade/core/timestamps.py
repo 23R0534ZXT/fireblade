@@ -1,7 +1,9 @@
 """Presentation only. Source precision and timezone text are never rewritten."""
 
+import calendar
 import re
 from datetime import datetime
+from functools import lru_cache
 
 _ISO = re.compile(
     r"^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d+))?((?:Z|[+-]\d{2}:?\d{2})?)$"
@@ -32,9 +34,6 @@ def timestamp_key(column):
         f"try_cast(right(rpad(regexp_extract({column}, '\\.([0-9]+)',1),9,'0'),3) AS HUGEINT)"
     )
 
-
-from functools import lru_cache
-import calendar
 
 _PATTERN = re.compile(
     r"'[^']*'|\"[^\"]*\"|\\.|yyyy|yyy|yy|y|MMMM|MMM|MM|M|dddd|ddd|dd|d|HH|H|hh|h|mm|m|ss|s|f{1,9}|F{1,9}|zzz|zz|z|K|tt|t|[^A-Za-z\\'\"]+"

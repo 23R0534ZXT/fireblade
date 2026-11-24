@@ -2,9 +2,9 @@
 
 import argparse
 import json
-from pathlib import Path
 import shutil
 import tempfile
+from pathlib import Path
 
 from scripts.windows.qa_process import run_executable
 

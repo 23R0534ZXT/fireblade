@@ -1,9 +1,9 @@
 import csv
 import json
-from pathlib import Path
 import shutil
 
 import pytest
+
 from fireblade.core.alert_context import build_context
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.engine import Case
@@ -294,6 +294,7 @@ def test_replaced_source_analysis_cannot_be_reported_as_exact(context_collection
 
 def test_cancelled_context_does_not_register_a_partial_analysis(context_collection):
     import threading
+
     from fireblade.core.errors import OperationCancelled, cancellation_scope
 
     collection, alert = context_collection

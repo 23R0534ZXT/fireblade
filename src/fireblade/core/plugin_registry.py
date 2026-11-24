@@ -3,8 +3,9 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
 from fireblade.runtime.windows_paths import user_directory
 
 
@@ -124,9 +125,9 @@ def restore_functions(case):
     items = json.loads(row[0])
     if not isinstance(items, list) or len(items) > 256:
         raise ValueError("Références de fonctions invalides")
-    from fireblade.core.tle_plugins import register_functions, ensure_udf
+
     from fireblade.core.expressions import register_function_metadata
-    import re
+    from fireblade.core.tle_plugins import ensure_udf, register_functions
 
     for item in items:
         if (

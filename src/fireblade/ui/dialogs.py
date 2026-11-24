@@ -1,7 +1,7 @@
 """Small desktop dialogs, independent from the database and worker lifecycle."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from PySide6.QtWidgets import (
     QCheckBox,

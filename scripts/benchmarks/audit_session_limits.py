@@ -6,8 +6,8 @@ failed; this is an audit, not a performance benchmark.
 
 import argparse
 import json
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 from fireblade.core.engine import Case
 from fireblade.core.models import AnalysisSnapshot, View

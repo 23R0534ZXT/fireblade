@@ -9,7 +9,6 @@ Skipped without Playwright and a Chromium; never failed for lack of them.
 import os
 
 import pytest
-
 from _browser import serving  # noqa: E402
 
 pytest.importorskip("playwright.sync_api")

@@ -1,10 +1,10 @@
 """Prevent case writes to a physical disk selected as evidence."""
 
 import os
-from pathlib import Path
 import re
 import stat
 import struct
+from pathlib import Path
 
 
 def windows_volume_disks(drive):

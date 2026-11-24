@@ -28,8 +28,9 @@ def custom_styles(layout_path):
     """Resolve named definitions from an explicit portable sidecar or user library."""
     import json
     from pathlib import Path
-    from fireblade.runtime.windows_paths import user_directory
+
     from fireblade.core.tle_appearance import validate_styles
+    from fireblade.runtime.windows_paths import user_directory
 
     result = {}
     for path in (

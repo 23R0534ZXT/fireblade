@@ -1,4 +1,5 @@
 import pytest
+
 from scripts.update_release_readme import promote
 
 

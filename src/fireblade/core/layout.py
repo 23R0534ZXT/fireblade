@@ -1,9 +1,10 @@
 """Portable named-column views. Never deserialize executable code."""
 
-from pathlib import Path
 import json
 import os
 import tempfile
+from pathlib import Path
+
 from fireblade.core.models import View
 
 

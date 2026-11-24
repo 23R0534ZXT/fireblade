@@ -4,7 +4,6 @@ from fireblade.core.explain import (
     build_pack,
     citations,
     describe_without_model,
-    render_prompt,
     severity_first,
     verify,
     window_around,

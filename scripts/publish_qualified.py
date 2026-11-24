@@ -4,12 +4,11 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import subprocess
+from pathlib import Path
 
 from scripts.release import application_version, publish
-
 
 REQUIRED_JOBS = {
     "Python syntax and name checks",

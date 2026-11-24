@@ -1,8 +1,8 @@
 """Real public Shellbags/ESE acceptance data in a case and the actual grid."""
 
-from pathlib import Path
 import shutil
 import time
+from pathlib import Path
 
 
 def verify_browser_artifacts(app, directory, settings=None, pack=None, evidence=None):

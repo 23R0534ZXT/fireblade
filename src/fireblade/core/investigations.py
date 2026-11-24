@@ -1,13 +1,13 @@
 """Persistent investigation catalogue. Listing cases never opens an analysis."""
 
-from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+import copy
 import json
 import os
-from pathlib import Path
 import re
 import uuid
-import copy
+from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from fireblade.core.layout import write_json
 from fireblade.core.sessions import write_session
@@ -33,7 +33,7 @@ def now():
     version becomes non-deterministic. Nudge the clock by one microsecond so
     ``updated`` always reflects save order.
     """
-    stamp = datetime.now(timezone.utc)
+    stamp = datetime.now(UTC)
     if _LAST_STAMP[0] is not None and stamp <= _LAST_STAMP[0]:
         stamp = _LAST_STAMP[0] + timedelta(microseconds=1)
     _LAST_STAMP[0] = stamp

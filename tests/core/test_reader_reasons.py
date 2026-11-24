@@ -6,8 +6,6 @@ Windows must say so instead of showing an exit code. These tests hold the words,
 because a reason nobody understands is a reason nobody reads.
 """
 
-from pathlib import Path
-
 import pytest
 
 from fireblade.core import i18n

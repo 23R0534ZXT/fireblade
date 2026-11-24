@@ -1,15 +1,17 @@
 """Small classic dialogs for native derived columns; no source rewriting."""
 
 import copy
+
 from PySide6.QtWidgets import (
-    QDialog,
-    QFormLayout,
     QComboBox,
-    QLineEdit,
+    QDialog,
     QDialogButtonBox,
+    QFormLayout,
     QLabel,
+    QLineEdit,
     QPlainTextEdit,
 )
+
 from fireblade.core.derived import FORMATS
 from fireblade.core.windows_zones import WINDOWS_ZONES
 

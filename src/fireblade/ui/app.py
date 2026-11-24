@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import copy
-import base64
-import json
 import argparse
+import base64
+import copy
+import json
 import sys
 import time
-from xml.parsers.expat import ExpatError
 from pathlib import Path
+from xml.parsers.expat import ExpatError
 
-from PySide6.QtCore import QModelIndex, QThreadPool, QTimer, Qt, QEventLoop
+from PySide6.QtCore import QEventLoop, QModelIndex, Qt, QThreadPool, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -38,44 +38,38 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fireblade.ui.menus import cell_menu, header_menu
-from fireblade.core.models import Filter, FilterGroup, SortKey, View, OPERATORS
-from fireblade.ui.advanced_dialogs import FilterDialog, RulesDialog, SortDialog
-from fireblade.ui.grouping import GroupBar, GroupHeader
+from fireblade.core.i18n import translate
+from fireblade.core.models import OPERATORS, Filter, FilterGroup, SortKey, View
 from fireblade.core.profiles import detect_profile, profile_view
-from fireblade.ui.workspace import WorkspaceMixin
-from fireblade.ui.shared_rules import SharedRulesMixin
-from fireblade.ui.grid import GridDelegate, GridModel
 from fireblade.core.settings import Settings, load_settings
-from fireblade.ui.theme import apply_theme
-from fireblade.ui.workers import Job
-from fireblade.ui.exploration import ExplorationMixin
-from fireblade.ui.pinned_grid import PinnedTree
 from fireblade.runtime.resources import default_config
+from fireblade.ui.advanced_dialogs import FilterDialog, RulesDialog, SortDialog
+from fireblade.ui.case_commands import CaseCommandsMixin
+from fireblade.ui.collection import CollectionMixin
+from fireblade.ui.exploration import ExplorationMixin
+from fireblade.ui.export_commands import ExportCommandsMixin
+from fireblade.ui.file_commands import FileCommandsMixin
+from fireblade.ui.grid import GridDelegate, GridModel
+from fireblade.ui.grouping import GroupBar, GroupHeader
 from fireblade.ui.help_dialogs import (
     show_about,
+    show_coverage_guide,
     show_guide,
-    show_licenses,
-    show_tutorial,
     show_investigation_guide,
     show_ioc_guide,
-    show_coverage_guide,
+    show_licenses,
+    show_tutorial,
 )
-
-
-from fireblade.ui.collection import CollectionMixin
-from fireblade.ui.investigations import InvestigationMixin
 from fireblade.ui.investigation_tools import InvestigationToolsMixin
-from fireblade.ui.case_commands import CaseCommandsMixin
-from fireblade.ui.timeline import TimelineMixin
-
-
-from fireblade.ui.file_commands import FileCommandsMixin
-from fireblade.ui.export_commands import ExportCommandsMixin
-
-
+from fireblade.ui.investigations import InvestigationMixin
+from fireblade.ui.menus import cell_menu, header_menu
+from fireblade.ui.pinned_grid import PinnedTree
+from fireblade.ui.shared_rules import SharedRulesMixin
 from fireblade.ui.start_workflow import StartWorkflowMixin
-from fireblade.core.i18n import translate
+from fireblade.ui.theme import apply_theme
+from fireblade.ui.timeline import TimelineMixin
+from fireblade.ui.workers import Job
+from fireblade.ui.workspace import WorkspaceMixin
 
 
 class Window(

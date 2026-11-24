@@ -12,10 +12,12 @@ def test_folder_picker_imports_catscale_in_case_and_hayabusa_explains_evtx_requi
     qt_application, tmp_path, monkeypatch
 ):
     import time
+
     from PySide6.QtWidgets import QDialog
-    from fireblade.validation.catscale import write_corpus
-    from fireblade.ui.app import Window
+
     import fireblade.ui.collection as ui
+    from fireblade.ui.app import Window
+    from fireblade.validation.catscale import write_corpus
 
     source = write_corpus(tmp_path / "evidence")
     monkeypatch.setattr(ui, "choose_import_sources", lambda *args: [str(source)])

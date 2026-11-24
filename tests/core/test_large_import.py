@@ -7,7 +7,6 @@ than the configured budget, which is how the failure was met in the field.
 """
 
 import csv
-import os
 
 import pytest
 
@@ -123,6 +122,7 @@ def test_a_file_within_the_threshold_is_read_in_one_pass(tmp_path):
 def test_a_cancel_during_the_single_pass_ends_cancelled_and_leaves_no_table(tmp_path):
     """An interrupt inside the one-pass read must surface as a cancellation."""
     import threading
+
     from fireblade.core.engine import Case
     from fireblade.core.errors import OperationCancelled
 

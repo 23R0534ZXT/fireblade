@@ -5,9 +5,8 @@ from __future__ import annotations
 import base64
 from pathlib import Path
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QDesktopServices
 from PySide6.QtCore import QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -20,8 +19,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from fireblade.core import case_workspace, client_report, destruction
-from fireblade.core.model_texts import ACTION_TYPE_LABELS
+from fireblade.core import case_workspace, client_report
 
 
 class ClientReportDialog(QDialog):

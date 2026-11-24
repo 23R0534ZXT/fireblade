@@ -1,6 +1,6 @@
 """Grouping and incident assembly: nothing dropped, and stable identifiers."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fireblade.core.findings import group_alerts, instant, level_of, summarise
 
@@ -23,7 +23,7 @@ def alert(stamp, title="Rule A", host="PC01", level="high", event_id="4624", **e
 
 def test_timestamps_are_read_in_every_shape_hayabusa_writes():
     assert instant("2026-11-14T14:20:03.412Z").tzinfo is not None
-    assert instant("2026-11-14 14:20:03.412 +01:00").astimezone(timezone.utc).hour == 13
+    assert instant("2026-11-14 14:20:03.412 +01:00").astimezone(UTC).hour == 13
     assert instant("2026-11-14 14:20:03 +0000").minute == 20
     assert instant("") is None
     assert instant("not a date") is None

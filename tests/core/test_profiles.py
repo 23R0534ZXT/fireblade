@@ -1,7 +1,5 @@
 """Profile detection: a catalogue entry must recognise its own exports."""
 
-import pytest
-
 from fireblade.core.profile_catalog import CATALOG
 from fireblade.core.profiles import Profile, detect_profile, profile_view
 

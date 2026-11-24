@@ -1,7 +1,8 @@
 import pytest
-from fireblade.core.tle_settings import read_tle_settings
+
+from fireblade.core.preferences import Preferences, load_preferences, save_preferences
 from fireblade.core.timestamps import format_timestamp
-from fireblade.core.preferences import Preferences, save_preferences, load_preferences
+from fireblade.core.tle_settings import read_tle_settings
 
 
 def test_documented_tle_settings_import_preserves_their_preferences(tmp_path):

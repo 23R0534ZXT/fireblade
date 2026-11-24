@@ -1,16 +1,17 @@
 """Actual Windows CLR4 reader/function check, using an assembly requiring System.Web."""
 
 import os
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View
 from fireblade.core.filter_text import parse_filter
+from fireblade.core.models import View
 from fireblade.core.tle_plugins import (
-    inspect_plugin,
-    import_plugin,
-    register_functions,
     command_for_plugin,
+    import_plugin,
+    inspect_plugin,
+    register_functions,
 )
 
 

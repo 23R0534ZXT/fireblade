@@ -30,11 +30,9 @@ from PySide6.QtWidgets import (
     QProgressDialog,
     QPushButton,
     QVBoxLayout,
-    QWidget,
 )
 
 from fireblade.core import case_workspace, destruction, destruction_certificate
-from fireblade.core.model_texts import ACTION_TYPE_LABELS
 
 PROTECTED = ("case.json", "workspace.json", "case.lock", "case.active.lock")
 PROTECTED_FOLDERS = ("history", "destruction")

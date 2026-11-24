@@ -111,8 +111,6 @@ SURFACE_CALLS = {
     "hint",
     "emit",
     "emit_status",
-    "setStatusTip",
-    "setWindowFilePath",
     # models built with their column titles
     "Rows",
     "RowModel",
@@ -124,7 +122,6 @@ SURFACE_CALLS = {
     "addToolBar",
     "addDockWidget",
     "setTabBar",
-    "setTitle",
 }
 
 # Calls that write text nobody reads in the interface.
@@ -141,7 +138,6 @@ INTERNAL_CALLS = {
     "RuntimeError",
     "TypeError",
     "KeyError",
-    "ValueError",
     "AssertionError",
     "OSError",
     "FileNotFoundError",
@@ -279,7 +275,6 @@ FRENCH_ONLY = {
     "hauteur",
     "couleur",
     "couleurs",
-    "police",
     "précisé",
     "précisée",
     "ignoré",
@@ -434,7 +429,7 @@ def inventory():
 
 def missing():
     """Surface strings with no English entry, templates included."""
-    from fireblade.core.i18n import EN, has_english
+    from fireblade.core.i18n import has_english
 
     result = {}
     for text, files in inventory().items():
@@ -470,7 +465,7 @@ def main(argv=None):
         return 0
     if args.by_file:
         counts = {}
-        for text, files in absent.items():
+        for files in absent.values():
             for name in files:
                 counts[name] = counts.get(name, 0) + 1
         for name, count in sorted(counts.items(), key=lambda item: -item[1]):

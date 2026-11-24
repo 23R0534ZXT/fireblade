@@ -8,7 +8,6 @@ from fireblade.ui.cross_search import WorkspaceSearch
 from fireblade.ui.workspace import read_session
 from fireblade.validation.gui_driver import GuiRun
 
-
 COUNT = 320
 
 

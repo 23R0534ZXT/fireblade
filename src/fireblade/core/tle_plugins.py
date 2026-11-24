@@ -3,10 +3,11 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import time
+from pathlib import Path
+
 from fireblade.runtime.resources import resource_path
 
 
@@ -177,7 +178,8 @@ class FunctionSession:
     """One persistent host per selected DLL; pipe waits remain cancellable."""
 
     def __init__(self, path, check_cancelled, host_plugin=None):
-        import queue, threading
+        import queue
+        import threading
 
         self.check = check_cancelled
         self.responses = queue.Queue()

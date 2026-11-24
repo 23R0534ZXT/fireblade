@@ -89,8 +89,8 @@ def main(argv=None) -> int:
         "is ticked, with a test that exercises it on the Host edition.",
         "",
         f"- commands found: **{len(entries)}**",
-        f"- covered by Host: **{len([l for l in entries if l in covered])}**",
-        f"- declared in: "
+        f"- covered by Host: **{len([entry for entry in entries if entry in covered])}**",
+        "- declared in: "
         + ", ".join(f"`{name}` ({count})" for name, count in files.most_common(12)),
         "",
         "| | command | declared in |",

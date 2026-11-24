@@ -1,7 +1,7 @@
 """Generate and inspect Windows PE version resources from the application version."""
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 
 def version_tuple(version):

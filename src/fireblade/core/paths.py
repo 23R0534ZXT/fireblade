@@ -1,7 +1,7 @@
 """Compare file identity, including Windows UNC/drive aliases and hard links."""
 
-import os
 import json
+import os
 from pathlib import Path
 
 

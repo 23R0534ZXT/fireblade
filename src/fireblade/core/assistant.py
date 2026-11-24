@@ -13,9 +13,9 @@ possible command-line probe, and none of them should need a window.
 
 from __future__ import annotations
 
-import urllib.error
 import json
 import os
+import urllib.error
 from dataclasses import dataclass
 from pathlib import Path
 

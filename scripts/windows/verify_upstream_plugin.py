@@ -4,11 +4,11 @@ import hashlib
 import io
 import json
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import urllib.request
 import zipfile
+from pathlib import Path
 
 REVISION = "7199c81ba45a97be74b4e05da43cbaabecccf5ca"
 ARCHIVE_SHA256 = "4ef5612909efd622175e0d63e72018918a4712bf25ec11890646ff47b0676aa1"
@@ -17,7 +17,7 @@ ARCHIVE_SHA256 = "4ef5612909efd622175e0d63e72018918a4712bf25ec11890646ff47b0676a
 def verify(host, report):
     from fireblade.core.engine import Case
     from fireblade.core.models import View
-    from fireblade.core.tle_plugins import inspect_plugin, import_plugin
+    from fireblade.core.tle_plugins import import_plugin, inspect_plugin
 
     dotnet = os.environ.get("FIREBLADE_DOTNET", "dotnet")
     with urllib.request.urlopen(

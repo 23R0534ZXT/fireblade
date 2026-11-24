@@ -6,17 +6,20 @@ again before the report calls it read.
 """
 
 import json
-from pathlib import Path
 import threading
+from pathlib import Path
 
 import duckdb
-import pytest
 
 from fireblade.core.collection import Collection, ToolPack, verify_analysis
 from fireblade.core.errors import cancellation_scope
 from fireblade.core.import_journal import (
     ImportJournal,
+)
+from fireblade.core.import_journal import (
     read as read_journal,
+)
+from fireblade.core.import_journal import (
     summary as journal_summary,
 )
 from fireblade.core.settings import Settings

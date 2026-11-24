@@ -1,7 +1,7 @@
 """Simple wrapping tab rows without a second copy of document data."""
 
-from PySide6.QtCore import Signal, QTimer, Qt, QEvent
-from PySide6.QtWidgets import QTabBar, QVBoxLayout, QWidget, QScrollArea, QFrame
+from PySide6.QtCore import QEvent, Qt, QTimer, Signal
+from PySide6.QtWidgets import QFrame, QScrollArea, QTabBar, QVBoxLayout, QWidget
 
 
 class DocumentTabBar(QTabBar):

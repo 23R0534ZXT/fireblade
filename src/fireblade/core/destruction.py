@@ -22,12 +22,12 @@ written and its SHA-256 is recorded next to the one taken before the first pass.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
 import json
 import os
-from pathlib import Path
 import uuid
+from datetime import UTC, datetime
+from pathlib import Path
 
 METHODS = {
     "dod3": dict(label="DoD 5220.22-M — 3 passes", passes=("zero", "one", "random")),
@@ -51,7 +51,7 @@ LIMITATIONS = (
 
 
 def stamp():
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def sha256_file(path, progress=None):

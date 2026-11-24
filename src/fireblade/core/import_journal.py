@@ -10,17 +10,16 @@ report shows that the record is incomplete -- silence is what this module exists
 to prevent.
 """
 
-from datetime import datetime, timezone
 import json
-from pathlib import Path
 import threading
-
+from datetime import UTC, datetime
+from pathlib import Path
 
 NAME = "journal.jsonl"
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ImportJournal:

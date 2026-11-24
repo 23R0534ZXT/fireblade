@@ -1,9 +1,11 @@
 import base64
 import json
 import struct
+
 import pytest
+
+from fireblade.core.layout_images import image_bytes, normalize_image
 from fireblade.core.tle_appearance import validate_styles
-from fireblade.core.layout_images import normalize_image, image_bytes
 from fireblade.core.tle_layout import read_tle_layout
 from fireblade.core.tle_styles import custom_styles, style
 
@@ -41,8 +43,8 @@ def test_invalid_text_options_are_rejected(tmp_path, property, value):
 
 
 def test_image_wrapper_is_extracted_without_object_deserialization():
-    from PySide6.QtCore import QByteArray, QBuffer, QIODevice
-    from PySide6.QtGui import QImage, QColor
+    from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+    from PySide6.QtGui import QColor, QImage
 
     image = QImage(4, 4, QImage.Format_RGB32)
     image.fill(QColor("red"))
@@ -81,9 +83,10 @@ def test_global_and_layout_custom_style_precedence_and_validation(tmp_path):
 
 
 def test_options_disable_inherited_custom_text_image_and_border(tmp_path):
-    from fireblade.core.tle_appearance import appearance
-    from fireblade.core.tle_layout import text, properties, color
     import xml.etree.ElementTree as ET
+
+    from fireblade.core.tle_appearance import appearance
+    from fireblade.core.tle_layout import color, properties, text
 
     node = ET.fromstring(
         '<property><property name="Options"><property name="UseTextOptions">false</property><property name="UseImage">false</property><property name="UseBorderColor">false</property></property></property>'
@@ -131,8 +134,8 @@ def test_high_priority_is_imported_and_persisted_for_rows_and_rules(tmp_path, op
 
 @pytest.mark.parametrize("format", ["PNG", "JPEG", "BMP", "GIF"])
 def test_raster_wrappers_are_canonicalized_without_following_metadata(format):
-    from PySide6.QtCore import QByteArray, QBuffer, QIODevice
-    from PySide6.QtGui import QImage, QColor, QImageWriter
+    from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+    from PySide6.QtGui import QColor, QImage, QImageWriter
 
     if format.encode().lower() not in [
         bytes(x).lower() for x in QImageWriter.supportedImageFormats()

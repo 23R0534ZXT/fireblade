@@ -6,11 +6,11 @@ Creates only a new work directory. The CSV is read and hashed, never rewritten.
 import argparse
 import hashlib
 import json
-from pathlib import Path
 import platform
 import sys
 import threading
 import time
+from pathlib import Path
 
 import duckdb
 

@@ -10,20 +10,20 @@ import csv
 import hashlib
 import json
 import os
-import threading
 import tempfile
+import threading
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
 
 import duckdb
 
-from fireblade.core.models import Filter, FilterGroup, SortKey, View
-from fireblade.core.summaries import group_expression, summary_expressions, group_order
+from fireblade.core import csv_chunks
 from fireblade.core.conditions import compile_condition, validate_format_rules
 from fireblade.core.errors import OperationCancelled, job_cancelled
+from fireblade.core.models import Filter, FilterGroup, SortKey, View
 from fireblade.core.settings import Settings
-from fireblade.core import csv_chunks
+from fireblade.core.summaries import group_expression, group_order, summary_expressions
 
 
 class Case:
@@ -294,7 +294,7 @@ class Case:
                 with incoming as input_path:
                     self.check_cancelled()
                     headers = None
-                    relation = batch = None
+                    relation = None
                     # Declared before the read: the memory fallback below runs even
                     # when the reader itself failed, before any provenance is built.
                     extras, extra_names = [], []
@@ -338,7 +338,6 @@ class Case:
                         # keeps uncommitted rows out of the checkpoint, so a 100 GB
                         # export dies whatever the memory. A huge file is committed
                         # chunk by chunk instead, which returns the memory as it goes.
-                        streaming = size > self.huge_threshold()
                         self.streaming_chunks = 0
                         self.single_pass_used = False
                         if size <= chunk_bytes:
@@ -408,7 +407,7 @@ class Case:
                                 or len({h.casefold() for h in headers}) != len(headers)
                             ):
                                 raise
-                        relation = batch = None
+                        relation = None
                         self.db.execute("ROLLBACK")
                         self.check_cancelled()
                         self.db.execute("BEGIN")
@@ -615,12 +614,12 @@ class Case:
                 if len(pending) >= 64 or size >= 1024 * 1024:
                     try:
                         self.db.executemany(statement, pending)
-                    except (duckdb.OutOfMemoryException, MemoryError):
+                    except (duckdb.OutOfMemoryException, MemoryError) as exc:
                         # Stay on this path and start over with a larger budget:
                         # the caller drops the analysis and imports again.
                         raise duckdb.OutOfMemoryException(
                             "Out of Memory Error: insert into events failed at row %d" % written
-                        )
+                        ) from exc
                     pending, size = [], 0
                     progress(f"Import sur disque · {written:,} enregistrements écrits…")
             if pending:
@@ -876,7 +875,8 @@ class Case:
                 collect_columns(rule.condition)
             projections.append("(" + sql + ")")
             args.extend(values)
-        from fireblade.core.statistical_rules import source_column, matches as statistical_matches
+        from fireblade.core.statistical_rules import matches as statistical_matches
+        from fireblade.core.statistical_rules import source_column
 
         stat_columns = sorted(
             {

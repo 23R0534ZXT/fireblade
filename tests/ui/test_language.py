@@ -84,6 +84,7 @@ def test_switching_in_the_preferences_translates_the_menu_bar(qt_application, mo
 
 def test_preferences_dialog_offers_and_saves_the_language(qt_application):
     from PySide6.QtCore import QCoreApplication, QEvent
+
     from fireblade.core.preferences import Preferences
     from fireblade.ui.preferences_dialog import PreferencesDialog
 
@@ -147,8 +148,9 @@ def test_the_most_specific_template_wins(monkeypatch):
 
 def test_a_dialog_is_translated_when_it_appears(qt_application, monkeypatch):
     from PySide6.QtWidgets import QDialog, QLabel, QPushButton, QTableWidget
-    from fireblade.ui.language import install
+
     from fireblade.core.i18n import EN, templates
+    from fireblade.ui.language import install
 
     monkeypatch.setitem(EN, "Colonne", "Column")
     templates.cache_clear()
@@ -187,6 +189,7 @@ def test_a_dialog_is_translated_when_it_appears(qt_application, monkeypatch):
 
 def test_a_dynamic_label_keeps_its_new_text_across_a_language_switch(qt_application):
     from PySide6.QtWidgets import QLabel
+
     from fireblade.ui.language import translate_tree
 
     label = QLabel("3 analyses")
@@ -210,6 +213,7 @@ def test_a_dynamic_label_keeps_its_new_text_across_a_language_switch(qt_applicat
 
 def test_a_status_message_is_translated_where_it_is_set(qt_application):
     from PySide6.QtWidgets import QMainWindow
+
     from fireblade.ui.language import install
 
     install(qt_application)
@@ -234,6 +238,7 @@ def test_a_status_message_is_translated_where_it_is_set(qt_application):
 def test_a_text_written_after_the_window_appeared_is_translated(qt_application):
     """A counter, an error or a combo filled once a case loads, not before."""
     from PySide6.QtWidgets import QComboBox, QLabel
+
     from fireblade.ui.language import apply_to_items, install
 
     install(qt_application)
@@ -269,6 +274,7 @@ def test_a_text_written_after_the_window_appeared_is_translated(qt_application):
 def test_tab_titles_do_not_accumulate_ampersands(qt_application):
     """A tab title is escaped once, not once per language pass."""
     from PySide6.QtWidgets import QTabBar
+
     from fireblade.ui.language import translate_tree
 
     bar = QTabBar()
@@ -298,6 +304,7 @@ def test_tab_titles_do_not_accumulate_ampersands(qt_application):
 def test_a_table_cell_and_a_tree_node_are_translated(qt_application):
     """Items are not widgets: their label is caught where the code writes it."""
     from PySide6.QtWidgets import QTableWidgetItem, QTreeWidgetItem
+
     from fireblade.ui.language import install
 
     install(qt_application)
@@ -325,9 +332,10 @@ def test_a_table_cell_and_a_tree_node_are_translated(qt_application):
 
 
 def test_a_model_header_is_translated(qt_application):
+    from PySide6.QtCore import Qt
+
     from fireblade.ui.ioc_hunt import Rows
     from fireblade.ui.language import install
-    from PySide6.QtCore import Qt
 
     install(qt_application)
     model = Rows(["Étape", "Gravité", "Fichier / périmètre"])

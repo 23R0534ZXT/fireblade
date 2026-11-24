@@ -6,10 +6,10 @@ import stat
 import pytest
 from PySide6.QtWidgets import QApplication
 
-from fireblade.ui.dialogs import ImportDialog
 from fireblade.core.engine import Case
 from fireblade.core.models import View
 from fireblade.runtime.windows_paths import analyses_directory
+from fireblade.ui.dialogs import ImportDialog
 
 pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows natif requis")
 

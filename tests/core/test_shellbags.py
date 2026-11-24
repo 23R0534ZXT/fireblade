@@ -2,12 +2,12 @@ import csv
 import gzip
 import json
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 import pytest
 
-from fireblade.core.collection import identify, sha256, ToolPack
+from fireblade.core.collection import identify, sha256
 
 
 def test_usrclass_and_ntuser_routing_preserves_registry_parser(tmp_path):

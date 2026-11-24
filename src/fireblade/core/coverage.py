@@ -4,15 +4,15 @@ Never infer acquisition completeness from an empty result or a successful parser
 All scans use the same immutable analysis snapshots as the workspace reader.
 """
 
-from collections import Counter
 import copy
 import csv
-from datetime import datetime, timezone
 import hashlib
 import json
 import os
-from pathlib import Path
 import tempfile
+from collections import Counter
+from datetime import UTC, datetime
+from pathlib import Path
 
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.models import View
@@ -144,7 +144,7 @@ def finding(stage, severity, code, path, reason, impact="", action=None, **metri
 
 def event(stage, severity, reason, path="", **metrics):
     return dict(
-        time=datetime.now(timezone.utc).isoformat(),
+        time=datetime.now(UTC).isoformat(),
         **finding(stage, severity, "operation", path, reason, **metrics),
     )
 
@@ -941,7 +941,7 @@ def audit(
     return dict(
         format=FORMAT,
         version=1,
-        created=datetime.now(timezone.utc).isoformat(),
+        created=datetime.now(UTC).isoformat(),
         verify_hashes=verify_hashes,
         deep_checks=deep_checks,
         expected_profile=expected,

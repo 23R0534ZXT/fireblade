@@ -7,7 +7,7 @@ writes it, so a route cannot drift into a decorated stub without a red test.
 """
 
 import csv
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -799,7 +799,7 @@ def test_rows_without_a_date_join_the_timeline_on_request(tmp_path):
     snapshot = AnalysisSnapshot(path=str(analysis), source_info=info, view=View(), header_state=b"")
     book.save(identifier, [snapshot], 0, [], None, data["revision"])
     library = Library(root)
-    instant = int(datetime(2026, 11, 2, 10, 0, tzinfo=timezone.utc).timestamp() * 1_000_000_000)
+    instant = int(datetime(2026, 11, 2, 10, 0, tzinfo=UTC).timestamp() * 1_000_000_000)
     try:
         whole = library.timeline(identifier)
         assert whole["extent"]["rows"] == 2, "no window: every row is there"
@@ -1296,7 +1296,7 @@ def test_a_rule_can_paint_a_scale(tmp_path):
         assert kept_scale["visual"] == "scale3"
         assert 12.0 <= float(kept_scale["middle_value"]) <= 13.0, kept_scale["middle_value"]
         bad = dict(rules[0], visual="sparkline")
-        with pytest.raises(Exception):
+        with pytest.raises(ServiceError):
             library.save_rules(identifier, 0, [bad])
     finally:
         library.close()
@@ -1398,7 +1398,7 @@ def test_a_machine_and_an_action_are_changed_and_removed(service):
     assert changed["hostname"] == "srv-old", "the untouched fields stay"
     library.remove_entity(identifier, entity_id)
     assert all(item["id"] != entity_id for item in library.workspace(identifier)["entities"])
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         library.remove_entity(identifier, entity_id)
 
     action = library.add_action(identifier, {"title": "Contain the host", "owner": "us"})
@@ -1410,7 +1410,7 @@ def test_a_machine_and_an_action_are_changed_and_removed(service):
     assert kept["status"] == "done" and kept["closed"], "a finished action records its closure"
     library.remove_action(identifier, action_id)
     assert all(item["id"] != action_id for item in library.workspace(identifier)["actions"])
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         library.remove_action(identifier, action_id)
 
 
@@ -1461,7 +1461,7 @@ def test_a_collected_file_is_set_aside_then_removed(tmp_path):
         assert library.collection_files(identifier)["files"][0]["ignored"] is False
         # The file changed since the collection: the removal must be refused.
         sample.write_text("changed after the collection\n", encoding="utf-8")
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             library.remove_collection_file(identifier, collection.name, str(sample))
         assert sample.is_file()
         # Put the collected content back: the removal now goes through, and the hash stays.
@@ -1499,7 +1499,7 @@ def test_a_rule_carries_a_group_of_conditions(service):
     assert kept["condition"]["children"][1]["logic"] == "not"
     assert kept["condition"]["children"][0]["value"] == "srv"
     # A malformed tree is refused, not silently flattened.
-    with pytest.raises(Exception):
+    with pytest.raises(ServiceError):
         library.save_rules(identifier, 0, [dict(rule, condition={"logic": "xor", "children": []})])
 
 
@@ -1566,7 +1566,7 @@ def test_a_session_travels_to_the_desktop_and_back(service):
     # A file that is not a session is refused, not half read.
     import base64
 
-    with pytest.raises(Exception):
+    with pytest.raises(ServiceError):
         library.open_session(identifier, base64.b64encode(b"not a session").decode())
 
 
@@ -1574,6 +1574,7 @@ def test_a_null_row_id_is_a_400_not_a_traceback(case_with_analysis):
     """The grouped grid sends a group's key where a row id belongs: that is the client's
     mistake to be told about, never a 500 with a stack trace."""
     from fastapi.testclient import TestClient
+
     from fireblade.web.server import create_app
 
     root, identifier = case_with_analysis
@@ -1591,6 +1592,7 @@ def test_a_null_row_id_is_a_400_not_a_traceback(case_with_analysis):
 
 def test_a_service_refusal_has_the_same_shape_as_every_other_refusal(case_with_analysis):
     from fastapi.testclient import TestClient
+
     from fireblade.web.server import create_app
 
     root, identifier = case_with_analysis

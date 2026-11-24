@@ -1,10 +1,12 @@
 import os
-from pathlib import Path
 import threading
+from pathlib import Path
+
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View
 from fireblade.core.filter_text import parse_filter
+from fireblade.core.models import View
 from fireblade.core.tle_plugins import import_plugin, register_functions
 
 HOST = os.environ.get("FIREBLADE_PLUGIN_HOST")
@@ -200,6 +202,7 @@ def test_copied_analysis_cannot_reload_reader_without_local_approval(tmp_path):
 
 def test_parallel_native_calls_share_one_object_process(tmp_path, monkeypatch):
     from concurrent.futures import ThreadPoolExecutor
+
     from fireblade.core.clr_objects import ObjectSession, evaluate
 
     created = []

@@ -1,9 +1,9 @@
 """Sequential cross-document search, one extra disk connection at most."""
 
-from dataclasses import dataclass, field
-from pathlib import Path
 import copy
 import threading
+from dataclasses import dataclass, field
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -18,11 +18,11 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QVBoxLayout,
 )
+
 from fireblade.core.engine import Case
-from fireblade.core.models import analysis_label
 from fireblade.core.errors import OperationCancelled, job_cancelled
-from fireblade.core.models import View
 from fireblade.core.i18n import translate
+from fireblade.core.models import View, analysis_label
 
 SAMPLE_ROWS = 4
 SAMPLE_WIDTH = 160

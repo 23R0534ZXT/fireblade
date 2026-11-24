@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fireblade.core.client_report import build, write
 from fireblade.core.findings import Group
@@ -16,8 +16,8 @@ def group(title="Encoded PowerShell", host="SRV01", level="critical", start=None
         techniques="T1059.001 PowerShell",
         rule_id="r",
         rule_file="f",
-        start=start or datetime(2026, 11, 10, 8, tzinfo=timezone.utc),
-        end=start or datetime(2026, 11, 10, 8, 3, tzinfo=timezone.utc),
+        start=start or datetime(2026, 11, 10, 8, tzinfo=UTC),
+        end=start or datetime(2026, 11, 10, 8, 3, tzinfo=UTC),
         count=12,
         details="powershell -enc ...",
     )

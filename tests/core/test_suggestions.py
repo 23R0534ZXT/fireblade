@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fireblade.core.findings import Group
 from fireblade.core.i18n import lookup
@@ -17,8 +17,8 @@ def group(title, host, level="high", tactics="Execution"):
         techniques="T1059.001",
         rule_id="r",
         rule_file="f",
-        start=datetime(2026, 11, 17, 10, tzinfo=timezone.utc),
-        end=datetime(2026, 11, 17, 10, 5, tzinfo=timezone.utc),
+        start=datetime(2026, 11, 17, 10, tzinfo=UTC),
+        end=datetime(2026, 11, 17, 10, 5, tzinfo=UTC),
         count=2,
     )
 

@@ -2,13 +2,15 @@
 
 import csv
 import hashlib
-from pathlib import Path
 import shutil
+from pathlib import Path
+
 from PySide6.QtWidgets import QFileDialog
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, Summary
-from fireblade.core.profiles import detect_profile, profile_transformations
 from fireblade.core.filter_text import parse_filter
+from fireblade.core.models import Summary, View
+from fireblade.core.profiles import detect_profile, profile_transformations
 from fireblade.runtime.resources import resource_path
 
 
@@ -133,7 +135,7 @@ def check_completion(window, directory, settle, check, expect, captures=None):
     check("complete_disk_indexed_group_expansion_and_collapse", outline)
 
     def precision():
-        from fireblade.core.derived import timestamp_sql, literal
+        from fireblade.core.derived import literal, timestamp_sql
 
         checks = [
             ("filetime", "116444736001234567", "1970-01-01T00:00:00.123456700Z"),
@@ -198,7 +200,9 @@ def check_completion(window, directory, settle, check, expect, captures=None):
 
     def settings():
         import copy
+
         from PySide6.QtWidgets import QApplication
+
         from fireblade.core.preferences import save_preferences
 
         old = copy.deepcopy(window.preferences)
@@ -238,7 +242,9 @@ def check_completion(window, directory, settle, check, expect, captures=None):
     def advanced_rules():
         from dataclasses import replace
         from decimal import Decimal
+
         from PySide6.QtCore import Qt
+
         from fireblade.core.models import FormatRule
         from fireblade.ui.advanced_dialogs import RulesDialog
         from fireblade.ui.visual_rules import ICON_ROLE

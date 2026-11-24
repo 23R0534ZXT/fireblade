@@ -1,11 +1,10 @@
 import time
-from pathlib import Path
-import pytest
-from PySide6.QtCore import Qt
 
-from fireblade.core.engine import Case
-from fireblade.core.models import View, Filter, FilterGroup, FormatRule
+import pytest
+
 from fireblade.core.auto_layout import local_path
+from fireblade.core.engine import Case
+from fireblade.core.models import Filter, FilterGroup, FormatRule, View
 from fireblade.runtime.windows_paths import user_directory
 from fireblade.ui.app import Window
 from fireblade.ui.dialogs import ImportDialog

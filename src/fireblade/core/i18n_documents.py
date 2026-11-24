@@ -130,7 +130,6 @@ DOCUMENTS = {
     "Processus et réseau": "Processes and network",
     "Persistance": "Persistence",
     "Journaux et connexions": "Logs and connections",
-    "Système": "System",
     "Utilisateurs": "Users",
     "Fichiers et chronologie": "Files and timeline",
     "Conteneurs et virtualisation": "Containers and virtualisation",
@@ -213,7 +212,6 @@ DOCUMENTS = {
     "Rapport limité à 1 à 10000 constats": "A report holds from 1 to 10000 findings",
     "Sélection du rapport invalide": "Invalid report selection",
     "Le rapport ne peut pas écraser une analyse ou sa source": "The report cannot overwrite an analysis or its source",
-    "Contrôle de couverture": "Coverage check",
 }
 
 # A fragment of a node that also carries values the generator put in: replaced in place.

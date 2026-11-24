@@ -1,14 +1,14 @@
 """Deterministic, varied multi-GB CSV and an independent Python reference oracle."""
 
-from collections import Counter
 import csv
-from datetime import datetime, timedelta
 import hashlib
 import io
 import json
-from pathlib import Path
 import random
 import time
+from collections import Counter
+from datetime import datetime, timedelta
+from pathlib import Path
 
 HEADERS = [
     "Timestamp",

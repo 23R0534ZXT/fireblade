@@ -1,9 +1,9 @@
 """CatScale acceptance corpus matching the pinned collector's command outputs."""
 
 import io
-from pathlib import Path
 import tarfile
 import time
+from pathlib import Path
 
 
 def write_corpus(directory):

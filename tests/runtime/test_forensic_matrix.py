@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from fireblade.core.collection import PARSERS, ADDITIONAL_PARSERS
+from fireblade.core.collection import ADDITIONAL_PARSERS, PARSERS
 from fireblade.validation.forensic_tools import verify_parser_results
 
 
@@ -36,6 +36,7 @@ def test_system_hive_fixture_preserves_transaction_log_companions():
 
 def test_parser_display_keeps_other_workspace_tabs_unchanged(qt_application, tmp_path):
     import time
+
     from fireblade.core.engine import Case
     from fireblade.core.models import View
     from fireblade.ui.app import Window

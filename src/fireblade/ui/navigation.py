@@ -4,9 +4,6 @@ from pathlib import Path, PurePosixPath
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QBrush, QColor
-from fireblade.core.artifact_names import friendly_label, unique_labels
-from fireblade.core.i18n import translate
-from fireblade.core.models import analysis_label
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -18,6 +15,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from fireblade.core.artifact_names import friendly_label, unique_labels
+from fireblade.core.i18n import translate
+from fireblade.core.models import analysis_label
 
 
 class AnalysisNavigator(QWidget):

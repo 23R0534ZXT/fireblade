@@ -1,16 +1,15 @@
 import hashlib
 import json
-from pathlib import Path
 import struct
 import threading
+from pathlib import Path
 
 import pytest
 
 from fireblade.core.collection import ToolPack
-from fireblade.core.disk import DiskCollection, candidate
+from fireblade.core.disk import DiskCollection
 from fireblade.core.engine import Case
 from fireblade.core.errors import cancellation_scope
-
 
 LOG = b"2026-11-03T12:00:00Z host sshd[42]: Accepted publickey for alice from 192.0.2.1 port 22 ssh2\n"
 
@@ -124,7 +123,7 @@ def test_bad_image_reports_failure(tmp_path):
     collection = DiskCollection(
         image, tmp_path / "work", ToolPack(tmp_path / "tools"), source_kind="image"
     )
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         collection.parse()
     assert collection.report["status"] == "error"
     assert not collection.report["documents"]
@@ -251,6 +250,7 @@ def test_windows_volume_extent_mapping_rejects_truncation():
 
 def test_physical_destination_overlap_is_rejected_before_creating_case(tmp_path, monkeypatch):
     from types import SimpleNamespace
+
     from fireblade.core import disk_destination
 
     source = tmp_path / "device"

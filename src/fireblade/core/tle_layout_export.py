@@ -4,13 +4,13 @@ The writer uses the public layout grammar. Acceptance by an actual TLE build is
 an independent qualification, not implied by a Fireblade round trip.
 """
 
-from dataclasses import dataclass
-from pathlib import Path
 import os
 import tempfile
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from pathlib import Path
 
-from fireblade.core.models import Filter, FilterGroup, SortKey, GroupSort
+from fireblade.core.models import Filter, FilterGroup, GroupSort, SortKey
 
 
 @dataclass
@@ -36,8 +36,9 @@ def quoted(value):
 
 
 def condition_key(condition):
+    import hashlib
+    import json
     from dataclasses import asdict
-    import hashlib, json
 
     return hashlib.sha256(
         json.dumps(asdict(condition), sort_keys=True, ensure_ascii=False).encode("utf-8")

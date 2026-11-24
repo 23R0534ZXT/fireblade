@@ -11,10 +11,8 @@ these tests fail before any examiner notices.
 """
 
 import json
-from pathlib import Path
 import os
-
-import pytest
+from pathlib import Path
 
 from fireblade.core.collection import Collection, ToolPack
 

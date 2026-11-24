@@ -1,17 +1,18 @@
 """Classic header-to-group-bar drag and drop, without loading extra rows."""
 
-from PySide6.QtCore import QByteArray, QMimeData, Qt, QTimer, Signal, QRect
-from PySide6.QtGui import QDrag, QColor, QFontMetrics, QPalette
+from PySide6.QtCore import QByteArray, QMimeData, QRect, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QDrag, QFontMetrics, QPalette
 from PySide6.QtWidgets import (
+    QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLineEdit,
     QMenu,
     QStyle,
     QStyleOptionHeader,
-    QLineEdit,
     QToolButton,
-    QHBoxLayout,
 )
+
 from fireblade.core.i18n import translate
 from fireblade.core.models import OPERATORS
 
@@ -218,11 +219,11 @@ class GroupHeader(QHeaderView):
             painter.restore()
             return
         from fireblade.ui.layout_styles import (
-            role_value,
             font_for,
-            paint_image,
             paint_border,
+            paint_image,
             paint_text,
+            role_value,
         )
 
         painter.save()

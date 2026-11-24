@@ -3,14 +3,14 @@
 Only standard-library imports here: a missing Qt/DuckDB DLL must also be reported.
 """
 
-from datetime import datetime, timezone
 import faulthandler
 import json
 import os
-from pathlib import Path
 import sys
 import tempfile
 import traceback
+from datetime import UTC, datetime
+from pathlib import Path
 
 from fireblade.runtime.windows_paths import logs_directory
 
@@ -86,7 +86,7 @@ def main():
     log_path, log = open_log() if os.name == "nt" else (None, None)
     no_console = sys.stderr is None
     if log:
-        log.write(f"\n{datetime.now(timezone.utc).isoformat()} · démarrage · {sys.executable}\n")
+        log.write(f"\n{datetime.now(UTC).isoformat()} · démarrage · {sys.executable}\n")
         try:
             faulthandler.enable(file=log)
         except (OSError, RuntimeError):

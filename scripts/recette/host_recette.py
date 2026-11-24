@@ -57,7 +57,12 @@ def request(base: str, method: str, path: str, data: dict | None = None, form: d
         boundary = uuid.uuid4().hex
         lines = []
         for key, value in form.items():
-            lines += [f"--{boundary}", f'Content-Disposition: form-data; name="{key}"', "", str(value)]
+            lines += [
+                f"--{boundary}",
+                f'Content-Disposition: form-data; name="{key}"',
+                "",
+                str(value),
+            ]
         lines += [f"--{boundary}--", ""]
         body = "\r\n".join(lines).encode()
         headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
@@ -99,9 +104,24 @@ class Container:
     def __enter__(self):
         self.cases.chmod(0o777)  # the image runs as its own user
         subprocess.run(
-            ["docker", "run", "-d", "--name", self.name, "-p", f"127.0.0.1:{self.port}:8080",
-             "-v", f"{self.cases}:/data/cases", "-v", f"{self.pack}:/pack:ro", self.image],
-            check=True, capture_output=True, text=True)
+            [
+                "docker",
+                "run",
+                "-d",
+                "--name",
+                self.name,
+                "-p",
+                f"127.0.0.1:{self.port}:8080",
+                "-v",
+                f"{self.cases}:/data/cases",
+                "-v",
+                f"{self.pack}:/pack:ro",
+                self.image,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         return f"http://127.0.0.1:{self.port}"
 
     def __exit__(self, *_):
@@ -111,8 +131,12 @@ class Container:
 
 
 def import_pack(base: str, case_id: str, source: str) -> dict:
-    started = request(base, "POST", f"/api/cases/{case_id}/import-jobs",
-                      form={"source": source, "organization": "artifacts"})
+    started = request(
+        base,
+        "POST",
+        f"/api/cases/{case_id}/import-jobs",
+        form={"source": source, "organization": "artifacts"},
+    )
     deadline = time.monotonic() + 3600
     while time.monotonic() < deadline:
         state = request(base, "GET", f"/api/import-jobs/{started['job']}")
@@ -126,36 +150,65 @@ def observe(base: str, case_id: str) -> dict:
     """What the case holds after the import: its analyses and the import report."""
     case = request(base, "GET", f"/api/cases/{case_id}")
     report = request(base, "GET", f"/api/cases/{case_id}/imports")
-    files = [item for collection in report.get("collections", []) for item in collection.get("files", [])]
+    files = [
+        item for collection in report.get("collections", []) for item in collection.get("files", [])
+    ]
     statuses: dict[str, int] = {}
     for item in files:
         statuses[item.get("status", "?")] = statuses.get(item.get("status", "?"), 0) + 1
     analyses = []
     for entry in case.get("analyses", []):
         info = entry.get("source_info") or {}
-        analyses.append({"label": entry.get("label", ""), "rows": int(info.get("rows") or 0),
-                         "artifact": str(info.get("artifact") or info.get("path") or ""),
-                         "parser": str(info.get("parser") or "")})
+        analyses.append(
+            {
+                "label": entry.get("label", ""),
+                "rows": int(info.get("rows") or 0),
+                "artifact": str(info.get("artifact") or info.get("path") or ""),
+                "parser": str(info.get("parser") or ""),
+            }
+        )
     return {"analyses": analyses, "files": files, "statuses": statuses}
 
 
 def rows_of(observed: dict, label: str) -> int:
     """The rows of the analysis named ``label`` (the Host's own name for a family, as read on screen)."""
     shown = english(label)
-    return sum(item["rows"] for item in observed["analyses"] if item["label"] in (shown, shown + ".csv"))
+    return sum(
+        item["rows"] for item in observed["analyses"] if item["label"] in (shown, shown + ".csv")
+    )
 
 
 def base_checks(observed: dict, files_in_pack: int, job: dict) -> list[Check]:
     """What every import owes: it ends, every file has a line in the report, nothing is in error."""
-    checks = [Check("import-completes", "complete", job.get("status"),
-                    PASS if job.get("status") == "complete" else FAIL, str(job.get("error") or "")[:200])]
+    checks = [
+        Check(
+            "import-completes",
+            "complete",
+            job.get("status"),
+            PASS if job.get("status") == "complete" else FAIL,
+            str(job.get("error") or "")[:200],
+        )
+    ]
     accounted = len(observed["files"])
-    checks.append(Check("every-file-accounted-for", files_in_pack, accounted,
-                        PASS if accounted == files_in_pack else FAIL,
-                        "each file of the source has a line, read or not, in the import report"))
+    checks.append(
+        Check(
+            "every-file-accounted-for",
+            files_in_pack,
+            accounted,
+            PASS if accounted == files_in_pack else FAIL,
+            "each file of the source has a line, read or not, in the import report",
+        )
+    )
     bad = [item for item in observed["files"] if item.get("status") in ("error", "failed")]
-    checks.append(Check("no-file-in-error", 0, len(bad), PASS if not bad else FAIL,
-                        "; ".join(f"{item.get('name')}: {item.get('reason')}" for item in bad[:5])))
+    checks.append(
+        Check(
+            "no-file-in-error",
+            0,
+            len(bad),
+            PASS if not bad else FAIL,
+            "; ".join(f"{item.get('name')}: {item.get('reason')}" for item in bad[:5]),
+        )
+    )
     return checks
 
 
@@ -166,16 +219,32 @@ def compare(name: str, want, got, note: str = "") -> Check | None:
 def check_catscale(expected: dict, observed: dict) -> list[Check]:
     """A CatScale collection, extracted or archived: each family holds the rows the parser counted."""
     catscale = expected.get("catscale") or {}
-    found = [compare(f"catscale-{family}", rows, rows_of(observed, family))
-             for family, rows in (catscale.get("families") or {}).items()]
-    found.append(compare("catscale-total", catscale.get("rows"),
-                         sum(rows_of(observed, family) for family in (catscale.get("families") or {}))))
+    found = [
+        compare(f"catscale-{family}", rows, rows_of(observed, family))
+        for family, rows in (catscale.get("families") or {}).items()
+    ]
+    found.append(
+        compare(
+            "catscale-total",
+            catscale.get("rows"),
+            sum(rows_of(observed, family) for family in (catscale.get("families") or {})),
+        )
+    )
     return [item for item in found if item]
 
 
 def check_volume(expected: dict, observed: dict) -> list[Check]:
-    return [item for item in [compare("volume-rows", expected.get("volume_rows"),
-                                      sum(item["rows"] for item in observed["analyses"]))] if item]
+    return [
+        item
+        for item in [
+            compare(
+                "volume-rows",
+                expected.get("volume_rows"),
+                sum(item["rows"] for item in observed["analyses"]),
+            )
+        ]
+        if item
+    ]
 
 
 def check_exports(expected: dict, observed: dict) -> list[Check]:
@@ -183,13 +252,33 @@ def check_exports(expected: dict, observed: dict) -> list[Check]:
     want = expected.get("exports_rows")
     readable = sum(1 for item in observed["files"] if item.get("status") == "complete")
     got = sum(item["rows"] for item in observed["analyses"])
-    return [Check("exports-rows", want * readable, got, PASS if readable and got == want * readable else INFO,
-                  f"{readable} readable files of {want} rows each")] if want is not None else []
+    return (
+        [
+            Check(
+                "exports-rows",
+                want * readable,
+                got,
+                PASS if readable and got == want * readable else INFO,
+                f"{readable} readable files of {want} rows each",
+            )
+        ]
+        if want is not None
+        else []
+    )
 
 
 def check_webcache(expected: dict, observed: dict) -> list[Check]:
-    return [item for item in [compare("webcache-rows-including-metadata", expected.get("webcache_rows_including_metadata"),
-                                      sum(item["rows"] for item in observed["analyses"]))] if item]
+    return [
+        item
+        for item in [
+            compare(
+                "webcache-rows-including-metadata",
+                expected.get("webcache_rows_including_metadata"),
+                sum(item["rows"] for item in observed["analyses"]),
+            )
+        ]
+        if item
+    ]
 
 
 def check_evtx(expected: dict, observed: dict) -> list[Check]:
@@ -200,9 +289,19 @@ def check_evtx(expected: dict, observed: dict) -> list[Check]:
 def check_shellbags(expected: dict, observed: dict) -> list[Check]:
     want = expected.get("shellbags")
     got = sum(item["rows"] for item in observed["analyses"])
-    return [] if want is None else [Check(
-        "shellbags", want, got, PASS if got == want else LIMIT,
-        "the Shellbags host has no linux-x64 build yet (docs/host/LINUX-READERS.md)")]
+    return (
+        []
+        if want is None
+        else [
+            Check(
+                "shellbags",
+                want,
+                got,
+                PASS if got == want else LIMIT,
+                "the Shellbags host has no linux-x64 build yet (docs/host/LINUX-READERS.md)",
+            )
+        ]
+    )
 
 
 # One scenario per source, as the pack's own guide asks: the extracted folder and its archive are the
@@ -240,15 +339,29 @@ def run(args) -> dict:
             source = pack / subpath
             if not source.exists():
                 continue
-            case = request(base, "POST", "/api/cases", data={"name": "Recette " + name, "environment": "windows"})
+            case = request(
+                base,
+                "POST",
+                "/api/cases",
+                data={"name": "Recette " + name, "environment": "windows"},
+            )
             started = time.monotonic()
             job = import_pack(base, case["id"], f"{server_pack}/{subpath}")
             observed = observe(base, case["id"])
             checks = base_checks(observed, count_files(source), job) + checker(expected, observed)
-            scenarios.append({"scenario": name, "source": subpath, "windows": windows_only,
-                              "seconds": round(time.monotonic() - started, 1), "statuses": observed["statuses"],
-                              "analyses": [f"{item['label']} ({item['rows']})" for item in observed["analyses"]],
-                              "checks": [asdict(item) for item in checks]})
+            scenarios.append(
+                {
+                    "scenario": name,
+                    "source": subpath,
+                    "windows": windows_only,
+                    "seconds": round(time.monotonic() - started, 1),
+                    "statuses": observed["statuses"],
+                    "analyses": [
+                        f"{item['label']} ({item['rows']})" for item in observed["analyses"]
+                    ],
+                    "checks": [asdict(item) for item in checks],
+                }
+            )
         return scenarios
 
     if args.url:
@@ -256,35 +369,56 @@ def run(args) -> dict:
     else:
         with Container(args.image, pack) as base:
             scenarios = against(base, "/pack")
-    return {"pack": str(pack), "image": args.image or "", "expected": expected, "scenarios": scenarios}
+    return {
+        "pack": str(pack),
+        "image": args.image or "",
+        "expected": expected,
+        "scenarios": scenarios,
+    }
 
 
 def verdict(result: dict, strict: bool) -> int:
     """0 when the run stands. A failed check always fails it; --strict also fails an unpinned
     difference. A documented limit of the Linux edition never does."""
     failing = {FAIL, INFO} if strict else {FAIL}
-    return int(any(item["verdict"] in failing for scenario in result["scenarios"] for item in scenario["checks"]))
+    return int(
+        any(
+            item["verdict"] in failing
+            for scenario in result["scenarios"]
+            for item in scenario["checks"]
+        )
+    )
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--pack", required=True, help="the unpacked test pack")
     where = parser.add_mutually_exclusive_group(required=True)
     where.add_argument("--image", help="start this image with docker and test it")
     where.add_argument("--url", help="test a service that is already running")
     parser.add_argument("--server-pack", help="with --url: the pack's path as the service sees it")
     parser.add_argument("--report", help="write the JSON report here")
-    parser.add_argument("--strict", action="store_true", help="every measured difference fails the run")
+    parser.add_argument(
+        "--strict", action="store_true", help="every measured difference fails the run"
+    )
     args = parser.parse_args(argv)
     result = run(args)
     if args.report:
         Path(args.report).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.report).write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        Path(args.report).write_text(
+            json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
     for scenario in result["scenarios"]:
-        print(f"\n{scenario['scenario']}: {len(scenario['analyses'])} analyses in {scenario['seconds']} s, "
-              f"files {scenario['statuses']}")
+        print(
+            f"\n{scenario['scenario']}: {len(scenario['analyses'])} analyses in {scenario['seconds']} s, "
+            f"files {scenario['statuses']}"
+        )
         for item in scenario["checks"]:
-            print(f"  {item['verdict']:<11} {item['name']:<36} expected {item['expected']!s:<14} got {item['actual']}")
+            print(
+                f"  {item['verdict']:<11} {item['name']:<36} expected {item['expected']!s:<14} got {item['actual']}"
+            )
     code = verdict(result, args.strict)
     print("\nRECETTE", "FAILED" if code else "OK")
     return code

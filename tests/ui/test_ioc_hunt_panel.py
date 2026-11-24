@@ -1,5 +1,5 @@
-from tests.ui.test_investigation_tools import loaded, settle
 from fireblade.core.ioc_results import discover_hunts
+from tests.ui.test_investigation_tools import loaded, settle
 
 
 def test_hunt_tab_counts_history_export_and_reset(qt_application, tmp_path):
@@ -62,6 +62,7 @@ def test_the_hunt_returns_at_once_and_builds_the_reader_off_the_interface_thread
 ):
     """A case with dozens of analyses froze the window before any progress was shown."""
     import time
+
     import fireblade.ui.ioc_hunt as ui
 
     window, errors = loaded(qt_application, tmp_path)

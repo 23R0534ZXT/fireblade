@@ -1,11 +1,11 @@
 import csv
 import io
-from pathlib import Path
 import tarfile
+from pathlib import Path
 
 import pytest
 
-from fireblade.core.catscale import HEADERS, kind, parse, records, recognized
+from fireblade.core.catscale import kind, parse, recognized, records
 from fireblade.core.collection import Collection, ToolPack, identify, sha256
 from fireblade.core.engine import Case
 from fireblade.core.models import View
@@ -255,8 +255,9 @@ def test_archive_limits_and_broken_members_are_reported(tmp_path, monkeypatch):
 
 
 def test_cancellation_stops_parser_and_closes_outputs(tmp_path):
-    from fireblade.core.errors import OperationCancelled, cancellation_scope
     import threading
+
+    from fireblade.core.errors import OperationCancelled, cancellation_scope
 
     source = tmp_path / "input.txt"
     source.write_text("data\n")

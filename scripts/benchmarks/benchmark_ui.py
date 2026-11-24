@@ -3,18 +3,18 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import threading
 import time
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import psutil
 from PySide6.QtWidgets import QApplication
 
-from fireblade.ui.app import Window
 from fireblade.core.engine import Case
 from fireblade.core.settings import load_settings
+from fireblade.ui.app import Window
 from fireblade.ui.theme import apply_theme
 
 

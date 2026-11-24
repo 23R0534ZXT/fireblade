@@ -17,8 +17,6 @@ translate, one JSON string per line. Two rules keep it honest:
 import json
 import os
 
-import pytest
-
 from scripts.i18n_inventory import looks_french, missing
 
 BASELINE = os.path.join(os.path.dirname(__file__), "data", "untranslated_french.txt")
@@ -70,8 +68,8 @@ def test_a_window_in_english_shows_no_french_leftover(qt_application, monkeypatc
         QPlainTextEdit,
         QPushButton,
         QRadioButton,
-        QTableWidget,
         QTabBar,
+        QTableWidget,
         QToolBar,
         QToolButton,
     )

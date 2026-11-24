@@ -2,9 +2,9 @@
 
 import hashlib
 import json
-from pathlib import Path
 import shutil
 import uuid
+from pathlib import Path
 
 from fireblade.core.case_package import export_package, import_package
 from fireblade.core.investigations import now

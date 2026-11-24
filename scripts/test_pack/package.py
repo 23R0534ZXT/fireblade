@@ -5,11 +5,11 @@ import csv
 import gzip
 import hashlib
 import json
-from pathlib import Path
 import shutil
 import tarfile
 import urllib.request
 import zipfile
+from pathlib import Path
 
 TAG = "test-pack-v1"
 ROOT = "Fireblade-Test-Pack-v1"

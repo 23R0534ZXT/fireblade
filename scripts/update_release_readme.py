@@ -3,8 +3,9 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
+
 from scripts.release import application_version
 
 
@@ -97,7 +98,7 @@ def main():
     subprocess.run(
         ["git", "commit", "-m", f"Docs: link qualified Fireblade {version} release"], check=True
     )
-    for attempt in range(3):
+    for _attempt in range(3):
         pushed = subprocess.run(["git", "push", "origin", "HEAD:main"])
         if pushed.returncode == 0:
             return

@@ -179,6 +179,7 @@ def test_a_draft_with_an_invented_citation_is_refused(qt_application, window, mo
     )()
 
     import json as _json
+
     import fireblade.ui.hayabusa as module
 
     def answer_with(payload):

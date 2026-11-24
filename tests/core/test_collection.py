@@ -1,8 +1,8 @@
 import json
-from pathlib import Path
 import sys
 import threading
 import time
+from pathlib import Path
 
 import pytest
 
@@ -342,20 +342,28 @@ def test_files_are_parsed_in_parallel_and_merged_in_file_order(tmp_path):
     single = build(1)
     parallel = build(4)
     assert parallel.workers() == 4 and single.workers() == 1
-    order = lambda item: [Path(document["path"]).name for document in item.report["documents"]]
+
+    def order(item):
+        return [Path(document["path"]).name for document in item.report["documents"]]
+
     statuses = [(entry["status"], entry.get("error")) for entry in parallel.report["files"]]
     assert statuses == [("complete", None)] * 6, statuses
     assert len(parallel.report["documents"]) == len(single.report["documents"]) == 6
-    values = lambda item: sorted(
-        document["source"]["rows"] for document in item.report["documents"]
-    )
+
+    def values(item):
+        return sorted(document["source"]["rows"] for document in item.report["documents"])
+
     assert values(parallel) == values(single) == [1] * 6
-    files = lambda item: [Path(entry["path"]).name for entry in item.report["files"]]
+
+    def files(item):
+        return [Path(entry["path"]).name for entry in item.report["files"]]
+
     assert files(parallel) == files(single) == sorted(files(single))
 
 
 def test_a_folder_parses_on_the_machines_threads_when_left_automatic(tmp_path):
     import os
+
     from fireblade.core.settings import Settings, auto_threads
 
     root = tmp_path / "evidence"

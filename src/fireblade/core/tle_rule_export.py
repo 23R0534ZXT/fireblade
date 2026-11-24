@@ -1,6 +1,6 @@
 """Declarative graphical/statistical rules for XtraSerializer layouts."""
 
-from fireblade.core.tle_layout_export import prop, appearance
+from fireblade.core.tle_layout_export import appearance, prop
 
 
 def write_rule(parent, ordinal, rule, names, headers, warnings):

@@ -7,13 +7,12 @@ ExpectedHeaders contains alternative complete header records, not column subsets
 import codecs
 import csv
 import io
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from fireblade.core import plugin_registry
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.runtime.windows_paths import user_directory
-
 
 HEADER_LIMIT = 65536
 MAX_HEADER_BYTES = 4 * 1024 * 1024

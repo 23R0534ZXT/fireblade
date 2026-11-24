@@ -1,5 +1,6 @@
 from PySide6.QtGui import QPalette
-from fireblade.core.preferences import Preferences, save_preferences, load_preferences
+
+from fireblade.core.preferences import Preferences, load_preferences, save_preferences
 from fireblade.ui.theme import apply_theme
 
 

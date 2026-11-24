@@ -5,10 +5,10 @@ carry technique identifiers and nothing invented: errors, hosts, tactics from th
 """
 
 import json
+from datetime import UTC, datetime
 
 from fireblade.core.attack_graph import build, navigator_layer, tactic_slug
 from fireblade.core.findings import Group
-from datetime import datetime, timezone
 
 
 def group(title, host, tactics, techniques, level="high"):
@@ -23,8 +23,8 @@ def group(title, host, tactics, techniques, level="high"):
         techniques=techniques,
         rule_id="r1",
         rule_file="f.yml",
-        start=datetime(2026, 11, 10, 9, tzinfo=timezone.utc),
-        end=datetime(2026, 11, 10, 9, 5, tzinfo=timezone.utc),
+        start=datetime(2026, 11, 10, 9, tzinfo=UTC),
+        end=datetime(2026, 11, 10, 9, 5, tzinfo=UTC),
         count=2,
     )
 

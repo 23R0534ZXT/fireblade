@@ -1,8 +1,8 @@
 """Read-only ESE WebCache export. No live APIs, recovery writes or network access."""
 
 import csv
-from datetime import datetime, timedelta, timezone
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fireblade.core.errors import OperationCancelled, job_cancelled
@@ -18,7 +18,7 @@ TIME_COLUMNS = {
     "LastScavengeTime",
     "ExpirationTime",
 }
-EPOCH = datetime(1601, 1, 1, tzinfo=timezone.utc)
+EPOCH = datetime(1601, 1, 1, tzinfo=UTC)
 
 
 def check_cancel():

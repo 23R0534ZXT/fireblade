@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+
 import pytest
 
 HOST = os.environ.get("FIREBLADE_PLUGIN_HOST")
@@ -17,10 +18,10 @@ def test_real_helper_preserves_source_and_evaluates_custom_functions(tmp_path):
 
 def test_custom_function_name_and_shared_metadata_roundtrip(tmp_path):
     from fireblade.core.engine import Case
-    from fireblade.core.tle_plugins import register_functions
-    from fireblade.core.models import View, Filter, FilterGroup, FormatRule
     from fireblade.core.filter_text import parse_filter
+    from fireblade.core.models import Filter, FilterGroup, FormatRule, View
     from fireblade.core.rule_store import RuleBook
+    from fireblade.core.tle_plugins import register_functions
 
     source = tmp_path / "s.csv"
     source.write_text("Number\n21\n22\n")
@@ -46,10 +47,10 @@ def test_custom_function_name_and_shared_metadata_roundtrip(tmp_path):
 
 def test_functions_restore_on_reopen_and_unapproved_copy_never_executes(tmp_path, monkeypatch):
     import shutil
+
     from fireblade.core.engine import Case
     from fireblade.core.models import View
     from fireblade.core.tle_plugins import register_functions
-    from fireblade.core.plugin_registry import location
 
     source = tmp_path / "s.csv"
     source.write_text("Number\n21\n")
@@ -91,11 +92,12 @@ def test_functions_restore_on_reopen_and_unapproved_copy_never_executes(tmp_path
 
 def test_session_automatically_uses_registered_reader(tmp_path):
     import json
+
     from fireblade.core.engine import Case
-    from fireblade.core.tle_plugins import import_plugin
-    from fireblade.core.tle_compat import TleSessionImport, read_tle_session
-    from fireblade.core.settings import Settings
     from fireblade.core.models import View
+    from fireblade.core.settings import Settings
+    from fireblade.core.tle_compat import TleSessionImport, read_tle_session
+    from fireblade.core.tle_plugins import import_plugin
 
     source = tmp_path / "evidence.custom"
     source.write_text("évidence originale")
@@ -120,11 +122,12 @@ def test_session_automatically_uses_registered_reader(tmp_path):
 
 def test_first_session_source_detects_installed_reader_by_header(tmp_path):
     import shutil
-    from fireblade.core.reader_detection import reader_directories, detect_reader
-    from fireblade.core.tle_compat import TleSessionImport
+
     from fireblade.core.engine import Case
-    from fireblade.core.settings import Settings
     from fireblade.core.models import View
+    from fireblade.core.reader_detection import detect_reader, reader_directories
+    from fireblade.core.settings import Settings
+    from fireblade.core.tle_compat import TleSessionImport
 
     directory = reader_directories()[0]
     directory.mkdir(parents=True)

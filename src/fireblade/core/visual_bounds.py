@@ -1,8 +1,8 @@
 """Whole-filter numeric bounds; exact percentiles use disk-backed ranks."""
 
+import uuid
 from dataclasses import replace
 from decimal import Decimal, localcontext
-import uuid
 
 
 def interpolate(a, b, t):

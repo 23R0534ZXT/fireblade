@@ -6,12 +6,12 @@ No upstream code or collector is executed or bundled.
 """
 
 import csv
-from dataclasses import dataclass
 import gzip
 import io
-from pathlib import Path, PurePosixPath
 import re
 import tarfile
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
 
 from fireblade.core.errors import OperationCancelled, job_cancelled
 

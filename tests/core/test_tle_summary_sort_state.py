@@ -1,7 +1,9 @@
 import csv
+
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, Summary, GroupSort
+from fireblade.core.models import GroupSort, Summary, View
 from fireblade.core.tle_layout import read_tle_layout
 
 

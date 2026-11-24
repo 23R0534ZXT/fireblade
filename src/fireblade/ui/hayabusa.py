@@ -17,18 +17,11 @@ surface must not add French to the interface.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
-from fireblade.core.i18n import translate
-
-import math
-
-import time
-
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
-    QSizePolicy,
     QAbstractItemView,
     QComboBox,
     QDialog,
@@ -42,6 +35,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QRadioButton,
+    QSizePolicy,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -66,10 +60,10 @@ from fireblade.core.explain import (
     describe_without_model,
     read_answer,
     render_structured,
-    verify,
 )
 from fireblade.core.findings import group_alerts, group_alerts_sql, summarise
-from fireblade.ui.maps import CircularMap, HeatMap, ChainMap
+from fireblade.core.i18n import translate
+from fireblade.ui.maps import ChainMap, CircularMap, HeatMap
 
 COLUMNS = ("Time", "Level", "Rule", "Host", "Count", "Event IDs", "MITRE")
 VIEWS = (("Clock", CircularMap), ("Heat map", HeatMap), ("Chain", ChainMap))
@@ -593,8 +587,8 @@ class HayabusaPanel(QWidget):
 
     def refresh_suggestions(self):
         """Rewrite the suggestion chips from what the case now holds."""
-        from fireblade.core.suggestions import suggest
         from fireblade.core.i18n import translate
+        from fireblade.core.suggestions import suggest
 
         for button in self.chip_buttons:
             button.deleteLater()
@@ -938,6 +932,7 @@ class HayabusaPanel(QWidget):
     # ---------------------------------------------------------------- installation
     def open_rules(self):
         from pathlib import Path
+
         from fireblade.ui.hayabusa_rules_dialog import HayabusaRulesDialog
 
         pack = self.window.toolpack() if hasattr(self.window, "toolpack") else None

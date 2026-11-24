@@ -382,7 +382,7 @@ def test_the_eight_menus_of_the_desktop():
     """The desktop's menu bar, in the desktop's order."""
     import re
 
-    js, html = _read(APP), _read(INDEX)
+    _js, html = _read(APP), _read(INDEX)
     names = re.findall(r'<div class="m" data-menu="([a-z]+)"', html)
     assert names == [
         "case",
@@ -412,7 +412,6 @@ def test_the_two_report_types_share_one_dialog():
 
 def test_the_header_follows_the_visible_columns():
     """A hidden column must not leave its title, its width or its filter behind."""
-    import re
 
     js = _read(APP)
     body = js[js.index("function renderGrid() {") : js.index("function renderGroupChart()")]

@@ -3,13 +3,14 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import time
-from PySide6.QtCore import QModelIndex, QThreadPool
+
+from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import QApplication
 
-from fireblade.ui.app import Window
-from fireblade.ui.grid import GridModel
 from fireblade.core.engine import Case, View
 from fireblade.core.settings import Settings
+from fireblade.ui.app import Window
+from fireblade.ui.grid import GridModel
 from fireblade.ui.workers import Job
 
 

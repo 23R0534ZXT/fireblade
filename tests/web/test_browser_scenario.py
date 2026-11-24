@@ -12,10 +12,9 @@ import re
 
 import httpx
 import pytest
+from _browser import browser_page, serving  # noqa: E402
 
 from fireblade.core.investigations import InvestigationLibrary
-
-from _browser import browser_page, serving  # noqa: E402
 
 IPS = ["10.0.0.5", "10.0.0.9", "203.0.113.7", "198.51.100.23", "192.0.2.44"]
 PATHS = ["/", "/login", "/admin", "/wp-login.php", "/api/v1/users", "/.env"]

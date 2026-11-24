@@ -22,7 +22,7 @@ def build_pdf(text="Paiement du 14/11/2026 confirmé", pages=1, page_size=(240, 
         ).encode("ascii"),
     ]
     for number in range(count):
-        page, stream = 3 + number, 3 + count + number
+        _page, stream = 3 + number, 3 + count + number
         objects.append(
             (
                 "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %d %d] /Resources "

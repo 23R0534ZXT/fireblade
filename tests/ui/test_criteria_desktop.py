@@ -1,11 +1,12 @@
 import csv
 import json
 import time
+
 import pytest
-from PySide6.QtWidgets import QApplication
-from fireblade.ui.app import Window
-from fireblade.core.models import View, FormatRule, Filter, FilterGroup
+
 from fireblade.core.filter_text import parse_filter
+from fireblade.core.models import Filter, FilterGroup, FormatRule, View
+from fireblade.ui.app import Window
 from fireblade.validation.windows_check import accept_import_when_ready
 
 

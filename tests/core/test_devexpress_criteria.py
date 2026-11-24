@@ -1,12 +1,14 @@
 import csv
 import datetime
-from decimal import Decimal
 import json
 import uuid
+from decimal import Decimal
+
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, FormatRule, Filter, FilterGroup
 from fireblade.core.filter_text import parse_filter
+from fireblade.core.models import Filter, FilterGroup, FormatRule, View
 
 
 @pytest.fixture

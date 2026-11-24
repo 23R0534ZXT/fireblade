@@ -1,9 +1,9 @@
 """Legacy BIFF XLS reading, no Excel automation and no macro execution."""
 
 import csv
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-import tempfile
 
 import xlrd
 

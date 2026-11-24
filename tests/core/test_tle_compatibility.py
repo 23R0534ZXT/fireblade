@@ -5,7 +5,7 @@ import pytest
 from fireblade.core.engine import Case
 from fireblade.core.models import View
 from fireblade.core.settings import Settings
-from fireblade.core.tle_compat import read_tle_session, TleSessionImport, read_tle_columns
+from fireblade.core.tle_compat import TleSessionImport, read_tle_columns, read_tle_session
 
 
 def test_tle_session_translates_sources_and_tags_without_changing_sources(tmp_path):

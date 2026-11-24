@@ -1,7 +1,9 @@
 from dataclasses import replace
+
 import pytest
+
 from fireblade.core.engine import Case
-from fireblade.core.models import View, FormatRule, Filter
+from fireblade.core.models import Filter, FormatRule, View
 
 
 @pytest.mark.parametrize(

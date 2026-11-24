@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import pytest
 
 from fireblade.core import plugin_registry
@@ -170,7 +171,8 @@ def test_native_dependency_does_not_block_reader_detection(tmp_path, installed, 
 
 def test_cancellation_stops_detection(tmp_path, installed):
     import threading
-    from fireblade.core.errors import cancellation_scope, OperationCancelled
+
+    from fireblade.core.errors import OperationCancelled, cancellation_scope
 
     source = tmp_path / "first.csv"
     source.write_text("Text,Identifier\n")
@@ -196,7 +198,8 @@ def test_blank_line_after_powershell_preamble_is_ignored(tmp_path, installed):
 def test_progressive_headers_support_multiline_quoted_fields(
     tmp_path, installed, monkeypatch, encoding
 ):
-    import csv, io
+    import csv
+    import io
 
     name = "Large\n" + ("x" * 140000)
     record = io.StringIO()

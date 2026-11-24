@@ -37,7 +37,6 @@ def render(data: dict) -> str:
     commands = [entry for entry in entries if entry["kind"] == "command"]
     parameters = [entry for entry in entries if entry["kind"] == "parameter"]
     containers = [entry for entry in entries if entry["kind"] == "container"]
-    by_status = counts(entries)
     command_counts = counts(commands)
     covered = sorted(
         (entry for entry in commands if entry["status"] == "covered"),

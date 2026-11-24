@@ -1,9 +1,9 @@
 """Format positional criteria parameters as typed, escaped data literals."""
 
 import datetime
-from decimal import Decimal
 import math
 import uuid
+from decimal import Decimal
 
 
 def constant(value):

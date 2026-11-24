@@ -1,7 +1,7 @@
 import csv
-from pathlib import Path
 import shutil
 import time
+from pathlib import Path
 
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.models import Filter

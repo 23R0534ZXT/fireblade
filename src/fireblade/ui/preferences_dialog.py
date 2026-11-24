@@ -1,28 +1,30 @@
 import copy
+
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
-    QSpinBox,
-    QPushButton,
     QColorDialog,
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
     QFontComboBox,
     QFormLayout,
-    QDoubleSpinBox,
+    QHBoxLayout,
+    QLabel,
     QLineEdit,
     QPlainTextEdit,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
+    QPushButton,
     QScrollArea,
-    QLabel,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
-    QApplication,
     QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
+
 from fireblade.core import machine
 from fireblade.core.i18n import translate
 
@@ -237,9 +239,9 @@ class PreferencesDialog(QDialog):
             widget.setPalette(palette)
 
     def edit_palette(self):
-        from PySide6.QtGui import QColor
+        from PySide6.QtGui import QColor, QPalette
         from PySide6.QtWidgets import QApplication
-        from PySide6.QtGui import QPalette
+
         from fireblade.core.themes import THEMES
 
         preset = THEMES.get(self.skin.currentData())

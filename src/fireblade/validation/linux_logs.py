@@ -2,12 +2,11 @@
 
 import bz2
 import gzip
-import io
 import lzma
-from pathlib import Path
 import struct
 import time
 import zipfile
+from pathlib import Path
 
 import lz4.frame
 import zstandard

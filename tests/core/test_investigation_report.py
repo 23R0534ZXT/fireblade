@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 
 from fireblade.core.engine import Case

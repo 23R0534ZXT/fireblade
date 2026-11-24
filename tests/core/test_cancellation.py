@@ -116,7 +116,8 @@ def test_failed_export_does_not_remove_another_writers_partial(tmp_path, monkeyp
 
 
 def test_python_udf_cancellation_is_normalized_and_connection_reusable(tmp_path):
-    import threading, time
+    import threading
+    import time
 
     case = Case(tmp_path / "udf.timeline")
 

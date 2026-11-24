@@ -1,11 +1,12 @@
 import copy
+
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QDialogButtonBox, QPushButton
 
-from fireblade.core.preferences import Preferences, save_preferences, load_preferences
+from fireblade.core.preferences import Preferences, load_preferences, save_preferences
 from fireblade.core.themes import THEMES, effective_palette
 from fireblade.ui.preferences_dialog import PreferencesDialog
 from fireblade.ui.theme import apply_theme

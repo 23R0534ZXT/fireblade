@@ -1,6 +1,6 @@
 import csv
-from pathlib import Path
 
+import duckdb
 import pytest
 
 from fireblade.core.engine import Case, Filter, View
@@ -52,7 +52,7 @@ def test_search_injection_regex_and_nulls(case):
     assert case.count(View(filters=[Filter(3, "eq", "' OR 1=1 --")])) == 0
     assert case.count(View(filters=[Filter(2, "empty")])) == 1
     assert case.count(View(filters=[Filter(2, "regex", "^a.*e$")])) == 2
-    with pytest.raises(Exception):
+    with pytest.raises(duckdb.InvalidInputException):
         case.count(View(filters=[Filter(2, "regex", "[")]))
     with pytest.raises(ValueError):
         case.count(View(filters=[Filter(999, "eq", "x")]))
@@ -196,7 +196,7 @@ def test_malformed_csv_rolls_back(tmp_path):
     bad.write_text("a,b\n1,2\n3,4,5\n")
     c = Case(tmp_path / "bad.timeline")
     try:
-        with pytest.raises(Exception):
+        with pytest.raises(duckdb.InvalidInputException):
             c.import_csv(bad, delimiter=",")
         assert c.headers == []
         assert (

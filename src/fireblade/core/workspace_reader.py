@@ -1,8 +1,8 @@
 """Read a workspace sequentially, without retaining inactive connections."""
 
 import copy
-from contextlib import contextmanager
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 
 from fireblade.core.engine import Case

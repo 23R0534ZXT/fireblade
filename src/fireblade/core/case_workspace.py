@@ -18,11 +18,11 @@ same validated structure, not a second storage path.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import json
-from pathlib import Path
 import re
 import uuid
+from datetime import UTC, datetime
+from pathlib import Path
 
 from fireblade.core.layout import write_json
 
@@ -62,7 +62,7 @@ LIMITS = dict(
 
 
 def stamp():
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def identifier():
@@ -635,8 +635,8 @@ def _overdue(value):
     except ValueError:
         return False
     if due.tzinfo is None:
-        due = due.replace(tzinfo=timezone.utc)
-    return due < datetime.now(timezone.utc)
+        due = due.replace(tzinfo=UTC)
+    return due < datetime.now(UTC)
 
 
 def collect(root):

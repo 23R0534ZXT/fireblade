@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QDialogButtonBox, QPushButton
+from PySide6.QtWidgets import QDialogButtonBox
 
 from fireblade.core.engine import Case
 from fireblade.core.models import Filter, FilterGroup, View

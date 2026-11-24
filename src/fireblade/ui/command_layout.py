@@ -1,6 +1,7 @@
 """Arrange commands around adding evidence, investigating and exporting."""
 
 from PySide6.QtWidgets import QPushButton
+
 from fireblade.ui.language import source_text
 
 

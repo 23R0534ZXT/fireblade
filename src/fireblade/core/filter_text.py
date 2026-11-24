@@ -5,6 +5,7 @@ changing their meaning. The normal tree editor remains the canonical format.
 """
 
 import re
+
 from fireblade.core.models import Filter, FilterGroup
 
 TOKEN = re.compile(

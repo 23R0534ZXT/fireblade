@@ -1,7 +1,7 @@
 """Exercise persistent cases with real databases in an isolated catalogue."""
 
-from pathlib import Path
 import time
+from pathlib import Path
 
 
 def verify_investigations(app, directory, settings=None):

@@ -2,8 +2,8 @@
 
 
 def test_the_findings_table_speaks_the_interface_language(qt_application, tmp_path):
-    from tests.ui.test_investigation_tools import loaded, settle
     from fireblade.core.i18n import set_language
+    from tests.ui.test_investigation_tools import loaded, settle
 
     window, errors = loaded(qt_application, tmp_path)
     try:

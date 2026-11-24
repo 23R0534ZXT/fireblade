@@ -42,6 +42,9 @@ def test_an_english_guide_keeps_the_french_structure():
     for name in GUIDES:
         french = resource_path(f"docs/guides/{name}.md").read_text(encoding="utf-8")
         english = resource_path(f"docs/guides/{name}-en.md").read_text(encoding="utf-8")
-        count = lambda text: sum(1 for line in text.splitlines() if line.startswith("#"))
+
+        def count(text):
+            return sum(1 for line in text.splitlines() if line.startswith("#"))
+
         assert count(english) == count(french), f"{name}: headings differ"
         assert not os.path.splitext(english)[0].endswith("-en-en")

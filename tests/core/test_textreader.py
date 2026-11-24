@@ -1,9 +1,6 @@
 """Text and saved pages must be read, not guessed at, and never silently dropped."""
 
 import csv
-from pathlib import Path
-
-import pytest
 
 from fireblade.core import textreader
 
@@ -105,7 +102,7 @@ def test_a_powershell_utf16_log_is_read_as_text_not_as_bytes(tmp_path):
 
 def test_a_utf8_bom_does_not_end_up_in_the_first_line(tmp_path):
     path = tmp_path / "bom.txt"
-    path.write_bytes(b"\xef\xbb\xbf" + "2026-11-14 08:00 première ligne\n".encode("utf-8"))
+    path.write_bytes(b"\xef\xbb\xbf" + "2026-11-14 08:00 première ligne\n".encode())
     produced = textreader.rows(path)
     assert not produced[0][3].startswith("\ufeff")
     assert produced[0][3].startswith("2026-11-14 08:00")

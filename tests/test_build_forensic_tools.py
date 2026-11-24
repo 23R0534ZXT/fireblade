@@ -1,7 +1,5 @@
 """The archive has to open with Windows Explorer, which stops at 260 characters."""
 
-from pathlib import Path
-
 from scripts.windows.build_forensic_tools import PATH_LIMIT, shorten_paths
 
 PREFIX = "Fireblade/_internal/resources/"

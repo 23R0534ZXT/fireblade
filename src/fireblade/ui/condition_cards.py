@@ -10,12 +10,12 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
-    QSizePolicy,
 )
 
-from fireblade.core.models import Filter, FilterGroup, OPERATORS
+from fireblade.core.models import OPERATORS, Filter, FilterGroup
 
 
 def button(text, callback, parent=None):

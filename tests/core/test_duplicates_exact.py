@@ -1,6 +1,5 @@
 """Duplicates are decided on content, and a look-alike is told apart from a copy."""
 
-import json
 from pathlib import Path
 
 from fireblade.core.collection import Collection

@@ -10,9 +10,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("FIREBLADE_LANGUAGE", "fr")
 
 import pytest
-from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QCoreApplication, QEvent
-from PySide6.QtWidgets import QDialog, QMainWindow
+from PySide6.QtWidgets import QApplication, QDialog, QMainWindow
+
 from fireblade.ui.theme import apply_theme
 
 
@@ -34,6 +34,7 @@ def no_blocking_dialog(qt_application):
     rejected and the test fails on its own assertions instead of never returning.
     """
     import time
+
     from PySide6.QtCore import QTimer
 
     # A modal is only a candidate once it has been the active one for a whole

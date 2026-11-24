@@ -1,10 +1,10 @@
 """Windows source launcher: standard library only until the environment is ready."""
 
 import os
-from pathlib import Path
 import struct
 import subprocess
 import sys
+from pathlib import Path
 
 
 def main():

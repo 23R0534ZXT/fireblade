@@ -1,7 +1,7 @@
 import hashlib
 import os
-from pathlib import Path
 import time
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -10,11 +10,11 @@ from PySide6.QtCore import QMimeData, QPointF, Qt, QUrl
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import QApplication, QComboBox, QDialog, QLineEdit
 
+from fireblade.core.engine import Case
+from fireblade.core.models import Filter, View
 from fireblade.ui.app import Window
 from fireblade.ui.dialogs import ImportDialog
-from fireblade.core.engine import Case
 from fireblade.ui.menus import cell_menu, header_menu
-from fireblade.core.models import Filter, View
 from fireblade.ui.theme import apply_theme
 
 
@@ -617,7 +617,9 @@ def test_group_drop_inserts_where_the_level_is_released(app, window):
 
 
 def test_a_drop_on_the_group_bar_waits_for_the_drag_to_end(app, window):
-    from PySide6.QtCore import QCoreApplication, QEvent as QtEvent, QMimeData
+    from PySide6.QtCore import QCoreApplication, QMimeData
+    from PySide6.QtCore import QEvent as QtEvent
+
     from fireblade.ui.grouping import MIME, GroupBar
 
     calls = []
@@ -676,8 +678,8 @@ def test_command_palette_lists_and_filters_menu_commands(app, window):
 
 
 def test_boolean_cards_invert_preserves_nested_siblings(app):
-    from fireblade.ui.advanced_dialogs import ExpressionEditor
     from fireblade.core.models import FilterGroup
+    from fireblade.ui.advanced_dialogs import ExpressionEditor
 
     expression = FilterGroup("and", [Filter(0, "contains", "alice"), Filter(1, "eq", "MFT")])
     editor = ExpressionEditor(["User", "Artifact"], expression)

@@ -1,8 +1,8 @@
 """Read-only embedded files; user data always lives outside the executable."""
 
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from fireblade.runtime.windows_paths import user_directory
 

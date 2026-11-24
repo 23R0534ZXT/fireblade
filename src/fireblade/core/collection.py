@@ -1,30 +1,30 @@
 """Offline artifact orchestration. Every input has a persisted disposition."""
 
-from dataclasses import dataclass, replace
-import csv
 import copy
+import csv
 import hashlib
 import json
 import os
 import re
-from pathlib import Path
 import shutil
 import signal
 import subprocess
-import time
 import threading
+import time
 import uuid
+from dataclasses import dataclass, replace
+from pathlib import Path
+
+import duckdb
 
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
-import duckdb
 from fireblade.core.i18n import translate
 from fireblade.core.import_index import load as load_index
 from fireblade.core.import_index import update as update_index
 from fireblade.core.import_journal import ImportJournal
-from fireblade.core.settings import Settings, auto_threads, grown_memory, physical_memory_mb
 from fireblade.core.models import View
-
+from fireblade.core.settings import Settings, auto_threads, grown_memory, physical_memory_mb
 
 PARSERS = (
     "EvtxECmd",
@@ -208,7 +208,7 @@ def identify(path):
         return ["RecentFileCacheParser"]
     if magic.startswith(b"SQLite format 3\0"):
         return ["SQLECmd"]
-    from fireblade.core.catscale import recognized, kind
+    from fireblade.core.catscale import kind, recognized
 
     if recognized(path) and (
         path.suffix.casefold() not in (".csv", ".tsv")
@@ -1035,7 +1035,7 @@ class Collection:
                 entry["status"] = "unsupported"
                 entry["reason"] = "No reader recognised this file"
                 return documents
-            entry["sha256"] = digest = sha256(source)
+            entry["sha256"] = sha256(source)
             duplicate = self.duplicate_of(entry)
             if duplicate:
                 return documents
@@ -1354,7 +1354,7 @@ class Collection:
                     future.cancel()
                 # A cancelled collection keeps what it had already finished: the files
                 # that completed are published, in file order, before the stop is reported.
-                for (source, entry), future in list(zip(pending, futures))[merged:]:
+                for (_source, entry), future in list(zip(pending, futures))[merged:]:
                     if future.done() and not future.cancelled() and future.exception() is None:
                         self._merge(entry, future.result())
                 raise

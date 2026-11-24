@@ -11,7 +11,7 @@ def _qt():
     the container, the command-line tools and the tests. Only a layout that
     actually carries an image needs the decoder.
     """
-    from PySide6.QtCore import QByteArray, QBuffer, QIODevice
+    from PySide6.QtCore import QBuffer, QByteArray, QIODevice
     from PySide6.QtGui import QImageReader
 
     return QByteArray, QBuffer, QIODevice, QImageReader

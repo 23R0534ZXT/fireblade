@@ -2,12 +2,12 @@
 
 import argparse
 import csv
-from datetime import datetime, timedelta, timezone
 import hashlib
 import json
-from pathlib import Path
 import threading
 import time
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import psutil
 
@@ -26,7 +26,7 @@ def main():
         parser.error("Choose between 250 and 10000000 records")
     args.directory.mkdir(parents=True, exist_ok=False)
     source = args.directory / "events.csv"
-    origin = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    origin = datetime(2026, 1, 1, tzinfo=UTC)
     with source.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.writer(stream)
         writer.writerow(["Timestamp", "User", "SourceIP", "Path", "SHA256", "Description", "ID"])

@@ -1063,7 +1063,7 @@ def create_app(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/rules")
-    def rules(changed: bool = False):
+    def detection_rules(changed: bool = False):
         """The Hayabusa detection rules this instance would load."""
         try:
             return library.rules_inventory(changed_only=changed)

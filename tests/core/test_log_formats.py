@@ -9,8 +9,6 @@ import csv
 import json
 from pathlib import Path
 
-import pytest
-
 from fireblade.core import linux_logs, textreader
 from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.engine import Case

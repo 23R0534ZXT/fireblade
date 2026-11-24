@@ -33,8 +33,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
-    QSizePolicy,
-    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -55,7 +53,6 @@ from fireblade.core.model_texts import (
     PRIORITY_LABELS,
     STATUS_LABELS,
 )
-
 
 ACTION_COLUMNS = ("Date", "Priorité", "État de l'action", "Type d'action", "Intervenant", "Détails")
 IOC_COLUMNS = ("Type", "Valeur", "Statut", "Machine", "Libellé", "Source")
@@ -697,6 +694,7 @@ class OperationsPanel(QWidget):
     def export_tracking(self):
         """The table as a file, for the client or for another tool."""
         import csv
+
         from PySide6.QtWidgets import QFileDialog
 
         path, _ = QFileDialog.getSaveFileName(

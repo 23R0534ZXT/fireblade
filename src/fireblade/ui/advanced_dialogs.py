@@ -10,27 +10,27 @@ from PySide6.QtWidgets import (
     QColorDialog,
     QComboBox,
     QDialog,
-    QDoubleSpinBox,
-    QFontComboBox,
     QDialogButtonBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFontComboBox,
+    QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
     QMessageBox,
-    QGridLayout,
-    QSizePolicy,
-    QScrollArea,
-    QTabWidget,
-    QFileDialog,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QTableWidget,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
-    QFormLayout,
 )
 
-from fireblade.core.models import Filter, FilterGroup, FormatRule, SortKey, OPERATORS
+from fireblade.core.models import OPERATORS, Filter, FilterGroup, FormatRule, SortKey
 
 
 class RuleStylePreview(QLabel):
@@ -702,9 +702,10 @@ class RulesDialog(QDialog):
         )
         if not path:
             return
-        from PySide6.QtGui import QImageReader
-        from PySide6.QtCore import QBuffer, QIODevice, QSize
         import base64
+
+        from PySide6.QtCore import QBuffer, QIODevice, QSize
+        from PySide6.QtGui import QImageReader
 
         reader = QImageReader(path)
         size = reader.size()
@@ -760,7 +761,7 @@ class RulesDialog(QDialog):
             font.setStrikeOut(self.strikeout.isChecked())
         self.style_preview.setFont(font)
         self.style_preview.setText(self.sample_value.text())
-        from fireblade.ui.visual_rules import visual_value, contrast_color
+        from fireblade.ui.visual_rules import contrast_color, visual_value
 
         self.style_preview.graphic = None
         visual = self.visual.currentData()
@@ -922,8 +923,6 @@ class RulesDialog(QDialog):
         )
         self.custom_font.setChecked(bool(rule.font_family))
         if rule.font_family:
-            from PySide6.QtGui import QFont
-
             self.font_family.setEditText(rule.font_family)
         self.font_size.setValue(rule.font_size)
         self.icon_set.setCurrentIndex(self.icon_set.findData(rule.icon_set))

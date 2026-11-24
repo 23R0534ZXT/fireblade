@@ -1,7 +1,7 @@
 import time
 
-from fireblade.ui.app import Window
 from fireblade.core.collection import Collection, ToolPack
+from fireblade.ui.app import Window
 
 
 def settle(app, window):
@@ -48,8 +48,9 @@ def test_native_collection_opens_results_and_keeps_report(qt_application, tmp_pa
 
 def test_the_collection_dialog_offers_three_layouts(qt_application):
     """Per file, per artifact family, or one grid for everything — nothing hidden."""
-    from fireblade.ui.collection import CollectionOrganizationDialog
     from PySide6.QtWidgets import QDialogButtonBox
+
+    from fireblade.ui.collection import CollectionOrganizationDialog
 
     dialog = CollectionOrganizationDialog()
     try:
@@ -117,8 +118,9 @@ def test_grouped_collection_opens_with_saved_group_by(qt_application, tmp_path, 
 def test_import_prompt_applies_organization_and_cancel_does_not_start(
     qt_application, tmp_path, monkeypatch
 ):
-    import fireblade.ui.collection as ui
     from PySide6.QtWidgets import QDialog
+
+    import fireblade.ui.collection as ui
 
     source = tmp_path / "source"
     source.mkdir()
@@ -166,9 +168,7 @@ def test_reading_a_file_again_opens_the_analysis_it_produced(qt_application, tmp
     root = tmp_path / "evidence"
     root.mkdir()
     (root / "users.csv").write_text("User,Value\nalice,1\n", encoding="utf-8")
-    (root / "note.txt").write_bytes(
-        "Réunion du service\n2026-11-14 08:12 démarrage\n".encode("utf-8")
-    )
+    (root / "note.txt").write_bytes("Réunion du service\n2026-11-14 08:12 démarrage\n".encode())
     window = Window(require_case=False)
     errors = []
     window.error = errors.append

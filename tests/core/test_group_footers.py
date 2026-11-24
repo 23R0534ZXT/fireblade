@@ -1,6 +1,6 @@
+import csv
 from dataclasses import replace
 from decimal import Decimal
-import csv
 
 import pytest
 

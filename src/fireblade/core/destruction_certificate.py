@@ -10,12 +10,12 @@ certificate's annex cannot be swapped for another image afterwards without the
 SHA-256 recorded here disagreeing.
 """
 
-from datetime import datetime, timezone
 import base64
 import hashlib
 import html
-from pathlib import Path
 import shutil
+from datetime import UTC, datetime
+from pathlib import Path
 
 MAX_ATTACHMENTS = 20
 MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
@@ -281,7 +281,7 @@ def build(
         "<div>Témoin<br>" + escape(record.get("witness") or "") + "</div>"
         "<div>Représentant du client<br>" + escape(client.get("contact") or "") + "</div></div>"
     )
-    generated = generated or datetime.now(timezone.utc).isoformat()
+    generated = generated or datetime.now(UTC).isoformat()
     parts.append(
         '<hr><p class="muted">Document généré par Fireblade le '
         + escape(generated)

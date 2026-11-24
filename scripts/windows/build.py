@@ -1,13 +1,12 @@
 """Build and verify one standalone Fireblade.exe on Windows x64."""
 
-import os
 import json
-from pathlib import Path
+import os
 import shutil
 import struct
 import subprocess
 import sys
-import tempfile
+from pathlib import Path
 
 from scripts.windows.verify import verify
 

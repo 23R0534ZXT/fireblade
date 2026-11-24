@@ -3,9 +3,9 @@
 import csv
 import hashlib
 import json
-from pathlib import Path
 import tempfile
 import time
+from pathlib import Path
 
 from fireblade.core.coverage import audit
 from fireblade.core.engine import Case

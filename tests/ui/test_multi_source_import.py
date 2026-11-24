@@ -11,7 +11,7 @@ from fireblade.core.collection import Collection
 from fireblade.core.paths import same_file
 from fireblade.ui.app import Window
 from fireblade.ui.folder_picker import FolderPicker, SourcesDialog
-from tests.ui.test_start_workflow import until, idle
+from tests.ui.test_start_workflow import idle, until
 
 
 def test_directory_picker_accepts_ctrl_and_shift_selection(qt_application, tmp_path):

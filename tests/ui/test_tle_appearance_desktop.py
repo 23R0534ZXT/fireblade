@@ -1,8 +1,10 @@
 import time
 from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QFontMetrics
 from PySide6.QtWidgets import QApplication, QStyle, QStyleOptionViewItem
+
 from fireblade.core.engine import Case
 from fireblade.core.models import View
 from fireblade.core.tle_layout import read_tle_layout
@@ -119,8 +121,9 @@ def test_conditional_presets_merge_explicit_overrides_and_gradients(tmp_path):
 
 def raster():
     import base64
-    from PySide6.QtCore import QByteArray, QBuffer, QIODevice
-    from PySide6.QtGui import QImage, QColor
+
+    from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+    from PySide6.QtGui import QColor, QImage
 
     image = QImage(10, 10, QImage.Format_ARGB32)
     image.fill(QColor("#fe12ab"))
@@ -199,7 +202,8 @@ def test_embedded_images_borders_wrapping_and_panels_really_render(qt_applicatio
 
 def test_custom_named_styles_are_flattened_and_conditional_images_render(qt_application, tmp_path):
     import json
-    from fireblade.core.layout import write_json, read_layout
+
+    from fireblade.core.layout import read_layout, write_json
 
     source = tmp_path / "s.csv"
     source.write_text("Value\n1\n2\n")
@@ -341,7 +345,9 @@ def test_standalone_mixed_icon_acceptance_runs_against_real_widgets(qt_applicati
 
 def test_high_priority_appearance_overrides_per_property_and_resets(qt_application, tmp_path):
     from dataclasses import replace
-    from PySide6.QtGui import QImage, QPainter, QColor
+
+    from PySide6.QtGui import QImage, QPainter
+
     from fireblade.core.models import FormatRule
     from fireblade.core.rule_store import RuleBook
 

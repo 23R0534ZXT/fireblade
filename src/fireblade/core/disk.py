@@ -90,8 +90,8 @@ def open_device(path):
     try:
         if os.name == "nt":
             import ctypes
-            from ctypes import wintypes
             import msvcrt
+            from ctypes import wintypes
 
             ioctl = ctypes.WinDLL("kernel32", use_last_error=True).DeviceIoControl
             ioctl.argtypes = [

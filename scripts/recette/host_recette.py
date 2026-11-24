@@ -309,6 +309,16 @@ def check_evtx(expected: dict, observed: dict) -> list[Check]:
                 "the findings are drawn",
             )
         )
+        techniques = int(detection.get("layer_techniques", 0))
+        checks.append(
+            Check(
+                "navigator-layer",
+                ">= 1 technique",
+                techniques,
+                PASS if techniques >= 1 else FAIL,
+                "the ATT&CK layer reaches the analyst as content, not as a path in the container",
+            )
+        )
     return checks
 
 
@@ -332,6 +342,8 @@ def run_detection(base: str, case_id: str) -> dict:
     if not out["error"]:
         graph = request(base, "GET", f"/api/cases/{case_id}/graph")
         out["graph_nodes"] = len(graph.get("nodes", []))
+        layer = request(base, "GET", f"/api/cases/{case_id}/graph?navigator=true")
+        out["layer_techniques"] = len((layer.get("layer") or {}).get("techniques") or [])
     return out
 
 

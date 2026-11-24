@@ -3001,7 +3001,7 @@ function graphReset() {
 async function exportGraphPng() {
   if (!state.openCase) { say("Open a case first", true); return; }
   try {
-    const payload = await api(`/api/cases/${state.openCase.id}/graph`);
+    const payload = graphVisible(await api(`/api/cases/${state.openCase.id}/graph`));
     const nodes = payload.nodes || [];
     if (!nodes.length) { say("The graph is empty", true); return; }
     const width = Math.max(...nodes.map((node) => node.x), 400) + 260;
@@ -3056,13 +3056,32 @@ async function exportNavigator() {
   if (!state.openCase) { say("Open a case first", true); return; }
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/graph?navigator=true`);
-    say(`ATT&CK layer written: ${payload.techniques} technique(s), ${Math.round(payload.bytes / 1024)} kB`);
+    const blob = new Blob([JSON.stringify(payload.layer, null, 2)], { type: "application/json" });
+    const link = window.document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `fireblade-attack-layer-${state.openCase.id.slice(0, 8)}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    say(`ATT&CK Navigator layer: ${payload.techniques} technique(s), ${Math.round(payload.bytes / 1024)} kB`);
   } catch (error) {
     say(error.message, true);
   }
 }
 
-function renderGraph(payload) {
+let graphPayload = { nodes: [], edges: [] };
+
+/* "Which levels of the chain to show": hosts, techniques or indicators; free nodes always stay. */
+function graphVisible(payload) {
+  const level = $("graph-level").value;
+  if (!level) return payload;
+  const nodes = payload.nodes.filter((node) => node.kind === level || !["host", "technique", "ioc"].includes(node.kind));
+  const kept = new Set(nodes.map((node) => node.id));
+  return { ...payload, nodes, edges: payload.edges.filter((edge) => kept.has(edge.source) && kept.has(edge.target)) };
+}
+
+function renderGraph(whole) {
+  graphPayload = whole;
+  const payload = graphVisible(whole);
   const nodes = payload.nodes;
   const box = $("graph-nodes");
   const wrap = $("graph-wrap");
@@ -6178,6 +6197,7 @@ function wire() {
     window.location = url(`/api/cases/${state.openCase.id}/detection/${encodeURIComponent(link.dataset.sources)}/sources`);
   });
   $("graph-build").addEventListener("click", buildGraph);
+  $("graph-level").addEventListener("change", () => renderGraph(graphPayload));
   $("evtx-run").addEventListener("click", runEvtxDetection);
   $("evtx-refresh").addEventListener("click", renderEvtx);
   $("graph-navigator").addEventListener("click", exportNavigator);

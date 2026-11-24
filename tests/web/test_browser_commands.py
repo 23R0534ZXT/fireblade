@@ -1453,3 +1453,118 @@ def test_the_coverage_check_finds_no_error_in_a_readable_analysis_the_grid_has_o
     assert "Connection Error" not in text, text
     assert "Declared import: 60 rows; database read: 60" in text, text
     assert "lignes" not in text
+
+
+# -- Attack graph ----------------------------------------------------------------------------
+
+
+def _graph(page):
+    page.click('.tabs .tab:text-is("Attack graph")')
+
+
+def _graph_nodes(page):
+    return page.eval_on_selector_all("#graph-nodes > *", "els => els.map(e => e.innerText.trim())")
+
+
+def test_the_graph_is_empty_until_the_case_gives_it_something_to_draw(page):
+    _graph(page)
+    page.wait_for_function(
+        "document.getElementById('graph-summary').innerText.includes('No finding')"
+    )
+    assert _graph_nodes(page) == []
+
+
+def test_a_free_node_joins_the_graph_and_stays_with_the_case(page):
+    _graph(page)
+    page.click("#graph-node")
+    page.fill("#graph-node-label", "Domain controller")
+    page.fill("#graph-node-tags", "T1003, lateral")
+    page.click('[data-act="graph-node-save"]')
+    page.wait_for_function("document.getElementById('graph-summary').innerText.includes('1 node')")
+    assert "Domain controller" in _graph_nodes(page)
+    page.click('.tabs .tab:text-is("Analyses")')
+    page.click('.tabs .tab:text-is("Attack graph")')
+    page.click("#graph-build")
+    page.wait_for_function("document.getElementById('graph-summary').innerText.includes('1 node')")
+    assert "Domain controller" in _graph_nodes(page)
+
+
+def test_a_declared_machine_and_a_tracked_indicator_are_drawn(page):
+    page.click('.tabs .tab:text-is("Actions & tracking")')
+    page.click('[data-sub="entities"]')
+    page.fill("#entity-label", "Finance laptop")
+    page.fill("#entity-hostname", "FIN-LT-04")
+    page.click("#entity-add")
+    page.wait_for_function("document.getElementById('entity-rows').innerText.includes('FIN-LT-04')")
+    page.click('[data-sub="indicators"]')
+    page.fill("#indicator-values", "203.0.113.7")
+    page.click("#indicator-add")
+    page.wait_for_function(
+        "document.getElementById('indicator-rows').innerText.includes('203.0.113.7')"
+    )
+    _graph(page)
+    page.click("#graph-build")
+    page.wait_for_function("document.querySelectorAll('#graph-nodes > *').length >= 2")
+    text = " ".join(_graph_nodes(page))
+    assert "FIN-LT-04" in text or "Finance laptop" in text, text
+    assert "203.0.113.7" in text, text
+
+
+def test_the_graph_level_shows_only_the_kind_of_node_asked_for(page):
+    page.click('.tabs .tab:text-is("Actions & tracking")')
+    page.click('[data-sub="indicators"]')
+    page.fill("#indicator-values", "203.0.113.7")
+    page.click("#indicator-add")
+    page.wait_for_function(
+        "document.getElementById('indicator-rows').innerText.includes('203.0.113.7')"
+    )
+    page.click('[data-sub="entities"]')
+    page.fill("#entity-label", "Finance laptop")
+    page.fill("#entity-hostname", "FIN-LT-04")
+    page.click("#entity-add")
+    page.wait_for_function("document.getElementById('entity-rows').innerText.includes('FIN-LT-04')")
+    _graph(page)
+    page.click("#graph-build")
+    page.wait_for_function("document.querySelectorAll('#graph-nodes > *').length >= 2")
+    both = len(_graph_nodes(page))
+    page.select_option("#graph-level", "ioc")
+    page.wait_for_function(f"document.querySelectorAll('#graph-nodes > *').length < {both}")
+    assert all("203.0.113.7" in node for node in _graph_nodes(page))
+    page.select_option("#graph-level", "host")
+    page.wait_for_function(
+        "![...document.querySelectorAll('#graph-nodes > *')].some(e => e.innerText.includes('203.0.113.7'))"
+    )
+
+
+def test_the_graph_zooms_and_recentres(page):
+    _graph(page)
+    page.click("#graph-node")
+    page.fill("#graph-node-label", "Gateway")
+    page.click('[data-act="graph-node-save"]')
+    page.wait_for_selector("#graph-nodes > *")
+    box = page.locator("#graph-nodes > *").first.bounding_box()
+    page.click('[data-act="graph-zoom-in"]')
+    page.click('[data-act="graph-zoom-in"]')
+    page.wait_for_function(
+        f"document.querySelector('#graph-nodes > *').getBoundingClientRect().width > {box['width']} + 4"
+    )
+    page.click('[data-act="graph-zoom-out"]')
+    page.click('[data-act="graph-zoom-out"]')
+    page.click('[data-act="graph-recentre"]')
+    page.wait_for_function(
+        f"Math.abs(document.querySelector('#graph-nodes > *').getBoundingClientRect().width - {box['width']}) < 4"
+    )
+
+
+def test_the_graph_leaves_as_a_png(page, tmp_path):
+    _graph(page)
+    page.click("#graph-node")
+    page.fill("#graph-node-label", "Gateway")
+    page.click('[data-act="graph-node-save"]')
+    page.wait_for_selector("#graph-nodes > *")
+    with page.expect_download(timeout=30000) as download:
+        page.click("#graph-png")
+    saved = tmp_path / "graph.png"
+    download.value.save_as(str(saved))
+    data = saved.read_bytes()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n" and len(data) > 500

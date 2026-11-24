@@ -346,12 +346,11 @@ class Library:
                 description=data.get("description") or "",
                 case=data.get("name") or "",
             )
-            target = self.root / "exports" / (identifier[:8] + "-attack-layer.json")
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(json.dumps(layer, ensure_ascii=False, indent=2), encoding="utf-8")
+            text = json.dumps(layer, ensure_ascii=False, indent=2)
+            # The layer goes to the analyst, not to a folder inside the container.
             return {
-                "layer": str(target),
-                "bytes": target.stat().st_size,
+                "layer": layer,
+                "bytes": len(text.encode("utf-8")),
                 "techniques": len(layer.get("techniques") or []),
             }
         positioned = ag.layout(graph)

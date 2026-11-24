@@ -1,3 +1,34 @@
+# Fireblade 0.8.3 — importing a file works in the container
+
+Found by running the published 0.8.2 images with a real browser, on real Docker, with the recette's
+own test pack. Two of the findings made the Host unusable for its main job.
+
+## Fixed
+
+- **A file chosen in the Import dialog could not be imported** (0.8.2 and earlier, in the image).
+  The service runs as an unprivileged user but kept `HOME=/root`, so everything the core keeps in
+  the user's profile pointed at `/root/AppData`, which that user cannot read: previewing any file
+  answered `Permission denied`. The same cause made the Profiles and plugins window, the profile
+  detection and the Preferences answer 500. The image now keeps that folder inside the plugins
+  volume, a host that keeps its plugins elsewhere says so (`FIREBLADE_PLUGINS`) so the profiles it
+  detects are the plugins it lists, and the core no longer fails on a profile folder it cannot enter.
+- **Two dozen tabs called `WebCacheV01.dat`, fifteen called `SYSTEM`.** A reader that writes several
+  tables from one file named each after the file. The tree now says which table is which, from the
+  name the reader gave it (`SYSTEM — AppCompat`, `CarsDB.db — Cars_Companies`, `WebCacheV01.dat —
+  History`), and numbers any twin that is left.
+- **The tab the analyst chose could be taken back.** On a slow first start (a case container
+  starting) the page switched to its first tab when the case list arrived, after the analyst had
+  already clicked another.
+- The browser asked for `/favicon.ico` and got a 404; it now has an icon.
+
+## Recette
+
+- A new scenario goes in through the analyst's own door: a file previewed and imported through the
+  upload routes. It fails on the 0.8.2 image and passes on this one. The other scenarios import a
+  folder by path, which is why nothing had caught this.
+- Run against the published 0.8.2 images with real Docker: 13/13 EVTX events, 1612/1612 WebCache
+  rows, the CatScale families, the volume and the exports, as in CI.
+
 # Fireblade 0.8.2 — the Host, checked in a real browser
 
 Each change below was found by driving the Host with a real mouse in a real browser, on a case

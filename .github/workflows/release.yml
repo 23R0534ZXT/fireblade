@@ -7,9 +7,18 @@ name: Publish the Host release
 on:
   push:
     tags: ['v*']
+  # Run by hand to tag and publish from the default branch: the release creates the tag,
+  # then starts the containers workflow on it (a tag made with the workflow token does not
+  # start other workflows by itself).
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to create and publish, e.g. v0.8.2'
+        required: true
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   release:
@@ -18,7 +27,7 @@ jobs:
     timeout-minutes: 10
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ github.ref_name }}
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
       - name: Write the notes of this version
@@ -50,6 +59,9 @@ jobs:
           print(title.strip())
           PY
       - name: Create the release
-        run: gh release create "$TAG" --title "$(cat release-title.txt)" --notes-file release-body.md
+        run: gh release create "$TAG" --target "$GITHUB_SHA" --title "$(cat release-title.txt)" --notes-file release-body.md
+      - name: Build the images for the new tag
+        if: github.event_name == 'workflow_dispatch'
+        run: gh workflow run containers.yml --ref "$TAG"
       - name: Say what was published
         run: gh release view "$TAG" --json url,tagName,name --jq '"\(.tagName) \(.name) — \(.url)"'

@@ -1313,3 +1313,20 @@ def test_a_session_travels_to_the_desktop_and_back(service):
     import base64
     with pytest.raises(Exception):
         library.open_session(identifier, base64.b64encode(b"not a session").decode())
+
+
+def test_a_null_row_id_is_a_400_not_a_traceback(case_with_analysis):
+    """The grouped grid sends a group's key where a row id belongs: that is the client's
+    mistake to be told about, never a 500 with a stack trace."""
+    from fastapi.testclient import TestClient
+    from fireblade.web.server import create_app
+
+    root, identifier = case_with_analysis
+    client = TestClient(create_app(root), raise_server_exceptions=False)
+    base = f"/api/cases/{identifier}/analyses/0"
+    for path, body in [("cellnotes", {"row_ids": [None]}),
+                       ("cellnote", {"row_id": None, "column": 0, "note": "x"}),
+                       ("cellnote", {"row_id": 1, "column": None, "note": "x"})]:
+        answer = client.post(f"{base}/{path}", json=body)
+        assert answer.status_code == 400, (path, body, answer.text)
+        assert answer.json()["detail"], "the answer says what was wrong"

@@ -5062,7 +5062,7 @@ async function loadCellNotes() {
   if (!state.rows.length) return;
   try {
     const payload = await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/cellnotes`,
-      { row_ids: state.rows.map((row) => Number(row[0])) });
+      { row_ids: state.rows.map((row) => Number(row[0])).filter(Number.isFinite) });
     state.cellNotes = new Map(Object.entries(payload.notes || {}));
   } catch (_) {
     state.cellNotes = new Map();

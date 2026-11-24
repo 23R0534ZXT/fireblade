@@ -16,6 +16,20 @@ from fireblade.web.updates import Checker
 STATIC = Path(__file__).with_name("static")
 
 
+def _whole(value, name="value") -> int:
+    """An integer a client sent, or a ValueError the route turns into a 400.
+
+    ``int(None)`` raises TypeError, which the routes do not catch: a missing or null
+    field would reach the analyst as a 500 and a traceback instead of a sentence.
+    """
+    if isinstance(value, bool) or value is None:
+        raise ValueError(f"A whole number is required for the {name}.")
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"A whole number is required for the {name}.") from exc
+
+
 def _store_upload(folder: Path, file: UploadFile, relative: str = "") -> Path:
     """Write the sent file into the case's evidence folder under a free name.
 
@@ -310,15 +324,15 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     def cell_notes(identifier: str, index: int, payload: dict):
         rows = (payload or {}).get("row_ids") or []
         try:
-            return library.cell_notes(identifier, index, [int(value) for value in rows])
+            return library.cell_notes(identifier, index, [_whole(value, "row id") for value in rows])
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/api/cases/{identifier}/analyses/{index}/cellnote")
     def cell_note(identifier: str, index: int, payload: dict):
         try:
-            row_id = int((payload or {}).get("row_id"))
-            column = int((payload or {}).get("column"))
+            row_id = _whole((payload or {}).get("row_id"), "row id")
+            column = _whole((payload or {}).get("column"), "column")
         except (TypeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail="row_id and column are required.") from exc
         try:
@@ -370,7 +384,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     @app.post("/api/cases/{identifier}/analyses/{index}/pivot")
     def pivot(identifier: str, index: int, payload: dict):
         try:
-            row_id = int((payload or {}).get("row_id"))
+            row_id = _whole((payload or {}).get("row_id"), "row id")
         except (TypeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail="row_id is required.") from exc
         try:
@@ -1038,7 +1052,7 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
     @app.post("/api/cases/{identifier}/analyses/{index}/bookmark")
     def bookmark(identifier: str, index: int, payload: dict):
         try:
-            row_id = int((payload or {}).get("row_id"))
+            row_id = _whole((payload or {}).get("row_id"), "row id")
         except (TypeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail="row_id is required.") from exc
         column = (payload or {}).get("column")

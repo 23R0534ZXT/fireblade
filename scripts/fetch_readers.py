@@ -10,6 +10,7 @@ Downloads are pinned by the toolchain manifest's tool names; the versions come
 from the publisher, one directory per tool, and the manifest is copied next to
 them so the case records which toolchain read the evidence.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,16 +24,29 @@ import zipfile
 from pathlib import Path
 
 BASE = "https://download.ericzimmermanstools.com/net10/{tool}.zip"
-RECMD_BATCH = ("https://raw.githubusercontent.com/EricZimmerman/RECmd/master/"
-               "BatchExamples/Kroll_Batch.reb")
+RECMD_BATCH = (
+    "https://raw.githubusercontent.com/EricZimmerman/RECmd/master/BatchExamples/Kroll_Batch.reb"
+)
 # Hayabusa ships its rules inside the release archive, one folder below the binary.
 HAYABUSA_VERSION = "4.3.1"
-HAYABUSA_URL = ("https://github.com/Yamato-Security/hayabusa/releases/download/"
-                f"v{HAYABUSA_VERSION}/hayabusa-{HAYABUSA_VERSION}-lin-x64-gnu.zip")
+HAYABUSA_URL = (
+    "https://github.com/Yamato-Security/hayabusa/releases/download/"
+    f"v{HAYABUSA_VERSION}/hayabusa-{HAYABUSA_VERSION}-lin-x64-gnu.zip"
+)
 DEFAULT_TOOLS = (
-    "EvtxECmd", "AmcacheParser", "AppCompatCacheParser", "PECmd", "MFTECmd",
-    "RECmd", "LECmd", "JLECmd", "SrumECmd", "WxTCmd", "RBCmd",
-    "RecentFileCacheParser", "SQLECmd",
+    "EvtxECmd",
+    "AmcacheParser",
+    "AppCompatCacheParser",
+    "PECmd",
+    "MFTECmd",
+    "RECmd",
+    "LECmd",
+    "JLECmd",
+    "SrumECmd",
+    "WxTCmd",
+    "RBCmd",
+    "RecentFileCacheParser",
+    "SQLECmd",
 )
 
 
@@ -77,7 +91,14 @@ def install_hayabusa(dest: Path) -> Path:
         root = Path(temporary)
         with zipfile.ZipFile(io.BytesIO(payload)) as archive:
             archive.extractall(root)
-        binary = next((path for path in root.iterdir() if path.is_file() and path.name.startswith("hayabusa-")), None)
+        binary = next(
+            (
+                path
+                for path in root.iterdir()
+                if path.is_file() and path.name.startswith("hayabusa-")
+            ),
+            None,
+        )
         if binary is None:
             raise SystemExit("Hayabusa: the release archive holds no binary")
         shutil.copyfile(binary, target / "hayabusa")
@@ -94,8 +115,9 @@ def main(argv=None) -> int:
     parser.add_argument("--dest", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, default=Path("config/forensic-toolchain.json"))
     parser.add_argument("--tools", nargs="*", default=list(DEFAULT_TOOLS))
-    parser.add_argument("--hayabusa", action="store_true",
-                        help="also fetch the Hayabusa Linux build and its rules")
+    parser.add_argument(
+        "--hayabusa", action="store_true", help="also fetch the Hayabusa Linux build and its rules"
+    )
     args = parser.parse_args(argv)
 
     args.dest.mkdir(parents=True, exist_ok=True)
@@ -114,14 +136,20 @@ def main(argv=None) -> int:
 
     if args.hayabusa:
         target = install_hayabusa(args.dest)
-        print(f"Hayabusa: {target} ({len(list((target / 'rules').glob('*.yml')))} rule file(s))", flush=True)
+        print(
+            f"Hayabusa: {target} ({len(list((target / 'rules').glob('*.yml')))} rule file(s))",
+            flush=True,
+        )
 
     if args.manifest.is_file():
         shutil.copyfile(args.manifest, args.dest / "manifest.json")
         print(f"manifest: {args.manifest} -> {args.dest / 'manifest.json'}", flush=True)
     else:
-        print(f"manifest: {args.manifest} not found, the pack will not record its toolchain",
-              file=sys.stderr, flush=True)
+        print(
+            f"manifest: {args.manifest} not found, the pack will not record its toolchain",
+            file=sys.stderr,
+            flush=True,
+        )
     return 0
 
 

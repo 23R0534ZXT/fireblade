@@ -14,7 +14,7 @@ class Preferences:
     navigation_grouping: str = "families"
     resource_memory_mb: int = 0
     query_threads: int = 0
-    parsing_threads: int = 0   # 0 = automatic, resolved when the engine is built
+    parsing_threads: int = 0  # 0 = automatic, resolved when the engine is built
     effort_level: str = "balanced"
     navigation_visible: bool = True
     navigation_position: str = "left"
@@ -24,7 +24,7 @@ class Preferences:
     startup_animation: bool = True
     theme: str = "light"
     theme_preset: str = ""
-    theme_palette: dict[str,str] = field(default_factory=dict)
+    theme_palette: dict[str, str] = field(default_factory=dict)
     font_family: str = ""
     font_size: int = 10
     copy_headers: bool = True
@@ -37,18 +37,40 @@ class Preferences:
     details_position: str = "bottom"
     custom_date_format: str = "yyyy-MM-dd HH:mm:ss.fffffffK"
     first_pinned_columns: list[str] = field(default_factory=list)
-    pinned_columns_by_format: dict[str,list[str]] = field(default_factory=dict)
+    pinned_columns_by_format: dict[str, list[str]] = field(default_factory=dict)
 
     def validate(self):
-        for name, low, high in (("resource_memory_mb", 0, 16384), ("query_threads", 0, 32), ("parsing_threads", 0, 32)):
+        for name, low, high in (
+            ("resource_memory_mb", 0, 16384),
+            ("query_threads", 0, 32),
+            ("parsing_threads", 0, 32),
+        ):
             value = getattr(self, name)
-            if type(value) is not int or not low <= value <= high or name == "resource_memory_mb" and 0 < value < 64:
+            if (
+                type(value) is not int
+                or not low <= value <= high
+                or name == "resource_memory_mb"
+                and 0 < value < 64
+            ):
                 raise ValueError("Ressources invalides : " + name)
         if self.effort_level not in ("light", "balanced", "fast", "maximum", "custom"):
             raise ValueError("Niveau d'effort inconnu : " + str(self.effort_level))
-        if self.navigation_grouping not in ("folders", "families", "flat") or self.navigation_position not in ("left", "right"):
+        if self.navigation_grouping not in (
+            "folders",
+            "families",
+            "flat",
+        ) or self.navigation_position not in ("left", "right"):
             raise ValueError("Organisation de navigation invalide")
-        if any(type(getattr(self, name)) is not bool for name in ("navigation_visible", "startup_animation", "workspace_details_visible", "main_toolbar_visible", "collection_toolbar_visible")):
+        if any(
+            type(getattr(self, name)) is not bool
+            for name in (
+                "navigation_visible",
+                "startup_animation",
+                "workspace_details_visible",
+                "main_toolbar_visible",
+                "collection_toolbar_visible",
+            )
+        ):
             raise ValueError("Préférence de navigation invalide")
         if self.theme not in ("light", "dark") or self.date_format not in (
             "source",
@@ -60,10 +82,25 @@ class Preferences:
         if self.language not in ("en", "fr"):
             raise ValueError("Langue invalide")
         from fireblade.core.themes import THEMES
-        if not isinstance(self.theme_preset,str) or self.theme_preset and self.theme_preset not in THEMES:
-            raise ValueError('Thème de galerie inconnu')
+
+        if (
+            not isinstance(self.theme_preset, str)
+            or self.theme_preset
+            and self.theme_preset not in THEMES
+        ):
+            raise ValueError("Thème de galerie inconnu")
         import re
-        if not isinstance(self.theme_palette,dict) or set(self.theme_palette)-{'window','text','base','alternate','highlight','selection_text'} or any(not isinstance(c,str) or not re.fullmatch(r'#[0-9a-fA-F]{6}',c) for c in self.theme_palette.values()):raise ValueError('Palette de thème invalide')
+
+        if (
+            not isinstance(self.theme_palette, dict)
+            or set(self.theme_palette)
+            - {"window", "text", "base", "alternate", "highlight", "selection_text"}
+            or any(
+                not isinstance(c, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", c)
+                for c in self.theme_palette.values()
+            )
+        ):
+            raise ValueError("Palette de thème invalide")
         if self.details_position not in ("bottom", "right", "top"):
             raise ValueError("Position du panneau invalide")
         if not isinstance(self.font_family, str) or len(self.font_family) > 200:
@@ -94,20 +131,26 @@ class Preferences:
             not isinstance(self.first_pinned_columns, list)
             or len(self.first_pinned_columns) > 128
             or any(
-                not isinstance(h, str) or not 1 <= len(h) <= 300
-                for h in self.first_pinned_columns
+                not isinstance(h, str) or not 1 <= len(h) <= 300 for h in self.first_pinned_columns
             )
         ):
             raise ValueError("Liste de colonnes épinglées invalide")
-        if not isinstance(self.pinned_columns_by_format,dict) or len(self.pinned_columns_by_format)>128:
-            raise ValueError('Épinglages par format invalides')
-        seen=set()
-        for name,columns in self.pinned_columns_by_format.items():
-            if not isinstance(name,str) or not 1<=len(name)<=300 or name.casefold() in seen:
-                raise ValueError('Nom de format absent ou ambigu')
+        if (
+            not isinstance(self.pinned_columns_by_format, dict)
+            or len(self.pinned_columns_by_format) > 128
+        ):
+            raise ValueError("Épinglages par format invalides")
+        seen = set()
+        for name, columns in self.pinned_columns_by_format.items():
+            if not isinstance(name, str) or not 1 <= len(name) <= 300 or name.casefold() in seen:
+                raise ValueError("Nom de format absent ou ambigu")
             seen.add(name.casefold())
-            if not isinstance(columns,list) or len(columns)>128 or any(not isinstance(h,str) or not 1<=len(h)<=300 for h in columns):
-                raise ValueError('Colonnes par format invalides')
+            if (
+                not isinstance(columns, list)
+                or len(columns) > 128
+                or any(not isinstance(h, str) or not 1 <= len(h) <= 300 for h in columns)
+            ):
+                raise ValueError("Colonnes par format invalides")
         return self
 
 
@@ -115,15 +158,18 @@ def load_preferences(path=None):
     path = Path(path) if path else user_directory() / "preferences.json"
     if not path.exists():
         return Preferences()
-    if path.stat().st_size > 128*1024:
+    if path.stat().st_size > 128 * 1024:
         raise ValueError("Préférences trop volumineuses")
     return Preferences(**json.loads(path.read_text(encoding="utf-8"))).validate()
 
 
 def save_preferences(preferences, path=None):
     preferences.validate()
-    if len(json.dumps(asdict(preferences),ensure_ascii=False,indent=2).encode('utf-8'))>128*1024:
-        raise ValueError('Préférences limitées à 128 Ko')
+    if (
+        len(json.dumps(asdict(preferences), ensure_ascii=False, indent=2).encode("utf-8"))
+        > 128 * 1024
+    ):
+        raise ValueError("Préférences limitées à 128 Ko")
     path = Path(path) if path else user_directory() / "preferences.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
@@ -142,17 +188,26 @@ def save_preferences(preferences, path=None):
 def default_pinned_columns(preferences, headers, info):
     """Specific reader overrides, then recognised profile, then generic defaults."""
     from fireblade.core.profiles import detect_profile
-    reader=info.get('plugin',{}).get('type','')
-    profile=detect_profile(headers)
-    candidates=[reader,reader.rsplit('.',1)[-1] if reader else '',profile.name if profile else 'GenericCsv']
-    mapping={name.casefold():columns for name,columns in preferences.pinned_columns_by_format.items()}
-    selected=preferences.first_pinned_columns
+
+    reader = info.get("plugin", {}).get("type", "")
+    profile = detect_profile(headers)
+    candidates = [
+        reader,
+        reader.rsplit(".", 1)[-1] if reader else "",
+        profile.name if profile else "GenericCsv",
+    ]
+    mapping = {
+        name.casefold(): columns for name, columns in preferences.pinned_columns_by_format.items()
+    }
+    selected = preferences.first_pinned_columns
     for candidate in candidates:
         if candidate and candidate.casefold() in mapping:
-            selected=mapping[candidate.casefold()];break
+            selected = mapping[candidate.casefold()]
+            break
     # Preserve configured order; absent columns do not alter another field.
-    result=[]
+    result = []
     for name in selected:
-        matches=[i for i,h in enumerate(headers) if h.casefold()==name.casefold()]
-        if len(matches)==1 and matches[0] not in result:result.append(matches[0])
+        matches = [i for i, h in enumerate(headers) if h.casefold() == name.casefold()]
+        if len(matches) == 1 and matches[0] not in result:
+            result.append(matches[0])
     return result

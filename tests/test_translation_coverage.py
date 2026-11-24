@@ -13,6 +13,7 @@ translate, one JSON string per line. Two rules keep it honest:
   shrink. Regenerate it with
   `python -m scripts.i18n_inventory --write-baseline tests/data/untranslated_french.txt`.
 """
+
 import json
 import os
 
@@ -33,29 +34,47 @@ def baseline():
 def test_no_french_string_on_a_surface_is_left_without_a_translation():
     absent = missing()
     new = sorted(set(absent) - baseline())
-    assert not new, ("Ces libellés s'affichent sans traduction anglaise :\n  "
-                     + "\n  ".join(new[:40])
-                     + (f"\n  … et {len(new) - 40} autres" if len(new) > 40 else ""))
+    assert not new, (
+        "Ces libellés s'affichent sans traduction anglaise :\n  "
+        + "\n  ".join(new[:40])
+        + (f"\n  … et {len(new) - 40} autres" if len(new) > 40 else "")
+    )
 
 
 def test_the_work_list_only_shrinks():
     absent = missing()
     done = sorted(baseline() - set(absent))
-    assert not done, ("Ces libellés sont traduits : retirez-les de "
-                      "tests/data/untranslated_french.txt :\n  " + "\n  ".join(done[:40]))
+    assert not done, (
+        "Ces libellés sont traduits : retirez-les de "
+        "tests/data/untranslated_french.txt :\n  " + "\n  ".join(done[:40])
+    )
 
 
 def test_the_english_table_never_points_at_an_empty_label():
     from fireblade.core.i18n import EN
+
     assert all(source.strip() and target.strip() for source, target in EN.items())
 
 
 def test_a_window_in_english_shows_no_french_leftover(qt_application, monkeypatch):
     """The real check: build the window as a new user gets it and read it."""
-    from PySide6.QtWidgets import (QCheckBox, QComboBox, QGroupBox, QLabel, QLineEdit,
-                                   QListWidget, QMenu, QMenuBar, QPlainTextEdit,
-                                   QPushButton, QRadioButton, QTableWidget, QTabBar,
-                                   QToolBar, QToolButton)
+    from PySide6.QtWidgets import (
+        QCheckBox,
+        QComboBox,
+        QGroupBox,
+        QLabel,
+        QLineEdit,
+        QListWidget,
+        QMenu,
+        QMenuBar,
+        QPlainTextEdit,
+        QPushButton,
+        QRadioButton,
+        QTableWidget,
+        QTabBar,
+        QToolBar,
+        QToolButton,
+    )
 
     from fireblade.core.i18n import set_language
     from fireblade.ui.app import Window
@@ -64,7 +83,7 @@ def test_a_window_in_english_shows_no_french_leftover(qt_application, monkeypatc
     monkeypatch.setenv("FIREBLADE_LANGUAGE", "en")
     install(qt_application)
     set_language("en")
-    window = Window(require_case=False)   # opens in English, as a new user gets it
+    window = Window(require_case=False)  # opens in English, as a new user gets it
     try:
         window.show()
         for _ in range(6):
@@ -72,13 +91,17 @@ def test_a_window_in_english_shows_no_french_leftover(qt_application, monkeypatc
         seen = {}
         widgets = [window, *window.findChildren(object)]
         for widget in widgets:
-            if isinstance(widget, (QLabel, QPushButton, QCheckBox, QRadioButton, QGroupBox, QToolButton)):
+            if isinstance(
+                widget, (QLabel, QPushButton, QCheckBox, QRadioButton, QGroupBox, QToolButton)
+            ):
                 text = widget.title() if isinstance(widget, QGroupBox) else widget.text()
                 if looks_french(text):
                     seen.setdefault(text, type(widget).__name__)
             elif isinstance(widget, (QLineEdit, QPlainTextEdit)):
                 if looks_french(widget.placeholderText()):
-                    seen.setdefault(widget.placeholderText(), type(widget).__name__ + " placeholder")
+                    seen.setdefault(
+                        widget.placeholderText(), type(widget).__name__ + " placeholder"
+                    )
             elif isinstance(widget, QTabBar):
                 for index in range(widget.count()):
                     if looks_french(widget.tabText(index)):
@@ -104,8 +127,9 @@ def test_a_window_in_english_shows_no_french_leftover(qt_application, monkeypatc
                 for action in widget.actions():
                     if looks_french(action.text()):
                         seen.setdefault(action.text(), "toolbar")
-        assert not seen, ("Le français reste visible dans la fenêtre anglaise :\n  "
-                          + "\n  ".join(f"[{where}] {text}" for text, where in sorted(seen.items())))
+        assert not seen, "Le français reste visible dans la fenêtre anglaise :\n  " + "\n  ".join(
+            f"[{where}] {text}" for text, where in sorted(seen.items())
+        )
     finally:
         set_language("fr")
         window.close()

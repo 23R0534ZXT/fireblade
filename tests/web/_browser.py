@@ -1,4 +1,5 @@
 """Shared plumbing for the tests that drive the Host client in a real browser."""
+
 import contextlib
 import os
 import socket
@@ -25,8 +26,9 @@ def free_port():
 def serving(root):
     """The Host over a cases folder, on a free port, for the length of the block."""
     port = free_port()
-    server = uvicorn.Server(uvicorn.Config(create_app(root), host="127.0.0.1", port=port,
-                                           log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(create_app(root), host="127.0.0.1", port=port, log_level="warning")
+    )
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     deadline = time.monotonic() + 15
@@ -48,15 +50,21 @@ def browser_page(url, case_name, width=1400, height=850):
     """
     try:
         playwright = sync_playwright().start()
-        browser = playwright.chromium.launch(executable_path=os.environ.get("FIREBLADE_CHROMIUM") or None)
+        browser = playwright.chromium.launch(
+            executable_path=os.environ.get("FIREBLADE_CHROMIUM") or None
+        )
     except Exception as exc:  # noqa: BLE001 - no browser installed here
         pytest.skip(f"no Chromium available: {exc}")
     page = browser.new_page(viewport={"width": width, "height": height})
     page.errors = []
     page.failed = []
     page.on("pageerror", lambda error: page.errors.append(str(error)))
-    page.on("response", lambda r: page.failed.append(f"{r.status} {r.request.method} {r.url}")
-            if r.status >= 400 and "/api/" in r.url else None)
+    page.on(
+        "response",
+        lambda r: page.failed.append(f"{r.status} {r.request.method} {r.url}")
+        if r.status >= 400 and "/api/" in r.url
+        else None,
+    )
     try:
         page.goto(url + "/")
         page.wait_for_selector("#menubar")

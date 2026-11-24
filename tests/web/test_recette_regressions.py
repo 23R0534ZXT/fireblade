@@ -12,6 +12,7 @@ Every test here names the failure it prevents:
   DELETE on the analysis), so closing a tab answered 404;
 - a core refusal reached the English window in French.
 """
+
 import csv
 import json
 from pathlib import Path
@@ -29,11 +30,14 @@ def _write_csv(path, rows=None):
     with path.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
         writer.writerow(["Timestamp", "Artifact", "User", "SourceIP"])
-        writer.writerows(rows or [
-            ["2026-11-02T10:00:00Z", "EVTX", "alice", "192.0.2.10"],
-            ["2026-11-02T10:01:00Z", "EVTX", "bob", "192.0.2.20"],
-            ["2026-11-02T10:02:00Z", "Prefetch", "alice", ""],
-        ])
+        writer.writerows(
+            rows
+            or [
+                ["2026-11-02T10:00:00Z", "EVTX", "alice", "192.0.2.10"],
+                ["2026-11-02T10:01:00Z", "EVTX", "bob", "192.0.2.20"],
+                ["2026-11-02T10:02:00Z", "Prefetch", "alice", ""],
+            ]
+        )
 
 
 @pytest.fixture()
@@ -85,13 +89,14 @@ def test_export_writes_the_format_the_desktop_offers(service, wanted, suffix):
         assert target.suffix == suffix
         if wanted == "xlsx":
             from openpyxl import load_workbook
+
             book = load_workbook(target, read_only=True)
             try:
                 rows = list(book.active.iter_rows(values_only=True))
             finally:
                 book.close()
             assert rows[0][0] == "Timestamp"
-            assert len(rows) == 4          # the header and three rows
+            assert len(rows) == 4  # the header and three rows
             assert "alice" in [cell for row in rows for cell in row]
         else:
             text = target.read_text(encoding="utf-8-sig")
@@ -143,7 +148,7 @@ def test_closing_an_analysis_is_a_delete_on_the_analysis():
     client = (root / "src/fireblade/web/static/app.js").read_text(encoding="utf-8")
     server = (root / "src/fireblade/web/server.py").read_text(encoding="utf-8")
     assert "/analyses/${index}/close" not in client
-    assert "method: \"DELETE\"" in client
+    assert 'method: "DELETE"' in client
     assert '@app.delete("/api/cases/{identifier}/analyses/{index}")' in server
 
 
@@ -166,8 +171,9 @@ def test_closing_an_analysis_moves_it_to_the_closed_list(tmp_path):
             info = dict(case.info)
         finally:
             case.close()
-        snapshots.append(AnalysisSnapshot(path=str(analysis), source_info=info,
-                                          view=View(), header_state=b""))
+        snapshots.append(
+            AnalysisSnapshot(path=str(analysis), source_info=info, view=View(), header_state=b"")
+        )
     core.save(identifier, snapshots, 0, [], None, data["revision"])
     library = Library(root)
     try:

@@ -1,4 +1,5 @@
 """Small, validated resource settings; TOML support is in Python's standard library."""
+
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,8 +29,10 @@ class Settings:
         if type(self.cache_sorted_pages) is not bool:
             raise ValueError("cache_sorted_pages doit être un booléen")
         bounds = {
-            "memory_mb": (64, 16384), "threads": (0, 32),
-            "page_size": (25, 1000), "max_loaded_rows": (25, 10000),
+            "memory_mb": (64, 16384),
+            "threads": (0, 32),
+            "page_size": (25, 1000),
+            "max_loaded_rows": (25, 10000),
             "export_batch_rows": (1, 10000),
         }
         for name, (low, high) in bounds.items():
@@ -64,21 +67,29 @@ def load_settings(path: str | Path | None = None) -> Settings:
 def physical_memory_mb():
     """Total RAM in megabytes, without pulling in a dependency."""
     try:
-        if os.name == 'nt':
+        if os.name == "nt":
             import ctypes
 
             class Status(ctypes.Structure):
-                _fields_ = [('length', ctypes.c_ulong), ('load', ctypes.c_ulong),
-                            ('total_physical', ctypes.c_ulonglong), ('available_physical', ctypes.c_ulonglong),
-                            ('total_page_file', ctypes.c_ulonglong), ('available_page_file', ctypes.c_ulonglong),
-                            ('total_virtual', ctypes.c_ulonglong), ('available_virtual', ctypes.c_ulonglong),
-                            ('available_extended', ctypes.c_ulonglong)]
+                _fields_ = [
+                    ("length", ctypes.c_ulong),
+                    ("load", ctypes.c_ulong),
+                    ("total_physical", ctypes.c_ulonglong),
+                    ("available_physical", ctypes.c_ulonglong),
+                    ("total_page_file", ctypes.c_ulonglong),
+                    ("available_page_file", ctypes.c_ulonglong),
+                    ("total_virtual", ctypes.c_ulonglong),
+                    ("available_virtual", ctypes.c_ulonglong),
+                    ("available_extended", ctypes.c_ulonglong),
+                ]
 
             status = Status()
             status.length = ctypes.sizeof(Status)
             ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status))
             return max(512, int(status.total_physical // (1024 * 1024)))
-        return max(512, int(os.sysconf('SC_PHYS_PAGES') * os.sysconf('SC_PAGE_SIZE') // (1024 * 1024)))
+        return max(
+            512, int(os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE") // (1024 * 1024))
+        )
     except Exception:
         return 4096
 
@@ -95,4 +106,3 @@ def grown_memory(current, factor=4, ceiling_mb=None):
     ceiling = int(ceiling_mb or max(1024, physical_memory_mb() // 2))
     target = min(ceiling, max(current * factor, current + 512), 16384)
     return target if target > current else None
-

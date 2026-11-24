@@ -1,4 +1,5 @@
 """The built-in guides exist in English, and the interface opens them in English."""
+
 import os
 
 import pytest
@@ -7,8 +8,13 @@ from fireblade.core.i18n import set_language
 from fireblade.runtime.resources import resource_path
 from fireblade.ui.help_dialogs import guide_path
 
-GUIDES = ("TUTORIEL-COMPLET", "UTILISATION", "CHRONOLOGIE-ET-SAUVEGARDES",
-          "CHASSE-IOC", "COUVERTURE-COLLECTE")
+GUIDES = (
+    "TUTORIEL-COMPLET",
+    "UTILISATION",
+    "CHRONOLOGIE-ET-SAUVEGARDES",
+    "CHASSE-IOC",
+    "COUVERTURE-COLLECTE",
+)
 
 
 @pytest.mark.parametrize("name", GUIDES)

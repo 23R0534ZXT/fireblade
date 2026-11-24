@@ -1,4 +1,5 @@
 """Cross-document search must report counts and a few real matching rows."""
+
 import csv
 
 from fireblade.core.engine import Case
@@ -19,11 +20,15 @@ def make_case(tmp_path, name, rows):
 
 
 def test_search_returns_a_count_and_sample_rows(tmp_path):
-    case, document = make_case(tmp_path, "a", [
-        ["2026-01-01T00:00:00Z", "alice", "powershell -enc AAA"],
-        ["2026-01-01T00:00:01Z", "bob", "cmd /c whoami"],
-        ["2026-01-01T00:00:02Z", "alice", "powershell -w hidden"],
-    ])
+    case, document = make_case(
+        tmp_path,
+        "a",
+        [
+            ["2026-01-01T00:00:00Z", "alice", "powershell -enc AAA"],
+            ["2026-01-01T00:00:01Z", "bob", "cmd /c whoami"],
+            ["2026-01-01T00:00:02Z", "alice", "powershell -w hidden"],
+        ],
+    )
     try:
         hits = WorkspaceSearch([document], case.settings, active=case).find("powershell")
         assert len(hits) == 1
@@ -45,13 +50,19 @@ def test_search_without_matches_returns_an_empty_sample(tmp_path):
 
 
 def test_every_open_artifact_is_searched(tmp_path):
-    first, first_document = make_case(tmp_path, "c", [["2026-01-01T00:00:00Z", "alice", "powershell"]])
-    second, second_document = make_case(tmp_path, "d", [["2026-01-01T00:00:00Z", "bob", "powershell"]])
+    first, first_document = make_case(
+        tmp_path, "c", [["2026-01-01T00:00:00Z", "alice", "powershell"]]
+    )
+    second, second_document = make_case(
+        tmp_path, "d", [["2026-01-01T00:00:00Z", "bob", "powershell"]]
+    )
     # Inactive analyses are closed, as in the application: the search reopens them
     # read-only, which DuckDB refuses while the writer connection is still open.
     second.close()
     try:
-        hits = WorkspaceSearch([first_document, second_document], first.settings, active=first).find("powershell")
+        hits = WorkspaceSearch(
+            [first_document, second_document], first.settings, active=first
+        ).find("powershell")
         assert [hit.count for hit in hits] == [1, 1]
         assert [hit.name for hit in hits] == ["c.csv", "d.csv"]
     finally:
@@ -71,4 +82,6 @@ def test_the_panel_text_shows_a_sample_and_the_remaining_count():
     assert "• a" in text and "• b" in text
     assert "10" in text
     assert sample_text(SearchHit("p", "x.csv", 0)) == "Aucune correspondance dans cet artefact."
-    assert sample_text(SearchHit("p", "x.csv", None, error="fichier illisible")) == "fichier illisible"
+    assert (
+        sample_text(SearchHit("p", "x.csv", None, error="fichier illisible")) == "fichier illisible"
+    )

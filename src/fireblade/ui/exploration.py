@@ -1,4 +1,5 @@
 """Desktop conveniences built on the existing paged model and worker queue."""
+
 import copy
 import json
 from xml.etree.ElementTree import ParseError
@@ -6,8 +7,19 @@ from pathlib import Path
 
 from PySide6.QtCore import QModelIndex, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
-from PySide6.QtWidgets import (QApplication, QDialog, QDialogButtonBox, QFileDialog,
-    QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPlainTextEdit, QVBoxLayout)
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QPlainTextEdit,
+    QVBoxLayout,
+)
 from fireblade.core.models import Filter, analysis_label
 from fireblade.core.preferences import load_preferences, save_preferences, Preferences
 from fireblade.ui.exploration_dialogs import DateFilterDialog, GroupsDialog
@@ -38,7 +50,9 @@ class ExplorationMixin:
             panel.doubleClicked.connect(self.cell_double_clicked)
             panel.header().sectionResized.connect(lambda *_: self.capture_pin_widths())
             panel.header().setContextMenuPolicy(Qt.CustomContextMenu)
-            panel.header().customContextMenuRequested.connect(lambda pos, p=panel: self.frozen_header_menu(pos, p))
+            panel.header().customContextMenuRequested.connect(
+                lambda pos, p=panel: self.frozen_header_menu(pos, p)
+            )
         self.detail_fields = []
         self.details.setContextMenuPolicy(Qt.CustomContextMenu)
         self.details.customContextMenuRequested.connect(self.details_menu)
@@ -46,40 +60,58 @@ class ExplorationMixin:
     def apply_preferences(self):
         p = self.preferences
         from fireblade.core.i18n import fallback_language, set_language
-        code = getattr(p, 'language', fallback_language())
+
+        code = getattr(p, "language", fallback_language())
         try:
             set_language(code)
         except ValueError:
             set_language(fallback_language())
-        if getattr(self, '_ui_ready', False):
+        if getattr(self, "_ui_ready", False):
             # Only after the window is fully built: several modules find their menu
             # by its French name while the interface is being assembled.
             from fireblade.ui.language import apply_language
+
             apply_language(self)
         from dataclasses import replace
-        self.settings = replace(self._resource_defaults,
+
+        self.settings = replace(
+            self._resource_defaults,
             memory_mb=p.resource_memory_mb or self._resource_defaults.memory_mb,
-            threads=p.query_threads or self._resource_defaults.threads)
+            threads=p.query_threads or self._resource_defaults.threads,
+        )
         if self.case and not self.busy and not self.pool.activeThreadCount():
             with self.case.lock:
                 self.case.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
-                self.case.db.execute(f'SET threads={self.settings.effective_threads}')
+                self.case.db.execute(f"SET threads={self.settings.effective_threads}")
                 self.case.settings = self.settings
-        if hasattr(self,'autosave_action'):
-            self.autosave_action.blockSignals(True);self.autosave_action.setChecked(p.case_autosave);self.autosave_action.blockSignals(False)
+        if hasattr(self, "autosave_action"):
+            self.autosave_action.blockSignals(True)
+            self.autosave_action.setChecked(p.case_autosave)
+            self.autosave_action.blockSignals(False)
         from fireblade.core.themes import effective_palette
+
         apply_theme(QApplication.instance(), p.theme, effective_palette(p))
         font = QFont(p.font_family) if p.font_family else QApplication.font()
         font.setPointSizeF(p.font_size)
         QApplication.instance().setFont(font)
-        workspace = getattr(self, 'workspace_layout', None)
-        if workspace and 'details' in workspace.auxiliary:
-            self.addDockWidget(Qt.RightDockWidgetArea if p.details_position == 'right' else Qt.TopDockWidgetArea if p.details_position == 'top' else Qt.BottomDockWidgetArea,
-                               workspace.auxiliary['details'][0])
+        workspace = getattr(self, "workspace_layout", None)
+        if workspace and "details" in workspace.auxiliary:
+            self.addDockWidget(
+                Qt.RightDockWidgetArea
+                if p.details_position == "right"
+                else Qt.TopDockWidgetArea
+                if p.details_position == "top"
+                else Qt.BottomDockWidgetArea,
+                workspace.auxiliary["details"][0],
+            )
         else:
-            self.splitter.setOrientation(Qt.Horizontal if p.details_position == "right" else Qt.Vertical)
-            self.splitter.insertWidget(0,self.details if p.details_position=='top' else self.tree)
-            self.splitter.setSizes([125,570] if p.details_position=='top' else [570,125])
+            self.splitter.setOrientation(
+                Qt.Horizontal if p.details_position == "right" else Qt.Vertical
+            )
+            self.splitter.insertWidget(
+                0, self.details if p.details_position == "top" else self.tree
+            )
+            self.splitter.setSizes([125, 570] if p.details_position == "top" else [570, 125])
         self.tabs.set_multiline(p.multiline_tabs)
         if self.model:
             self.model.date_format = p.date_format
@@ -100,24 +132,39 @@ class ExplorationMixin:
         dialog.deleteLater()
 
     def import_tle_settings(self):
-        source,_=QFileDialog.getOpenFileName(self,'Importer les préférences TLE','TLE_settings.xml','Préférences TLE (*.xml)')
-        if not source:return
+        source, _ = QFileDialog.getOpenFileName(
+            self, "Importer les préférences TLE", "TLE_settings.xml", "Préférences TLE (*.xml)"
+        )
+        if not source:
+            return
         from fireblade.core.tle_settings import read_tle_settings
+
         try:
-            result=read_tle_settings(source,self.preferences)
+            result = read_tle_settings(source, self.preferences)
             save_preferences(result.preferences)
-            self.preferences=result.preferences
+            self.preferences = result.preferences
             self.apply_preferences()
-            self.statusBar().showMessage('Préférences TLE importées. '+' ; '.join(result.warnings))
-        except (ValueError,TypeError,OSError,ParseError) as exc:self.error(exc)
+            self.statusBar().showMessage(
+                "Préférences TLE importées. " + " ; ".join(result.warnings)
+            )
+        except (ValueError, TypeError, OSError, ParseError) as exc:
+            self.error(exc)
 
     def visible_columns(self):
         header = self.tree.header()
         left, right = self.view.pinned_columns, self.view.right_pinned_columns
         pinned = set(left + right)
-        return left + [section - 1 for position in range(header.count())
-                       if (section := header.logicalIndex(position)) > 0
-                       and section - 1 not in pinned and not self.tree.isColumnHidden(section)] + right
+        return (
+            left
+            + [
+                section - 1
+                for position in range(header.count())
+                if (section := header.logicalIndex(position)) > 0
+                and section - 1 not in pinned
+                and not self.tree.isColumnHidden(section)
+            ]
+            + right
+        )
 
     def hide_column(self, column):
         if column in self.view.pinned_columns + self.view.right_pinned_columns:
@@ -125,8 +172,8 @@ class ExplorationMixin:
         self.tree.setColumnHidden(column + 1, True)
 
     def pin_column(self, column, side=None):
-        if side not in (None, 'left', 'right'):
-            raise ValueError('Côté d’épinglage invalide')
+        if side not in (None, "left", "right"):
+            raise ValueError("Côté d’épinglage invalide")
         self.case.column(column)
         self.capture_pin_widths()
         was_pinned = column in self.view.pinned_columns + self.view.right_pinned_columns
@@ -134,7 +181,7 @@ class ExplorationMixin:
             if column in pinned:
                 pinned.remove(column)
         if side is not None or not was_pinned:
-            target = self.view.right_pinned_columns if side == 'right' else self.view.pinned_columns
+            target = self.view.right_pinned_columns if side == "right" else self.view.pinned_columns
             target.append(column)
         self.restore_pins()
         self.capture_pin_widths()
@@ -142,16 +189,20 @@ class ExplorationMixin:
     def capture_pin_widths(self):
         if self.tree._syncing:
             return
-        self.view.pinned_widths = {str(section): self.tree.frozen_for(section).columnWidth(section)
-                                  for section in self.tree.all_pinned
-                                  if self.tree.frozen_for(section).columnWidth(section) >= 20}
+        self.view.pinned_widths = {
+            str(section): self.tree.frozen_for(section).columnWidth(section)
+            for section in self.tree.all_pinned
+            if self.tree.frozen_for(section).columnWidth(section) >= 20
+        }
 
     def restore_pins(self):
         for section, width in self.view.pinned_widths.items():
             self.tree._widths[int(section)] = width
         any_pins = self.view.pinned_columns or self.view.right_pinned_columns
-        self.tree.set_pins([0] + [c + 1 for c in self.view.pinned_columns] if any_pins else [],
-                           [c + 1 for c in self.view.right_pinned_columns])
+        self.tree.set_pins(
+            [0] + [c + 1 for c in self.view.pinned_columns] if any_pins else [],
+            [c + 1 for c in self.view.right_pinned_columns],
+        )
 
     def reset_widths(self):
         if not self.model:
@@ -164,6 +215,7 @@ class ExplorationMixin:
 
     def frozen_menu(self, position, panel=None):
         from fireblade.ui.menus import cell_menu
+
         panel = panel if panel is not None else self.tree.frozen
         index = panel.indexAt(position)
         if self.copy_on_right_click(index):
@@ -177,6 +229,7 @@ class ExplorationMixin:
 
     def frozen_header_menu(self, position, panel=None):
         from fireblade.ui.menus import header_menu
+
         panel = panel if panel is not None else self.tree.frozen
         header = panel.header()
         menu = header_menu(self, header.logicalIndexAt(position))
@@ -185,18 +238,27 @@ class ExplorationMixin:
             menu.deleteLater()
 
     def copy_on_right_click(self, index):
-        if (self.preferences.right_click_copy and not QApplication.keyboardModifiers() & Qt.ShiftModifier
-                and self.model and index.isValid() and index.column() and not self.model.node(index).group):
+        if (
+            self.preferences.right_click_copy
+            and not QApplication.keyboardModifiers() & Qt.ShiftModifier
+            and self.model
+            and index.isValid()
+            and index.column()
+            and not self.model.node(index).group
+        ):
             value = self.model.node(index).values[index.column()]
             QApplication.clipboard().setText("" if value is None else str(value))
             return True
         return False
 
     def edit_row_heights(self):
-        if not self.case or self.busy:return
+        if not self.case or self.busy:
+            return
         from fireblade.ui.row_heights import RowHeightDialog
-        dialog=RowHeightDialog(self.view,self)
-        if dialog.exec():self.set_view(dialog.view)
+
+        dialog = RowHeightDialog(self.view, self)
+        if dialog.exec():
+            self.set_view(dialog.view)
         dialog.deleteLater()
 
     def edit_groups(self):
@@ -215,7 +277,9 @@ class ExplorationMixin:
         dialog = DateFilterDialog(self)
         if dialog.exec():
             start, end = dialog.bounds()
-            self.view.filters.extend([Filter(column, "after", start), Filter(column, "date_before", end)])
+            self.view.filters.extend(
+                [Filter(column, "after", start), Filter(column, "date_before", end)]
+            )
             self.apply()
         dialog.deleteLater()
 
@@ -241,29 +305,38 @@ class ExplorationMixin:
         view = copy.deepcopy(self.view)
         view.expand_all = True
         self.set_view(view)
-        self.statusBar().showMessage('Dépliage complet · index sur disque, navigation avec Suivant/Précédent ; annulation possible')
+        self.statusBar().showMessage(
+            "Dépliage complet · index sur disque, navigation avec Suivant/Précédent ; annulation possible"
+        )
 
     def find_workspace(self):
         if not self.documents or not self.can_open_file():
             return
         from PySide6.QtWidgets import QDockWidget
-        if not hasattr(self, 'search_dock'):
-            self.search_dock = QDockWidget('Recherche · tous les artefacts', self)
-            self.search_dock.setObjectName('global-search')
+
+        if not hasattr(self, "search_dock"):
+            self.search_dock = QDockWidget("Recherche · tous les artefacts", self)
+            self.search_dock.setObjectName("global-search")
             self.search_panel = SearchDialog(self)
             self.search_panel.setWindowFlags(Qt.Widget)
             self.search_dock.setWidget(self.search_panel)
             self.search_panel.rejected.connect(self.search_dock.hide)
             self.search_panel.accepted.connect(self.search_dock.hide)
             self.addDockWidget(Qt.BottomDockWidgetArea, self.search_dock)
-        self.search_panel.show();self.search_dock.show();self.search_dock.raise_()
-        if self.search.text().strip():self.search_panel.text.setText(self.search.text())
+        self.search_panel.show()
+        self.search_dock.show()
+        self.search_dock.raise_()
+        if self.search.text().strip():
+            self.search_panel.text.setText(self.search.text())
         self.search_panel.text.setFocus()
-        if self.search_panel.text.text().strip():self.search_panel.start()
+        if self.search_panel.text.text().strip():
+            self.search_panel.start()
 
     def search_workspace_or_active(self):
-        if self.search_scope.currentData() == 'all':self.find_workspace()
-        else:self.apply()
+        if self.search_scope.currentData() == "all":
+            self.find_workspace()
+        else:
+            self.apply()
 
     def choose_document(self):
         if not self.documents:
@@ -279,10 +352,12 @@ class ExplorationMixin:
             item.setData(Qt.UserRole, i)
             item.setToolTip(doc.path)
             listing.addItem(item)
+
         def filter_items(text):
             for i in range(listing.count()):
                 item = listing.item(i)
                 item.setHidden(text.casefold() not in (item.text() + item.toolTip()).casefold())
+
         search.textChanged.connect(filter_items)
         layout.addWidget(search)
         layout.addWidget(listing)
@@ -305,17 +380,18 @@ class ExplorationMixin:
         if not text:
             return
         from datetime import datetime
-        self.message_lines.append(datetime.now().strftime('%H:%M:%S') + '  ' + text[:2000])
+
+        self.message_lines.append(datetime.now().strftime("%H:%M:%S") + "  " + text[:2000])
         self.message_lines = self.message_lines[-500:]
         if self.message_window and self.message_window.isVisible():
-            self.message_window.setPlainText('\n'.join(self.message_lines))
+            self.message_window.setPlainText("\n".join(self.message_lines))
 
     def show_messages(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Messages")
         dialog.resize(800, 400)
         layout = QVBoxLayout(dialog)
-        self.message_window = QPlainTextEdit('\n'.join(self.message_lines))
+        self.message_window = QPlainTextEdit("\n".join(self.message_lines))
         self.message_window.setReadOnly(True)
         layout.addWidget(self.message_window)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
@@ -338,6 +414,7 @@ class ExplorationMixin:
             return
         import subprocess
         import sys
+
         if sys.platform == "win32":
             subprocess.Popen(["explorer.exe", "/select,", str(path.resolve())])
         else:
@@ -346,38 +423,62 @@ class ExplorationMixin:
     def export_layout(self):
         if not self.case:
             return
-        target, selected_format = QFileDialog.getSaveFileName(self, "Exporter la disposition", "disposition", "Vue Fireblade (*.fireblade-view);;Disposition Timeline Explorer (*.layout)")
+        target, selected_format = QFileDialog.getSaveFileName(
+            self,
+            "Exporter la disposition",
+            "disposition",
+            "Vue Fireblade (*.fireblade-view);;Disposition Timeline Explorer (*.layout)",
+        )
         if not target or not self.export_destination_is_safe(target):
             return
         import base64
+
         self.capture_pin_widths()
         view = copy.deepcopy(self.view)
-        view.header_state = base64.b64encode(self.tree.header().saveState()).decode('ascii')
-        payload = dict(format="fireblade-view", version=1, headers=self.case.headers, view=json.loads(view.to_json()))
+        view.header_state = base64.b64encode(self.tree.header().saveState()).decode("ascii")
+        payload = dict(
+            format="fireblade-view",
+            version=1,
+            headers=self.case.headers,
+            view=json.loads(view.to_json()),
+        )
         from fireblade.core.layout import write_json
+
         try:
-            if Path(target).suffix.lower() in ('.layout', '.local') or '(*.layout)' in selected_format:
+            if (
+                Path(target).suffix.lower() in (".layout", ".local")
+                or "(*.layout)" in selected_format
+            ):
                 from fireblade.core.tle_layout_export import write_tle_layout
-                header=self.tree.header()
-                columns=[]
+
+                header = self.tree.header()
+                columns = []
                 for index in range(len(self.case.headers)):
-                    section=index+1
-                    pinned=index in view.pinned_columns+view.right_pinned_columns
-                    panel=self.tree.frozen_for(section) if pinned else self.tree
-                    hidden=not pinned and self.tree.isColumnHidden(section)
+                    section = index + 1
+                    pinned = index in view.pinned_columns + view.right_pinned_columns
+                    panel = self.tree.frozen_for(section) if pinned else self.tree
+                    hidden = not pinned and self.tree.isColumnHidden(section)
                     # Qt reports zero width for a hidden section. Expose it only
                     # synchronously, with signals blocked, to read its saved size.
-                    panel_header=panel.header()
-                    blocked=panel_header.blockSignals(True)
+                    panel_header = panel.header()
+                    blocked = panel_header.blockSignals(True)
                     try:
-                        if hidden:panel_header.showSection(section)
-                        width=panel_header.sectionSize(section)
+                        if hidden:
+                            panel_header.showSection(section)
+                        width = panel_header.sectionSize(section)
                     finally:
-                        if hidden:panel_header.hideSection(section)
+                        if hidden:
+                            panel_header.hideSection(section)
                         panel_header.blockSignals(blocked)
-                    columns.append(dict(column=index, position=header.visualIndex(section) if not hidden else -1, width=width))
-                warnings=write_tle_layout(target,self.case.headers,view,columns)
-                self.statusBar().showMessage('Disposition XML exportée. '+' ; '.join(warnings))
+                    columns.append(
+                        dict(
+                            column=index,
+                            position=header.visualIndex(section) if not hidden else -1,
+                            width=width,
+                        )
+                    )
+                warnings = write_tle_layout(target, self.case.headers, view, columns)
+                self.statusBar().showMessage("Disposition XML exportée. " + " ; ".join(warnings))
             else:
                 write_json(target, payload)
         except (OSError, ValueError) as exc:
@@ -386,89 +487,125 @@ class ExplorationMixin:
     def import_layout(self):
         if not self.case or self.busy:
             return
-        source, _ = QFileDialog.getOpenFileName(self, "Importer une disposition", "", "Vues (*.fireblade-view *.layout *.local);;Tous les fichiers (*)")
+        source, _ = QFileDialog.getOpenFileName(
+            self,
+            "Importer une disposition",
+            "",
+            "Vues (*.fireblade-view *.layout *.local);;Tous les fichiers (*)",
+        )
         if not source:
             return
         from fireblade.core.layout import read_layout
+
         try:
             if Path(source).suffix.lower() in (".layout", ".local"):
                 from fireblade.core.tle_layout import read_tle_layout
+
                 layout = read_tle_layout(source, self.case.headers)
                 self.apply_tle_layout(layout)
-                self._layout_save_enabled=True
+                self._layout_save_enabled = True
                 self.save_format_layout()
-                self.statusBar().showMessage('Layout TLE importé : colonnes, filtres, recherche, groupes, résumés et règles. '+ '; '.join(layout.warnings))
+                self.statusBar().showMessage(
+                    "Layout TLE importé : colonnes, filtres, recherche, groupes, résumés et règles. "
+                    + "; ".join(layout.warnings)
+                )
             else:
-                view=read_layout(source,self.case.headers)
+                view = read_layout(source, self.case.headers)
                 self.case.validate_view(view)
                 self.set_view(view)
-                self._layout_save_enabled=True
+                self._layout_save_enabled = True
                 self.save_format_layout()
         except (OSError, ValueError, TypeError, KeyError, ParseError) as exc:
             self.error(exc)
 
     def apply_tle_layout(self, layout):
-        view=layout.view
+        view = layout.view
         self.case.validate_view(view)
         self.tree.set_pins([])
         self.set_view(view)
-        header=self.tree.header()
-        for position,c in enumerate(sorted(layout.columns,key=lambda c:c['position']),1):
-            section=c['column']+1
-            header.moveSection(header.visualIndex(section),min(position,header.count()-1))
-            self.tree.setColumnWidth(section,c['width'])
-            if c['column'] not in view.pinned_columns + view.right_pinned_columns:
-                self.tree.setColumnHidden(section,c['position']<0)
+        header = self.tree.header()
+        for position, c in enumerate(sorted(layout.columns, key=lambda c: c["position"]), 1):
+            section = c["column"] + 1
+            header.moveSection(header.visualIndex(section), min(position, header.count() - 1))
+            self.tree.setColumnWidth(section, c["width"])
+            if c["column"] not in view.pinned_columns + view.right_pinned_columns:
+                self.tree.setColumnHidden(section, c["position"] < 0)
             else:
-                self.tree.frozen_for(section).setColumnWidth(section,c['width'])
+                self.tree.frozen_for(section).setColumnWidth(section, c["width"])
         self.capture_pin_widths()
 
     def restore_format_layout(self):
         from fireblade.core.auto_layout import load_auto_layout
+
         try:
-            directory=self.investigation_data_directory('Layouts/Local') if getattr(self,'active_investigation',None) is not None else None
-            layout,path=load_auto_layout(self.case.headers,self.case.info,directory) if directory else load_auto_layout(self.case.headers,self.case.info)
+            directory = (
+                self.investigation_data_directory("Layouts/Local")
+                if getattr(self, "active_investigation", None) is not None
+                else None
+            )
+            layout, path = (
+                load_auto_layout(self.case.headers, self.case.info, directory)
+                if directory
+                else load_auto_layout(self.case.headers, self.case.info)
+            )
             if layout is None:
                 return False
             self.apply_tle_layout(layout)
-            self.statusBar().showMessage('Disposition automatique : '+str(path)+' ; '+'; '.join(layout.warnings))
+            self.statusBar().showMessage(
+                "Disposition automatique : " + str(path) + " ; " + "; ".join(layout.warnings)
+            )
         except Exception as exc:
             # Keep the invalid file for repair instead of overwriting it on close.
-            self._layout_save_enabled=False
-            self.statusBar().showMessage('Disposition automatique ignorée : '+str(exc))
+            self._layout_save_enabled = False
+            self.statusBar().showMessage("Disposition automatique ignorée : " + str(exc))
         return True
 
     def save_format_layout(self):
-        if not self.case or not self.model or not getattr(self,'_layout_save_enabled',False):
+        if not self.case or not self.model or not getattr(self, "_layout_save_enabled", False):
             return
         from fireblade.core.auto_layout import save_auto_layout
         import base64
+
         try:
             self.capture_pin_widths()
-            view=copy.deepcopy(self.view)
-            view.header_state=base64.b64encode(self.tree.header().saveState()).decode('ascii')
+            view = copy.deepcopy(self.view)
+            view.header_state = base64.b64encode(self.tree.header().saveState()).decode("ascii")
             self.case.validate_view(view)
-            directory=self.investigation_data_directory('Layouts/Local') if getattr(self,'active_investigation',None) is not None else None
+            directory = (
+                self.investigation_data_directory("Layouts/Local")
+                if getattr(self, "active_investigation", None) is not None
+                else None
+            )
             if directory:
-                save_auto_layout(self.case.headers,self.case.info,view,directory)
+                save_auto_layout(self.case.headers, self.case.info, view, directory)
                 # Across cases retain presentation, never an old case's search,
                 # filters or evidence-specific rules.
                 from fireblade.core.models import View
-                columns_only = View(header_state=view.header_state,
-                    pinned_columns=list(view.pinned_columns),right_pinned_columns=list(view.right_pinned_columns),
-                    pinned_widths=dict(view.pinned_widths))
-                save_auto_layout(self.case.headers,self.case.info,columns_only)
-            else:save_auto_layout(self.case.headers,self.case.info,view)
-        except (OSError,ValueError,TypeError) as exc:
-            self.statusBar().showMessage('Disposition locale non enregistrée : '+str(exc))
+
+                columns_only = View(
+                    header_state=view.header_state,
+                    pinned_columns=list(view.pinned_columns),
+                    right_pinned_columns=list(view.right_pinned_columns),
+                    pinned_widths=dict(view.pinned_widths),
+                )
+                save_auto_layout(self.case.headers, self.case.info, columns_only)
+            else:
+                save_auto_layout(self.case.headers, self.case.info, view)
+        except (OSError, ValueError, TypeError) as exc:
+            self.statusBar().showMessage("Disposition locale non enregistrée : " + str(exc))
 
     def edit_filter_text(self):
         if not self.case or self.busy:
             return
-        text, accepted = QInputDialog.getMultiLineText(self, "Expression de filtre", "Syntaxe : Contains([Colonne], 'texte') And [ID] >= 10\nFonctions : Contains, Iif, InRange, DateTimeFromParts, AddTimeSpan, GetYear… ; constantes 12m, GUID, #!date!#.\nCollections : [Items][[Amount] > [^.Limit]].Exists() ; ^ remonte au parent.")
+        text, accepted = QInputDialog.getMultiLineText(
+            self,
+            "Expression de filtre",
+            "Syntaxe : Contains([Colonne], 'texte') And [ID] >= 10\nFonctions : Contains, Iif, InRange, DateTimeFromParts, AddTimeSpan, GetYear… ; constantes 12m, GUID, #!date!#.\nCollections : [Items][[Amount] > [^.Limit]].Exists() ; ^ remonte au parent.",
+        )
         if not accepted:
             return
         from fireblade.core.filter_text import parse_filter
+
         try:
             expression = parse_filter(text, self.case.headers)
             self.case.condition(expression)
@@ -478,15 +615,22 @@ class ExplorationMixin:
             self.error(exc)
 
     def rule_from_value(self, column, value):
-        if not self.case or self.busy or value is None:return
+        if not self.case or self.busy or value is None:
+            return
         from fireblade.core.models import FilterGroup, FormatRule
         from fireblade.ui.advanced_dialogs import RulesDialog
-        rule = FormatRule(condition=FilterGroup('and',[Filter(column,'eq',str(value))]),
-                          target=column,background='#fff0b3',bold=True)
-        dialog = RulesDialog(self.case.headers,[*self.view.format_rules,rule],self)
-        dialog.listing.setCurrentRow(len(dialog.rules)-1)
+
+        rule = FormatRule(
+            condition=FilterGroup("and", [Filter(column, "eq", str(value))]),
+            target=column,
+            background="#fff0b3",
+            bold=True,
+        )
+        dialog = RulesDialog(self.case.headers, [*self.view.format_rules, rule], self)
+        dialog.listing.setCurrentRow(len(dialog.rules) - 1)
         if dialog.exec():
-            view = copy.deepcopy(self.view);view.format_rules=dialog.rules
+            view = copy.deepcopy(self.view)
+            view.format_rules = dialog.rules
             self.set_view(view)
         dialog.deleteLater()
 
@@ -495,6 +639,7 @@ class ExplorationMixin:
         from fireblade.core.profile_plugins import load_plugins, plugin_path, validate_plugin
         from fireblade.core.layout import write_json
         from PySide6.QtWidgets import QPushButton, QHBoxLayout
+
         dialog = QDialog(self)
         dialog.setWindowTitle("Profils et plugins de présentation")
         dialog.resize(680, 420)
@@ -504,55 +649,99 @@ class ExplorationMixin:
         message = QLabel()
         message.setWordWrap(True)
         layout.addWidget(message)
+
         def refresh():
             listing.clear()
             for profile in all_profiles():
-                listing.addItem(f"{profile.name} · {len(profile.signature)} champs de reconnaissance · {len(profile.timestamp)} dates · {len(profile.booleans)} booléens")
+                listing.addItem(
+                    f"{profile.name} · {len(profile.signature)} champs de reconnaissance · {len(profile.timestamp)} dates · {len(profile.booleans)} booléens"
+                )
             _plugins, errors = load_plugins()
-            message.setText('\n'.join(errors) if errors else "Les plugins de présentation déclarent les colonnes et leurs types. Les valeurs sources restent intactes.")
+            message.setText(
+                "\n".join(errors)
+                if errors
+                else "Les plugins de présentation déclarent les colonnes et leurs types. Les valeurs sources restent intactes."
+            )
+
         def install():
-            source, _ = QFileDialog.getOpenFileName(dialog, "Installer un plugin de présentation", "", "Plugin JSON (*.json)")
+            source, _ = QFileDialog.getOpenFileName(
+                dialog, "Installer un plugin de présentation", "", "Plugin JSON (*.json)"
+            )
             if not source:
                 return
             try:
                 path = Path(source)
                 if path.stat().st_size > 2 * 1024 * 1024:
-                    raise ValueError('Plugin limité à 2 Mo')
-                data = validate_plugin(json.loads(path.read_text(encoding='utf-8-sig')))
+                    raise ValueError("Plugin limité à 2 Mo")
+                data = validate_plugin(json.loads(path.read_text(encoding="utf-8-sig")))
                 import hashlib
+
                 directory = plugin_path()
                 directory.mkdir(parents=True, exist_ok=True)
-                target = directory / (hashlib.sha256(data['name'].encode()).hexdigest()[:24] + '.json')
+                target = directory / (
+                    hashlib.sha256(data["name"].encode()).hexdigest()[:24] + ".json"
+                )
                 write_json(target, data)
                 refresh()
             except (ValueError, TypeError, OSError) as exc:
                 message.setText(str(exc))
+
         def create_profile():
-            if not self.case:return
-            name, accepted = QInputDialog.getText(dialog, 'Nouveau profil', 'Nom du profil')
-            if not accepted or not name.strip():return
+            if not self.case:
+                return
+            name, accepted = QInputDialog.getText(dialog, "Nouveau profil", "Nom du profil")
+            if not accepted or not name.strip():
+                return
             headers = self.case.headers
             from fireblade.core.timeline import guess_time_column
+
             timestamp = guess_time_column(headers)
-            payload = dict(name=name.strip(), signature=headers[:min(3,len(headers))],
-                           columns=[headers[i] for i in self.visible_columns()],
-                           timestamp=[headers[timestamp]] if timestamp is not None else [], booleans=[], transforms=[])
-            editor = QDialog(dialog);editor.setWindowTitle('Profil JSON');editor.resize(650, 480)
-            form = QVBoxLayout(editor);text = QPlainTextEdit(json.dumps(payload,ensure_ascii=False,indent=2));form.addWidget(text)
-            message = QLabel();message.setWordWrap(True);form.addWidget(message)
-            buttons = QDialogButtonBox(QDialogButtonBox.Save|QDialogButtonBox.Cancel);form.addWidget(buttons)
+            payload = dict(
+                name=name.strip(),
+                signature=headers[: min(3, len(headers))],
+                columns=[headers[i] for i in self.visible_columns()],
+                timestamp=[headers[timestamp]] if timestamp is not None else [],
+                booleans=[],
+                transforms=[],
+            )
+            editor = QDialog(dialog)
+            editor.setWindowTitle("Profil JSON")
+            editor.resize(650, 480)
+            form = QVBoxLayout(editor)
+            text = QPlainTextEdit(json.dumps(payload, ensure_ascii=False, indent=2))
+            form.addWidget(text)
+            message = QLabel()
+            message.setWordWrap(True)
+            form.addWidget(message)
+            buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+            form.addWidget(buttons)
+
             def save():
                 try:
                     data = validate_plugin(json.loads(text.toPlainText()))
                     import hashlib
-                    directory = plugin_path();directory.mkdir(parents=True, exist_ok=True)
-                    write_json(directory/(hashlib.sha256(data['name'].encode()).hexdigest()[:24]+'.json'), data)
-                    editor.accept();refresh()
-                except (ValueError,TypeError,OSError) as exc:message.setText(str(exc))
-            buttons.accepted.connect(save);buttons.rejected.connect(editor.reject)
-            editor.exec();editor.deleteLater()
-        create_button = QPushButton('Créer un profil…');create_button.setEnabled(self.case is not None)
-        create_button.clicked.connect(create_profile);layout.addWidget(create_button)
+
+                    directory = plugin_path()
+                    directory.mkdir(parents=True, exist_ok=True)
+                    write_json(
+                        directory
+                        / (hashlib.sha256(data["name"].encode()).hexdigest()[:24] + ".json"),
+                        data,
+                    )
+                    editor.accept()
+                    refresh()
+                except (ValueError, TypeError, OSError) as exc:
+                    message.setText(str(exc))
+
+            buttons.accepted.connect(save)
+            buttons.rejected.connect(editor.reject)
+            editor.exec()
+            editor.deleteLater()
+
+        create_button = QPushButton("Créer un profil…")
+        create_button.setEnabled(self.case is not None)
+        create_button.clicked.connect(create_profile)
+        layout.addWidget(create_button)
         row = QHBoxLayout()
         install_button = QPushButton("Installer un profil JSON…")
         install_button.clicked.connect(install)
@@ -575,66 +764,106 @@ class ExplorationMixin:
         dialog = QDialog(self)
         dialog.setWindowTitle("Légende des supertimelines")
         layout = QVBoxLayout(dialog)
-        for label, color in [("Exécution / registre", "#e2efda"), ("Ouverture de fichier / dossier", "#ddebf7"),
-                             ("Suppression", "#fce4d6"), ("Navigation Web", "#fff2cc"), ("Journaux d’événements", "#e4dfec")]:
+        for label, color in [
+            ("Exécution / registre", "#e2efda"),
+            ("Ouverture de fichier / dossier", "#ddebf7"),
+            ("Suppression", "#fce4d6"),
+            ("Navigation Web", "#fff2cc"),
+            ("Journaux d’événements", "#e4dfec"),
+        ]:
             text = QLabel(label)
             text.setStyleSheet(f"background: {color}; color: #202020; padding: 8px;")
             layout.addWidget(text)
-        layout.addWidget(QLabel("Ces règles s’appliquent avec les profils de timeline reconnus.\nUne couleur ne prouve pas à elle seule la nature d’un événement."))
+        layout.addWidget(
+            QLabel(
+                "Ces règles s’appliquent avec les profils de timeline reconnus.\nUne couleur ne prouve pas à elle seule la nature d’un événement."
+            )
+        )
         close = QDialogButtonBox(QDialogButtonBox.Close)
         close.rejected.connect(dialog.reject)
         layout.addWidget(close)
         dialog.exec()
         dialog.deleteLater()
 
-    def export_tle_session(self,path=None):
+    def export_tle_session(self, path=None):
         if not self.documents or not self.case or not self.can_open_file():
             return
         if not path:
-            path,_=QFileDialog.getSaveFileName(self,'Exporter une session TLE · sources et signets uniquement','','Session Timeline Explorer (*.tle_sess)')
-        if not path:return
-        if not self.export_destination_is_safe(path):return
+            path, _ = QFileDialog.getSaveFileName(
+                self,
+                "Exporter une session TLE · sources et signets uniquement",
+                "",
+                "Session Timeline Explorer (*.tle_sess)",
+            )
+        if not path:
+            return
+        if not self.export_destination_is_safe(path):
+            return
         self.remember_active()
         from fireblade.core.tle_session_export import TleSessionExport
-        task=TleSessionExport(self.documents,self.settings,self.case)
-        self.workspace_search=task
-        def clear():self.workspace_search=None
+
+        task = TleSessionExport(self.documents, self.settings, self.case)
+        self.workspace_search = task
+
+        def clear():
+            self.workspace_search = None
+
         def done(count):
             clear()
-            self.statusBar().showMessage(f'Session TLE exportée : {count} sources et leurs signets ; notes, vues et filtres restent dans les analyses Fireblade')
+            self.statusBar().showMessage(
+                f"Session TLE exportée : {count} sources et leurs signets ; notes, vues et filtres restent dans les analyses Fireblade"
+            )
+
         def failed(message):
-            clear();self.error(message)
-        self.statusBar().showMessage('Export de session TLE · vérification des sources et des signets…')
-        self.run(lambda:task.run(path),done,exclusive=True,on_cancel=clear,on_error=failed)
+            clear()
+            self.error(message)
+
+        self.statusBar().showMessage(
+            "Export de session TLE · vérification des sources et des signets…"
+        )
+        self.run(lambda: task.run(path), done, exclusive=True, on_cancel=clear, on_error=failed)
 
     def import_tle_session(self, path=None):
         if not self.can_open_file():
             return
         if not path:
-            path, _ = QFileDialog.getOpenFileName(self, "Importer une session Timeline Explorer", "", "Session TLE (*.tle_sess)")
+            path, _ = QFileDialog.getOpenFileName(
+                self, "Importer une session Timeline Explorer", "", "Session TLE (*.tle_sess)"
+            )
         if not path:
             return
         from fireblade.core.tle_compat import read_tle_session, TleSessionImport
         from fireblade.runtime.windows_paths import analyses_directory
+
         try:
             references = read_tle_session(path)
         except (ValueError, TypeError, OSError) as exc:
             self.error(exc)
             return
         snapshot = self.snapshot_analysis()
-        task = TleSessionImport(references, analyses_directory(), self.settings,auto_profiles=self.preferences.auto_profiles)
+        task = TleSessionImport(
+            references,
+            analyses_directory(),
+            self.settings,
+            auto_profiles=self.preferences.auto_profiles,
+        )
         self.workspace_search = task
         self.detach()
+
         def failed(message="Import de session annulé"):
             self.workspace_search = None
             recovery = self.restore_after_import(snapshot)
             self.error(message + (f"\nRestauration : {recovery}" if recovery else ""))
+
         def done(snapshots):
             self.workspace_search = None
             self.documents, self.active_document = snapshots, -1
             self.sync_tabs()
             self.switch_document(0)
-            self.statusBar().showMessage("Session TLE importée : sources et tags ; dispositions locales chargées à l’ouverture des onglets")
+            self.statusBar().showMessage(
+                "Session TLE importée : sources et tags ; dispositions locales chargées à l’ouverture des onglets"
+            )
+
         self.run(task.run, done, exclusive=True, on_cancel=failed, on_error=failed)
         self.cancel_action.setEnabled(True)
 
@@ -643,76 +872,119 @@ class ExplorationMixin:
             return
         if not checked and self.model and self.model.notes.get(row_id):
             from PySide6.QtWidgets import QMessageBox
-            answer=QMessageBox.question(self,'Retirer le signet',
-                'Cette ligne contient une note. Retirer le signet et sa note ?',
-                QMessageBox.Yes|QMessageBox.No,QMessageBox.No)
-            if answer!=QMessageBox.Yes:return
+
+            answer = QMessageBox.question(
+                self,
+                "Retirer le signet",
+                "Cette ligne contient une note. Retirer le signet et sa note ?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if answer != QMessageBox.Yes:
+                return
         case = self.case
+
         def done(_):
             def has_expression(condition):
-                if condition is None:return False
-                if hasattr(condition,'children'):return any(has_expression(c) for c in condition.children)
-                return condition.operator=='expression'
-            rules=list(self.view.format_rules)+list(self.model.global_rules)
-            dependent=(self.view.bookmarks_only or has_expression(self.view.expression) or
-                any(has_expression(f) for f in self.view.filters) or
-                any(has_expression(rule.condition) for rule in rules) or bool(case.derived))
-            if dependent:self.apply()
+                if condition is None:
+                    return False
+                if hasattr(condition, "children"):
+                    return any(has_expression(c) for c in condition.children)
+                return condition.operator == "expression"
+
+            rules = list(self.view.format_rules) + list(self.model.global_rules)
+            dependent = (
+                self.view.bookmarks_only
+                or has_expression(self.view.expression)
+                or any(has_expression(f) for f in self.view.filters)
+                or any(has_expression(rule.condition) for rule in rules)
+                or bool(case.derived)
+            )
+            if dependent:
+                self.apply()
             else:
-                self.model.update_bookmark(row_id,'' if checked else None)
+                self.model.update_bookmark(row_id, "" if checked else None)
                 self.show_details(self.tree.currentIndex())
-            self.statusBar().showMessage('Ligne surlignée et ajoutée aux signets.' if checked else 'Surlignage et signet retirés.')
-        self.run(lambda: case.bookmark_many([row_id], '', 'mark' if checked else 'remove'),done,exclusive=True)
+            self.statusBar().showMessage(
+                "Ligne surlignée et ajoutée aux signets."
+                if checked
+                else "Surlignage et signet retirés."
+            )
+
+        self.run(
+            lambda: case.bookmark_many([row_id], "", "mark" if checked else "remove"),
+            done,
+            exclusive=True,
+        )
 
     def details_menu(self, position):
         cursor = self.details.cursorForPosition(position)
-        field = next((field for field in self.detail_fields if field[0] <= cursor.position() < field[1]), None)
+        field = next(
+            (field for field in self.detail_fields if field[0] <= cursor.position() < field[1]),
+            None,
+        )
         menu = self.details.createStandardContextMenu()
         if field and self.case:
             _start, _end, column, value = field
             menu.addSeparator()
-            menu.addAction('Copier la valeur complète', lambda: QApplication.clipboard().setText('' if value is None else str(value)))
-            menu.addAction('Filtrer sur ce champ', lambda: self.filter_value(column,value))
-            menu.addAction('Exclure cette valeur', lambda: self.filter_value(column,value,exclude=True))
+            menu.addAction(
+                "Copier la valeur complète",
+                lambda: QApplication.clipboard().setText("" if value is None else str(value)),
+            )
+            menu.addAction("Filtrer sur ce champ", lambda: self.filter_value(column, value))
+            menu.addAction(
+                "Exclure cette valeur", lambda: self.filter_value(column, value, exclude=True)
+            )
         menu.exec(self.details.mapToGlobal(position))
         menu.deleteLater()
 
     def open_with(self, value):
         path = Path(value).expanduser()
         if not path.exists():
-            self.error('Ce chemin n’existe pas sur ce poste.')
+            self.error("Ce chemin n’existe pas sur ce poste.")
             return
-        program, _ = QFileDialog.getOpenFileName(self, 'Ouvrir avec', '', 'Programme Windows (*.exe);;Tous les fichiers (*)')
+        program, _ = QFileDialog.getOpenFileName(
+            self, "Ouvrir avec", "", "Programme Windows (*.exe);;Tous les fichiers (*)"
+        )
         if program:
             import subprocess
+
             try:
-                subprocess.Popen([program,str(path.resolve())])
+                subprocess.Popen([program, str(path.resolve())])
             except OSError as exc:
                 self.error(exc)
 
     def queue_files(self, paths):
-        if not self.require_active_case():return
+        if not self.require_active_case():
+            return
         self.open_queue.extend(Path(path) for path in paths)
         if len(self.open_queue) > 1000:
             self.open_queue = self.open_queue[:1000]
-            self.statusBar().showMessage('File d’ouverture limitée à 1000 fichiers')
+            self.statusBar().showMessage("File d’ouverture limitée à 1000 fichiers")
         self.drain_open_queue()
 
     def drain_open_queue(self):
         if self.open_queue_timer_active or not self.open_queue:
             return
-        if self.busy or self.jobs or self.pool.activeThreadCount() or (self.model and self.model.jobs):
+        if (
+            self.busy
+            or self.jobs
+            or self.pool.activeThreadCount()
+            or (self.model and self.model.jobs)
+        ):
             self.open_queue_timer_active = True
+
             def retry():
                 self.open_queue_timer_active = False
                 self.drain_open_queue()
-            QTimer.singleShot(50,retry)
+
+            QTimer.singleShot(50, retry)
             return
         path = self.open_queue.pop(0)
         self.open_path(path)
         if self.open_queue:
-            QTimer.singleShot(0,self.drain_open_queue)
+            QTimer.singleShot(0, self.drain_open_queue)
 
     def clear_open_queue(self):
         self.open_queue.clear()
-        self.statusBar().showMessage('File d’ouverture vidée ; l’opération courante continue')
+        self.statusBar().showMessage("File d’ouverture vidée ; l’opération courante continue")

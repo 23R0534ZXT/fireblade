@@ -1,23 +1,33 @@
 """A directory picker with real Ctrl/Shift selection on every supported platform."""
+
 import os
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QAbstractItemView, QDialog, QDialogButtonBox, QFileDialog,
-    QHBoxLayout, QLabel, QListWidget, QPushButton, QVBoxLayout)
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QPushButton,
+    QVBoxLayout,
+)
 
 
 class FolderPicker(QFileDialog):
     def __init__(self, parent=None):
-        super().__init__(parent, 'Dossiers à parser')
+        super().__init__(parent, "Dossiers à parser")
         self.setOption(QFileDialog.DontUseNativeDialog, True)
         self.setFileMode(QFileDialog.Directory)
         self.setOption(QFileDialog.ShowDirsOnly, True)
         self.setViewMode(QFileDialog.Detail)
-        self.setLabelText(QFileDialog.Accept, 'Sélectionner')
-        self.setLabelText(QFileDialog.FileName, 'Dossiers :')
+        self.setLabelText(QFileDialog.Accept, "Sélectionner")
+        self.setLabelText(QFileDialog.FileName, "Dossiers :")
         for view in self.findChildren(QAbstractItemView):
-            if view.objectName() in ('listView', 'treeView'):
+            if view.objectName() in ("listView", "treeView"):
                 view.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
 
@@ -37,23 +47,25 @@ class SourcesDialog(QDialog):
 
     def __init__(self, parent=None, start=None):
         super().__init__(parent)
-        self.setWindowTitle('Import evidence')
+        self.setWindowTitle("Import evidence")
         self.resize(680, 420)
-        self._start = str(start) if start else ''
+        self._start = str(start) if start else ""
         layout = QVBoxLayout(self)
-        intro = QLabel('Files and folders read in one operation. Each of them gets a row in the '
-                       'report, with its reason when it was not read.')
+        intro = QLabel(
+            "Files and folders read in one operation. Each of them gets a row in the "
+            "report, with its reason when it was not read."
+        )
         intro.setWordWrap(True)
         layout.addWidget(intro)
         self.list = QListWidget()
         self.list.setSelectionMode(QAbstractItemView.ExtendedSelection)
         layout.addWidget(self.list, 1)
         controls = QHBoxLayout()
-        self.add_files = QPushButton('Add files…')
+        self.add_files = QPushButton("Add files…")
         self.add_files.clicked.connect(self.choose_files)
-        self.add_folder = QPushButton('Add folder…')
+        self.add_folder = QPushButton("Add folder…")
         self.add_folder.clicked.connect(self.choose_folder)
-        self.remove = QPushButton('Remove')
+        self.remove = QPushButton("Remove")
         self.remove.clicked.connect(self.remove_selected)
         for button in (self.add_files, self.add_folder, self.remove):
             controls.addWidget(button)
@@ -62,8 +74,8 @@ class SourcesDialog(QDialog):
         self.count = QLabel()
         layout.addWidget(self.count)
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.buttons.button(QDialogButtonBox.Ok).setText('Import')
-        self.buttons.button(QDialogButtonBox.Cancel).setText('Cancel')
+        self.buttons.button(QDialogButtonBox.Ok).setText("Import")
+        self.buttons.button(QDialogButtonBox.Cancel).setText("Cancel")
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
         layout.addWidget(self.buttons)
@@ -84,13 +96,13 @@ class SourcesDialog(QDialog):
         return self.entries
 
     def choose_files(self):
-        paths, _ = QFileDialog.getOpenFileNames(self, 'Files to import', self._start)
+        paths, _ = QFileDialog.getOpenFileNames(self, "Files to import", self._start)
         if paths:
             self._start = str(Path(paths[0]).parent)
             self.add_paths(paths)
 
     def choose_folder(self):
-        path = QFileDialog.getExistingDirectory(self, 'Folder to import', self._start)
+        path = QFileDialog.getExistingDirectory(self, "Folder to import", self._start)
         if path:
             self._start = path
             self.add_paths([path])
@@ -106,7 +118,7 @@ class SourcesDialog(QDialog):
         self.buttons.button(QDialogButtonBox.Ok).setEnabled(bool(self.entries))
         folders = sum(1 for path in self.entries if Path(path).is_dir())
         files = len(self.entries) - folders
-        self.count.setText(f'{files} file(s) · {folders} folder(s)')
+        self.count.setText(f"{files} file(s) · {folders} folder(s)")
         self.remove.setEnabled(bool(self.entries))
 
     def sources(self):

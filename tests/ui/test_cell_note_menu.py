@@ -1,4 +1,5 @@
 """The cell note is offered where the user writes it: the context menu and the dialogue."""
+
 import pytest
 from PySide6.QtGui import QStandardItemModel
 
@@ -10,7 +11,7 @@ from fireblade.ui.menus import cell_menu
 class _Node:
     group = False
     footer = False
-    values = [7, "a value", "another"]   # the row id is an int, as the engine writes it
+    values = [7, "a value", "another"]  # the row id is an int, as the engine writes it
 
 
 class _Model:
@@ -47,11 +48,12 @@ class _Case:
 @pytest.fixture
 def window(qt_application):
     from fireblade.ui.app import Window
+
     install(qt_application)
     widget = Window(require_case=False)
     widget.model = _Model()
     widget.case = _Case()
-    widget.apply = lambda *args, **kwargs: None    # the stub model has no rows to reload
+    widget.apply = lambda *args, **kwargs: None  # the stub model has no rows to reload
     yield widget
     widget.model = None
     widget.case = None
@@ -59,7 +61,7 @@ def window(qt_application):
 
 
 def _labels(menu):
-    translate_tree(menu)          # what the application does when the menu pops up
+    translate_tree(menu)  # what the application does when the menu pops up
     return [action.text() for action in menu.actions() if not action.isSeparator()]
 
 
@@ -80,7 +82,7 @@ def test_the_menu_offers_to_edit_the_note_of_a_noted_cell(window, monkeypatch):
     window.model.cell_notes = {(7, 1): "already here"}
     try:
         set_language("en")
-        index = QStandardItemModel(1, 3).index(0, 2)   # display column 2 = data column 1
+        index = QStandardItemModel(1, 3).index(0, 2)  # display column 2 = data column 1
         labels = _labels(cell_menu(window, index))
         assert "Edit the cell note…" in labels
         assert "Add a note to the cell…" not in labels
@@ -112,19 +114,23 @@ def test_an_empty_note_removes_the_cell_note(window, monkeypatch):
     from PySide6.QtWidgets import QInputDialog
 
     window.model.cell_notes = {(7, 1): "to delete"}
-    monkeypatch.setattr(QInputDialog, "getMultiLineText",
-                        staticmethod(lambda *args, **kwargs: ("", True)))
+    monkeypatch.setattr(
+        QInputDialog, "getMultiLineText", staticmethod(lambda *args, **kwargs: ("", True))
+    )
     monkeypatch.setattr(window, "run", lambda job, done=None, **kwargs: done(job()))
     window.edit_bookmark(7, 1)
     assert window.case.calls == [(7, None, 1)]
 
+
 def _select(window, rows, model_rows=3):
     """Give the window a selection of data rows, as the grid would."""
     from PySide6.QtCore import QItemSelectionModel
+
     model = QStandardItemModel(model_rows, 3)
     window.tree.selectionModel().select(
-        model.index(0, 0), QItemSelectionModel.Select | QItemSelectionModel.Rows)
-    window.tree.selectionModel()._fake = model          # keep the model alive
+        model.index(0, 0), QItemSelectionModel.Select | QItemSelectionModel.Rows
+    )
+    window.tree.selectionModel()._fake = model  # keep the model alive
     return model
 
 

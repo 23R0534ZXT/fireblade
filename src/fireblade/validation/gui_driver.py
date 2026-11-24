@@ -1,4 +1,5 @@
 """Shared native GUI exercise driver. Input is QtTest, not a human operator."""
+
 import copy
 from datetime import datetime, timezone
 import json
@@ -24,23 +25,36 @@ class GuiRun:
     def __init__(self, app, report_path, kind):
         self.app, self.path = app, Path(report_path).resolve()
         if self.path.exists():
-            raise ValueError('Choose a new QA report path')
+            raise ValueError("Choose a new QA report path")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.out = self.path.parent
         self.errors = []
-        self.report = dict(status='running', kind=kind, started_utc=datetime.now(timezone.utc).isoformat(),
-                           platform=sys.platform, frozen=bool(getattr(sys,'frozen',False)), qt_platform=app.platformName(),
-                           operating_system=platform.platform(),machine=platform.machine(),cpu_count=os.cpu_count(),
-                           python=sys.version.split()[0],duckdb=duckdb.__version__,qt=qVersion(),
-                           automation='QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input',
-                           checks=[], screenshots=[], style=app.property('fireblade_style'),
-                           font=dict(family=app.font().family(), point_size=app.font().pointSizeF()))
-        self.window = Window(require_case=False, rule_path=self.out/'qa-global-rules.json')
+        self.report = dict(
+            status="running",
+            kind=kind,
+            started_utc=datetime.now(timezone.utc).isoformat(),
+            platform=sys.platform,
+            frozen=bool(getattr(sys, "frozen", False)),
+            qt_platform=app.platformName(),
+            operating_system=platform.platform(),
+            machine=platform.machine(),
+            cpu_count=os.cpu_count(),
+            python=sys.version.split()[0],
+            duckdb=duckdb.__version__,
+            qt=qVersion(),
+            automation="QtTest clicks/keys and QContextMenuEvent for header menus; native Qt Windows widgets, not physical human input",
+            checks=[],
+            screenshots=[],
+            style=app.property("fireblade_style"),
+            font=dict(family=app.font().family(), point_size=app.font().pointSizeF()),
+        )
+        self.window = Window(require_case=False, rule_path=self.out / "qa-global-rules.json")
         self.window.error = lambda error: self.errors.append(str(error))
         self.window.show()
-        self.report['font'] = dict(family=app.font().family(), point_size=app.font().pointSizeF())
-        self.report['style'] = app.property('fireblade_style')
+        self.report["font"] = dict(family=app.font().family(), point_size=app.font().pointSizeF())
+        self.report["style"] = app.property("fireblade_style")
         from fireblade.validation.responsiveness import ResponsivenessProbe
+
         self.probe = ResponsivenessProbe()
         self.stalls = []
         self.lags = []
@@ -53,201 +67,270 @@ class GuiRun:
 
     def tick(self):
         now = time.monotonic()
-        gap=now-self.last_tick
+        gap = now - self.last_tick
         self.lags.append(gap)
-        if gap>.25:
-            self.stalls.append(dict(gap_ms=round(gap*1000,1),phase=self.report.get('current_check'),
-                                    status=self.window.statusBar().currentMessage(),stack=self.probe.latest_stack))
-            self.stalls=sorted(self.stalls,key=lambda item:item['gap_ms'],reverse=True)[:20]
+        if gap > 0.25:
+            self.stalls.append(
+                dict(
+                    gap_ms=round(gap * 1000, 1),
+                    phase=self.report.get("current_check"),
+                    status=self.window.statusBar().currentMessage(),
+                    stack=self.probe.latest_stack,
+                )
+            )
+            self.stalls = sorted(self.stalls, key=lambda item: item["gap_ms"], reverse=True)[:20]
         self.last_tick = now
-        if now-self.last_flush > 5:
+        if now - self.last_flush > 5:
             self.flush()
             self.last_flush = now
 
     def flush(self):
-        temporary = self.path.with_suffix('.partial')
-        temporary.write_text(json.dumps(self.report,ensure_ascii=False,indent=2),encoding='utf-8')
-        os.replace(temporary,self.path)
+        temporary = self.path.with_suffix(".partial")
+        temporary.write_text(
+            json.dumps(self.report, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        os.replace(temporary, self.path)
 
     def settle(self, timeout=180, allow_errors=False):
-        end = time.monotonic()+timeout
-        while time.monotonic()<end:
+        end = time.monotonic() + timeout
+        while time.monotonic() < end:
             self.app.processEvents()
             if self.errors and not allow_errors:
-                raise AssertionError('UI errors: '+repr(self.errors))
-            w=self.window
-            if not w.jobs and not w.pool.activeThreadCount() and (w.model is None or not w.model.jobs):
+                raise AssertionError("UI errors: " + repr(self.errors))
+            w = self.window
+            if (
+                not w.jobs
+                and not w.pool.activeThreadCount()
+                and (w.model is None or not w.model.jobs)
+            ):
                 self.app.processEvents()
                 return
             # qWait runs Qt's nested event loop while retaining Python's GIL.
             # That can starve CSV/XLSX worker code and falsify performance tests.
             # Pump widgets, then explicitly give worker threads the interpreter.
-            time.sleep(.01)
-        raise TimeoutError('GUI work timed out: '+self.window.statusBar().currentMessage())
+            time.sleep(0.01)
+        raise TimeoutError("GUI work timed out: " + self.window.statusBar().currentMessage())
 
-    def check(self,name,operation):
-        self.report['current_check']=name
+    def check(self, name, operation):
+        self.report["current_check"] = name
         self.flush()
-        first_tick=len(self.lags)
-        start=time.perf_counter()
+        first_tick = len(self.lags)
+        start = time.perf_counter()
         try:
-            result=operation()
+            result = operation()
             if self.errors:
                 raise AssertionError(repr(self.errors))
-            item=dict(name=name,status='passed',seconds=round(time.perf_counter()-start,3))
-            item['max_timer_gap_ms']=round(max(self.lags[first_tick:],default=0)*1000,1)
-            if result is not None:item['details']=result
-            if os.name=='nt':item['memory']=windows_memory()
-            self.report['checks'].append(item)
+            item = dict(name=name, status="passed", seconds=round(time.perf_counter() - start, 3))
+            item["max_timer_gap_ms"] = round(max(self.lags[first_tick:], default=0) * 1000, 1)
+            if result is not None:
+                item["details"] = result
+            if os.name == "nt":
+                item["memory"] = windows_memory()
+            self.report["checks"].append(item)
         except Exception as error:
-            self.report['checks'].append(dict(name=name,status='failed',error=str(error),seconds=round(time.perf_counter()-start,3)))
-            self.capture('failure')
+            self.report["checks"].append(
+                dict(
+                    name=name,
+                    status="failed",
+                    error=str(error),
+                    seconds=round(time.perf_counter() - start, 3),
+                )
+            )
+            self.capture("failure")
             raise
-        finally:self.flush()
+        finally:
+            self.flush()
 
-    def capture(self,name,widget=None):
+    def capture(self, name, widget=None):
         self.app.processEvents()
-        path=self.out/(name+'.png')
+        path = self.out / (name + ".png")
         if not (widget or self.window).grab().save(str(path)):
-            raise RuntimeError('Screenshot failed: '+str(path))
-        self.report['screenshots'].append(path.name)
+            raise RuntimeError("Screenshot failed: " + str(path))
+        self.report["screenshots"].append(path.name)
         return path
 
-    def modal(self,callback):
-        deadline=time.monotonic()+10
+    def modal(self, callback):
+        deadline = time.monotonic() + 10
+
         def attempt():
-            dialog=self.app.activeModalWidget()
-            if not isinstance(dialog,QDialog):
-                if time.monotonic()<deadline:QTimer.singleShot(30,attempt)
-                else:self.errors.append('Expected GUI dialog did not open')
+            dialog = self.app.activeModalWidget()
+            if not isinstance(dialog, QDialog):
+                if time.monotonic() < deadline:
+                    QTimer.singleShot(30, attempt)
+                else:
+                    self.errors.append("Expected GUI dialog did not open")
                 return
-            try:callback(dialog)
+            try:
+                callback(dialog)
             except Exception as error:
-                self.errors.append(str(error));dialog.reject()
-        QTimer.singleShot(80,attempt)
+                self.errors.append(str(error))
+                dialog.reject()
+
+        QTimer.singleShot(80, attempt)
 
     @staticmethod
-    def text(widget,value):
+    def text(widget, value):
         widget.setFocus()
-        QTest.keyClick(widget,Qt.Key_A,Qt.ControlModifier)
+        QTest.keyClick(widget, Qt.Key_A, Qt.ControlModifier)
         QApplication.clipboard().setText(value)
-        QTest.keyClick(widget,Qt.Key_V,Qt.ControlModifier)
+        QTest.keyClick(widget, Qt.Key_V, Qt.ControlModifier)
 
     @staticmethod
-    def choose(widget,index):
+    def choose(widget, index):
         widget.setFocus()
-        QTest.keyClick(widget,Qt.Key_Home)
-        for _ in range(index):QTest.keyClick(widget,Qt.Key_Down)
+        QTest.keyClick(widget, Qt.Key_Home)
+        for _ in range(index):
+            QTest.keyClick(widget, Qt.Key_Down)
 
     @staticmethod
     def accept(dialog):
-        box=dialog.findChild(QDialogButtonBox)
-        button=box.button(QDialogButtonBox.Ok) or box.button(QDialogButtonBox.Open)
-        if button is None:raise AssertionError('No dialog confirmation button')
-        QTest.mouseClick(button,Qt.LeftButton)
+        box = dialog.findChild(QDialogButtonBox)
+        button = box.button(QDialogButtonBox.Ok) or box.button(QDialogButtonBox.Open)
+        if button is None:
+            raise AssertionError("No dialog confirmation button")
+        QTest.mouseClick(button, Qt.LeftButton)
 
-    def import_csv(self,source,target):
+    def import_csv(self, source, target):
         def fill(dialog):
-            if not isinstance(dialog,ImportDialog):raise AssertionError('Unexpected import dialog')
-            self.text(dialog.target,str(target))
+            if not isinstance(dialog, ImportDialog):
+                raise AssertionError("Unexpected import dialog")
+            self.text(dialog.target, str(target))
             self.accept(dialog)
+
         self.modal(fill)
         # The same path as launching the app with a CSV or dropping it on the EXE.
         self.window.open_path(source)
         self.settle(600)
 
-    def menu(self,name,action):
-        bar=self.window.menuBar()
-        while isinstance(self.app.activePopupWidget(),QMenu):
+    def menu(self, name, action):
+        bar = self.window.menuBar()
+        while isinstance(self.app.activePopupWidget(), QMenu):
             self.app.activePopupWidget().close()
             self.app.processEvents()
-        selected=[]
-        top=next(a for a in bar.actions() if a.text().replace('&','')==name)
-        menu=top.menu()
+        selected = []
+        top = next(a for a in bar.actions() if a.text().replace("&", "") == name)
+        menu = top.menu()
+
         def find_path(current):
             for item in current.actions():
-                if item.text()==action:return [item]
+                if item.text() == action:
+                    return [item]
                 if item.menu():
-                    nested=find_path(item.menu())
-                    if nested:return [item]+nested
+                    nested = find_path(item.menu())
+                    if nested:
+                        return [item] + nested
             return None
-        path=find_path(menu)
-        if path is None:raise ValueError('GUI command unavailable: '+name+' → '+action)
+
+        path = find_path(menu)
+        if path is None:
+            raise ValueError("GUI command unavailable: " + name + " → " + action)
+
         def select(current, remaining):
-            item=remaining[0]
-            if len(remaining)==1:
+            item = remaining[0]
+            if len(remaining) == 1:
                 if not current.isVisible() or not item.isEnabled():
-                    self.errors.append('Menu action is not available: '+action)
+                    self.errors.append("Menu action is not available: " + action)
                 else:
-                    QTest.mouseClick(current,Qt.LeftButton,pos=current.actionGeometry(item).center())
+                    QTest.mouseClick(
+                        current, Qt.LeftButton, pos=current.actionGeometry(item).center()
+                    )
                 selected.append(True)
             else:
                 current.setActiveAction(item)
-                child=item.menu()
+                child = item.menu()
                 child.popup(current.mapToGlobal(current.actionGeometry(item).topRight()))
-                QTimer.singleShot(60,lambda:select(child,remaining[1:]))
-        QTimer.singleShot(60,lambda:select(menu,path))
-        QTest.mouseClick(bar,Qt.LeftButton,pos=bar.actionGeometry(top).center())
-        deadline=time.monotonic()+15
-        while not selected and time.monotonic()<deadline:
-            self.app.processEvents();time.sleep(.005)
-        if not selected:raise TimeoutError('Menu action did not run: '+action)
+                QTimer.singleShot(60, lambda: select(child, remaining[1:]))
+
+        QTimer.singleShot(60, lambda: select(menu, path))
+        QTest.mouseClick(bar, Qt.LeftButton, pos=bar.actionGeometry(top).center())
+        deadline = time.monotonic() + 15
+        while not selected and time.monotonic() < deadline:
+            self.app.processEvents()
+            time.sleep(0.005)
+        if not selected:
+            raise TimeoutError("Menu action did not run: " + action)
         # Explicitly opened submenu popups can leave their parent menu active.
-        while isinstance(self.app.activePopupWidget(),QMenu):
-            self.app.activePopupWidget().close();self.app.processEvents()
+        while isinstance(self.app.activePopupWidget(), QMenu):
+            self.app.activePopupWidget().close()
+            self.app.processEvents()
         self.settle()
 
-    def header(self,column,label):
-        w=self.window;section=column+1
-        w.tree.scrollTo(w.model.index(0,section))
+    def header(self, column, label):
+        w = self.window
+        section = column + 1
+        w.tree.scrollTo(w.model.index(0, section))
         self.app.processEvents()
-        header=w.tree.header()
-        x=header.sectionViewportPosition(section)+min(header.sectionSize(section)//2,40)
-        if not 0<=x<header.viewport().width():raise AssertionError('Header not visible')
+        header = w.tree.header()
+        x = header.sectionViewportPosition(section) + min(header.sectionSize(section) // 2, 40)
+        if not 0 <= x < header.viewport().width():
+            raise AssertionError("Header not visible")
+
         def select():
-            menu=self.app.activePopupWidget()
-            if not isinstance(menu,QMenu):self.errors.append('Header menu not opened');return
+            menu = self.app.activePopupWidget()
+            if not isinstance(menu, QMenu):
+                self.errors.append("Header menu not opened")
+                return
             try:
-                action=next(a for a in menu.actions() if a.text()==label)
-                QTest.mouseClick(menu,Qt.LeftButton,pos=menu.actionGeometry(action).center())
+                action = next(a for a in menu.actions() if a.text() == label)
+                QTest.mouseClick(menu, Qt.LeftButton, pos=menu.actionGeometry(action).center())
             except Exception as error:
-                self.errors.append(str(error));menu.close()
-        QTimer.singleShot(60,select)
-        point=QPoint(x,header.height()//2)
-        event=QContextMenuEvent(QContextMenuEvent.Mouse,point,header.viewport().mapToGlobal(point))
-        QApplication.sendEvent(header.viewport(),event)
+                self.errors.append(str(error))
+                menu.close()
+
+        QTimer.singleShot(60, select)
+        point = QPoint(x, header.height() // 2)
+        event = QContextMenuEvent(
+            QContextMenuEvent.Mouse, point, header.viewport().mapToGlobal(point)
+        )
+        QApplication.sendEvent(header.viewport(), event)
         self.settle()
 
-    def button(self,label):
-        button=next(b for b in self.window.findChildren(QPushButton) if b.text()==label and b.isVisible())
-        QTest.mouseClick(button,Qt.LeftButton)
+    def button(self, label):
+        button = next(
+            b for b in self.window.findChildren(QPushButton) if b.text() == label and b.isVisible()
+        )
+        QTest.mouseClick(button, Qt.LeftButton)
         self.settle()
 
-    def work(self,operation,timeout=300):
-        result=[]
-        self.window.run(operation,result.append,exclusive=True)
+    def work(self, operation, timeout=300):
+        result = []
+        self.window.run(operation, result.append, exclusive=True)
         self.settle(timeout)
-        if len(result)!=1:raise AssertionError('Operation did not complete')
+        if len(result) != 1:
+            raise AssertionError("Operation did not complete")
         return result[0]
 
-    def finish(self,error=None):
-        if error:self.report['error']=str(error)
-        self.report['status']='failed' if error or self.errors else 'passed'
-        self.report['ui_errors']=self.errors
+    def finish(self, error=None):
+        if error:
+            self.report["error"] = str(error)
+        self.report["status"] = "failed" if error or self.errors else "passed"
+        self.report["ui_errors"] = self.errors
         self.timer.stop()
-        self.report['responsiveness_diagnostics']=self.probe.stop()
-        self.report['responsiveness_stalls']=self.stalls
+        self.report["responsiveness_diagnostics"] = self.probe.stop()
+        self.report["responsiveness_stalls"] = self.stalls
         if self.lags:
-            ordered=sorted(self.lags)
-            self.report['ui_heartbeat']=dict(interval_ms=50,max_gap_ms=round(max(ordered)*1000,1),
-                                             p95_gap_ms=round(ordered[int((len(ordered)-1)*.95)]*1000,1),samples=len(ordered))
-        if os.name=='nt':self.report['memory']=windows_memory()
+            ordered = sorted(self.lags)
+            self.report["ui_heartbeat"] = dict(
+                interval_ms=50,
+                max_gap_ms=round(max(ordered) * 1000, 1),
+                p95_gap_ms=round(ordered[int((len(ordered) - 1) * 0.95)] * 1000, 1),
+                samples=len(ordered),
+            )
+        if os.name == "nt":
+            self.report["memory"] = windows_memory()
         try:
-            if self.window.jobs or self.window.pool.activeThreadCount() or (self.window.model and self.window.model.jobs):
-                self.window.interrupt_queries();self.settle(30,allow_errors=True)
-            if not self.window.close():raise RuntimeError('Window did not close')
+            if (
+                self.window.jobs
+                or self.window.pool.activeThreadCount()
+                or (self.window.model and self.window.model.jobs)
+            ):
+                self.window.interrupt_queries()
+                self.settle(30, allow_errors=True)
+            if not self.window.close():
+                raise RuntimeError("Window did not close")
         except Exception as cleanup:
-            self.report['status']='failed';self.report['cleanup_error']=str(cleanup)
-        self.report['finished_utc']=datetime.now(timezone.utc).isoformat()
+            self.report["status"] = "failed"
+            self.report["cleanup_error"] = str(cleanup)
+        self.report["finished_utc"] = datetime.now(timezone.utc).isoformat()
         self.flush()
-        return 0 if self.report['status']=='passed' else 1
+        return 0 if self.report["status"] == "passed" else 1

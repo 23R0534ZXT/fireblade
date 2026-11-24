@@ -1,4 +1,5 @@
 """A case written on Windows must read the same in a Linux container."""
+
 from fireblade.core.paths import evidence_name
 
 

@@ -5,6 +5,7 @@ client files and fail when a menu entry exists without its handler, or when a
 handler exists without its entry. They are the cheap half of the proof; the
 browser pass is the other half.
 """
+
 import re
 from pathlib import Path
 
@@ -22,9 +23,22 @@ def _read(path: Path) -> str:
 def test_the_row_menu_offers_every_cell_action():
     """One entry in the menu, one handler in the switch, for each action."""
     js, html = _read(APP), _read(INDEX)
-    actions = ("cell-json", "copy-value", "copy-row", "filter-value", "exclude-value",
-               "sort-asc", "sort-desc", "group-by-column", "pin-column", "hide-column",
-               "bookmark-row", "unmark-selection", "rule-from-cell", "pivot")
+    actions = (
+        "cell-json",
+        "copy-value",
+        "copy-row",
+        "filter-value",
+        "exclude-value",
+        "sort-asc",
+        "sort-desc",
+        "group-by-column",
+        "pin-column",
+        "hide-column",
+        "bookmark-row",
+        "unmark-selection",
+        "rule-from-cell",
+        "pivot",
+    )
     for action in actions:
         assert f'data-act="{action}"' in html, f"no menu entry for {action}"
         assert f'case "{action}":' in js, f"no handler for {action}"
@@ -93,8 +107,12 @@ def test_the_compatibility_dialog_lists_and_installs_profiles():
     assert 'id="compat-modal"' in html
     assert 'data-act="plugin-install"' in html
     assert 'data-act="profile-create"' in html
-    for name in ("openCompatibility", "loadCompatibility", "installPluginFile",
-                 "createProfileFromAnalysis"):
+    for name in (
+        "openCompatibility",
+        "loadCompatibility",
+        "installPluginFile",
+        "createProfileFromAnalysis",
+    ):
         assert f"function {name}(" in js, name
     assert '"/api/plugins"' in js
     assert "/profiles`" in js
@@ -121,20 +139,24 @@ def test_the_timeline_offers_the_three_date_readings():
         assert value in js, value
     assert 'params.set("dates", dates);' in js
     # The selectors are rebuilt with the timeline, so the choice must survive it.
-    assert "timelineState.dates[String(source.id)] || \"auto\"" in js
+    assert 'timelineState.dates[String(source.id)] || "auto"' in js
 
 
 def test_the_palette_offers_presets_and_custom_colours():
-    js, html, css = _read(APP), _read(INDEX), (WEB / "static" / "app.css").read_text(encoding="utf-8")
+    js, html, css = (
+        _read(APP),
+        _read(INDEX),
+        (WEB / "static" / "app.css").read_text(encoding="utf-8"),
+    )
     assert 'id="palette-theme"' in html
     for value in ('value="light"', 'value="dark"', 'value="custom"'):
         assert value in html, value
     # The six colours of the desktop's own dialog, in its order.
     for key in ("window", "text", "base", "alternate", "highlight", "selection_text"):
         assert f'data-colour="{key}"' in html, key
-    assert 'data-theme="dark"' in css and "[data-theme=\"dark\"]" in css
+    assert 'data-theme="dark"' in css and '[data-theme="dark"]' in css
     assert "function applyPalette(" in js and "function loadPalette(" in js
-    assert "localStorage.setItem(\"fireblade.palette\"" in js
+    assert 'localStorage.setItem("fireblade.palette"' in js
     assert "loadPalette();" in js
 
 
@@ -161,7 +183,7 @@ def test_the_tracking_tab_holds_three_lists():
 def test_no_function_is_declared_twice():
     """A classic script lets the last definition win, silently: one handler dies."""
     js = _read(APP)
-    names = re.findall(r'^(?:async )?function ([A-Za-z_][\w]*)\(', js, flags=re.M)
+    names = re.findall(r"^(?:async )?function ([A-Za-z_][\w]*)\(", js, flags=re.M)
     duplicates = sorted({name for name in names if names.count(name) > 1})
     assert not duplicates, f"functions declared twice: {duplicates}"
 
@@ -169,8 +191,8 @@ def test_no_function_is_declared_twice():
 def test_no_top_level_name_is_declared_twice():
     """A const or a function declared twice is a silent override, not an error."""
     js = _read(APP)
-    names = re.findall(r'^(?:async )?function ([A-Za-z_][\w]*)\(', js, flags=re.M)
-    names += re.findall(r'^(?:const|let|var) ([A-Za-z_][\w]*)\s*=', js, flags=re.M)
+    names = re.findall(r"^(?:async )?function ([A-Za-z_][\w]*)\(", js, flags=re.M)
+    names += re.findall(r"^(?:const|let|var) ([A-Za-z_][\w]*)\s*=", js, flags=re.M)
     duplicates = sorted({name for name in names if names.count(name) > 1})
     assert not duplicates, f"declared twice at the top level: {duplicates}"
 
@@ -179,8 +201,15 @@ def test_the_window_keeps_its_messages_and_its_commands():
     js, html = _read(APP), _read(INDEX)
     for name in ("palette-modal", "messages-modal", "analyses-modal", "history-modal"):
         assert f'id="{name}"' in html, name
-    for name in ("openPalette", "openMessages", "openAnalysesDialog", "openCaseHistory",
-                 "restoreHistory", "saveAnalysesOrder", "paletteEntries"):
+    for name in (
+        "openPalette",
+        "openMessages",
+        "openAnalysesDialog",
+        "openCaseHistory",
+        "restoreHistory",
+        "saveAnalysesOrder",
+        "paletteEntries",
+    ):
         assert f"function {name}(" in js, name
     assert "rememberMessage(" in js and "messageLog" in js
     assert "/history" in js and "analyses/reorder" in js
@@ -197,8 +226,14 @@ def test_no_element_id_appears_twice():
 def test_the_detection_rules_dialog_edits_a_rule():
     js, html = _read(APP), _read(INDEX)
     assert 'id="detrules-open"' in html and 'id="detrules-modal"' in html
-    for name in ("openDetectionRules", "loadDetectionRules", "selectDetectionRule",
-                 "saveDetectionRule", "resetDetectionRule", "toggleDetectionRule"):
+    for name in (
+        "openDetectionRules",
+        "loadDetectionRules",
+        "selectDetectionRule",
+        "saveDetectionRule",
+        "resetDetectionRule",
+        "toggleDetectionRule",
+    ):
         assert f"function {name}(" in js, name
     assert "apiPut(" in js and "/rules/" in js
     # An edit is kept beside the tool pack, and a reset gives the pack's rule back.
@@ -230,7 +265,7 @@ def test_the_import_verification_shows_what_was_not_attested():
 def test_the_timeline_exports_and_shows_undated_rows():
     js, html = _read(APP), _read(INDEX)
     assert 'id="timeline-undated"' in html and 'id="timeline-export"' in html
-    assert 'include_undated' in js
+    assert "include_undated" in js
     assert "timeline/export" in js
 
 
@@ -252,8 +287,15 @@ def test_the_grid_offers_dates_summaries_and_sort_priority():
     js, html = _read(APP), _read(INDEX)
     for name in ("date-modal", "summaries-modal", "sort-modal", "rule-values"):
         assert f'id="{name}"' in html, name
-    for name in ("openDateFilter", "addDateCondition", "openSummaries", "applySummaries",
-                 "openSortPriority", "applySortPriority", "loadRuleValues"):
+    for name in (
+        "openDateFilter",
+        "addDateCondition",
+        "openSummaries",
+        "applySummaries",
+        "openSortPriority",
+        "applySortPriority",
+        "loadRuleValues",
+    ):
         assert f"function {name}(" in js, name
     assert "/api/date-ranges" in js
     # a summary is sent as column:operation:kind, the shape the route reads
@@ -284,7 +326,7 @@ def test_the_display_preferences_are_remembered_and_applied():
     for name in ("loadCopyPrefs", "saveCopyPrefs", "formatTimestamp"):
         assert f"function {name}(" in js, name
     assert "copyPrefs.headers" in js and "state.timestamps" in js
-    assert "localStorage.setItem(\"fireblade.display\"" in js
+    assert 'localStorage.setItem("fireblade.display"' in js
 
 
 def test_a_disk_can_be_analysed_from_the_window():
@@ -322,7 +364,7 @@ def test_a_rule_is_read_as_a_sentence():
     js = _read(APP)
     assert "function ruleSentence(" in js
     assert "is not empty" in js and "does not contain" in js
-    assert '${escapeHtml(ruleSentence(rule))}' in js
+    assert "${escapeHtml(ruleSentence(rule))}" in js
 
 
 def test_every_menu_entry_has_a_handler():
@@ -342,8 +384,16 @@ def test_the_eight_menus_of_the_desktop():
 
     js, html = _read(APP), _read(INDEX)
     names = re.findall(r'<div class="m" data-menu="([a-z]+)"', html)
-    assert names == ["case", "analysis", "detection", "edit", "view", "filters",
-                     "exporter", "help"], names
+    assert names == [
+        "case",
+        "analysis",
+        "detection",
+        "edit",
+        "view",
+        "filters",
+        "exporter",
+        "help",
+    ], names
     for name in names:
         assert f'data-for="{name}"' in html, name
     # A menu is not a dead label: no entry may sit on a greyed "off" class.
@@ -365,13 +415,13 @@ def test_the_header_follows_the_visible_columns():
     import re
 
     js = _read(APP)
-    body = js[js.index("function renderGrid() {"):js.index("function renderGroupChart()")]
-    assert "$(\"cols\").innerHTML" in body
+    body = js[js.index("function renderGrid() {") : js.index("function renderGroupChart()")]
+    assert '$("cols").innerHTML' in body
     assert "shown.map(({ index })" in body
     assert "shown.forEach(({ index })" in body
     # The header loop must not iterate every column any more.
-    marker = 'const head = [' + "'<tr><th></th>'];"
-    head_block = body[body.index(marker):body.index('$("head").innerHTML')]
+    marker = "const head = [" + "'<tr><th></th>'];"
+    head_block = body[body.index(marker) : body.index('$("head").innerHTML')]
     assert "state.columns.forEach" not in head_block
     # The absolute index still addresses the filter, the sort and the grip.
     assert 'data-filter="${index - 1}"' in body and 'data-grip="${index}"' in body
@@ -391,17 +441,27 @@ def test_the_imports_panel_lists_files_like_the_desktop():
     for column in ("Status", "File", "Readers", "Reason", "Outputs"):
         assert f"<th>{column}</th>" in html, column
     assert 'id="imports-search"' in html
-    for action in ("import-view-file", "import-copy-unread", "import-export-list",
-                   "import-park", "import-delete"):
+    for action in (
+        "import-view-file",
+        "import-copy-unread",
+        "import-export-list",
+        "import-park",
+        "import-delete",
+    ):
         assert f'data-act="{action}"' in html, action
-    for name in ("viewCollectedFile", "copyUnprocessedFiles", "exportCollectedList",
-                 "parkCollectedFile", "deleteCollectedFile"):
+    for name in (
+        "viewCollectedFile",
+        "copyUnprocessedFiles",
+        "exportCollectedList",
+        "parkCollectedFile",
+        "deleteCollectedFile",
+    ):
         assert f"function {name}(" in js, name
 
 
 def test_the_import_report_sets_a_file_aside():
     js, html = _read(APP), _read(INDEX)
-    assert 'id="report-filter"' in html and 'Set aside parks a file' in html
+    assert 'id="report-filter"' in html and "Set aside parks a file" in html
     for name in ("renderRetryList", "loadReports", "setFileAside", "removeCollectedFile"):
         assert f"function {name}(" in js, name
     assert "/collection-files/aside" in js and "/collection-files/remove" in js
@@ -429,17 +489,21 @@ def test_a_rule_without_a_visual_still_paints_its_row():
     """`visual: "none"` is a string, and a truthy one: the row must still be coloured."""
     js = _read(APP)
     assert 'rule.visual === "none"' in js
-    assert "const plain = rule && (!rule.visual || rule.visual === \"none\")" in js
+    assert 'const plain = rule && (!rule.visual || rule.visual === "none")' in js
 
 
 def test_a_rule_combines_conditions():
     js, html = _read(APP), _read(INDEX)
     assert 'id="rule-logic"' in html and 'id="rule-add-condition"' in html
     assert 'id="rule-conditions"' in html
-    for name in ("matchesConditionTree", "conditionSentence", "ruleConditionPayload",
-                 "addConditionRow"):
+    for name in (
+        "matchesConditionTree",
+        "conditionSentence",
+        "ruleConditionPayload",
+        "addConditionRow",
+    ):
         assert f"function {name}(" in js, name
-    assert '"and", "or", "not"' in js or "logic === \"not\"" in js
+    assert '"and", "or", "not"' in js or 'logic === "not"' in js
 
 
 def test_the_row_height_dialog_asks_the_three_heights():
@@ -456,7 +520,7 @@ def test_the_highlight_marks_without_breaking_escaping():
     js = _read(APP)
     assert "function markText(" in js and "function openHighlight(" in js
     assert '"<mark>"' in js and "escapeHtml(raw.slice(from, at))" in js
-    assert 'state.highlight = answer.trim()' in js
+    assert "state.highlight = answer.trim()" in js
 
 
 def test_the_derived_dialog_asks_what_the_desktop_asks():
@@ -508,8 +572,15 @@ def test_the_ioc_panel_lists_indicators_and_matches():
     js, html = _read(APP), _read(INDEX)
     for column in ("Type", "IOC original", "Normalised", "Label", "Rows"):
         assert f"<th>{column}</th>" in html, column
-    for column in ("Source date", "IOC", "Analysis", "Source row", "Column",
-                   "Observed value", "Rule"):
+    for column in (
+        "Source date",
+        "IOC",
+        "Analysis",
+        "Source row",
+        "Column",
+        "Observed value",
+        "Rule",
+    ):
         assert f"<th>{column}</th>" in html, column
     for name in ("iocLines", "iocKind", "exportIocMatches", "exportIocSummary"):
         assert f"function {name}(" in js, name

@@ -1,11 +1,13 @@
 """Adding data requires a case: the entry points stay greyed out until one exists."""
+
 import pytest
 
 
 @pytest.fixture
 def window(qt_application):
     from fireblade.ui.app import Window
-    widget = Window(require_case=True)   # the real application path
+
+    widget = Window(require_case=True)  # the real application path
     yield widget
     widget.close()
 
@@ -30,6 +32,7 @@ def test_the_entry_points_reopen_once_a_case_exists(window, monkeypatch):
 def test_the_backstop_still_refuses_without_a_case(window, monkeypatch):
     """Even if a stray path reaches the handler, it must not start without a case."""
     from fireblade.ui.start_workflow import StartWorkflowMixin
+
     seen = {}
     monkeypatch.setattr(window, "show_investigations", lambda: seen.setdefault("shown", True))
     monkeypatch.setattr(window, "active_investigation", None)

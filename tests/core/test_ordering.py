@@ -12,15 +12,34 @@ from fireblade.core.settings import Settings
 @pytest.fixture
 def case(tmp_path):
     source = tmp_path / "numbers.csv"
-    values = [None, "", "bad", "001", "-0", "+12", "  -9007199254740993  ",
-              "9007199254740992", "9007199254740993", "1.234567890123",
-              "1e3", "2.0", ".5", "1,234", "-1e-12",
-              "9999999999999999999999999999", "10000000000000000000000000000",
-              "99999999999999999999999999999999999999999999999999",
-              "000000000000000000000000000000000000000000000000001",
-              "\t-123\n", "--2", "3.14", "NaN", "Infinity"]
+    values = [
+        None,
+        "",
+        "bad",
+        "001",
+        "-0",
+        "+12",
+        "  -9007199254740993  ",
+        "9007199254740992",
+        "9007199254740993",
+        "1.234567890123",
+        "1e3",
+        "2.0",
+        ".5",
+        "1,234",
+        "-1e-12",
+        "9999999999999999999999999999",
+        "10000000000000000000000000000",
+        "99999999999999999999999999999999999999999999999999",
+        "000000000000000000000000000000000000000000000000001",
+        "\t-123\n",
+        "--2",
+        "3.14",
+        "NaN",
+        "Infinity",
+    ]
     rng = random.Random(234)
-    values += [str(rng.randrange(-10**26, 10**26)) for _ in range(400)]
+    values += [str(rng.randrange(-(10**26), 10**26)) for _ in range(400)]
     with source.open("w", encoding="utf-8", newline="") as out:
         writer = csv.writer(out)
         writer.writerow(["Value", "Group", "Date"])
@@ -37,7 +56,7 @@ def test_integer_path_matches_native_decimal_conversion(case):
     # exponent syntax, invalid values and deterministic random 26-digit integers.
     fast = case.numeric_expression('"c0"')
     mismatches = case.db.execute(
-        f'SELECT c0 FROM events WHERE ({fast}) IS DISTINCT FROM try_cast(c0 AS DECIMAL(38,10))'
+        f"SELECT c0 FROM events WHERE ({fast}) IS DISTINCT FROM try_cast(c0 AS DECIMAL(38,10))"
     ).fetchall()
     assert mismatches == []
 
@@ -46,17 +65,24 @@ def test_first_window_does_not_materialize_a_full_order(case):
     view = View(sort_column=0, sort_type="number")
     case.page(view)
     case.page(view, offset=25)
-    assert not case.db.execute("SELECT count(*) FROM information_schema.tables WHERE table_name='__timeline_order'").fetchone()[0]
+    assert not case.db.execute(
+        "SELECT count(*) FROM information_schema.tables WHERE table_name='__timeline_order'"
+    ).fetchone()[0]
 
 
 @pytest.mark.parametrize("sort_type,column", [("text", 0), ("number", 0), ("timestamp", 2)])
 @pytest.mark.parametrize("descending", [False, True])
 def test_cached_pages_match_native_order(case, sort_type, column, descending):
     view = View(sort_column=column, sort_type=sort_type, descending=descending)
-    expression = {"text": f"c{column}", "number": f"try_cast(c{column} AS DECIMAL(38,10))",
-                  "timestamp": f"try_cast(c{column} AS TIMESTAMP)"}[sort_type]
+    expression = {
+        "text": f"c{column}",
+        "number": f"try_cast(c{column} AS DECIMAL(38,10))",
+        "timestamp": f"try_cast(c{column} AS TIMESTAMP)",
+    }[sort_type]
     direction = "DESC" if descending else "ASC"
-    expected = case.db.execute(f"SELECT * FROM events ORDER BY {expression} {direction} NULLS LAST, __row_id").fetchall()
+    expected = case.db.execute(
+        f"SELECT * FROM events ORDER BY {expression} {direction} NULLS LAST, __row_id"
+    ).fetchall()
     actual = []
     for offset in (0, 250):
         actual += case.page(view, offset=offset)
@@ -86,21 +112,30 @@ def test_cache_changes_with_filters_groups_and_bookmarks(case):
     case.bookmark(5, "five")
     case.page(view, offset=250)
     expected = case.db.execute(
-        "SELECT * FROM events WHERE __row_id IN (1,5)" + case.order(view)).fetchall()
+        "SELECT * FROM events WHERE __row_id IN (1,5)" + case.order(view)
+    ).fetchall()
     assert case.page(view, offset=1) == expected[1:]
-    assert case.db.execute("SELECT count(*) FROM information_schema.tables WHERE table_name='__timeline_order'").fetchone()[0] == 1
+    assert (
+        case.db.execute(
+            "SELECT count(*) FROM information_schema.tables WHERE table_name='__timeline_order'"
+        ).fetchone()[0]
+        == 1
+    )
 
 
 def test_cancelled_cache_build_is_not_reused(case):
     native = case.db
+
     class CancelAfterBuild:
         def execute(self, sql, *args):
             result = native.execute(sql, *args)
             if sql.startswith("CREATE OR REPLACE TEMP TABLE"):
                 case.interrupt()
             return result
+
         def __getattr__(self, name):
             return getattr(native, name)
+
     case.db = CancelAfterBuild()
     view = View(sort_column=0, sort_type="number")
     try:
@@ -108,7 +143,9 @@ def test_cancelled_cache_build_is_not_reused(case):
             case.page(view, offset=250)
     finally:
         case.db = native
-    expected = native.execute("SELECT * FROM events" + case.order(view) + " LIMIT 250 OFFSET 250").fetchall()
+    expected = native.execute(
+        "SELECT * FROM events" + case.order(view) + " LIMIT 250 OFFSET 250"
+    ).fetchall()
     assert case.page(view, offset=250) == expected
     assert case.count(View()) == 424
 
@@ -122,7 +159,9 @@ def test_order_cache_can_be_disabled(tmp_path):
         view = View(sort_column=0, sort_type="number")
         assert [row[1] for row in case.page(view, offset=1)] == ["002", "003"]
         assert case.page(view, offset=1000) == []
-        assert not case.db.execute("SELECT count(*) FROM information_schema.tables WHERE table_name='__timeline_order'").fetchone()[0]
+        assert not case.db.execute(
+            "SELECT count(*) FROM information_schema.tables WHERE table_name='__timeline_order'"
+        ).fetchone()[0]
     finally:
         case.close()
 
@@ -130,21 +169,29 @@ def test_order_cache_can_be_disabled(tmp_path):
 def test_deep_source_order_and_filtered_order_cache_only_identifiers(tmp_path):
     from fireblade.core.models import Filter
     from fireblade.core.settings import Settings
-    source=tmp_path/'wide.csv'
-    with source.open('w',encoding='utf-8') as stream:
-        stream.write('Group,Payload\n')
-        for index in range(1500):stream.write(f'{index%3},record-{index:04}-'+('x'*2048)+'\n')
-    case=Case(tmp_path/'source-order.timeline',settings=Settings(memory_mb=64,threads=1,page_size=25,max_loaded_rows=100))
+
+    source = tmp_path / "wide.csv"
+    with source.open("w", encoding="utf-8") as stream:
+        stream.write("Group,Payload\n")
+        for index in range(1500):
+            stream.write(f"{index % 3},record-{index:04}-" + ("x" * 2048) + "\n")
+    case = Case(
+        tmp_path / "source-order.timeline",
+        settings=Settings(memory_mb=64, threads=1, page_size=25, max_loaded_rows=100),
+    )
     try:
         case.import_csv(source)
-        rows=case.page(View(),offset=1475)
-        assert [row[0] for row in rows]==list(range(1476,1501))
-        assert rows[-1][2].startswith('record-1499-')
-        columns=[row[0] for row in case.db.execute('DESCRIBE __timeline_order').fetchall()]
-        assert columns==['position','__row_id']
-        view=View(filters=[Filter(0,'eq','1')])
-        filtered=case.page(view,offset=475)
-        assert [row[0] for row in filtered]==[index+1 for index in range(1500) if index%3==1][475:500]
-        assert case.db.execute('SELECT count(*) FROM __timeline_order').fetchone()[0]==500
-        assert case.page(View(),offset=0)[0][0]==1
-    finally:case.close()
+        rows = case.page(View(), offset=1475)
+        assert [row[0] for row in rows] == list(range(1476, 1501))
+        assert rows[-1][2].startswith("record-1499-")
+        columns = [row[0] for row in case.db.execute("DESCRIBE __timeline_order").fetchall()]
+        assert columns == ["position", "__row_id"]
+        view = View(filters=[Filter(0, "eq", "1")])
+        filtered = case.page(view, offset=475)
+        assert [row[0] for row in filtered] == [
+            index + 1 for index in range(1500) if index % 3 == 1
+        ][475:500]
+        assert case.db.execute("SELECT count(*) FROM __timeline_order").fetchone()[0] == 500
+        assert case.page(View(), offset=0)[0][0] == 1
+    finally:
+        case.close()

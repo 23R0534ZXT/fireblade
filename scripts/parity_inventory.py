@@ -7,6 +7,7 @@ ported only when its line is ticked and a test covers it.
 
     python scripts/parity_inventory.py --src src/fireblade/ui --out docs/development/PARITY.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +28,11 @@ def string_labels(node: ast.AST) -> list[str]:
             if 2 <= len(text) <= 120 and not text.startswith(("fireblade", "Q", "%")):
                 labels.append(text)
         elif isinstance(child, ast.Call) and getattr(child.func, "id", "") == "translate":
-            if child.args and isinstance(child.args[0], ast.Constant) and isinstance(child.args[0].value, str):
+            if (
+                child.args
+                and isinstance(child.args[0], ast.Constant)
+                and isinstance(child.args[0].value, str)
+            ):
                 labels.append(child.args[0].value.strip())
     return labels
 
@@ -58,15 +63,22 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--src", type=Path, default=Path("src/fireblade/ui"))
     parser.add_argument("--out", type=Path, default=Path("docs/development/PARITY.md"))
-    parser.add_argument("--host", type=Path, default=None,
-                        help="markdown file listing the labels the Host edition already covers, one per line")
+    parser.add_argument(
+        "--host",
+        type=Path,
+        default=None,
+        help="markdown file listing the labels the Host edition already covers, one per line",
+    )
     args = parser.parse_args(argv)
 
     entries = collect(sorted(args.src.glob("*.py")))
     covered = set()
     if args.host and args.host.is_file():
-        covered = {line.strip() for line in args.host.read_text(encoding="utf-8").splitlines()
-                   if line.strip() and not line.startswith("#")}
+        covered = {
+            line.strip()
+            for line in args.host.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.startswith("#")
+        }
 
     files = Counter(name for names in entries.values() for name in names)
     lines = [
@@ -78,7 +90,8 @@ def main(argv=None) -> int:
         "",
         f"- commands found: **{len(entries)}**",
         f"- covered by Host: **{len([l for l in entries if l in covered])}**",
-        f"- declared in: " + ", ".join(f"`{name}` ({count})" for name, count in files.most_common(12)),
+        f"- declared in: "
+        + ", ".join(f"`{name}` ({count})" for name, count in files.most_common(12)),
         "",
         "| | command | declared in |",
         "| --- | --- | --- |",

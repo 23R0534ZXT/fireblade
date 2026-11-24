@@ -1,4 +1,5 @@
 """Window commands for global rules; persistence and matching stay independent."""
+
 from pathlib import Path
 
 from PySide6.QtWidgets import QFileDialog
@@ -10,7 +11,9 @@ from fireblade.runtime.windows_paths import user_directory
 
 class SharedRulesMixin:
     def setup_shared_rules(self, path=None):
-        self.rule_store = RuleStore(path if path is not None else user_directory() / "regles-globales.json")
+        self.rule_store = RuleStore(
+            path if path is not None else user_directory() / "regles-globales.json"
+        )
         self.rule_book, self.global_rules_error = RuleBook(), None
         self.reload_global_rules()
 
@@ -30,7 +33,9 @@ class SharedRulesMixin:
     def global_rules_for_view(self):
         if self.global_rules_error:
             self.rules_summary.setText("Règles globales : fichier invalide")
-            self.rules_summary.setToolTip(f"{self.rule_store.path}\n{self.global_rules_error}\nImporter un fichier valide ou corriger puis recharger.")
+            self.rules_summary.setToolTip(
+                f"{self.rule_store.path}\n{self.global_rules_error}\nImporter un fichier valide ou corriger puis recharger."
+            )
             return []
         if not self.case:
             self.rules_summary.clear()
@@ -39,9 +44,14 @@ class SharedRulesMixin:
             self.rules_summary.setText("Règles globales : désactivées")
             self.rules_summary.setToolTip("Désactivées pour cette vue uniquement")
             return []
-        rules, skipped = self.rule_book.adapt(self.case.headers,self.case.expression_functions)
+        rules, skipped = self.rule_book.adapt(self.case.headers, self.case.expression_functions)
         active = sum(rule.enabled for rule in rules)
-        self.rules_summary.setText(f"Règles globales : {active} active(s)" + (f", {len(skipped)} non applicable(s)" if skipped else "") if self.rule_book.rules else "")
+        self.rules_summary.setText(
+            f"Règles globales : {active} active(s)"
+            + (f", {len(skipped)} non applicable(s)" if skipped else "")
+            if self.rule_book.rules
+            else ""
+        )
         self.rules_summary.setToolTip("\n".join(skipped) if skipped else str(self.rule_store.path))
         return rules
 
@@ -54,20 +64,28 @@ class SharedRulesMixin:
         if self.busy:
             return
         if self.global_rules_error:
-            self.error(f"Le fichier {self.rule_store.path} est invalide :\n{self.global_rules_error}\nCorrigez-le ou importez un fichier de règles valide.")
+            self.error(
+                f"Le fichier {self.rule_store.path} est invalide :\n{self.global_rules_error}\nCorrigez-le ou importez un fichier de règles valide."
+            )
             return
         book = self.rule_book.with_columns(self.case.headers if self.case else [])
         if not book.headers:
             self.statusBar().showMessage("Ouvrez une analyse pour proposer ses noms de colonnes")
             return
-        dialog = RulesDialog(book.headers, book.rules, self,functions={**book.functions,**(self.case.expression_functions if self.case else {})})
+        dialog = RulesDialog(
+            book.headers,
+            book.rules,
+            self,
+            functions={**book.functions, **(self.case.expression_functions if self.case else {})},
+        )
         dialog.setWindowTitle("Règles globales · colonnes absentes = règle non appliquée")
         accepted = dialog.exec()
         dialog.deleteLater()
         if not accepted:
             return
         book.rules = dialog.rules
-        if self.case:book.functions.update(self.case.expression_functions)
+        if self.case:
+            book.functions.update(self.case.expression_functions)
         try:
             self.rule_store.save(book)
         except Exception as exc:
@@ -76,13 +94,17 @@ class SharedRulesMixin:
         self.rule_book = book
         if self.case:
             self.apply()
-        self.statusBar().showMessage("Règles globales enregistrées pour toutes les analyses compatibles")
+        self.statusBar().showMessage(
+            "Règles globales enregistrées pour toutes les analyses compatibles"
+        )
 
     def import_global_rules(self, path=None):
         if self.busy:
             return
         if not path:
-            path, _ = QFileDialog.getOpenFileName(self, "Importer et remplacer les règles globales", "", "Règles Fireblade (*.json)")
+            path, _ = QFileDialog.getOpenFileName(
+                self, "Importer et remplacer les règles globales", "", "Règles Fireblade (*.json)"
+            )
         if not path:
             return
         try:
@@ -103,10 +125,16 @@ class SharedRulesMixin:
             self.error(self.global_rules_error)
             return
         if not path:
-            path, _ = QFileDialog.getSaveFileName(self, "Exporter les règles globales", "regles-fireblade.json", "Règles Fireblade (*.json)")
+            path, _ = QFileDialog.getSaveFileName(
+                self,
+                "Exporter les règles globales",
+                "regles-fireblade.json",
+                "Règles Fireblade (*.json)",
+            )
         if not path:
             return
-        if not self.export_destination_is_safe(path):return
+        if not self.export_destination_is_safe(path):
+            return
         try:
             target = Path(path).resolve()
             atomic_write(target, self.rule_book.to_bytes())

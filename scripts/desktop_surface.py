@@ -6,6 +6,7 @@ dialog titles and shortcuts, so the count it gives is a floor, not the surface.
 This one walks every Qt widget call with a literal, plus menus, tabs, actions
 and window titles, so nothing reachable is left out of the audit.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,8 +20,25 @@ ACTION_CALLS = {"addAction", "addMenu", "addTab", "addItem", "insertAction", "in
 BUTTON_CALLS = {"QPushButton", "QToolButton", "QCheckBox", "QRadioButton", "QCommandLinkButton"}
 TITLE_CALLS = {"setWindowTitle"}
 # A label that only decorates is not a feature: these are captions and chrome.
-SKIP = {"text", "number", "timestamp", "value", "year", "month", "day", "OK", "Cancel",
-        "Annuler", "Valider", "Fermer", "Close", "Ouvrir", "Open", "Enregistrer", "Save"}
+SKIP = {
+    "text",
+    "number",
+    "timestamp",
+    "value",
+    "year",
+    "month",
+    "day",
+    "OK",
+    "Cancel",
+    "Annuler",
+    "Valider",
+    "Fermer",
+    "Close",
+    "Ouvrir",
+    "Open",
+    "Enregistrer",
+    "Save",
+}
 
 
 def literals(node: ast.AST) -> list[str]:
@@ -31,7 +49,11 @@ def literals(node: ast.AST) -> list[str]:
             if 2 <= len(text) <= 160:
                 found.append(text)
         elif isinstance(child, ast.Call) and getattr(child.func, "id", "") == "translate":
-            if child.args and isinstance(child.args[0], ast.Constant) and isinstance(child.args[0].value, str):
+            if (
+                child.args
+                and isinstance(child.args[0], ast.Constant)
+                and isinstance(child.args[0].value, str)
+            ):
                 found.append(child.args[0].value.strip())
     return found
 
@@ -65,8 +87,10 @@ def collect(paths: list[Path]) -> dict:
                 if label.lower() in {item.lower() for item in SKIP}:
                     continue
                 surface[kind].setdefault(label, set()).add(path.name)
-    return {kind: {label: sorted(files) for label, files in sorted(entries.items())}
-            for kind, entries in surface.items()}
+    return {
+        kind: {label: sorted(files) for label, files in sorted(entries.items())}
+        for kind, entries in surface.items()
+    }
 
 
 def main(argv=None) -> int:
@@ -80,8 +104,12 @@ def main(argv=None) -> int:
     total = len({label for entries in surface.values() for label in entries})
     print("per kind:", counts)
     print("distinct labels:", total, "-> ", args.out)
-    per_file = Counter(name for entries in surface.values() for files in entries.values() for name in files)
-    print("declared in:", ", ".join(f"{name} ({count})" for name, count in per_file.most_common(15)))
+    per_file = Counter(
+        name for entries in surface.values() for files in entries.values() for name in files
+    )
+    print(
+        "declared in:", ", ".join(f"{name} ({count})" for name, count in per_file.most_common(15))
+    )
     return 0
 
 

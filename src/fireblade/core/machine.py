@@ -5,12 +5,13 @@ who should not have to read a settings file to use it. The effort levels below a
 the whole interface: each one is computed from the machine it runs on, so "Balanced"
 means half of a 4-core VM and half of a 32-core server.
 """
+
 import os
 from dataclasses import dataclass
 
 from fireblade.core.settings import auto_threads, physical_memory_mb
 
-LEVELS = ('light', 'balanced', 'fast', 'maximum')
+LEVELS = ("light", "balanced", "fast", "maximum")
 
 
 def cores():
@@ -26,8 +27,8 @@ class Effort:
     level: str
     threads: int
     memory_mb: int
-    share: float   # what fraction of the machine this takes, 0..1
-    tone: str      # 'green', 'amber' or 'red'
+    share: float  # what fraction of the machine this takes, 0..1
+    tone: str  # 'green', 'amber' or 'red'
 
 
 def _fit(threads, memory, cpu, ram):
@@ -38,23 +39,23 @@ def _fit(threads, memory, cpu, ram):
 def tone_for(share):
     """Green while the machine stays responsive, red when the analyst will feel it."""
     if share < 0.45:
-        return 'green'
+        return "green"
     if share < 0.8:
-        return 'amber'
-    return 'red'
+        return "amber"
+    return "red"
 
 
-def effort(level='balanced', cpu=None, ram=None):
+def effort(level="balanced", cpu=None, ram=None):
     """Threads and memory for one level, on this machine."""
     cpu = cpu or cores()
     ram = ram or memory_mb()
     if level not in LEVELS:
-        raise ValueError('Unknown effort level: %s' % level)
+        raise ValueError("Unknown effort level: %s" % level)
     threads, memory = {
-        'light': (max(1, cpu // 4), min(512, max(256, ram // 8))),
-        'balanced': (max(2, cpu // 2), min(2048, max(512, ram // 3))),
-        'fast': (max(3, cpu * 3 // 4), min(4096, max(1024, ram // 2))),
-        'maximum': (cpu, min(8192, max(2048, ram * 2 // 3))),
+        "light": (max(1, cpu // 4), min(512, max(256, ram // 8))),
+        "balanced": (max(2, cpu // 2), min(2048, max(512, ram // 3))),
+        "fast": (max(3, cpu * 3 // 4), min(4096, max(1024, ram // 2))),
+        "maximum": (cpu, min(8192, max(2048, ram * 2 // 3))),
     }[level]
     threads, memory = _fit(threads, memory, cpu, ram)
     share = max(threads / cpu, memory / max(1, ram))
@@ -64,8 +65,7 @@ def effort(level='balanced', cpu=None, ram=None):
 def describe(item, ram=None):
     """One line an analyst can read without a manual."""
     ram = ram or memory_mb()
-    return '%d threads · %.1f GB of %.1f GB' % (
-        item.threads, item.memory_mb / 1024, ram / 1024)
+    return "%d threads · %.1f GB of %.1f GB" % (item.threads, item.memory_mb / 1024, ram / 1024)
 
 
 def from_settings(threads, memory, cpu=None, ram=None):
@@ -76,4 +76,4 @@ def from_settings(threads, memory, cpu=None, ram=None):
     memory = int(memory or min(2048, max(512, ram // 3)))
     threads, memory = _fit(threads, memory, cpu, ram)
     share = max(threads / cpu, memory / max(1, ram))
-    return Effort('custom', threads, memory, round(min(1.0, share), 3), tone_for(share))
+    return Effort("custom", threads, memory, round(min(1.0, share), 3), tone_for(share))

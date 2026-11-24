@@ -1,4 +1,5 @@
 """Optional resource smoke test for opening an existing case, not for importing."""
+
 import argparse
 import json
 import os
@@ -30,9 +31,11 @@ def main():
     process = psutil.Process()
     peak = [process.memory_info().rss]
     stop = threading.Event()
+
     def monitor():
-        while not stop.wait(.01):
+        while not stop.wait(0.01):
             peak[0] = max(peak[0], process.memory_info().rss)
+
     monitor_thread = threading.Thread(target=monitor, daemon=True)
     monitor_thread.start()
     app = QApplication([])
@@ -48,16 +51,22 @@ def main():
             raise ValueError("The case has no completed import")
         window.attach(case)
         window.show()
+
         def settle():
             deadline = time.monotonic() + 30
             while time.monotonic() < deadline:
                 app.processEvents()
-                if not window.jobs and not window.model.jobs and not window.pool.activeThreadCount():
+                if (
+                    not window.jobs
+                    and not window.model.jobs
+                    and not window.pool.activeThreadCount()
+                ):
                     if errors:
                         raise RuntimeError(str(errors))
                     return
-                time.sleep(.005)
+                time.sleep(0.005)
             raise TimeoutError("UI did not settle")
+
         settle()
         window.view.groups = [min(1, len(case.headers) - 1)]
         window.apply()
@@ -71,12 +80,17 @@ def main():
             settle()
             assert window.model.rowCount(group) == 0
             after_collapse.append(process.memory_info().rss)
-        result = dict(scenario="Open existing case; group; expand/collapse first group",
-                      platform=os.name, rows=info["rows"], source_bytes=info["size"],
-                      cycles=args.cycles, memory_limit_mb=settings.memory_mb,
-                      peak_process_rss_mib=round(peak[0] / 1024**2, 1),
-                      rss_after_each_collapse_mib=[round(n / 1024**2, 1) for n in after_collapse],
-                      caveat="Offscreen Qt, synthetic data, no import or real Windows measurements.")
+        result = dict(
+            scenario="Open existing case; group; expand/collapse first group",
+            platform=os.name,
+            rows=info["rows"],
+            source_bytes=info["size"],
+            cycles=args.cycles,
+            memory_limit_mb=settings.memory_mb,
+            peak_process_rss_mib=round(peak[0] / 1024**2, 1),
+            rss_after_each_collapse_mib=[round(n / 1024**2, 1) for n in after_collapse],
+            caveat="Offscreen Qt, synthetic data, no import or real Windows measurements.",
+        )
         args.output.write_text(json.dumps(result, indent=2), encoding="utf-8")
         print(json.dumps(result, indent=2))
     finally:

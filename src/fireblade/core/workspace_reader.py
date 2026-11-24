@@ -1,4 +1,5 @@
 """Read a workspace sequentially, without retaining inactive connections."""
+
 import copy
 from contextlib import contextmanager
 import threading
@@ -17,17 +18,20 @@ class WorkspaceReader:
         self.current = None
 
     def check(self):
-        if self.cancelled.is_set() or job_cancelled():raise OperationCancelled()
+        if self.cancelled.is_set() or job_cancelled():
+            raise OperationCancelled()
 
     def interrupt(self):
         self.cancelled.set()
         with self.lock:
-            if self.current:self.current.interrupt()
+            if self.current:
+                self.current.interrupt()
 
     @contextmanager
     def open(self, document):
         self.check()
-        if not Path(document.path).is_file():raise FileNotFoundError('Analyse introuvable : '+document.path)
+        if not Path(document.path).is_file():
+            raise FileNotFoundError("Analyse introuvable : " + document.path)
         own = self.active is None or str(self.active.path) != document.path
         case = Case(document.path, settings=self.settings, read_only=True) if own else self.active
         try:
@@ -35,9 +39,12 @@ class WorkspaceReader:
                 self.current = case
             with case.operation():
                 self.check()
-                if case.info != document.source_info:raise ValueError('Analyse remplacée : ' + document.path)
+                if case.info != document.source_info:
+                    raise ValueError("Analyse remplacée : " + document.path)
                 yield case
                 self.check()
         finally:
-            with self.lock:self.current = None
-            if own:case.close()
+            with self.lock:
+                self.current = None
+            if own:
+                case.close()

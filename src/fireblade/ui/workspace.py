@@ -1,4 +1,5 @@
 """Tabs hold small snapshots. Only the active tab owns a DuckDB connection."""
+
 import json
 from pathlib import Path
 
@@ -30,65 +31,92 @@ class WorkspaceMixin:
         self.tabs.setUsesScrollButtons(True)
         self.tabs.currentChanged.connect(self.switch_document)
         self.tabs.tabCloseRequested.connect(self.close_document)
-        body = QWidget();body_layout = QVBoxLayout(body)
-        body_layout.setContentsMargins(0,0,0,0);body_layout.setSpacing(0)
-        body_layout.addWidget(self.tabs);body_layout.addWidget(content)
+        body = QWidget()
+        body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(0)
+        body_layout.addWidget(self.tabs)
+        body_layout.addWidget(content)
         from fireblade.ui.navigation import AnalysisNavigator
+
         self.navigator = AnalysisNavigator()
         self.navigator.activated.connect(self.switch_document)
         self.navigator.reopened.connect(self.reopen_closed_analysis)
-        self.navigator.grouping_changed.connect(lambda value: self.set_navigation_option("navigation_grouping", value))
+        self.navigator.grouping_changed.connect(
+            lambda value: self.set_navigation_option("navigation_grouping", value)
+        )
         self.workspace_splitter = QSplitter(Qt.Horizontal)
         self.workspace_splitter.addWidget(self.navigator)
         self.workspace_splitter.addWidget(body)
-        self.workspace_splitter.setStretchFactor(1,1)
-        self.workspace_splitter.setSizes([210,1000])
+        self.workspace_splitter.setStretchFactor(1, 1)
+        self.workspace_splitter.setSizes([210, 1000])
         layout.addWidget(self.workspace_splitter)
-        self.navigation_action = QAction('Navigation des analyses',self)
-        self.navigation_action.setCheckable(True);self.navigation_action.setChecked(True)
-        self.navigation_action.toggled.connect(lambda _:self.refresh_navigation())
-        self.navigator.close_requested.connect(lambda:self.navigation_action.setChecked(False))
-        view_menu = next(a.menu() for a in self.menuBar().actions() if a.text().replace('&','')=='Affichage')
+        self.navigation_action = QAction("Navigation des analyses", self)
+        self.navigation_action.setCheckable(True)
+        self.navigation_action.setChecked(True)
+        self.navigation_action.toggled.connect(lambda _: self.refresh_navigation())
+        self.navigator.close_requested.connect(lambda: self.navigation_action.setChecked(False))
+        view_menu = next(
+            a.menu() for a in self.menuBar().actions() if a.text().replace("&", "") == "Affichage"
+        )
         view_menu.addAction(self.navigation_action)
         self.setCentralWidget(wrapper)
         self.tabs.hide()
         self.refresh_navigation()
 
     def refresh_navigation(self):
-        if not hasattr(self,'navigator'):return
-        collections = list(getattr(self,'investigation_collections',[]))
-        current = getattr(self,'collection',None)
-        if current and not any(c['path']==str(current.output) for c in collections):
-            collections.append(dict(path=str(current.output),name=current.root.name))
+        if not hasattr(self, "navigator"):
+            return
+        collections = list(getattr(self, "investigation_collections", []))
+        current = getattr(self, "collection", None)
+        if current and not any(c["path"] == str(current.output) for c in collections):
+            collections.append(dict(path=str(current.output), name=current.root.name))
         if current:
-            for context in current.report.get('contexts',[]):
-                self._analysis_labels[context['analysis']]=str(context['rule'])[:120]+' · ± '+str(context['minutes'])+' min'
-        origins = dict(getattr(self, '_analysis_origins', {}))
+            for context in current.report.get("contexts", []):
+                self._analysis_labels[context["analysis"]] = (
+                    str(context["rule"])[:120] + " · ± " + str(context["minutes"]) + " min"
+                )
+        origins = dict(getattr(self, "_analysis_origins", {}))
         # Read saved provenance only once per collection, never open inactive databases.
-        cache = getattr(self, '_navigation_origin_cache', {})
+        cache = getattr(self, "_navigation_origin_cache", {})
         for item in collections:
-            path = item['path']
+            path = item["path"]
             if path not in cache:
                 try:
-                    report = Path(path)/'collection.json'
-                    if report.is_file() and report.stat().st_size < 32*1024*1024:
-                        data = json.loads(report.read_text(encoding='utf-8'))
-                        cache[path] = {d['path']: d['navigation'] for d in data.get('documents', []) if d.get('navigation')}
+                    report = Path(path) / "collection.json"
+                    if report.is_file() and report.stat().st_size < 32 * 1024 * 1024:
+                        data = json.loads(report.read_text(encoding="utf-8"))
+                        cache[path] = {
+                            d["path"]: d["navigation"]
+                            for d in data.get("documents", [])
+                            if d.get("navigation")
+                        }
                 except (OSError, ValueError, KeyError):
                     cache[path] = {}
             origins.update(cache.get(path, {}))
-        origins.update(getattr(self, '_analysis_origins', {}))
+        origins.update(getattr(self, "_analysis_origins", {}))
         self._navigation_origin_cache = cache
-        self.navigator.refresh(self.documents,self.active_document,collections,self._analysis_labels,origins,
-            getattr(getattr(self, 'preferences', None), 'navigation_grouping', 'folders'),
-            self.closed_documents)
+        self.navigator.refresh(
+            self.documents,
+            self.active_document,
+            collections,
+            self._analysis_labels,
+            origins,
+            getattr(getattr(self, "preferences", None), "navigation_grouping", "folders"),
+            self.closed_documents,
+        )
         self.update_navigation_visibility()
 
     def update_navigation_visibility(self, *_):
-        if not hasattr(self,'navigator'):return
-        preview=getattr(self,'context_preview',None)
-        compact=preview is not None and preview.isVisible() and self.width()<1100
-        self.navigator.setVisible((bool(self.documents) or getattr(self, "disk_job", None) is not None) and self.navigation_action.isChecked() and not compact)
+        if not hasattr(self, "navigator"):
+            return
+        preview = getattr(self, "context_preview", None)
+        compact = preview is not None and preview.isVisible() and self.width() < 1100
+        self.navigator.setVisible(
+            (bool(self.documents) or getattr(self, "disk_job", None) is not None)
+            and self.navigation_action.isChecked()
+            and not compact
+        )
 
     def remember_active(self):
         snapshot = self.snapshot_analysis()
@@ -97,8 +125,11 @@ class WorkspaceMixin:
 
     def sync_tabs(self):
         self.tabs.blockSignals(True)
-        self.tabs.replace_documents(analysis_tab_labels(self.documents),
-                                    [s.path for s in self.documents], self.active_document)
+        self.tabs.replace_documents(
+            analysis_tab_labels(self.documents),
+            [s.path for s in self.documents],
+            self.active_document,
+        )
         self.tabs.setVisible(bool(self.documents))
         self.tabs.blockSignals(False)
         self.refresh_navigation()
@@ -153,12 +184,14 @@ class WorkspaceMixin:
         if not any(item.path == closed.path for item in self.closed_documents):
             self.closed_documents.append(closed)
         del self.documents[index]
-        self.active_document = next((i for i, s in enumerate(self.documents) if s.path == active_path), -1)
+        self.active_document = next(
+            (i for i, s in enumerate(self.documents) if s.path == active_path), -1
+        )
         self.sync_tabs()
         if removing_active and self.documents:
             self.switch_document(min(index, len(self.documents) - 1))
         # The case remembers what was closed: reopening it must list the analysis again.
-        if getattr(self, 'active_investigation', None) is not None:
+        if getattr(self, "active_investigation", None) is not None:
             self.persist_investigation()
         self.refresh_navigation()
 
@@ -171,12 +204,14 @@ class WorkspaceMixin:
             return False
         if any(item.path == snapshot.path for item in self.documents):
             self.closed_documents.remove(snapshot)
-            return self.switch_document(next(i for i, item in enumerate(self.documents) if item.path == snapshot.path))
+            return self.switch_document(
+                next(i for i, item in enumerate(self.documents) if item.path == snapshot.path)
+            )
         self.closed_documents.remove(snapshot)
         self.documents.append(snapshot)
         self.sync_tabs()
-        self.switch_document(len(self.documents)-1)
-        if getattr(self, 'active_investigation', None) is not None:
+        self.switch_document(len(self.documents) - 1)
+        if getattr(self, "active_investigation", None) is not None:
             self.persist_investigation()
         self.refresh_navigation()
         self.statusBar().showMessage(f"Analyse réouverte : {Path(snapshot.path).name}")
@@ -189,20 +224,29 @@ class WorkspaceMixin:
     def save_session(self, path=None):
         if not self.can_open_file() or not self.documents:
             return
-        if not path and getattr(self,'active_investigation',None) is not None:
+        if not path and getattr(self, "active_investigation", None) is not None:
             return self.save_investigation()
         if not path:
-            path, _ = QFileDialog.getSaveFileName(self, "Enregistrer la session", "enquete.fireblade-session", "Session Fireblade (*.fireblade-session)")
+            path, _ = QFileDialog.getSaveFileName(
+                self,
+                "Enregistrer la session",
+                "enquete.fireblade-session",
+                "Session Fireblade (*.fireblade-session)",
+            )
         if not path:
             return
-        if not self.export_destination_is_safe(path):return False
+        if not self.export_destination_is_safe(path):
+            return False
         self.remember_active()
         try:
             target = Path(path).resolve()
             write_session(target, self.documents, self.active_document, self.closed_documents)
-            if getattr(self,'active_investigation',None) is not None:
-                if not self.persist_investigation():return False
-            self.statusBar().showMessage("Session enregistrée : onglets, vues et dispositions des colonnes")
+            if getattr(self, "active_investigation", None) is not None:
+                if not self.persist_investigation():
+                    return False
+            self.statusBar().showMessage(
+                "Session enregistrée : onglets, vues et dispositions des colonnes"
+            )
         except Exception as exc:
             self.error(exc)
 
@@ -242,23 +286,26 @@ class WorkspaceMixin:
             self.detach()
             self.documents, self.active_document = list(snapshots), -1
             self.sync_tabs()
-            snapshot=snapshots[active]
-            self.attach(candidate,snapshot.view,snapshot.header_state,auto_layout=False)
+            snapshot = snapshots[active]
+            self.attach(candidate, snapshot.view, snapshot.header_state, auto_layout=False)
         except BaseException:
-            if self.case is not candidate:self.connection_work(candidate.close)
+            if self.case is not candidate:
+                self.connection_work(candidate.close)
             raise
 
     def load_session(self, path=None):
         if not self.can_open_file():
             return
         if not path:
-            path, _ = QFileDialog.getOpenFileName(self, "Ouvrir une session", "", "Session Fireblade (*.fireblade-session)")
+            path, _ = QFileDialog.getOpenFileName(
+                self, "Ouvrir une session", "", "Session Fireblade (*.fireblade-session)"
+            )
         if not path:
             return
         candidate = None
         try:
             snapshots, active = self.validate_session(path)
-            self.install_session_snapshots(snapshots,active)
+            self.install_session_snapshots(snapshots, active)
             return True
         except Exception as exc:
             if candidate:

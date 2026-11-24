@@ -14,8 +14,7 @@ ERRORS = {
     "La valeur d’une condition doit être du texte": "A condition's value must be text",
     "{} règles de coloration au maximum": "At most {} colour rules",
     "32 règles de coloration au maximum": "At most 32 colour rules",
-    "Un groupe NON doit contenir une seule condition ou un seul groupe":
-        "A NOT group must hold a single condition or a single group",
+    "Un groupe NON doit contenir une seule condition ou un seul groupe": "A NOT group must hold a single condition or a single group",
     "Le schéma des colonnes est nécessaire pour cette expression": "This expression needs the column schema",
     "Apparence de règle invalide": "Invalid rule appearance",
     "Jeu d’icônes invalide": "Invalid icon set",
@@ -47,8 +46,7 @@ ERRORS = {
     "Constante numérique hors plage": "Numeric constant out of range",
     "Une constante UInt64 ne peut être négative": "A UInt64 constant cannot be negative",
     "Nombre d’arguments invalide pour {}": "Invalid number of arguments for {}",
-    "Iif nécessite des paires condition/valeur et une valeur finale":
-        "Iif needs condition/value pairs and a final value",
+    "Iif nécessite des paires condition/valeur et une valeur finale": "Iif needs condition/value pairs and a final value",
     "Nom de période constant requis": "A constant period name is required",
     "L’expression de collection doit être un texte constant": "The collection expression must be constant text",
     "Not doit précéder In, Between ou Like": "Not must come before In, Between or Like",
@@ -78,8 +76,7 @@ ERRORS = {
     "Colonnes dérivées invalides": "Invalid derived columns",
     "Nom de colonne dérivée absent ou déjà utilisé": "Derived column name missing or already used",
     "De 1 à 64 colonnes dérivées par analyse": "From 1 to 64 derived columns per analysis",
-    "Une colonne dérivée ne peut référencer que les colonnes précédentes":
-        "A derived column can only refer to the columns before it",
+    "Une colonne dérivée ne peut référencer que les colonnes précédentes": "A derived column can only refer to the columns before it",
     "Importez une source avant de calculer des colonnes": "Import a source before computing columns",
     "Intervalle inconnu : année, mois, jour ou heure attendu": "Unknown interval: year, month, day or hour expected",
     "16 résumés au maximum": "At most 16 summaries",
@@ -106,8 +103,7 @@ ERRORS = {
     "Format de date limité à 256 caractères": "Date format limited to 256 characters",
     "Jeton de format de date non traduit au caractère {}": "Untranslated date format token at character {}",
     # Import, export, sessions, settings
-    "CSV incohérent à la ligne physique {} : {} colonnes au lieu de {}":
-        "Inconsistent CSV at physical line {}: {} columns instead of {}",
+    "CSV incohérent à la ligne physique {} : {} colonnes au lieu de {}": "Inconsistent CSV at physical line {}: {} columns instead of {}",
     "CSV incohérent à la ligne {}": "Inconsistent CSV at line {}",
     "Aucune colonne dans le CSV": "No column in the CSV",
     "Fichier vide : aucune donnée à importer": "Empty file: no data to import",
@@ -119,21 +115,18 @@ ERRORS = {
     "cache_sorted_pages doit être un booléen": "cache_sorted_pages must be true or false",
     "max_loaded_rows doit être un multiple de page_size": "max_loaded_rows must be a multiple of page_size",
     "{} doit être un entier entre {} et {}": "{} must be a whole number between {} and {}",
-    "Une cellule dépasse la limite Excel de 32767 caractères ; exportez en CSV.":
-        "A cell exceeds Excel's 32767-character limit; export as CSV.",
+    "Une cellule dépasse la limite Excel de 32767 caractères ; exportez en CSV.": "A cell exceeds Excel's 32767-character limit; export as CSV.",
     "La première ligne doit contenir les noms des colonnes": "The first row must hold the column names",
     "Sélection limitée à 100000 enregistrements par opération": "Selection limited to 100000 records per operation",
     "Export incomplet : {} lignes écrites sur {} attendues": "Incomplete export: {} rows written out of {} expected",
     "Le fichier temporaire existe déjà : {}": "The temporary file already exists: {}",
-    "L’export ne peut pas écraser la source ou le dossier d’analyse":
-        "The export cannot overwrite the source or the analysis folder",
+    "L’export ne peut pas écraser la source ou le dossier d’analyse": "The export cannot overwrite the source or the analysis folder",
     "Choisissez au moins une colonne distincte à exporter": "Choose at least one distinct column to export",
     "Disposition locale limitée à 4 Mo": "Local layout limited to 4 MB",
     "Disposition limitée à 4 Mo": "Layout limited to 4 MB",
     "Les colonnes de cette disposition diffèrent de l’analyse": "This layout's columns differ from the analysis",
     "Image de disposition limitée à 256 Ko": "Layout image limited to 256 KB",
-    "Image de disposition : raster PNG/JPEG/BMP/GIF requis, objet .NET sérialisé non accepté":
-        "Layout image: a PNG/JPEG/BMP/GIF raster is required; a serialised .NET object is not accepted",
+    "Image de disposition : raster PNG/JPEG/BMP/GIF requis, objet .NET sérialisé non accepté": "Layout image: a PNG/JPEG/BMP/GIF raster is required; a serialised .NET object is not accepted",
     "Image de disposition limitée à 1024 × 1024 pixels": "Layout image limited to 1024 × 1024 pixels",
     "Enveloppe .NET sans image raster reconnue et bornée": ".NET envelope with no recognised, bounded raster image",
     "Icône PNG trop volumineuse": "PNG icon too large",
@@ -150,20 +143,17 @@ ERRORS = {
     "Liste des collectes invalide": "Invalid collection list",
     "Collecte active absente du case": "The active collection is missing from the case",
     "Le verrou du case est un lien": "The case lock is a link",
-    "Ce case a été modifié ailleurs. Rouvrez-le avant de l’enregistrer.":
-        "This case was changed elsewhere. Reopen it before saving.",
+    "Ce case a été modifié ailleurs. Rouvrez-le avant de l’enregistrer.": "This case was changed elsewhere. Reopen it before saving.",
     "Référence d’archive de case invalide": "Invalid case archive reference",
     "Date du case invalide": "Invalid case date",
     "Référence de collecte invalide": "Invalid collection reference",
     "Version de récupération introuvable": "Recovery version not found",
     "Le dossier de récupération est un lien": "The recovery folder is a link",
     "Choisissez une archive hors du dossier du case.": "Choose an archive outside the case folder.",
-    "Cette destination contient déjà une archive de case à conserver.":
-        "This destination already holds a case archive to keep.",
+    "Cette destination contient déjà une archive de case à conserver.": "This destination already holds a case archive to keep.",
     "Archive absente ou taille modifiée.": "Archive missing or its size changed.",
     "Ce case est déjà conservé en archive.": "This case is already kept as an archive.",
-    "Une source originale est dans le case. Conservez-la hors du dossier de travail.":
-        "An original source is inside the case. Keep it outside the working folder.",
+    "Une source originale est dans le case. Conservez-la hors du dossier de travail.": "An original source is inside the case. Keep it outside the working folder.",
     "Ce dossier contient déjà un import": "This folder already holds an import",
     "Analyse remplacée depuis la collecte": "Analysis replaced since the collection",
     "Analyse contenant des objets SQL non autorisés": "Analysis containing SQL objects that are not allowed",
@@ -174,10 +164,8 @@ ERRORS = {
     "Schéma des tables d’analyse invalide": "Invalid analysis table schema",
     # Collections and readers
     "Limite de 1000 analyses atteinte ; résultat conservé sur disque": "1000-analysis limit reached; result kept on disk",
-    "Limite de 1000 analyses atteinte ; contexte CSV conservé sur disque":
-        "1000-analysis limit reached; CSV context kept on disk",
-    "Limite de 1000 analyses atteinte ; fermez des analyses avant de conserver un contexte":
-        "1000-analysis limit reached; close analyses before keeping a context",
+    "Limite de 1000 analyses atteinte ; contexte CSV conservé sur disque": "1000-analysis limit reached; CSV context kept on disk",
+    "Limite de 1000 analyses atteinte ; fermez des analyses avant de conserver un contexte": "1000-analysis limit reached; close analyses before keeping a context",
     "Le fichier a changé depuis la collecte ; analyse refusée": "The file changed since the collection; analysis refused",
     "Aucun EVTX inventorié dans cette collecte": "No EVTX is listed in this collection",
     "Journal de transaction modifié pendant le traitement": "Transaction log changed during processing",
@@ -186,13 +174,11 @@ ERRORS = {
     "Délai du moteur dépassé ; consulter le journal": "Engine timeout; check the log",
     "EVTX modifié depuis inventaire : {}": "EVTX changed since the inventory: {}",
     "EVTX modifié pendant copie : {}": "EVTX changed during the copy: {}",
-    "Sortie vide sans bilan explicite de zéro détection ; consulter le journal":
-        "Empty output with no explicit zero-detection summary; check the log",
+    "Sortie vide sans bilan explicite de zéro détection ; consulter le journal": "Empty output with no explicit zero-detection summary; check the log",
     "CSV Hayabusa sans colonne EvtxFile ; profil verbose requis": "Hayabusa CSV without an EvtxFile column; the verbose profile is required",
     "Aucune ligne lisible dans ce fichier": "No readable row in this file",
     "Provenance de résultat absente ; organisation refusée": "Result provenance missing; organisation refused",
-    "Moteur intégré absent : {}. La construction du pack forensic est nécessaire.":
-        "Built-in engine missing: {}. The forensic pack must be built.",
+    "Moteur intégré absent : {}. La construction du pack forensic est nécessaire.": "Built-in engine missing: {}. The forensic pack must be built.",
     "Fenêtre de contexte : 1 à 1440 minutes": "Context window: 1 to 1440 minutes",
     "Contexte limité à 1000 événements": "Context limited to 1000 events",
     "Référence EVTX de l’alerte absente": "The alert's EVTX reference is missing",
@@ -213,35 +199,29 @@ ERRORS = {
     "Aucun processus de lecture disponible": "No reader process available",
     "Aucune tranche n’a produit d’analyse": "No slice produced an analysis",
     "Chemin source non sûr": "Unsafe source path",
-    "Choisissez un fichier distinct des sources, analyses, règles et sauvegardes du case":
-        "Choose a file distinct from the case's sources, analyses, rules and backups",
+    "Choisissez un fichier distinct des sources, analyses, règles et sauvegardes du case": "Choose a file distinct from the case's sources, analyses, rules and backups",
     "Choisissez un fichier distinct des sources de collecte": "Choose a file distinct from the collection sources",
     "Choisissez un fichier distinct des sessions internes du case": "Choose a file distinct from the case's internal sessions",
     "Choisissez un fichier distinct des sauvegardes du case": "Choose a file distinct from the case's backups",
-    "Inventaire trop volumineux pour vérifier la destination de l’export":
-        "Inventory too large to check the export destination",
+    "Inventaire trop volumineux pour vérifier la destination de l’export": "Inventory too large to check the export destination",
     # Indicators
     "Utilisez le type IP pour cette adresse": "Use the IP type for this address",
     "Nom de domaine supérieur à 253 octets": "Domain name longer than 253 bytes",
-    "Valeur vide, caractères de contrôle ou plus de 8192 caractères":
-        "Empty value, control characters or more than 8192 characters",
+    "Valeur vide, caractères de contrôle ou plus de 8192 caractères": "Empty value, control characters or more than 8192 characters",
     "Libellé invalide ou supérieur à 2000 caractères": "Invalid label, or longer than 2000 characters",
     "Liste IOC limitée à 8 Mio": "Indicator list limited to 8 MiB",
     "Version IP différente du type déclaré": "IP version differs from the declared type",
-    "Liste limitée à 50000 indicateurs (doublons et rejets compris)":
-        "List limited to 50000 indicators (duplicates and rejects included)",
+    "Liste limitée à 50000 indicateurs (doublons et rejets compris)": "List limited to 50000 indicators (duplicates and rejects included)",
     "Étiquette DNS invalide": "Invalid DNS label",
     "Hôte URL générique interdit": "A generic URL host is not allowed",
     "IOC normalisé incohérent": "Inconsistent normalised indicator",
     "Empreinte hexadécimale MD5 / SHA-1 / SHA-256 / SHA-512 attendue": "A hexadecimal MD5 / SHA-1 / SHA-256 / SHA-512 hash is expected",
     "Une seule colonne IOC / value / valeur est requise": "A single IOC / value column is required",
-    "CSV à plusieurs colonnes : ajoutez les en-têtes type,value,label":
-        "CSV with several columns: add the headers type,value,label",
+    "CSV à plusieurs colonnes : ajoutez les en-têtes type,value,label": "CSV with several columns: add the headers type,value,label",
     # Global rules, preferences, plugins
     "Les règles globales sont limitées à 2 Mo": "The global rules are limited to 2 MB",
     "Le fichier de règles globales a changé et dépasse 2 Mo": "The global rules file changed and exceeds 2 MB",
-    "Les règles globales ont changé sur disque. Rechargez-les avant de les modifier.":
-        "The global rules changed on disk. Reload them before editing.",
+    "Les règles globales ont changé sur disque. Rechargez-les avant de les modifier.": "The global rules changed on disk. Reload them before editing.",
     "Format de règles globales inconnu": "Unknown global rules format",
     "Liste de colonnes ou de règles invalide": "Invalid list of columns or rules",
     "Fichier de règles globales invalide": "Invalid global rules file",
@@ -273,13 +253,11 @@ ERRORS = {
     "Plugin limité à 2 Mo": "Plugin limited to 2 MB",
     "Métadonnées de fonctions invalides": "Invalid function metadata",
     # Disks
-    "Le case doit être sur un volume local identifiable pour une lecture physique.":
-        "The case must be on an identifiable local volume to read a physical disk.",
+    "Le case doit être sur un volume local identifiable pour une lecture physique.": "The case must be on an identifiable local volume to read a physical disk.",
     "Réponse de localisation du volume tronquée": "Volume location answer truncated",
     "Étendues de volume invalides": "Invalid volume extents",
     "Cycle dans la localisation du volume": "Cycle in the volume location",
-    "Le case doit être stocké sur un autre disque physique que la source.":
-        "The case must be stored on a different physical disk than the source.",
+    "Le case doit être stocké sur un autre disque physique que la source.": "The case must be stored on a different physical disk than the source.",
     # Remaining refusals of the same modules
     "Expression trop complexe": "Expression too complex",
     "Liste In trop volumineuse": "In list too large",

@@ -4,6 +4,7 @@ The desktop keeps its window; the container runs the same core. A Qt import at
 module level in core/ breaks that promise silently on a machine where PySide6 is
 installed, and loudly in the image. This test makes the rule executable.
 """
+
 import ast
 import pathlib
 import subprocess
@@ -78,7 +79,9 @@ def test_core_package_imports_with_qt_blocked(tmp_path):
     )
     result = subprocess.run(
         [sys.executable, "-c", script],
-        cwd=str(ROOT), capture_output=True, text=True,
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
         env={"PYTHONPATH": str(ROOT / "src"), "PATH": ""},
     )
     assert result.returncode == 0, result.stderr

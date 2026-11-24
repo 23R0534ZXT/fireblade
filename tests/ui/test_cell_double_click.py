@@ -1,4 +1,5 @@
 """A double-click reads a cell; it no longer opens the note editor."""
+
 import pytest
 from PySide6.QtGui import QStandardItemModel
 
@@ -17,6 +18,7 @@ class _Model:
 @pytest.fixture
 def window(qt_application):
     from fireblade.ui.app import Window
+
     widget = Window(require_case=False)
     yield widget
     widget.model = None

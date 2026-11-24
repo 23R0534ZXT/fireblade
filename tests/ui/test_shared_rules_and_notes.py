@@ -22,7 +22,10 @@ def rule(column=0, value="alice", color="#ffcccc", target=None):
 @pytest.fixture
 def case(tmp_path):
     source = tmp_path / "evidence.csv"
-    source.write_text("User,ID,Details\nalice,0001,first\nbob,9007199254740993,second\nalice,2,third\n", encoding="utf-8")
+    source.write_text(
+        "User,ID,Details\nalice,0001,first\nbob,9007199254740993,second\nalice,2,third\n",
+        encoding="utf-8",
+    )
     case = Case(tmp_path / "evidence.timeline")
     case.import_csv(source)
     yield case
@@ -33,9 +36,13 @@ def settle(app, window):
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         app.processEvents()
-        if not window.jobs and not window.pool.activeThreadCount() and (window.model is None or not window.model.jobs):
+        if (
+            not window.jobs
+            and not window.pool.activeThreadCount()
+            and (window.model is None or not window.model.jobs)
+        ):
             return
-        time.sleep(.005)
+        time.sleep(0.005)
     pytest.fail("Background work timed out")
 
 
@@ -54,7 +61,9 @@ def test_global_rules_remap_by_name_and_skip_whole_incomplete_rule(case):
 def test_ambiguous_column_case_is_not_guessed():
     book = RuleBook(["USER"], [rule()])
     assert book.adapt(["User", "user"])[0] == []
-    assert RuleBook(["User"], [rule()]).adapt(["User", "user"])[0][0].condition.children[0].column == 0
+    assert (
+        RuleBook(["User"], [rule()]).adapt(["User", "user"])[0][0].condition.children[0].column == 0
+    )
 
 
 def test_global_rules_have_separate_limit_and_cannot_expand_local_saved_views(case):
@@ -67,7 +76,10 @@ def test_global_rules_have_separate_limit_and_cannot_expand_local_saved_views(ca
     assert case.page_styles(View(global_rules_enabled=False), case.page(View()), shared) == {}
 
 
-@pytest.mark.parametrize("condition", [Filter(0, "regex", "["), Filter(0, "ge", "not a number"), Filter(0, "after", "invalid date")])
+@pytest.mark.parametrize(
+    "condition",
+    [Filter(0, "regex", "["), Filter(0, "ge", "not a number"), Filter(0, "after", "invalid date")],
+)
 def test_bad_rule_operand_never_replaces_existing_file(tmp_path, condition):
     path = tmp_path / "rules.json"
     store = RuleStore(path)
@@ -82,6 +94,7 @@ def test_bad_rule_operand_never_replaces_existing_file(tmp_path, condition):
 
 def test_store_roundtrip_stale_editor_and_failed_atomic_write(tmp_path, monkeypatch):
     import fireblade.core.rule_store as storage
+
     path = tmp_path / "rules.json"
     first, other = RuleStore(path), RuleStore(path)
     book = RuleBook(["User"], [rule()])
@@ -92,8 +105,10 @@ def test_store_roundtrip_stale_editor_and_failed_atomic_write(tmp_path, monkeypa
         other.save(book)
     assert read_book(path).rules[0].background == "#aabbcc"
     old = path.read_bytes()
+
     def denied(*args):
         raise PermissionError("locked destination")
+
     monkeypatch.setattr(storage.os, "replace", denied)
     with pytest.raises(PermissionError):
         first.save(book)
@@ -101,7 +116,9 @@ def test_store_roundtrip_stale_editor_and_failed_atomic_write(tmp_path, monkeypa
     assert not list(tmp_path.glob("*.partial"))
 
 
-def test_global_rules_invalid_file_is_recoverable_without_changing_analysis(qt_application, case, tmp_path):
+def test_global_rules_invalid_file_is_recoverable_without_changing_analysis(
+    qt_application, case, tmp_path
+):
     path = tmp_path / "global.json"
     path.write_bytes(b"invalid JSON")
     window = Window(require_case=False, rule_path=path)
@@ -165,12 +182,16 @@ def test_global_local_precedence_and_per_view_disable_persist(qt_application, ca
     assert RuleStore(path).load().rules == [rule(target=0)]
 
 
-def test_rule_editor_keeps_fields_for_other_artifact_types(qt_application, case, tmp_path, monkeypatch):
+def test_rule_editor_keeps_fields_for_other_artifact_types(
+    qt_application, case, tmp_path, monkeypatch
+):
     import fireblade.ui.shared_rules as ui
+
     path = tmp_path / "global.json"
     book = RuleBook(["DifferentArtifactField"], [rule(value="critical")])
     RuleStore(path).save(book)
     captured = []
+
     def accept(dialog):
         captured.extend(dialog.headers)
         dialog.add()
@@ -179,6 +200,7 @@ def test_rule_editor_keeps_fields_for_other_artifact_types(qt_application, case,
         dialog.editor.root.children[0].text.setText("alice")
         dialog.accept()
         return dialog.result()
+
     monkeypatch.setattr(ui.RulesDialog, "exec", accept)
     window = Window(require_case=False, rule_path=path)
     window.attach(case)
@@ -195,6 +217,7 @@ def test_rule_editor_keeps_fields_for_other_artifact_types(qt_application, case,
 def test_bulk_bookmark_modes_preserve_notes_and_original_source(case):
     source = case.info["path"]
     from pathlib import Path
+
     before = hashlib.sha256(Path(source).read_bytes()).hexdigest()
     case.bookmark(1, "Original note")
     assert case.bookmark_many([1, 2, 2], mode="mark") == 2
@@ -217,10 +240,12 @@ def test_bulk_bookmark_cancel_rolls_back_entire_selection(case, monkeypatch):
     case.bookmark(1, "Keep")
     revision = case._bookmark_revision
     original = case.check_cancelled
+
     def before_commit():
         if case._finalizing_transaction:
             case.interrupt()
         original()
+
     with monkeypatch.context() as patch:
         patch.setattr(case, "check_cancelled", before_commit)
         with pytest.raises(OperationCancelled):
@@ -233,7 +258,13 @@ def test_bulk_bookmark_cancel_rolls_back_entire_selection(case, monkeypatch):
 
 def test_note_export_preserves_filter_order_source_rows_and_text(case, tmp_path):
     case.bookmark_many([1, 2, 3], "=1+1\nÉvidence", "replace")
-    view = View(filters=[Filter(0, "eq", "alice")], bookmarks_only=True, sort_column=1, sort_type="number", descending=True)
+    view = View(
+        filters=[Filter(0, "eq", "alice")],
+        bookmarks_only=True,
+        sort_column=1,
+        sort_type="number",
+        descending=True,
+    )
     csv_path = tmp_path / "notes.csv"
     case.export(csv_path, view, include_annotations=True)
     with csv_path.open(encoding="utf-8-sig", newline="") as incoming:
@@ -251,7 +282,9 @@ def test_note_export_preserves_filter_order_source_rows_and_text(case, tmp_path)
     finally:
         workbook.close()
     with pytest.raises(ValueError):
-        case.export(tmp_path / "groups.csv", View(groups=[0]), grouped=True, include_annotations=True)
+        case.export(
+            tmp_path / "groups.csv", View(groups=[0]), grouped=True, include_annotations=True
+        )
 
 
 def test_annotation_column_names_do_not_hide_existing_evidence_columns(tmp_path):
@@ -271,8 +304,11 @@ def test_annotation_column_names_do_not_hide_existing_evidence_columns(tmp_path)
         case.close()
 
 
-def test_selection_ignores_group_headers_and_exports_notes(qt_application, case, tmp_path, monkeypatch):
+def test_selection_ignores_group_headers_and_exports_notes(
+    qt_application, case, tmp_path, monkeypatch
+):
     from PySide6.QtWidgets import QFileDialog
+
     window = Window(require_case=False)
     window.attach(case)
     settle(qt_application, window)
@@ -283,7 +319,9 @@ def test_selection_ignores_group_headers_and_exports_notes(qt_application, case,
     settle(qt_application, window)
     selection = window.tree.selectionModel()
     selection.select(parent, QItemSelectionModel.Select | QItemSelectionModel.Rows)
-    selection.select(window.model.index(0, 0, parent), QItemSelectionModel.Select | QItemSelectionModel.Rows)
+    selection.select(
+        window.model.index(0, 0, parent), QItemSelectionModel.Select | QItemSelectionModel.Rows
+    )
     window.annotate_selection("append", "Review")
     settle(qt_application, window)
     assert len(case.bookmarks()) == 1 and list(case.bookmarks().values()) == ["Review"]

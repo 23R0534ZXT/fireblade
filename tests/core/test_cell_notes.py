@@ -1,4 +1,5 @@
 """Notes on a single cell: saved, editable, and kept when the analysis is reopened."""
+
 import csv
 
 import duckdb
@@ -13,11 +14,13 @@ def case(tmp_path):
     with source.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerow(["Time", "Artifact", "User", "ID", "Description"])
-        writer.writerows([
-            ["2026-01-02 12:00:00", "MFT", "alice", "001", "first"],
-            ["2026-01-01 12:00:00", "EVTX", "bob", "10", "second"],
-            ["2026-01-03 12:00:00", "MFT", "alice", "2", "third"],
-        ])
+        writer.writerows(
+            [
+                ["2026-01-02 12:00:00", "MFT", "alice", "001", "first"],
+                ["2026-01-01 12:00:00", "EVTX", "bob", "10", "second"],
+                ["2026-01-03 12:00:00", "MFT", "alice", "2", "third"],
+            ]
+        )
     analysis = Case(tmp_path / "analysis.timeline", memory_mb=256)
     analysis.import_csv(source)
     yield analysis
@@ -44,7 +47,7 @@ def test_a_cell_note_survives_reopening_the_analysis(case):
         assert reopened.cell_notes({2}) == {}
     finally:
         reopened.close()
-    case.db = duckdb.connect(":memory:")     # the fixture closes it again
+    case.db = duckdb.connect(":memory:")  # the fixture closes it again
 
 
 def test_a_row_note_and_a_cell_note_live_together(case):
@@ -53,7 +56,7 @@ def test_a_row_note_and_a_cell_note_live_together(case):
     assert case.bookmarks() == {2: "the row"}
     assert case.cell_notes() == {(2, 3): "the cell"}
 
-    case.bookmark(2, None)                   # removing the row note
+    case.bookmark(2, None)  # removing the row note
     assert case.bookmarks() == {}
     assert case.cell_notes() == {(2, 3): "the cell"}, "the cell note must survive"
 
@@ -83,8 +86,12 @@ def test_an_analysis_written_before_cell_notes_is_migrated(tmp_path):
 
     migrated = Case(path, memory_mb=256)
     try:
-        columns = [row[0] for row in migrated.db.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name='bookmarks'").fetchall()]
+        columns = [
+            row[0]
+            for row in migrated.db.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name='bookmarks'"
+            ).fetchall()
+        ]
         assert "column_id" in columns
         assert migrated.bookmarks() == {1: "an old note"}
         migrated.bookmark(1, "a new cell note", column=1)

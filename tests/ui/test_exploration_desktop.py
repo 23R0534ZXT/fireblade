@@ -17,26 +17,32 @@ def settle(app, window, timeout=15):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         app.processEvents()
-        if not window.jobs and not window.pool.activeThreadCount() and (window.model is None or not window.model.jobs):
+        if (
+            not window.jobs
+            and not window.pool.activeThreadCount()
+            and (window.model is None or not window.model.jobs)
+        ):
             return
-        time.sleep(.005)
-    pytest.fail('background work did not settle')
+        time.sleep(0.005)
+    pytest.fail("background work did not settle")
 
 
 @pytest.fixture
 def window(qt_application, tmp_path):
-    source = tmp_path/'evidence.csv'
-    source.write_text('Artifact,User,ID,Flag,Time\nMFT,alice,001,TRUE,2026-01-01 12:00:00.1234567\nEVTX,bob,2,FALSE,2026-02-01 01:00:00\nMFT,alice,3,TRUE,2026-01-02 01:00:00\n')
-    case = Case(tmp_path/'first.timeline')
+    source = tmp_path / "evidence.csv"
+    source.write_text(
+        "Artifact,User,ID,Flag,Time\nMFT,alice,001,TRUE,2026-01-01 12:00:00.1234567\nEVTX,bob,2,FALSE,2026-02-01 01:00:00\nMFT,alice,3,TRUE,2026-01-02 01:00:00\n"
+    )
+    case = Case(tmp_path / "first.timeline")
     case.import_csv(source)
     w = Window(require_case=False)
     errors = []
     w.error = errors.append
     w.attach(case)
     w.show()
-    settle(qt_application,w)
+    settle(qt_application, w)
     yield w
-    settle(qt_application,w)
+    settle(qt_application, w)
     assert not errors
     assert w.close()
 
@@ -44,7 +50,7 @@ def window(qt_application, tmp_path):
 def test_pinned_cells_keep_one_model_and_restore_with_views(qt_application, window):
     window.pin_column(1)
     qt_application.processEvents()
-    assert window.tree.pinned == [0,2]
+    assert window.tree.pinned == [0, 2]
     assert window.tree.frozen.isVisible()
     assert window.tree.frozen.model() is window.model
     assert window.tree.frozen.selectionModel() is window.tree.selectionModel()
@@ -53,139 +59,160 @@ def test_pinned_cells_keep_one_model_and_restore_with_views(qt_application, wind
     assert window.tree.frozen.columnWidth(2) > 0
     view = copy.deepcopy(window.view)
     window.set_view(view)
-    settle(qt_application,window)
-    assert window.tree.pinned == [0,2]
+    settle(qt_application, window)
+    assert window.tree.pinned == [0, 2]
     window.pin_column(1)
     assert not window.tree.frozen.isVisible()
     assert not window.tree.isColumnHidden(2)
 
 
-def test_cross_search_uses_all_documents_not_only_active_or_loaded_rows(qt_application, window, tmp_path):
+def test_cross_search_uses_all_documents_not_only_active_or_loaded_rows(
+    qt_application, window, tmp_path
+):
     first = window.case.path
-    source = tmp_path/'second.csv'
-    source.write_text('Other,User\nalice,bob\nalice,alice\n')
-    case = Case(tmp_path/'second.timeline')
+    source = tmp_path / "second.csv"
+    source.write_text("Other,User\nalice,bob\nalice,alice\n")
+    case = Case(tmp_path / "second.timeline")
     case.import_csv(source)
     window.detach()
     window.attach(case)
-    settle(qt_application,window)
+    settle(qt_application, window)
     search = WorkspaceSearch(window.documents, window.settings, window.case)
-    hits = search.find('alice')
-    assert [h.count for h in hits] == [2,2]
+    hits = search.find("alice")
+    assert [h.count for h in hits] == [2, 2]
     assert all(not h.error for h in hits)
     # A missing analysis is reported and not recreated as an empty database.
-    window.documents[0].path = str(tmp_path/'missing.timeline')
-    hits = WorkspaceSearch(window.documents, window.settings, window.case).find('alice')
+    window.documents[0].path = str(tmp_path / "missing.timeline")
+    hits = WorkspaceSearch(window.documents, window.settings, window.case).find("alice")
     assert hits[0].count is None and hits[0].error
     assert not Path(window.documents[0].path).exists()
     window.documents[0].path = str(first)
 
 
 def test_closed_tab_restores_notes_view_and_pins(qt_application, window):
-    window.view.filters = [Filter(1,'eq','alice')]
+    window.view.filters = [Filter(1, "eq", "alice")]
     window.pin_column(1)
     window.apply()
-    settle(qt_application,window)
+    settle(qt_application, window)
     window.close_document(0)
     assert window.case is None and len(window.closed_documents) == 1
     window.reopen_closed()
-    settle(qt_application,window)
+    settle(qt_application, window)
     assert window.case.count(window.view) == 2
     assert window.view.pinned_columns == [1]
     assert not window.closed_documents
 
 
 def test_boolean_presentation_and_timestamp_precision(qt_application, window):
-    view = View(boolean_columns=[3],timestamp_columns=[4])
+    view = View(boolean_columns=[3], timestamp_columns=[4])
     window.set_view(view)
-    settle(qt_application,window)
-    window.model.date_format = 'iso7'
-    assert window.model.data(window.model.index(0,4),Qt.CheckStateRole) == Qt.Checked
-    assert window.model.data(window.model.index(1,4),Qt.CheckStateRole) == Qt.Unchecked
-    assert window.model.data(window.model.index(0,5)).endswith('.1234567')
-    assert window.model.node(window.model.index(0,0)).values[4] == 'TRUE'
+    settle(qt_application, window)
+    window.model.date_format = "iso7"
+    assert window.model.data(window.model.index(0, 4), Qt.CheckStateRole) == Qt.Checked
+    assert window.model.data(window.model.index(1, 4), Qt.CheckStateRole) == Qt.Unchecked
+    assert window.model.data(window.model.index(0, 5)).endswith(".1234567")
+    assert window.model.node(window.model.index(0, 0)).values[4] == "TRUE"
 
 
 def test_group_editor_and_date_period_drive_real_engine(qt_application, window):
     dialog = GroupsDialog(window.case.headers, window.view, window)
-    dialog.add(Summary(2,'sum'))
-    dialog.order.setCurrentIndex(dialog.order.findData('summary'))
+    dialog.add(Summary(2, "sum"))
+    dialog.order.setCurrentIndex(dialog.order.findData("summary"))
     dialog.accept()
     view = dialog.view
-    view.groups=[0]
+    view.groups = [0]
     window.set_view(view)
-    settle(qt_application,window)
-    assert window.model.node(window.model.index(0,0)).values[0] == 'MFT'
-    assert 'sum(ID)=4' in window.model.data(window.model.index(0,0))
-    dates=DateFilterDialog()
+    settle(qt_application, window)
+    assert window.model.node(window.model.index(0, 0)).values[0] == "MFT"
+    assert "sum(ID)=4" in window.model.data(window.model.index(0, 0))
+    dates = DateFilterDialog()
     from PySide6.QtCore import QDate
-    dates.date.setDate(QDate(2024,2,20))
-    dates.interval.setCurrentIndex(dates.interval.findData('month'))
-    assert dates.bounds() == ('2024-02-01','2024-03-01')
+
+    dates.date.setDate(QDate(2024, 2, 20))
+    dates.interval.setCurrentIndex(dates.interval.findData("month"))
+    assert dates.bounds() == ("2024-02-01", "2024-03-01")
     dialog.deleteLater()
     dates.deleteLater()
 
 
-def test_copy_follows_visible_order_and_preference(qt_application,window):
-    window.tree.header().moveSection(window.tree.header().visualIndex(3),1)
-    window.tree.setColumnHidden(2,True)
-    window.tree.setCurrentIndex(window.model.index(0,0))
+def test_copy_follows_visible_order_and_preference(qt_application, window):
+    window.tree.header().moveSection(window.tree.header().visualIndex(3), 1)
+    window.tree.setColumnHidden(2, True)
+    window.tree.setCurrentIndex(window.model.index(0, 0))
     window.copy_rows()
-    text=QApplication.clipboard().text()
-    assert text.splitlines()[0].startswith('ID\tArtifact\tFlag')
-    window.preferences.copy_headers=False
+    text = QApplication.clipboard().text()
+    assert text.splitlines()[0].startswith("ID\tArtifact\tFlag")
+    window.preferences.copy_headers = False
     window.copy_rows()
-    assert QApplication.clipboard().text().startswith('001\tMFT\tTRUE')
+    assert QApplication.clipboard().text().startswith("001\tMFT\tTRUE")
 
 
-def test_multiline_tabs_and_dark_preferences_keep_readable_palette(qt_application,window):
+def test_multiline_tabs_and_dark_preferences_keep_readable_palette(qt_application, window):
     from PySide6.QtGui import QPalette
+
     for i in range(20):
-        window.tabs.addTab(f'file-{i}-long-forensic-export.csv')
-    window.preferences.multiline_tabs=True
-    window.preferences.theme='dark'
+        window.tabs.addTab(f"file-{i}-long-forensic-export.csv")
+    window.preferences.multiline_tabs = True
+    window.preferences.theme = "dark"
     window.apply_preferences()
     qt_application.processEvents()
-    assert len(window.tabs.rows)>1
-    assert qt_application.palette().color(QPalette.Text).lightness()>180
-    window.preferences.theme='light'
+    assert len(window.tabs.rows) > 1
+    assert qt_application.palette().color(QPalette.Text).lightness() > 180
+    window.preferences.theme = "light"
     window.apply_preferences()
     qt_application.processEvents()
-    assert qt_application.palette().color(QPalette.Text).lightness()<80
+    assert qt_application.palette().color(QPalette.Text).lightness() < 80
 
 
-def test_extended_acceptance_runs_real_desktop_paths(qt_application,window,tmp_path):
+def test_extended_acceptance_runs_real_desktop_paths(qt_application, window, tmp_path):
     from fireblade.validation.feature_checks import check_features
-    completed=[]
-    def expect(condition,message):
-        assert condition,message
-    def check(name,operation):
+
+    completed = []
+
+    def expect(condition, message):
+        assert condition, message
+
+    def check(name, operation):
         operation()
         completed.append(name)
-    check_features(window,tmp_path,lambda:settle(qt_application,window),check,expect,tmp_path)
-    assert len(completed)==18
-    assert {'mixed_icon_threshold_units_and_pinned_rendering','high_priority_layout_and_selection_rendering','argb_layout_pixels_light_dark_and_selection','separate_group_global_footers_and_source_export','automatic_multiline_row_heights_and_pinned_scrolling','progressive_complete_header_probe_utf8_utf16_utf32','tle_xml_layout_export_and_scoped_default_pins'} <= set(completed)
-    assert (tmp_path/'extended-pinned.png').is_file()
-    assert (tmp_path/'extended-dark.png').is_file()
+
+    check_features(
+        window, tmp_path, lambda: settle(qt_application, window), check, expect, tmp_path
+    )
+    assert len(completed) == 18
+    assert {
+        "mixed_icon_threshold_units_and_pinned_rendering",
+        "high_priority_layout_and_selection_rendering",
+        "argb_layout_pixels_light_dark_and_selection",
+        "separate_group_global_footers_and_source_export",
+        "automatic_multiline_row_heights_and_pinned_scrolling",
+        "progressive_complete_header_probe_utf8_utf16_utf32",
+        "tle_xml_layout_export_and_scoped_default_pins",
+    } <= set(completed)
+    assert (tmp_path / "extended-pinned.png").is_file()
+    assert (tmp_path / "extended-dark.png").is_file()
 
 
-def test_open_queue_waits_for_work_and_preserves_requested_order(qt_application,window,monkeypatch):
-    seen=[]
-    monkeypatch.setattr(window,'open_path',lambda path:seen.append(Path(path).name))
-    window.busy=True
-    window.queue_files(['first.csv','second.csv'])
+def test_open_queue_waits_for_work_and_preserves_requested_order(
+    qt_application, window, monkeypatch
+):
+    seen = []
+    monkeypatch.setattr(window, "open_path", lambda path: seen.append(Path(path).name))
+    window.busy = True
+    window.queue_files(["first.csv", "second.csv"])
     qt_application.processEvents()
-    assert seen==[]
-    window.busy=False
-    deadline=time.monotonic()+2
-    while len(seen)<2 and time.monotonic()<deadline:
-        qt_application.processEvents();time.sleep(.01)
-    assert seen==['first.csv','second.csv']
+    assert seen == []
+    window.busy = False
+    deadline = time.monotonic() + 2
+    while len(seen) < 2 and time.monotonic() < deadline:
+        qt_application.processEvents()
+        time.sleep(0.01)
+    assert seen == ["first.csv", "second.csv"]
 
 
-def test_hidden_pinned_column_is_removed_from_both_grids_and_export(qt_application,window):
+def test_hidden_pinned_column_is_removed_from_both_grids_and_export(qt_application, window):
     window.pin_column(1)
-    assert window.visible_columns()[0]==1
+    assert window.visible_columns()[0] == 1
     window.hide_column(1)
     qt_application.processEvents()
     assert 1 not in window.view.pinned_columns
@@ -193,364 +220,586 @@ def test_hidden_pinned_column_is_removed_from_both_grids_and_export(qt_applicati
     assert not window.tree.frozen.isVisible()
 
 
-def test_first_pin_after_hidden_view_receives_rows_renders_cell_text(qt_application,window):
+def test_first_pin_after_hidden_view_receives_rows_renders_cell_text(qt_application, window):
     from fireblade.validation.appearance import rendered_contrast
-    window.preferences.theme='dark'
+
+    window.preferences.theme = "dark"
     window.apply_preferences()
     qt_application.processEvents()
     window.pin_column(1)
     qt_application.processEvents()
-    rect=window.tree.frozen.visualRect(window.model.index(0,2))
-    assert rect.isValid() and rect.height()>0
-    assert rendered_contrast(window.tree.frozen.viewport(),rect.adjusted(5,3,-5,-3))['ink_pixels']>=5
-    window.preferences.theme='light'
+    rect = window.tree.frozen.visualRect(window.model.index(0, 2))
+    assert rect.isValid() and rect.height() > 0
+    assert (
+        rendered_contrast(window.tree.frozen.viewport(), rect.adjusted(5, 3, -5, -3))["ink_pixels"]
+        >= 5
+    )
+    window.preferences.theme = "light"
     window.apply_preferences()
 
 
-@pytest.mark.parametrize('wrapped',[False,True])
-def test_actual_visible_tab_click_switches_analysis_and_preserves_state(qt_application,window,tmp_path,wrapped):
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_actual_visible_tab_click_switches_analysis_and_preserves_state(
+    qt_application, window, tmp_path, wrapped
+):
     from PySide6.QtTest import QTest
-    first=window.case.path
-    window.case.bookmark(1,'Keep this annotation')
-    window.view.filters=[Filter(1,'eq','alice')]
-    window.apply();settle(qt_application,window)
-    source=tmp_path/'second.csv';source.write_text('ID\nsecond-analysis\n')
-    case=Case(tmp_path/'second.timeline');case.import_csv(source)
-    window.detach();window.attach(case);settle(qt_application,window)
-    window.preferences.multiline_tabs=wrapped
-    if wrapped:window.tabs.setFixedWidth(180)
-    window.apply_preferences();qt_application.processEvents()
-    if wrapped:assert len(window.tabs.rows)==2
-    bar,local=window.tabs.tab_widget(0)
-    QTest.mouseClick(bar,Qt.LeftButton,pos=bar.tabRect(local).center())
-    settle(qt_application,window)
-    assert window.case.path==first
-    assert window.case.count(window.view)==2
-    assert window.case.bookmarks()=={1:'Keep this annotation'}
-    bar,local=window.tabs.tab_widget(1)
-    QTest.mouseClick(bar,Qt.LeftButton,pos=bar.tabRect(local).center())
-    settle(qt_application,window)
-    assert window.case.path==tmp_path/'second.timeline'
+
+    first = window.case.path
+    window.case.bookmark(1, "Keep this annotation")
+    window.view.filters = [Filter(1, "eq", "alice")]
+    window.apply()
+    settle(qt_application, window)
+    source = tmp_path / "second.csv"
+    source.write_text("ID\nsecond-analysis\n")
+    case = Case(tmp_path / "second.timeline")
+    case.import_csv(source)
+    window.detach()
+    window.attach(case)
+    settle(qt_application, window)
+    window.preferences.multiline_tabs = wrapped
+    if wrapped:
+        window.tabs.setFixedWidth(180)
+    window.apply_preferences()
+    qt_application.processEvents()
+    if wrapped:
+        assert len(window.tabs.rows) == 2
+    bar, local = window.tabs.tab_widget(0)
+    QTest.mouseClick(bar, Qt.LeftButton, pos=bar.tabRect(local).center())
+    settle(qt_application, window)
+    assert window.case.path == first
+    assert window.case.count(window.view) == 2
+    assert window.case.bookmarks() == {1: "Keep this annotation"}
+    bar, local = window.tabs.tab_widget(1)
+    QTest.mouseClick(bar, Qt.LeftButton, pos=bar.tabRect(local).center())
+    settle(qt_application, window)
+    assert window.case.path == tmp_path / "second.timeline"
 
 
-def test_five_long_wrapped_tabs_remain_clickable_after_font_and_geometry_change(qt_application,tmp_path):
+def test_five_long_wrapped_tabs_remain_clickable_after_font_and_geometry_change(
+    qt_application, tmp_path
+):
     from PySide6.QtTest import QTest
-    names=['événements Windows.csv','deuxième.csv','preuve été.xlsx','colonnes réordonnées.csv','fonctions étendues.csv']
-    w=Window(require_case=False);errors=[];w.error=errors.append;w.show()
+
+    names = [
+        "événements Windows.csv",
+        "deuxième.csv",
+        "preuve été.xlsx",
+        "colonnes réordonnées.csv",
+        "fonctions étendues.csv",
+    ]
+    w = Window(require_case=False)
+    errors = []
+    w.error = errors.append
+    w.show()
     try:
-        paths=[]
-        for i,name in enumerate(names):
-            source=tmp_path/name;source.write_text('ID\n'+str(i)+'\n')
-            case=Case(tmp_path/(str(i)+'.timeline'));case.import_csv(source)
-            w.detach();w.attach(case);settle(qt_application,w);paths.append(case.path)
-        w.preferences.multiline_tabs=True;w.preferences.theme='dark';w.tabs.setFixedWidth(260)
-        w.apply_preferences();qt_application.processEvents()
-        for i in [0,4,1,3,2]:
-            bar,local=w.tabs.tab_widget(i)
-            rect=bar.tabRect(local).intersected(bar.rect())
+        paths = []
+        for i, name in enumerate(names):
+            source = tmp_path / name
+            source.write_text("ID\n" + str(i) + "\n")
+            case = Case(tmp_path / (str(i) + ".timeline"))
+            case.import_csv(source)
+            w.detach()
+            w.attach(case)
+            settle(qt_application, w)
+            paths.append(case.path)
+        w.preferences.multiline_tabs = True
+        w.preferences.theme = "dark"
+        w.tabs.setFixedWidth(260)
+        w.apply_preferences()
+        qt_application.processEvents()
+        for i in [0, 4, 1, 3, 2]:
+            bar, local = w.tabs.tab_widget(i)
+            rect = bar.tabRect(local).intersected(bar.rect())
             assert rect.isValid()
-            QTest.mouseClick(bar,Qt.LeftButton,pos=rect.center());settle(qt_application,w)
-            assert w.case.path==paths[i],(i,w.active_document,bar.geometry())
+            QTest.mouseClick(bar, Qt.LeftButton, pos=rect.center())
+            settle(qt_application, w)
+            assert w.case.path == paths[i], (i, w.active_document, bar.geometry())
         assert not errors
     finally:
-        w.preferences.theme='light';w.apply_preferences();settle(qt_application,w);w.close()
+        w.preferences.theme = "light"
+        w.apply_preferences()
+        settle(qt_application, w)
+        w.close()
 
 
-def test_complete_expansion_pages_all_groups_and_collapse_restores_tree(qt_application,window):
-    window.set_view(View(groups=[0,1],summaries=[Summary(2,'sum')]))
-    settle(qt_application,window)
-    window.expand_groups();settle(qt_application,window)
+def test_complete_expansion_pages_all_groups_and_collapse_restores_tree(qt_application, window):
+    window.set_view(View(groups=[0, 1], summaries=[Summary(2, "sum")]))
+    settle(qt_application, window)
+    window.expand_groups()
+    settle(qt_application, window)
     assert window.view.expand_all
-    nodes=window.model.root.children
-    assert len(nodes)==7
-    assert len([n for n in nodes if not n.group])==3
-    assert any('▾' in window.model.data(window.model.index(i,0)) for i,n in enumerate(nodes) if n.group)
-    assert all(not window.model.hasChildren(window.model.index(i,0)) for i in range(len(nodes)))
-    window.collapse_groups();settle(qt_application,window)
-    assert not window.view.expand_all and window.model.rowCount()==2
-    assert window.model.hasChildren(window.model.index(0,0))
+    nodes = window.model.root.children
+    assert len(nodes) == 7
+    assert len([n for n in nodes if not n.group]) == 3
+    assert any(
+        "▾" in window.model.data(window.model.index(i, 0)) for i, n in enumerate(nodes) if n.group
+    )
+    assert all(not window.model.hasChildren(window.model.index(i, 0)) for i in range(len(nodes)))
+    window.collapse_groups()
+    settle(qt_application, window)
+    assert not window.view.expand_all and window.model.rowCount() == 2
+    assert window.model.hasChildren(window.model.index(0, 0))
 
 
-def test_native_connection_work_keeps_gui_timer_running_and_uses_worker(qt_application,window):
+def test_native_connection_work_keeps_gui_timer_running_and_uses_worker(qt_application, window):
     import threading
     from PySide6.QtCore import QTimer
-    main=threading.get_ident();ticks=[];worker=[]
-    timer=QTimer();timer.setInterval(10);timer.timeout.connect(lambda:ticks.append(time.monotonic()));timer.start()
+
+    main = threading.get_ident()
+    ticks = []
+    worker = []
+    timer = QTimer()
+    timer.setInterval(10)
+    timer.timeout.connect(lambda: ticks.append(time.monotonic()))
+    timer.start()
+
     def slow_native_operation():
-        worker.append(threading.get_ident());time.sleep(.3);return 42
+        worker.append(threading.get_ident())
+        time.sleep(0.3)
+        return 42
+
     try:
-        assert window.connection_work(slow_native_operation)==42
-        assert worker[0]!=main and len(ticks)>=5
+        assert window.connection_work(slow_native_operation) == 42
+        assert worker[0] != main and len(ticks) >= 5
         assert not window.busy and window.centralWidget().isEnabled()
-        with pytest.raises(RuntimeError,match='expected failure'):
-            window.connection_work(lambda:(_ for _ in ()).throw(ValueError('expected failure')))
+        with pytest.raises(RuntimeError, match="expected failure"):
+            window.connection_work(lambda: (_ for _ in ()).throw(ValueError("expected failure")))
         assert not window.busy
-    finally:timer.stop()
-
-
-def test_user_derived_column_dialog_updates_grid_without_reopening_case(qt_application,window,monkeypatch):
-    from fireblade.ui.derived_columns import DerivedDialog,edit_derived
-    original=window.case;source_bytes=Path(original.info['path']).read_bytes()
-    def accept(dialog):
-        dialog.name.setText('WhenUTC');dialog.source.setCurrentText('Time');dialog.zone.setCurrentText('Europe/Paris');return 1
-    monkeypatch.setattr(DerivedDialog,'exec',accept)
-    edit_derived(window);settle(qt_application,window)
-    assert window.case is original and window.model.columnCount()==7
-    assert window.model.node(window.model.index(0,0)).values[-1]=='2026-01-01T11:00:00.123456700Z'
-    assert Path(original.info['path']).read_bytes()==source_bytes
-
-
-def test_completion_acceptance_runs_official_fixtures_in_real_grid(qt_application,window,tmp_path):
-    from fireblade.validation.completion_checks import check_completion
-    completed=[]
-    def expect(condition,message):assert condition,message
-    def check(name,function):function();completed.append(name)
-    check_completion(window,tmp_path,lambda:settle(qt_application,window),check,expect,tmp_path)
-    assert len(completed)==8
-    assert (tmp_path/'completion-full-groups.png').is_file()
-
-
-def test_many_manual_expansions_keep_a_bounded_cache(qt_application,tmp_path):
-    from fireblade.core.settings import Settings
-    source=tmp_path/'manual.csv'
-    source.write_text('Group,ID\n'+'\n'.join(f'g{i//10:02},{i}' for i in range(1000))+'\n')
-    settings=Settings(page_size=25,max_loaded_rows=100)
-    case=Case(tmp_path/'manual.timeline',settings=settings);case.import_csv(source)
-    w=Window(require_case=False, settings=settings);errors=[];w.error=errors.append
-    try:
-        w.attach(case,View(groups=[0]));settle(qt_application,w)
-        for i in range(20):
-            index=w.model.index(i,0);w.tree.setExpanded(index,True);settle(qt_application,w)
-            pending=[w.model.root];total=0
-            while pending:
-                node=pending.pop();total+=len(node.children);pending.extend(node.children)
-            assert total<=100
-        assert not w.tree.isExpanded(w.model.index(0,0))
-        assert w.tree.isExpanded(w.model.index(19,0))
-        assert w.case.count(View())==1000 and not errors
     finally:
-        settle(qt_application,w);w.close()
+        timer.stop()
 
 
-def test_connection_ownership_waits_for_runnable_tail_before_reopen(qt_application,window,monkeypatch):
+def test_user_derived_column_dialog_updates_grid_without_reopening_case(
+    qt_application, window, monkeypatch
+):
+    from fireblade.ui.derived_columns import DerivedDialog, edit_derived
+
+    original = window.case
+    source_bytes = Path(original.info["path"]).read_bytes()
+
+    def accept(dialog):
+        dialog.name.setText("WhenUTC")
+        dialog.source.setCurrentText("Time")
+        dialog.zone.setCurrentText("Europe/Paris")
+        return 1
+
+    monkeypatch.setattr(DerivedDialog, "exec", accept)
+    edit_derived(window)
+    settle(qt_application, window)
+    assert window.case is original and window.model.columnCount() == 7
+    assert (
+        window.model.node(window.model.index(0, 0)).values[-1] == "2026-01-01T11:00:00.123456700Z"
+    )
+    assert Path(original.info["path"]).read_bytes() == source_bytes
+
+
+def test_completion_acceptance_runs_official_fixtures_in_real_grid(
+    qt_application, window, tmp_path
+):
+    from fireblade.validation.completion_checks import check_completion
+
+    completed = []
+
+    def expect(condition, message):
+        assert condition, message
+
+    def check(name, function):
+        function()
+        completed.append(name)
+
+    check_completion(
+        window, tmp_path, lambda: settle(qt_application, window), check, expect, tmp_path
+    )
+    assert len(completed) == 8
+    assert (tmp_path / "completion-full-groups.png").is_file()
+
+
+def test_many_manual_expansions_keep_a_bounded_cache(qt_application, tmp_path):
+    from fireblade.core.settings import Settings
+
+    source = tmp_path / "manual.csv"
+    source.write_text("Group,ID\n" + "\n".join(f"g{i // 10:02},{i}" for i in range(1000)) + "\n")
+    settings = Settings(page_size=25, max_loaded_rows=100)
+    case = Case(tmp_path / "manual.timeline", settings=settings)
+    case.import_csv(source)
+    w = Window(require_case=False, settings=settings)
+    errors = []
+    w.error = errors.append
+    try:
+        w.attach(case, View(groups=[0]))
+        settle(qt_application, w)
+        for i in range(20):
+            index = w.model.index(i, 0)
+            w.tree.setExpanded(index, True)
+            settle(qt_application, w)
+            pending = [w.model.root]
+            total = 0
+            while pending:
+                node = pending.pop()
+                total += len(node.children)
+                pending.extend(node.children)
+            assert total <= 100
+        assert not w.tree.isExpanded(w.model.index(0, 0))
+        assert w.tree.isExpanded(w.model.index(19, 0))
+        assert w.case.count(View()) == 1000 and not errors
+    finally:
+        settle(qt_application, w)
+        w.close()
+
+
+def test_connection_ownership_waits_for_runnable_tail_before_reopen(
+    qt_application, window, monkeypatch
+):
     from fireblade.ui.workers import Job
+
     class TailJob(Job):
         def run(self):
             super().run()
-            time.sleep(.05)
-    monkeypatch.setattr('fireblade.ui.app.Job',TailJob)
-    assert window.connection_work(lambda:42)==42
-    assert window.pool.activeThreadCount()==0
+            time.sleep(0.05)
+
+    monkeypatch.setattr("fireblade.ui.app.Job", TailJob)
+    assert window.connection_work(lambda: 42) == 42
+    assert window.pool.activeThreadCount() == 0
     assert window.can_open_file()
 
 
-def test_open_official_plaso_csv_applies_profile_before_showing_grid(qt_application,tmp_path,monkeypatch):
+def test_open_official_plaso_csv_applies_profile_before_showing_grid(
+    qt_application, tmp_path, monkeypatch
+):
     from fireblade.ui.dialogs import ImportDialog
     import shutil
-    fixture=Path(__file__).parents[1]/'fixtures'/'tle-exports'/'SuperTimelinePlaso.csv'
-    source=tmp_path/'plaso.csv';shutil.copy2(fixture,source);before=source.read_bytes()
-    w=Window(require_case=False);errors=[];w.error=errors.append
-    target=tmp_path/'plaso.timeline'
-    def accept(dialog):dialog.target.setText(str(target));dialog.accept();return dialog.result()
-    monkeypatch.setattr(ImportDialog,'exec',accept)
+
+    fixture = Path(__file__).parents[1] / "fixtures" / "tle-exports" / "SuperTimelinePlaso.csv"
+    source = tmp_path / "plaso.csv"
+    shutil.copy2(fixture, source)
+    before = source.read_bytes()
+    w = Window(require_case=False)
+    errors = []
+    w.error = errors.append
+    target = tmp_path / "plaso.timeline"
+
+    def accept(dialog):
+        dialog.target.setText(str(target))
+        dialog.accept()
+        return dialog.result()
+
+    monkeypatch.setattr(ImportDialog, "exec", accept)
     try:
-        w.import_file(source);settle(qt_application,w)
-        assert 'Timestamp' in w.case.headers and 'Fireblade_Category' in w.case.headers
+        w.import_file(source)
+        settle(qt_application, w)
+        assert "Timestamp" in w.case.headers and "Fireblade_Category" in w.case.headers
         assert w.view.timestamp_columns and w.view.format_rules
-        assert w.model.node(w.model.index(0,0)).values[-3:] == ('2020-01-02T03:04:05.000000000Z','1','FileOpening')
-        assert source.read_bytes()==before and len(w.case.info['headers'])==17
-        w.preferences.auto_profiles=False;target=tmp_path/'generic.timeline'
-        w.import_file(source);settle(qt_application,w)
-        assert len(w.case.headers)==17 and not w.case.derived
+        assert w.model.node(w.model.index(0, 0)).values[-3:] == (
+            "2020-01-02T03:04:05.000000000Z",
+            "1",
+            "FileOpening",
+        )
+        assert source.read_bytes() == before and len(w.case.info["headers"]) == 17
+        w.preferences.auto_profiles = False
+        target = tmp_path / "generic.timeline"
+        w.import_file(source)
+        settle(qt_application, w)
+        assert len(w.case.headers) == 17 and not w.case.derived
         assert not errors
     finally:
-        settle(qt_application,w);w.close()
+        settle(qt_application, w)
+        w.close()
 
 
-def test_derived_refresh_preserves_column_order_width_hidden_and_pins(qt_application,window):
+def test_derived_refresh_preserves_column_order_width_hidden_and_pins(qt_application, window):
     from fireblade.ui.derived_columns import add_columns
-    window.tree.header().moveSection(window.tree.header().visualIndex(3),1)
-    window.tree.setColumnWidth(3,233);window.tree.setColumnHidden(2,True)
-    window.pin_column(4);settle(qt_application,window)
-    before=[window.tree.header().logicalIndex(i) for i in range(window.tree.header().count())]
-    add_columns(window,[dict(name='DoubleID',operation='expression',expression='[ID]*2')]);settle(qt_application,window)
-    assert [window.tree.header().logicalIndex(i) for i in range(len(before))]==before
-    assert window.tree.columnWidth(3)==233 and window.tree.isColumnHidden(2)
-    assert window.view.pinned_columns==[4] and window.tree.frozen.isVisible()
+
+    window.tree.header().moveSection(window.tree.header().visualIndex(3), 1)
+    window.tree.setColumnWidth(3, 233)
+    window.tree.setColumnHidden(2, True)
+    window.pin_column(4)
+    settle(qt_application, window)
+    before = [window.tree.header().logicalIndex(i) for i in range(window.tree.header().count())]
+    add_columns(window, [dict(name="DoubleID", operation="expression", expression="[ID]*2")])
+    settle(qt_application, window)
+    assert [window.tree.header().logicalIndex(i) for i in range(len(before))] == before
+    assert window.tree.columnWidth(3) == 233 and window.tree.isColumnHidden(2)
+    assert window.view.pinned_columns == [4] and window.tree.frozen.isVisible()
 
 
-def test_old_model_never_exposes_a_new_backend_column_before_schema_refresh(qt_application,window):
-    model=window.model;count=model.columnCount();last=model.data(model.index(0,count-1))
-    window.case.add_derived_columns([dict(name='WorkerColumn',operation='expression',expression='[ID]+1')])
-    assert model.columnCount()==count
-    assert model.data(model.index(0,count-1))==last
-    assert not model.index(0,count).isValid()
+def test_old_model_never_exposes_a_new_backend_column_before_schema_refresh(qt_application, window):
+    model = window.model
+    count = model.columnCount()
+    last = model.data(model.index(0, count - 1))
+    window.case.add_derived_columns(
+        [dict(name="WorkerColumn", operation="expression", expression="[ID]+1")]
+    )
+    assert model.columnCount() == count
+    assert model.data(model.index(0, count - 1)) == last
+    assert not model.index(0, count).isValid()
 
 
-def test_right_pin_menu_shared_selection_geometry_copy_and_export(qt_application,window,tmp_path):
+def test_right_pin_menu_shared_selection_geometry_copy_and_export(qt_application, window, tmp_path):
     import csv
     from PySide6.QtCore import QItemSelectionModel
     from PySide6.QtTest import QTest
     from fireblade.ui.menus import header_menu
-    window.resize(780,500)
+
+    window.resize(780, 500)
     window.pin_column(1)
-    menu=header_menu(window,3)
-    next(a for a in menu.actions() if a.text()=='Épingler à droite').trigger();menu.deleteLater()
-    settle(qt_application,window)
-    tree=window.tree;right=tree.right_frozen;index=window.model.index(0,3)
-    assert window.view.right_pinned_columns==[2] and tree.right_pinned==[3]
-    assert all(p.model() is window.model and p.selectionModel() is tree.selectionModel() for p in tree.frozen_views)
+    menu = header_menu(window, 3)
+    next(a for a in menu.actions() if a.text() == "Épingler à droite").trigger()
+    menu.deleteLater()
+    settle(qt_application, window)
+    tree = window.tree
+    right = tree.right_frozen
+    index = window.model.index(0, 3)
+    assert window.view.right_pinned_columns == [2] and tree.right_pinned == [3]
+    assert all(
+        p.model() is window.model and p.selectionModel() is tree.selectionModel()
+        for p in tree.frozen_views
+    )
     assert right.isVisible() and tree.isColumnHidden(3)
-    assert tree.frozen.geometry().right()<tree.viewport().geometry().left()
-    assert tree.viewport().geometry().right()<right.geometry().left()
-    before=right.geometry()
-    tree.horizontalScrollBar().setValue(tree.horizontalScrollBar().maximum());qt_application.processEvents()
-    assert right.geometry()==before
-    rect=right.visualRect(index);assert rect.isValid() and right.viewport().rect().contains(rect.center())
-    QTest.mouseClick(right.viewport(),Qt.LeftButton,pos=rect.center());qt_application.processEvents()
-    assert tree.selectionModel().isRowSelected(0,index.parent()) and tree.currentIndex().row()==0
-    assert right.viewport().mapTo(tree,rect.topLeft()).y()==tree.viewport().mapTo(tree,tree.visualRect(window.model.index(0,1)).topLeft()).y()
-    assert window.visible_columns()==[1,0,3,4,2]
+    assert tree.frozen.geometry().right() < tree.viewport().geometry().left()
+    assert tree.viewport().geometry().right() < right.geometry().left()
+    before = right.geometry()
+    tree.horizontalScrollBar().setValue(tree.horizontalScrollBar().maximum())
+    qt_application.processEvents()
+    assert right.geometry() == before
+    rect = right.visualRect(index)
+    assert rect.isValid() and right.viewport().rect().contains(rect.center())
+    QTest.mouseClick(right.viewport(), Qt.LeftButton, pos=rect.center())
+    qt_application.processEvents()
+    assert tree.selectionModel().isRowSelected(0, index.parent()) and tree.currentIndex().row() == 0
+    assert (
+        right.viewport().mapTo(tree, rect.topLeft()).y()
+        == tree.viewport().mapTo(tree, tree.visualRect(window.model.index(0, 1)).topLeft()).y()
+    )
+    assert window.visible_columns() == [1, 0, 3, 4, 2]
     window.copy_rows()
-    assert QApplication.clipboard().text().splitlines()[0].split('\t')==['User','Artifact','Flag','Time','ID']
-    target=tmp_path/'right.csv';window.case.export(target,window.view,columns=window.visible_columns())
-    with target.open(encoding='utf-8-sig',newline='') as f:assert next(csv.reader(f))==['User','Artifact','Flag','Time','ID']
-    window.hide_column(2);qt_application.processEvents()
+    assert QApplication.clipboard().text().splitlines()[0].split("\t") == [
+        "User",
+        "Artifact",
+        "Flag",
+        "Time",
+        "ID",
+    ]
+    target = tmp_path / "right.csv"
+    window.case.export(target, window.view, columns=window.visible_columns())
+    with target.open(encoding="utf-8-sig", newline="") as f:
+        assert next(csv.reader(f)) == ["User", "Artifact", "Flag", "Time", "ID"]
+    window.hide_column(2)
+    qt_application.processEvents()
     assert not right.isVisible() and 2 not in window.visible_columns()
 
 
-def test_pin_switch_width_roundtrip_grouping_and_derived_refresh(qt_application,window):
+def test_pin_switch_width_roundtrip_grouping_and_derived_refresh(qt_application, window):
     from fireblade.ui.derived_columns import add_columns
-    window.pin_column(2);window.tree.frozen.setColumnWidth(3,237)
-    window.pin_column(2,'right');settle(qt_application,window)
-    assert window.view.pinned_columns==[] and window.tree.right_frozen.columnWidth(3)==237
-    window.case.save_view('right',window.view)
-    saved=window.case.views()['right'];assert saved.right_pinned_columns==[2]
-    window.set_view(saved);settle(qt_application,window)
-    assert window.tree.right_frozen.columnWidth(3)==237
-    add_columns(window,[dict(name='Double',operation='expression',expression='[ID]*2')]);settle(qt_application,window)
-    assert window.tree.right_frozen.columnWidth(3)==237 and window.view.right_pinned_columns==[2]
-    grouped=copy.deepcopy(window.view);grouped.groups=[0];window.set_view(grouped);settle(qt_application,window)
-    first=window.model.index(0,0);window.tree.frozen.expand(first);settle(qt_application,window)
-    assert all(p.isExpanded(first) for p in window.tree.frozen_views) and window.tree.isExpanded(first)
-    window.collapse_groups();settle(qt_application,window)
+
+    window.pin_column(2)
+    window.tree.frozen.setColumnWidth(3, 237)
+    window.pin_column(2, "right")
+    settle(qt_application, window)
+    assert window.view.pinned_columns == [] and window.tree.right_frozen.columnWidth(3) == 237
+    window.case.save_view("right", window.view)
+    saved = window.case.views()["right"]
+    assert saved.right_pinned_columns == [2]
+    window.set_view(saved)
+    settle(qt_application, window)
+    assert window.tree.right_frozen.columnWidth(3) == 237
+    add_columns(window, [dict(name="Double", operation="expression", expression="[ID]*2")])
+    settle(qt_application, window)
+    assert window.tree.right_frozen.columnWidth(3) == 237 and window.view.right_pinned_columns == [
+        2
+    ]
+    grouped = copy.deepcopy(window.view)
+    grouped.groups = [0]
+    window.set_view(grouped)
+    settle(qt_application, window)
+    first = window.model.index(0, 0)
+    window.tree.frozen.expand(first)
+    settle(qt_application, window)
+    assert all(p.isExpanded(first) for p in window.tree.frozen_views) and window.tree.isExpanded(
+        first
+    )
+    window.collapse_groups()
+    settle(qt_application, window)
     assert not window.tree.right_frozen.isExpanded(first)
-    window.pin_column(2);qt_application.processEvents()
-    assert not window.tree.right_frozen.isVisible() and window.tree.columnWidth(3)==237
+    window.pin_column(2)
+    qt_application.processEvents()
+    assert not window.tree.right_frozen.isVisible() and window.tree.columnWidth(3) == 237
 
 
-def test_narrow_pinned_sides_keep_center_and_legacy_views(qt_application,window):
+def test_narrow_pinned_sides_keep_center_and_legacy_views(qt_application, window):
     import json
-    legacy=json.loads(View().to_json());legacy.pop('right_pinned_columns')
-    assert View.from_json(json.dumps(legacy)).right_pinned_columns==[]
-    with pytest.raises(ValueError,match='deux côtés'):
-        window.case.validate_view(View(pinned_columns=[1],right_pinned_columns=[1]))
-    window.pin_column(1);window.pin_column(2,'right')
-    window.tree.frozen.setColumnWidth(2,800);window.tree.right_frozen.setColumnWidth(3,800)
-    window.resize(500,400);qt_application.processEvents();window.tree.position_pins()
-    assert window.tree.viewport().width()>=80
-    assert window.tree.frozen.geometry().right()<window.tree.right_frozen.geometry().left()
+
+    legacy = json.loads(View().to_json())
+    legacy.pop("right_pinned_columns")
+    assert View.from_json(json.dumps(legacy)).right_pinned_columns == []
+    with pytest.raises(ValueError, match="deux côtés"):
+        window.case.validate_view(View(pinned_columns=[1], right_pinned_columns=[1]))
+    window.pin_column(1)
+    window.pin_column(2, "right")
+    window.tree.frozen.setColumnWidth(2, 800)
+    window.tree.right_frozen.setColumnWidth(3, 800)
+    window.resize(500, 400)
+    qt_application.processEvents()
+    window.tree.position_pins()
+    assert window.tree.viewport().width() >= 80
+    assert window.tree.frozen.geometry().right() < window.tree.right_frozen.geometry().left()
 
 
-def test_right_pin_vertical_scroll_and_empty_filter_share_loaded_rows(qt_application,window,tmp_path):
+def test_right_pin_vertical_scroll_and_empty_filter_share_loaded_rows(
+    qt_application, window, tmp_path
+):
     from PySide6.QtCore import QPoint
-    source=tmp_path/'scroll.csv'
-    source.write_text('A,B,C,D,E\n'+''.join(f'{i},user{i},id{i},text{i},value{i}\n' for i in range(120)))
-    case=Case(tmp_path/'scroll.timeline');case.import_csv(source)
-    window.detach();window.attach(case);window.resize(780,460)
-    window.pin_column(1);window.pin_column(4,'right');settle(qt_application,window)
-    tree=window.tree;tree.verticalScrollBar().setValue(12);qt_application.processEvents()
-    indexes=[v.indexAt(QPoint(10,10)) for v in (tree,*tree.frozen_views)]
+
+    source = tmp_path / "scroll.csv"
+    source.write_text(
+        "A,B,C,D,E\n" + "".join(f"{i},user{i},id{i},text{i},value{i}\n" for i in range(120))
+    )
+    case = Case(tmp_path / "scroll.timeline")
+    case.import_csv(source)
+    window.detach()
+    window.attach(case)
+    window.resize(780, 460)
+    window.pin_column(1)
+    window.pin_column(4, "right")
+    settle(qt_application, window)
+    tree = window.tree
+    tree.verticalScrollBar().setValue(12)
+    qt_application.processEvents()
+    indexes = [v.indexAt(QPoint(10, 10)) for v in (tree, *tree.frozen_views)]
     assert all(i.isValid() for i in indexes)
-    assert len({window.model.node(i).values[0] for i in indexes})==1
-    tree.right_frozen.verticalScrollBar().setValue(20);qt_application.processEvents()
-    assert all(v.verticalScrollBar().value()==20 for v in (tree,*tree.frozen_views))
-    filtered=copy.deepcopy(window.view);filtered.filters=[Filter(0,'eq','absent')]
-    window.set_view(filtered);settle(qt_application,window)
-    assert window.model.rowCount()==0 and tree.right_frozen.isVisible()
+    assert len({window.model.node(i).values[0] for i in indexes}) == 1
+    tree.right_frozen.verticalScrollBar().setValue(20)
+    qt_application.processEvents()
+    assert all(v.verticalScrollBar().value() == 20 for v in (tree, *tree.frozen_views))
+    filtered = copy.deepcopy(window.view)
+    filtered.filters = [Filter(0, "eq", "absent")]
+    window.set_view(filtered)
+    settle(qt_application, window)
+    assert window.model.rowCount() == 0 and tree.right_frozen.isVisible()
 
 
-def test_ordinary_open_detects_real_installed_reader(qt_application,tmp_path,monkeypatch):
+def test_ordinary_open_detects_real_installed_reader(qt_application, tmp_path, monkeypatch):
     import os, shutil
     from fireblade.core.reader_detection import reader_directories
     from fireblade.ui.dialogs import ImportDialog
-    fixture=os.environ.get('FIREBLADE_PLUGIN_FIXTURE')
-    if not fixture or not os.environ.get('FIREBLADE_PLUGIN_HOST'):
-        pytest.skip('Real .NET helper and fixture required')
-    directory=reader_directories()[0];directory.mkdir(parents=True)
-    shutil.copy2(fixture,directory/Path(fixture).name)
-    source=tmp_path/'new.csv';source.write_text('Text,Identifier\névidence,0001\n',encoding='utf-8')
-    before=source.read_bytes();w=Window(require_case=False);errors=[];w.error=errors.append
-    target=tmp_path/'automatic.timeline';dialogs=[]
+
+    fixture = os.environ.get("FIREBLADE_PLUGIN_FIXTURE")
+    if not fixture or not os.environ.get("FIREBLADE_PLUGIN_HOST"):
+        pytest.skip("Real .NET helper and fixture required")
+    directory = reader_directories()[0]
+    directory.mkdir(parents=True)
+    shutil.copy2(fixture, directory / Path(fixture).name)
+    source = tmp_path / "new.csv"
+    source.write_text("Text,Identifier\névidence,0001\n", encoding="utf-8")
+    before = source.read_bytes()
+    w = Window(require_case=False)
+    errors = []
+    w.error = errors.append
+    target = tmp_path / "automatic.timeline"
+    dialogs = []
+
     def accept(dialog):
         dialogs.append(dialog)
-        dialog.target.setText(str(target));dialog.accept();return dialog.result()
-    monkeypatch.setattr(ImportDialog,'exec',accept)
+        dialog.target.setText(str(target))
+        dialog.accept()
+        return dialog.result()
+
+    monkeypatch.setattr(ImportDialog, "exec", accept)
     try:
         w.import_file(source)
-        deadline=time.monotonic()+20
-        while time.monotonic()<deadline and not w.case and not errors:
-            qt_application.processEvents();time.sleep(.005)
-        settle(qt_application,w)
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline and not w.case and not errors:
+            qt_application.processEvents()
+            time.sleep(0.005)
+        settle(qt_application, w)
         assert not errors and w.case is not None
-        assert w.case.info['format']=='tle-plugin' and w.case.info['plugin']['type']=='FixtureReader'
-        assert len(dialogs)==1 and w.view.boolean_columns and w.view.timestamp_columns
-        assert w.model.node(w.model.index(0,0)).values[1]==source.read_text(encoding='utf-8')
-        assert source.read_bytes()==before
+        assert (
+            w.case.info["format"] == "tle-plugin"
+            and w.case.info["plugin"]["type"] == "FixtureReader"
+        )
+        assert len(dialogs) == 1 and w.view.boolean_columns and w.view.timestamp_columns
+        assert w.model.node(w.model.index(0, 0)).values[1] == source.read_text(encoding="utf-8")
+        assert source.read_bytes() == before
     finally:
-        settle(qt_application,w);w.close()
+        settle(qt_application, w)
+        w.close()
 
 
-def test_export_tle_session_from_multiple_tabs_uses_sources_and_all_tags(qt_application,window,tmp_path):
+def test_export_tle_session_from_multiple_tabs_uses_sources_and_all_tags(
+    qt_application, window, tmp_path
+):
     import json
     from fireblade.core.tle_compat import read_tle_session
-    first=window.case
-    first.bookmark_many([1],'retained note','replace')
-    first_source=Path(first.info['path'])
-    second_source=tmp_path/'échange.csv';second_source.write_text('Value\none\ntwo\n')
-    second=Case(tmp_path/'échange.timeline');second.import_csv(second_source);second.bookmark_many([2],'second note','replace')
-    window.detach();window.attach(second);settle(qt_application,window)
-    window.view.filters=[Filter(0,'eq','one')];window.apply();settle(qt_application,window)
-    target=tmp_path/'session.tle_sess';window.export_tle_session(target);settle(qt_application,window)
-    assert read_tle_session(target)==[(first_source,[1]),(second_source,[2])]
-    assert json.loads(target.read_text())['SessionFiles'][str(second_source)]==[2]
-    assert window.case is second and second.bookmarks()=={2:'second note'}
-    assert window.view.filters==[Filter(0,'eq','one')]
+
+    first = window.case
+    first.bookmark_many([1], "retained note", "replace")
+    first_source = Path(first.info["path"])
+    second_source = tmp_path / "échange.csv"
+    second_source.write_text("Value\none\ntwo\n")
+    second = Case(tmp_path / "échange.timeline")
+    second.import_csv(second_source)
+    second.bookmark_many([2], "second note", "replace")
+    window.detach()
+    window.attach(second)
+    settle(qt_application, window)
+    window.view.filters = [Filter(0, "eq", "one")]
+    window.apply()
+    settle(qt_application, window)
+    target = tmp_path / "session.tle_sess"
+    window.export_tle_session(target)
+    settle(qt_application, window)
+    assert read_tle_session(target) == [(first_source, [1]), (second_source, [2])]
+    assert json.loads(target.read_text())["SessionFiles"][str(second_source)] == [2]
+    assert window.case is second and second.bookmarks() == {2: "second note"}
+    assert window.view.filters == [Filter(0, "eq", "one")]
     assert window.workspace_search is None and not window.busy
-    assert 'notes, vues et filtres' in window.statusBar().currentMessage()
+    assert "notes, vues et filtres" in window.statusBar().currentMessage()
 
 
-def test_xml_layout_export_uses_real_header_geometry_and_protects_evidence(qt_application,window,tmp_path,monkeypatch):
+def test_xml_layout_export_uses_real_header_geometry_and_protects_evidence(
+    qt_application, window, tmp_path, monkeypatch
+):
     from PySide6.QtWidgets import QFileDialog
     from fireblade.core.tle_layout import read_tle_layout
-    target=tmp_path/'portable.layout'
-    monkeypatch.setattr(QFileDialog,'getSaveFileName',lambda *args:(str(target),'Disposition Timeline Explorer (*.layout)'))
+
+    target = tmp_path / "portable.layout"
+    monkeypatch.setattr(
+        QFileDialog,
+        "getSaveFileName",
+        lambda *args: (str(target), "Disposition Timeline Explorer (*.layout)"),
+    )
     window.pin_column(1)
-    window.tree.frozen.setColumnWidth(2,243)
-    window.tree.setColumnWidth(3,347)
-    window.tree.setColumnHidden(3,True)
+    window.tree.frozen.setColumnWidth(2, 243)
+    window.tree.setColumnWidth(3, 347)
+    window.tree.setColumnHidden(3, True)
     window.export_layout()
     assert target.is_file()
-    restored=read_tle_layout(target,window.case.headers)
-    assert restored.view.pinned_columns==[1]
-    assert next(c for c in restored.columns if c['column']==1)['width']==243
-    assert next(c for c in restored.columns if c['column']==2)['position']==-1
-    assert next(c for c in restored.columns if c['column']==2)['width']==347
+    restored = read_tle_layout(target, window.case.headers)
+    assert restored.view.pinned_columns == [1]
+    assert next(c for c in restored.columns if c["column"] == 1)["width"] == 243
+    assert next(c for c in restored.columns if c["column"] == 2)["position"] == -1
+    assert next(c for c in restored.columns if c["column"] == 2)["width"] == 347
     assert window.tree.isColumnHidden(3)
     # The same common destination check runs before either file format writes.
-    monkeypatch.setattr(window,'export_destination_is_safe',lambda path:False)
-    target.write_text('existing')
+    monkeypatch.setattr(window, "export_destination_is_safe", lambda path: False)
+    target.write_text("existing")
     window.export_layout()
-    assert target.read_text()=='existing'
+    assert target.read_text() == "existing"
 
 
-def test_scoped_default_pins_apply_only_to_the_matching_reader(qt_application,tmp_path):
-    source=tmp_path/'generic.csv';source.write_text('User,Message\nalice,hello\n')
-    case=Case(tmp_path/'generic.timeline');case.import_csv(source)
-    w=Window(require_case=False);w.preferences.pinned_columns_by_format={'GenericCsv':['Message'],'OtherReader':['User']}
-    errors=[];w.error=errors.append
+def test_scoped_default_pins_apply_only_to_the_matching_reader(qt_application, tmp_path):
+    source = tmp_path / "generic.csv"
+    source.write_text("User,Message\nalice,hello\n")
+    case = Case(tmp_path / "generic.timeline")
+    case.import_csv(source)
+    w = Window(require_case=False)
+    w.preferences.pinned_columns_by_format = {"GenericCsv": ["Message"], "OtherReader": ["User"]}
+    errors = []
+    w.error = errors.append
     try:
-        w.attach(case,auto_layout=False);w.show();settle(qt_application,w)
-        assert w.view.pinned_columns==[1] and w.tree.pinned==[0,2]
+        w.attach(case, auto_layout=False)
+        w.show()
+        settle(qt_application, w)
+        assert w.view.pinned_columns == [1] and w.tree.pinned == [0, 2]
         assert not errors
-    finally:w.close()
+    finally:
+        w.close()

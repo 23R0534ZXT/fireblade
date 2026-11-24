@@ -28,9 +28,11 @@ def test_cancel_immediately_before_commit_rolls_back(tmp_path, source):
     before = source.read_bytes()
     case = Case(tmp_path / "before-commit.timeline")
     try:
+
         def cancel(message):
             if message == "Validation de l’analyse…":
                 case.interrupt()
+
         with pytest.raises(OperationCancelled):
             case.import_csv(source, progress=cancel)
         assert_empty_and_retry(case, source)
@@ -42,13 +44,16 @@ def test_cancel_immediately_before_commit_rolls_back(tmp_path, source):
 def test_begin_interrupted_before_a_transaction_is_active(tmp_path, source):
     case = Case(tmp_path / "begin.timeline")
     native = case.db
+
     class InterruptBegin:
         def execute(self, sql, *args):
             if sql == "BEGIN":
                 raise duckdb.InterruptException("Interrupted before BEGIN")
             return native.execute(sql, *args)
+
         def __getattr__(self, name):
             return getattr(native, name)
+
     try:
         case.db = InterruptBegin()
         with pytest.raises(OperationCancelled):
@@ -64,21 +69,27 @@ def test_repeated_cancel_during_rollback_does_not_interrupt_cleanup(tmp_path, so
     case = Case(tmp_path / "rollback.timeline")
     native = case.db
     native_interrupts = []
+
     class CancelDuringRollback:
         def execute(self, sql, *args):
             if sql == "ROLLBACK":
                 case.interrupt()  # A second click while rollback is already running.
             return native.execute(sql, *args)
+
         def interrupt(self):
             native_interrupts.append(True)
             native.interrupt()
+
         def __getattr__(self, name):
             return getattr(native, name)
+
     try:
         case.db = CancelDuringRollback()
+
         def cancel(message):
             if message == "Validation de l’analyse…":
                 case.interrupt()
+
         with pytest.raises(OperationCancelled):
             case.import_csv(source, progress=cancel)
         assert len(native_interrupts) == 1
@@ -93,16 +104,20 @@ def test_cancel_after_commit_started_finishes_a_valid_analysis(tmp_path, source)
     case = Case(tmp_path / "committing.timeline")
     native = case.db
     native_interrupts = []
+
     class CancelDuringCommit:
         def execute(self, sql, *args):
             if sql == "COMMIT":
                 case.interrupt()
             return native.execute(sql, *args)
+
         def interrupt(self):
             native_interrupts.append(True)
             native.interrupt()
+
         def __getattr__(self, name):
             return getattr(native, name)
+
     try:
         case.db = CancelDuringCommit()
         assert case.import_csv(source)["rows"] == 2
@@ -122,9 +137,11 @@ def test_cancel_after_commit_started_finishes_a_valid_analysis(tmp_path, source)
 def test_callback_base_exception_also_rolls_back(tmp_path, source):
     case = Case(tmp_path / "callback.timeline")
     try:
+
         def stop(message):
             if message == "Validation de l’analyse…":
                 raise KeyboardInterrupt()
+
         with pytest.raises(KeyboardInterrupt):
             case.import_csv(source, progress=stop)
         assert_empty_and_retry(case, source)
@@ -187,14 +204,17 @@ def test_native_csv_scan_can_be_cancelled_and_retried(tmp_path, source):
     case.db.execute("SET enable_progress_bar_print=false")
     writing = threading.Event()
     failures = []
+
     def progress(message):
         if message == "Écriture des enregistrements sur disque…":
             writing.set()
+
     def work():
         try:
             case.import_csv(large, progress=progress)
         except Exception as exc:
             failures.append(exc)
+
     thread = threading.Thread(target=work, daemon=True)
     try:
         thread.start()
@@ -205,7 +225,7 @@ def test_native_csv_scan_can_be_cancelled_and_retried(tmp_path, source):
             if case.db.query_progress() >= 0:
                 observed_active = True
                 break
-            time.sleep(.001)
+            time.sleep(0.001)
         assert observed_active, "The CSV scanner finished before it could be observed"
         case.interrupt()
         thread.join(10)

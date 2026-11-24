@@ -5,6 +5,7 @@ answer at once with a job id; the window polls it and paints the bar. These test
 hold the contract the browser relies on: a job that ends, a percentage that is a
 number, a result the caller can use, and a refusal that is a sentence.
 """
+
 import csv
 import time
 
@@ -20,10 +21,12 @@ def _write_csv(path):
     with path.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
         writer.writerow(["Timestamp", "Artifact", "User", "SourceIP"])
-        writer.writerows([
-            ["2026-11-02T10:00:00Z", "EVTX", "alice", "192.0.2.10"],
-            ["2026-11-02T10:01:00Z", "EVTX", "bob", "192.0.2.20"],
-        ])
+        writer.writerows(
+            [
+                ["2026-11-02T10:00:00Z", "EVTX", "alice", "192.0.2.10"],
+                ["2026-11-02T10:01:00Z", "EVTX", "bob", "192.0.2.20"],
+            ]
+        )
 
 
 @pytest.fixture()
@@ -43,9 +46,14 @@ def service(tmp_path):
         info = dict(case.info)
     finally:
         case.close()
-    core.save(identifier, [AnalysisSnapshot(path=str(analysis), source_info=info,
-                                            view=View(), header_state=b"")],
-              0, [], None, data["revision"])
+    core.save(
+        identifier,
+        [AnalysisSnapshot(path=str(analysis), source_info=info, view=View(), header_state=b"")],
+        0,
+        [],
+        None,
+        data["revision"],
+    )
     library = Library(root)
     try:
         yield library, identifier
@@ -65,8 +73,7 @@ def _wait(library, job, seconds=20):
 
 def test_a_scan_task_ends_with_its_result_and_a_percentage(service):
     library, identifier = service
-    started = library.start_task(identifier, "scan",
-                                 {"text": "192.0.2.10", "all_analyses": True})
+    started = library.start_task(identifier, "scan", {"text": "192.0.2.10", "all_analyses": True})
     assert started["status"] == "running"
     payload = _wait(library, started["job"])
     assert payload["status"] == "done", payload

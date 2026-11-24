@@ -5,6 +5,7 @@ was exercised there". This file is the second half of that proof on the server
 side: one test per group of routes, over a case written the way the desktop
 writes it, so a route cannot drift into a decorated stub without a red test.
 """
+
 import csv
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,11 +22,14 @@ def _write_csv(path, rows=None):
     with path.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
         writer.writerow(["Timestamp", "Artifact", "User", "SourceIP"])
-        writer.writerows(rows or [
-            ["2026-11-02T10:00:00Z", "EVTX", "alice", "192.0.2.10"],
-            ["2026-11-02T10:01:00Z", "EVTX", "bob", "192.0.2.20"],
-            ["2026-11-02T10:02:00Z", "Prefetch", "alice", ""],
-        ])
+        writer.writerows(
+            rows
+            or [
+                ["2026-11-02T10:00:00Z", "EVTX", "alice", "192.0.2.10"],
+                ["2026-11-02T10:01:00Z", "EVTX", "bob", "192.0.2.20"],
+                ["2026-11-02T10:02:00Z", "Prefetch", "alice", ""],
+            ]
+        )
 
 
 @pytest.fixture()
@@ -79,8 +83,9 @@ def test_the_profile_catalogue_is_readable(service):
 
 def test_display_layout_is_saved_in_the_analysis(service):
     library, identifier = service
-    library.save_display(identifier, 0, {"widths": {"1": 120}, "hidden": [3],
-                                         "pinned": [2], "pinned_right": [4]})
+    library.save_display(
+        identifier, 0, {"widths": {"1": 120}, "hidden": [3], "pinned": [2], "pinned_right": [4]}
+    )
     restored = library.display(identifier, 0)
     assert restored["hidden"] == [3]
     assert restored["pinned"] == [2]
@@ -104,9 +109,16 @@ def test_bookmarks_and_cell_notes_round_trip(service):
 
 def test_views_are_named_and_replayed(service):
     library, identifier = service
-    library.save_view(identifier, 0, "Prefetch only",
-                      {"filters": [{"column": 1, "operator": "eq", "value": "Prefetch"}],
-                       "sort": 1, "descending": False})
+    library.save_view(
+        identifier,
+        0,
+        "Prefetch only",
+        {
+            "filters": [{"column": 1, "operator": "eq", "value": "Prefetch"}],
+            "sort": 1,
+            "descending": False,
+        },
+    )
     assert "Prefetch only" in library.views(identifier, 0)["views"]
     view = library.view(identifier, 0, "Prefetch only")
     assert view["filters"][0]["value"] == "Prefetch"
@@ -117,9 +129,21 @@ def test_views_are_named_and_replayed(service):
 
 def test_colour_rules_round_trip(service):
     library, identifier = service
-    library.save_rules(identifier, 0, [{"column": 1, "operator": "eq", "value": "EVTX",
-                                        "background": "#ffe08a", "foreground": "#202020",
-                                        "bold": False, "enabled": True}])
+    library.save_rules(
+        identifier,
+        0,
+        [
+            {
+                "column": 1,
+                "operator": "eq",
+                "value": "EVTX",
+                "background": "#ffe08a",
+                "foreground": "#202020",
+                "bold": False,
+                "enabled": True,
+            }
+        ],
+    )
     stored = library.rules(identifier, 0)["rules"]
     assert len(stored) == 1
     assert stored[0]["value"] == "EVTX"
@@ -129,17 +153,24 @@ def test_colour_rules_round_trip(service):
 
 def test_a_derived_column_is_added_to_the_analysis(service):
     library, identifier = service
-    payload = library.add_derived(identifier, 0, {"name": "UTC timestamp",
-                                                  "operation": "timestamp",
-                                                  "columns": ["Timestamp"],
-                                                  "format": "iso"})
+    payload = library.add_derived(
+        identifier,
+        0,
+        {
+            "name": "UTC timestamp",
+            "operation": "timestamp",
+            "columns": ["Timestamp"],
+            "format": "iso",
+        },
+    )
     assert payload["added"] == "UTC timestamp"
     stored = library.derived_columns(identifier, 0)
     assert stored["derived"], "the analysis keeps the definition it was given"
     assert any(name.endswith("UTC timestamp") for name in stored["columns"])
     with pytest.raises(ValueError):
-        library.add_derived(identifier, 0, {"name": "broken", "operation": "upper",
-                                           "columns": ["User"]})
+        library.add_derived(
+            identifier, 0, {"name": "broken", "operation": "upper", "columns": ["User"]}
+        )
 
 
 def test_the_timeline_counts_the_dated_rows(service):
@@ -210,8 +241,9 @@ def test_the_client_report_is_written_and_served_back(service):
 
 def test_tracking_actions_are_created_updated_and_exported(service):
     library, identifier = service
-    created = library.add_action(identifier, {"title": "Ask for DNS logs", "owner": "client",
-                                              "priority": "high"})
+    created = library.add_action(
+        identifier, {"title": "Ask for DNS logs", "owner": "client", "priority": "high"}
+    )
     action_id = created.get("id") or created.get("action", {}).get("id")
     assert action_id
     library.update_action(identifier, action_id, {"status": "done"})
@@ -230,8 +262,17 @@ def test_pivot_answers_what_launched_a_process(service, tmp_path):
     with processes.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
         writer.writerow(["Timestamp", "EventId", "Image", "ParentImage"])
-        writer.writerows([["2026-11-02T10:00:00Z", "4688", r"C:\Windows\notepad.exe", r"C:\Windows\explorer.exe"],
-                          ["2026-11-02T10:01:00Z", "4688", r"C:\Windows\cmd.exe", r"C:\Windows\notepad.exe"]])
+        writer.writerows(
+            [
+                [
+                    "2026-11-02T10:00:00Z",
+                    "4688",
+                    r"C:\Windows\notepad.exe",
+                    r"C:\Windows\explorer.exe",
+                ],
+                ["2026-11-02T10:01:00Z", "4688", r"C:\Windows\cmd.exe", r"C:\Windows\notepad.exe"],
+            ]
+        )
     library.import_source(identifier, processes)
     index = len(library.case(identifier)["analyses"]) - 1
     row_id = library.rows(identifier, index, limit=1)["rows"][0][0]
@@ -257,18 +298,49 @@ def test_detection_refuses_with_a_readable_reason(service):
 
 def test_the_unknown_case_is_refused_everywhere(service):
     library, _identifier = service
-    for call in (lambda: library.case("missing"), lambda: library.rows("missing", 0),
-                 lambda: library.workspace("missing")):
+    for call in (
+        lambda: library.case("missing"),
+        lambda: library.rows("missing", 0),
+        lambda: library.workspace("missing"),
+    ):
         with pytest.raises((ServiceError, KeyError, OSError, ValueError)):
             call()
 
+
 ALERTS = [
-    ["2026-11-02T10:00:00Z", "Suspicious Logon", "high", "PC-1", "Security", "4624",
-     "Credential Access", "T1003", "logon outside hours"],
-    ["2026-11-02T10:05:00Z", "Suspicious Logon", "high", "PC-2", "Security", "4624",
-     "Credential Access", "T1003", "logon outside hours"],
-    ["2026-11-02T11:00:00Z", "LSASS access", "critical", "PC-1", "Security", "4656",
-     "Credential Access", "T1003.001", "handle to lsass"],
+    [
+        "2026-11-02T10:00:00Z",
+        "Suspicious Logon",
+        "high",
+        "PC-1",
+        "Security",
+        "4624",
+        "Credential Access",
+        "T1003",
+        "logon outside hours",
+    ],
+    [
+        "2026-11-02T10:05:00Z",
+        "Suspicious Logon",
+        "high",
+        "PC-2",
+        "Security",
+        "4624",
+        "Credential Access",
+        "T1003",
+        "logon outside hours",
+    ],
+    [
+        "2026-11-02T11:00:00Z",
+        "LSASS access",
+        "critical",
+        "PC-1",
+        "Security",
+        "4656",
+        "Credential Access",
+        "T1003.001",
+        "handle to lsass",
+    ],
 ]
 
 
@@ -276,8 +348,19 @@ def _import_alerts(library, identifier, tmp_path):
     source = tmp_path / "Alertes Hayabusa.csv"
     with source.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
-        writer.writerow(["Timestamp", "RuleTitle", "Level", "Computer", "Channel",
-                         "EventID", "MitreTactics", "MitreTags", "Details"])
+        writer.writerow(
+            [
+                "Timestamp",
+                "RuleTitle",
+                "Level",
+                "Computer",
+                "Channel",
+                "EventID",
+                "MitreTactics",
+                "MitreTags",
+                "Details",
+            ]
+        )
         writer.writerows(ALERTS)
     library.import_source(identifier, source)
     return len(library.case(identifier)["analyses"]) - 1
@@ -287,9 +370,16 @@ def test_a_finding_marks_every_alert_it_names(service, tmp_path):
     """The desktop marks a finding's alerts in one gesture; so does the Host."""
     library, identifier = service
     index = _import_alerts(library, identifier, tmp_path)
-    result = library.bookmark_finding(identifier, index, {
-        "Timestamp": "2026-11-02T10:05:00Z", "Computer": "PC-2", "EventID": "4624",
-        "RuleTitle": "Suspicious Logon"})
+    result = library.bookmark_finding(
+        identifier,
+        index,
+        {
+            "Timestamp": "2026-11-02T10:05:00Z",
+            "Computer": "PC-2",
+            "EventID": "4624",
+            "RuleTitle": "Suspicious Logon",
+        },
+    )
     assert result["matched"] == 1
     assert result["marked"] == 1
     marks = library.bookmarks(identifier, index)["bookmarks"]
@@ -303,13 +393,20 @@ def test_a_finding_marks_every_alert_it_names(service, tmp_path):
 
 def test_the_alert_sources_of_a_run_can_be_taken_away(service):
     library, identifier = service
-    folder = library.library.folder(identifier) / "collections" / "import-test" / "results" / "hayabusa-abc"
+    folder = (
+        library.library.folder(identifier)
+        / "collections"
+        / "import-test"
+        / "results"
+        / "hayabusa-abc"
+    )
     folder.mkdir(parents=True)
     alerts = folder / "Alertes Hayabusa.csv"
     alerts.write_text("Timestamp,RuleTitle\n2026-11-02T10:00:00Z,Rule\n", encoding="utf-8")
     assert library.detection_sources(identifier, "import-test") == alerts
     with pytest.raises(ServiceError):
         library.detection_sources(identifier, "import-missing")
+
 
 def test_merging_the_same_collection_twice_adds_nothing(service, tmp_path):
     """A detection re-reads its collection: its analyses must not double up."""
@@ -334,9 +431,15 @@ def test_an_analysis_is_found_by_its_path(service, tmp_path):
     assert library._analysis_index_of(identifier, analyses[-1]["path"]) == len(analyses) - 1
     assert library._analysis_index_of(identifier, "/nowhere/absent.timeline") is None
 
-DEMO_PLUGIN = {"name": "Demo profile", "signature": ["Timestamp", "User"],
-               "columns": ["Timestamp", "User"], "timestamp": ["Timestamp"],
-               "booleans": [], "transforms": []}
+
+DEMO_PLUGIN = {
+    "name": "Demo profile",
+    "signature": ["Timestamp", "User"],
+    "columns": ["Timestamp", "User"],
+    "timestamp": ["Timestamp"],
+    "booleans": [],
+    "transforms": [],
+}
 
 
 def test_a_presentation_plugin_is_installed_and_listed(service, tmp_path):
@@ -366,6 +469,7 @@ def test_a_profile_is_created_from_the_open_analysis(service, tmp_path):
     with pytest.raises(ServiceError):
         library.create_profile(identifier, 0, "   ")
 
+
 def test_an_alert_points_to_its_source_event(service, tmp_path):
     """The desktop opens the EVTX event an alert came from; the Host says where it is."""
     library, identifier = service
@@ -373,8 +477,12 @@ def test_an_alert_points_to_its_source_event(service, tmp_path):
     with events.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
         writer.writerow(["TimeCreated", "EventRecordId", "Computer", "EventId"])
-        writer.writerows([["2026-11-02T10:00:00Z", "4624", "PC-1", "7045"],
-                          ["2026-11-02T10:00:01Z", "4625", "PC-1", "7045"]])
+        writer.writerows(
+            [
+                ["2026-11-02T10:00:00Z", "4624", "PC-1", "7045"],
+                ["2026-11-02T10:00:01Z", "4625", "PC-1", "7045"],
+            ]
+        )
     library.import_source(identifier, events)
     source_index = len(library.case(identifier)["analyses"]) - 1
 
@@ -408,6 +516,7 @@ def test_the_context_of_an_alert_needs_an_alert(service):
         library.alert_context(identifier, 0, plain, minutes=5)
     assert "EVTX" in str(caught.value) or "alert" in str(caught.value).lower()
 
+
 def test_the_timeline_reads_a_date_the_way_the_analyst_chooses(service):
     """The desktop offers three readings per analysis; so does the Host."""
     library, identifier = service
@@ -429,6 +538,7 @@ def test_the_timeline_reads_a_date_the_way_the_analyst_chooses(service):
     with pytest.raises(ServiceError):
         library.timeline(identifier, dates={"9": "none"})
 
+
 def test_the_timeline_can_read_two_columns_as_one_date(service, tmp_path):
     """IIS and W3C exports keep the date and the time apart; the desktop joins them."""
     library, identifier = service
@@ -436,8 +546,12 @@ def test_the_timeline_can_read_two_columns_as_one_date(service, tmp_path):
     with source.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
         writer.writerow(["timestamp", "date", "time", "User", "SourceIP"])
-        writer.writerows([["2026-11-02T00:00:00Z", "2026-11-02", "10:00:01", "alice", "192.0.2.10"],
-                          ["2026-11-02T00:00:00Z", "2026-11-02", "10:00:02", "bob", "192.0.2.20"]])
+        writer.writerows(
+            [
+                ["2026-11-02T00:00:00Z", "2026-11-02", "10:00:01", "alice", "192.0.2.10"],
+                ["2026-11-02T00:00:00Z", "2026-11-02", "10:00:02", "bob", "192.0.2.20"],
+            ]
+        )
     library.import_source(identifier, source)
     index = len(library.case(identifier)["analyses"]) - 1
 
@@ -452,9 +566,10 @@ def test_the_timeline_can_read_two_columns_as_one_date(service, tmp_path):
     assert entry["combined"] is True
     assert entry["dated"] == 2
 
+
 def test_a_free_node_joins_the_graph_and_stays_with_the_case(service):
     library, identifier = service
-    assert library.graph(identifier)["empty"] is True      # nothing to draw yet, and it says so
+    assert library.graph(identifier)["empty"] is True  # nothing to draw yet, and it says so
     node = library.add_graph_node(identifier, "SRV-EXCHANGE", tags="host, pivot")
     assert node["label"] == "SRV-EXCHANGE"
     assert node["tags"] == ["host", "pivot"]
@@ -464,12 +579,20 @@ def test_a_free_node_joins_the_graph_and_stays_with_the_case(service):
     with pytest.raises(ServiceError):
         library.add_graph_node(identifier, "   ")
 
+
 def test_a_machine_is_declared_and_reaches_the_graph(service):
     """The desktop's "Machine ou compte" dialog, and what the graph reads."""
     library, identifier = service
-    machine = library.add_entity(identifier, {"kind": "machine", "label": "SRV-DC01",
-                                              "hostname": "srv-dc01", "ip": "10.0.0.5",
-                                              "os": "Windows Server 2022"})
+    machine = library.add_entity(
+        identifier,
+        {
+            "kind": "machine",
+            "label": "SRV-DC01",
+            "hostname": "srv-dc01",
+            "ip": "10.0.0.5",
+            "os": "Windows Server 2022",
+        },
+    )
     assert machine["kind"] == "machine"
     assert machine["hostname"] == "srv-dc01"
     account = library.add_entity(identifier, {"kind": "account", "label": "admin.svc"})
@@ -501,6 +624,7 @@ def test_indicators_are_tracked_and_removed(service):
         library.add_indicator(identifier, "   ")
     with pytest.raises((ValueError, ServiceError)):
         library.remove_indicator(identifier, "not-an-id")
+
 
 RULE_TEXT = """title: Suspicious Service Path
 id: 11111111-2222-3333-4444-555555555555
@@ -570,9 +694,19 @@ def test_global_rules_reach_every_analysis_that_has_the_column(service, tmp_path
     library, identifier = service
     library.plugins_root = tmp_path / "plugins"
     saved = library.save_global_rules(
-        [{"column": "User", "operator": "eq", "value": "alice",
-          "background": "#ffe08a", "foreground": "#202020", "bold": True, "enabled": True}],
-        headers=["User", "SourceIP"])
+        [
+            {
+                "column": "User",
+                "operator": "eq",
+                "value": "alice",
+                "background": "#ffe08a",
+                "foreground": "#202020",
+                "bold": True,
+                "enabled": True,
+            }
+        ],
+        headers=["User", "SourceIP"],
+    )
     assert saved["saved"] == 1
 
     state = library.global_rules(identifier, 0)
@@ -584,7 +718,8 @@ def test_global_rules_reach_every_analysis_that_has_the_column(service, tmp_path
 
     # An analysis without that column keeps its rows uncoloured, and says why.
     other = library.save_global_rules(
-        [{"column": "Domain", "operator": "contains", "value": "corp", "enabled": True}])
+        [{"column": "Domain", "operator": "contains", "value": "corp", "enabled": True}]
+    )
     assert other["saved"] == 1
     state = library.global_rules(identifier, 0)
     assert state["applied"] == 0
@@ -672,11 +807,14 @@ def test_rows_without_a_date_join_the_timeline_on_request(tmp_path):
         # A window keeps the dated rows; the undated one joins only when asked.
         windowed = library.timeline(identifier, start=instant, end=instant)
         assert windowed["extent"]["rows"] == 1
-        with_undated = library.timeline(identifier, start=instant, end=instant, include_undated=True)
+        with_undated = library.timeline(
+            identifier, start=instant, end=instant, include_undated=True
+        )
         assert with_undated["extent"]["rows"] == 2
         assert with_undated["count"] == 2
-        data_bytes, receipt = library.timeline_export(identifier, start=instant, end=instant,
-                                                      include_undated=True)
+        data_bytes, receipt = library.timeline_export(
+            identifier, start=instant, end=instant, include_undated=True
+        )
         assert receipt["written"] == 2
         assert "Fuseau_UTC_supposé" in data_bytes.decode("utf-8-sig").splitlines()[0]
     finally:
@@ -713,8 +851,9 @@ def test_an_indicator_hunt_covers_every_analysis_and_respects_the_filters(tmp_pa
         finally:
             case.close()
         view = View(filters=[Filter(1, "eq", keep)]) if keep else View()
-        documents.append(AnalysisSnapshot(path=str(analysis), source_info=info, view=view,
-                                          header_state=b""))
+        documents.append(
+            AnalysisSnapshot(path=str(analysis), source_info=info, view=view, header_state=b"")
+        )
     book.save(identifier, documents, 0, [], None, data["revision"])
     library = Library(root)
     try:
@@ -726,7 +865,9 @@ def test_an_indicator_hunt_covers_every_analysis_and_respects_the_filters(tmp_pa
         assert {item["analysis"] for item in whole["hits"]} == {0, 1}
         assert whole["scanned"] == 6, "every row of both analyses is read"
 
-        filtered = library.ioc_scan(identifier, 0, "192.0.2.10", all_analyses=True, respect_filters=True)
+        filtered = library.ioc_scan(
+            identifier, 0, "192.0.2.10", all_analyses=True, respect_filters=True
+        )
         assert filtered["scanned"] == 5, "the EVTX filter holds one of the six rows back"
 
         with_sub = library.ioc_scan(identifier, 0, "evil.example.com", include_subdomains=True)
@@ -744,18 +885,22 @@ def test_group_summaries_and_the_order_of_the_groups(service):
     assert plain["grouped"] is True
     assert plain["rows"] and len(plain["rows"][0]) == 2, "a group row is a value and a count"
 
-    with_summary = library.rows(identifier, 0, groups=[1], limit=10,
-                                summaries=[(2, "distinct", "text")])
+    with_summary = library.rows(
+        identifier, 0, groups=[1], limit=10, summaries=[(2, "distinct", "text")]
+    )
     assert with_summary["summaries"][0]["operation"] == "distinct"
     assert with_summary["summaries"][0]["name"] == "User"
     assert len(with_summary["rows"][0]) == 3, "the summary rides beside the count"
 
-    by_value = library.rows(identifier, 0, groups=[1], limit=10,
-                            order="value", order_descending=False)
+    by_value = library.rows(
+        identifier, 0, groups=[1], limit=10, order="value", order_descending=False
+    )
     values = [str(row[0]) for row in by_value["rows"]]
     assert values == sorted(values), "groups sorted by their value, ascending"
 
-    by_count = library.rows(identifier, 0, groups=[1], limit=10, order="count", order_descending=True)
+    by_count = library.rows(
+        identifier, 0, groups=[1], limit=10, order="count", order_descending=True
+    )
     counts = [row[1] for row in by_count["rows"]]
     assert counts == sorted(counts, reverse=True)
 
@@ -857,12 +1002,27 @@ def test_a_disk_is_walked_in_the_background(service, tmp_path):
 def test_a_colour_rule_can_carry_a_statistic(service):
     """The desktop's "Valeurs les plus élevées", "Doublons", "Au-dessus de la moyenne"."""
     library, identifier = service
-    library.save_rules(identifier, 0, [
-        {"column": 1, "operator": "contains", "value": "", "statistic": "top",
-         "stat_rank": "2", "background": "#ffe08a"},
-        {"column": 1, "operator": "contains", "value": "", "statistic": "duplicate",
-         "background": "#d9f2c4"},
-    ])
+    library.save_rules(
+        identifier,
+        0,
+        [
+            {
+                "column": 1,
+                "operator": "contains",
+                "value": "",
+                "statistic": "top",
+                "stat_rank": "2",
+                "background": "#ffe08a",
+            },
+            {
+                "column": 1,
+                "operator": "contains",
+                "value": "",
+                "statistic": "duplicate",
+                "background": "#d9f2c4",
+            },
+        ],
+    )
     rules = library.rules(identifier, 0)["rules"]
     assert len(rules) == 2
     top = rules[0]
@@ -872,8 +1032,11 @@ def test_a_colour_rule_can_carry_a_statistic(service):
     duplicates = rules[1]
     assert duplicates["resolved"]["values"], "Artifact repeats, so a duplicate rule names it"
     with pytest.raises(ServiceError):
-        library.save_rules(identifier, 0, [{"column": 1, "operator": "contains", "value": "",
-                                            "statistic": "nonsense"}])
+        library.save_rules(
+            identifier,
+            0,
+            [{"column": 1, "operator": "contains", "value": "", "statistic": "nonsense"}],
+        )
 
 
 def test_a_rule_can_select_the_values_above_the_average(tmp_path):
@@ -902,9 +1065,20 @@ def test_a_rule_can_select_the_values_above_the_average(tmp_path):
     book.save(identifier, [snapshot], 0, [], None, data["revision"])
     library = Library(root)
     try:
-        library.save_rules(identifier, 0, [
-            {"column": 2, "operator": "contains", "value": "", "statistic": "above_avg",
-             "value_column": 2, "background": "#cfe3ff"}])
+        library.save_rules(
+            identifier,
+            0,
+            [
+                {
+                    "column": 2,
+                    "operator": "contains",
+                    "value": "",
+                    "statistic": "above_avg",
+                    "value_column": 2,
+                    "background": "#cfe3ff",
+                }
+            ],
+        )
         rule = library.rules(identifier, 0)["rules"][0]
         assert rule["resolved"]["compare"] == "ge"
         assert rule["resolved"]["threshold"] == pytest.approx(400.0)
@@ -984,8 +1158,12 @@ def test_the_findings_of_a_detection_are_grouped_for_the_report(tmp_path):
     with source.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
         writer.writerow(["Timestamp", "RuleTitle", "Computer", "Level", "Channel", "EventID"])
-        writer.writerow(["2026-11-02T10:00:00Z", "Suspicious Service Path", "SRV", "high", "System", "7045"])
-        writer.writerow(["2026-11-02T10:05:00Z", "Suspicious Service Path", "SRV", "high", "System", "7045"])
+        writer.writerow(
+            ["2026-11-02T10:00:00Z", "Suspicious Service Path", "SRV", "high", "System", "7045"]
+        )
+        writer.writerow(
+            ["2026-11-02T10:05:00Z", "Suspicious Service Path", "SRV", "high", "System", "7045"]
+        )
     case = Case(analysis)
     try:
         case.import_csv(source)
@@ -993,8 +1171,9 @@ def test_the_findings_of_a_detection_are_grouped_for_the_report(tmp_path):
     finally:
         case.close()
     source_info = dict(info, path=str(source))
-    snapshot = AnalysisSnapshot(path=str(analysis), source_info=source_info, view=View(),
-                                header_state=b"")
+    snapshot = AnalysisSnapshot(
+        path=str(analysis), source_info=source_info, view=View(), header_state=b""
+    )
     book.save(identifier, [snapshot], 0, [], None, data["revision"])
     library = Library(root)
     try:
@@ -1020,16 +1199,25 @@ def test_the_findings_route_shapes_the_groups(tmp_path):
         writer.writerow(["Timestamp", "RuleTitle", "Computer", "Level", "Channel", "EventID"])
         # A minute apart: one burst. An hour apart would be three groups, by design.
         for minute in (0, 1, 2):
-            writer.writerow([f"2026-11-02T10:0{minute}:00Z", "Suspicious Service Path", "SRV",
-                             "high", "System", "7045"])
+            writer.writerow(
+                [
+                    f"2026-11-02T10:0{minute}:00Z",
+                    "Suspicious Service Path",
+                    "SRV",
+                    "high",
+                    "System",
+                    "7045",
+                ]
+            )
     case = Case(analysis)
     try:
         case.import_csv(source)
         info = dict(case.info)
     finally:
         case.close()
-    snapshot = AnalysisSnapshot(path=str(analysis), source_info=dict(info, path=str(source)),
-                                view=View(), header_state=b"")
+    snapshot = AnalysisSnapshot(
+        path=str(analysis), source_info=dict(info, path=str(source)), view=View(), header_state=b""
+    )
     book.save(identifier, [snapshot], 0, [], None, data["revision"])
     library = Library(root)
     try:
@@ -1064,24 +1252,45 @@ def test_a_rule_can_paint_a_scale(tmp_path):
         info = dict(case.info)
     finally:
         case.close()
-    snapshot = AnalysisSnapshot(path=str(analysis), source_info=dict(info, path=str(source)),
-                                view=View(), header_state=b"")
+    snapshot = AnalysisSnapshot(
+        path=str(analysis), source_info=dict(info, path=str(source)), view=View(), header_state=b""
+    )
     book.save(identifier, [snapshot], 0, [], None, data["revision"])
     library = Library(root)
     try:
-        rules = [{"column": 1, "operator": "not_empty", "value": "",
-                  "background": "#ffffff", "foreground": "#006000",
-                  "visual": "bar", "bound_mode": "auto", "target": 1}]
+        rules = [
+            {
+                "column": 1,
+                "operator": "not_empty",
+                "value": "",
+                "background": "#ffffff",
+                "foreground": "#006000",
+                "visual": "bar",
+                "bound_mode": "auto",
+                "target": 1,
+            }
+        ]
         library.save_rules(identifier, 0, rules)
         kept = library.rules(identifier, 0)["rules"][0]
         assert kept["visual"] == "bar"
         # "automatic" is resolved against the data: 5..20, not 0..100.
         assert float(kept["minimum"]) == 5 and float(kept["maximum"]) == 20
         # A three-colour scale: "50 %" becomes the middle value of the span.
-        scale = [{"column": 1, "operator": "not_empty", "value": "",
-                  "background": "#ffffff", "foreground": "#006000", "visual": "scale3",
-                  "bound_mode": "auto", "middle_mode": "percent", "middle_value": "50",
-                  "middle_color": "#ffffbf", "target": 1}]
+        scale = [
+            {
+                "column": 1,
+                "operator": "not_empty",
+                "value": "",
+                "background": "#ffffff",
+                "foreground": "#006000",
+                "visual": "scale3",
+                "bound_mode": "auto",
+                "middle_mode": "percent",
+                "middle_value": "50",
+                "middle_color": "#ffffbf",
+                "target": 1,
+            }
+        ]
         library.save_rules(identifier, 0, scale)
         kept_scale = library.rules(identifier, 0)["rules"][0]
         assert kept_scale["visual"] == "scale3"
@@ -1151,9 +1360,14 @@ def test_a_closed_analysis_stays_in_the_case(tmp_path):
             info = dict(case.info)
         finally:
             case.close()
-        snapshots.append(AnalysisSnapshot(path=str(analysis),
-                                          source_info=dict(info, path=str(source)),
-                                          view=View(), header_state=b""))
+        snapshots.append(
+            AnalysisSnapshot(
+                path=str(analysis),
+                source_info=dict(info, path=str(source)),
+                view=View(),
+                header_state=b"",
+            )
+        )
     book.save(identifier, snapshots, 0, [], None, data["revision"])
     library = Library(root)
     try:
@@ -1173,8 +1387,9 @@ def test_a_closed_analysis_stays_in_the_case(tmp_path):
 
 def test_a_machine_and_an_action_are_changed_and_removed(service):
     library, identifier = service
-    machine = library.add_entity(identifier, {"kind": "machine", "label": "SRV-OLD",
-                                              "hostname": "srv-old", "ip": "10.0.0.9"})
+    machine = library.add_entity(
+        identifier, {"kind": "machine", "label": "SRV-OLD", "hostname": "srv-old", "ip": "10.0.0.9"}
+    )
     entity_id = machine["id"]
     library.edit_entity(identifier, entity_id, {"label": "SRV-NEW", "ip": "10.0.0.10"})
     entities = library.workspace(identifier)["entities"]
@@ -1189,7 +1404,9 @@ def test_a_machine_and_an_action_are_changed_and_removed(service):
     action = library.add_action(identifier, {"title": "Contain the host", "owner": "us"})
     action_id = action["id"]
     library.update_action(identifier, action_id, {"status": "done", "owner": "client"})
-    kept = next(item for item in library.workspace(identifier)["actions"] if item["id"] == action_id)
+    kept = next(
+        item for item in library.workspace(identifier)["actions"] if item["id"] == action_id
+    )
     assert kept["status"] == "done" and kept["closed"], "a finished action records its closure"
     library.remove_action(identifier, action_id)
     assert all(item["id"] != action_id for item in library.workspace(identifier)["actions"])
@@ -1215,10 +1432,24 @@ def test_a_collected_file_is_set_aside_then_removed(tmp_path):
     digest = hashlib.sha256(sample.read_bytes()).hexdigest()
     collection = folder / "collections" / "import-20260101-000000"
     collection.mkdir(parents=True)
-    (collection / "collection.json").write_text(jsonlib.dumps({
-        "status": "complete",
-        "files": [{"path": str(sample), "status": "unsupported", "reason": "no reader",
-                   "tools": [], "sha256": digest}]}, ensure_ascii=False), encoding="utf-8")
+    (collection / "collection.json").write_text(
+        jsonlib.dumps(
+            {
+                "status": "complete",
+                "files": [
+                    {
+                        "path": str(sample),
+                        "status": "unsupported",
+                        "reason": "no reader",
+                        "tools": [],
+                        "sha256": digest,
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
     library = Library(root)
     try:
         listed = library.collection_files(identifier)
@@ -1246,12 +1477,21 @@ def test_a_collected_file_is_set_aside_then_removed(tmp_path):
 def test_a_rule_carries_a_group_of_conditions(service):
     """AND / OR / NOT: the tree travels whole, and comes back whole."""
     library, identifier = service
-    tree = {"logic": "or", "children": [
-        {"column": 0, "operator": "contains", "value": "srv"},
-        {"logic": "not", "children": [{"column": 1, "operator": "eq", "value": "done"}]},
-    ]}
-    rule = {"column": 0, "operator": "contains", "value": "srv",
-            "background": "#ffffff", "foreground": "#202020", "condition": tree}
+    tree = {
+        "logic": "or",
+        "children": [
+            {"column": 0, "operator": "contains", "value": "srv"},
+            {"logic": "not", "children": [{"column": 1, "operator": "eq", "value": "done"}]},
+        ],
+    }
+    rule = {
+        "column": 0,
+        "operator": "contains",
+        "value": "srv",
+        "background": "#ffffff",
+        "foreground": "#202020",
+        "condition": tree,
+    }
     library.save_rules(identifier, 0, [rule])
     kept = library.rules(identifier, 0)["rules"][0]
     assert kept["condition"]["logic"] == "or"
@@ -1274,13 +1514,20 @@ def test_the_certificate_carries_the_photos_of_the_destruction(service, tmp_path
     def png(path, colour):
         # A 1x1 PNG, built by hand: no dependency, and a real image for the data URI.
         def chunk(kind, body):
-            return (struct.pack(">I", len(body)) + kind + body
-                    + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF))
+            return (
+                struct.pack(">I", len(body))
+                + kind
+                + body
+                + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+            )
+
         raw = b"\x00" + bytes(colour)
-        data = (b"\x89PNG\r\n\x1a\n"
-                + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
-                + chunk(b"IDAT", zlib.compress(raw))
-                + chunk(b"IEND", b""))
+        data = (
+            b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw))
+            + chunk(b"IEND", b"")
+        )
         path.write_bytes(data)
         return path
 
@@ -1289,9 +1536,15 @@ def test_the_certificate_carries_the_photos_of_the_destruction(service, tmp_path
     assert stored["count"] == 1
     assert stored["attachments"][0]["sha256"]
 
-    certificate = library.destroy(identifier, "dod3", "Analyst", "", "test",
-                                  library.case(identifier)["name"],
-                                  attachments=stored["attachments"])
+    certificate = library.destroy(
+        identifier,
+        "dod3",
+        "Analyst",
+        "",
+        "test",
+        library.case(identifier)["name"],
+        attachments=stored["attachments"],
+    )
     html = Path(certificate["certificate"]).read_text(encoding="utf-8")
     assert "data:image/png;base64," in html
     assert base64.b64encode(photo.read_bytes()).decode()[:40] in html.replace("\n", "")
@@ -1312,6 +1565,7 @@ def test_a_session_travels_to_the_desktop_and_back(service):
 
     # A file that is not a session is refused, not half read.
     import base64
+
     with pytest.raises(Exception):
         library.open_session(identifier, base64.b64encode(b"not a session").decode())
 
@@ -1325,9 +1579,11 @@ def test_a_null_row_id_is_a_400_not_a_traceback(case_with_analysis):
     root, identifier = case_with_analysis
     client = TestClient(create_app(root), raise_server_exceptions=False)
     base = f"/api/cases/{identifier}/analyses/0"
-    for path, body in [("cellnotes", {"row_ids": [None]}),
-                       ("cellnote", {"row_id": None, "column": 0, "note": "x"}),
-                       ("cellnote", {"row_id": 1, "column": None, "note": "x"})]:
+    for path, body in [
+        ("cellnotes", {"row_ids": [None]}),
+        ("cellnote", {"row_id": None, "column": 0, "note": "x"}),
+        ("cellnote", {"row_id": 1, "column": None, "note": "x"}),
+    ]:
         answer = client.post(f"{base}/{path}", json=body)
         assert answer.status_code == 400, (path, body, answer.text)
         assert answer.json()["detail"], "the answer says what was wrong"

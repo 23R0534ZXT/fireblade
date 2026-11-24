@@ -1,12 +1,23 @@
 """Sequential cross-document search, one extra disk connection at most."""
+
 from dataclasses import dataclass, field
 from pathlib import Path
 import copy
 import threading
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox, QHBoxLayout,
-    QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+)
 from fireblade.core.engine import Case
 from fireblade.core.models import analysis_label
 from fireblade.core.errors import OperationCancelled, job_cancelled
@@ -19,8 +30,8 @@ SAMPLE_WIDTH = 160
 
 def summarize(row, limit=SAMPLE_WIDTH):
     """One readable line for a matching row, enough to recognise the event."""
-    values = [str(value) for value in row[1:] if value not in (None, '')]
-    return (' · '.join(values))[:limit]
+    values = [str(value) for value in row[1:] if value not in (None, "")]
+    return (" · ".join(values))[:limit]
 
 
 def sample_text(result):
@@ -28,12 +39,12 @@ def sample_text(result):
     if result.error:
         return result.error
     if not result.sample:
-        return 'Aucune correspondance dans cet artefact.'
-    lines = [f'• {line}' for line in result.sample]
+        return "Aucune correspondance dans cet artefact."
+    lines = [f"• {line}" for line in result.sample]
     more = (result.count or 0) - len(result.sample)
     if more > 0:
-        lines.append(f'… et {more} autres correspondances')
-    return '\n'.join(lines)
+        lines.append(f"… et {more} autres correspondances")
+    return "\n".join(lines)
 
 
 @dataclass
@@ -71,7 +82,11 @@ class WorkspaceSearch:
             try:
                 if not Path(document.path).is_file():
                     raise FileNotFoundError("Analyse introuvable")
-                case = Case(document.path, settings=self.settings, read_only=True) if own else self.active
+                case = (
+                    Case(document.path, settings=self.settings, read_only=True)
+                    if own
+                    else self.active
+                )
                 if case.info != document.source_info:
                     raise ValueError("L’analyse a été remplacée")
                 with self.lock:
@@ -85,11 +100,17 @@ class WorkspaceSearch:
                 if count:
                     # A few real rows, so the panel shows events and not a number.
                     sample = [summarize(row) for row in case.page(view, limit=SAMPLE_ROWS)]
-                results.append(SearchHit(document.path, analysis_label(document.source_info), count, sample=sample))
+                results.append(
+                    SearchHit(
+                        document.path, analysis_label(document.source_info), count, sample=sample
+                    )
+                )
             except OperationCancelled:
                 raise
             except Exception as exc:
-                results.append(SearchHit(document.path, analysis_label(document.source_info), None, str(exc)))
+                results.append(
+                    SearchHit(document.path, analysis_label(document.source_info), None, str(exc))
+                )
             finally:
                 with self.lock:
                     self.current = None
@@ -121,8 +142,10 @@ class SearchDialog(QDialog):
         layout.addLayout(row)
         self.filters = QCheckBox("Respecter les filtres et signets de chaque analyse")
         layout.addWidget(self.filters)
-        self.only_matches = QCheckBox('Correspondances uniquement');self.only_matches.setChecked(True)
-        self.only_matches.toggled.connect(self.filter_results);layout.addWidget(self.only_matches)
+        self.only_matches = QCheckBox("Correspondances uniquement")
+        self.only_matches.setChecked(True)
+        self.only_matches.toggled.connect(self.filter_results)
+        layout.addWidget(self.only_matches)
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Fichier", "Correspondances", "État"])
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -130,6 +153,7 @@ class SearchDialog(QDialog):
         self.table.cellDoubleClicked.connect(self.open_result)
         layout.addWidget(self.table)
         from PySide6.QtGui import QFontDatabase
+
         self.details = QLabel()
         self.details.setWordWrap(True)
         self.details.setFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
@@ -144,6 +168,7 @@ class SearchDialog(QDialog):
         layout.addWidget(close)
         # Built on demand, after the window's pass: it applies the language itself.
         from fireblade.ui.language import apply_language
+
         apply_language(self)
 
     def cancel(self):
@@ -170,28 +195,45 @@ class SearchDialog(QDialog):
         self.filters.setEnabled(False)
         self.message.setText("Recherche sur disque…")
         task = self.task
+
         def done(results):
             self.finished()
             self.results = results
             self.table.setRowCount(len(results))
             for row, result in enumerate(results):
-                for col, value in enumerate((result.name, str(result.count) if result.count is not None else "—", result.error or "Terminé")):
+                for col, value in enumerate(
+                    (
+                        result.name,
+                        str(result.count) if result.count is not None else "—",
+                        result.error or "Terminé",
+                    )
+                ):
                     item = QTableWidgetItem(value)
                     item.setToolTip(result.path if col == 0 else result.error)
                     self.table.setItem(row, col, item)
             self.filter_results()
-            self.message.setText(translate("{} correspondances · {} artefacts parcourus").format(sum(r.count or 0 for r in results), len(results)))
+            self.message.setText(
+                translate("{} correspondances · {} artefacts parcourus").format(
+                    sum(r.count or 0 for r in results), len(results)
+                )
+            )
             if results:
                 self.table.setCurrentCell(0, 0)
             self.show_sample()
+
         def failed(message="Recherche interrompue"):
             self.finished()
             self.message.setText(message)
-        self.window.run(lambda: task.find(self.query, self.respect), done, on_cancel=failed, on_error=failed)
+
+        self.window.run(
+            lambda: task.find(self.query, self.respect), done, on_cancel=failed, on_error=failed
+        )
 
     def filter_results(self):
         for row, result in enumerate(self.results):
-            self.table.setRowHidden(row, self.only_matches.isChecked() and result.count == 0 and not result.error)
+            self.table.setRowHidden(
+                row, self.only_matches.isChecked() and result.count == 0 and not result.error
+            )
 
     def show_sample(self):
         """Show a few real matching rows for the selected artifact."""
@@ -206,7 +248,9 @@ class SearchDialog(QDialog):
         if result.error:
             self.message.setText(result.error)
             return
-        index = next((i for i, doc in enumerate(self.window.documents) if doc.path == result.path), -1)
+        index = next(
+            (i for i, doc in enumerate(self.window.documents) if doc.path == result.path), -1
+        )
         if index < 0:
             return
         self.window.switch_document(index)

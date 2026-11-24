@@ -1,4 +1,5 @@
 """Promote a verified published application release in the English README."""
+
 import hashlib
 import json
 import os
@@ -8,65 +9,112 @@ from scripts.release import application_version
 
 
 def promote(text, release, version, digest, commit, run_url):
-    if release.get('draft', True) or release.get('tag_name')!='v'+version or 'Commit: '+commit not in release.get('body',''):
-        raise ValueError('Published release identity does not match the qualified binary')
-    assets=[item for item in release.get('assets',[]) if item.get('name','').endswith('.zip')]
-    if len(assets)!=1 or assets[0].get('digest')!='sha256:'+digest:
-        raise ValueError('Published archive hash differs from the qualified build')
+    if (
+        release.get("draft", True)
+        or release.get("tag_name") != "v" + version
+        or "Commit: " + commit not in release.get("body", "")
+    ):
+        raise ValueError("Published release identity does not match the qualified binary")
+    assets = [item for item in release.get("assets", []) if item.get("name", "").endswith(".zip")]
+    if len(assets) != 1 or assets[0].get("digest") != "sha256:" + digest:
+        raise ValueError("Published archive hash differs from the qualified build")
     # The digest line names the archive it belongs to, so a stale body cannot pass.
-    if 'SHA-256 of '+assets[0]['name']+': '+digest not in release.get('body',''):
-        raise ValueError('Published release does not carry the archive digest')
-    banner='> Download the Windows x64 executable from [GitHub Releases]'
-    lines=[line for line in text.splitlines() if line != 'The desktop interface and most user guides are currently in French.'
-           and not line.startswith('The published download above remains the last qualified release until ')]
-    replacement=f"**[Download Fireblade {version} — Windows x64]({assets[0]['browser_download_url']})** · [Release notes and SHA-256]({release['html_url']}) · [Windows qualification]({run_url})"
-    index=next(i for i,line in enumerate(lines) if line.startswith(banner) or line.startswith('**[Download Fireblade '))
+    if "SHA-256 of " + assets[0]["name"] + ": " + digest not in release.get("body", ""):
+        raise ValueError("Published release does not carry the archive digest")
+    banner = "> Download the Windows x64 executable from [GitHub Releases]"
+    lines = [
+        line
+        for line in text.splitlines()
+        if line != "The desktop interface and most user guides are currently in French."
+        and not line.startswith(
+            "The published download above remains the last qualified release until "
+        )
+    ]
+    replacement = f"**[Download Fireblade {version} — Windows x64]({assets[0]['browser_download_url']})** · [Release notes and SHA-256]({release['html_url']}) · [Windows qualification]({run_url})"
+    index = next(
+        i
+        for i, line in enumerate(lines)
+        if line.startswith(banner) or line.startswith("**[Download Fireblade ")
+    )
     # The README no longer claims a French interface: the release link is the
     # only thing this script owns.
-    lines[index]=replacement
+    lines[index] = replacement
     import re
-    return re.sub(r'\n{3,}', '\n\n', '\n'.join(lines))+'\n'
+
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)) + "\n"
 
 
 def main():
-    root=Path.cwd();repo=os.environ['GITHUB_REPOSITORY'];commit=os.environ['GITHUB_SHA']
-    version=application_version(root)
-    archives=sorted((root/'dist').glob('Fireblade-%s-win64.zip' % version))
-    if len(archives)!=1:raise ValueError('Expected exactly one Fireblade-<version>-win64.zip in dist')
-    with archives[0].open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
-    release=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/releases/tags/v{version}'],text=True,encoding='utf-8',errors='replace'))
-    url=f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
-    path=root/'README.md';updated=promote(path.read_text(encoding='utf-8'),release,version,digest,commit,url)
-    subprocess.run(['git','fetch','origin','main'],check=True)
-    head=subprocess.check_output(['git','rev-parse','origin/main'],text=True).strip()
-    if head!=commit:
+    root = Path.cwd()
+    repo = os.environ["GITHUB_REPOSITORY"]
+    commit = os.environ["GITHUB_SHA"]
+    version = application_version(root)
+    archives = sorted((root / "dist").glob("Fireblade-%s-win64.zip" % version))
+    if len(archives) != 1:
+        raise ValueError("Expected exactly one Fireblade-<version>-win64.zip in dist")
+    with archives[0].open("rb") as stream:
+        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+    release = json.loads(
+        subprocess.check_output(
+            ["gh", "api", f"repos/{repo}/releases/tags/v{version}"],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    )
+    url = f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+    path = root / "README.md"
+    updated = promote(path.read_text(encoding="utf-8"), release, version, digest, commit, url)
+    subprocess.run(["git", "fetch", "origin", "main"], check=True)
+    head = subprocess.check_output(["git", "rev-parse", "origin/main"], text=True).strip()
+    if head != commit:
         # The main run publishes its own README update in parallel with the tag run, so
         # main almost always moves during a qualification. The change here is one line in
         # a file this script owns: redo it on the fresh file instead of refusing, and touch
         # nothing else.
-        subprocess.run(['git','checkout','--detach',head],check=True)
-        path.write_text(promote(path.read_text(encoding='utf-8'),release,version,digest,commit,url),
-                        encoding='utf-8')
+        subprocess.run(["git", "checkout", "--detach", head], check=True)
+        path.write_text(
+            promote(path.read_text(encoding="utf-8"), release, version, digest, commit, url),
+            encoding="utf-8",
+        )
     else:
-        path.write_text(updated,encoding='utf-8')
+        path.write_text(updated, encoding="utf-8")
     # Commit as the maintainer, not as a bot: the contributor list is public and
     # should only show the person who actually owns the repository.
-    subprocess.run(['git','config','user.name',os.environ.get('MAINTAINER_NAME','23R0534ZXT')],check=True)
-    subprocess.run(['git','config','user.email',os.environ.get('MAINTAINER_EMAIL','112427500+23R0534ZXT@users.noreply.github.com')],check=True)
-    subprocess.run(['git','add','README.md'],check=True)
-    subprocess.run(['git','commit','-m',f'Docs: link qualified Fireblade {version} release'],check=True)
+    subprocess.run(
+        ["git", "config", "user.name", os.environ.get("MAINTAINER_NAME", "23R0534ZXT")], check=True
+    )
+    subprocess.run(
+        [
+            "git",
+            "config",
+            "user.email",
+            os.environ.get("MAINTAINER_EMAIL", "112427500+23R0534ZXT@users.noreply.github.com"),
+        ],
+        check=True,
+    )
+    subprocess.run(["git", "add", "README.md"], check=True)
+    subprocess.run(
+        ["git", "commit", "-m", f"Docs: link qualified Fireblade {version} release"], check=True
+    )
     for attempt in range(3):
-        pushed=subprocess.run(['git','push','origin','HEAD:main'])
-        if pushed.returncode==0:return
+        pushed = subprocess.run(["git", "push", "origin", "HEAD:main"])
+        if pushed.returncode == 0:
+            return
         # Another run pushed between our fetch and our push: replay the one-line edit on
         # top of what is there now, never a force.
-        subprocess.run(['git','fetch','origin','main'],check=True)
-        subprocess.run(['git','checkout','--detach','origin/main'],check=True)
-        path.write_text(promote(path.read_text(encoding='utf-8'),release,version,digest,commit,url),
-                        encoding='utf-8')
-        subprocess.run(['git','add','README.md'],check=True)
-        subprocess.run(['git','commit','-m',f'Docs: link qualified Fireblade {version} release'],check=True)
-    raise SystemExit('the README update could not be pushed after three attempts')
+        subprocess.run(["git", "fetch", "origin", "main"], check=True)
+        subprocess.run(["git", "checkout", "--detach", "origin/main"], check=True)
+        path.write_text(
+            promote(path.read_text(encoding="utf-8"), release, version, digest, commit, url),
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "add", "README.md"], check=True)
+        subprocess.run(
+            ["git", "commit", "-m", f"Docs: link qualified Fireblade {version} release"], check=True
+        )
+    raise SystemExit("the README update could not be pushed after three attempts")
 
 
-if __name__=='__main__':main()
+if __name__ == "__main__":
+    main()

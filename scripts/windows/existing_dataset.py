@@ -28,14 +28,9 @@ def prepare(directory, out=None, archive=None, manifest=None, reference=None):
         (ROOT / "docs/validation/datasets/3gib.json").read_text(encoding="utf-8")
     )
     reference = reference or json.loads(
-        (ROOT / "docs/validation/datasets/3gib-reference.json").read_text(
-            encoding="utf-8"
-        )
+        (ROOT / "docs/validation/datasets/3gib-reference.json").read_text(encoding="utf-8")
     )
-    if (
-        reference["sha256"] != manifest["sha256"]
-        or reference["bytes"] != manifest["bytes"]
-    ):
+    if reference["sha256"] != manifest["sha256"] or reference["bytes"] != manifest["bytes"]:
         raise ValueError("CSV reference and published manifest differ")
     source = directory / "Fireblade-test-3GiB.csv"
     # Older qualification runs used another filename. Reuse their verified
@@ -55,12 +50,8 @@ def prepare(directory, out=None, archive=None, manifest=None, reference=None):
             shutil.disk_usage(directory).free
             < manifest["bytes"] + manifest["archive_bytes"] + 1024**3
         ):
-            raise RuntimeError(
-                "Not enough disk space to acquire the existing CSV archive"
-            )
-        selected = (
-            Path(archive).resolve() if archive else directory / manifest["archive_name"]
-        )
+            raise RuntimeError("Not enough disk space to acquire the existing CSV archive")
+        selected = Path(archive).resolve() if archive else directory / manifest["archive_name"]
         if not selected.exists():
             if archive:
                 raise FileNotFoundError(selected)
@@ -107,13 +98,8 @@ def prepare(directory, out=None, archive=None, manifest=None, reference=None):
         # Keep a caller-owned archive; the cached CSV is sufficient otherwise.
         if not archive:
             selected.unlink(missing_ok=True)
-    if (
-        source.stat().st_size != manifest["bytes"]
-        or sha256(source) != manifest["sha256"]
-    ):
-        raise ValueError(
-            "Existing CSV differs from the published fixture; it was not overwritten"
-        )
+    if source.stat().st_size != manifest["bytes"] or sha256(source) != manifest["sha256"]:
+        raise ValueError("Existing CSV differs from the published fixture; it was not overwritten")
     spec = dict(
         reference,
         source=str(source),

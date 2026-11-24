@@ -14,6 +14,7 @@ matched text is put back into the same position of the translation. Templates ar
 tried after the exact lookup, longest literal first, so a precise entry always
 wins over a loose one.
 """
+
 import re
 from functools import lru_cache
 
@@ -192,7 +193,7 @@ EN = {
     # call site because they carry counts and paths.
     "VUE D’ENSEMBLE": "OVERVIEW",
     "ACTIVITÉ CHRONOLOGIQUE": "TIMELINE ACTIVITY",
-    "Construisez la chronologie pour explorer vos événements.\nChoisissez les colonnes de date avec « Sources et dates… ».": "Build the timeline to explore your events.\nChoose the date columns with \"Sources and dates…\".",
+    "Construisez la chronologie pour explorer vos événements.\nChoisissez les colonnes de date avec « Sources et dates… ».": 'Build the timeline to explore your events.\nChoose the date columns with "Sources and dates…".',
     "Densité globale": "Overall density",
     "Échelle logarithmique": "Logarithmic scale",
     "{} correspondance(s) · {} analyses · {} sans date exploitable · {} dates sans fuseau explicite": "{} matches · {} analyses · {} without a usable date · {} dates without an explicit time zone",
@@ -315,16 +316,16 @@ EN = {
     " · filtres ignorés": " · filters ignored",
     " · sélection explicite de lignes": " · explicit row selection",
     "<h2>Contrôle de couverture</h2>": "<h2>Coverage check</h2>",
-    "<p class=\"warning\">Aucun contrôle de couverture joint. Ce rapport ne démontre pas la complétude de la collecte.</p>": "<p class=\"warning\">No coverage check attached. This report does not demonstrate the completeness of the collection.</p>",
+    '<p class="warning">Aucun contrôle de couverture joint. Ce rapport ne démontre pas la complétude de la collecte.</p>': '<p class="warning">No coverage check attached. This report does not demonstrate the completeness of the collection.</p>',
     "<p>Instantané du ": "<p>Snapshot of the ",
     "à actualiser": "to be refreshed",
     "dernier contrôle réalisé": "last check performed",
-    "<p class=\"warning\">Détail limité aux 100 premiers points ; exporter le bilan JSON complet.</p>": "<p class=\"warning\">Detail limited to the first 100 points; export the full JSON report.</p>",
+    '<p class="warning">Détail limité aux 100 premiers points ; exporter le bilan JSON complet.</p>': '<p class="warning">Detail limited to the first 100 points; export the full JSON report.</p>',
     "SHA-256 à l’import": "SHA-256 at import",
     "Lignes importées": "Rows imported",
     "Filtres appliqués": "Filters applied",
-    "<p class=\"warning\">Résultats partiels : limite du rapport atteinte. Les autres constats restent dans les analyses.</p>": "<p class=\"warning\">Partial results: report limit reached. The other findings remain in the analyses.</p>",
-    "<p class=\"warning\">Analyse non incluse : ": "<p class=\"warning\">Analysis not included: ",
+    '<p class="warning">Résultats partiels : limite du rapport atteinte. Les autres constats restent dans les analyses.</p>': '<p class="warning">Partial results: report limit reached. The other findings remain in the analyses.</p>',
+    '<p class="warning">Analyse non incluse : ': '<p class="warning">Analysis not included: ',
     "Provenance de l’import": "Import provenance",
     "Maximum de constats :": "Maximum findings:",
     "Restaurer cette version": "Restore this version",
@@ -591,7 +592,6 @@ EN = {
     "Texte, IP, chemin, empreinte… · Entrée pour rechercher": "Text, IP, path, hash… · Enter to search",
     "Détails de la ligne sélectionnée": "Details of the selected row",
     "Tous les artefacts": "All artifacts",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "(date et heure dans la même colonne)": "(date and time in the same column)",
@@ -599,7 +599,7 @@ EN = {
     "16 colonnes de tri au maximum": "16 sort columns at most",
     "2. Appliquer à": "2. Apply to",
     "; périmètre à actualiser avant toute conclusion. Les incidents restent dans l’historique.": "; scope to refresh before any conclusion. Incidents remain in the history.",
-    "<p class=\"muted\">Les constats ci-dessous sont des éléments à examiner. Les empreintes sources sont celles enregistrées à l’import ; leur présence ne prouve pas une nouvelle vérification de la source.</p>": "<p class=\"muted\">The findings below are items to examine. The source hashes are those recorded at import; their presence does not prove a new verification of the source.</p>",
+    '<p class="muted">Les constats ci-dessous sont des éléments à examiner. Les empreintes sources sont celles enregistrées à l’import ; leur présence ne prouve pas une nouvelle vérification de la source.</p>': '<p class="muted">The findings below are items to examine. The source hashes are those recorded at import; their presence does not prove a new verification of the source.</p>',
     "<p>Généré le": "<p>Generated on",
     "<p>Périmètre :": "<p>Scope:",
     "Adapter la hauteur au texte affiché": "Fit the height to the displayed text",
@@ -1261,7 +1261,6 @@ EN = {
     "événements indexés": "events indexed",
     "événements ·": "events ·",
     "… Détails dans Sources et dates.": "… Details in Sources and dates.",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "+ Sous-groupe": "+ Subgroup",
@@ -1393,7 +1392,6 @@ EN = {
     "{} · {} analyse(s) · {}": "{} · {} analyses · {}",
     "{} · {} analyse(s) · {} incidents": "{} · {} analyses · {} incidents",
     "· signets uniquement": "· bookmarks only",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Conséquence": "Consequence",
@@ -1404,13 +1402,11 @@ EN = {
     "Valeur normalisée": "Normalized value",
     "Valeur observée": "Observed value",
     "Étape": "Stage",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Artefact actif": "Active artifact",
     "Fond actif": "Active background",
     "· ouvert": "· current",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Ambre nocturne": "Amber night",
@@ -1437,11 +1433,9 @@ EN = {
     "Studio clair": "Studio light",
     "Studio sombre": "Studio dark",
     "Émeraude nocturne": "Emerald night",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Lecture du filtre : {}": "Filter reading: {}",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "<p>Généré le {}": "<p>Generated on {}",
@@ -1522,25 +1516,20 @@ EN = {
     "{}. Effacer les filtres permet de retrouver tous les événements de ce fichier.": "{}. Clearing the filters restores every event of this file.",
     "État : {}": "State: {}",
     "État de l’import : {}": "Import state: {}",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Import : {} · {} analyses · Source : {}": "Import: {} · {} analyses · Source: {}",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Case : {}": "Case: {}",
     "En cours": "Open",
     "{} · ouvert": "{} · current",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "{} éléments chargés dans ce niveau": "{} items loaded in this level",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Lecture annulée. Vous pouvez réessayer avec Suivant.": "Reading stopped. You can try again with Next.",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     " ET ": " AND ",
@@ -1566,7 +1555,6 @@ EN = {
     "Replier": "Collapse",
     "Sous-groupe": "Subgroup",
     "Vide / NULL": "Empty / NULL",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Chasse IOC en masse · Fireblade": "Bulk IOC hunting · Fireblade",
@@ -1574,7 +1562,6 @@ EN = {
     "Couverture de collecte et diagnostics · Fireblade": "Collection coverage and diagnostics · Fireblade",
     "Guide d’utilisation · Fireblade": "User guide · Fireblade",
     "Tutoriel complet · Fireblade": "Full tutorial · Fireblade",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Adresse distante": "Remote address",
@@ -1593,7 +1580,6 @@ EN = {
     "Protocole": "Protocol",
     "Utilisateur": "User",
     "Valeur": "Value",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Ajouter": "Add",
@@ -1602,7 +1588,6 @@ EN = {
     "Monter": "Move up",
     "Retirer": "Remove",
     "Supprimer": "Delete",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Ajouter une note à la cellule…": "Add a note to the cell…",
@@ -1611,12 +1596,10 @@ EN = {
     "Note de la cellule": "Cell note",
     "Note de la cellule « {} » (vide = retirer la note)": "Note of the cell « {} » (empty removes the note)",
     "Éditer la note de la cellule…": "Edit the cell note…",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Note (vide = retirer le signet)": "Note (empty removes the bookmark)",
     "Signet / note": "Bookmark / note",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "Note sur la sélection": "Note on the selection",
@@ -1625,11 +1608,9 @@ EN = {
     "{} enregistrement(s) · remplacer les notes existantes — la note commune est pré-remplie": "{} record(s) · replace the existing notes — the common note is pre-filled",
     "Éditer la note de la sélection": "Edit the selection note",
     "Éditer la note de la sélection…": "Edit the selection note…",
-
     # Added for the full English interface: one entry per French label
     # the application can display.
     "— la note commune est pré-remplie": "— the common note is pre-filled",
-
     # Import report: the actions an examiner takes on what could not be read.
     "Voir le fichier": "View file",
     "Copier les non traités…": "Copy unprocessed files…",
@@ -1793,8 +1774,8 @@ EN = {
     "Indicateurs": "Indicators",
     "Machines et comptes": "Machines and accounts",
     "Nouvelle action…": "New action…",
-    "Qu'est-ce qui s'est passé autour de « {} » sur {} ?": "What happened around \"{}\" on {}?",
-    "Quelle explication bénigne tient pour « {} » ?": "Which benign explanation fits \"{}\"?",
+    "Qu'est-ce qui s'est passé autour de « {} » sur {} ?": 'What happened around "{}" on {}?',
+    "Quelle explication bénigne tient pour « {} » ?": 'Which benign explanation fits "{}"?',
     "Que fait {} dans cette affaire, heure par heure ?": "What does {} do in this case, hour by hour?",
     "Y a-t-il eu un mouvement latéral entre {} et {} ?": "Was there lateral movement between {} and {}?",
     "Où apparaît {} et qu'est-ce qui l'a contacté ?": "Where does {} appear, and what contacted it?",
@@ -1960,7 +1941,7 @@ def english_text(text):
     if result == text and text.strip() != text:
         inner = lookup(text.strip())
         if inner != text.strip():
-            result = text[:len(text) - len(text.lstrip())] + inner + text[len(text.rstrip()):]
+            result = text[: len(text) - len(text.lstrip())] + inner + text[len(text.rstrip()) :]
     # French typography puts a no-break space before a colon: phrases are written with a plain one.
     result = result.replace("\u00a0", " ").replace("\u202f", " ")
     for phrase in sorted(_PHRASES, key=len, reverse=True):

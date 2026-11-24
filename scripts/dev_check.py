@@ -8,6 +8,7 @@ The suite runs on the platform the application targets: on Windows the offscreen
 Qt plugin has no font database, so pixel and layout tests fail for reasons that
 have nothing to do with the change.
 """
+
 import argparse
 import os
 import re
@@ -35,9 +36,13 @@ def run(command, env=None):
 
 def check_version():
     """The tag, the package and the build must never disagree."""
-    version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
-    match = re.search(r'__version__\s*=\s*"([^"]+)"',
-                      (ROOT / "src/fireblade/__init__.py").read_text(encoding="utf-8"))
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"][
+        "version"
+    ]
+    match = re.search(
+        r'__version__\s*=\s*"([^"]+)"',
+        (ROOT / "src/fireblade/__init__.py").read_text(encoding="utf-8"),
+    )
     if match is None:
         raise SystemExit("ECHEC : __version__ absent de src/fireblade/__init__.py")
     declared = match.group(1)
@@ -56,8 +61,7 @@ def check_lint():
     shim lint nothing at all, so the executable is looked up first, on PATH and next
     to the interpreter.
     """
-    executable = (shutil.which("ruff")
-                  or shutil.which("ruff", path=str(Path(sys.executable).parent)))
+    executable = shutil.which("ruff") or shutil.which("ruff", path=str(Path(sys.executable).parent))
     command = [executable] if executable else [sys.executable, "-m", "ruff"]
     run([*command, "check", "src", "scripts", "tests"])
 
@@ -92,8 +96,7 @@ def check_smoke():
         "window.close()\n"
         "print('fenêtre principale construite')\n"
     )
-    run([sys.executable, "-c", code],
-        env=dict(os.environ, QT_QPA_PLATFORM="offscreen", **UTF8_ENV))
+    run([sys.executable, "-c", code], env=dict(os.environ, QT_QPA_PLATFORM="offscreen", **UTF8_ENV))
 
 
 def purge_stale_pytest_tmp():
@@ -122,8 +125,10 @@ def purge_stale_pytest_tmp():
 def check_tests(platform):
     purge_stale_pytest_tmp()
     print(f"suite complète, plateforme Qt = {platform}", flush=True)
-    run([sys.executable, "-m", "pytest", "-q"],
-        env=dict(os.environ, QT_QPA_PLATFORM=platform, **UTF8_ENV))
+    run(
+        [sys.executable, "-m", "pytest", "-q"],
+        env=dict(os.environ, QT_QPA_PLATFORM=platform, **UTF8_ENV),
+    )
 
 
 def main(argv=None):

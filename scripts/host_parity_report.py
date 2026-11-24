@@ -8,6 +8,7 @@ drift into a claim nobody verified.
     python scripts/host_parity_report.py           # rewrite HOST-PARITY.md
     python scripts/host_parity_report.py --check    # exit 1 when it is stale
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,12 +39,18 @@ def render(data: dict) -> str:
     containers = [entry for entry in entries if entry["kind"] == "container"]
     by_status = counts(entries)
     command_counts = counts(commands)
-    covered = sorted((entry for entry in commands if entry["status"] == "covered"),
-                     key=lambda entry: entry["label"].casefold())
-    declared = sorted((entry for entry in commands if entry["status"] == "declared"),
-                      key=lambda entry: entry["label"].casefold())
-    todo = sorted((entry for entry in commands if entry["status"] == "todo"),
-                  key=lambda entry: entry["label"].casefold())
+    covered = sorted(
+        (entry for entry in commands if entry["status"] == "covered"),
+        key=lambda entry: entry["label"].casefold(),
+    )
+    declared = sorted(
+        (entry for entry in commands if entry["status"] == "declared"),
+        key=lambda entry: entry["label"].casefold(),
+    )
+    todo = sorted(
+        (entry for entry in commands if entry["status"] == "todo"),
+        key=lambda entry: entry["label"].casefold(),
+    )
 
     lines = [
         "# Desktop → Host parity, command by command",

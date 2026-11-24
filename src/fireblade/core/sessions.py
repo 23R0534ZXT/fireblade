@@ -1,4 +1,5 @@
 """JSON workspace snapshots, independent of Qt and database connections."""
+
 import base64
 import json
 import os
@@ -12,9 +13,12 @@ MAX_SESSION_DOCUMENTS = 1000
 
 
 def _entry(snapshot):
-    return dict(path=snapshot.path, source=snapshot.source_info,
-                view=json.loads(snapshot.view.to_json()),
-                header=base64.b64encode(snapshot.header_state).decode("ascii"))
+    return dict(
+        path=snapshot.path,
+        source=snapshot.source_info,
+        view=json.loads(snapshot.view.to_json()),
+        header=base64.b64encode(snapshot.header_state).decode("ascii"),
+    )
 
 
 def write_session(path, snapshots, active, closed=()):
@@ -29,15 +33,23 @@ def write_session(path, snapshots, active, closed=()):
         raise ValueError("Une session doit contenir de 1 à 1000 analyses")
     if not snapshots and not closed:
         raise ValueError("Une session doit contenir de 1 à 1000 analyses")
-    if type(active) is not int or not (0 <= active < len(snapshots) or (not snapshots and active == -1)):
+    if type(active) is not int or not (
+        0 <= active < len(snapshots) or (not snapshots and active == -1)
+    ):
         raise ValueError("Onglet actif invalide")
     path = Path(path).resolve()
-    payload = dict(format="fireblade-session", version=1, active=active,
-                   documents=[_entry(s) for s in snapshots],
-                   closed=[_entry(s) for s in closed])
+    payload = dict(
+        format="fireblade-session",
+        version=1,
+        active=active,
+        documents=[_entry(s) for s in snapshots],
+        closed=[_entry(s) for s in closed],
+    )
     temporary = None
     try:
-        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, suffix=".partial", delete=False) as output:
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", dir=path.parent, suffix=".partial", delete=False
+        ) as output:
             temporary = Path(output.name)
             json.dump(payload, output, ensure_ascii=False, indent=2)
         if temporary.stat().st_size > MAX_SESSION_BYTES:
@@ -68,7 +80,9 @@ def read_session(path, with_closed=False):
     if not snapshots and not closed:
         raise ValueError("Une session doit contenir de 1 à 1000 analyses")
     active = payload.get("active", 0)
-    if type(active) is not int or not (0 <= active < len(snapshots) or (not snapshots and active == -1)):
+    if type(active) is not int or not (
+        0 <= active < len(snapshots) or (not snapshots and active == -1)
+    ):
         raise ValueError("Onglet actif invalide")
     return (snapshots, active, closed) if with_closed else (snapshots, active)
 
@@ -83,7 +97,9 @@ def _snapshots(path, documents, seen):
             raise ValueError(f"Analyse absente ou dupliquée : {target}")
         seen.add(target)
         view = View.from_json(json.dumps(doc["view"]))
-        snapshots.append(AnalysisSnapshot(str(target), doc["source"], view,
-                                         base64.b64decode(doc["header"], validate=True)))
+        snapshots.append(
+            AnalysisSnapshot(
+                str(target), doc["source"], view, base64.b64decode(doc["header"], validate=True)
+            )
+        )
     return snapshots, seen
-

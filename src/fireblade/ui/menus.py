@@ -1,4 +1,5 @@
 """Context menus for the grid. Actions delegate to the window's existing commands."""
+
 from PySide6.QtWidgets import QApplication, QMenu
 
 from fireblade.core.i18n import translate
@@ -13,7 +14,12 @@ def header_menu(window, section):
     menu.addAction("Trier par ordre décroissant", lambda: window.set_sort(column, True))
     typed = menu.addMenu("Type de tri")
     for label, kind in [("Texte", "text"), ("Nombre", "number"), ("Date ISO", "timestamp")]:
-        item = typed.addAction(label, lambda checked=False, value=kind: window.set_sort(column, window.view.descending, value))
+        item = typed.addAction(
+            label,
+            lambda checked=False, value=kind: window.set_sort(
+                column, window.view.descending, value
+            ),
+        )
         item.setCheckable(True)
         item.setChecked(window.view.sort_type == kind)
     menu.addAction("Tri sur plusieurs colonnes…", window.edit_sort)
@@ -27,20 +33,37 @@ def header_menu(window, section):
     menu.addAction("Filtrer cette colonne…", lambda: window.add_filter(column))
     menu.addAction("Filtrer une date…", lambda: window.date_filter(column))
     intervals = menu.addMenu("Regrouper les dates par")
-    for label, code in [("Valeur entière", "value"), ("Année", "year"), ("Trimestre", "quarter"), ("Mois", "month"), ("Semaine", "week"), ("Jour", "day"), ("Heure", "hour"), ("Minute", "minute"), ("Seconde", "second")]:
-        intervals.addAction(label, lambda checked=False, value=code: window.group_interval(column, value))
+    for label, code in [
+        ("Valeur entière", "value"),
+        ("Année", "year"),
+        ("Trimestre", "quarter"),
+        ("Mois", "month"),
+        ("Semaine", "week"),
+        ("Jour", "day"),
+        ("Heure", "hour"),
+        ("Minute", "minute"),
+        ("Seconde", "second"),
+    ]:
+        intervals.addAction(
+            label, lambda checked=False, value=code: window.group_interval(column, value)
+        )
     pinned = column in window.view.pinned_columns + window.view.right_pinned_columns
-    menu.addAction("Désépingler la colonne" if pinned else "Épingler la colonne", lambda: window.pin_column(column))
+    menu.addAction(
+        "Désépingler la colonne" if pinned else "Épingler la colonne",
+        lambda: window.pin_column(column),
+    )
     if column in window.view.right_pinned_columns:
-        menu.addAction("Épingler à gauche", lambda: window.pin_column(column, 'left'))
+        menu.addAction("Épingler à gauche", lambda: window.pin_column(column, "left"))
     else:
-        menu.addAction("Épingler à droite", lambda: window.pin_column(column, 'right'))
+        menu.addAction("Épingler à droite", lambda: window.pin_column(column, "right"))
+
     def boolean():
         if column in window.view.boolean_columns:
             window.view.boolean_columns.remove(column)
         else:
             window.view.boolean_columns.append(column)
         window.apply()
+
     menu.addAction("Basculer l’affichage booléen", boolean)
     menu.addSeparator()
     menu.addAction("Masquer cette colonne", lambda: window.hide_column(column))
@@ -51,7 +74,8 @@ def header_menu(window, section):
 def pivot_anchor(window, values):
     """The 'what launched this' search for a row, when the row carries a process at all."""
     from fireblade.core.pivot import anchor_of
-    headers = getattr(getattr(window, 'case', None), 'headers', None)
+
+    headers = getattr(getattr(window, "case", None), "headers", None)
     if not headers:
         return None
     try:
@@ -70,40 +94,64 @@ def cell_menu(window, index):
     menu = QMenu(window)
     if index.column() > 0:
         column, value = index.column() - 1, node.values[index.column()]
+
         def show_cell():
             window.tree.setCurrentIndex(index)
             window.cell_details()
+
         menu.addAction("Afficher la cellule / JSON…", show_cell)
         existing = window.note_of(row_id, column)
-        menu.addAction("Éditer la note de la cellule…" if existing else "Ajouter une note à la cellule…",
-                       lambda: window.edit_bookmark(row_id, column))
-        menu.addAction("Copier la valeur", lambda: QApplication.clipboard().setText("" if value is None else str(value)))
+        menu.addAction(
+            "Éditer la note de la cellule…" if existing else "Ajouter une note à la cellule…",
+            lambda: window.edit_bookmark(row_id, column),
+        )
+        menu.addAction(
+            "Copier la valeur",
+            lambda: QApplication.clipboard().setText("" if value is None else str(value)),
+        )
         menu.addAction("Filtrer sur cette valeur", lambda: window.filter_value(column, value))
-        menu.addAction("Exclure cette valeur", lambda: window.filter_value(column, value, exclude=True))
+        menu.addAction(
+            "Exclure cette valeur", lambda: window.filter_value(column, value, exclude=True)
+        )
+
         def search_all():
-            window.search.setText('' if value is None else str(value));window.find_workspace()
-        menu.addAction('Rechercher dans tous les artefacts', search_all)
-        menu.addAction("Corréler dans toutes les analyses", lambda: window.correlate_value(column, value))
+            window.search.setText("" if value is None else str(value))
+            window.find_workspace()
+
+        menu.addAction("Rechercher dans tous les artefacts", search_all)
+        menu.addAction(
+            "Corréler dans toutes les analyses", lambda: window.correlate_value(column, value)
+        )
         anchor = pivot_anchor(window, node.values[1:])
         if anchor is not None:
-            menu.addAction(translate('Qu’est-ce qui a lancé {} ?').format(anchor['process']),
-                           lambda a=anchor: window.pivot_launch(a))
+            menu.addAction(
+                translate("Qu’est-ce qui a lancé {} ?").format(anchor["process"]),
+                lambda a=anchor: window.pivot_launch(a),
+            )
         if value is not None:
-            menu.addAction("Créer une règle pour cette valeur…", lambda: window.rule_from_value(column, value))
+            menu.addAction(
+                "Créer une règle pour cette valeur…", lambda: window.rule_from_value(column, value)
+            )
             menu.addAction("Ouvrir avec…", lambda: window.open_with(str(value)))
             menu.addAction("Afficher dans l’Explorateur", lambda: window.open_external(str(value)))
-            menu.addAction("Ouvrir le dossier parent", lambda: window.open_external(str(value), directory=True))
+            menu.addAction(
+                "Ouvrir le dossier parent", lambda: window.open_external(str(value), directory=True)
+            )
         menu.addSeparator()
     if window.is_hayabusa_analysis():
+
         def context():
             window.tree.setCurrentIndex(index)
             window.preview_alert_context()
+
         menu.addAction("Voir le contexte EVTX de cette alerte", context)
         menu.addSeparator()
     if window.context_metadata() is not None:
+
         def original():
             window.tree.setCurrentIndex(index)
             window.open_context_source()
+
         menu.addAction("Ouvrir l’événement EVTX source", original)
         menu.addSeparator()
     menu.addAction("Copier les lignes sélectionnées", window.copy_rows)
@@ -111,8 +159,14 @@ def cell_menu(window, index):
     menu.addSeparator()
     menu.addAction("Marquer la sélection", lambda: window.annotate_selection("mark"))
     if window.selection_note()[0]:
-        menu.addAction("Éditer la note de la sélection…", lambda: window.annotate_selection("replace"))
+        menu.addAction(
+            "Éditer la note de la sélection…", lambda: window.annotate_selection("replace")
+        )
     else:
-        menu.addAction("Ajouter une note à la sélection…", lambda: window.annotate_selection("append"))
-    menu.addAction("Retirer les signets de la sélection", lambda: window.annotate_selection("remove"))
+        menu.addAction(
+            "Ajouter une note à la sélection…", lambda: window.annotate_selection("append")
+        )
+    menu.addAction(
+        "Retirer les signets de la sélection", lambda: window.annotate_selection("remove")
+    )
     return menu

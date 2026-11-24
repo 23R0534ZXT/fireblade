@@ -3,10 +3,21 @@
 The grid already remembers order and widths per artifact format; this dialog is
 the readable way to change them without hunting for a header to drag.
 """
+
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QDialogButtonBox,
-                               QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-                               QPushButton, QSpinBox, QVBoxLayout)
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QSpinBox,
+    QVBoxLayout,
+)
 
 PINS = [("Aucun", "none"), ("Figée à gauche", "left"), ("Figée à droite", "right")]
 
@@ -104,7 +115,12 @@ class ColumnManager(QDialog):
         self.left.blockSignals(False)
         self.right.blockSignals(False)
         self._select(self.left, current_left)
-        self._select(self.right, current_right if current_right is not None else (self.showing[0] if self.showing else None))
+        self._select(
+            self.right,
+            current_right
+            if current_right is not None
+            else (self.showing[0] if self.showing else None),
+        )
         self.sync_controls()
 
     def _item(self, column):
@@ -146,7 +162,9 @@ class ColumnManager(QDialog):
         # Keep the original ordering inside the hidden pane.
         self.available = sorted(set(self.available) | {column})
         self.refresh()
-        self._select(self.right, self.showing[min(index, len(self.showing) - 1)] if self.showing else None)
+        self._select(
+            self.right, self.showing[min(index, len(self.showing) - 1)] if self.showing else None
+        )
 
     def move_column(self, column, position):
         """Reorder a visible column; the pane order is the truth."""
@@ -170,10 +188,13 @@ class ColumnManager(QDialog):
         self.sync_order()
         left = [c for c in self.showing if self.pins.get(c) == "left"]
         right = [c for c in self.showing if self.pins.get(c) == "right"]
-        return dict(order=list(self.showing) + list(self.available),
-                    hidden=list(self.available),
-                    left=left, right=right,
-                    widths={c: w for c, w in self.widths.items() if c in self.showing})
+        return dict(
+            order=list(self.showing) + list(self.available),
+            hidden=list(self.available),
+            left=left,
+            right=right,
+            widths={c: w for c, w in self.widths.items() if c in self.showing},
+        )
 
     # ---- widgets -----------------------------------------------------
     def sync_order(self):

@@ -5,6 +5,7 @@ label of the desktop's Qt sources. These tests hold it to three rules — nothin
 found in the sources is unaccounted for, nothing in the map is invented, and a
 covered claim names a test that really exists in this repository.
 """
+
 import ast
 import json
 import re
@@ -30,7 +31,9 @@ def _test_names() -> set[str]:
         except SyntaxError:  # a half-written file is not this test's business
             continue
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith(
+                "test_"
+            ):
                 names.add(node.name)
     return names
 
@@ -40,6 +43,7 @@ def _labels_from_sources() -> dict[str, list[str]]:
     if not ui.is_dir():
         pytest.skip("the Qt sources are not in this tree")
     import sys
+
     sys.path.insert(0, str(ROOT / "scripts"))
     try:
         import parity_inventory
@@ -63,7 +67,9 @@ def test_a_covered_command_names_a_test_that_exists():
         if entry["status"] != "covered":
             continue
         assert entry["where"].strip(), f"{entry['label']} claims coverage with no surface"
-        assert entry["test"] in names, f"{entry['label']} names a test that does not exist: {entry['test']}"
+        assert entry["test"] in names, (
+            f"{entry['label']} names a test that does not exist: {entry['test']}"
+        )
 
 
 def test_a_declared_command_gives_its_reason():
@@ -95,6 +101,7 @@ def test_counts_are_computed_from_the_map():
 
 def test_the_published_page_matches_the_map():
     import sys
+
     sys.path.insert(0, str(ROOT / "scripts"))
     try:
         import host_parity_report
@@ -103,7 +110,8 @@ def test_the_published_page_matches_the_map():
     page = ROOT / "docs" / "host" / "HOST-PARITY.md"
     assert page.is_file(), "HOST-PARITY.md is missing"
     assert page.read_text(encoding="utf-8") == host_parity_report.render(_map()), (
-        "HOST-PARITY.md is stale: run scripts/host_parity_report.py")
+        "HOST-PARITY.md is stale: run scripts/host_parity_report.py"
+    )
 
 
 def test_a_covered_row_is_not_marked_todo_in_the_same_breath():

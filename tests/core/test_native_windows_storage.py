@@ -42,9 +42,7 @@ def test_windows_extended_long_unicode_paths(tmp_path):
         case.import_csv(source)
         assert case.page(View()) == [(1, "001", "évidence")]
         case.export(long / "export.csv", View())
-        assert (
-            len(list(csv.reader((long / "export.csv").open(encoding="utf-8-sig")))) == 2
-        )
+        assert len(list(csv.reader((long / "export.csv").open(encoding="utf-8-sig")))) == 2
         assert hashlib.sha256(source.read_bytes()).hexdigest() == before
     finally:
         case.close()
@@ -85,9 +83,10 @@ New-SmbShare -Name $Share -Path $Directory -FullAccess $account | Out-Null
         with pytest.raises(ValueError):
             case.export(source, View())
         case.export(unc / "export.csv", View(filters=[Filter(1, "eq", "alice")]))
-        assert list(
-            csv.reader((tmp_path / "export.csv").open(encoding="utf-8-sig"))
-        ) == [["ID", "User"], ["001", "alice"]]
+        assert list(csv.reader((tmp_path / "export.csv").open(encoding="utf-8-sig"))) == [
+            ["ID", "User"],
+            ["001", "alice"],
+        ]
         case.close()
         case = None
         case = Case(tmp_path / "case.timeline")

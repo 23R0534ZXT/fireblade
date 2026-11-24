@@ -8,6 +8,7 @@ the case's volume, started when the driver opens the case.
 
 Skipped without Playwright and a Chromium; never failed for lack of them.
 """
+
 import contextlib
 import json
 import os
@@ -40,21 +41,30 @@ class LiveAgency(agency.Agency):
         if not self.volumes.has(identifier):
             raise KeyError(identifier)
         if identifier not in self.live:
-            self.live[identifier] = self.stack.enter_context(serving(self.volumes.library(identifier)))
+            self.live[identifier] = self.stack.enter_context(
+                serving(self.volumes.library(identifier))
+            )
         return types.SimpleNamespace(url=self.live[identifier])
 
 
 @pytest.fixture()
 def driver(tmp_path, monkeypatch):
     monkeypatch.setenv("FAKE_DOCKER_STATE", str(tmp_path / "docker.json"))
-    live = LiveAgency(tmp_path / "volumes", tmp_path / "certificates",
-                      docker=agency.Docker([sys.executable, str(FAKE)]), max_open=3)
+    live = LiveAgency(
+        tmp_path / "volumes",
+        tmp_path / "certificates",
+        docker=agency.Docker([sys.executable, str(FAKE)]),
+        max_open=3,
+    )
     identifier = live.create("Container case", "one container per case", "linux")["id"]
     evidence = live.volumes.library(identifier) / "evidence"
     evidence.mkdir(exist_ok=True)
-    (evidence / "access.log").write_text("".join(
-        f'10.0.0.{i % 4} - - [01/Nov/2026:10:{i % 60:02d}:00 +0000] "GET /p{i % 5} HTTP/1.1" {200 + (i % 3) * 100} 512 "-" "curl"\n'
-        for i in range(60)))
+    (evidence / "access.log").write_text(
+        "".join(
+            f'10.0.0.{i % 4} - - [01/Nov/2026:10:{i % 60:02d}:00 +0000] "GET /p{i % 5} HTTP/1.1" {200 + (i % 3) * 100} 512 "-" "curl"\n'
+            for i in range(60)
+        )
+    )
     with serving_app(live) as base:
         yield base, live, identifier, tmp_path
     live.stack.close()
@@ -91,14 +101,20 @@ def page(driver):
     base, _live, identifier, _tmp = driver
     try:
         playwright = sync_playwright().start()
-        browser = playwright.chromium.launch(executable_path=os.environ.get("FIREBLADE_CHROMIUM") or None)
+        browser = playwright.chromium.launch(
+            executable_path=os.environ.get("FIREBLADE_CHROMIUM") or None
+        )
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"no Chromium available: {exc}")
     page = browser.new_page(viewport={"width": 1400, "height": 850}, accept_downloads=True)
     page.errors, page.failed = [], []
     page.on("pageerror", lambda error: page.errors.append(str(error)))
-    page.on("response", lambda r: page.failed.append(f"{r.status} {r.request.method} {r.url}")
-            if r.status >= 400 and "/api/" in r.url else None)
+    page.on(
+        "response",
+        lambda r: page.failed.append(f"{r.status} {r.request.method} {r.url}")
+        if r.status >= 400 and "/api/" in r.url
+        else None,
+    )
     page.goto(f"{base}/case/{identifier}/")
     page.wait_for_selector("#menubar")
     yield page
@@ -108,9 +124,14 @@ def page(driver):
 
 
 def _import_evidence(base, live, identifier):
-    started = httpx.post(f"{base}/case/{identifier}/api/cases/{identifier}/import-jobs",
-                         data={"source": str(live.volumes.library(identifier) / "evidence"),
-                               "organization": "files"}, timeout=30)
+    started = httpx.post(
+        f"{base}/case/{identifier}/api/cases/{identifier}/import-jobs",
+        data={
+            "source": str(live.volumes.library(identifier) / "evidence"),
+            "organization": "files",
+        },
+        timeout=30,
+    )
     assert started.status_code == 200, started.text
     job = started.json()["job"]
     for _ in range(240):
@@ -152,11 +173,15 @@ def test_a_report_link_and_an_export_carry_the_case_prefix(page, driver):
     page.click("#report-modal [data-act='settings-close']")
     with page.expect_download(timeout=20000) as download:
         page.evaluate("document.querySelector('.menu [data-act=\"export-csv\"]').click()")
-    assert download.value.path().stat().st_size > 0 if hasattr(download.value.path(), "stat") else True
+    assert (
+        download.value.path().stat().st_size > 0 if hasattr(download.value.path(), "stat") else True
+    )
     assert not page.failed, page.failed
 
 
-def test_erasing_through_the_prefix_reaches_the_driver_and_leaves_only_the_certificate(page, driver):
+def test_erasing_through_the_prefix_reaches_the_driver_and_leaves_only_the_certificate(
+    page, driver
+):
     base, live, identifier, tmp = driver
     page.click('.tabs .tab:text-is("Cases")')
     page.dblclick('tr:has(td:text-is("Container case")) td >> nth=0')
@@ -166,10 +191,18 @@ def test_erasing_through_the_prefix_reaches_the_driver_and_leaves_only_the_certi
     page.fill("#destroy-operator", "A. Analyst")
     page.fill("#destroy-confirm", "Container case")
     page.click('#destroy-modal [data-act="destroy-run"]')
-    page.wait_for_function("document.getElementById('status').innerText.startsWith('Case erased')", timeout=60000)
+    page.wait_for_function(
+        "document.getElementById('status').innerText.startsWith('Case erased')", timeout=60000
+    )
     assert not live.volumes.has(identifier), "the volume goes with the case"
     assert not (live.volumes.root / identifier).exists()
     certificates = list((tmp / "certificates").glob("*.html"))
-    assert certificates and "Evidence destruction certificate" in certificates[0].read_text(encoding="utf-8")
-    calls = json.loads((tmp / "docker.json").read_text(encoding="utf-8"))["calls"] if (tmp / "docker.json").exists() else []
+    assert certificates and "Evidence destruction certificate" in certificates[0].read_text(
+        encoding="utf-8"
+    )
+    calls = (
+        json.loads((tmp / "docker.json").read_text(encoding="utf-8"))["calls"]
+        if (tmp / "docker.json").exists()
+        else []
+    )
     assert isinstance(calls, list)

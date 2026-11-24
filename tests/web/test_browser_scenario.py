@@ -7,6 +7,7 @@ what the analyst would read on screen, not only that no request failed.
 Skipped without Playwright and a Chromium (FIREBLADE_CHROMIUM names one Playwright did not
 download); never failed for lack of them.
 """
+
 import re
 
 import httpx
@@ -24,8 +25,10 @@ STATUS = [200, 200, 200, 301, 403, 404, 500]
 def _nginx():
     lines = []
     for i in range(400):
-        lines.append(f'{IPS[i % 5]} - - [01/Nov/2026:{i % 24:02d}:{i % 60:02d}:{(i * 3) % 60:02d} +0000] '
-                     f'"GET {PATHS[i % 6]} HTTP/1.1" {STATUS[i % 7]} {100 + i * 7} "-" "curl/7.88"')
+        lines.append(
+            f"{IPS[i % 5]} - - [01/Nov/2026:{i % 24:02d}:{i % 60:02d}:{(i * 3) % 60:02d} +0000] "
+            f'"GET {PATHS[i % 6]} HTTP/1.1" {STATUS[i % 7]} {100 + i * 7} "-" "curl/7.88"'
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -33,8 +36,10 @@ def _auth():
     lines = []
     for i in range(120):
         verb = "Failed password" if i % 3 else "Accepted publickey"
-        lines.append(f"Nov  1 {i % 24:02d}:{i % 60:02d}:{(i * 7) % 60:02d} srv sshd[{1000 + i}]: "
-                     f"{verb} for {['root', 'alice', 'bob'][i % 3]} from {IPS[i % 5]} port {20000 + i} ssh2")
+        lines.append(
+            f"Nov  1 {i % 24:02d}:{i % 60:02d}:{(i * 7) % 60:02d} srv sshd[{1000 + i}]: "
+            f"{verb} for {['root', 'alice', 'bob'][i % 3]} from {IPS[i % 5]} port {20000 + i} ssh2"
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -47,8 +52,11 @@ def host(tmp_path_factory):
     (evidence / "var" / "log" / "nginx" / "access.log").write_text(_nginx())
     (evidence / "var" / "log" / "auth.log").write_text(_auth())
     with serving(root) as base:
-        started = httpx.post(f"{base}/api/cases/{identifier}/import-jobs",
-                             data={"source": str(evidence), "organization": "files"}, timeout=30)
+        started = httpx.post(
+            f"{base}/api/cases/{identifier}/import-jobs",
+            data={"source": str(evidence), "organization": "files"},
+            timeout=30,
+        )
         assert started.status_code == 200, started.text
         job = started.json()["job"]
         for _ in range(240):
@@ -77,18 +85,26 @@ def _open(page, artifact, rows=None):
 def _total(page):
     """The row count the footer announces: '1-200 / 400 row(s)' -> 400."""
     page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/')")
-    return int(re.search(r"/\s*([\d\s ,]+)\s*row", page.inner_text("#pageinfo")).group(1)
-               .replace(",", "").replace(" ", "").replace(" ", ""))
+    return int(
+        re.search(r"/\s*([\d\s ,]+)\s*row", page.inner_text("#pageinfo"))
+        .group(1)
+        .replace(",", "")
+        .replace(" ", "")
+        .replace(" ", "")
+    )
 
 
 def _column(page, label):
     """The data index of a column by the name on screen (filter inputs are keyed by it)."""
-    return page.evaluate("""(label) => {
+    return page.evaluate(
+        """(label) => {
         const heads = [...document.querySelectorAll('#head tr:first-child th')];
         const at = heads.findIndex(th => th.innerText.replace(/[▲▼]/g, '').trim() === label);
         const inputs = [...document.querySelectorAll('#head input[data-filter]')];
         return at < 0 ? null : inputs[at - 2] ? inputs[at - 2].dataset.filter : null;
-    }""", label)
+    }""",
+        label,
+    )
 
 
 def test_the_grid_filters_searches_and_clears(page):
@@ -113,8 +129,10 @@ def test_the_grid_filters_searches_and_clears(page):
 def test_bookmarking_a_row_makes_it_the_only_row_of_the_bookmark_view(page):
     _open(page, "access.log")
     page.click("#body tr[data-row] >> nth=2 >> .markcell")
-    page.wait_for_function("document.querySelectorAll('#body .cb.on, #body .cb.checked, #body .cb.marked').length > 0",
-                           timeout=8000)
+    page.wait_for_function(
+        "document.querySelectorAll('#body .cb.on, #body .cb.checked, #body .cb.marked').length > 0",
+        timeout=8000,
+    )
     page.click("#bookmarks-only")
     page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 1')")
     assert _total(page) == 1
@@ -125,7 +143,9 @@ def test_grouping_by_a_column_lists_its_values_and_drills_down(page):
     _open(page, "access.log")
     page.click('.groupbar [data-act="group-column"]')
     page.wait_for_selector("#group-modal.show")
-    labels = page.eval_on_selector_all("#group-modal select option", "o => o.map(x => x.textContent.trim())")
+    labels = page.eval_on_selector_all(
+        "#group-modal select option", "o => o.map(x => x.textContent.trim())"
+    )
     assert "Status" in labels
     page.select_option("#group-modal select >> nth=0", label="Status")
     page.click("#group-modal button:has-text('Group')")
@@ -148,11 +168,15 @@ def test_an_indicator_hunt_reports_its_matches(page):
 def test_the_timeline_dates_the_access_log_and_leaves_the_year_less_log_undated(page):
     page.click('.tabs .tab:text-is("Timeline & correlations")')
     page.click("#timeline-build")
-    page.wait_for_function("document.getElementById('timeline-info').innerText.includes('dated')", timeout=30000)
+    page.wait_for_function(
+        "document.getElementById('timeline-info').innerText.includes('dated')", timeout=30000
+    )
     legend = page.inner_text("#timeline-legend")
     assert re.search(r"access\.log\s*—\s*400 dated", legend), legend
     assert re.search(r"auth\.log\s*—\s*0 dated", legend), legend
-    options = page.eval_on_selector_all("#timeline-dates select option", "o => o.map(x => x.textContent)")
+    options = page.eval_on_selector_all(
+        "#timeline-dates select option", "o => o.map(x => x.textContent)"
+    )
     assert not any("Horodatage" in text for text in options), "columns are named in English"
 
 
@@ -207,7 +231,9 @@ def test_a_view_is_saved_and_applied_again(page):
     page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 400')")
     _menu(page, "analysis", "views")
     page.click('[data-view-apply="Server errors"]')
-    page.wait_for_function(f"document.getElementById('pageinfo').innerText.includes('/ {filtered}')")
+    page.wait_for_function(
+        f"document.getElementById('pageinfo').innerText.includes('/ {filtered}')"
+    )
     assert _total(page) == filtered
 
 
@@ -221,9 +247,12 @@ def test_a_colour_rule_paints_the_rows_it_matches(page):
     page.fill("#rule-colour", "#ff0000")
     page.click('#rules-modal [data-act="rule-add"]')
     page.click('#rules-modal [data-act="settings-close"] >> nth=0')
-    page.wait_for_function("""() => [...document.querySelectorAll('#body tr[data-row]')]
+    page.wait_for_function(
+        """() => [...document.querySelectorAll('#body tr[data-row]')]
         .some(tr => getComputedStyle(tr.cells[1]).backgroundColor === 'rgb(255, 0, 0)'
-                 || getComputedStyle(tr).backgroundColor === 'rgb(255, 0, 0)')""", timeout=8000)
+                 || getComputedStyle(tr).backgroundColor === 'rgb(255, 0, 0)')""",
+        timeout=8000,
+    )
 
 
 def test_a_derived_column_joins_the_grid(page):
@@ -234,8 +263,10 @@ def test_a_derived_column_joins_the_grid(page):
     page.select_option("#derived-operation", "expression")
     page.fill("#derived-expression", "lower(Method)")
     page.click('#derived-modal [data-act="derived-add"]')
-    page.wait_for_function("[...document.querySelectorAll('#head th')].some(th => th.innerText.includes('Method lower'))",
-                           timeout=15000)
+    page.wait_for_function(
+        "[...document.querySelectorAll('#head th')].some(th => th.innerText.includes('Method lower'))",
+        timeout=15000,
+    )
 
 
 def test_a_global_search_names_every_analysis_that_holds_the_value(page):
@@ -243,7 +274,9 @@ def test_a_global_search_names_every_analysis_that_holds_the_value(page):
     page.wait_for_selector("#search-modal.show")
     page.fill("#global-text", "203.0.113.7")
     page.click('#search-modal [data-act="global-run"]')
-    page.wait_for_function("document.querySelector('#search-modal').innerText.includes('access.log')", timeout=15000)
+    page.wait_for_function(
+        "document.querySelector('#search-modal').innerText.includes('access.log')", timeout=15000
+    )
     text = page.inner_text("#search-modal")
     assert "auth.log" in text and "access.log" in text
 
@@ -275,9 +308,16 @@ def test_both_reports_are_built_from_the_dialog_and_offered_as_links(page, host)
         assert "Synthèse" not in document and "Généré" not in document, kind
     page.select_option("#report-type", "investigation")
     page.click('#report-modal [data-act="report-build-pdf"]')
-    page.wait_for_function("[...document.querySelectorAll('#report-result a')].some(a => a.href.endsWith('.pdf'))",
-                           timeout=60000)
-    pdf = [a for a in page.eval_on_selector_all("#report-result a", "els => els.map(e => e.href)")
-           if a.endswith(".pdf")][0]
+    page.wait_for_function(
+        "[...document.querySelectorAll('#report-result a')].some(a => a.href.endsWith('.pdf'))",
+        timeout=60000,
+    )
+    pdf = [
+        a
+        for a in page.eval_on_selector_all("#report-result a", "els => els.map(e => e.href)")
+        if a.endswith(".pdf")
+    ][0]
     assert httpx.get(pdf).content.startswith(b"%PDF")
-    assert "Nothing was selected" in page.inner_text("#report-result") or "finding" in page.inner_text("#report-result")
+    assert "Nothing was selected" in page.inner_text(
+        "#report-result"
+    ) or "finding" in page.inner_text("#report-result")

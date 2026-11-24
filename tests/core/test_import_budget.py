@@ -1,4 +1,5 @@
 """A big table must not be imported five times before it fits."""
+
 from fireblade.core.collection import fit_budget_to_file
 from fireblade.core.settings import Settings
 

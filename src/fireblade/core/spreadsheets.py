@@ -1,4 +1,5 @@
 """Streaming XLSX support. Formulas are read and exported as literal text."""
+
 import csv
 from datetime import date, datetime, time
 from pathlib import Path
@@ -37,7 +38,9 @@ def csv_from_sheet(source, sheet, directory, check_cancelled):
         worksheet = workbook[sheet]
         if worksheet.max_column and worksheet.max_column > 1024:
             raise ValueError("Une feuille de plus de 1024 colonnes n’est pas prise en charge")
-        with tempfile.NamedTemporaryFile("w", encoding="utf-8", newline="", suffix=".csv", dir=directory, delete=False) as output:
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", newline="", suffix=".csv", dir=directory, delete=False
+        ) as output:
             temporary = Path(output.name)
             writer = csv.writer(output)
             for number, row in enumerate(worksheet.iter_rows(values_only=True)):
@@ -72,7 +75,9 @@ def write_xlsx(path, headers, cursor, batch_size, check_cancelled):
         cells = []
         for value in values:
             if value is not None and len(str(value)) > 32767:
-                raise ValueError("Une cellule dépasse la limite Excel de 32767 caractères ; exportez en CSV.")
+                raise ValueError(
+                    "Une cellule dépasse la limite Excel de 32767 caractères ; exportez en CSV."
+                )
             cell = WriteOnlyCell(worksheet, value=None if value is None else str(value))
             if value is not None:
                 cell.data_type = "s"  # Never execute a CSV value beginning with '=' as a formula.

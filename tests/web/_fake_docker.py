@@ -5,6 +5,7 @@ decision it takes: which containers exist, what they mount, in which state they 
 The state lives in the JSON file named by ``FAKE_DOCKER_STATE``; every call is kept, so
 a test can read back the arguments that were actually used.
 """
+
 import hashlib
 import json
 import os
@@ -94,8 +95,13 @@ def main(argv) -> int:
                 key, _, content = args[index + 1].partition("=")
                 labels[key] = content
         image = positional(args)
-        containers[name] = {"state": "running", "labels": labels, "args": args,
-                            "image": image, "image_id": image_id(image)}
+        containers[name] = {
+            "state": "running",
+            "labels": labels,
+            "args": args,
+            "image": image,
+            "image_id": image_id(image),
+        }
         save(state)
         print("fake-" + name)
         return 0

@@ -5,6 +5,7 @@ on: an empty jump list is not a broken parser, and an engine that only runs on
 Windows must say so instead of showing an exit code. These tests hold the words,
 because a reason nobody understands is a reason nobody reads.
 """
+
 from pathlib import Path
 
 import pytest
@@ -44,8 +45,9 @@ def test_an_empty_evtx_is_an_empty_log_not_a_failure(tmp_path):
 
 def test_the_engine_tail_is_the_last_line_it_wrote(tmp_path):
     log = tmp_path / "parser.log"
-    log.write_text("Starting\nReading the file\nNon-Windows platforms not supported\n",
-                   encoding="utf-8")
+    log.write_text(
+        "Starting\nReading the file\nNon-Windows platforms not supported\n", encoding="utf-8"
+    )
     assert _engine_tail(log) == "Non-Windows platforms not supported"
     assert _engine_tail(tmp_path / "absent.log") == ""
 
@@ -53,13 +55,15 @@ def test_the_engine_tail_is_the_last_line_it_wrote(tmp_path):
 def test_the_srum_refusal_is_recognised():
     assert _WINDOWS_ONLY.search(
         "Non-Windows platforms not supported due to the need to load ESE specific "
-        "Windows libraries! Exiting...")
+        "Windows libraries! Exiting..."
+    )
     assert not _WINDOWS_ONLY.search("Row count written: 1327")
 
 
 def test_the_windows_only_sentence_is_english_too():
     sentence = i18n.english(
         "Ce lecteur a besoin des bibliothèques ESE de Windows : il ne peut pas "
-        "lire ce fichier sous Linux. Importez le CSV produit par l’édition Desktop.")
+        "lire ce fichier sous Linux. Importez le CSV produit par l’édition Desktop."
+    )
     assert sentence.startswith("This reader needs the Windows ESE libraries")
     assert i18n.english("Moteur terminé avec le code 1") == "Engine exited with code 1"

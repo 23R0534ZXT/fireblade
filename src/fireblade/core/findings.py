@@ -16,6 +16,7 @@ Everything here is a pure function of the alert rows: no clock, no randomness, n
 network. The identifiers it hands out are stable for a given input, which is what
 lets a finding point at the rows it was built from.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -28,22 +29,29 @@ INCIDENT_WINDOW_SECONDS = 3600
 # How many rows a group hands to the interface for its detail view.
 MAX_SAMPLES = 200
 
-LEVELS = ('critical', 'high', 'medium', 'low', 'informational')
+LEVELS = ("critical", "high", "medium", "low", "informational")
 # The canonical names are aliases of themselves on purpose: level_of() is applied to
 # values that are already normalised, and a table missing 'critical' silently demoted
 # every critical finding to informational.
-_LEVEL_ALIASES = {'critical': 'critical', 'crit': 'critical',
-                  'high': 'high', 'medium': 'medium', 'med': 'medium',
-                  'low': 'low', 'informational': 'informational', 'info': 'informational',
-                  'information': 'informational'}
+_LEVEL_ALIASES = {
+    "critical": "critical",
+    "crit": "critical",
+    "high": "high",
+    "medium": "medium",
+    "med": "medium",
+    "low": "low",
+    "informational": "informational",
+    "info": "informational",
+    "information": "informational",
+}
 _LEVEL_RANK = {name: rank for rank, name in enumerate(reversed(LEVELS))}
 
-SEVERITY_SCORE = {'critical': 100, 'high': 40, 'medium': 10, 'low': 3, 'informational': 1}
+SEVERITY_SCORE = {"critical": 100, "high": 40, "medium": 10, "low": 3, "informational": 1}
 
 
 def level_of(value):
     """Hayabusa writes ``high`` or ``med``; an unknown word is informational, never dropped."""
-    return _LEVEL_ALIASES.get(str(value or '').strip().casefold(), 'informational')
+    return _LEVEL_ALIASES.get(str(value or "").strip().casefold(), "informational")
 
 
 def rank(level):
@@ -52,12 +60,12 @@ def rank(level):
 
 def instant(value):
     """The timestamp of an alert, as an aware UTC datetime, or None when unusable."""
-    text = str(value or '').strip()
+    text = str(value or "").strip()
     if not text:
         return None
-    text = text.replace('Z', '+00:00')
+    text = text.replace("Z", "+00:00")
     # Hayabusa writes '+00:00' but also ' +00:00' with a leading space in some profiles.
-    text = text.replace(' +', '+')
+    text = text.replace(" +", "+")
     for parser in (datetime.fromisoformat, _from_common_formats):
         try:
             stamp = parser(text)
@@ -70,7 +78,7 @@ def instant(value):
 
 
 def _from_common_formats(text):
-    for pattern in ('%Y-%m-%d %H:%M:%S%.f %z', '%Y-%m-%d %H:%M:%S %z', '%Y/%m/%d %H:%M:%S%.f %z'):
+    for pattern in ("%Y-%m-%d %H:%M:%S%.f %z", "%Y-%m-%d %H:%M:%S %z", "%Y/%m/%d %H:%M:%S%.f %z"):
         try:
             return datetime.strptime(text, pattern)
         except ValueError:
@@ -81,14 +89,15 @@ def _from_common_formats(text):
 def _first(row, *names):
     for name in names:
         value = row.get(name)
-        if value not in (None, '', '-'):
+        if value not in (None, "", "-"):
             return str(value).strip()
-    return ''
+    return ""
 
 
 @dataclass
 class Group:
     """One rule on one host, one burst."""
+
     key: str
     title: str
     level: str
@@ -102,9 +111,9 @@ class Group:
     start: datetime | None
     end: datetime | None
     count: int
-    samples: list = field(default_factory=list)      # row ids, at most MAX_SAMPLES
-    details: str = ''
-    incident: str = ''
+    samples: list = field(default_factory=list)  # row ids, at most MAX_SAMPLES
+    details: str = ""
+    incident: str = ""
 
     @property
     def severity(self):
@@ -122,18 +131,31 @@ class Group:
         return (self.start or floor, self.end or floor)
 
     def as_dict(self):
-        return dict(key=self.key, title=self.title, level=self.level, host=self.host,
-                    channel=self.channel, event_ids=list(self.event_ids), tactics=self.tactics,
-                    techniques=self.techniques, rule_id=self.rule_id, rule_file=self.rule_file,
-                    start=self.start.isoformat() if self.start else None,
-                    end=self.end.isoformat() if self.end else None,
-                    count=self.count, seconds=self.seconds, details=self.details,
-                    incident=self.incident, samples=list(self.samples))
+        return dict(
+            key=self.key,
+            title=self.title,
+            level=self.level,
+            host=self.host,
+            channel=self.channel,
+            event_ids=list(self.event_ids),
+            tactics=self.tactics,
+            techniques=self.techniques,
+            rule_id=self.rule_id,
+            rule_file=self.rule_file,
+            start=self.start.isoformat() if self.start else None,
+            end=self.end.isoformat() if self.end else None,
+            count=self.count,
+            seconds=self.seconds,
+            details=self.details,
+            incident=self.incident,
+            samples=list(self.samples),
+        )
 
 
 @dataclass
 class Incident:
     """Groups an analyst would read as one story, ordered by the hour they started."""
+
     key: str
     start: datetime | None
     end: datetime | None
@@ -141,7 +163,7 @@ class Incident:
 
     @property
     def level(self):
-        best = 'informational'
+        best = "informational"
         for group in self.groups:
             if rank(group.level) > rank(best):
                 best = group.level
@@ -152,9 +174,14 @@ class Incident:
         return sum(group.count for group in self.groups)
 
     def as_dict(self):
-        return dict(key=self.key, level=self.level, hits=self.hits, groups=len(self.groups),
-                    start=self.start.isoformat() if self.start else None,
-                    end=self.end.isoformat() if self.end else None)
+        return dict(
+            key=self.key,
+            level=self.level,
+            hits=self.hits,
+            groups=len(self.groups),
+            start=self.start.isoformat() if self.start else None,
+            end=self.end.isoformat() if self.end else None,
+        )
 
 
 def group_alerts(rows, gap_seconds=GAP_SECONDS, incident_window=INCIDENT_WINDOW_SECONDS):
@@ -166,45 +193,65 @@ def group_alerts(rows, gap_seconds=GAP_SECONDS, incident_window=INCIDENT_WINDOW_
     """
     buckets = {}
     for index, row in enumerate(rows):
-        stamp = instant(_first(row, 'Timestamp', 'TimeCreated', 'DateTime'))
-        title = _first(row, 'RuleTitle', 'Title', 'Rule')
-        host = _first(row, 'Computer', 'Host', 'Hostname')
-        channel = _first(row, 'Channel')
-        level = level_of(_first(row, 'Level'))
+        stamp = instant(_first(row, "Timestamp", "TimeCreated", "DateTime"))
+        title = _first(row, "RuleTitle", "Title", "Rule")
+        host = _first(row, "Computer", "Host", "Hostname")
+        channel = _first(row, "Channel")
+        level = level_of(_first(row, "Level"))
         key = (title.casefold(), host.casefold(), channel.casefold(), level)
         bucket = buckets.get(key)
         if bucket is None:
-            bucket = buckets[key] = dict(title=title, host=host, channel=channel, level=level,
-                                         rows=[], stamps=[])
-        bucket['rows'].append(index)
+            bucket = buckets[key] = dict(
+                title=title, host=host, channel=channel, level=level, rows=[], stamps=[]
+            )
+        bucket["rows"].append(index)
         if stamp is not None:
-            bucket['stamps'].append(stamp)
+            bucket["stamps"].append(stamp)
 
     groups = []
     for (title, host, channel, level), bucket in buckets.items():
-        stamps = sorted(bucket['stamps'])
+        stamps = sorted(bucket["stamps"])
         for start, end, members in _bursts(stamps, gap_seconds):
             event_ids = []
-            tactics, techniques, rule_id, rule_file, details = '', '', '', '', ''
-            for index in bucket['rows']:
+            tactics, techniques, rule_id, rule_file, details = "", "", "", "", ""
+            for index in bucket["rows"]:
                 row = rows[index]
-                for value in str(_first(row, 'EventID')).split('¦'):
+                for value in str(_first(row, "EventID")).split("¦"):
                     value = value.strip()
                     if value and value not in event_ids:
                         event_ids.append(value)
-                tactics = tactics or _first(row, 'MitreTactics', 'MitreTacticsShort')
-                techniques = techniques or _first(row, 'MitreTags', 'MitreTechniques')
-                rule_id = rule_id or _first(row, 'RuleID', 'RuleId')
-                rule_file = rule_file or _first(row, 'RuleFile')
-                details = details or _first(row, 'Details', 'DetailsShort')
-            key = '|'.join((bucket['title'] or '(untitled)', bucket['host'], level,
-                            start.isoformat() if start else 'no-date'))
-            groups.append(Group(
-                key=key, title=bucket['title'] or '(untitled rule)', level=level,
-                host=bucket['host'], channel=bucket['channel'], event_ids=tuple(event_ids),
-                tactics=tactics, techniques=techniques, rule_id=rule_id, rule_file=rule_file,
-                start=start, end=end, count=len(members) if members else len(bucket['rows']),
-                samples=list(bucket['rows'][:MAX_SAMPLES]), details=details))
+                tactics = tactics or _first(row, "MitreTactics", "MitreTacticsShort")
+                techniques = techniques or _first(row, "MitreTags", "MitreTechniques")
+                rule_id = rule_id or _first(row, "RuleID", "RuleId")
+                rule_file = rule_file or _first(row, "RuleFile")
+                details = details or _first(row, "Details", "DetailsShort")
+            key = "|".join(
+                (
+                    bucket["title"] or "(untitled)",
+                    bucket["host"],
+                    level,
+                    start.isoformat() if start else "no-date",
+                )
+            )
+            groups.append(
+                Group(
+                    key=key,
+                    title=bucket["title"] or "(untitled rule)",
+                    level=level,
+                    host=bucket["host"],
+                    channel=bucket["channel"],
+                    event_ids=tuple(event_ids),
+                    tactics=tactics,
+                    techniques=techniques,
+                    rule_id=rule_id,
+                    rule_file=rule_file,
+                    start=start,
+                    end=end,
+                    count=len(members) if members else len(bucket["rows"]),
+                    samples=list(bucket["rows"][:MAX_SAMPLES]),
+                    details=details,
+                )
+            )
     groups.sort(key=lambda item: (item.span(), -item.severity, item.title.casefold()))
     incidents = _incidents(groups, incident_window)
     return groups, incidents
@@ -236,13 +283,15 @@ def _incidents(groups, window):
         if incidents and group.start <= incidents[-1].end + span:
             incident = incidents[-1]
         else:
-            incident = Incident(key='incident-%d' % (len(incidents) + 1), start=group.start, end=group.end)
+            incident = Incident(
+                key="incident-%d" % (len(incidents) + 1), start=group.start, end=group.end
+            )
             incidents.append(incident)
         incident.groups.append(group)
         if group.end is not None and (incident.end is None or group.end > incident.end):
             incident.end = group.end
     if undated:
-        incidents.append(Incident(key='incident-undated', start=None, end=None, groups=undated))
+        incidents.append(Incident(key="incident-undated", start=None, end=None, groups=undated))
     for incident in incidents:
         for group in incident.groups:
             group.incident = incident.key
@@ -261,8 +310,20 @@ def summarise(groups):
 
 def _columns(case):
     """The Hayabusa columns this analysis actually has, quoted for SQL."""
-    wanted = ('Timestamp', 'RuleTitle', 'Level', 'Computer', 'Channel', 'EventID', 'MitreTactics',
-              'MitreTags', 'RuleID', 'RuleFile', 'Details', 'DetailsShort')
+    wanted = (
+        "Timestamp",
+        "RuleTitle",
+        "Level",
+        "Computer",
+        "Channel",
+        "EventID",
+        "MitreTactics",
+        "MitreTags",
+        "RuleID",
+        "RuleFile",
+        "Details",
+        "DetailsShort",
+    )
     found = {}
     for name in wanted:
         try:
@@ -285,19 +346,19 @@ def group_alerts_sql(case, gap_seconds=GAP_SECONDS, incident_window=INCIDENT_WIN
     The caller holds the case's operation lock; this function does not open one.
     """
     columns = _columns(case)
-    if 'RuleTitle' not in columns:
-        raise ValueError('Cette analyse ne contient pas de colonne RuleTitle')
-    title = columns['RuleTitle']
-    host = columns.get('Computer', "'unknown'")
-    channel = columns.get('Channel', "''")
-    level = columns.get('Level', "'informational'")
-    event_id = columns.get('EventID', "''")
-    tactics = columns.get('MitreTactics', "''")
-    techniques = columns.get('MitreTags', "''")
-    rule_id = columns.get('RuleID', "''")
-    rule_file = columns.get('RuleFile', "''")
-    details = columns.get('Details', columns.get('DetailsShort', "''"))
-    stamp = columns.get('Timestamp')
+    if "RuleTitle" not in columns:
+        raise ValueError("Cette analyse ne contient pas de colonne RuleTitle")
+    title = columns["RuleTitle"]
+    host = columns.get("Computer", "'unknown'")
+    channel = columns.get("Channel", "''")
+    level = columns.get("Level", "'informational'")
+    event_id = columns.get("EventID", "''")
+    tactics = columns.get("MitreTactics", "''")
+    techniques = columns.get("MitreTags", "''")
+    rule_id = columns.get("RuleID", "''")
+    rule_file = columns.get("RuleFile", "''")
+    details = columns.get("Details", columns.get("DetailsShort", "''"))
+    stamp = columns.get("Timestamp")
     gap = int(gap_seconds)
 
     if stamp is None:
@@ -337,26 +398,61 @@ def group_alerts_sql(case, gap_seconds=GAP_SECONDS, incident_window=INCIDENT_WIN
         FROM events WHERE TRY_CAST({stamp} AS TIMESTAMPTZ) IS NULL
         GROUP BY 1, 2, 3, 4
     """
-    fields = ('title', 'host', 'channel', 'lvl', 'start', 'end', 'n', 'eid', 'tac', 'tech',
-              'rule', 'rfile', 'det', 'rows')
-    cursor = case.db.execute(dated + ' UNION ALL ' + undated)
+    fields = (
+        "title",
+        "host",
+        "channel",
+        "lvl",
+        "start",
+        "end",
+        "n",
+        "eid",
+        "tac",
+        "tech",
+        "rule",
+        "rfile",
+        "det",
+        "rows",
+    )
+    cursor = case.db.execute(dated + " UNION ALL " + undated)
     groups = []
     for record in cursor.fetchall():
         row = dict(zip(fields, record))
-        level_name = level_of(row['lvl'])
-        start = row['start'].astimezone(timezone.utc) if row['start'] is not None else None
-        end = row['end'].astimezone(timezone.utc) if row['end'] is not None else None
-        event_ids = tuple(value.strip() for value in str(row['eid'] or '').split('¦')
-                          if value.strip() and value.strip() != '-')
-        keys = list(row['rows'] or [])
-        groups.append(Group(
-            key='|'.join((row['title'] or '(untitled)', row['host'] or '', level_name,
-                          start.isoformat() if start else 'no-date')),
-            title=row['title'] or '(untitled rule)', level=level_name, host=row['host'] or '',
-            channel=row['channel'] or '', event_ids=event_ids,
-            tactics=row['tac'] or '', techniques=row['tech'] or '', rule_id=row['rule'] or '',
-            rule_file=row['rfile'] or '', start=start, end=end, count=int(row['n']),
-            samples=[int(value) for value in keys[:MAX_SAMPLES]], details=row['det'] or ''))
+        level_name = level_of(row["lvl"])
+        start = row["start"].astimezone(timezone.utc) if row["start"] is not None else None
+        end = row["end"].astimezone(timezone.utc) if row["end"] is not None else None
+        event_ids = tuple(
+            value.strip()
+            for value in str(row["eid"] or "").split("¦")
+            if value.strip() and value.strip() != "-"
+        )
+        keys = list(row["rows"] or [])
+        groups.append(
+            Group(
+                key="|".join(
+                    (
+                        row["title"] or "(untitled)",
+                        row["host"] or "",
+                        level_name,
+                        start.isoformat() if start else "no-date",
+                    )
+                ),
+                title=row["title"] or "(untitled rule)",
+                level=level_name,
+                host=row["host"] or "",
+                channel=row["channel"] or "",
+                event_ids=event_ids,
+                tactics=row["tac"] or "",
+                techniques=row["tech"] or "",
+                rule_id=row["rule"] or "",
+                rule_file=row["rfile"] or "",
+                start=start,
+                end=end,
+                count=int(row["n"]),
+                samples=[int(value) for value in keys[:MAX_SAMPLES]],
+                details=row["det"] or "",
+            )
+        )
     groups.sort(key=lambda item: (item.span(), -item.severity, item.title.casefold()))
     incidents = _incidents(groups, incident_window)
     return groups, incidents

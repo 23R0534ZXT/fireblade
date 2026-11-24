@@ -55,9 +55,7 @@ def date_pattern(pattern):
     while at < len(pattern):
         match = _PATTERN.match(pattern, at)
         if not match:
-            raise ValueError(
-                f"Jeton de format de date non traduit au caractère {at + 1}"
-            )
+            raise ValueError(f"Jeton de format de date non traduit au caractère {at + 1}")
         tokens.append(match.group())
         at = match.end()
     return tuple(tokens)

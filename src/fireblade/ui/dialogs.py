@@ -1,10 +1,22 @@
 """Small desktop dialogs, independent from the database and worker lifecycle."""
+
 from pathlib import Path
 import sys
 
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
-    QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from fireblade.runtime.windows_paths import analyses_directory
 
@@ -18,8 +30,8 @@ class ImportDialog(QDialog):
         self.setMinimumWidth(520)
         source = Path(source)
         directory = analyses_directory() if sys.platform == "win32" else source.parent
-        if parent is not None and hasattr(parent,'investigation_data_directory'):
-            directory = parent.investigation_data_directory('Analyses') or directory
+        if parent is not None and hasattr(parent, "investigation_data_directory"):
+            directory = parent.investigation_data_directory("Analyses") or directory
         target = directory / (source.stem + ".timeline")
         number = 2
         while target.exists():
@@ -42,6 +54,7 @@ class ImportDialog(QDialog):
         excel = not plugin and source.suffix.lower() in (".xlsx", ".xls")
         if excel:
             from fireblade.core.spreadsheets import sheet_names
+
             if source.suffix.lower() == ".xls":
                 from fireblade.core.legacy_excel import sheet_names
             self.sheet = QComboBox()
@@ -50,7 +63,11 @@ class ImportDialog(QDialog):
             for name in sheet_names(source):
                 self.sheet.addItem(name, name)
             form.addRow("Feuille Excel :", self.sheet)
-            layout.addWidget(QLabel("XLSX : formules comme texte. XLS : résultats mémorisés. Styles et macros non importés."))
+            layout.addWidget(
+                QLabel(
+                    "XLSX : formules comme texte. XLS : résultats mémorisés. Styles et macros non importés."
+                )
+            )
         options = QCheckBox("Options du CSV")
         options.setVisible(not excel and not plugin)
         layout.addWidget(options)
@@ -58,11 +75,18 @@ class ImportDialog(QDialog):
         fields = QFormLayout(advanced)
         fields.setContentsMargins(0, 0, 0, 0)
         self.separator = QComboBox()
-        for label, value in [("Automatique", None), ("Virgule", ","), ("Point-virgule", ";"), ("Tabulation", "\t"), ("Pipe", "|")]:
+        for label, value in [
+            ("Automatique", None),
+            ("Virgule", ","),
+            ("Point-virgule", ";"),
+            ("Tabulation", "\t"),
+            ("Pipe", "|"),
+        ]:
             self.separator.addItem(label, value)
         self.encoding = QComboBox()
-        self.encoding.addItem('Automatique (BOM)','auto')
-        for codec in ('utf-8','utf-16','utf-32','cp1252','latin-1'):self.encoding.addItem(codec,codec)
+        self.encoding.addItem("Automatique (BOM)", "auto")
+        for codec in ("utf-8", "utf-16", "utf-32", "cp1252", "latin-1"):
+            self.encoding.addItem(codec, codec)
         fields.addRow("Séparateur :", self.separator)
         fields.addRow("Encodage :", self.encoding)
         layout.addWidget(advanced)
@@ -78,7 +102,9 @@ class ImportDialog(QDialog):
         layout.addWidget(buttons)
 
     def browse(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Enregistrer l’analyse", self.target.text(), "Analyse (*.timeline)")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Enregistrer l’analyse", self.target.text(), "Analyse (*.timeline)"
+        )
         if path:
             self.target.setText(path)
 
@@ -100,5 +126,8 @@ class ImportDialog(QDialog):
         super().accept()
 
     def values(self):
-        return (Path(self.target.text()).expanduser(), self.separator.currentData(),
-                self.encoding.currentData())
+        return (
+            Path(self.target.text()).expanduser(),
+            self.separator.currentData(),
+            self.encoding.currentData(),
+        )

@@ -10,6 +10,7 @@ with a stack trace in the status bar.
 Keep this module free of PySide6: it is imported by the panel, by the tests and by a
 possible command-line probe, and none of them should need a window.
 """
+
 from __future__ import annotations
 
 import urllib.error
@@ -23,25 +24,33 @@ from fireblade.core.settings import physical_memory_mb
 # Three sizes, all pinned: a model that moves upstream cannot change what this build runs.
 # The digest of every entry was read from the file's own SHA-256, not from a page.
 MODELS = {
-    'MiniCPM5-2B': dict(
-        label='Fast - 2B, works on a laptop without a graphics card',
-        url='https://huggingface.co/openbmb/MiniCPM5-2B-GGUF/resolve/main/MiniCPM5-2B-Q4_K_M.gguf',
-        sha256='ec2d5801640099e97d8d7e8003ad4d81f336e757811f03a26173dddf386602fd',
-        bytes=1_561_318_368, weights_mb=1600),
-    'Qwen3-4B-Instruct-2507': dict(
-        label='Balanced - 4B, follows instructions and answers in your language',
-        url=('https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/'
-             'Qwen3-4B-Instruct-2507-Q4_K_M.gguf'),
-        sha256='3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597',
-        bytes=2_497_281_120, weights_mb=2500),
-    'Qwen3-8B': dict(
-        label='Best - 8B, needs about 8 GB of free memory or a graphics card',
-        url='https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf',
-        sha256='d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785',
-        bytes=5_027_783_488, weights_mb=4900),
+    "MiniCPM5-2B": dict(
+        label="Fast - 2B, works on a laptop without a graphics card",
+        url="https://huggingface.co/openbmb/MiniCPM5-2B-GGUF/resolve/main/MiniCPM5-2B-Q4_K_M.gguf",
+        sha256="ec2d5801640099e97d8d7e8003ad4d81f336e757811f03a26173dddf386602fd",
+        bytes=1_561_318_368,
+        weights_mb=1600,
+    ),
+    "Qwen3-4B-Instruct-2507": dict(
+        label="Balanced - 4B, follows instructions and answers in your language",
+        url=(
+            "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/"
+            "Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
+        ),
+        sha256="3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
+        bytes=2_497_281_120,
+        weights_mb=2500,
+    ),
+    "Qwen3-8B": dict(
+        label="Best - 8B, needs about 8 GB of free memory or a graphics card",
+        url="https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf",
+        sha256="d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+        bytes=5_027_783_488,
+        weights_mb=4900,
+    ),
 }
-DEFAULT_MODEL = 'MiniCPM5-2B'
-RECOMMENDED_MODEL = 'Qwen3-4B-Instruct-2507'
+DEFAULT_MODEL = "MiniCPM5-2B"
+RECOMMENDED_MODEL = "Qwen3-4B-Instruct-2507"
 
 
 def catalogue():
@@ -51,6 +60,8 @@ def catalogue():
 
 def spec_of(name):
     return MODELS.get(str(name)) or MODELS[DEFAULT_MODEL]
+
+
 # What the model needs before it is allowed to answer: weights at Q4_K_M (1.56 GB on
 # disk for MiniCPM5-2B), a KV cache for 8k tokens, and room for the runtime itself.
 WEIGHTS_MB = 1600
@@ -58,19 +69,19 @@ RUNTIME_MB = 900
 CONTEXT_TOKENS = 8192
 KV_CACHE_MB = 400
 
-STATE_OFF = 'off'
-STATE_MISSING = 'missing'
-STATE_NO_MEMORY = 'no-memory'
-STATE_NO_RUNTIME = 'no-runtime'
-STATE_READY = 'ready'
+STATE_OFF = "off"
+STATE_MISSING = "missing"
+STATE_NO_MEMORY = "no-memory"
+STATE_NO_RUNTIME = "no-runtime"
+STATE_READY = "ready"
 
 
 def model_directory(root=None):
     """Where the assistant's files live: beside the user's cases, never in the repository."""
     if root is not None:
         return Path(root)
-    base = os.environ.get('LOCALAPPDATA') or str(Path.home())
-    return Path(base) / 'Fireblade' / 'Assistant'
+    base = os.environ.get("LOCALAPPDATA") or str(Path.home())
+    return Path(base) / "Fireblade" / "Assistant"
 
 
 @dataclass(frozen=True)
@@ -97,8 +108,8 @@ class Assistant:
 
     def __init__(self, root=None, memory_mb=None):
         self.root = model_directory(root)
-        self.manifest_path = self.root / 'assistant.json'
-        self.manifest_error = ''
+        self.manifest_path = self.root / "assistant.json"
+        self.manifest_error = ""
         self.manifest = self._read_manifest()
         self._memory_mb = memory_mb
 
@@ -108,68 +119,104 @@ class Assistant:
         try:
             # utf-8-sig: a manifest written by PowerShell or Notepad carries a BOM,
             # and refusing it turned 'installed' into 'off' for no good reason.
-            data = json.loads(self.manifest_path.read_text(encoding='utf-8-sig'))
+            data = json.loads(self.manifest_path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as exc:
             self.manifest_error = str(exc)
             return {}
         if not isinstance(data, dict):
-            self.manifest_error = 'assistant.json is not an object'
+            self.manifest_error = "assistant.json is not an object"
             return {}
         return data
 
     @property
     def enabled(self):
-        return bool(self.manifest.get('enabled'))
+        return bool(self.manifest.get("enabled"))
 
     @property
     def model(self):
-        return str(self.manifest.get('model') or DEFAULT_MODEL)
+        return str(self.manifest.get("model") or DEFAULT_MODEL)
 
     @property
     def weights(self):
-        name = self.manifest.get('weights')
+        name = self.manifest.get("weights")
         return self.root / str(name) if name else None
 
     def memory_mb(self):
         return self._memory_mb if self._memory_mb is not None else physical_memory_mb()
 
     def needed_mb(self):
-        weights = spec_of(self.model).get('weights_mb', WEIGHTS_MB)
+        weights = spec_of(self.model).get("weights_mb", WEIGHTS_MB)
         return weights + RUNTIME_MB + KV_CACHE_MB
 
     @property
     def runtime(self):
-        return self.root / 'runtime' / 'llama-server.exe'
+        return self.root / "runtime" / "llama-server.exe"
 
     def status(self):
         available = self.memory_mb()
         # A manifest that cannot be parsed is a missing install, not 'off': reporting
         # 'off' would tell the analyst to switch on something that is already on.
         if self.manifest_error:
-            return Status(STATE_MISSING, self.model, str(self.root), self.needed_mb(), available,
-                          'assistant.json could not be read: ' + self.manifest_error)
+            return Status(
+                STATE_MISSING,
+                self.model,
+                str(self.root),
+                self.needed_mb(),
+                available,
+                "assistant.json could not be read: " + self.manifest_error,
+            )
         if not self.enabled:
-            return Status(STATE_OFF, self.model, str(self.root), self.needed_mb(), available,
-                          'The local assistant is off. Fireblade works without it, and nothing is '
-                          'downloaded unless you ask for it.')
+            return Status(
+                STATE_OFF,
+                self.model,
+                str(self.root),
+                self.needed_mb(),
+                available,
+                "The local assistant is off. Fireblade works without it, and nothing is "
+                "downloaded unless you ask for it.",
+            )
         weights = self.weights
         if weights is None or not weights.is_file():
             # Not a fault and not a to-do: the analyst chooses, and the tab already
             # explains a finding from the data alone.
-            return Status(STATE_MISSING, self.model, str(self.root), self.needed_mb(), available,
-                          'The local assistant is not installed (optional). Fireblade explains a '
-                          'finding from the data alone; it would go to %s, and nothing is '
-                          'downloaded unless you ask for it.' % self.root)
+            return Status(
+                STATE_MISSING,
+                self.model,
+                str(self.root),
+                self.needed_mb(),
+                available,
+                "The local assistant is not installed (optional). Fireblade explains a "
+                "finding from the data alone; it would go to %s, and nothing is "
+                "downloaded unless you ask for it." % self.root,
+            )
         if available < self.needed_mb():
-            return Status(STATE_NO_MEMORY, self.model, str(self.root), self.needed_mb(), available,
-                          'This machine has %d MB and the model needs about %d MB; the assistant stays off.'
-                          % (available, self.needed_mb()))
+            return Status(
+                STATE_NO_MEMORY,
+                self.model,
+                str(self.root),
+                self.needed_mb(),
+                available,
+                "This machine has %d MB and the model needs about %d MB; the assistant stays off."
+                % (available, self.needed_mb()),
+            )
         if not self.runtime.is_file():
-            return Status(STATE_NO_RUNTIME, self.model, str(self.root), self.needed_mb(), available,
-                          'The weights are installed but the local engine is not; re-run the '
-                          'download to fetch it.')
-        return Status(STATE_READY, self.model, str(self.root), self.needed_mb(), available,
-                      'The local model (%s) is installed and ready.' % self.model)
+            return Status(
+                STATE_NO_RUNTIME,
+                self.model,
+                str(self.root),
+                self.needed_mb(),
+                available,
+                "The weights are installed but the local engine is not; re-run the "
+                "download to fetch it.",
+            )
+        return Status(
+            STATE_READY,
+            self.model,
+            str(self.root),
+            self.needed_mb(),
+            available,
+            "The local model (%s) is installed and ready." % self.model,
+        )
 
 
 _SERVERS = {}
@@ -201,7 +248,7 @@ def close_servers():
             _SERVERS.pop(key, None)
 
 
-def answer(root, pack, question='', memory_mb=None, progress=None, schema=None):
+def answer(root, pack, question="", memory_mb=None, progress=None, schema=None):
     """Explain a finding with the local model, or say why it cannot.
 
     This is the one call the interface needs: it starts the engine if it is not
@@ -216,10 +263,13 @@ def answer(root, pack, question='', memory_mb=None, progress=None, schema=None):
     restarted = False
     prompt = pack.prompt
     if question.strip():
-        prompt += ('\n\nANALYST QUESTION\n' + question.strip() +
-                   '\nThe summary must start with a direct answer in one sentence, using only'
-                   ' the events above. If those events cannot answer it, the summary must start'
-                   ' with "Not established by these events" and say what would be needed.')
+        prompt += (
+            "\n\nANALYST QUESTION\n"
+            + question.strip()
+            + "\nThe summary must start with a direct answer in one sentence, using only"
+            " the events above. If those events cannot answer it, the summary must start"
+            ' with "Not established by these events" and say what would be needed.'
+        )
     server = shared_server(root, assistant)
     try:
         result = ask(server.port, prompt, schema=schema)
@@ -232,9 +282,15 @@ def answer(root, pack, question='', memory_mb=None, progress=None, schema=None):
         restarted = True
         server = shared_server(root, assistant)
         result = ask(server.port, prompt, schema=schema)
-    return dict(ok=True, restarted=restarted, text=result['text'], seconds=result['seconds'],
-                finish=result.get('finish'), prompt_tokens=result.get('prompt_tokens'),
-                completion_tokens=result.get('completion_tokens'))
+    return dict(
+        ok=True,
+        restarted=restarted,
+        text=result["text"],
+        seconds=result["seconds"],
+        finish=result.get("finish"),
+        prompt_tokens=result.get("prompt_tokens"),
+        completion_tokens=result.get("completion_tokens"),
+    )
 
 
 def write_manifest(root, enabled, model=DEFAULT_MODEL, weights=None):
@@ -243,10 +299,10 @@ def write_manifest(root, enabled, model=DEFAULT_MODEL, weights=None):
     directory.mkdir(parents=True, exist_ok=True)
     data = dict(version=1, enabled=bool(enabled), model=str(model), context=CONTEXT_TOKENS)
     if weights:
-        data['weights'] = str(weights)
-    target = directory / 'assistant.json'
-    temporary = target.with_suffix('.json.part')
-    temporary.write_text(json.dumps(data, indent=2), encoding='utf-8')
+        data["weights"] = str(weights)
+    target = directory / "assistant.json"
+    temporary = target.with_suffix(".json.part")
+    temporary.write_text(json.dumps(data, indent=2), encoding="utf-8")
     os.replace(temporary, target)
     return target
 
@@ -254,9 +310,10 @@ def write_manifest(root, enabled, model=DEFAULT_MODEL, weights=None):
 # ---------------------------------------------------------------- installation
 # Pinned on purpose: a model or a runtime that moves under the installer is a build
 # that cannot be reproduced. Update both the tag and the digest in one commit.
-RUNTIME_TAG = 'b12483'
-RUNTIME_URL = ('https://github.com/ggml-org/llama.cpp/releases/download/%s/'
-               'llama-%s-bin-win-cpu-x64.zip') % (RUNTIME_TAG, RUNTIME_TAG)
+RUNTIME_TAG = "b12483"
+RUNTIME_URL = (
+    "https://github.com/ggml-org/llama.cpp/releases/download/%s/llama-%s-bin-win-cpu-x64.zip"
+) % (RUNTIME_TAG, RUNTIME_TAG)
 
 
 def download(url, target, progress=None, expected_bytes=None, digest=None, chunk=1 << 20):
@@ -268,14 +325,15 @@ def download(url, target, progress=None, expected_bytes=None, digest=None, chunk
     import hashlib
     import urllib.error
     import urllib.request
+
     target = Path(target)
     target.parent.mkdir(parents=True, exist_ok=True)
-    temporary = target.with_suffix(target.suffix + '.part')
+    temporary = target.with_suffix(target.suffix + ".part")
     hasher = hashlib.sha256()
     received = 0
-    request = urllib.request.Request(url, headers={'User-Agent': 'Fireblade'})
-    with urllib.request.urlopen(request, timeout=60) as response, temporary.open('wb') as output:
-        total = expected_bytes or int(response.headers.get('Content-Length') or 0)
+    request = urllib.request.Request(url, headers={"User-Agent": "Fireblade"})
+    with urllib.request.urlopen(request, timeout=60) as response, temporary.open("wb") as output:
+        total = expected_bytes or int(response.headers.get("Content-Length") or 0)
         while True:
             block = response.read(chunk)
             if not block:
@@ -287,10 +345,10 @@ def download(url, target, progress=None, expected_bytes=None, digest=None, chunk
                 progress(received, total)
     if expected_bytes and received != expected_bytes:
         temporary.unlink(missing_ok=True)
-        raise ValueError('Téléchargement incomplet : %d octets sur %d' % (received, expected_bytes))
+        raise ValueError("Téléchargement incomplet : %d octets sur %d" % (received, expected_bytes))
     if digest and hasher.hexdigest().lower() != digest.lower():
         temporary.unlink(missing_ok=True)
-        raise ValueError('Empreinte du téléchargement incorrecte')
+        raise ValueError("Empreinte du téléchargement incorrecte")
     target.unlink(missing_ok=True)
     temporary.replace(target)
     return target, hasher.hexdigest()
@@ -299,10 +357,11 @@ def download(url, target, progress=None, expected_bytes=None, digest=None, chunk
 def install_runtime(root, progress=None):
     """Fetch the CPU build of llama.cpp and keep the server and its DLLs only."""
     import zipfile
+
     root = model_directory(root)
-    archive = root / ('llama-%s.zip' % RUNTIME_TAG)
+    archive = root / ("llama-%s.zip" % RUNTIME_TAG)
     download(RUNTIME_URL, archive, progress)
-    runtime = root / 'runtime'
+    runtime = root / "runtime"
     runtime.mkdir(parents=True, exist_ok=True)
     # Every DLL the archive ships, not a guessed list: the CPU backend is named after the
     # instruction set (ggml-cpu-haswell.dll), and a whitelist that misses one produces an
@@ -311,16 +370,16 @@ def install_runtime(root, progress=None):
     with zipfile.ZipFile(archive) as zipped:
         for item in zipped.infolist():
             name = Path(item.filename).name
-            if name.endswith('.dll') or name == 'llama-server.exe':
-                with zipped.open(item) as source, (runtime / name).open('wb') as output:
+            if name.endswith(".dll") or name == "llama-server.exe":
+                with zipped.open(item) as source, (runtime / name).open("wb") as output:
                     output.write(source.read())
                 copied.append(name)
     archive.unlink(missing_ok=True)
-    server = runtime / 'llama-server.exe'
+    server = runtime / "llama-server.exe"
     if not server.is_file():
-        raise ValueError('Le binaire llama-server est absent de l\'archive téléchargée')
-    if not any(name.startswith('ggml-cpu') for name in copied):
-        raise ValueError('Le moteur téléchargé ne contient aucun backend CPU')
+        raise ValueError("Le binaire llama-server est absent de l'archive téléchargée")
+    if not any(name.startswith("ggml-cpu") for name in copied):
+        raise ValueError("Le moteur téléchargé ne contient aucun backend CPU")
     return server
 
 
@@ -329,11 +388,12 @@ def install_model(root, progress=None, model=None):
     root = model_directory(root)
     name = str(model or DEFAULT_MODEL)
     spec = spec_of(name)
-    weights = root / Path(spec['url']).name
-    if weights.is_file() and weights.stat().st_size == spec['bytes']:
+    weights = root / Path(spec["url"]).name
+    if weights.is_file() and weights.stat().st_size == spec["bytes"]:
         return weights
-    target, digest = download(spec['url'], weights, progress,
-                              expected_bytes=spec['bytes'], digest=spec['sha256'] or None)
+    target, digest = download(
+        spec["url"], weights, progress, expected_bytes=spec["bytes"], digest=spec["sha256"] or None
+    )
     return target, digest
 
 
@@ -346,39 +406,60 @@ class Server:
         self.context = int(context)
         # Half the cores was the cautious choice; measured on four cores, generation is
         # bound by the model, not by thread count, so the extra threads only cost latency.
-        choose = os.environ.get('FIREBLADE_ASSISTANT_THREADS')
+        choose = os.environ.get("FIREBLADE_ASSISTANT_THREADS")
         self.threads = int(threads or choose or max(1, min(8, os.cpu_count() or 4)))
         self.port = int(port or free_port())
         self.process = None
-        self.log_path = model_directory() / 'llama-server.log'
+        self.log_path = model_directory() / "llama-server.log"
 
     def command(self):
-        return [str(self.server_path), '-m', str(self.model_path), '--port', str(self.port),
-                '--ctx-size', str(self.context), '--threads', str(self.threads), '--threads-batch',
-                str(self.threads), '--no-webui', '--jinja', '--log-file', str(self.log_path)]
+        return [
+            str(self.server_path),
+            "-m",
+            str(self.model_path),
+            "--port",
+            str(self.port),
+            "--ctx-size",
+            str(self.context),
+            "--threads",
+            str(self.threads),
+            "--threads-batch",
+            str(self.threads),
+            "--no-webui",
+            "--jinja",
+            "--log-file",
+            str(self.log_path),
+        ]
 
     def start(self, timeout=180):
         import subprocess
+
         if self.process is not None:
             return self
-        creation = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-        self.process = subprocess.Popen(self.command(), cwd=str(self.server_path.parent),
-                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                        creationflags=creation)
+        creation = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        self.process = subprocess.Popen(
+            self.command(),
+            cwd=str(self.server_path.parent),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=creation,
+        )
         if not self.wait_ready(timeout):
             self.stop()
-            raise TimeoutError('Le moteur local n\'a pas répondu en %d s' % timeout)
+            raise TimeoutError("Le moteur local n'a pas répondu en %d s" % timeout)
         return self
 
     def wait_ready(self, timeout=180):
         import time
+
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             if self.process is not None and self.process.poll() is not None:
                 return False
             try:
-                with __import__('urllib.request', fromlist=['urlopen']).urlopen(
-                        'http://127.0.0.1:%d/health' % self.port, timeout=2) as response:
+                with __import__("urllib.request", fromlist=["urlopen"]).urlopen(
+                    "http://127.0.0.1:%d/health" % self.port, timeout=2
+                ) as response:
                     if response.status == 200:
                         return True
             except Exception:
@@ -408,8 +489,9 @@ class Server:
 
 def free_port():
     import socket
+
     with socket.socket() as probe:
-        probe.bind(('127.0.0.1', 0))
+        probe.bind(("127.0.0.1", 0))
         return probe.getsockname()[1]
 
 
@@ -418,22 +500,31 @@ def ask(port, prompt, max_tokens=480, timeout=600, schema=None):
     import json
     import time
     import urllib.request
+
     # This model thinks by default: it writes its reasoning into a separate field and
     # leaves the answer empty until the budget runs out. Extraction is not reasoning, and
     # on four cores the thinking tripled the latency for nothing measurable.
-    body = dict(messages=[dict(role='user', content=prompt)], max_tokens=int(max_tokens),
-                temperature=0.0, top_p=1.0, stream=False,
-                chat_template_kwargs=dict(enable_thinking=False))
+    body = dict(
+        messages=[dict(role="user", content=prompt)],
+        max_tokens=int(max_tokens),
+        temperature=0.0,
+        top_p=1.0,
+        stream=False,
+        chat_template_kwargs=dict(enable_thinking=False),
+    )
     if schema is not None:
-        body['response_format'] = dict(type='json_schema',
-                                       json_schema=dict(name='finding', schema=schema, strict=True))
+        body["response_format"] = dict(
+            type="json_schema", json_schema=dict(name="finding", schema=schema, strict=True)
+        )
+
     def send(payload_body):
         request = urllib.request.Request(
-            'http://127.0.0.1:%d/v1/chat/completions' % int(port),
-            data=json.dumps(payload_body).encode('utf-8'),
-            headers={'Content-Type': 'application/json'})
+            "http://127.0.0.1:%d/v1/chat/completions" % int(port),
+            data=json.dumps(payload_body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.loads(response.read().decode('utf-8'))
+            return json.loads(response.read().decode("utf-8"))
 
     started = time.monotonic()
     try:
@@ -443,17 +534,24 @@ def ask(port, prompt, max_tokens=480, timeout=600, schema=None):
         # answers 400, and losing the assistant over one key would be absurd.
         if error.code != 400:
             raise
-        body.pop('chat_template_kwargs', None)
+        body.pop("chat_template_kwargs", None)
         payload = send(body)
     elapsed = time.monotonic() - started
-    choice = (payload.get('choices') or [{}])[0]
-    message = choice.get('message') or {}
-    text = message.get('content') or ''
-    if not text.strip() and message.get('reasoning_content'):
+    choice = (payload.get("choices") or [{}])[0]
+    message = choice.get("message") or {}
+    text = message.get("content") or ""
+    if not text.strip() and message.get("reasoning_content"):
         # Never silently hand back an empty string: the caller has to know the model spent
         # its budget thinking instead of answering.
-        raise ValueError('Le modèle a raisonné sans conclure : augmentez la limite de '
-                         'jetons ou vérifiez que le modèle supporte enable_thinking=False')
-    usage = payload.get('usage') or {}
-    return dict(text=text.strip(), seconds=round(elapsed, 1), finish=choice.get('finish_reason'),
-                prompt_tokens=usage.get('prompt_tokens'), completion_tokens=usage.get('completion_tokens'))
+        raise ValueError(
+            "Le modèle a raisonné sans conclure : augmentez la limite de "
+            "jetons ou vérifiez que le modèle supporte enable_thinking=False"
+        )
+    usage = payload.get("usage") or {}
+    return dict(
+        text=text.strip(),
+        seconds=round(elapsed, 1),
+        finish=choice.get("finish_reason"),
+        prompt_tokens=usage.get("prompt_tokens"),
+        completion_tokens=usage.get("completion_tokens"),
+    )

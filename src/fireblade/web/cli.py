@@ -7,6 +7,7 @@
 `count` is the smoke test of the container: no window, no Qt, and a real number
 read from a real DuckDB file.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,6 +21,7 @@ def _version() -> str:
     """The repository is the source of truth; a stale egg-info is not."""
     try:
         import fireblade
+
         value = getattr(fireblade, "__version__", "")
         if value:
             return value
@@ -27,6 +29,7 @@ def _version() -> str:
         pass
     try:
         from importlib.metadata import version
+
         return version("fireblade-forensics")
     except Exception:
         return "0"
@@ -73,18 +76,29 @@ def serve(args) -> int:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(prog="fireblade.web", description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog="fireblade.web",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_serve = sub.add_parser("serve", help="serve the case library over HTTP")
-    p_serve.add_argument("--root", default="/data/cases", help="folder holding the case directories")
+    p_serve.add_argument(
+        "--root", default="/data/cases", help="folder holding the case directories"
+    )
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8080)
-    p_serve.add_argument("--tools", default="/opt/fireblade/tools",
-                         help="folder holding the .NET readers and their manifest")
-    p_serve.add_argument("--plugins", default="",
-                         help="folder holding presentation plugins (mount it, or they die with the container)")
+    p_serve.add_argument(
+        "--tools",
+        default="/opt/fireblade/tools",
+        help="folder holding the .NET readers and their manifest",
+    )
+    p_serve.add_argument(
+        "--plugins",
+        default="",
+        help="folder holding presentation plugins (mount it, or they die with the container)",
+    )
     p_serve.add_argument("--log-level", default="info")
     p_serve.set_defaults(func=serve)
 

@@ -1,7 +1,14 @@
 """Keyboard command palette: every menu command, filtered as you type."""
+
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QAbstractItemView, QDialog, QLineEdit, QListWidget,
-                               QListWidgetItem, QVBoxLayout)
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QDialog,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QVBoxLayout,
+)
 
 
 def flatten_actions(menubar):

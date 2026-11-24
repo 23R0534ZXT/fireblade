@@ -8,6 +8,7 @@ that does the rest.
 The answer is cached: the registry is queried at most once per ``TTL``, and a failure is
 never reported as "up to date".
 """
+
 from __future__ import annotations
 
 import json
@@ -26,7 +27,7 @@ TIMEOUT = 3.0
 
 
 def version_tuple(text: str) -> tuple:
-    """"0.8.1" ranks before "0.9.0"; anything unreadable ranks lowest."""
+    """ "0.8.1" ranks before "0.9.0"; anything unreadable ranks lowest."""
     numbers = []
     for part in (text or "").lstrip("v").split("."):
         digits = "".join(char for char in part if char.isdigit())
@@ -39,13 +40,18 @@ def version_tuple(text: str) -> tuple:
 def parse(payload: dict) -> dict:
     """The release payload, reduced to what a banner needs."""
     tag = (payload.get("tag_name") or "").strip().lstrip("v")
-    return {"version": tag, "url": (payload.get("html_url") or "").strip(),
-            "name": (payload.get("name") or "").strip(),
-            "published": (payload.get("published_at") or "").strip()}
+    return {
+        "version": tag,
+        "url": (payload.get("html_url") or "").strip(),
+        "name": (payload.get("name") or "").strip(),
+        "published": (payload.get("published_at") or "").strip(),
+    }
 
 
-RUN_LINE = ('docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 '
-            '-v "$HOME/fireblade-cases:/data/cases"')
+RUN_LINE = (
+    "docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 "
+    '-v "$HOME/fireblade-cases:/data/cases"'
+)
 
 
 def command(edition: str, tag: str) -> list:
@@ -68,24 +74,41 @@ def command(edition: str, tag: str) -> list:
 def guidance(edition: str) -> str:
     """The sentence that goes with the command: what it assumes, and what comes next."""
     if edition == "driver":
-        return ("then start the driver again with the same options (deploy/host/README.md, Upgrade): "
-                "the case containers are rebuilt on the new image when a case is opened")
+        return (
+            "then start the driver again with the same options (deploy/host/README.md, Upgrade): "
+            "the case containers are rebuilt on the new image when a case is opened"
+        )
     if edition == "case":
         return "the driver restarts the case containers on the new image; open the case again"
-    return ("this is the line from the README: use it as it stands if you started Fireblade that way, "
-            "otherwise see deploy/host/README.md (Upgrade). Your cases stay in their folder")
+    return (
+        "this is the line from the README: use it as it stands if you started Fireblade that way, "
+        "otherwise see deploy/host/README.md (Upgrade). Your cases stay in their folder"
+    )
 
 
 def disabled() -> bool:
     """FIREBLADE_UPDATE_CHECK=off: the service never asks anyone whether a release exists."""
-    return os.environ.get("FIREBLADE_UPDATE_CHECK", "").strip().lower() in {"0", "off", "false", "no"}
+    return os.environ.get("FIREBLADE_UPDATE_CHECK", "").strip().lower() in {
+        "0",
+        "off",
+        "false",
+        "no",
+    }
 
 
 class Checker:
     """One cached answer per process, refreshed when it is old enough."""
 
-    def __init__(self, current: str = "", edition: str = "host", *, fetch=None,
-                 ttl: float = TTL, retry: float = RETRY, now=None):
+    def __init__(
+        self,
+        current: str = "",
+        edition: str = "host",
+        *,
+        fetch=None,
+        ttl: float = TTL,
+        retry: float = RETRY,
+        now=None,
+    ):
         self.current = current
         self.edition = edition
         self.fetch = fetch or self._fetch
@@ -100,8 +123,10 @@ class Checker:
         self.failure = ""
 
     def _fetch(self) -> dict:
-        request = urllib.request.Request(RELEASES, headers={
-            "Accept": "application/vnd.github+json", "User-Agent": "fireblade-host"})
+        request = urllib.request.Request(
+            RELEASES,
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "fireblade-host"},
+        )
         with urllib.request.urlopen(request, timeout=TIMEOUT) as answer:  # noqa: S310
             return json.loads(answer.read().decode("utf-8"))
 
@@ -114,8 +139,18 @@ class Checker:
     def info(self, *, refresh: bool = True) -> dict:
         """The banner's data. A stale answer is refreshed once; a failure keeps the last one."""
         if disabled():
-            return {"current": self.version(), "latest": "", "available": False, "url": "", "name": "",
-                    "command": [], "note": "", "checked": "", "error": "", "disabled": True}
+            return {
+                "current": self.version(),
+                "latest": "",
+                "available": False,
+                "url": "",
+                "name": "",
+                "command": [],
+                "note": "",
+                "checked": "",
+                "error": "",
+                "disabled": True,
+            }
         with self.lock:
             age = self.now() - self.checked_at
             interval = self.retry if self.failure else self.ttl
@@ -142,7 +177,10 @@ class Checker:
                 "command": command(self.edition, self.latest),
                 "note": guidance(self.edition),
                 "disabled": False,
-                "checked": (datetime.fromtimestamp(self.checked_at, timezone.utc).isoformat()
-                            if self.checked_at else ""),
+                "checked": (
+                    datetime.fromtimestamp(self.checked_at, timezone.utc).isoformat()
+                    if self.checked_at
+                    else ""
+                ),
                 "error": self.failure,
             }

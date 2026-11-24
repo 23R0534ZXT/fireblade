@@ -10,6 +10,7 @@ several workers while holding some of them deadlocks against a second batch doin
 the same. A batch therefore takes every worker at once, and one batch runs at a
 time.
 """
+
 import json
 import os
 import subprocess
@@ -29,9 +30,9 @@ class ParsePool:
     def _command(self):
         # A frozen executable re-launches itself and answers the flag in bootstrap;
         # a source checkout starts the worker module directly.
-        if getattr(sys, 'frozen', False):
-            return [sys.executable, '--parse-worker']
-        return [sys.executable, '-m', 'fireblade.core.linux_worker']
+        if getattr(sys, "frozen", False):
+            return [sys.executable, "--parse-worker"]
+        return [sys.executable, "-m", "fireblade.core.linux_worker"]
 
     def _environment(self):
         """The environment of a worker, with the package reachable from a source tree.
@@ -42,19 +43,26 @@ class ParsePool:
         every worker died at import with return code 1 - the suite was green here and
         red on the runner for exactly that reason.
         """
-        environment = dict(os.environ, PYTHONIOENCODING='utf-8', PYTHONUTF8='1')
-        package = sys.modules.get('fireblade')
-        origin = getattr(package, '__file__', None)
+        environment = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+        package = sys.modules.get("fireblade")
+        origin = getattr(package, "__file__", None)
         if origin:
             root = os.path.dirname(os.path.dirname(os.path.abspath(origin)))
-            existing = environment.get('PYTHONPATH')
-            environment['PYTHONPATH'] = root + (os.pathsep + existing if existing else '')
+            existing = environment.get("PYTHONPATH")
+            environment["PYTHONPATH"] = root + (os.pathsep + existing if existing else "")
         return environment
 
     def _spawn(self):
-        return subprocess.Popen(self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                stderr=subprocess.DEVNULL, text=True, encoding='utf-8',
-                                bufsize=1, env=self._environment())
+        return subprocess.Popen(
+            self._command(),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            encoding="utf-8",
+            bufsize=1,
+            env=self._environment(),
+        )
 
     def start(self):
         with self._mutex:
@@ -73,7 +81,7 @@ class ParsePool:
             worker = self._free.pop() if self._free else None
         if worker is None:
             self._idle.release()
-            raise RuntimeError('Bassin de lecture fermé')
+            raise RuntimeError("Bassin de lecture fermé")
         job = dict(source=str(source), output=str(output), span=span)
         try:
             result = self._send(worker, job)
@@ -97,7 +105,7 @@ class ParsePool:
         with self._batch:
             workers = self._take_all()
             if not workers:
-                raise RuntimeError('Aucun processus de lecture disponible')
+                raise RuntimeError("Aucun processus de lecture disponible")
             broken = set()
             try:
                 return self._dispatch(workers, jobs, broken)
@@ -111,17 +119,17 @@ class ParsePool:
     def _send(self, worker, job):
         """One job on one worker: the result, or the reason it failed."""
         try:
-            worker.stdin.write(json.dumps(job) + '\n')
+            worker.stdin.write(json.dumps(job) + "\n")
             worker.stdin.flush()
             answer = worker.stdout.readline()
         except (OSError, ValueError) as exc:
-            raise RuntimeError('Lecture interrompue : %s' % exc) from exc
+            raise RuntimeError("Lecture interrompue : %s" % exc) from exc
         if not answer:
             raise RuntimeError("Le processus de lecture s'est arrêté")
         payload = json.loads(answer)
-        if payload.get('status') != 'ok':
-            raise RuntimeError(payload.get('error') or 'Lecture échouée')
-        return payload['result']
+        if payload.get("status") != "ok":
+            raise RuntimeError(payload.get("error") or "Lecture échouée")
+        return payload["result"]
 
     def _take_all(self):
         """Every free worker at once, waiting for the busy ones to finish."""
@@ -159,8 +167,10 @@ class ParsePool:
                         pending.clear()
                     return
 
-        threads = [threading.Thread(target=work, args=(worker,), daemon=True)
-                   for worker in workers[:len(jobs)]]
+        threads = [
+            threading.Thread(target=work, args=(worker,), daemon=True)
+            for worker in workers[: len(jobs)]
+        ]
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -168,7 +178,7 @@ class ParsePool:
         if failures:
             raise failures[0]
         if any(result is None for result in results):
-            raise RuntimeError('Tranches inachevées')
+            raise RuntimeError("Tranches inachevées")
         return results
 
     def _release(self, worker):
@@ -204,7 +214,7 @@ class ParsePool:
             workers, self._free = self._free, []
         for worker in workers:
             try:
-                worker.stdin.write(json.dumps(dict(stop=True)) + '\n')
+                worker.stdin.write(json.dumps(dict(stop=True)) + "\n")
                 worker.stdin.flush()
             except (OSError, ValueError):
                 pass

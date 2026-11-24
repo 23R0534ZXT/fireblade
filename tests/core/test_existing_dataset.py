@@ -34,9 +34,7 @@ def test_reuses_existing_csv_without_generator_or_download(tmp_path, monkeypatch
     csv.write_bytes(content)
     monkeypatch.setattr(
         "subprocess.run",
-        lambda *a, **k: pytest.fail(
-            "Existing CSV must never be downloaded or regenerated"
-        ),
+        lambda *a, **k: pytest.fail("Existing CSV must never be downloaded or regenerated"),
     )
     spec = prepare(directory, manifest=manifest, reference=reference)
     assert spec["acquisition"]["reused_existing_csv"] and csv.read_bytes() == content
@@ -44,14 +42,12 @@ def test_reuses_existing_csv_without_generator_or_download(tmp_path, monkeypatch
 
 def test_extracts_known_archive_once_and_reuses_it(tmp_path):
     content, archive, manifest, reference = fixture(tmp_path)
-    spec = prepare(
-        tmp_path / "data", archive=archive, manifest=manifest, reference=reference
-    )
+    spec = prepare(tmp_path / "data", archive=archive, manifest=manifest, reference=reference)
     assert not spec["acquisition"]["reused_existing_csv"]
     assert archive.exists()
-    assert prepare(tmp_path / "data", manifest=manifest, reference=reference)[
-        "acquisition"
-    ]["reused_existing_csv"]
+    assert prepare(tmp_path / "data", manifest=manifest, reference=reference)["acquisition"][
+        "reused_existing_csv"
+    ]
     source = tmp_path / "data/Fireblade-test-3GiB.csv"
     source.write_bytes(b"changed")
     with pytest.raises(ValueError):
@@ -65,12 +61,8 @@ def test_reuses_previous_qualification_filename(tmp_path, monkeypatch):
     content, archive, manifest, reference = fixture(tmp_path)
     source = tmp_path / "artefacts variés 3GiB.csv"
     source.write_bytes(content)
-    (tmp_path / "spec.json").write_text(
-        json.dumps(dict(source=str(source))), encoding="utf-8"
-    )
-    monkeypatch.setattr(
-        "subprocess.run", lambda *a, **k: pytest.fail("Must reuse the old CSV")
-    )
+    (tmp_path / "spec.json").write_text(json.dumps(dict(source=str(source))), encoding="utf-8")
+    monkeypatch.setattr("subprocess.run", lambda *a, **k: pytest.fail("Must reuse the old CSV"))
     spec = prepare(tmp_path, manifest=manifest, reference=reference)
     assert spec["source"] == str(source.resolve())
     assert spec["acquisition"]["reused_existing_csv"]

@@ -45,10 +45,7 @@ def validate_plugin(data):
     transforms = [validate_definition(d) for d in transforms]
     return (
         {"transforms": transforms}
-        | {
-            key: data.get(key, [])
-            for key in ("signature", "timestamp", "booleans", "columns")
-        }
+        | {key: data.get(key, []) for key in ("signature", "timestamp", "booleans", "columns")}
         | {"name": name}
     )
 

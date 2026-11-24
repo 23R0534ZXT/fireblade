@@ -1,4 +1,5 @@
 """A ray is four pixels wide: clicking it must work, and so must clicking near it."""
+
 from datetime import datetime
 
 from PySide6.QtCore import Qt
@@ -13,21 +14,26 @@ class Group:
     def __init__(self, key, level, start, count=1):
         self.key = key
         self.level = level
-        self.title = 'rule ' + key
-        self.host = 'PC01'
-        self.channel = 'System'
+        self.title = "rule " + key
+        self.host = "PC01"
+        self.channel = "System"
         self.count = count
         self.start = start
         self.end = start
-        self.event_ids = ('7045',)
+        self.event_ids = ("7045",)
 
 
 def _dial(qt_application):
     dial = CircularMap()
     dial.resize(620, 460)
-    dial.set_data([Group('a', 'high', datetime(2026, 11, 14, 14, 20), 6),
-                   Group('b', 'medium', datetime(2026, 11, 14, 9, 15), 2)], [])
-    dial.grab()          # paints once, which is what registers the clickable marks
+    dial.set_data(
+        [
+            Group("a", "high", datetime(2026, 11, 14, 14, 20), 6),
+            Group("b", "medium", datetime(2026, 11, 14, 9, 15), 2),
+        ],
+        [],
+    )
+    dial.grab()  # paints once, which is what registers the clickable marks
     return dial
 
 

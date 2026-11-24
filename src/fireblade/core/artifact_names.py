@@ -9,141 +9,201 @@ The table is deliberately short and boring: every entry is a name a forensic
 practitioner already uses. When nothing matches, the folder the file was found in
 is the label, because that is what a person reads first anyway.
 """
+
 from collections import Counter
 from pathlib import Path
 
 # Names that identify an artefact on their own, whatever folder they sit in.
 FILES = {
-    'amcache.hve': 'Amcache',
-    '$mft': 'MFT',
-    '$j': 'USN journal',
-    '$boot': 'Boot sector',
-    '$logfile': 'NTFS log',
-    'ntuser.dat': 'NTUSER.DAT',
-    'usrclass.dat': 'UsrClass.dat',
-    'srudb.dat': 'SRUM',
-    'activitiescache.db': 'Activities cache',
-    'recentfilecache.bcf': 'RecentFileCache',
-    'consolehost_history.txt': 'PowerShell history',
-    'places.sqlite': 'Browser history',
-    'cookies.sqlite': 'Browser cookies',
-    'favicons.sqlite': 'Browser icons',
-    'downloads.sqlite': 'Browser downloads',
-    'history': 'Browser history',
-    'cookies': 'Browser cookies',
-    'top sites': 'Browser history',
-    'web data': 'Browser forms',
-    'login data': 'Browser logins',
-    'favicons': 'Browser icons',
-    'formhistory.sqlite': 'Browser forms',
-    'webcachev01.dat': 'WebCache',
-    'system': 'Registry · SYSTEM',
-    'software': 'Registry · SOFTWARE',
-    'sam': 'Registry · SAM',
-    'security': 'Registry · SECURITY',
-    'default': 'Registry · DEFAULT',
+    "amcache.hve": "Amcache",
+    "$mft": "MFT",
+    "$j": "USN journal",
+    "$boot": "Boot sector",
+    "$logfile": "NTFS log",
+    "ntuser.dat": "NTUSER.DAT",
+    "usrclass.dat": "UsrClass.dat",
+    "srudb.dat": "SRUM",
+    "activitiescache.db": "Activities cache",
+    "recentfilecache.bcf": "RecentFileCache",
+    "consolehost_history.txt": "PowerShell history",
+    "places.sqlite": "Browser history",
+    "cookies.sqlite": "Browser cookies",
+    "favicons.sqlite": "Browser icons",
+    "downloads.sqlite": "Browser downloads",
+    "history": "Browser history",
+    "cookies": "Browser cookies",
+    "top sites": "Browser history",
+    "web data": "Browser forms",
+    "login data": "Browser logins",
+    "favicons": "Browser icons",
+    "formhistory.sqlite": "Browser forms",
+    "webcachev01.dat": "WebCache",
+    "system": "Registry · SYSTEM",
+    "software": "Registry · SOFTWARE",
+    "sam": "Registry · SAM",
+    "security": "Registry · SECURITY",
+    "default": "Registry · DEFAULT",
 }
 
 # Formats: the suffix says what the file is.
 SUFFIXES = (
-    ('.evtx', 'Event logs'),
-    ('.pf', 'Prefetch'),
-    ('.lnk', 'Shortcuts'),
-    ('.automaticdestinations-ms', 'Jump lists'),
-    ('.customdestinations-ms', 'Jump lists'),
-    ('.timeline', 'Analysis'),
-    ('.log1', 'Registry transaction'),
-    ('.log2', 'Registry transaction'),
-    ('.hve', 'Registry hive'),
-    ('.sqlite', 'SQLite database'),
-    ('.log', 'Logs'),
+    (".evtx", "Event logs"),
+    (".pf", "Prefetch"),
+    (".lnk", "Shortcuts"),
+    (".automaticdestinations-ms", "Jump lists"),
+    (".customdestinations-ms", "Jump lists"),
+    (".timeline", "Analysis"),
+    (".log1", "Registry transaction"),
+    (".log2", "Registry transaction"),
+    (".hve", "Registry hive"),
+    (".sqlite", "SQLite database"),
+    (".log", "Logs"),
 )
 
 # Folder names: a folder of one artefact, named by the tool that produced it.
 FOLDERS = {
-    'amcache': 'Amcache',
-    'browser_history': 'Browser history',
-    'webcache': 'WebCache',
-    'windows_event_logs': 'Event logs',
-    'event_logs': 'Event logs',
-    'prefetch_files': 'Prefetch',
-    'prefetch': 'Prefetch',
-    'jumplists-automaticdestinations': 'Jump lists',
-    'jumplists-customdestinations': 'Jump lists',
-    'jump lists': 'Jump lists',
-    'powershell_history': 'PowerShell history',
-    'powershell_console': 'PowerShell history',
-    'shellbags': 'Shellbags',
-    'srum': 'SRUM',
-    'usn_journal': 'USN journal',
-    'mft': 'MFT',
-    'ntuser.dat': 'NTUSER.DAT',
-    'recycle_bin': 'Recycle Bin',
-    '$recycle.bin': 'Recycle Bin',
-    'activitiescache': 'Activities cache',
-    'registry': 'Registry',
-    'execution': 'Execution artefacts',
+    "amcache": "Amcache",
+    "browser_history": "Browser history",
+    "webcache": "WebCache",
+    "windows_event_logs": "Event logs",
+    "event_logs": "Event logs",
+    "prefetch_files": "Prefetch",
+    "prefetch": "Prefetch",
+    "jumplists-automaticdestinations": "Jump lists",
+    "jumplists-customdestinations": "Jump lists",
+    "jump lists": "Jump lists",
+    "powershell_history": "PowerShell history",
+    "powershell_console": "PowerShell history",
+    "shellbags": "Shellbags",
+    "srum": "SRUM",
+    "usn_journal": "USN journal",
+    "mft": "MFT",
+    "ntuser.dat": "NTUSER.DAT",
+    "recycle_bin": "Recycle Bin",
+    "$recycle.bin": "Recycle Bin",
+    "activitiescache": "Activities cache",
+    "registry": "Registry",
+    "execution": "Execution artefacts",
     # A container, not an artefact: never a label of its own.
-    'saved_files': '',
+    "saved_files": "",
 }
 
-CONTAINERS = ('saved_files',)
+CONTAINERS = ("saved_files",)
 
 # Parsers write a CSV; the analyser must not read "export.csv" as the name of an
 # artefact. A stem that names a tool output, in order of specificity.
 CSV_KINDS = (
-    ('amcacheparser', 'Amcache'), ('amcache', 'Amcache'), ('appcompat', 'AppCompatCache'),
-    ('shimcache', 'AppCompatCache'), ('recentfilecache', 'RecentFileCache'),
-    ('evtxecmd', 'Event logs'), ('evtx', 'Event logs'), ('hayabusa', 'Hayabusa'),
-    ('mft', 'MFT'), ('usn', 'USN journal'), ('srum', 'SRUM'), ('shellbag', 'Shellbags'),
-    ('jumplist', 'Jump lists'), ('prefetch', 'Prefetch'), ('webcache', 'WebCache'),
-    ('browser', 'Browser history'), ('recycle', 'Recycle Bin'), ('powershell', 'PowerShell'),
-    ('wmi', 'WMI'), ('scheduled', 'Scheduled tasks'), ('rdp', 'RDP'), ('defender', 'Defender'),
+    ("amcacheparser", "Amcache"),
+    ("amcache", "Amcache"),
+    ("appcompat", "AppCompatCache"),
+    ("shimcache", "AppCompatCache"),
+    ("recentfilecache", "RecentFileCache"),
+    ("evtxecmd", "Event logs"),
+    ("evtx", "Event logs"),
+    ("hayabusa", "Hayabusa"),
+    ("mft", "MFT"),
+    ("usn", "USN journal"),
+    ("srum", "SRUM"),
+    ("shellbag", "Shellbags"),
+    ("jumplist", "Jump lists"),
+    ("prefetch", "Prefetch"),
+    ("webcache", "WebCache"),
+    ("browser", "Browser history"),
+    ("recycle", "Recycle Bin"),
+    ("powershell", "PowerShell"),
+    ("wmi", "WMI"),
+    ("scheduled", "Scheduled tasks"),
+    ("rdp", "RDP"),
+    ("defender", "Defender"),
 )
 
 # Stems a tool writes whatever the evidence was: they say nothing on their own.
-GENERIC_STEMS = frozenset({'export', 'exports', 'output', 'outputs', 'result', 'results', 'out',
-                           'data', 'analysis', 'analyse', 'timeline', 'events', 'records',
-                           'fireblade', 'collection', 'collecte', 'report', 'rapport', 'table'})
+GENERIC_STEMS = frozenset(
+    {
+        "export",
+        "exports",
+        "output",
+        "outputs",
+        "result",
+        "results",
+        "out",
+        "data",
+        "analysis",
+        "analyse",
+        "timeline",
+        "events",
+        "records",
+        "fireblade",
+        "collection",
+        "collecte",
+        "report",
+        "rapport",
+        "table",
+    }
+)
 
 
 def csv_kind(path):
     """The artefact a tool-written CSV holds, from the name its parser gave it."""
-    name = parts_of(path)[-1] if parts_of(path) else ''
+    name = parts_of(path)[-1] if parts_of(path) else ""
     stem = Path(name).stem.casefold()
     for prefix, label in CSV_KINDS:
         if stem.startswith(prefix):
             return label
-    return ''
+    return ""
+
 
 # A folder that says where something was, never what it was.
 GENERIC_FOLDERS = {
-    'c', 'd', 'e', 'users', 'windows', 'system32', 'syswow64', 'appdata', 'roaming',
-    'locallow', 'local', 'programdata', 'program files', 'program files (x86)',
-    'desktop', 'documents', 'downloads', 'temp', 'tmp', 'config', 'profiles',
-    'microsoft', 'packages', 'cache', 'data', 'user data', 'default',
+    "c",
+    "d",
+    "e",
+    "users",
+    "windows",
+    "system32",
+    "syswow64",
+    "appdata",
+    "roaming",
+    "locallow",
+    "local",
+    "programdata",
+    "program files",
+    "program files (x86)",
+    "desktop",
+    "documents",
+    "downloads",
+    "temp",
+    "tmp",
+    "config",
+    "profiles",
+    "microsoft",
+    "packages",
+    "cache",
+    "data",
+    "user data",
+    "default",
 }
 
 
 def parts_of(path):
     """Path segments, whatever separators the record kept."""
-    text = str(path or '').replace('/', '\\').strip('\\')
-    return [part for part in text.split('\\') if part]
+    text = str(path or "").replace("/", "\\").strip("\\")
+    return [part for part in text.split("\\") if part]
 
 
 def _looks_like_file(name):
-    return '.' in name or name.startswith('$')
+    return "." in name or name.startswith("$")
 
 
 def kind_of(path):
     """The artefact type this path names, or an empty string."""
     segments = parts_of(path)
     if not segments:
-        return ''
+        return ""
     name = segments[-1].casefold()
     if name in FILES:
         return FILES[name]
-    csv_label = csv_kind(path) if name.endswith(('.csv', '.tsv', '.jsonl')) else ''
+    csv_label = csv_kind(path) if name.endswith((".csv", ".tsv", ".jsonl")) else ""
     if csv_label:
         return csv_label
     for suffix, label in SUFFIXES:
@@ -159,7 +219,7 @@ def kind_of(path):
         label = FOLDERS.get(segment.casefold())
         if label:
             return label
-    return ''
+    return ""
 
 
 def _folder_of(path):
@@ -171,11 +231,11 @@ def _folder_of(path):
     """
     segments = parts_of(path)
     if not segments:
-        return ''
+        return ""
     lowered = [segment.casefold() for segment in segments]
     skipped = set(GENERIC_FOLDERS) | set(CONTAINERS)
     for index, segment in enumerate(lowered[:-1]):
-        if segment == 'users':
+        if segment == "users":
             skipped.add(lowered[index + 1])
     candidates = segments[:-1] if _looks_like_file(segments[-1]) else segments
     for segment in reversed(candidates):
@@ -192,7 +252,7 @@ def friendly_label(path):
         return kind
     segments = parts_of(path)
     if not segments:
-        return ''
+        return ""
     folder = FOLDERS.get(segments[-1].casefold())
     if folder:
         return folder
@@ -203,16 +263,16 @@ def _qualifier(path):
     """What tells two rows of the same type apart: the file's own name."""
     segments = parts_of(path)
     if not segments:
-        return ''
+        return ""
     name = segments[-1]
     if not _looks_like_file(name):
-        return ''
-    stem = Path(name).stem if not name.startswith('$') else name
+        return ""
+    stem = Path(name).stem if not name.startswith("$") else name
     if len(stem) < 3:
         # 'a.bin' tells nothing; the numbering pass will separate those rows.
-        return ''
+        return ""
     # A channel is read as Security or Sysmon/Operational, not as its escaped form.
-    return stem.replace('%4', '/')[:40]
+    return stem.replace("%4", "/")[:40]
 
 
 def unique_labels(paths):
@@ -229,11 +289,15 @@ def unique_labels(paths):
         if not kind_of(path):
             # The label is the folder, and several files share it: the file's own name
             # says more than "resume (3)" ever will.
-            name = (parts_of(path) or [''])[-1]
+            name = (parts_of(path) or [""])[-1]
             result[path] = name or label
             continue
         qualifier = _qualifier(path)
-        result[path] = f'{label} · {qualifier}' if qualifier and qualifier.casefold() != label.casefold() else label
+        result[path] = (
+            f"{label} · {qualifier}"
+            if qualifier and qualifier.casefold() != label.casefold()
+            else label
+        )
     again = Counter(result.values())
     numbered = {}
     for path in paths:
@@ -241,5 +305,5 @@ def unique_labels(paths):
         if again[label] <= 1:
             continue
         numbered[label] = numbered.get(label, 0) + 1
-        result[path] = f'{label} ({numbered[label]})'
+        result[path] = f"{label} ({numbered[label]})"
     return result

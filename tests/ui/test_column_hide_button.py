@@ -3,6 +3,7 @@
 Hiding a column used to need the column manager or a drag above the header; the analyst
 asked for the same gesture the tab bar already has.
 """
+
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QTableView
 
@@ -13,8 +14,8 @@ def build(qt_application):
     table = QTableView()
     header = GroupHeader(table)
     model = QStandardItemModel(1, 4)
-    model.setHorizontalHeaderLabels(['Row /…', 'Artefact', 'Source file', 'EventId'])
-    model.setItem(0, 0, QStandardItem('1'))
+    model.setHorizontalHeaderLabels(["Row /…", "Artefact", "Source file", "EventId"])
+    model.setItem(0, 0, QStandardItem("1"))
     table.setModel(model)
     table.setHorizontalHeader(header)
     header.sync_filters([], None, False)
@@ -27,7 +28,7 @@ def test_every_column_but_the_row_number_has_a_hide_button(qt_application):
         assert set(header.controls) == {1, 2, 3}
         for section in header.controls:
             close = header.controls[section][3]
-            assert close.text() == '×'
+            assert close.text() == "×"
             assert close.toolTip()
     finally:
         table.deleteLater()

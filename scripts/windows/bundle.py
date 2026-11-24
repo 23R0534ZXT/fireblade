@@ -1,4 +1,5 @@
 """Collect embedded metadata and installed license notices from the build venv."""
+
 import argparse
 from importlib.metadata import distribution
 import json
@@ -10,28 +11,74 @@ import subprocess
 import sys
 import tomllib
 
-DISTRIBUTIONS = ("duckdb", "PySide6-Essentials", "shiboken6", "openpyxl", "et-xmlfile", "xlrd", "numpy", "idna", "dissect.esedb", "dissect.cstruct", "dissect.util", "lz4", "zstandard", "pyinstaller", "dissect.target", "dissect.database", "dissect.eventlog", "dissect.evidence", "dissect.hypervisor", "dissect.ntfs", "dissect.regf", "dissect.volume", "dissect.fat", "dissect.extfs", "flow.record", "defusedxml", "structlog", "msgpack")
+DISTRIBUTIONS = (
+    "duckdb",
+    "PySide6-Essentials",
+    "shiboken6",
+    "openpyxl",
+    "et-xmlfile",
+    "xlrd",
+    "numpy",
+    "idna",
+    "dissect.esedb",
+    "dissect.cstruct",
+    "dissect.util",
+    "lz4",
+    "zstandard",
+    "pyinstaller",
+    "dissect.target",
+    "dissect.database",
+    "dissect.eventlog",
+    "dissect.evidence",
+    "dissect.hypervisor",
+    "dissect.ntfs",
+    "dissect.regf",
+    "dissect.volume",
+    "dissect.fat",
+    "dissect.extfs",
+    "flow.record",
+    "defusedxml",
+    "structlog",
+    "msgpack",
+)
 RUNTIME_DLLS = ("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll")
 
 
 def source_revision(root):
     try:
-        revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, check=True,
-                                  capture_output=True, text=True, timeout=5).stdout.strip()
-        status = subprocess.run(["git", "status", "--porcelain"], cwd=root, check=True,
-                                capture_output=True, text=True, timeout=5).stdout.strip()
+        revision = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        ).stdout.strip()
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        ).stdout.strip()
         return revision, bool(status)
     except (OSError, subprocess.SubprocessError):
         return os.environ.get("GITHUB_SHA"), None
 
 
 def runtime_binaries():
-    directories = [Path(sys.base_prefix), Path(sys.prefix),
-                   Path(distribution("PySide6-Essentials").locate_file("PySide6")),
-                   Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32"]
+    directories = [
+        Path(sys.base_prefix),
+        Path(sys.prefix),
+        Path(distribution("PySide6-Essentials").locate_file("PySide6")),
+        Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32",
+    ]
     binaries = []
     for name in RUNTIME_DLLS:
-        source = next((directory / name for directory in directories if (directory / name).is_file()), None)
+        source = next(
+            (directory / name for directory in directories if (directory / name).is_file()), None
+        )
         if source is None:
             raise RuntimeError(f"Bibliothèque Windows nécessaire à intégrer introuvable : {name}")
         binaries.append(str(source))
@@ -48,8 +95,11 @@ def stage_resources(root, destination):
         installed = distribution(name)
         notices = []
         for file in installed.files or []:
-            license_file = (any(part.casefold() in ("licenses", "licences") for part in file.parts)
-                            or file.name.casefold().startswith(("license", "licence", "copying", "copyright", "notice")))
+            license_file = any(
+                part.casefold() in ("licenses", "licences") for part in file.parts
+            ) or file.name.casefold().startswith(
+                ("license", "licence", "copying", "copyright", "notice")
+            )
             source = installed.locate_file(file)
             if license_file and source.is_file():
                 safe_parts = [part for part in file.parts if part not in ("..", ".")]
@@ -57,25 +107,50 @@ def stage_resources(root, destination):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target)
                 notices.append(str(target.relative_to(legal)).replace("\\", "/"))
-        packages.append(dict(name=name, version=installed.version,
-                             license=installed.metadata.get("License-Expression") or installed.metadata.get("License"),
-                             notices=notices))
+        packages.append(
+            dict(
+                name=name,
+                version=installed.version,
+                license=installed.metadata.get("License-Expression")
+                or installed.metadata.get("License"),
+                notices=notices,
+            )
+        )
     for name in ("LICENSE.txt", "LICENSE"):
         source = Path(sys.base_prefix) / name
         if source.is_file():
             shutil.copy2(source, legal / "PYTHON-LICENSE.txt")
             break
     else:
-        raise RuntimeError("La licence de l’interpréteur Python est introuvable dans son installation.")
-    (legal / "DEPENDENCIES.json").write_text(json.dumps(packages, ensure_ascii=False, indent=2), encoding="utf-8")
-    version = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+        raise RuntimeError(
+            "La licence de l’interpréteur Python est introuvable dans son installation."
+        )
+    (legal / "DEPENDENCIES.json").write_text(
+        json.dumps(packages, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    version = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"][
+        "version"
+    ]
     revision, modified = source_revision(root)
-    info = dict(application="Fireblade", version=version, platform="Windows x64", packaging="onedir",
-                python=sys.version.split()[0], machine=platform.machine(), source_commit=revision, source_modified=modified,
-                maturity="prototype", dependencies=[dict(name=p["name"], version=p["version"]) for p in packages])
+    info = dict(
+        application="Fireblade",
+        version=version,
+        platform="Windows x64",
+        packaging="onedir",
+        python=sys.version.split()[0],
+        machine=platform.machine(),
+        source_commit=revision,
+        source_modified=modified,
+        maturity="prototype",
+        dependencies=[dict(name=p["name"], version=p["version"]) for p in packages],
+    )
     (destination / "build").mkdir(exist_ok=True)
-    (destination / "build" / "build-info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
-    (destination.parent / "runtime-binaries.json").write_text(json.dumps(runtime_binaries(), indent=2), encoding="utf-8")
+    (destination / "build" / "build-info.json").write_text(
+        json.dumps(info, indent=2), encoding="utf-8"
+    )
+    (destination.parent / "runtime-binaries.json").write_text(
+        json.dumps(runtime_binaries(), indent=2), encoding="utf-8"
+    )
 
 
 def main():

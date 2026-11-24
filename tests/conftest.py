@@ -1,4 +1,5 @@
 """Keep one QApplication alive for the entire test process, including teardown."""
+
 import os
 import sys
 
@@ -53,8 +54,11 @@ def no_blocking_dialog(qt_application):
             return
         if now - state["since"] < 15:
             return
-        print(f"\n[warn] modal window rejected by the test watchdog: {widget.windowTitle()!r}",
-              file=sys.stderr, flush=True)
+        print(
+            f"\n[warn] modal window rejected by the test watchdog: {widget.windowTitle()!r}",
+            file=sys.stderr,
+            flush=True,
+        )
         widget.reject()
 
     timer = QTimer(qt_application)
@@ -77,8 +81,12 @@ def isolated_user_storage(tmp_path, monkeypatch):
     if application:
         application.processEvents()
         for window in application.topLevelWidgets():
-            if isinstance(window, (QDialog, QMainWindow)) and window not in existing and not window.isVisible():
-                pool = getattr(window, 'pool', None)
+            if (
+                isinstance(window, (QDialog, QMainWindow))
+                and window not in existing
+                and not window.isVisible()
+            ):
+                pool = getattr(window, "pool", None)
                 if pool is None or not pool.activeThreadCount():
                     window.deleteLater()
         QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)

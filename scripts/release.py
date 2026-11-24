@@ -1,4 +1,5 @@
 """Publish an explicitly requested, qualified Windows build without replacing a version."""
+
 import argparse
 import ast
 import hashlib
@@ -12,77 +13,125 @@ import tomllib
 
 
 def application_version(root):
-    project = tomllib.loads((root / 'pyproject.toml').read_text(encoding='utf-8'))
-    module = ast.parse((root / 'src/fireblade/__init__.py').read_text(encoding='utf-8'))
-    versions = [ast.literal_eval(node.value) for node in module.body
-                if isinstance(node, ast.Assign)
-                and any(isinstance(target, ast.Name) and target.id == '__version__' for target in node.targets)]
-    if len(versions) != 1 or versions[0] != project['project']['version']:
-        raise ValueError('Application and project versions must match')
-    if not isinstance(versions[0], str) or not re.fullmatch(r'\d+\.\d+\.\d+', versions[0]):
-        raise ValueError('Use a numeric X.Y.Z release version')
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    module = ast.parse((root / "src/fireblade/__init__.py").read_text(encoding="utf-8"))
+    versions = [
+        ast.literal_eval(node.value)
+        for node in module.body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "__version__" for target in node.targets
+        )
+    ]
+    if len(versions) != 1 or versions[0] != project["project"]["version"]:
+        raise ValueError("Application and project versions must match")
+    if not isinstance(versions[0], str) or not re.fullmatch(r"\d+\.\d+\.\d+", versions[0]):
+        raise ValueError("Use a numeric X.Y.Z release version")
     return versions[0]
 
 
 def release_plan(version, requested_tag, releases):
-    tag = 'v' + version
+    tag = "v" + version
     if requested_tag and requested_tag != tag:
-        raise ValueError('Tag and application version do not match')
-    title = f'Fireblade {version} — Windows x64 (prototype)'
-    same_version = re.compile(r'^Fireblade\s+' + re.escape(version) + r'(?:\s|$)')
+        raise ValueError("Tag and application version do not match")
+    title = f"Fireblade {version} — Windows x64 (prototype)"
+    same_version = re.compile(r"^Fireblade\s+" + re.escape(version) + r"(?:\s|$)")
     for release in releases:
-        if not release['isDraft'] and (release['tagName'] == tag or same_version.match(release['name'])):
-            raise ValueError('This version is already published; increase the application version')
-    return dict(tag=tag, title=title,
-                draft_exists=any(release['tagName'] == tag for release in releases))
+        if not release["isDraft"] and (
+            release["tagName"] == tag or same_version.match(release["name"])
+        ):
+            raise ValueError("This version is already published; increase the application version")
+    return dict(
+        tag=tag, title=title, draft_exists=any(release["tagName"] == tag for release in releases)
+    )
 
 
-def publish(root, asset, repository, commit, requested_tag='', run=subprocess.run):
+def publish(root, asset, repository, commit, requested_tag="", run=subprocess.run):
     version = application_version(root)
+
     def gh(*args, capture=False):
-        return run(['gh', *args, '--repo', repository], check=True, text=True,
-                   encoding='utf-8', errors='replace', capture_output=capture)
-    response = gh('release', 'list', '--limit', '100', '--json', 'name,tagName,isDraft', capture=True)
+        return run(
+            ["gh", *args, "--repo", repository],
+            check=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=capture,
+        )
+
+    response = gh(
+        "release", "list", "--limit", "100", "--json", "name,tagName,isDraft", capture=True
+    )
     plan = release_plan(version, requested_tag, json.loads(response.stdout))
     # Read-only metadata checks above must finish before any remote mutation.
     asset = Path(asset)
     if asset.is_dir():
         # The workflow hands over the dist folder: the archive it built is the asset.
-        candidates = sorted(asset.glob('Fireblade-%s-win64.zip' % version))
+        candidates = sorted(asset.glob("Fireblade-%s-win64.zip" % version))
         if len(candidates) != 1:
-            raise ValueError('Expected exactly one Fireblade-%s-win64.zip in %s' % (version, asset))
+            raise ValueError("Expected exactly one Fireblade-%s-win64.zip in %s" % (version, asset))
         asset = candidates[0]
-    with asset.open('rb') as stream:
-        if stream.read(2) != b'PK':
-            raise ValueError('Expected the Windows zip archive')
+    with asset.open("rb") as stream:
+        if stream.read(2) != b"PK":
+            raise ValueError("Expected the Windows zip archive")
         stream.seek(0)
-        digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-    notes = (root / 'docs/development/RELEASE-NOTES.md').read_text(encoding='utf-8')
-    notes += f'\n\nCommit: {commit}\n\nSHA-256 of {asset.name}: {digest}\n'
-    with tempfile.TemporaryDirectory(prefix='fireblade-release-') as folder:
-        path = Path(folder) / 'notes.md'
-        path.write_text(notes, encoding='utf-8')
-        if plan['draft_exists']:
-            gh('release', 'upload', plan['tag'], str(asset), '--clobber')
+        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+    notes = (root / "docs/development/RELEASE-NOTES.md").read_text(encoding="utf-8")
+    notes += f"\n\nCommit: {commit}\n\nSHA-256 of {asset.name}: {digest}\n"
+    with tempfile.TemporaryDirectory(prefix="fireblade-release-") as folder:
+        path = Path(folder) / "notes.md"
+        path.write_text(notes, encoding="utf-8")
+        if plan["draft_exists"]:
+            gh("release", "upload", plan["tag"], str(asset), "--clobber")
         else:
-            gh('release', 'create', plan['tag'], str(asset), '--draft', '--prerelease',
-               '--target', commit, '--title', plan['title'], '--notes-file', str(path))
+            gh(
+                "release",
+                "create",
+                plan["tag"],
+                str(asset),
+                "--draft",
+                "--prerelease",
+                "--target",
+                commit,
+                "--title",
+                plan["title"],
+                "--notes-file",
+                str(path),
+            )
         # Failed upload/create leaves a draft; nothing is published in that case.
-        gh('release', 'edit', plan['tag'], '--title', plan['title'], '--notes-file', str(path),
-           '--prerelease', '--draft=false')
+        gh(
+            "release",
+            "edit",
+            plan["tag"],
+            "--title",
+            plan["title"],
+            "--notes-file",
+            str(path),
+            "--prerelease",
+            "--draft=false",
+        )
     return dict(**plan, sha256=digest, commit=commit, asset=asset.name)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--asset', type=Path, required=True,
-                        help='the zip to publish, or the dist folder that holds it')
+    parser.add_argument(
+        "--asset",
+        type=Path,
+        required=True,
+        help="the zip to publish, or the dist folder that holds it",
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    repository, commit = os.environ['GITHUB_REPOSITORY'], os.environ['GITHUB_SHA']
-    requested_tag = os.environ.get('REQUESTED_TAG', '')
-    print(json.dumps(publish(root, args.asset.resolve(), repository, commit, requested_tag), ensure_ascii=False))
+    repository, commit = os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_SHA"]
+    requested_tag = os.environ.get("REQUESTED_TAG", "")
+    print(
+        json.dumps(
+            publish(root, args.asset.resolve(), repository, commit, requested_tag),
+            ensure_ascii=False,
+        )
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

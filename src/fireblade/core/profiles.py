@@ -129,11 +129,7 @@ def all_profiles():
             tuple(data.get("transforms", [])),
         )
 
-    return (
-        tuple(profile(p) for p in custom)
-        + tuple(profile(p) for p in CATALOG)
-        + PROFILES
-    )
+    return tuple(profile(p) for p in custom) + tuple(profile(p) for p in CATALOG) + PROFILES
 
 
 def detect_profile(headers):
@@ -222,14 +218,10 @@ def profile_view(profile, headers):
             (("event log", "evtx", "winevt"), "#e4dfec"),
         ]:
             conditions = [
-                Filter(column, "contains", token)
-                for column in descriptions
-                for token in tokens
+                Filter(column, "contains", token) for column in descriptions for token in tokens
             ]
             if conditions:
-                view.format_rules.append(
-                    FormatRule(FilterGroup("or", conditions), color)
-                )
+                view.format_rules.append(FormatRule(FilterGroup("or", conditions), color))
     planned = profile_transformations(
         profile, [h for h in headers if not h.startswith("Fireblade_")]
     )
@@ -241,7 +233,11 @@ def profile_view(profile, headers):
     normalized += [
         i
         for i, h in enumerate(headers)
-        if (h.startswith("Fireblade_UTC_") or h.casefold() in {name.casefold() for name in profile.timestamp} or field_key(h) in {field_key(name) for name in profile.timestamp})
+        if (
+            h.startswith("Fireblade_UTC_")
+            or h.casefold() in {name.casefold() for name in profile.timestamp}
+            or field_key(h) in {field_key(name) for name in profile.timestamp}
+        )
         and i not in normalized
     ]
     view.timestamp_columns = list(dict.fromkeys(normalized + view.timestamp_columns))
@@ -263,9 +259,7 @@ def profile_view(profile, headers):
         if h.startswith("Fireblade_Bool_") and i not in view.boolean_columns
     ]
     order = list(
-        dict.fromkeys(
-            lookup[h.casefold()] for h in profile.columns if h.casefold() in lookup
-        )
+        dict.fromkeys(lookup[h.casefold()] for h in profile.columns if h.casefold() in lookup)
     )
     order += [i for i in range(len(headers)) if i not in order]
     return view, order
@@ -280,9 +274,7 @@ def profile_transformations(profile, headers):
     result = list(profile.transforms)
 
     def actual(name):
-        return lookup.get(name.casefold()) or lookup.get(
-            aliases.get(name, "").casefold()
-        )
+        return lookup.get(name.casefold()) or lookup.get(aliases.get(name, "").casefold())
 
     def timestamp(name, columns, fmt="invariant", zone_column=None):
         if not all(columns):
@@ -306,9 +298,7 @@ def profile_transformations(profile, headers):
         result.append(spec)
 
     if profile.name in ("SuperTimeline", "Plaso L2T CSV", "L2tTimeline"):
-        timestamp(
-            "Timestamp", [actual("date"), actual("time")], "mdy", actual("timezone")
-        )
+        timestamp("Timestamp", [actual("date"), actual("time")], "mdy", actual("timezone"))
     elif profile.name == "MacTime":
         timestamp("Timestamp", [actual("date")])
     elif profile.name in ("PeScan", "Wisp"):
@@ -357,9 +347,7 @@ def profile_transformations(profile, headers):
                 )
             )
     if actual("macb") and not actual("Fireblade_MACBMask"):
-        result.append(
-            dict(name="Fireblade_MACBMask", operation="macb", columns=[actual("macb")])
-        )
+        result.append(dict(name="Fireblade_MACBMask", operation="macb", columns=[actual("macb")]))
     if not actual("Fireblade_Category"):
         if profile.name == "ForensicTimeline" and actual("ArtifactName"):
             result.append(
@@ -381,9 +369,7 @@ def profile_transformations(profile, headers):
             )
         elif profile.name in ("PsortTimeline", "SuperTimeline", "Plaso L2T CSV"):
             description = (
-                actual("source_long")
-                if profile.name == "PsortTimeline"
-                else actual("desc")
+                actual("source_long") if profile.name == "PsortTimeline" else actual("desc")
             )
             source = actual("source")
             detail = actual("sourcetype") or source

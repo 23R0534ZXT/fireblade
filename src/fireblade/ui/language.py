@@ -13,14 +13,33 @@ guard a language switch would restore a stale label.
 same treatment as the main window, and `install(app)` makes the application
 translate every window the moment it appears.
 """
+
 from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QGroupBox, QLabel, QLineEdit,
-                               QListWidget, QListWidgetItem, QMenu, QMenuBar,
-                               QPlainTextEdit, QPushButton, QRadioButton, QStatusBar,
-                               QTableWidget, QTableWidgetItem, QTabBar, QTextEdit,
-                               QToolBar, QToolButton, QTreeWidget, QTreeWidgetItem,
-                               QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QGroupBox,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMenu,
+    QMenuBar,
+    QPlainTextEdit,
+    QPushButton,
+    QRadioButton,
+    QStatusBar,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabBar,
+    QTextEdit,
+    QToolBar,
+    QToolButton,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QWidget,
+)
 
 from fireblade.core.i18n import SOURCE_LANGUAGE, current_language, english, translate
 
@@ -99,11 +118,11 @@ def apply_to_title(widget):
 
 def escaped(text):
     """A lone & is a mnemonic in a tab title; doubling it prints it."""
-    return text.replace('&', '&&')
+    return text.replace("&", "&&")
 
 
 def unescaped(text):
-    return text.replace('&&', '&')
+    return text.replace("&&", "&")
 
 
 def apply_to_tabbar(bar):
@@ -122,7 +141,7 @@ def apply_to_tabbar(bar):
         sources = [unescaped(source) for source in sources]
         for index, shown in enumerate(current):
             if shown != escaped(translate(sources[index])):
-                sources[index] = unescaped(shown)     # the code replaced the title
+                sources[index] = unescaped(shown)  # the code replaced the title
     bar.setProperty(TABS, sources)
     for index, source in enumerate(sources):
         displayed = escaped(translate(source))
@@ -134,8 +153,9 @@ def item_sources(widget, current):
     """Sources of a combo or a list, kept in step with the items on screen."""
     recorded = widget.property(ITEMS)
     if recorded and len(recorded) == len(current):
-        if all(shown == source or shown == english(source)
-               for shown, source in zip(current, recorded)):
+        if all(
+            shown == source or shown == english(source) for shown, source in zip(current, recorded)
+        ):
             return list(recorded)
     sources = []
     for index, shown in enumerate(current):
@@ -167,12 +187,18 @@ def apply_to_list(widget):
 def apply_to_headers(table):
     if not isinstance(table, QTableWidget):
         return
-    current = [table.horizontalHeaderItem(column).text() if table.horizontalHeaderItem(column) else ""
-               for column in range(table.columnCount())]
+    current = [
+        table.horizontalHeaderItem(column).text() if table.horizontalHeaderItem(column) else ""
+        for column in range(table.columnCount())
+    ]
     sources = table.property(HEADERS)
-    if (sources is None or len(sources) != len(current)
-            or any(shown != source and shown != english(source)
-                   for shown, source in zip(current, sources))):
+    if (
+        sources is None
+        or len(sources) != len(current)
+        or any(
+            shown != source and shown != english(source) for shown, source in zip(current, sources)
+        )
+    ):
         sources = current
         table.setProperty(HEADERS, sources)
     for column, source in enumerate(sources):
@@ -297,9 +323,9 @@ def install(app):
     return language_filter
 
 
-ITEM_SOURCE = Qt.UserRole + 901      # the French label an item was built with
+ITEM_SOURCE = Qt.UserRole + 901  # the French label an item was built with
 ITEM_HOOKED = set()
-_ITEM_BUSY = [False]                 # an item setter calling another one
+_ITEM_BUSY = [False]  # an item setter calling another one
 
 
 def _remember(item, text, column=None):
@@ -336,7 +362,11 @@ def _hook_item_class(cls, tree_item):
                 original_init(self, *forwarded)
                 _remember(self, arg)
                 return
-            if isinstance(arg, (list, tuple)) and arg and all(isinstance(value, str) for value in arg):
+            if (
+                isinstance(arg, (list, tuple))
+                and arg
+                and all(isinstance(value, str) for value in arg)
+            ):
                 forwarded = list(args)
                 forwarded[index] = [translate(value) for value in arg]
                 original_init(self, *forwarded)
@@ -370,8 +400,14 @@ def _hook_item_class(cls, tree_item):
         # Some tables write the label through the display role, not the text.
         if _ITEM_BUSY[0]:
             return original_set_data(self, *args)
-        wants = (tree_item and len(args) == 3 and args[1] == Qt.DisplayRole and isinstance(args[2], str)) \
-            or (not tree_item and len(args) == 2 and args[0] == Qt.DisplayRole and isinstance(args[1], str))
+        wants = (
+            tree_item and len(args) == 3 and args[1] == Qt.DisplayRole and isinstance(args[2], str)
+        ) or (
+            not tree_item
+            and len(args) == 2
+            and args[0] == Qt.DisplayRole
+            and isinstance(args[1], str)
+        )
         if not wants:
             return original_set_data(self, *args)
         _ITEM_BUSY[0] = True
@@ -391,6 +427,7 @@ def _hook_item_class(cls, tree_item):
 
 def translate_items(tree):
     """Re-apply the stored source to every item under a tree widget."""
+
     def walk(item):
         for column in range(tree.columnCount()):
             source = _recall(item, column)
@@ -421,12 +458,15 @@ def _hook(cls, name, wrap):
 
 def _translated_setter(key):
     """A setter that records the French source and displays the translation."""
+
     def wrap(original):
         def setter(self, text, *args):
             if not isinstance(text, str) or current_language() == SOURCE_LANGUAGE:
                 return original(self, text, *args)
             return original(self, translate(source_of(self, key, text)), *args)
+
         return setter
+
     return wrap
 
 
@@ -435,6 +475,7 @@ def _translated_tab_text(original):
         if not isinstance(text, str) or current_language() == SOURCE_LANGUAGE:
             return original(self, index, text)
         return original(self, index, translate(text))
+
     return set_tab_text
 
 
@@ -450,12 +491,14 @@ def _remember_item(widget, index, source):
 
 def _translated_item(original):
     """Combos and lists: the label is the first string argument."""
+
     def add_item(self, *args):
         if args and isinstance(args[0], str) and current_language() != SOURCE_LANGUAGE:
             source = args[0]
             _remember_item(self, self.count(), source)
             args = (translate(source),) + args[1:]
         return original(self, *args)
+
     return add_item
 
 
@@ -466,6 +509,7 @@ def _translated_insert_item(original):
             _remember_item(self, index, source)
             args = (translate(source),) + args[1:]
         return original(self, index, *args)
+
     return insert_item
 
 
@@ -475,6 +519,7 @@ def _translated_set_item_text_hook(original):
             _remember_item(self, index, text)
             text = translate(text)
         return original(self, index, text)
+
     return set_item_text
 
 
@@ -483,6 +528,7 @@ def _translated_set_item_text(original):
         if not isinstance(text, str):
             return original(self, index, text)
         return original(self, index, translate(text))
+
     return set_item_text
 
 
@@ -495,6 +541,7 @@ def _translated_add_items(original):
                     _remember_item(self, start + offset, text)
             texts = [translate(text) if isinstance(text, str) else text for text in texts]
         return original(self, texts)
+
     return add_items
 
 
@@ -505,6 +552,7 @@ def _translated_headers(original):
             self.setProperty(HEADERS, list(sources))
             labels = [translate(label) if isinstance(label, str) else label for label in labels]
         return original(self, labels)
+
     return set_headers
 
 

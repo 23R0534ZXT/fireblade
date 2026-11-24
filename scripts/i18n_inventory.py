@@ -17,6 +17,7 @@ them — unless they are also passed to one of those.
 (`f"Analyse absente : {name}"`) is expected in the table as
 `"Analyse absente : {}"`.
 """
+
 import argparse
 import ast
 import json
@@ -29,38 +30,123 @@ ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
 # Calls whose arguments are read by a human.
 SURFACE_CALLS = {
     # widgets built with their label
-    "QLabel", "QPushButton", "QCheckBox", "QRadioButton", "QGroupBox", "QToolButton",
-    "QAction", "QMenu", "QDialog", "QMessageBox", "QInputDialog", "QListWidgetItem",
-    "QTreeWidgetItem", "QTableWidgetItem", "QStandardItem", "QProgressDialog",
+    "QLabel",
+    "QPushButton",
+    "QCheckBox",
+    "QRadioButton",
+    "QGroupBox",
+    "QToolButton",
+    "QAction",
+    "QMenu",
+    "QDialog",
+    "QMessageBox",
+    "QInputDialog",
+    "QListWidgetItem",
+    "QTreeWidgetItem",
+    "QTableWidgetItem",
+    "QStandardItem",
+    "QProgressDialog",
     # text set after construction
-    "setText", "setWindowTitle", "setTitle", "setPlaceholderText", "setToolTip",
-    "setStatusTip", "setWhatsThis", "setAccessibleName", "setLabelText", "setMessage",
-    "setInformativeText", "setDetailedText", "setButtonText", "setTabText", "addTab",
-    "insertTab", "setTabToolTip", "setHorizontalHeaderLabels", "setVerticalHeaderLabels",
+    "setText",
+    "setWindowTitle",
+    "setTitle",
+    "setPlaceholderText",
+    "setToolTip",
+    "setStatusTip",
+    "setWhatsThis",
+    "setAccessibleName",
+    "setLabelText",
+    "setMessage",
+    "setInformativeText",
+    "setDetailedText",
+    "setButtonText",
+    "setTabText",
+    "addTab",
+    "insertTab",
+    "setTabToolTip",
+    "setHorizontalHeaderLabels",
+    "setVerticalHeaderLabels",
     # menus and toolbars
-    "addAction", "addMenu", "addSection", "addSeparator", "setShortcutText",
+    "addAction",
+    "addMenu",
+    "addSection",
+    "addSeparator",
+    "setShortcutText",
     # status and messages
-    "showMessage", "information", "warning", "critical", "question", "about",
-    "setWindowFilePath", "progress", "setFormat", "setCommitPageData",
+    "showMessage",
+    "information",
+    "warning",
+    "critical",
+    "question",
+    "about",
+    "setWindowFilePath",
+    "progress",
+    "setFormat",
+    "setCommitPageData",
     # lists, combos, tables
-    "addItem", "addItems", "addRow", "addRows", "appendRow", "setItemText",
-    "setCellWidget", "addWidget", "insertRow", "setColumnCount",
+    "addItem",
+    "addItems",
+    "addRow",
+    "addRows",
+    "appendRow",
+    "setItemText",
+    "setCellWidget",
+    "addWidget",
+    "insertRow",
+    "setColumnCount",
     # file dialogs
-    "getOpenFileName", "getSaveFileName", "getExistingDirectory", "getOpenFileNames",
+    "getOpenFileName",
+    "getSaveFileName",
+    "getExistingDirectory",
+    "getOpenFileNames",
     "getExistingDirectoryUrl",
     # our own helpers that end up on a surface
-    "action", "notify", "status", "label", "button", "message", "note", "hint",
-    "emit", "emit_status", "setStatusTip", "setWindowFilePath",
+    "action",
+    "notify",
+    "status",
+    "label",
+    "button",
+    "message",
+    "note",
+    "hint",
+    "emit",
+    "emit_status",
+    "setStatusTip",
+    "setWindowFilePath",
     # models built with their column titles
-    "Rows", "RowModel", "TableModel", "Model", "QStandardItemModel", "Columns",
-    "setHeaderLabels", "addToolBar", "addDockWidget", "setTabBar", "setTitle",
+    "Rows",
+    "RowModel",
+    "TableModel",
+    "Model",
+    "QStandardItemModel",
+    "Columns",
+    "setHeaderLabels",
+    "addToolBar",
+    "addDockWidget",
+    "setTabBar",
+    "setTitle",
 }
 
 # Calls that write text nobody reads in the interface.
 INTERNAL_CALLS = {
-    "info", "debug", "warning", "error", "exception", "critical", "log", "print",
-    "ValueError", "RuntimeError", "TypeError", "KeyError", "ValueError",
-    "AssertionError", "OSError", "FileNotFoundError", "Exception", "Error",
+    "info",
+    "debug",
+    "warning",
+    "error",
+    "exception",
+    "critical",
+    "log",
+    "print",
+    "ValueError",
+    "RuntimeError",
+    "TypeError",
+    "KeyError",
+    "ValueError",
+    "AssertionError",
+    "OSError",
+    "FileNotFoundError",
+    "Exception",
+    "Error",
 }
 
 ACCENTS = re.compile(r"[éèêàçùôîïûœÉÈÊÀÇÙÔÎÏÛŒ]")
@@ -69,33 +155,159 @@ ACCENTS = re.compile(r"[éèêàçùôîïûœÉÈÊÀÇÙÔÎÏÛŒ]")
 # (source, note, date, type, version, analyse) is no evidence either way, so it
 # stays out: a label identical in both languages needs no entry in the table.
 FRENCH_ONLY = {
-    "nom", "noms", "prénom", "statut", "état", "états", "hôte", "hôtes", "ligne",
-    "lignes", "texte", "textes", "famille", "familles", "collecte", "collectes",
-    "gravité", "étape", "étapes", "résumé", "résumés",
-    "détail", "détails", "valeur", "valeurs", "règle", "règles", "libellé",
-    "conséquence", "correction", "taille", "durée", "chemin", "empreinte",
-    "langue", "thème", "police", "recherche", "colonne", "colonnes", "tri",
-    "vue", "vues", "groupe", "groupes", "période", "début", "heure",
-    "fichier", "fichiers", "dossier", "dossiers", "lecteur", "lecteurs",
-    "sortie", "sorties", "résultat", "résultats", "signet", "signets",
-    "horodatage", "poids", "incident", "incidents", "alerte", "alertes",
-    "détection", "préférence", "préférences", "onglet", "onglets",
-    "barre", "barres", "panneau", "panneaux", "espace", "profil", "profils",
-    "dépendance", "dépendances", "éléments", "élément", "aucun", "aucune",
-    "toutes", "tous", "depuis", "dans", "pour", "avec", "entre", "vers",
-    "être", "avoir", "fait", "faire", "impossible", "échec", "déjà",
-    "ouvert", "ouverte", "ouverts", "fermé", "fermée", "fermés", "actif",
-    "attention", "voulez", "choisir", "choisissez", "importer", "exporter",
-    "enregistrer", "ouvrir", "fermer", "supprimer", "ajouter", "rechercher",
-    "niveau", "niveaux", "largeur", "hauteur", "couleur", "couleurs", "police",
-    "précisé", "précisée", "ignoré", "ignorés", "reconnu", "reconnus", "réussi",
-    "réussis", "élevée", "moyenne", "faible", "vérifier", "vérifiés", "créé",
-    "créés", "modifié", "dernière", "premier", "première", "suivant", "précédent",
+    "nom",
+    "noms",
+    "prénom",
+    "statut",
+    "état",
+    "états",
+    "hôte",
+    "hôtes",
+    "ligne",
+    "lignes",
+    "texte",
+    "textes",
+    "famille",
+    "familles",
+    "collecte",
+    "collectes",
+    "gravité",
+    "étape",
+    "étapes",
+    "résumé",
+    "résumés",
+    "détail",
+    "détails",
+    "valeur",
+    "valeurs",
+    "règle",
+    "règles",
+    "libellé",
+    "conséquence",
+    "correction",
+    "taille",
+    "durée",
+    "chemin",
+    "empreinte",
+    "langue",
+    "thème",
+    "police",
+    "recherche",
+    "colonne",
+    "colonnes",
+    "tri",
+    "vue",
+    "vues",
+    "groupe",
+    "groupes",
+    "période",
+    "début",
+    "heure",
+    "fichier",
+    "fichiers",
+    "dossier",
+    "dossiers",
+    "lecteur",
+    "lecteurs",
+    "sortie",
+    "sorties",
+    "résultat",
+    "résultats",
+    "signet",
+    "signets",
+    "horodatage",
+    "poids",
+    "incident",
+    "incidents",
+    "alerte",
+    "alertes",
+    "détection",
+    "préférence",
+    "préférences",
+    "onglet",
+    "onglets",
+    "barre",
+    "barres",
+    "panneau",
+    "panneaux",
+    "espace",
+    "profil",
+    "profils",
+    "dépendance",
+    "dépendances",
+    "éléments",
+    "élément",
+    "aucun",
+    "aucune",
+    "toutes",
+    "tous",
+    "depuis",
+    "dans",
+    "pour",
+    "avec",
+    "entre",
+    "vers",
+    "être",
+    "avoir",
+    "fait",
+    "faire",
+    "impossible",
+    "échec",
+    "déjà",
+    "ouvert",
+    "ouverte",
+    "ouverts",
+    "fermé",
+    "fermée",
+    "fermés",
+    "actif",
+    "attention",
+    "voulez",
+    "choisir",
+    "choisissez",
+    "importer",
+    "exporter",
+    "enregistrer",
+    "ouvrir",
+    "fermer",
+    "supprimer",
+    "ajouter",
+    "rechercher",
+    "niveau",
+    "niveaux",
+    "largeur",
+    "hauteur",
+    "couleur",
+    "couleurs",
+    "police",
+    "précisé",
+    "précisée",
+    "ignoré",
+    "ignorés",
+    "reconnu",
+    "reconnus",
+    "réussi",
+    "réussis",
+    "élevée",
+    "moyenne",
+    "faible",
+    "vérifier",
+    "vérifiés",
+    "créé",
+    "créés",
+    "modifié",
+    "dernière",
+    "premier",
+    "première",
+    "suivant",
+    "précédent",
 }
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 # Database expressions, file filters and paths are not interface text.
-CODE_LIKE = re.compile(r"CASE WHEN|\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b"
-                       r"|regexp_|try_cast|::|\bFROM\b|\bWHERE\b|\*/")
+CODE_LIKE = re.compile(
+    r"CASE WHEN|\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b"
+    r"|regexp_|try_cast|::|\bFROM\b|\bWHERE\b|\*/"
+)
 FILE_LIKE = re.compile(r"\*\.[A-Za-z]|^[.\\/]|[A-Za-z]:\\")
 
 
@@ -146,8 +358,12 @@ def strings_in(path):
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             body = getattr(node, "body", [])
-            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) \
-                    and isinstance(body[0].value.value, str):
+            if (
+                body
+                and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+                and isinstance(body[0].value.value, str)
+            ):
                 docstrings.add(id(body[0].value))
 
     parents = {}
@@ -157,7 +373,11 @@ def strings_in(path):
 
     found = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) in docstrings:
+        if (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and id(node) in docstrings
+        ):
             continue
         # A literal piece of an f-string is not a label of its own: the whole
         # f-string is handled below, as a template with {} holes.
@@ -199,7 +419,11 @@ def inventory():
         if "__pycache__" in directory:
             continue
         for name in sorted(files):
-            if not name.endswith(".py") or name in ("i18n.py", "i18n_documents.py", "i18n_errors.py"):
+            if not name.endswith(".py") or name in (
+                "i18n.py",
+                "i18n_documents.py",
+                "i18n_errors.py",
+            ):
                 continue
             path = os.path.join(directory, name)
             relative = os.path.relpath(path, ROOT)
@@ -211,6 +435,7 @@ def inventory():
 def missing():
     """Surface strings with no English entry, templates included."""
     from fireblade.core.i18n import EN, has_english
+
     result = {}
     for text, files in inventory().items():
         if has_english(text):
@@ -223,10 +448,13 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--missing", action="store_true", help="one untranslated string per line")
     parser.add_argument("--by-file", action="store_true", help="count per source file")
-    parser.add_argument("--write-baseline", metavar="PATH", help="record what is still untranslated")
+    parser.add_argument(
+        "--write-baseline", metavar="PATH", help="record what is still untranslated"
+    )
     args = parser.parse_args(argv)
 
     from fireblade.core.i18n import EN
+
     everything = inventory()
     absent = missing()
 

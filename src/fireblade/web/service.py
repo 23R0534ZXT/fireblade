@@ -8,6 +8,7 @@ a session file listing the analyses, and one DuckDB file per analysis. The web
 service only reads that structure and never rewrites it, so a case created on
 Windows opens here and the other way round.
 """
+
 from __future__ import annotations
 
 import csv
@@ -36,8 +37,21 @@ from fireblade.web import english
 META_COLUMNS = ["__row_id"]
 
 OPERATORS = {
-    "contains", "starts", "ends", "eq", "ne", "empty", "not_empty",
-    "gt", "ge", "lt", "le", "date_after", "date_eq", "date_ne", "date_before",
+    "contains",
+    "starts",
+    "ends",
+    "eq",
+    "ne",
+    "empty",
+    "not_empty",
+    "gt",
+    "ge",
+    "lt",
+    "le",
+    "date_after",
+    "date_eq",
+    "date_ne",
+    "date_before",
 }
 
 
@@ -65,8 +79,12 @@ class Library:
 
     MAX_OPEN = 4
 
-    def __init__(self, root: str | Path, tools_root: str | Path | None = None,
-                 plugins_root: str | Path | None = None):
+    def __init__(
+        self,
+        root: str | Path,
+        tools_root: str | Path | None = None,
+        plugins_root: str | Path | None = None,
+    ):
         self.root = Path(root).resolve()
         self.tools_root = Path(tools_root).resolve() if tools_root else None
         # Presentation profiles live outside the cases: an instance-level setting,
@@ -144,17 +162,19 @@ class Library:
             recorded = str(document["path"])
             resolved = self._resolve_analysis(folder, recorded)
             source = document.get("source") or {}
-            entries.append({
-                "index": index,
-                "source_info": source if isinstance(source, dict) else {},
-                "label": self._label(source, resolved or recorded),
-                "path": str(resolved or ""),
-                "recorded_path": recorded,
-                "found": resolved is not None,
-                "source": str(source.get("path", "")) if isinstance(source, dict) else "",
-                "view": document.get("view") if isinstance(document.get("view"), dict) else {},
-                "active": index == active,
-            })
+            entries.append(
+                {
+                    "index": index,
+                    "source_info": source if isinstance(source, dict) else {},
+                    "label": self._label(source, resolved or recorded),
+                    "path": str(resolved or ""),
+                    "recorded_path": recorded,
+                    "found": resolved is not None,
+                    "source": str(source.get("path", "")) if isinstance(source, dict) else "",
+                    "view": document.get("view") if isinstance(document.get("view"), dict) else {},
+                    "active": index == active,
+                }
+            )
         return entries
 
     @staticmethod
@@ -181,7 +201,7 @@ class Library:
         if candidate.is_file():
             return candidate.resolve()
         if not candidate.is_absolute():
-            relative = (folder / candidate)
+            relative = folder / candidate
             if relative.is_file():
                 return relative.resolve()
         name = candidate.name
@@ -198,7 +218,6 @@ class Library:
                 break
         return matches[0].resolve() if len(matches) == 1 else None
 
-
     # -- attack graph ------------------------------------------------------
 
     def graph(self, identifier: str, navigator: bool = False) -> dict:
@@ -210,7 +229,9 @@ class Library:
         folder = self.library.folder(identifier)
         data = self.library.read(identifier)
         groups = {}
-        for csv_path in sorted((folder / "collections").glob("import-*/results/hayabusa-*/hayabusa.csv")):
+        for csv_path in sorted(
+            (folder / "collections").glob("import-*/results/hayabusa-*/hayabusa.csv")
+        ):
             with csv_path.open(encoding="utf-8", errors="replace", newline="") as stream:
                 for record in csv.DictReader(stream):
                     host = (record.get("Computer") or "").strip()
@@ -220,14 +241,21 @@ class Library:
                     key = f"{host}|{title}"
                     group = groups.get(key)
                     if group is None:
-                        groups[key] = Group(key=key, title=title, level=(record.get("Level") or "").strip(),
-                                            host=host, channel=(record.get("Channel") or "").strip(),
-                                            event_ids=((record.get("EventID") or "").strip(),),
-                                            tactics=(record.get("MitreTactics") or "").strip(),
-                                            techniques=(record.get("MitreTags") or "").strip(),
-                                            rule_id=(record.get("RuleID") or "").strip(),
-                                            rule_file=(record.get("RuleFile") or "").strip(),
-                                            start=None, end=None, count=1)
+                        groups[key] = Group(
+                            key=key,
+                            title=title,
+                            level=(record.get("Level") or "").strip(),
+                            host=host,
+                            channel=(record.get("Channel") or "").strip(),
+                            event_ids=((record.get("EventID") or "").strip(),),
+                            tactics=(record.get("MitreTactics") or "").strip(),
+                            techniques=(record.get("MitreTags") or "").strip(),
+                            rule_id=(record.get("RuleID") or "").strip(),
+                            rule_file=(record.get("RuleFile") or "").strip(),
+                            start=None,
+                            end=None,
+                            count=1,
+                        )
                     else:
                         group.count += 1
         try:
@@ -237,24 +265,35 @@ class Library:
         manual = (workspace.get("graph") or {}).get("nodes") or []
         if not groups and not (workspace.get("entities")) and not manual:
             # An empty graph is a state of the case, not a failure: the window says what to do.
-            message = ("No finding, no entity and no free node: run a detection, "
-                       "declare a machine, or add a node by hand.")
+            message = (
+                "No finding, no entity and no free node: run a detection, "
+                "declare a machine, or add a node by hand."
+            )
             if navigator:
                 raise ServiceError("Nothing to export: " + message[0].lower() + message[1:])
             return {"empty": True, "message": message, "nodes": [], "edges": [], "summary": {}}
         graph = ag.build(list(groups.values()), workspace)
         if navigator:
-            layer = ag.navigator_layer(graph, name=data.get("name") or "Fireblade",
-                                       description=data.get("description") or "",
-                                       case=data.get("name") or "")
+            layer = ag.navigator_layer(
+                graph,
+                name=data.get("name") or "Fireblade",
+                description=data.get("description") or "",
+                case=data.get("name") or "",
+            )
             target = self.root / "exports" / (identifier[:8] + "-attack-layer.json")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(json.dumps(layer, ensure_ascii=False, indent=2), encoding="utf-8")
-            return {"layer": str(target), "bytes": target.stat().st_size,
-                    "techniques": len((layer.get("techniques") or []))}
+            return {
+                "layer": str(target),
+                "bytes": target.stat().st_size,
+                "techniques": len((layer.get("techniques") or [])),
+            }
         positioned = ag.layout(graph)
-        return {"nodes": positioned.get("nodes", []), "edges": positioned.get("edges", []),
-                "groups": len(groups)}
+        return {
+            "nodes": positioned.get("nodes", []),
+            "edges": positioned.get("edges", []),
+            "groups": len(groups),
+        }
 
     def add_graph_node(self, identifier: str, label: str, tags=None, kind: str = "custom") -> dict:
         """Add a node the data does not carry, as the desktop's free node does.
@@ -287,7 +326,11 @@ class Library:
             raise ServiceError("Invalid Hayabusa level.")
         data = self.library.read(identifier)
         reports = sorted((self.library.folder(identifier) / "collections").glob("import-*"))
-        pack = ToolPack(Path(self.tools_root)) if self.tools_root else ToolPack(Path(tempfile.gettempdir()) / "pack")
+        pack = (
+            ToolPack(Path(self.tools_root))
+            if self.tools_root
+            else ToolPack(Path(tempfile.gettempdir()) / "pack")
+        )
         results = []
         usable = [item for item in reports if (item / "collection.json").is_file()]
         for position, entry in enumerate(usable, start=1):
@@ -299,7 +342,10 @@ class Library:
                 # Every parser message of the run goes through this hook: the rule
                 # pack, the EVTX files, the alert count.
                 collection.emit_text = progress
-            has_evtx = any("EvtxECmd" in (item.get("tools") or []) for item in collection.report.get("files") or [])
+            has_evtx = any(
+                "EvtxECmd" in (item.get("tools") or [])
+                for item in collection.report.get("files") or []
+            )
             if not has_evtx:
                 continue
             collection.analyze(min_level, rules_base=self._rules_base())
@@ -310,13 +356,18 @@ class Library:
             analysis_index = None
             try:
                 self._merge_session(identifier, entry / "collection.fireblade-session")
-                alerts = (detection.get("analysis")
-                          or ((detection.get("outputs") or [{}])[0].get("analysis")))
+                alerts = detection.get("analysis") or (
+                    (detection.get("outputs") or [{}])[0].get("analysis")
+                )
                 analysis_index = self._analysis_index_of(identifier, alerts or "")
             except (OSError, ValueError, ServiceError):
                 analysis_index = None
             rows = []
-            outputs = [Path(str(item)) for item in (detection.get("outputs") or []) if Path(str(item)).is_file()]
+            outputs = [
+                Path(str(item))
+                for item in (detection.get("outputs") or [])
+                if Path(str(item)).is_file()
+            ]
             if not outputs:
                 # The run writes its CSV beside its inputs; the detection record
                 # only names it when the caller asked for per-file outputs.
@@ -326,34 +377,68 @@ class Library:
                     continue
                 with path.open(encoding="utf-8", errors="replace", newline="") as stream:
                     for record in csv.DictReader(stream):
-                        rows.append({key: record.get(key, "") for key in
-                                     ("Timestamp", "RuleTitle", "Level", "Computer", "Channel",
-                                      "EventID", "MitreTactics", "MitreTags", "Details")})
+                        rows.append(
+                            {
+                                key: record.get(key, "")
+                                for key in (
+                                    "Timestamp",
+                                    "RuleTitle",
+                                    "Level",
+                                    "Computer",
+                                    "Channel",
+                                    "EventID",
+                                    "MitreTactics",
+                                    "MitreTags",
+                                    "Details",
+                                )
+                            }
+                        )
             # The engine writes one line per rule that fired on the same event: the
             # grid shows the event once, with the first rule that named it.
             seen = set()
             unique = []
             for row in rows:
-                key = (row.get("Timestamp"), row.get("RuleTitle"), row.get("Computer"), row.get("EventID"))
+                key = (
+                    row.get("Timestamp"),
+                    row.get("RuleTitle"),
+                    row.get("Computer"),
+                    row.get("EventID"),
+                )
                 if key in seen:
                     continue
                 seen.add(key)
                 unique.append(row)
             rows = unique
-            outputs = [dict(item) for item in (detection.get("outputs") or [])
-                       if isinstance(item, dict)]
-            results.append({"collection": entry.name, "status": detection.get("status"),
-                            "summary": detection.get("summary") or {},
-                            "warnings": (detection.get("warnings") or [])[:20],
-                            "findings": rows[:2000], "total": len(rows),
-                            "analysis": analysis_index,
-                            "sources": str(outputs[0].get("csv") or "") if outputs else ""})
+            outputs = [
+                dict(item) for item in (detection.get("outputs") or []) if isinstance(item, dict)
+            ]
+            results.append(
+                {
+                    "collection": entry.name,
+                    "status": detection.get("status"),
+                    "summary": detection.get("summary") or {},
+                    "warnings": (detection.get("warnings") or [])[:20],
+                    "findings": rows[:2000],
+                    "total": len(rows),
+                    "analysis": analysis_index,
+                    "sources": str(outputs[0].get("csv") or "") if outputs else "",
+                }
+            )
         if not results:
             raise ServiceError("No import of this case carries an EVTX journal to analyse.")
         merged = [finding for item in results for finding in item["findings"]]
-        return {"runs": results, "findings": merged[:2000], "total": sum(item["total"] for item in results)}
-    FINDING_COLUMNS = (("Timestamp", "TimeCreated"), ("Computer", "Hostname"),
-                       ("EventID", "EventId"), ("RuleTitle",))
+        return {
+            "runs": results,
+            "findings": merged[:2000],
+            "total": sum(item["total"] for item in results),
+        }
+
+    FINDING_COLUMNS = (
+        ("Timestamp", "TimeCreated"),
+        ("Computer", "Hostname"),
+        ("EventID", "EventId"),
+        ("RuleTitle",),
+    )
 
     def _analysis_index_of(self, identifier: str, path: str | Path) -> int | None:
         """Where a document sits in the case session, or None when it is not open."""
@@ -373,8 +458,9 @@ class Library:
                 return position
         return None
 
-    def bookmark_finding(self, identifier: str, index: int, finding: dict,
-                         note: str | None = None) -> dict:
+    def bookmark_finding(
+        self, identifier: str, index: int, finding: dict, note: str | None = None
+    ) -> dict:
         """Mark every row of an alert analysis that the finding names.
 
         The desktop marks the alerts of a finding in one gesture; this is the same
@@ -392,8 +478,14 @@ class Library:
                     break
             if not value:
                 continue
-            column = next((position for position, name in enumerate(headers)
-                           if name in {item.casefold() for item in names}), None)
+            column = next(
+                (
+                    position
+                    for position, name in enumerate(headers)
+                    if name in {item.casefold() for item in names}
+                ),
+                None,
+            )
             if column is not None:
                 filters.append(Filter(column, "eq", value))
         view = View(filters=filters)
@@ -444,25 +536,41 @@ class Library:
         if not 1 <= int(minutes) <= 1440:
             raise ServiceError("The context window is 1 to 1440 minutes.")
         case = self._case_for(identifier, index)
-        alert = {key: ("" if value is None else str(value))
-                 for key, value in self._row_values(case, row_id).items()}
+        alert = {
+            key: ("" if value is None else str(value))
+            for key, value in self._row_values(case, row_id).items()
+        }
         if not alert.get("Fireblade_EVTX_Source"):
             raise ServiceError("This row is not an alert: it carries no source EVTX reference.")
         folder = self._collection_of(case.path)
-        pack = (ToolPack(Path(self.tools_root)) if self.tools_root
-                else ToolPack(Path(tempfile.gettempdir()) / "pack"))
+        pack = (
+            ToolPack(Path(self.tools_root))
+            if self.tools_root
+            else ToolPack(Path(tempfile.gettempdir()) / "pack")
+        )
         # DuckDB refuses two connections with different configurations on one file.
         self.close_case(identifier)
         collection = Collection.reopen(folder, pack)
-        result = build_context(collection, alert, str(case.path), int(row_id),
-                              minutes=int(minutes))
+        result = build_context(collection, alert, str(case.path), int(row_id), minutes=int(minutes))
         self._merge_session(identifier, folder / "collection.fireblade-session")
         position = self._analysis_index_of(identifier, result.get("analysis"))
         if position is None:
             raise ServiceError("The context was built but the case could not open it.")
-        summary = {key: result[key] for key in
-                   ("rule", "level", "minutes", "references", "events", "truncated",
-                    "association", "machines", "timestamp") if key in result}
+        summary = {
+            key: result[key]
+            for key in (
+                "rule",
+                "level",
+                "minutes",
+                "references",
+                "events",
+                "truncated",
+                "association",
+                "machines",
+                "timestamp",
+            )
+            if key in result
+        }
         summary["analysis"] = position
         summary["notes"] = list(result.get("notes") or [])
         return summary
@@ -470,8 +578,10 @@ class Library:
     def alert_source_event(self, identifier: str, index: int, row_id: int) -> dict:
         """Where the event an alert came from lives, and how to filter on it."""
         case = self._case_for(identifier, index)
-        alert = {key: ("" if value is None else str(value))
-                 for key, value in self._row_values(case, row_id).items()}
+        alert = {
+            key: ("" if value is None else str(value))
+            for key, value in self._row_values(case, row_id).items()
+        }
         raw = alert.get("Fireblade_EVTX_Source") or ""
         try:
             paths = json.loads(raw) if raw.startswith("[") else [raw]
@@ -491,15 +601,22 @@ class Library:
             target = self._case_for(identifier, position)
             headers = [str(name) for name in target.headers]
             for name in ("EventRecordId", "RecordNumber", "RecordID"):
-                column = next((item for item in headers if item.casefold() == name.casefold()), None)
+                column = next(
+                    (item for item in headers if item.casefold() == name.casefold()), None
+                )
                 if column is None or not record:
                     continue
                 view = View(filters=[Filter(headers.index(column), "eq", record)])
                 with target.lock:
                     total = int(target.count(view))
                 if total:
-                    return {"analysis": position, "column": column, "value": record,
-                            "matches": total, "source": source}
+                    return {
+                        "analysis": position,
+                        "column": column,
+                        "value": record,
+                        "matches": total,
+                        "source": source,
+                    }
         raise ServiceError("The source event of this alert is not in any open analysis.")
 
     def detection_sources(self, identifier: str, collection: str) -> Path:
@@ -507,7 +624,10 @@ class Library:
         folder = self.library.folder(identifier) / "collections" / Path(str(collection)).name
         if not folder.is_dir():
             raise ServiceError("This collection does not exist in the case.")
-        for pattern in ("results/hayabusa-*/Alertes Hayabusa.csv", "results/hayabusa-*/hayabusa.csv"):
+        for pattern in (
+            "results/hayabusa-*/Alertes Hayabusa.csv",
+            "results/hayabusa-*/hayabusa.csv",
+        ):
             for path in sorted(folder.glob(pattern)):
                 if path.is_file():
                     return path
@@ -523,8 +643,11 @@ class Library:
         target.parent.mkdir(parents=True, exist_ok=True)
         self.close_case(identifier)
         result = archive_and_release(self.library, identifier, target)
-        return {"archive": str(target), "bytes": target.stat().st_size,
-                "removed_bytes": int(result.get("removed_bytes") or 0)}
+        return {
+            "archive": str(target),
+            "bytes": target.stat().st_size,
+            "removed_bytes": int(result.get("removed_bytes") or 0),
+        }
 
     def restore_case(self, identifier: str) -> dict:
         """Re-open an archive as a new case: the archive is the retained copy, and
@@ -536,8 +659,11 @@ class Library:
         result = restore_archive(self.library, identifier)
         case = result.get("case") or {}
         restored = self.library.case(case.get("id")) if case.get("id") else {}
-        return {"id": case.get("id"), "name": case.get("name"),
-                "analyses": len(restored.get("analyses") or [])}
+        return {
+            "id": case.get("id"),
+            "name": case.get("name"),
+            "analyses": len(restored.get("analyses") or []),
+        }
 
     # -- settings ----------------------------------------------------------
 
@@ -553,8 +679,11 @@ class Library:
                 readers[name] = bool(pack and pack.available(name))
             except Exception:
                 readers[name] = False
-        hayabusa = bool(pack and Path(self.tools_root or "") / "Hayabusa" / "hayabusa" and
-                        (Path(self.tools_root or "") / "Hayabusa" / "hayabusa").is_file())
+        hayabusa = bool(
+            pack
+            and Path(self.tools_root or "") / "Hayabusa" / "hayabusa"
+            and (Path(self.tools_root or "") / "Hayabusa" / "hayabusa").is_file()
+        )
         edition = os.environ.get("FIREBLADE_EDITION", "host")
         return {
             "cases_root": str(self.root),
@@ -562,8 +691,9 @@ class Library:
             # Where a destruction certificate goes, and whether the analyst may pick.
             # In the per-case edition the driver writes it, outside the volume: the
             # path shown is the one on the host, and it cannot be moved from here.
-            "certificate_folder": (os.environ.get("FIREBLADE_CERTIFICATES")
-                                   or str(self.root / "certificates")),
+            "certificate_folder": (
+                os.environ.get("FIREBLADE_CERTIFICATES") or str(self.root / "certificates")
+            ),
             "certificate_choice": edition != "case",
             "page_size": Case.PAGE_SIZE,
             # The action types come from the core, not from the window: a list
@@ -585,13 +715,15 @@ class Library:
 
         entries = []
         for profile in all_profiles():
-            entries.append({
-                "name": profile.name,
-                "signature": list(profile.signature),
-                "timestamps": list(profile.timestamp),
-                "booleans": list(profile.booleans),
-                "columns": list(profile.columns),
-            })
+            entries.append(
+                {
+                    "name": profile.name,
+                    "signature": list(profile.signature),
+                    "timestamps": list(profile.timestamp),
+                    "booleans": list(profile.booleans),
+                    "columns": list(profile.columns),
+                }
+            )
         entries.sort(key=lambda item: item["name"].casefold())
         return {"profiles": entries, "count": len(entries)}
 
@@ -607,11 +739,16 @@ class Library:
         base = self._rules_base()
         rows = hayabusa_rules.inventory(pack, base)
         if changed_only:
-            rows = [row for row in rows if row.get("source") == "user" or not row.get("enabled", True)]
-        return {"rules": rows, "count": len(rows),
-                "overrides": sum(1 for row in rows if row.get("source") == "user"),
-                "disabled": sum(1 for row in rows if not row.get("enabled", True)),
-                "base": str(base)}
+            rows = [
+                row for row in rows if row.get("source") == "user" or not row.get("enabled", True)
+            ]
+        return {
+            "rules": rows,
+            "count": len(rows),
+            "overrides": sum(1 for row in rows if row.get("source") == "user"),
+            "disabled": sum(1 for row in rows if not row.get("enabled", True)),
+            "base": str(base),
+        }
 
     def _hayabusa_rules_dir(self) -> Path:
         if not self.tools_root:
@@ -628,8 +765,9 @@ class Library:
         """Keep an override; the delivered pack is never touched."""
         from fireblade.core import hayabusa_rules
 
-        target = hayabusa_rules.save_rule(self._hayabusa_rules_dir(), name, text or "",
-                                          self._rules_base())
+        target = hayabusa_rules.save_rule(
+            self._hayabusa_rules_dir(), name, text or "", self._rules_base()
+        )
         return {"name": target.name, "path": str(target), "overridden": True}
 
     def reset_rule(self, name: str) -> dict:
@@ -660,9 +798,18 @@ class Library:
 
         directory = self._plugins_dir()
         loaded, errors = load_plugins(directory if directory.exists() else None)
-        files = sorted(path.name for path in directory.glob("*.json"))[:100] if directory.exists() else []
-        return {"directory": str(directory), "exists": directory.exists(),
-                "plugins": loaded, "errors": errors, "files": files}
+        files = (
+            sorted(path.name for path in directory.glob("*.json"))[:100]
+            if directory.exists()
+            else []
+        )
+        return {
+            "directory": str(directory),
+            "exists": directory.exists(),
+            "plugins": loaded,
+            "errors": errors,
+            "files": files,
+        }
 
     def install_plugin(self, payload: dict) -> dict:
         """Validate a presentation plugin and store it where the core will read it."""
@@ -677,11 +824,18 @@ class Library:
             raise ServiceError("A presentation plugin is limited to 2 MB.")
         directory = self._plugins_dir()
         directory.mkdir(parents=True, exist_ok=True)
-        target = directory / (hashlib.sha256(data["name"].encode("utf-8")).hexdigest()[:24] + ".json")
+        target = directory / (
+            hashlib.sha256(data["name"].encode("utf-8")).hexdigest()[:24] + ".json"
+        )
         write_json(target, data)
-        return {"name": data["name"], "path": str(target),
-                "fields": {key: len(data.get(key) or [])
-                           for key in ("signature", "columns", "timestamp", "booleans", "transforms")}}
+        return {
+            "name": data["name"],
+            "path": str(target),
+            "fields": {
+                key: len(data.get(key) or [])
+                for key in ("signature", "columns", "timestamp", "booleans", "transforms")
+            },
+        }
 
     def create_profile(self, identifier: str, index: int, name: str) -> dict:
         """Build a profile from an open analysis, as the desktop's dialog does.
@@ -700,12 +854,14 @@ class Library:
         if not headers:
             raise ServiceError("This analysis has no column to describe.")
         stamp = guess_time_column(headers)
-        payload = {"name": clean,
-                   "signature": headers[:min(3, len(headers))],
-                   "columns": headers,
-                   "timestamp": [headers[stamp]] if stamp is not None else [],
-                   "booleans": [],
-                   "transforms": []}
+        payload = {
+            "name": clean,
+            "signature": headers[: min(3, len(headers))],
+            "columns": headers,
+            "timestamp": [headers[stamp]] if stamp is not None else [],
+            "booleans": [],
+            "transforms": [],
+        }
         return self.install_plugin(payload)
 
     # -- portable case -----------------------------------------------------
@@ -740,16 +896,20 @@ class Library:
             # because the case moved is not a repaired analysis, and reporting it
             # as one would cry wolf on every case written on Windows.
             fingerprint = ("sha256", "size", "rows")
-            if recorded and any(str(recorded.get(key, "")) != str(info.get(key, ""))
-                                for key in fingerprint):
-                repaired.append({"path": str(path),
-                                 "recorded": str(recorded.get("sha256", "")),
-                                 "now": str(info.get("sha256", ""))})
+            if recorded and any(
+                str(recorded.get(key, "")) != str(info.get(key, "")) for key in fingerprint
+            ):
+                repaired.append(
+                    {
+                        "path": str(path),
+                        "recorded": str(recorded.get("sha256", "")),
+                        "now": str(info.get("sha256", "")),
+                    }
+                )
             snapshots.append(AnalysisSnapshot(path, info, View(), b""))
         return snapshots, repaired
 
-    def export_package(self, identifier: str, include_sources: bool = True,
-                       progress=None) -> dict:
+    def export_package(self, identifier: str, include_sources: bool = True, progress=None) -> dict:
         """Write the case as a portable .fireblade archive and hand back a URL."""
         from fireblade.core.case_package import export_package
 
@@ -769,13 +929,23 @@ class Library:
         # change while it is being packed, and the packer refuses that.
         target = self.root / "exports" / (identifier[:8] + ".fireblade")
         target.parent.mkdir(parents=True, exist_ok=True)
-        result = export_package(self.library, data, documents, active, target,
-                                include_sources=include_sources, include_case_files=True,
-                                max_bytes=4 * 1024**4)
-        return {"name": target.name, "bytes": target.stat().st_size,
-                "url": f"/api/cases/{identifier}/package/download",
-                "repaired": repaired,
-                "result": {k: str(v)[:120] for k, v in (result or {}).items()}}
+        result = export_package(
+            self.library,
+            data,
+            documents,
+            active,
+            target,
+            include_sources=include_sources,
+            include_case_files=True,
+            max_bytes=4 * 1024**4,
+        )
+        return {
+            "name": target.name,
+            "bytes": target.stat().st_size,
+            "url": f"/api/cases/{identifier}/package/download",
+            "repaired": repaired,
+            "result": {k: str(v)[:120] for k, v in (result or {}).items()},
+        }
 
     def package_file(self, identifier: str) -> Path:
         target = self.root / "exports" / (identifier[:8] + ".fireblade")
@@ -798,8 +968,7 @@ class Library:
                 written = len(self.case(case["id"]).get("analyses") or [])
             except (ServiceError, OSError, ValueError, KeyError):
                 pass
-        return {"id": case.get("id"), "name": case.get("name"),
-                "analyses": written}
+        return {"id": case.get("id"), "name": case.get("name"), "analyses": written}
 
     # -- cell notes --------------------------------------------------------
 
@@ -840,11 +1009,16 @@ class Library:
 
     def save_display(self, identifier: str, index: int, layout: dict) -> dict:
         clean = {
-            "widths": {str(key): int(value) for key, value in (layout.get("widths") or {}).items()
-                       if str(key).isdigit() and int(value) > 0},
+            "widths": {
+                str(key): int(value)
+                for key, value in (layout.get("widths") or {}).items()
+                if str(key).isdigit() and int(value) > 0
+            },
             "hidden": [int(value) for value in layout.get("hidden") or [] if int(value) >= 0],
             "pinned": [int(value) for value in layout.get("pinned") or [] if int(value) >= 0],
-            "pinned_right": [int(value) for value in layout.get("pinned_right") or [] if int(value) >= 0],
+            "pinned_right": [
+                int(value) for value in layout.get("pinned_right") or [] if int(value) >= 0
+            ],
         }
         case = self._case_for(identifier, index)
         view = View(header_state=json.dumps(clean))
@@ -867,9 +1041,11 @@ class Library:
             raise ServiceError("Invalid view name (1 to 120 characters).")
         saved = View(
             search=str(view.get("search") or ""),
-            filters=[Filter(int(item["column"]), str(item["operator"]), str(item.get("value", "")))
-                     for item in view.get("filters") or []
-                     if str(item.get("operator")) in OPERATORS],
+            filters=[
+                Filter(int(item["column"]), str(item["operator"]), str(item.get("value", "")))
+                for item in view.get("filters") or []
+                if str(item.get("operator")) in OPERATORS
+            ],
             groups=[int(value) for value in view.get("groups") or []],
             sort_column=(int(view["sort"]) if view.get("sort") is not None else None),
             descending=bool(view.get("descending")),
@@ -886,10 +1062,18 @@ class Library:
             stored = case.views().get(name)
         if stored is None:
             raise ServiceError("View not found.")
-        return {"name": name, "search": stored.search,
-                "filters": [{"column": f.column, "operator": f.operator, "value": f.value} for f in stored.filters],
-                "groups": list(stored.groups), "sort": stored.sort_column,
-                "descending": stored.descending, "bookmarks_only": stored.bookmarks_only}
+        return {
+            "name": name,
+            "search": stored.search,
+            "filters": [
+                {"column": f.column, "operator": f.operator, "value": f.value}
+                for f in stored.filters
+            ],
+            "groups": list(stored.groups),
+            "sort": stored.sort_column,
+            "descending": stored.descending,
+            "bookmarks_only": stored.bookmarks_only,
+        }
 
     # -- colour rules ------------------------------------------------------
 
@@ -925,7 +1109,9 @@ class Library:
             "middle_color": getattr(rule, "middle_color", "#ffffbf"),
             "negative_color": getattr(rule, "negative_color", "#d64c4c"),
             "zero_based": bool(getattr(rule, "zero_based", False)),
-            "icon_thresholds": [str(value) for value in (getattr(rule, "icon_thresholds", []) or [])],
+            "icon_thresholds": [
+                str(value) for value in (getattr(rule, "icon_thresholds", []) or [])
+            ],
             "icon_threshold_mode": getattr(rule, "icon_threshold_mode", "percent") or "percent",
             "icon_colors": list(getattr(rule, "icon_colors", []) or []),
             "icon_set": getattr(rule, "icon_set", "circles") or "circles",
@@ -974,8 +1160,16 @@ class Library:
     # An icon threshold is read against the value or against the position in the scale.
     THRESHOLD_MODES = ("number", "percent", "percentile")
 
-    STATISTICS = ("top", "bottom", "above_avg", "below_avg", "above_eq_avg",
-                  "below_eq_avg", "unique", "duplicate")
+    STATISTICS = (
+        "top",
+        "bottom",
+        "above_avg",
+        "below_avg",
+        "above_eq_avg",
+        "below_eq_avg",
+        "unique",
+        "duplicate",
+    )
 
     def _resolve_statistic(self, case, rule) -> dict | None:
         """What a statistic selects, computed once over the analysis' own rows."""
@@ -1000,22 +1194,31 @@ class Library:
         with case.lock:
             try:
                 if statistic in ("top", "bottom", "unique", "duplicate"):
-                    having = {"unique": " HAVING count(*) = 1",
-                              "duplicate": " HAVING count(*) > 1"}.get(statistic, "")
+                    having = {
+                        "unique": " HAVING count(*) = 1",
+                        "duplicate": " HAVING count(*) > 1",
+                    }.get(statistic, "")
                     order = "count(*) DESC" if statistic in ("top", "duplicate") else "count(*) ASC"
                     rows = case.db.execute(
                         f"SELECT {expression} AS v, count(*) AS c FROM events "
-                        f"GROUP BY 1{having} ORDER BY {order}, 1 LIMIT ?", [rank]).fetchall()
+                        f"GROUP BY 1{having} ORDER BY {order}, 1 LIMIT ?",
+                        [rank],
+                    ).fetchall()
                     values = ["" if value is None else str(value) for value, _count in rows]
                     return {"statistic": statistic, "values": values}
                 rows = case.db.execute(
-                    f"SELECT avg(TRY_CAST({expression} AS DOUBLE)) FROM events").fetchone()
+                    f"SELECT avg(TRY_CAST({expression} AS DOUBLE)) FROM events"
+                ).fetchone()
                 average = rows[0] if rows else None
                 if average is None:
                     return None
                 compare = "ge" if statistic in ("above_avg", "above_eq_avg") else "le"
-                return {"statistic": statistic, "threshold": float(average), "compare": compare,
-                        "strict": statistic in ("above_avg", "below_avg")}
+                return {
+                    "statistic": statistic,
+                    "threshold": float(average),
+                    "compare": compare,
+                    "strict": statistic in ("above_avg", "below_avg"),
+                }
             except (OSError, ValueError, TypeError):
                 return None
 
@@ -1061,11 +1264,18 @@ class Library:
             adapted, skipped = book.adapt(headers)
             applied = sum(1 for rule in adapted if rule.enabled)
             effective = [self._rule_payload(rule) for rule in adapted if rule.enabled]
-        return {"path": str(self._global_rules_path()), "enabled": enabled,
-                "stored": len(book.rules), "applied": applied,
-                "rules": self._book_payload(book), "book_headers": list(book.headers),
-                "effective": effective,
-                "skipped": list(skipped), "error": error, "case_headers": headers}
+        return {
+            "path": str(self._global_rules_path()),
+            "enabled": enabled,
+            "stored": len(book.rules),
+            "applied": applied,
+            "rules": self._book_payload(book),
+            "book_headers": list(book.headers),
+            "effective": effective,
+            "skipped": list(skipped),
+            "error": error,
+            "case_headers": headers,
+        }
 
     @staticmethod
     def _book_payload(book) -> list:
@@ -1076,7 +1286,11 @@ class Library:
             column, target = payload.get("column"), payload.get("target")
 
             def name_of(value):
-                return book.headers[value] if isinstance(value, int) and 0 <= value < len(book.headers) else None
+                return (
+                    book.headers[value]
+                    if isinstance(value, int) and 0 <= value < len(book.headers)
+                    else None
+                )
 
             payload["column_name"] = name_of(column)
             payload["target_name"] = name_of(target)
@@ -1092,7 +1306,11 @@ class Library:
         book, _error, store = self._global_rules_book()
         names = list(book.headers)
         for name in headers or []:
-            if isinstance(name, str) and name and name.casefold() not in {item.casefold() for item in names}:
+            if (
+                isinstance(name, str)
+                and name
+                and name.casefold() not in {item.casefold() for item in names}
+            ):
                 names.append(name)
         cleaned = []
         for item in rules or []:
@@ -1119,6 +1337,7 @@ class Library:
             tree = item.get("condition")
             if isinstance(tree, dict) and "children" in tree:
                 from fireblade.core.models import condition_from_dict
+
                 try:
                     condition = condition_from_dict(tree)
                 except (ValueError, TypeError) as exc:
@@ -1126,15 +1345,19 @@ class Library:
                 if not isinstance(condition, FilterGroup):
                     condition = FilterGroup("and", [condition])
             else:
-                condition = FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))])
-            cleaned.append(FormatRule(
-                condition=condition,
-                background=str(item.get("background") or "#fce2e2"),
-                foreground=str(item.get("foreground") or "#202020"),
-                bold=bool(item.get("bold")),
-                target=target if isinstance(target, int) else None,
-                enabled=bool(item.get("enabled", True)),
-            ))
+                condition = FilterGroup(
+                    "and", [Filter(column, operator, str(item.get("value", "")))]
+                )
+            cleaned.append(
+                FormatRule(
+                    condition=condition,
+                    background=str(item.get("background") or "#fce2e2"),
+                    foreground=str(item.get("foreground") or "#202020"),
+                    bold=bool(item.get("bold")),
+                    target=target if isinstance(target, int) else None,
+                    enabled=bool(item.get("enabled", True)),
+                )
+            )
         fresh = RuleBook(names, cleaned, dict(book.functions))
         store.save(fresh)
         return {"saved": len(fresh.rules), "path": str(self._global_rules_path())}
@@ -1197,6 +1420,7 @@ class Library:
             tree = item.get("condition")
             if isinstance(tree, dict) and "children" in tree:
                 from fireblade.core.models import condition_from_dict
+
                 try:
                     condition = condition_from_dict(tree)
                 except (ValueError, TypeError) as exc:
@@ -1204,33 +1428,37 @@ class Library:
                 if not isinstance(condition, FilterGroup):
                     condition = FilterGroup("and", [condition])
             else:
-                condition = FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))])
-            cleaned.append(FormatRule(
-                condition=condition,
-                background=str(item.get("background") or "#fce2e2"),
-                foreground=str(item.get("foreground") or "#202020"),
-                bold=bool(item.get("bold")),
-                target=item.get("target"),
-                enabled=bool(item.get("enabled", True)),
-                statistic=statistic,
-                stat_rank=str(item.get("stat_rank") or "10"),
-                stat_ignore_case=bool(item.get("stat_ignore_case")),
-                value_column=value_column,
-                visual=visual,
-                minimum=str(item.get("minimum") or "0"),
-                maximum=str(item.get("maximum") or "100"),
-                bound_mode=bound_mode,
-                middle_value=str(item.get("middle_value") or "50"),
-                middle_mode=middle_mode,
-                middle_color=str(item.get("middle_color") or "#ffffbf"),
-                negative_color=str(item.get("negative_color") or "#d64c4c"),
-                zero_based=bool(item.get("zero_based")),
-                icon_thresholds=[str(value) for value in (item.get("icon_thresholds") or [])],
-                icon_threshold_mode=threshold_mode,
-                icon_colors=[str(value) for value in (item.get("icon_colors") or [])],
-                icon_set=str(item.get("icon_set") or "circles"),
-                show_values=bool(item.get("show_values", True)),
-            ))
+                condition = FilterGroup(
+                    "and", [Filter(column, operator, str(item.get("value", "")))]
+                )
+            cleaned.append(
+                FormatRule(
+                    condition=condition,
+                    background=str(item.get("background") or "#fce2e2"),
+                    foreground=str(item.get("foreground") or "#202020"),
+                    bold=bool(item.get("bold")),
+                    target=item.get("target"),
+                    enabled=bool(item.get("enabled", True)),
+                    statistic=statistic,
+                    stat_rank=str(item.get("stat_rank") or "10"),
+                    stat_ignore_case=bool(item.get("stat_ignore_case")),
+                    value_column=value_column,
+                    visual=visual,
+                    minimum=str(item.get("minimum") or "0"),
+                    maximum=str(item.get("maximum") or "100"),
+                    bound_mode=bound_mode,
+                    middle_value=str(item.get("middle_value") or "50"),
+                    middle_mode=middle_mode,
+                    middle_color=str(item.get("middle_color") or "#ffffbf"),
+                    negative_color=str(item.get("negative_color") or "#d64c4c"),
+                    zero_based=bool(item.get("zero_based")),
+                    icon_thresholds=[str(value) for value in (item.get("icon_thresholds") or [])],
+                    icon_threshold_mode=threshold_mode,
+                    icon_colors=[str(value) for value in (item.get("icon_colors") or [])],
+                    icon_set=str(item.get("icon_set") or "circles"),
+                    show_values=bool(item.get("show_values", True)),
+                )
+            )
         case = self._case_for(identifier, index)
         view = View(format_rules=cleaned)
         with case.lock:
@@ -1267,7 +1495,9 @@ class Library:
             # column: the first value that looks like an executable names it.
             for value in values:
                 text = str(value or "")
-                found = re.search(r"[A-Za-z]:\\[^\"<>|\r\n]{1,240}?\.exe", text) or re.search(r"\b[\w.-]{1,80}\.exe\b", text, re.I)
+                found = re.search(r"[A-Za-z]:\\[^\"<>|\r\n]{1,240}?\.exe", text) or re.search(
+                    r"\b[\w.-]{1,80}\.exe\b", text, re.I
+                )
                 if not found:
                     continue
                 raw = found.group(0)
@@ -1280,8 +1510,14 @@ class Library:
                         moment = str(values[index] or "")
                     if not host and lowered in ("computer", "computername", "hostname"):
                         host = str(values[index] or "")
-                anchor = {"token": name, "host": host, "parent": "", "moment": moment,
-                          "process": name, "command": text[:400]}
+                anchor = {
+                    "token": name,
+                    "host": host,
+                    "parent": "",
+                    "moment": moment,
+                    "process": name,
+                    "command": text[:400],
+                }
                 break
         if not anchor:
             raise ServiceError("This row names neither a process nor a command to look for.")
@@ -1292,19 +1528,37 @@ class Library:
             other = self._case_for(identifier, entry["index"])
             with other.lock:
                 columns = list(other.headers)
-                process_index = next((i for i, name in enumerate(columns)
-                                      if name.lower() in ("image", "newprocessname", "processname",
-                                                          "parentprocessname", "creatorprocessname")), None)
+                process_index = next(
+                    (
+                        i
+                        for i, name in enumerate(columns)
+                        if name.lower()
+                        in (
+                            "image",
+                            "newprocessname",
+                            "processname",
+                            "parentprocessname",
+                            "creatorprocessname",
+                        )
+                    ),
+                    None,
+                )
                 search_view = View(search=anchor["token"])
                 found = other.page(search_view, offset=0, limit=200)
                 for row in found:
                     pieces = row[1:]
-                    moment = str(pieces[process_index]) if process_index is not None and process_index < len(pieces) else ""
-                    matches.append({
-                        "analysis": entry["label"],
-                        "row_id": json_value(row[0]),
-                        "cells": [json_value(value) for value in pieces],
-                    })
+                    moment = (
+                        str(pieces[process_index])
+                        if process_index is not None and process_index < len(pieces)
+                        else ""
+                    )
+                    matches.append(
+                        {
+                            "analysis": entry["label"],
+                            "row_id": json_value(row[0]),
+                            "cells": [json_value(value) for value in pieces],
+                        }
+                    )
         return {"anchor": anchor, "matches": matches[:200], "total": len(matches)}
 
     # -- derived columns ---------------------------------------------------
@@ -1319,8 +1573,10 @@ class Library:
         if isinstance(definition.get("expression"), str):
             definition["expression"] = raw_expression(case, definition["expression"])
         if isinstance(definition.get("columns"), list):
-            definition["columns"] = [raw_name(case, name) if isinstance(name, str) else name
-                                     for name in definition["columns"]]
+            definition["columns"] = [
+                raw_name(case, name) if isinstance(name, str) else name
+                for name in definition["columns"]
+            ]
         clean = validate_definition(definition)
         with case.lock:
             case.add_derived_columns([clean])
@@ -1329,8 +1585,10 @@ class Library:
     def derived_columns(self, identifier: str, index: int) -> dict:
         case = self._case_for(identifier, index)
         with case.lock:
-            return {"derived": list(getattr(case, "derived", []) or []),
-                    "columns": META_COLUMNS + column_labels(case)}
+            return {
+                "derived": list(getattr(case, "derived", []) or []),
+                "columns": META_COLUMNS + column_labels(case),
+            }
 
     # -- import history ----------------------------------------------------
 
@@ -1342,7 +1600,11 @@ class Library:
         """
         folder = self.library.folder(identifier)
         collections = []
-        for entry in sorted((folder / "collections").glob("import-*")) if (folder / "collections").is_dir() else []:
+        for entry in (
+            sorted((folder / "collections").glob("import-*"))
+            if (folder / "collections").is_dir()
+            else []
+        ):
             report = entry / "collection.json"
             if not report.is_file():
                 continue
@@ -1352,25 +1614,29 @@ class Library:
                 continue
             files = []
             for item in data.get("files") or []:
-                files.append({
-                    "name": Path(str(item.get("path", ""))).name,
-                    "path": str(item.get("path", "")),
-                    "status": str(item.get("status", "")),
-                    "reason": str(item.get("reason") or item.get("error") or ""),
-                    "tools": list(item.get("tools") or []),
-                })
+                files.append(
+                    {
+                        "name": Path(str(item.get("path", ""))).name,
+                        "path": str(item.get("path", "")),
+                        "status": str(item.get("status", "")),
+                        "reason": str(item.get("reason") or item.get("error") or ""),
+                        "tools": list(item.get("tools") or []),
+                    }
+                )
             counts = {}
             for item in files:
                 counts[item["status"]] = counts.get(item["status"], 0) + 1
-            collections.append({
-                "name": entry.name,
-                "status": str(data.get("status", "")),
-                "organization": data.get("organization", ""),
-                "source": str(data.get("source", "")),
-                "analyses": len(data.get("documents") or []),
-                "files": files,
-                "counts": counts,
-            })
+            collections.append(
+                {
+                    "name": entry.name,
+                    "status": str(data.get("status", "")),
+                    "organization": data.get("organization", ""),
+                    "source": str(data.get("source", "")),
+                    "analyses": len(data.get("documents") or []),
+                    "files": files,
+                    "counts": counts,
+                }
+            )
         return {"collections": collections}
 
     # -- import preview ----------------------------------------------------
@@ -1412,8 +1678,11 @@ class Library:
         candidates = (forced,) if forced in cls.CSV_DELIMITERS else cls.CSV_DELIMITERS
         for delimiter in candidates:
             try:
-                records = [record for record in csv.reader(text.splitlines(), delimiter=delimiter)
-                           if record and any(field.strip() for field in record)]
+                records = [
+                    record
+                    for record in csv.reader(text.splitlines(), delimiter=delimiter)
+                    if record and any(field.strip() for field in record)
+                ]
             except csv.Error:
                 continue
             if not records:
@@ -1451,22 +1720,38 @@ class Library:
                 with open(csv_path, "r", encoding="utf-8", newline="") as stream:
                     reader = csv.reader(stream)
                     header = next(reader, [])
-                    columns = [{"index": position, "name": str(name), "role": "column"}
-                               for position, name in enumerate(header)]
+                    columns = [
+                        {"index": position, "name": str(name), "role": "column"}
+                        for position, name in enumerate(header)
+                    ]
                     for row in reader:
                         if len(rows) >= self.PREVIEW_ROWS:
                             break
                         rows.append(list(row))
         except (OSError, ValueError, ImportError) as exc:
             raise ServiceError(f"This workbook cannot be read: {exc}") from exc
-        return {"kind": "table", "name": path.name, "path": str(path), "size": size,
-                "readers": ["native"], "profile": None, "columns": columns, "rows": rows,
-                "sheet": chosen, "sheets": names, "delimiter": ",", "encoding": "utf-8",
-                "note": (f"Sheet {chosen!r} of a workbook: formulas are read as text, "
-                         "and the styles and macros are not imported.")}
+        return {
+            "kind": "table",
+            "name": path.name,
+            "path": str(path),
+            "size": size,
+            "readers": ["native"],
+            "profile": None,
+            "columns": columns,
+            "rows": rows,
+            "sheet": chosen,
+            "sheets": names,
+            "delimiter": ",",
+            "encoding": "utf-8",
+            "note": (
+                f"Sheet {chosen!r} of a workbook: formulas are read as text, "
+                "and the styles and macros are not imported."
+            ),
+        }
 
-    def preview_source(self, source: str | Path, delimiter: str | None = None,
-                       encoding: str | None = None) -> dict:
+    def preview_source(
+        self, source: str | Path, delimiter: str | None = None, encoding: str | None = None
+    ) -> dict:
         """What reading this file would produce, before anything is written.
 
         The desktop lets the analyst look at the columns and the recognised profile
@@ -1491,9 +1776,14 @@ class Library:
                     except (OSError, ValueError):
                         tools = []
                     entries.append({"name": str(item.relative_to(path)), "readers": tools})
-            return {"kind": "folder", "name": path.name, "path": str(path),
-                    "files": entries, "count": len(entries),
-                    "note": "A folder is inventoried file by file: each format is read by its own reader."}
+            return {
+                "kind": "folder",
+                "name": path.name,
+                "path": str(path),
+                "files": entries,
+                "count": len(entries),
+                "note": "A folder is inventoried file by file: each format is read by its own reader.",
+            }
 
         size = path.stat().st_size
         if path.suffix.lower() in self.EXCEL_SUFFIXES:
@@ -1504,15 +1794,27 @@ class Library:
             tools = identify(path)
         except (OSError, ValueError) as exc:
             raise ServiceError(f"The file could not be identified: {exc}") from exc
-        preview = {"kind": "unknown", "name": path.name, "path": str(path), "size": size,
-                   "readers": tools, "profile": None, "columns": [], "rows": []}
+        preview = {
+            "kind": "unknown",
+            "name": path.name,
+            "path": str(path),
+            "size": size,
+            "readers": tools,
+            "profile": None,
+            "columns": [],
+            "rows": [],
+        }
         if not tools:
-            preview["note"] = "No reader recognises this file: it would be recorded as not imported, with its reason."
+            preview["note"] = (
+                "No reader recognises this file: it would be recorded as not imported, with its reason."
+            )
             return preview
         if tools != ["native"]:
             preview["kind"] = "artifact"
-            preview["note"] = ("The reader runs on import and writes its own columns; "
-                               "there is no profile to confirm before it reads.")
+            preview["note"] = (
+                "The reader runs on import and writes its own columns; "
+                "there is no profile to confirm before it reads."
+            )
             return preview
 
         from fireblade.core.csv_preamble import preamble_lines
@@ -1536,15 +1838,26 @@ class Library:
             preview["note"] = "The file carries no readable header."
             return preview
         headers = [str(name).strip() for name in records[0]]
-        rows = [[str(value)[:400] for value in record[:len(headers)]]
-                for record in records[1:1 + self.PREVIEW_ROWS]]
+        rows = [
+            [str(value)[:400] for value in record[: len(headers)]]
+            for record in records[1 : 1 + self.PREVIEW_ROWS]
+        ]
         from fireblade.core.profiles import detect_profile, profile_view, profile_transformations
 
         profile = detect_profile(headers)
-        columns = [{"index": index, "name": name, "role": "column"}
-                   for index, name in enumerate(headers)]
-        mapping = {"order": list(headers), "timestamps": [], "booleans": [],
-                   "derived": [], "sort": None, "format_rules": 0, "matched": [], "missing": []}
+        columns = [
+            {"index": index, "name": name, "role": "column"} for index, name in enumerate(headers)
+        ]
+        mapping = {
+            "order": list(headers),
+            "timestamps": [],
+            "booleans": [],
+            "derived": [],
+            "sort": None,
+            "format_rules": 0,
+            "matched": [],
+            "missing": [],
+        }
         if profile is not None:
             view, order = profile_view(profile, headers)
             in_file = {name.casefold() for name in headers}
@@ -1554,11 +1867,19 @@ class Library:
             mapping["sort"] = headers[view.sort_column] if view.sort_column is not None else None
             mapping["format_rules"] = len(view.format_rules)
             mapping["matched"] = [name for name in profile.signature if name.casefold() in in_file]
-            mapping["missing"] = [name for name in profile.columns if name.casefold() not in in_file]
+            mapping["missing"] = [
+                name for name in profile.columns if name.casefold() not in in_file
+            ]
             mapping["derived"] = [
-                {"name": item.get("name"), "operation": item.get("operation"),
-                 "columns": list(item.get("columns") or []), "format": item.get("format", "")}
-                for item in profile_transformations(profile, [h for h in headers if not h.startswith("Fireblade_")])
+                {
+                    "name": item.get("name"),
+                    "operation": item.get("operation"),
+                    "columns": list(item.get("columns") or []),
+                    "format": item.get("format", ""),
+                }
+                for item in profile_transformations(
+                    profile, [h for h in headers if not h.startswith("Fireblade_")]
+                )
             ]
             roles = {name.casefold(): "timestamp" for name in mapping["timestamps"]}
             roles.update({name.casefold(): "boolean" for name in mapping["booleans"]})
@@ -1566,12 +1887,16 @@ class Library:
                 column["role"] = roles.get(column["name"].casefold(), "column")
             preview["kind"] = "table"
             preview["profile"] = profile.name
-            preview["note"] = (f"Recognised profile: {profile.name}. "
-                               "The same mapping the import will apply is shown below.")
+            preview["note"] = (
+                f"Recognised profile: {profile.name}. "
+                "The same mapping the import will apply is shown below."
+            )
         else:
             preview["kind"] = "table"
-            preview["note"] = ("No declared profile matches these headers: the file is read as a "
-                               "plain table, with no timestamp or boolean mapping.")
+            preview["note"] = (
+                "No declared profile matches these headers: the file is read as a "
+                "plain table, with no timestamp or boolean mapping."
+            )
         preview["delimiter"] = {"\t": "tab", ",": "comma", ";": "semicolon", "|": "pipe"}[delimiter]
         preview["encoding"] = chosen
         preview["encoding_detected"] = detected
@@ -1600,18 +1925,35 @@ class Library:
                 rows = []
                 if count:
                     for row in case.page(view, offset=0, limit=min(limit, 50)):
-                        rows.append({
-                            "row_id": json_value(row[0]),
-                            "cells": [json_value(value) for value in row[1:]],
-                        })
-            results.append({"index": entry["index"], "label": entry["label"],
-                            "count": count, "rows": rows})
+                        rows.append(
+                            {
+                                "row_id": json_value(row[0]),
+                                "cells": [json_value(value) for value in row[1:]],
+                            }
+                        )
+            results.append(
+                {"index": entry["index"], "label": entry["label"], "count": count, "rows": rows}
+            )
         return {"text": needle, "total": total, "analyses": results}
 
     # -- actions and tracking ----------------------------------------------
 
-    ACTION_COLUMNS = ("id", "title", "detail", "owner", "status", "priority", "type",
-                      "intervenant", "date", "due", "machine", "reference", "tags", "closed")
+    ACTION_COLUMNS = (
+        "id",
+        "title",
+        "detail",
+        "owner",
+        "status",
+        "priority",
+        "type",
+        "intervenant",
+        "date",
+        "due",
+        "machine",
+        "reference",
+        "tags",
+        "closed",
+    )
 
     def actions_csv(self, identifier: str) -> str:
         """The action tracking as a spreadsheet, one row per action.
@@ -1643,14 +1985,39 @@ class Library:
         data = load(folder)
         return {
             "revision": data.get("revision"),
-            "actions": [{key: item.get(key) for key in
-                         ("id", "title", "detail", "owner", "status", "priority", "type",
-                          "intervenant", "date", "due", "machine", "reference", "tags", "closed")}
-                        for item in data.get("actions", [])],
-            "entities": [{key: item.get(key) for key in ("id", "kind", "label", "hostname", "ip", "os", "notes", "tags")}
-                         for item in data.get("entities", [])],
-            "iocs": [{key: item.get(key) for key in ("id", "value", "kind", "label", "status")}
-                     for item in data.get("iocs", [])],
+            "actions": [
+                {
+                    key: item.get(key)
+                    for key in (
+                        "id",
+                        "title",
+                        "detail",
+                        "owner",
+                        "status",
+                        "priority",
+                        "type",
+                        "intervenant",
+                        "date",
+                        "due",
+                        "machine",
+                        "reference",
+                        "tags",
+                        "closed",
+                    )
+                }
+                for item in data.get("actions", [])
+            ],
+            "entities": [
+                {
+                    key: item.get(key)
+                    for key in ("id", "kind", "label", "hostname", "ip", "os", "notes", "tags")
+                }
+                for item in data.get("entities", [])
+            ],
+            "iocs": [
+                {key: item.get(key) for key in ("id", "value", "kind", "label", "status")}
+                for item in data.get("iocs", [])
+            ],
         }
 
     ENTITY_KINDS = ("machine", "account", "domain", "mailbox", "share")
@@ -1670,13 +2037,20 @@ class Library:
             raise ServiceError(f"Unknown entity kind: {kind}")
         if not label:
             raise ServiceError("Give the machine or the account a name.")
-        allowed = {key: payload.get(key) for key in ("hostname", "ip", "os", "notes", "tags")
-                   if payload.get(key) not in (None, "")}
+        allowed = {
+            key: payload.get(key)
+            for key in ("hostname", "ip", "os", "notes", "tags")
+            if payload.get(key) not in (None, "")
+        }
         if isinstance(allowed.get("tags"), str):
             allowed["tags"] = [item.strip() for item in allowed["tags"].split(",") if item.strip()]
         entry = add_entity(self.library.folder(identifier), kind, label, **allowed)
-        return dict({key: entry.get(key) for key in
-                     ("id", "kind", "label", "hostname", "ip", "os", "notes", "tags")})
+        return dict(
+            {
+                key: entry.get(key)
+                for key in ("id", "kind", "label", "hostname", "ip", "os", "notes", "tags")
+            }
+        )
 
     ENTITY_FIELDS = ("hostname", "ip", "os", "notes", "tags", "label", "kind")
 
@@ -1728,8 +2102,15 @@ class Library:
         case_workspace.remove_action(self.library.folder(identifier), action_id)
         return {"removed": action_id}
 
-    def add_indicator(self, identifier: str, values, source: str = "", label: str = "",
-                      status: str = "new", tags=None) -> dict:
+    def add_indicator(
+        self,
+        identifier: str,
+        values,
+        source: str = "",
+        label: str = "",
+        status: str = "new",
+        tags=None,
+    ) -> dict:
         """Track indicators in the case: one value, or a pasted list.
 
         A single value goes through `add_ioc`, which refuses a duplicate; a list goes
@@ -1747,12 +2128,21 @@ class Library:
         if isinstance(tags, str):
             tags = [item.strip() for item in tags.split(",") if item.strip()]
         if len(cleaned) == 1:
-            entry = add_ioc(folder, cleaned[0], label=label, source=source,
-                            status=status or "new", tags=tags or [])
+            entry = add_ioc(
+                folder,
+                cleaned[0],
+                label=label,
+                source=source,
+                status=status or "new",
+                tags=tags or [],
+            )
             return {"added": 1, "skipped": 0, "indicators": [entry]}
         result = add_iocs(folder, cleaned, source=source)
-        return {"added": int(result.get("added") or 0), "skipped": int(result.get("skipped") or 0),
-                "indicators": list(result.get("indicators") or [])}
+        return {
+            "added": int(result.get("added") or 0),
+            "skipped": int(result.get("skipped") or 0),
+            "indicators": list(result.get("indicators") or []),
+        }
 
     def remove_indicator(self, identifier: str, ioc_id: str) -> dict:
         from fireblade.core.case_workspace import remove_ioc
@@ -1766,17 +2156,49 @@ class Library:
         title = (fields or {}).get("title", "").strip()
         if not title:
             raise ServiceError("An action title is required.")
-        allowed = {key: value for key, value in (fields or {}).items()
-                   if key in ("detail", "owner", "status", "priority", "type", "intervenant",
-                              "date", "due", "machine", "reference", "tags") and value not in (None, "")}
+        allowed = {
+            key: value
+            for key, value in (fields or {}).items()
+            if key
+            in (
+                "detail",
+                "owner",
+                "status",
+                "priority",
+                "type",
+                "intervenant",
+                "date",
+                "due",
+                "machine",
+                "reference",
+                "tags",
+            )
+            and value not in (None, "")
+        }
         return add_action(self.library.folder(identifier), title, **allowed)
 
     def update_action(self, identifier: str, action_id: str, fields: dict) -> dict:
         from fireblade.core.case_workspace import update_action
 
-        allowed = {key: value for key, value in (fields or {}).items()
-                   if key in ("title", "detail", "owner", "status", "priority", "type",
-                              "intervenant", "date", "due", "machine", "reference") and value is not None}
+        allowed = {
+            key: value
+            for key, value in (fields or {}).items()
+            if key
+            in (
+                "title",
+                "detail",
+                "owner",
+                "status",
+                "priority",
+                "type",
+                "intervenant",
+                "date",
+                "due",
+                "machine",
+                "reference",
+            )
+            and value is not None
+        }
         if not allowed:
             raise ServiceError("Nothing to change.")
         update_action(self.library.folder(identifier), action_id, **allowed)
@@ -1784,12 +2206,15 @@ class Library:
 
     # -- case lifecycle ----------------------------------------------------
 
-    def create_case(self, name: str, description: str = "", environment: str = "unspecified") -> dict:
+    def create_case(
+        self, name: str, description: str = "", environment: str = "unspecified"
+    ) -> dict:
         data = self.library.create(name, description, environment)
         return self._summary(data)
 
-    def update_case(self, identifier: str, name: str | None = None,
-                    description: str | None = None) -> dict:
+    def update_case(
+        self, identifier: str, name: str | None = None, description: str | None = None
+    ) -> dict:
         fields = {}
         if name is not None:
             fields["name"] = name
@@ -1800,9 +2225,17 @@ class Library:
         data = self.library.update(identifier, **fields)
         return self._summary(data)
 
-    def destroy(self, identifier: str, method: str = "dod3", operator: str = "",
-                witness: str = "", reason: str = "", confirmation: str = "",
-                attachments: list | None = None, certificate_folder: str = "") -> dict:
+    def destroy(
+        self,
+        identifier: str,
+        method: str = "dod3",
+        operator: str = "",
+        witness: str = "",
+        reason: str = "",
+        confirmation: str = "",
+        attachments: list | None = None,
+        certificate_folder: str = "",
+    ) -> dict:
         """Destroy the case the way the desktop does, and keep the certificate outside.
 
         The certificate goes to the folder the analyst named, when they named one: a
@@ -1827,27 +2260,40 @@ class Library:
             if resolved == folder or folder in resolved.parents:
                 raise ServiceError(
                     "The certificate must be written outside the case, "
-                    "since that folder is what disappears.")
+                    "since that folder is what disappears."
+                )
         else:
             certificates = self.root / "certificates"
             certificates.mkdir(parents=True, exist_ok=True)
         # The generator writes HTML unless the target ends in .pdf.
-        certificate = certificates / (datetime.now(timezone.utc).strftime("pv-%Y%m%d-%H%M%S-")
-                                      + identifier[:8] + ".html")
+        certificate = certificates / (
+            datetime.now(timezone.utc).strftime("pv-%Y%m%d-%H%M%S-") + identifier[:8] + ".html"
+        )
         self.close_case(identifier)
         # A portable package or an archive of this case is the case: it goes too.
         extras = [str(path) for path in outside_entries(self.root, identifier)]
-        record = destroy_case(folder, method, operator=operator, witness=witness, reason=reason,
-                              certificate_path=certificate, case_name=data.get("name", ""),
-                              case_id=identifier, attachments=list(attachments or []),
-                              extras=extras)
+        record = destroy_case(
+            folder,
+            method,
+            operator=operator,
+            witness=witness,
+            reason=reason,
+            certificate_path=certificate,
+            case_name=data.get("name", ""),
+            case_id=identifier,
+            attachments=list(attachments or []),
+            extras=extras,
+        )
         _in_english(certificate)
-        return {"id": record.get("id"), "method": record.get("method"),
-                "files": len(record.get("files") or []),
-                "outside": int(record.get("outside") or 0),
-                "residue": extras,
-                "certificate": str(certificate),
-                "bytes": sum(int(item.get("size") or 0) for item in (record.get("files") or []))}
+        return {
+            "id": record.get("id"),
+            "method": record.get("method"),
+            "files": len(record.get("files") or []),
+            "outside": int(record.get("outside") or 0),
+            "residue": extras,
+            "certificate": str(certificate),
+            "bytes": sum(int(item.get("size") or 0) for item in (record.get("files") or [])),
+        }
 
     def residue(self, identifier: str) -> dict:
         """What this case left outside its folder, before anything is destroyed."""
@@ -1860,18 +2306,40 @@ class Library:
                 files = [item for item in path.rglob("*") if item.is_file()]
             else:
                 files = [path]
-            items.append({"name": path.name, "folder": path.parent.name,
-                          "files": len(files),
-                          "bytes": sum(int(item.stat().st_size) for item in files)})
-        return {"id": identifier, "items": items,
-                "files": sum(item["files"] for item in items),
-                "bytes": sum(item["bytes"] for item in items)}
+            items.append(
+                {
+                    "name": path.name,
+                    "folder": path.parent.name,
+                    "files": len(files),
+                    "bytes": sum(int(item.stat().st_size) for item in files),
+                }
+            )
+        return {
+            "id": identifier,
+            "items": items,
+            "files": sum(item["files"] for item in items),
+            "bytes": sum(item["bytes"] for item in items),
+        }
 
     # --- the session: the desktop's own file, written by the core module -----------
-    SESSION_FIELDS = ("search", "groups", "sort_column", "descending", "sort_type",
-                      "bookmarks_only", "highlight", "header_state", "global_rules_enabled",
-                      "summaries", "group_order", "group_descending", "group_summary",
-                      "expand_all", "pinned_columns", "pinned_widths")
+    SESSION_FIELDS = (
+        "search",
+        "groups",
+        "sort_column",
+        "descending",
+        "sort_type",
+        "bookmarks_only",
+        "highlight",
+        "header_state",
+        "global_rules_enabled",
+        "summaries",
+        "group_order",
+        "group_descending",
+        "group_summary",
+        "expand_all",
+        "pinned_columns",
+        "pinned_widths",
+    )
 
     def save_session(self, identifier: str) -> dict:
         """The case's tabs as a `.fireblade-session` the desktop opens as they are."""
@@ -1891,10 +2359,14 @@ class Library:
                 continue
             state = document.get("view") if isinstance(document.get("view"), dict) else {}
             fields = {key: value for key, value in state.items() if key in self.SESSION_FIELDS}
-            snapshots.append(AnalysisSnapshot(
-                path=str(document["path"]),
-                source_info=document.get("source") or {},
-                view=View(**fields), header_state=b""))
+            snapshots.append(
+                AnalysisSnapshot(
+                    path=str(document["path"]),
+                    source_info=document.get("source") or {},
+                    view=View(**fields),
+                    header_state=b"",
+                )
+            )
         if not snapshots:
             raise ServiceError("This case has no analysis to put in a session.")
         handle, raw = tempfile.mkstemp(suffix=".fireblade-session")
@@ -1905,9 +2377,12 @@ class Library:
         finally:
             Path(raw).unlink(missing_ok=True)
         name = data.get("name") or "case"
-        return {"name": f"{name.replace('/', '-')}.fireblade-session",
-                "documents": len(snapshots), "bytes": len(content),
-                "content": base64.b64encode(content).decode("ascii")}
+        return {
+            "name": f"{name.replace('/', '-')}.fireblade-session",
+            "documents": len(snapshots),
+            "bytes": len(content),
+            "content": base64.b64encode(content).decode("ascii"),
+        }
 
     def open_session(self, identifier: str, content: str) -> dict:
         """Read a session file and add the tabs it names to this case."""
@@ -1936,16 +2411,27 @@ class Library:
             if resolved is None:
                 missing.append(Path(str(snapshot.path)).name)
                 continue
-            added.append({"path": str(resolved),
-                          "source": snapshot.source_info or {},
-                          "view": {key: getattr(snapshot.view, key)
-                                   for key in self.SESSION_FIELDS
-                                   if getattr(snapshot.view, key, None) not in (None, [], "", {})}})
+            added.append(
+                {
+                    "path": str(resolved),
+                    "source": snapshot.source_info or {},
+                    "view": {
+                        key: getattr(snapshot.view, key)
+                        for key in self.SESSION_FIELDS
+                        if getattr(snapshot.view, key, None) not in (None, [], "", {})
+                    },
+                }
+            )
         if not added:
-            raise ServiceError("None of the analyses of this session is in this case: "
-                               + ", ".join(missing[:5]))
-        return {"added": len(added), "missing": missing, "documents": added,
-                "case": data.get("name")}
+            raise ServiceError(
+                "None of the analyses of this session is in this case: " + ", ".join(missing[:5])
+            )
+        return {
+            "added": len(added),
+            "missing": missing,
+            "documents": added,
+            "case": data.get("name"),
+        }
 
     def store_destruction_attachments(self, identifier: str, sources) -> dict:
         """Photos for the certificate, copied beside the case before it is destroyed."""
@@ -1976,8 +2462,15 @@ class Library:
 
     # -- reports -----------------------------------------------------------
 
-    def report(self, identifier: str, title: str, description: str = "",
-               bookmarks_only: bool = True, limit: int = 2000, progress=None) -> dict:
+    def report(
+        self,
+        identifier: str,
+        title: str,
+        description: str = "",
+        bookmarks_only: bool = True,
+        limit: int = 2000,
+        progress=None,
+    ) -> dict:
         """Build the client report with the desktop's own generator.
 
         Bookmarks are the default selection: a report is a set of explicit
@@ -1997,14 +2490,24 @@ class Library:
                 except Exception:
                     pass
         reader = WorkspaceReader(snapshots)
-        report = build_report(reader, title, description, bookmarks_only=bookmarks_only, limit=limit)
+        report = build_report(
+            reader, title, description, bookmarks_only=bookmarks_only, limit=limit
+        )
         folder = self.library.folder(identifier)
-        target = folder / "reports" / (datetime.now(timezone.utc).strftime("report-%Y%m%d-%H%M%S") + ".html")
+        target = (
+            folder
+            / "reports"
+            / (datetime.now(timezone.utc).strftime("report-%Y%m%d-%H%M%S") + ".html")
+        )
         target.parent.mkdir(parents=True, exist_ok=True)
         write_report(target, report, snapshots)
         _in_english(target)
-        return {"name": target.name, "records": report.get("records", 0),
-                "errors": report.get("errors", []), "url": f"/api/cases/{identifier}/reports/{target.name}"}
+        return {
+            "name": target.name,
+            "records": report.get("records", 0),
+            "errors": report.get("errors", []),
+            "url": f"/api/cases/{identifier}/reports/{target.name}",
+        }
 
     def report_pdf(self, identifier: str, name: str, progress=None) -> dict:
         """The same report as a PDF: the container has no Qt, so it is written here.
@@ -2020,17 +2523,31 @@ class Library:
         target = source.with_suffix(".pdf")
         title = source.stem
         try:
-            text_pdf(source.read_text(encoding="utf-8", errors="replace"), target, title=title,
-                     subject="Client report")
+            text_pdf(
+                source.read_text(encoding="utf-8", errors="replace"),
+                target,
+                title=title,
+                subject="Client report",
+            )
         except (OSError, ValueError) as exc:
             raise ServiceError(f"The PDF could not be written: {exc}") from exc
-        return {"name": target.name, "bytes": target.stat().st_size,
-                "url": f"/api/cases/{identifier}/reports/{target.name}"}
+        return {
+            "name": target.name,
+            "bytes": target.stat().st_size,
+            "url": f"/api/cases/{identifier}/reports/{target.name}",
+        }
 
-    def client_report(self, identifier: str, title: str = "", description: str = "",
-                      analyst: str = "", include_findings: bool = True,
-                      include_coverage: bool = False, pdf: bool = False,
-                      progress=None) -> dict:
+    def client_report(
+        self,
+        identifier: str,
+        title: str = "",
+        description: str = "",
+        analyst: str = "",
+        include_findings: bool = True,
+        include_coverage: bool = False,
+        pdf: bool = False,
+        progress=None,
+    ) -> dict:
         """The document the client receives: scope, findings, actions, indicators.
 
         `core.client_report` is the desktop's own generator — the same one its
@@ -2063,25 +2580,43 @@ class Library:
             except (OSError, ValueError, ServiceError):
                 coverage = None
         document = client_report_core.build(
-            title=clean, case_name=data.get("name") or "", case_id=identifier,
-            workspace=workspace, documents=snapshots,
-            findings=findings, incidents=incidents, coverage=coverage,
-            destruction=workspace.get("destruction") or [], analyst=analyst)
-        target = folder / "reports" / (datetime.now(timezone.utc).strftime("client-%Y%m%d-%H%M%S") + ".html")
+            title=clean,
+            case_name=data.get("name") or "",
+            case_id=identifier,
+            workspace=workspace,
+            documents=snapshots,
+            findings=findings,
+            incidents=incidents,
+            coverage=coverage,
+            destruction=workspace.get("destruction") or [],
+            analyst=analyst,
+        )
+        target = (
+            folder
+            / "reports"
+            / (datetime.now(timezone.utc).strftime("client-%Y%m%d-%H%M%S") + ".html")
+        )
         target.parent.mkdir(parents=True, exist_ok=True)
         client_report_core.write(target, document, pdf=False)
         _in_english(target)
         if pdf:
             pdf_target = target.with_suffix(".pdf")
-            text_pdf(target.read_text(encoding="utf-8", errors="replace"), pdf_target,
-                     title=clean, subject="Client report")
+            text_pdf(
+                target.read_text(encoding="utf-8", errors="replace"),
+                pdf_target,
+                title=clean,
+                subject="Client report",
+            )
             target = pdf_target
-        return {"name": target.name, "path": str(target),
-                "findings": document.get("findings", 0),
-                "analyses": len(snapshots),
-                "actions": len(workspace.get("actions") or []),
-                "indicators": len(workspace.get("iocs") or []),
-                "url": f"/api/cases/{identifier}/reports/{target.name}"}
+        return {
+            "name": target.name,
+            "path": str(target),
+            "findings": document.get("findings", 0),
+            "analyses": len(snapshots),
+            "actions": len(workspace.get("actions") or []),
+            "indicators": len(workspace.get("iocs") or []),
+            "url": f"/api/cases/{identifier}/reports/{target.name}",
+        }
 
     def findings(self, identifier: str) -> tuple[list, list]:
         """The grouped findings of the case's latest detection run, as the desktop groups them."""
@@ -2090,12 +2625,16 @@ class Library:
         # The candidate is any analysis that carries the Hayabusa columns: the name of
         # the file says nothing once it has been imported under another one.
         entries = [item for item in self._analyses(self.library.read(identifier)) if item["found"]]
-        alerts = [entry for entry in reversed(entries)
-                  if "hayabusa" in str(entry.get("source") or "").casefold()]
+        alerts = [
+            entry
+            for entry in reversed(entries)
+            if "hayabusa" in str(entry.get("source") or "").casefold()
+        ]
         # A detection run that found nothing writes an empty alert file: the newest
         # one is not necessarily the one that carries findings.
-        chosen = next((entry for entry in alerts
-                       if self._rows_of(identifier, entry["index"]) > 0), None)
+        chosen = next(
+            (entry for entry in alerts if self._rows_of(identifier, entry["index"]) > 0), None
+        )
         if chosen is None:
             chosen = alerts[0] if alerts else None
         if chosen is None:
@@ -2134,8 +2673,14 @@ class Library:
                         break
                     headers = list(case.headers)
                     for row in page:
-                        rows.append({"__row_id": row[0],
-                                     **{name: row[position + 1] for position, name in enumerate(headers)}})
+                        rows.append(
+                            {
+                                "__row_id": row[0],
+                                **{
+                                    name: row[position + 1] for position, name in enumerate(headers)
+                                },
+                            }
+                        )
                     offset += len(page)
                 return group_alerts(rows)
 
@@ -2151,13 +2696,22 @@ class Library:
         """The grouped findings, shaped for the window, with what they were read from."""
         groups, incidents = self.findings(identifier)
         entries = [item for item in self._analyses(self.library.read(identifier)) if item["found"]]
-        source = next((item["label"] for item in reversed(entries)
-                       if "hayabusa" in str(item.get("source") or "").casefold()), "")
-        return {"groups": [group.as_dict() for group in groups],
-                "incidents": [item.as_dict() for item in incidents],
-                "count": len(groups), "source": source,
-                "debug": getattr(self, "_findings_debug", {}),
-                "error": getattr(self, "_findings_error", "")}
+        source = next(
+            (
+                item["label"]
+                for item in reversed(entries)
+                if "hayabusa" in str(item.get("source") or "").casefold()
+            ),
+            "",
+        )
+        return {
+            "groups": [group.as_dict() for group in groups],
+            "incidents": [item.as_dict() for item in incidents],
+            "count": len(groups),
+            "source": source,
+            "debug": getattr(self, "_findings_debug", {}),
+            "error": getattr(self, "_findings_error", ""),
+        }
 
     def report_file(self, identifier: str, name: str) -> Path:
         if "/" in name or "\\" in name or name.startswith("."):
@@ -2169,10 +2723,18 @@ class Library:
 
     # -- IOC hunting -------------------------------------------------------
 
-    def ioc_scan(self, identifier: str, index: int | None, text: str, limit: int = 2000,
-                 all_analyses: bool = False, respect_filters: bool = False,
-                 include_subdomains: bool = True, declared_format: str | None = None,
-                 progress=None) -> dict:
+    def ioc_scan(
+        self,
+        identifier: str,
+        index: int | None,
+        text: str,
+        limit: int = 2000,
+        all_analyses: bool = False,
+        respect_filters: bool = False,
+        include_subdomains: bool = True,
+        declared_format: str | None = None,
+        progress=None,
+    ) -> dict:
         """Match an indicator list against one analysis, or against the whole case.
 
         Same parser and same matcher as the desktop: an observation is never a
@@ -2193,14 +2755,23 @@ class Library:
         if all_analyses:
             targets = [(entry["index"], entry) for entry in entries if entry["found"]]
         else:
-            targets = [(int(index or 0), next((entry for entry in entries
-                                               if entry["index"] == int(index or 0)), {"index": 0}))]
+            targets = [
+                (
+                    int(index or 0),
+                    next(
+                        (entry for entry in entries if entry["index"] == int(index or 0)),
+                        {"index": 0},
+                    ),
+                )
+            ]
         hits, scanned = [], 0
         per_analysis = []
         for position, (target_index, entry) in enumerate(targets, start=1):
             if progress:
-                progress(f"Indicator hunt · analysis {position}/{len(targets)} — "
-                         f"{self._label(entry.get('source_info') or {}, entry.get('path') or '')}")
+                progress(
+                    f"Indicator hunt · analysis {position}/{len(targets)} — "
+                    f"{self._label(entry.get('source_info') or {}, entry.get('path') or '')}"
+                )
             case = self._case_for(identifier, target_index)
             view = View()
             if respect_filters:
@@ -2228,11 +2799,19 @@ class Library:
                                 cell = cell[:4000]
                             for number, observed, at, rule in matcher.matches(cell):
                                 item = indicators[number - 1]
-                                hits.append({"analysis": target_index,
-                                             "analysis_label": entry.get("label") or f"analysis {target_index}",
-                                             "row_id": json_value(row_id), "column": column - 1,
-                                             "indicator": item.value, "kind": item.kind,
-                                             "observed": observed, "rule": rule})
+                                hits.append(
+                                    {
+                                        "analysis": target_index,
+                                        "analysis_label": entry.get("label")
+                                        or f"analysis {target_index}",
+                                        "row_id": json_value(row_id),
+                                        "column": column - 1,
+                                        "indicator": item.value,
+                                        "kind": item.kind,
+                                        "observed": observed,
+                                        "rule": rule,
+                                    }
+                                )
                                 local += 1
                                 if len(hits) >= limit:
                                     break
@@ -2243,28 +2822,43 @@ class Library:
                     if len(hits) >= limit:
                         break
                     offset += len(page)
-            per_analysis.append({"analysis": target_index,
-                                 "label": entry.get("label") or f"analysis {target_index}",
-                                 "hits": local})
+            per_analysis.append(
+                {
+                    "analysis": target_index,
+                    "label": entry.get("label") or f"analysis {target_index}",
+                    "hits": local,
+                }
+            )
         summary = {}
         for hit in hits:
             summary[hit["kind"]] = summary.get(hit["kind"], 0) + 1
-        result = {"indicators": len(indicators), "scanned": scanned, "hits": hits,
-                  "by_kind": summary, "per_analysis": per_analysis,
-                  "rejected": len(getattr(batch, "rejected", None) or []),
-                  "duplicates": int(getattr(batch, "duplicates", 0) or 0),
-                  "all_analyses": bool(all_analyses), "respect_filters": bool(respect_filters),
-                  "include_subdomains": bool(include_subdomains),
-                  "truncated": len(hits) >= limit}
+        result = {
+            "indicators": len(indicators),
+            "scanned": scanned,
+            "hits": hits,
+            "by_kind": summary,
+            "per_analysis": per_analysis,
+            "rejected": len(getattr(batch, "rejected", None) or []),
+            "duplicates": int(getattr(batch, "duplicates", 0) or 0),
+            "all_analyses": bool(all_analyses),
+            "respect_filters": bool(respect_filters),
+            "include_subdomains": bool(include_subdomains),
+            "truncated": len(hits) >= limit,
+        }
         # A hunt leaves a record: the same indicators can be replayed on the case
         # later, which is what the desktop's saved hunts list is.
         hunts = self.library.folder(identifier) / "hunts"
         hunts.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-        record = dict(started=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                      status="complete" if not result["truncated"] else "truncated",
-                      text=(text or "")[:20000], **result)
-        (hunts / f"{stamp}.json").write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
+        record = dict(
+            started=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            status="complete" if not result["truncated"] else "truncated",
+            text=(text or "")[:20000],
+            **result,
+        )
+        (hunts / f"{stamp}.json").write_text(
+            json.dumps(record, ensure_ascii=False), encoding="utf-8"
+        )
         result["saved"] = f"{stamp}.json"
         return result
 
@@ -2277,10 +2871,15 @@ class Library:
                     data = json.loads(path.read_text(encoding="utf-8"))
                 except (OSError, ValueError):
                     continue
-                entries.append({"name": path.name, "started": data.get("started", ""),
-                                "status": data.get("status", ""),
-                                "indicators": data.get("indicators", 0),
-                                "hits": len(data.get("hits") or [])})
+                entries.append(
+                    {
+                        "name": path.name,
+                        "started": data.get("started", ""),
+                        "status": data.get("status", ""),
+                        "indicators": data.get("indicators", 0),
+                        "hits": len(data.get("hits") or []),
+                    }
+                )
         return {"hunts": entries[:50]}
 
     def hunt(self, identifier: str, name: str) -> dict:
@@ -2300,9 +2899,14 @@ class Library:
     def _coverage_path(self, identifier: str) -> Path:
         return self.library.folder(identifier) / "coverage-last.json"
 
-    def coverage(self, identifier: str, expected: str = "observed",
-                 expected_tools=None, verify_hashes: bool = False,
-                 deep_checks: bool = True) -> dict:
+    def coverage(
+        self,
+        identifier: str,
+        expected: str = "observed",
+        expected_tools=None,
+        verify_hashes: bool = False,
+        deep_checks: bool = True,
+    ) -> dict:
         """The desktop's "Vérification des imports et diagnostics", over this case.
 
         The same core audit the desktop runs: every analysis is reopened, its source
@@ -2326,19 +2930,26 @@ class Library:
                 pass
         reader = WorkspaceReader(snapshots)
         report = coverage_core.audit(
-            reader, verify_hashes=bool(verify_hashes), expected=expected,
+            reader,
+            verify_hashes=bool(verify_hashes),
+            expected=expected,
             expected_tools=list(expected_tools) if expected_tools else None,
-            deep_checks=bool(deep_checks))
+            deep_checks=bool(deep_checks),
+        )
         saved = False
         try:
             coverage_core.save_report(self._coverage_path(identifier), report)
             saved = True
         except (OSError, ValueError):
             saved = False
-        return {"report": english.data(report), "counts": report.get("counts") or {},
-                "profiles": list(coverage_core.EXPECTED),
-                "families": list(coverage_core.EXPECTED.get(expected) or []),
-                "analyses": len(snapshots), "saved": saved}
+        return {
+            "report": english.data(report),
+            "counts": report.get("counts") or {},
+            "profiles": list(coverage_core.EXPECTED),
+            "families": list(coverage_core.EXPECTED.get(expected) or []),
+            "analyses": len(snapshots),
+            "saved": saved,
+        }
 
     def coverage_report(self, identifier: str) -> dict:
         """The last check kept with the case, for reading without running one again."""
@@ -2348,8 +2959,12 @@ class Library:
         if not path.is_file():
             raise ServiceError("No coverage check has been kept for this case yet.")
         report = coverage_core.load_report(path)
-        return {"report": english.data(report), "counts": report.get("counts") or {},
-                "profiles": list(coverage_core.EXPECTED), "saved": True}
+        return {
+            "report": english.data(report),
+            "counts": report.get("counts") or {},
+            "profiles": list(coverage_core.EXPECTED),
+            "saved": True,
+        }
 
     def coverage_export(self, identifier: str, as_csv: bool = False) -> bytes:
         from fireblade.core import coverage as coverage_core
@@ -2358,7 +2973,9 @@ class Library:
         if not path.is_file():
             raise ServiceError("Run the coverage check before exporting its report.")
         report = english.data(coverage_core.load_report(path))
-        target = Path(tempfile.mkdtemp(prefix="fbcoverage-")) / ("coverage.csv" if as_csv else "coverage.json")
+        target = Path(tempfile.mkdtemp(prefix="fbcoverage-")) / (
+            "coverage.csv" if as_csv else "coverage.json"
+        )
         coverage_core.export_report(target, report)
         return target.read_bytes()
 
@@ -2369,8 +2986,9 @@ class Library:
         for entry in self._analyses(data):
             if not entry["found"]:
                 continue
-            snapshots.append(AnalysisSnapshot(entry["path"], entry.get("source_info") or {},
-                                              View(), b""))
+            snapshots.append(
+                AnalysisSnapshot(entry["path"], entry.get("source_info") or {}, View(), b"")
+            )
         return snapshots
 
     def _headers_of(self, path) -> list[str]:
@@ -2402,13 +3020,28 @@ class Library:
 
         headers, labels = self._header_names(item.get("path"))
         shown = dict(zip(headers, labels))
-        source = {key: item.get(key) for key in ("id", "name", "original", "rows", "dated", "undated",
-                                                 "column", "column_name", "combined", "error")}
+        source = {
+            key: item.get(key)
+            for key in (
+                "id",
+                "name",
+                "original",
+                "rows",
+                "dated",
+                "undated",
+                "column",
+                "column_name",
+                "combined",
+                "error",
+            )
+        }
         source.update(
-            headers=headers, labels=labels,
+            headers=headers,
+            labels=labels,
             column_label=shown.get(item.get("column_name") or "", item.get("column_name")),
             split=bool(headers and split_date_time(headers)),
-            chosen=(dates or {}).get(str(item.get("id")), "auto"))
+            chosen=(dates or {}).get(str(item.get("id")), "auto"),
+        )
         return source
 
     def _split_available(self, path) -> bool:
@@ -2443,25 +3076,41 @@ class Library:
                 # A column name, resolved against that analysis: the core reads an
                 # index, and a wrong one would silently make every row undated.
                 headers = self._headers_of(path)
-                match = next((position for position, name in enumerate(headers)
-                              if name.casefold() == str(value).casefold()), None)
+                match = next(
+                    (
+                        position
+                        for position, name in enumerate(headers)
+                        if name.casefold() == str(value).casefold()
+                    ),
+                    None,
+                )
                 if match is None:
                     raise ServiceError(f"No column named {value} in that analysis.")
                 options[path] = match
         return options
 
-    def timeline(self, identifier: str, start: int | None = None, end: int | None = None,
-                 offset: int = 0, text: str = "", kind: str = "text",
-                 dates: dict | None = None, include_undated: bool = False,
-                 respect_filters: bool = False, progress=None) -> dict:
+    def timeline(
+        self,
+        identifier: str,
+        start: int | None = None,
+        end: int | None = None,
+        offset: int = 0,
+        text: str = "",
+        kind: str = "text",
+        dates: dict | None = None,
+        include_undated: bool = False,
+        respect_filters: bool = False,
+        progress=None,
+    ) -> dict:
         """Counts the case's rows over time with the desktop's own TimelineStore.
 
         `dates` says how each analysis is read: `{"<index>": "none" | "split" |
         "<column name>"}`. An analysis it does not name keeps the detection, which
         is what the desktop does when the analyst has not chosen a column.
         """
-        store = self._timeline_store(identifier, dates, respect_filters=respect_filters,
-                                     progress=progress)
+        store = self._timeline_store(
+            identifier, dates, respect_filters=respect_filters, progress=progress
+        )
         filters = {"include_undated": bool(include_undated)}
         if text:
             filters.update(text=text, kind=kind)
@@ -2476,30 +3125,58 @@ class Library:
         page = store.page(offset, **filters)
         payload = {
             "sources": [self._timeline_source(item, dates) for item in store.sources],
-            "extent": {"start": low, "end": high, "rows": int(total or 0), "dated": int(dated or 0)},
+            "extent": {
+                "start": low,
+                "end": high,
+                "rows": int(total or 0),
+                "dated": int(dated or 0),
+            },
             "count": int(page["count"]),
             "page_size": store.PAGE_SIZE,
             "offset": int(offset),
-            "rows": [[int(row[0]), int(row[1]), int(row[2]) if row[2] is not None else None,
-                      row[3], row[4], row[5] or "", bool(row[6]), bool(row[7])] for row in page["rows"]],
+            "rows": [
+                [
+                    int(row[0]),
+                    int(row[1]),
+                    int(row[2]) if row[2] is not None else None,
+                    row[3],
+                    row[4],
+                    row[5] or "",
+                    bool(row[6]),
+                    bool(row[7]),
+                ]
+                for row in page["rows"]
+            ],
         }
         if low is not None and high is not None:
             window_start = int(start if start is not None else low)
             window_end = int(end if end is not None else high)
             histogram = store.histogram(window_start, window_end, 120, **windowed)
-            payload["histogram"] = {"start": histogram["start"], "end": histogram["end"],
-                                    "width": histogram["width"], "bins": histogram["bins"],
-                                    "rows": [[int(a), int(b), int(c), int(d)]
-                                                                          for a, b, c, d in histogram["rows"]]}
+            payload["histogram"] = {
+                "start": histogram["start"],
+                "end": histogram["end"],
+                "width": histogram["width"],
+                "bins": histogram["bins"],
+                "rows": [[int(a), int(b), int(c), int(d)] for a, b, c, d in histogram["rows"]],
+            }
             payload["window"] = {"start": window_start, "end": window_end}
         return payload
 
-    def _timeline_store(self, identifier: str, dates: dict | None = None,
-                        respect_filters: bool = False, progress=None):
+    def _timeline_store(
+        self,
+        identifier: str,
+        dates: dict | None = None,
+        respect_filters: bool = False,
+        progress=None,
+    ):
         """The built index for this case and these date readings, cached."""
         options = self._date_options(identifier, dates or {})
-        key = (identifier, self.library.read(identifier).get("revision"),
-               tuple(sorted(options.items())), bool(respect_filters))
+        key = (
+            identifier,
+            self.library.read(identifier).get("revision"),
+            tuple(sorted(options.items())),
+            bool(respect_filters),
+        )
         # DuckDB refuses a second connection to a file with another configuration:
         # the grid's handles are closed on every call, cache hit or not, because
         # the sources' headers are read read-only just after. They reopen on the
@@ -2518,9 +3195,12 @@ class Library:
             raise ServiceError("This case holds no analysis.")
         store = TimelineStore(self._timeline_dir)
         reader = WorkspaceReader(snapshots)
-        store.build(reader, columns={path: spec for path, spec in options.items()},
-                    respect_filters=bool(respect_filters),
-                    progress=(lambda text: progress(text)) if progress else (lambda _text: None))
+        store.build(
+            reader,
+            columns={path: spec for path, spec in options.items()},
+            respect_filters=bool(respect_filters),
+            progress=(lambda text: progress(text)) if progress else (lambda _text: None),
+        )
         for old in list(self._timelines):
             if old[0] == identifier:
                 try:
@@ -2541,14 +3221,32 @@ class Library:
         if row is None:
             raise ServiceError("This row is no longer in the analysis.")
         values = [json_value(value) for value in row[1:]]
-        entry = next((item for item in self._analyses(self.library.read(identifier))
-                      if item["index"] == index), {})
-        return {"analysis": index, "label": entry.get("label") or f"analysis {index}",
-                "row_id": json_value(row[0]), "columns": headers, "values": values}
+        entry = next(
+            (
+                item
+                for item in self._analyses(self.library.read(identifier))
+                if item["index"] == index
+            ),
+            {},
+        )
+        return {
+            "analysis": index,
+            "label": entry.get("label") or f"analysis {index}",
+            "row_id": json_value(row[0]),
+            "columns": headers,
+            "values": values,
+        }
 
-    def timeline_export(self, identifier: str, start: int | None = None, end: int | None = None,
-                        text: str = "", kind: str = "text", dates: dict | None = None,
-                        include_undated: bool = False) -> tuple[bytes, dict]:
+    def timeline_export(
+        self,
+        identifier: str,
+        start: int | None = None,
+        end: int | None = None,
+        text: str = "",
+        kind: str = "text",
+        dates: dict | None = None,
+        include_undated: bool = False,
+    ) -> tuple[bytes, dict]:
         """The timeline as the desktop exports it: verified rows, and a receipt.
 
         `TimelineStore.export_csv` writes the file, counts what it wrote and returns
@@ -2568,8 +3266,9 @@ class Library:
 
     # -- importing ---------------------------------------------------------
 
-    def _merge_session(self, identifier: str, session_path: Path, collections=None,
-                       active_collection=None) -> tuple[int, int]:
+    def _merge_session(
+        self, identifier: str, session_path: Path, collections=None, active_collection=None
+    ) -> tuple[int, int]:
         """Add a collection's documents to the case session; return (first index, count).
 
         `InvestigationLibrary.save` writes the list it is given: appending is the
@@ -2584,7 +3283,8 @@ class Library:
         if previous:
             try:
                 earlier, _earlier_active, earlier_closed = read_session(
-                    folder / previous, with_closed=True)
+                    folder / previous, with_closed=True
+                )
             except (OSError, ValueError):
                 earlier, earlier_closed = [], []
         incoming, active = ([], -1)
@@ -2596,23 +3296,40 @@ class Library:
         # run of the same collection would add the same analyses again. The path is
         # the identity of an analysis file.
         known = {str(Path(str(item.path))) for item in earlier}
-        fresh = [(position, item) for position, item in enumerate(incoming)
-                 if str(Path(str(item.path))) not in known]
+        fresh = [
+            (position, item)
+            for position, item in enumerate(incoming)
+            if str(Path(str(item.path))) not in known
+        ]
         if not fresh:
             return len(earlier), 0
         combined = list(earlier) + [item for _position, item in fresh]
-        new_active = next((len(earlier) + number for number, (position, _item)
-                           in enumerate(fresh) if position == active), len(combined) - 1)
+        new_active = next(
+            (
+                len(earlier) + number
+                for number, (position, _item) in enumerate(fresh)
+                if position == active
+            ),
+            len(combined) - 1,
+        )
         active_index = new_active if 0 <= new_active < len(combined) else len(combined) - 1
-        known = ([entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
-                 if collections is None else collections)
+        known = (
+            [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+            if collections is None
+            else collections
+        )
         # Indexes shift: no cached handle may survive the rewrite.
         self.close_case(identifier)
         # The closed analyses belong to the case too: an import must not drop them.
-        self.library.save(identifier, combined, active_index, known,
-                          active_collection if active_collection is not None
-                          else data.get("active_collection"),
-                          data.get("revision"), closed=earlier_closed)
+        self.library.save(
+            identifier,
+            combined,
+            active_index,
+            known,
+            active_collection if active_collection is not None else data.get("active_collection"),
+            data.get("revision"),
+            closed=earlier_closed,
+        )
         return len(earlier), len(incoming)
 
     EXCEL_SUFFIXES = (".xlsx", ".xlsm", ".xls")
@@ -2640,8 +3357,9 @@ class Library:
             raise ServiceError("This workbook has no sheet.")
         return {"sheets": names, "default": names[0]}
 
-    def import_table(self, identifier: str, source: str | Path, sheet: str = "",
-                     label: str = "") -> dict:
+    def import_table(
+        self, identifier: str, source: str | Path, sheet: str = "", label: str = ""
+    ) -> dict:
         """One table opened as an analysis: an Excel sheet, read by the core.
 
         The desktop asks the same question before its own import — which sheet — and
@@ -2662,7 +3380,11 @@ class Library:
         chosen = next((name for name in sheets if name == chosen), None)
         if chosen is None:
             raise ServiceError(f"No sheet is named {sheet!r} in {path.name}.")
-        output = folder / "collections" / ("table-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
+        output = (
+            folder
+            / "collections"
+            / ("table-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
+        )
         if output.exists():
             output = folder / "collections" / ("table-" + uuid.uuid4().hex[:8])
         analysis = output / "analyses" / (uuid.uuid4().hex + ".duckdb")
@@ -2677,24 +3399,50 @@ class Library:
             case.close()
         snapshot = AnalysisSnapshot(
             path=str(analysis),
-            source_info=dict(info, path=str(path), sheet=chosen,
-                             label=label or f"{path.stem} — {chosen}"),
-            view=View(), header_state=b"")
+            source_info=dict(
+                info, path=str(path), sheet=chosen, label=label or f"{path.stem} — {chosen}"
+            ),
+            view=View(),
+            header_state=b"",
+        )
         session = output / "collection.fireblade-session"
         write_session(session, [snapshot], 0)
-        collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
-        collections.append({"path": str(output), "name": output.name,
-                            "imported": datetime.now(timezone.utc).isoformat()})
-        first, added = self._merge_session(identifier, session, collections=collections,
-                                           active_collection=str(output))
-        return {"status": "complete", "analyses": added, "first_analysis": first,
-                "files": 1, "collection": str(output), "sheet": chosen,
-                "headers": len(headers), "rows": rows,
-                "label": label or f"{path.stem} — {chosen}"}
+        collections = [
+            entry for entry in (data.get("collections") or []) if isinstance(entry, dict)
+        ]
+        collections.append(
+            {
+                "path": str(output),
+                "name": output.name,
+                "imported": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+        first, added = self._merge_session(
+            identifier, session, collections=collections, active_collection=str(output)
+        )
+        return {
+            "status": "complete",
+            "analyses": added,
+            "first_analysis": first,
+            "files": 1,
+            "collection": str(output),
+            "sheet": chosen,
+            "headers": len(headers),
+            "rows": rows,
+            "label": label or f"{path.stem} — {chosen}",
+        }
 
-    def import_source(self, identifier: str, source: str | Path, tools_root: str | Path | None = None,
-                      organization: str = "files", progress=None, delimiter: str | None = None,
-                      encoding: str | None = None, on_collection=None) -> dict:
+    def import_source(
+        self,
+        identifier: str,
+        source: str | Path,
+        tools_root: str | Path | None = None,
+        organization: str = "files",
+        progress=None,
+        delimiter: str | None = None,
+        encoding: str | None = None,
+        on_collection=None,
+    ) -> dict:
         """Read a file or a folder into the case, the way the desktop does it.
 
         The orchestration is `fireblade.core.collection.Collection`: the same
@@ -2708,15 +3456,28 @@ class Library:
         source = Path(source).resolve()
         if not source.exists():
             raise ServiceError("The source to import is missing.")
-        output = folder / "collections" / ("import-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
+        output = (
+            folder
+            / "collections"
+            / ("import-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
+        )
         if output.exists():
             output = folder / "collections" / ("import-" + uuid.uuid4().hex[:8])
         output.parent.mkdir(parents=True, exist_ok=True)
-        pack = ToolPack(Path(tools_root or self.tools_root)) if (tools_root or self.tools_root) else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack")
-        collection = Collection(source, output, pack, progress=progress or (lambda _text: None),
-                                organization=organization,
-                                delimiter=delimiter if delimiter in self.CSV_DELIMITERS else None,
-                                encoding=encoding if encoding in self.CSV_ENCODINGS else "auto")
+        pack = (
+            ToolPack(Path(tools_root or self.tools_root))
+            if (tools_root or self.tools_root)
+            else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack")
+        )
+        collection = Collection(
+            source,
+            output,
+            pack,
+            progress=progress or (lambda _text: None),
+            organization=organization,
+            delimiter=delimiter if delimiter in self.CSV_DELIMITERS else None,
+            encoding=encoding if encoding in self.CSV_ENCODINGS else "auto",
+        )
         if callable(on_collection):
             # A running import can be interrupted from outside; the collection is the
             # object that knows how.
@@ -2724,15 +3485,28 @@ class Library:
         report = collection.parse()
         session = output / "collection.fireblade-session"
         if not session.is_file():
-            return {"status": report.get("status"), "analyses": 0, "files": len(report.get("files") or []),
-                    "collection": str(output), "message": "No analysis produced: the format was not recognised."}
+            return {
+                "status": report.get("status"),
+                "analyses": 0,
+                "files": len(report.get("files") or []),
+                "collection": str(output),
+                "message": "No analysis produced: the format was not recognised.",
+            }
         # The session is the workspace: an import adds its analyses to the ones
         # already loaded, exactly as the desktop does.
-        collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
-        collections.append({"path": str(output), "name": output.name,
-                            "imported": datetime.now(timezone.utc).isoformat()})
-        first, added = self._merge_session(identifier, session, collections=collections,
-                                           active_collection=str(output))
+        collections = [
+            entry for entry in (data.get("collections") or []) if isinstance(entry, dict)
+        ]
+        collections.append(
+            {
+                "path": str(output),
+                "name": output.name,
+                "imported": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+        first, added = self._merge_session(
+            identifier, session, collections=collections, active_collection=str(output)
+        )
         return {
             "status": report.get("status", "complete"),
             "analyses": added,
@@ -2762,23 +3536,34 @@ class Library:
         # A case must keep one open analysis: its catalogue entry is the session,
         # and a session with no open tab is refused when it is written back.
         if not remaining:
-            raise ServiceError("This is the last open analysis: the case keeps it. "
-                               "Open another analysis first, or close the case.")
+            raise ServiceError(
+                "This is the last open analysis: the case keeps it. "
+                "Open another analysis first, or close the case."
+            )
         if not remaining:
             new_active = -1
         elif active <= index:
             new_active = max(0, min(active, len(remaining) - 1))
         else:
             new_active = active - 1
-        collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+        collections = [
+            entry for entry in (data.get("collections") or []) if isinstance(entry, dict)
+        ]
         # A closed tab is not a deleted analysis: it moves to the session's own
         # "closed" list, where the desktop keeps it so it can be opened again.
         _open_now, _active_now, closed_now = self._session_snapshots(identifier, with_closed=True)
         closed = list(closed_now) + [snapshots[index]]
         # Indexes shift: no cached handle may survive the rewrite.
         self.close_case(identifier)
-        self.library.save(identifier, remaining, new_active, collections,
-                          data.get("active_collection"), data.get("revision"), closed=closed)
+        self.library.save(
+            identifier,
+            remaining,
+            new_active,
+            collections,
+            data.get("active_collection"),
+            data.get("revision"),
+            closed=closed,
+        )
         return {"analyses": len(remaining), "active": new_active, "closed": len(closed)}
 
     def _session_snapshots(self, identifier: str, with_closed: bool = False):
@@ -2792,10 +3577,17 @@ class Library:
     def closed_analyses(self, identifier: str) -> dict:
         """The analyses closed and kept by the session, as the tree lists them."""
         _open, _active, closed = self._session_snapshots(identifier, with_closed=True)
-        return {"closed": [{"index": position, "label": self._label(item.source_info, item.path),
-                            "path": str(item.path),
-                            "source": str((item.source_info or {}).get("path", ""))}
-                           for position, item in enumerate(closed)]}
+        return {
+            "closed": [
+                {
+                    "index": position,
+                    "label": self._label(item.source_info, item.path),
+                    "path": str(item.path),
+                    "source": str((item.source_info or {}).get("path", "")),
+                }
+                for position, item in enumerate(closed)
+            ]
+        }
 
     def reopen_analysis(self, identifier: str, position: int) -> dict:
         """Open a closed analysis again: it goes back to the end of the tabs."""
@@ -2806,16 +3598,24 @@ class Library:
         moved = closed[position]
         remaining = [item for offset, item in enumerate(closed) if offset != position]
         opened = list(snapshots) + [moved]
-        collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+        collections = [
+            entry for entry in (data.get("collections") or []) if isinstance(entry, dict)
+        ]
         self.close_case(identifier)
-        self.library.save(identifier, opened, len(opened) - 1, collections,
-                          data.get("active_collection"), data.get("revision"), closed=remaining)
+        self.library.save(
+            identifier,
+            opened,
+            len(opened) - 1,
+            collections,
+            data.get("active_collection"),
+            data.get("revision"),
+            closed=remaining,
+        )
         return {"index": len(opened) - 1, "analyses": len(opened), "closed": len(remaining)}
 
     def profiles_for(self, identifier: str, index: int) -> dict:
         """The profile this analysis matches, and what applying it would set."""
-        from fireblade.core.profiles import (detect_profile, profile_transformations,
-                                             profile_view)
+        from fireblade.core.profiles import detect_profile, profile_transformations, profile_view
 
         case = self._case_for(identifier, index)
         with case.lock:
@@ -2824,17 +3624,27 @@ class Library:
         if profile is None:
             return {"matched": None, "headers": len(headers)}
         view, order = profile_view(profile, headers)
-        derived = profile_transformations(profile, [h for h in headers
-                                                    if not h.startswith("Fireblade_")])
-        return {"matched": getattr(profile, "name", "") or getattr(profile, "signature", [""])[0],
-                "signature": list(getattr(profile, "signature", []) or []),
-                "timestamps": [headers[i] for i in view.timestamp_columns],
-                "booleans": [headers[i] for i in view.boolean_columns],
-                "sort": headers[view.sort_column] if view.sort_column is not None else None,
-                "order": len(order), "rules": len(view.format_rules),
-                "derived": [{"name": item.get("name"), "operation": item.get("operation"),
-                             "format": item.get("format", "")} for item in derived],
-                "headers": len(headers)}
+        derived = profile_transformations(
+            profile, [h for h in headers if not h.startswith("Fireblade_")]
+        )
+        return {
+            "matched": getattr(profile, "name", "") or getattr(profile, "signature", [""])[0],
+            "signature": list(getattr(profile, "signature", []) or []),
+            "timestamps": [headers[i] for i in view.timestamp_columns],
+            "booleans": [headers[i] for i in view.boolean_columns],
+            "sort": headers[view.sort_column] if view.sort_column is not None else None,
+            "order": len(order),
+            "rules": len(view.format_rules),
+            "derived": [
+                {
+                    "name": item.get("name"),
+                    "operation": item.get("operation"),
+                    "format": item.get("format", ""),
+                }
+                for item in derived
+            ],
+            "headers": len(headers),
+        }
 
     def apply_profile(self, identifier: str, index: int) -> dict:
         """Apply the recognised profile to this analysis' view, as the desktop's command does.
@@ -2871,22 +3681,34 @@ class Library:
             sort_type=detected.sort_type,
             bookmarks_only=bool(getattr(current, "bookmarks_only", False)),
             expression=getattr(current, "expression", None),
-            format_rules=list(getattr(current, "format_rules", []) or []) + list(detected.format_rules),
+            format_rules=list(getattr(current, "format_rules", []) or [])
+            + list(detected.format_rules),
             timestamp_columns=list(detected.timestamp_columns),
             boolean_columns=list(detected.boolean_columns),
             group_intervals=dict(getattr(current, "group_intervals", {}) or {}),
         )
-        snapshots[index] = AnalysisSnapshot(snapshots[index].path, snapshots[index].source_info,
-                                            updated, snapshots[index].header_state)
+        snapshots[index] = AnalysisSnapshot(
+            snapshots[index].path,
+            snapshots[index].source_info,
+            updated,
+            snapshots[index].header_state,
+        )
         self.close_case(identifier)
-        self.library.save(identifier, snapshots, active,
-                          [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)],
-                          data.get("active_collection"), data.get("revision"))
-        return {"profile": getattr(profile, "name", "") or "profile",
-                "timestamps": [headers[i] for i in updated.timestamp_columns],
-                "booleans": [headers[i] for i in updated.boolean_columns],
-                "sort": headers[updated.sort_column] if updated.sort_column is not None else None,
-                "rules": len(detected.format_rules)}
+        self.library.save(
+            identifier,
+            snapshots,
+            active,
+            [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)],
+            data.get("active_collection"),
+            data.get("revision"),
+        )
+        return {
+            "profile": getattr(profile, "name", "") or "profile",
+            "timestamps": [headers[i] for i in updated.timestamp_columns],
+            "booleans": [headers[i] for i in updated.boolean_columns],
+            "sort": headers[updated.sort_column] if updated.sort_column is not None else None,
+            "rules": len(detected.format_rules),
+        }
 
     RETRY_READERS = ("text", "html", "csv", "pdf")
 
@@ -2909,12 +3731,16 @@ class Library:
                 status = item.get("status")
                 if status in ("complete", "companion"):
                     continue
-                entries.append({"collection": report.name, "path": str(item.get("path") or ""),
-                                "status": status or "unknown",
-                                "reason": str(item.get("error") or ""),
-                                "tools": list(item.get("tools") or [])})
-        return {"files": entries, "count": len(entries),
-                "readers": list(self.RETRY_READERS)}
+                entries.append(
+                    {
+                        "collection": report.name,
+                        "path": str(item.get("path") or ""),
+                        "status": status or "unknown",
+                        "reason": str(item.get("error") or ""),
+                        "tools": list(item.get("tools") or []),
+                    }
+                )
+        return {"files": entries, "count": len(entries), "readers": list(self.RETRY_READERS)}
 
     def _collection_report(self, folder: Path, collection_name: str) -> tuple[Path, dict]:
         report = folder / "collections" / Path(str(collection_name)).name
@@ -2935,8 +3761,11 @@ class Library:
         """Every file a collection inventoried, with its verdict — the bilan, file by file."""
         folder = self.library.folder(identifier)
         entries = []
-        reports = ([folder / "collections" / Path(collection).name] if collection
-                   else sorted((folder / "collections").glob("import-*")))
+        reports = (
+            [folder / "collections" / Path(collection).name]
+            if collection
+            else sorted((folder / "collections").glob("import-*"))
+        )
         for report in reports:
             file = report / "collection.json"
             if not file.is_file():
@@ -2948,29 +3777,43 @@ class Library:
             for item in payload.get("files") or []:
                 if not isinstance(item, dict):
                     continue
-                entries.append({"collection": report.name,
-                                "path": str(item.get("path") or ""),
-                                "name": Path(str(item.get("path") or "")).name,
-                                "status": item.get("status") or "unknown",
-                                # The core writes its reasons in French; this edition
-                                # speaks English, so the sentence goes through the same
-                                # dictionary the desktop uses.
-                                "reason": _english(item.get("reason") or item.get("error") or ""),
-                                "tools": item.get("tools") or [],
-                                "sha256": item.get("sha256") or "",
-                                "ignored": bool(item.get("ignored"))})
-        return {"files": entries, "count": len(entries),
-                "set_aside": sum(1 for item in entries if item["ignored"])}
+                entries.append(
+                    {
+                        "collection": report.name,
+                        "path": str(item.get("path") or ""),
+                        "name": Path(str(item.get("path") or "")).name,
+                        "status": item.get("status") or "unknown",
+                        # The core writes its reasons in French; this edition
+                        # speaks English, so the sentence goes through the same
+                        # dictionary the desktop uses.
+                        "reason": _english(item.get("reason") or item.get("error") or ""),
+                        "tools": item.get("tools") or [],
+                        "sha256": item.get("sha256") or "",
+                        "ignored": bool(item.get("ignored")),
+                    }
+                )
+        return {
+            "files": entries,
+            "count": len(entries),
+            "set_aside": sum(1 for item in entries if item["ignored"]),
+        }
 
-    def set_aside_file(self, identifier: str, collection: str, path: str,
-                       ignored: bool = True) -> dict:
+    def set_aside_file(
+        self, identifier: str, collection: str, path: str, ignored: bool = True
+    ) -> dict:
         """Park a file out of the counts, or bring it back: the desktop's "écarter"."""
         from fireblade.core import report_actions
 
         folder = self.library.folder(identifier)
         file, payload = self._collection_report(folder, collection)
-        entry = next((item for item in payload.get("files") or []
-                      if isinstance(item, dict) and str(item.get("path")) == str(path)), None)
+        entry = next(
+            (
+                item
+                for item in payload.get("files") or []
+                if isinstance(item, dict) and str(item.get("path")) == str(path)
+            ),
+            None,
+        )
         if entry is None:
             raise ServiceError("This file is not in the collection report.")
         report_actions.set_ignored(entry, bool(ignored))
@@ -2987,18 +3830,28 @@ class Library:
 
         folder = self.library.folder(identifier)
         file, payload = self._collection_report(folder, collection)
-        entry = next((item for item in payload.get("files") or []
-                      if isinstance(item, dict) and str(item.get("path")) == str(path)), None)
+        entry = next(
+            (
+                item
+                for item in payload.get("files") or []
+                if isinstance(item, dict) and str(item.get("path")) == str(path)
+            ),
+            None,
+        )
         if entry is None:
             raise ServiceError("This file is not in the collection report.")
         record = report_actions.remove_source(entry)
         entry.update(record)
         self._write_collection_report(file, payload)
-        return {"path": str(path), "status": record.get("status", "deleted"),
-                "sha256": record.get("sha256", "")}
+        return {
+            "path": str(path),
+            "status": record.get("status", "deleted"),
+            "sha256": record.get("sha256", ""),
+        }
 
-    def retry_file(self, identifier: str, collection_name: str, path: str,
-                   reader: str = "text") -> dict:
+    def retry_file(
+        self, identifier: str, collection_name: str, path: str, reader: str = "text"
+    ) -> dict:
         """Read one collected file again with the reader the analyst names.
 
         `Collection.analyse_single` is the desktop's own path for this: the source is
@@ -3014,31 +3867,54 @@ class Library:
         source = Path(str(path))
         if not source.is_file():
             raise ServiceError("The file to read again is no longer there.")
-        pack = (ToolPack(Path(self.tools_root)) if self.tools_root
-                else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack"))
+        pack = (
+            ToolPack(Path(self.tools_root))
+            if self.tools_root
+            else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack")
+        )
         self.close_case(identifier)
         collection = Collection.reopen(report, pack)
         collection.analyse_single(source, reader)
         entry = collection.entry_for(source)
         merged = 0
         try:
-            _first, merged = self._merge_session(identifier, report / "collection.fireblade-session")
+            _first, merged = self._merge_session(
+                identifier, report / "collection.fireblade-session"
+            )
         except (ServiceError, OSError, ValueError):
             merged = 0
-        return {"path": str(source), "reader": reader, "status": entry.get("status"),
-                "error": entry.get("error") or "", "runs": len(entry.get("runs") or []),
-                "analyses_added": merged}
+        return {
+            "path": str(source),
+            "reader": reader,
+            "status": entry.get("status"),
+            "error": entry.get("error") or "",
+            "runs": len(entry.get("runs") or []),
+            "analyses_added": merged,
+        }
 
-    def start_import_job(self, identifier: str, source: str | Path,
-                         organization: str = "files", delimiter: str | None = None,
-                         encoding: str | None = None, sheet: str = "") -> dict:
+    def start_import_job(
+        self,
+        identifier: str,
+        source: str | Path,
+        organization: str = "files",
+        delimiter: str | None = None,
+        encoding: str | None = None,
+        sheet: str = "",
+    ) -> dict:
         """Run an import in the background, so the window stays usable and the run
         can be stopped: a collection of a few hundred files takes minutes."""
         job_id = uuid.uuid4().hex
-        job = {"id": job_id, "status": "running", "message": "Starting…",
-               "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-               "finished": None, "result": None, "error": None, "log": [],
-               "collection": None}
+        job = {
+            "id": job_id,
+            "status": "running",
+            "message": "Starting…",
+            "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "finished": None,
+            "result": None,
+            "error": None,
+            "log": [],
+            "collection": None,
+        }
         with self._lock:
             self._jobs[job_id] = job
 
@@ -3066,8 +3942,9 @@ class Library:
                     with self._lock:
                         job["status"] = "complete" if result.get("analyses") else "error"
                         job["result"] = result
-                        job["message"] = (f"{result.get('rows', 0)} row(s) from sheet "
-                                          f"{result.get('sheet', '')!r}")
+                        job["message"] = (
+                            f"{result.get('rows', 0)} row(s) from sheet {result.get('sheet', '')!r}"
+                        )
                 except (ServiceError, ValueError, OSError, KeyError) as exc:
                     with self._lock:
                         job["status"] = "error"
@@ -3090,10 +3967,16 @@ class Library:
                 job["cancel"] = cancel
             try:
                 with cancellation_scope(cancel):
-                    result = self.import_source(identifier, source, tools_root=self.tools_root,
-                                                organization=organization, progress=progress,
-                                                delimiter=delimiter, encoding=encoding,
-                                                on_collection=remember)
+                    result = self.import_source(
+                        identifier,
+                        source,
+                        tools_root=self.tools_root,
+                        organization=organization,
+                        progress=progress,
+                        delimiter=delimiter,
+                        encoding=encoding,
+                        on_collection=remember,
+                    )
                 with self._lock:
                     job["result"] = result
                     job["status"] = "complete"
@@ -3132,10 +4015,19 @@ class Library:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         workspace = folder / "Disques" / (stamp + "-" + uuid.uuid4().hex[:8])
         job_id = uuid.uuid4().hex
-        job = {"id": job_id, "status": "running", "message": "Preparing the disk…",
-               "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-               "finished": None, "result": None, "error": None, "log": [], "kind": "disk",
-               "collection": None, "cancel": None}
+        job = {
+            "id": job_id,
+            "status": "running",
+            "message": "Preparing the disk…",
+            "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "finished": None,
+            "result": None,
+            "error": None,
+            "log": [],
+            "kind": "disk",
+            "collection": None,
+            "cancel": None,
+        }
         with self._lock:
             self._jobs[job_id] = job
 
@@ -3156,20 +4048,27 @@ class Library:
             with self._lock:
                 job["cancel"] = cancel
             try:
-                pack = (ToolPack(Path(self.tools_root)) if self.tools_root
-                        else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack"))
+                pack = (
+                    ToolPack(Path(self.tools_root))
+                    if self.tools_root
+                    else ToolPack(Path(tempfile.gettempdir()) / "fireblade-pack")
+                )
                 with cancellation_scope(cancel):
-                    collection = DiskCollection(source, workspace, pack, progress=progress,
-                                                source_kind=kind)
+                    collection = DiskCollection(
+                        source, workspace, pack, progress=progress, source_kind=kind
+                    )
                     with self._lock:
                         job["collection"] = collection
                     collection.parse()
                     _first, merged = self._merge_session(
-                        identifier, workspace / "collection" / "collection.fireblade-session")
+                        identifier, workspace / "collection" / "collection.fireblade-session"
+                    )
                 with self._lock:
-                    job["result"] = {"disk": collection.report.get("disk") or {},
-                                     "analyses_added": merged,
-                                     "workspace": str(workspace)}
+                    job["result"] = {
+                        "disk": collection.report.get("disk") or {},
+                        "analyses_added": merged,
+                        "workspace": str(workspace),
+                    }
                     job["status"] = "complete"
                     job["message"] = "Disk analysis complete."
             except OperationCancelled:
@@ -3205,10 +4104,17 @@ class Library:
                     snapshot = state.snapshot()
                 except (ValueError, AttributeError):
                     snapshot = None
-            return {"job": job_id, "status": job["status"], "message": job.get("message", ""),
-                    "started": job.get("started"), "finished": job.get("finished"),
-                    "error": job.get("error"), "log": list(job.get("log") or [])[-40:],
-                    "progress": snapshot, "result": job.get("result")}
+            return {
+                "job": job_id,
+                "status": job["status"],
+                "message": job.get("message", ""),
+                "started": job.get("started"),
+                "finished": job.get("finished"),
+                "error": job.get("error"),
+                "log": list(job.get("log") or [])[-40:],
+                "progress": snapshot,
+                "result": job.get("result"),
+            }
 
     def cancel_import_job(self, job_id: str) -> dict:
         with self._lock:
@@ -3248,11 +4154,20 @@ class Library:
         payload = dict(payload or {})
         work = self._task_work(identifier, kind, payload)
         job_id = uuid.uuid4().hex
-        job = {"id": job_id, "kind": kind, "status": "running", "message": "Starting…",
-               "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-               "finished": None, "result": None, "error": None, "log": [],
-               "cancel": threading.Event(), "stop_requested": False,
-               "progress": {"done": 0, "total": 0, "percent": None, "rows": 0, "message": "Starting…"}}
+        job = {
+            "id": job_id,
+            "kind": kind,
+            "status": "running",
+            "message": "Starting…",
+            "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "finished": None,
+            "result": None,
+            "error": None,
+            "log": [],
+            "cancel": threading.Event(),
+            "stop_requested": False,
+            "progress": {"done": 0, "total": 0, "percent": None, "rows": 0, "message": "Starting…"},
+        }
         with self._lock:
             self._jobs[job_id] = job
 
@@ -3293,7 +4208,7 @@ class Library:
                     job["status"] = "failed"
                     job["error"] = _english(exc)
                     job["message"] = job["error"]
-            except Exception as exc:                     # noqa: BLE001 - reported, not hidden
+            except Exception as exc:  # noqa: BLE001 - reported, not hidden
                 with self._lock:
                     job["status"] = "failed"
                     job["error"] = f"{type(exc).__name__}: {exc}"
@@ -3310,37 +4225,55 @@ class Library:
         """The callable a task runs, bound to the method the window already knows."""
         if kind == "scan":
             return lambda note: self.ioc_scan(
-                identifier, payload.get("index"), payload.get("text", ""),
+                identifier,
+                payload.get("index"),
+                payload.get("text", ""),
                 limit=int(payload.get("limit") or 2000),
                 all_analyses=bool(payload.get("all_analyses")),
                 respect_filters=bool(payload.get("respect_filters")),
                 include_subdomains=bool(payload.get("include_subdomains", True)),
-                declared_format=payload.get("format") or None, progress=note)
+                declared_format=payload.get("format") or None,
+                progress=note,
+            )
         if kind == "timeline":
             return lambda note: self.timeline(
-                identifier, start=payload.get("start"), end=payload.get("end"),
-                offset=int(payload.get("offset") or 0), text=payload.get("text") or "",
-                kind=payload.get("kind") or "text", dates=payload.get("dates") or None,
+                identifier,
+                start=payload.get("start"),
+                end=payload.get("end"),
+                offset=int(payload.get("offset") or 0),
+                text=payload.get("text") or "",
+                kind=payload.get("kind") or "text",
+                dates=payload.get("dates") or None,
                 include_undated=bool(payload.get("include_undated")),
-                respect_filters=bool(payload.get("respect_filters")), progress=note)
+                respect_filters=bool(payload.get("respect_filters")),
+                progress=note,
+            )
         if kind == "detect":
-            return lambda note: self.detect(identifier, payload.get("min_level") or "low",
-                                            progress=note)
+            return lambda note: self.detect(
+                identifier, payload.get("min_level") or "low", progress=note
+            )
         if kind == "report":
             if payload.get("client"):
                 return lambda note: self.client_report(
-                    identifier, payload.get("title") or "", payload.get("description") or "",
-                    pdf=bool(payload.get("pdf")), progress=note)
+                    identifier,
+                    payload.get("title") or "",
+                    payload.get("description") or "",
+                    pdf=bool(payload.get("pdf")),
+                    progress=note,
+                )
             if payload.get("pdf") and payload.get("name"):
                 return lambda note: self.report_pdf(identifier, payload["name"], progress=note)
             return lambda note: self.report(
-                identifier, payload.get("title") or "Investigation report",
+                identifier,
+                payload.get("title") or "Investigation report",
                 payload.get("description") or "",
-                bookmarks_only=bool(payload.get("bookmarks_only")), progress=note)
+                bookmarks_only=bool(payload.get("bookmarks_only")),
+                progress=note,
+            )
         if kind == "package":
-            return lambda note: self.export_package(identifier,
-                                                    bool(payload.get("include_sources", True)),
-                                                    progress=note)
+            return lambda note: self.export_package(
+                identifier, bool(payload.get("include_sources", True)), progress=note
+            )
         raise ServiceError(f"Unknown task: {kind}")
 
     def task(self, job_id: str) -> dict:
@@ -3348,11 +4281,18 @@ class Library:
             job = self._jobs.get(job_id)
             if job is None:
                 raise ServiceError("This task does not exist.")
-            return {"job": job_id, "kind": job.get("kind"), "status": job["status"],
-                    "message": job.get("message", ""), "started": job.get("started"),
-                    "finished": job.get("finished"), "error": job.get("error"),
-                    "progress": dict(job.get("progress") or {}),
-                    "log": list(job.get("log") or [])[-12:], "result": job.get("result")}
+            return {
+                "job": job_id,
+                "kind": job.get("kind"),
+                "status": job["status"],
+                "message": job.get("message", ""),
+                "started": job.get("started"),
+                "finished": job.get("finished"),
+                "error": job.get("error"),
+                "progress": dict(job.get("progress") or {}),
+                "log": list(job.get("log") or [])[-12:],
+                "result": job.get("result"),
+            }
 
     def cancel_task(self, job_id: str) -> dict:
         with self._lock:
@@ -3394,12 +4334,23 @@ class Library:
         if len(ordered) != len(snapshots):
             raise ServiceError("The requested order does not match the analyses.")
         new_active = 0 if active < 0 else min(active, len(ordered) - 1)
-        collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+        collections = [
+            entry for entry in (data.get("collections") or []) if isinstance(entry, dict)
+        ]
         self.close_case(identifier)
-        self.library.save(identifier, ordered, new_active, collections,
-                          data.get("active_collection"), data.get("revision"))
-        return {"analyses": len(ordered), "active": new_active,
-                "labels": [self._label(item.source_info, item.path) for item in ordered]}
+        self.library.save(
+            identifier,
+            ordered,
+            new_active,
+            collections,
+            data.get("active_collection"),
+            data.get("revision"),
+        )
+        return {
+            "analyses": len(ordered),
+            "active": new_active,
+            "labels": [self._label(item.source_info, item.path) for item in ordered],
+        }
 
     def save_case(self, identifier: str) -> dict:
         """Write the case's session again, which leaves a state to recover in its History.
@@ -3411,10 +4362,19 @@ class Library:
         data = self.library.read(identifier)
         snapshots, active, closed = self._session_snapshots(identifier, with_closed=True)
         if snapshots:
-            collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+            collections = [
+                entry for entry in (data.get("collections") or []) if isinstance(entry, dict)
+            ]
             self.close_case(identifier)
-            self.library.save(identifier, snapshots, active, collections,
-                              data.get("active_collection"), data.get("revision"), closed=list(closed))
+            self.library.save(
+                identifier,
+                snapshots,
+                active,
+                collections,
+                data.get("active_collection"),
+                data.get("revision"),
+                closed=list(closed),
+            )
         # A case with no analysis has no session to write: it is saved, and says so.
         return {"analyses": len(snapshots), "recovery_points": self.history(identifier)["count"]}
 
@@ -3428,7 +4388,9 @@ class Library:
                     size = path.stat().st_size
                 except OSError:
                     size = 0
-                when = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(timespec="seconds")
+                when = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(
+                    timespec="seconds"
+                )
                 entries.append({"name": path.name, "bytes": size, "when": when})
         return {"entries": entries, "folder": str(folder), "count": len(entries)}
 
@@ -3470,14 +4432,19 @@ class Library:
             if revision:
                 keep = folder / "History" / f"{revision}.json"
                 if not keep.exists():
-                    keep.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+                    keep.write_text(
+                        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+                    )
         self.close_case(identifier)
         temporary = current.with_suffix(".partial")
         temporary.write_text(json.dumps(recorded, ensure_ascii=False, indent=2), encoding="utf-8")
         temporary.replace(current)
-        return {"restored": name, "revision": recorded.get("revision"),
-                "analyses": recorded.get("analysis_count"),
-                "updated": recorded.get("updated")}
+        return {
+            "restored": name,
+            "revision": recorded.get("revision"),
+            "analyses": recorded.get("analysis_count"),
+            "updated": recorded.get("updated"),
+        }
 
     def _case_for(self, identifier: str, index: int) -> Case:
         key = (identifier, index)
@@ -3493,7 +4460,8 @@ class Library:
             if not entry["found"]:
                 raise ServiceError(
                     "The analysis file is missing from the case "
-                    f"(recorded path: {entry['recorded_path']}).")
+                    f"(recorded path: {entry['recorded_path']})."
+                )
             path = Path(entry["path"])
             if len(self._open) >= self.MAX_OPEN:
                 oldest = next(iter(self._open))
@@ -3527,15 +4495,27 @@ class Library:
         case = self._case_for(identifier, index)
         return META_COLUMNS + column_labels(case)
 
-    def rows(self, identifier: str, index: int, offset: int = 0, limit: int = 200,
-             search: str = "", sort: int | None = None, descending: bool = False,
-             filters: list[tuple[int, str, str]] | None = None,
-             bookmarks_only: bool = False, groups: list[int] | None = None,
-             path: list[str] | None = None, sorts: list[tuple[int, bool]] | None = None,
-             interval: str = "", expression: dict | None = None,
-             summaries: list[tuple[int, str, str]] | None = None,
-             order: str = "", order_descending: bool = True,
-             order_summary: int = 0) -> dict:
+    def rows(
+        self,
+        identifier: str,
+        index: int,
+        offset: int = 0,
+        limit: int = 200,
+        search: str = "",
+        sort: int | None = None,
+        descending: bool = False,
+        filters: list[tuple[int, str, str]] | None = None,
+        bookmarks_only: bool = False,
+        groups: list[int] | None = None,
+        path: list[str] | None = None,
+        sorts: list[tuple[int, bool]] | None = None,
+        interval: str = "",
+        expression: dict | None = None,
+        summaries: list[tuple[int, str, str]] | None = None,
+        order: str = "",
+        order_descending: bool = True,
+        order_summary: int = 0,
+    ) -> dict:
         case = self._case_for(identifier, index)
         view = View(search=search or "", filters=[], bookmarks_only=bool(bookmarks_only))
         for column, operator, value in filters or ():
@@ -3546,6 +4526,7 @@ class Library:
             view.filters.append(Filter(column, operator, value))
         if expression:
             from fireblade.core.models import condition_from_dict
+
             view.expression = condition_from_dict(_raw_condition(case, expression))
         keys = list(sorts or ())
         if not keys and sort is not None:
@@ -3563,7 +4544,17 @@ class Library:
                     raise ServiceError("Grouping column outside the analysis.")
             view.groups = [int(column) for column in groups]
             if interval:
-                if interval not in ("value", "year", "quarter", "month", "week", "day", "hour", "minute", "second"):
+                if interval not in (
+                    "value",
+                    "year",
+                    "quarter",
+                    "month",
+                    "week",
+                    "day",
+                    "hour",
+                    "minute",
+                    "second",
+                ):
                     raise ServiceError("Unknown grouping interval.")
                 view.group_intervals = {str(column): interval for column in view.groups}
         # Group summaries and their order, exactly the view fields the desktop sets.
@@ -3591,8 +4582,14 @@ class Library:
             view.group_summary = max(0, min(int(order_summary), max(0, len(cleaned_summaries) - 1)))
         # The session's own view says which columns are dates; the grid reformats
         # those and nothing else.
-        entry = next((item for item in self._analyses(self.library.read(identifier))
-                      if item["index"] == index), {})
+        entry = next(
+            (
+                item
+                for item in self._analyses(self.library.read(identifier))
+                if item["index"] == index
+            ),
+            {},
+        )
         timestamps = list((entry.get("view") or {}).get("timestamp_columns") or [])
         limit = max(1, min(int(limit), 1000))
         offset = max(0, int(offset))
@@ -3611,11 +4608,17 @@ class Library:
             "grouped": grouped,
             "path": list(depth),
             "timestamps": timestamps,
-            "summaries": [{"column": item.column,
-                           "name": column_label(case, item.column),
-                           "operation": item.operation, "kind": item.kind}
-                          for item in cleaned_summaries],
-            "order": view.group_order, "order_descending": view.group_descending,
+            "summaries": [
+                {
+                    "column": item.column,
+                    "name": column_label(case, item.column),
+                    "operation": item.operation,
+                    "kind": item.kind,
+                }
+                for item in cleaned_summaries
+            ],
+            "order": view.group_order,
+            "order_descending": view.group_descending,
         }
 
     @staticmethod
@@ -3629,11 +4632,15 @@ class Library:
         case = self._case_for(identifier, index)
         with case.lock:
             notes = case.bookmarks()
-        return {"bookmarks": [{"row_id": int(row_id), "note": note or ""}
-                              for row_id, note in notes.items()]}
+        return {
+            "bookmarks": [
+                {"row_id": int(row_id), "note": note or ""} for row_id, note in notes.items()
+            ]
+        }
 
-    def bookmark(self, identifier: str, index: int, row_id: int, note: str = "",
-                 column: int | None = None) -> dict:
+    def bookmark(
+        self, identifier: str, index: int, row_id: int, note: str = "", column: int | None = None
+    ) -> dict:
         """Mark a row, or one cell, with a note. An empty note removes the mark."""
         case = self._case_for(identifier, index)
         clean = (note or "").strip()
@@ -3642,10 +4649,16 @@ class Library:
             case.bookmark(int(row_id), clean or None, None if column is None else int(column))
         return {"row_id": int(row_id), "column": column, "note": clean}
 
-    def export(self, identifier: str, index: int, search: str = "",
-               sort: int | None = None, descending: bool = False,
-               filters: list[tuple[int, str, str]] | None = None,
-               as_xlsx: bool = False) -> Path:
+    def export(
+        self,
+        identifier: str,
+        index: int,
+        search: str = "",
+        sort: int | None = None,
+        descending: bool = False,
+        filters: list[tuple[int, str, str]] | None = None,
+        as_xlsx: bool = False,
+    ) -> Path:
         """Write the rows to a temporary file and return its path.
 
         The desktop's two export dialogs offer CSV **or** Excel; the portal offers
@@ -3672,11 +4685,15 @@ def _condition_payload(condition) -> dict:
     """A filter group (or a single filter) as the grid reads it: a small tree."""
     children = getattr(condition, "children", None)
     if children is None:
-        return {"column": getattr(condition, "column", None),
-                "operator": getattr(condition, "operator", "contains"),
-                "value": getattr(condition, "value", "")}
-    return {"logic": getattr(condition, "logic", "and") or "and",
-            "children": [_condition_payload(child) for child in children][:256]}
+        return {
+            "column": getattr(condition, "column", None),
+            "operator": getattr(condition, "operator", "contains"),
+            "value": getattr(condition, "value", ""),
+        }
+    return {
+        "logic": getattr(condition, "logic", "and") or "and",
+        "children": [_condition_payload(child) for child in children][:256],
+    }
 
 
 def _english(text):
@@ -3690,10 +4707,12 @@ def _english(text):
         return ""
     try:
         from fireblade.core.i18n import english
+
         return english(str(text))
     except (ImportError, ValueError, AttributeError):
         try:
             from fireblade.core.i18n import translate
+
             return translate(str(text))
         except (ImportError, ValueError):
             return str(text)
@@ -3702,9 +4721,12 @@ def _english(text):
 def _translate_csv_header(path: Path, case) -> None:
     """Rewrite the first row of an exported CSV with English column names, in a stream."""
     import shutil
+
     temporary = path.with_name(path.name + ".part")
-    with path.open("r", encoding="utf-8-sig", newline="") as source, \
-            temporary.open("w", encoding="utf-8-sig", newline="") as target:
+    with (
+        path.open("r", encoding="utf-8-sig", newline="") as source,
+        temporary.open("w", encoding="utf-8-sig", newline="") as target,
+    ):
         header = next(csv.reader([source.readline()]), None)
         if header is not None:
             csv.writer(target).writerow(_labels_for_export(header, case))
@@ -3746,7 +4768,9 @@ def raw_expression(case, text):
     never touched; a name that already is the stored one is left alone.
     """
     headers, labels = list(case.headers), column_labels(case)
-    renamed = {label: raw for label, raw in zip(labels, headers) if label != raw and label not in headers}
+    renamed = {
+        label: raw for label, raw in zip(labels, headers) if label != raw and label not in headers
+    }
     if not renamed or not text:
         return text
     pieces = re.split(r"('(?:[^']|'')*')", text)
@@ -3755,7 +4779,9 @@ def raw_expression(case, text):
         for label in sorted(renamed, key=len, reverse=True):
             escaped = re.escape(label)
             segment = re.sub(rf"\[{escaped}\]", lambda _m, raw=renamed[label]: f"[{raw}]", segment)
-            segment = re.sub(rf"(?<![\w.\[]){escaped}(?![\w\]])", lambda _m, raw=renamed[label]: raw, segment)
+            segment = re.sub(
+                rf"(?<![\w.\[]){escaped}(?![\w\]])", lambda _m, raw=renamed[label]: raw, segment
+            )
         pieces[position] = segment
     return "".join(pieces)
 

@@ -70,50 +70,33 @@ DOCUMENTS = {
     "Faible": "Low",
     "Action(s) ouverte(s)": "Open action(s)",
     "Indicateur(s)": "Indicator(s)",
-    "Aucune machine ni compte n'a été enregistré pour ce case.":
-        "No machine or account has been recorded for this case.",
+    "Aucune machine ni compte n'a été enregistré pour ce case.": "No machine or account has been recorded for this case.",
     "Aucune analyse importée dans ce case.": "No analysis has been imported in this case.",
-    "Détail limité aux 50 premiers points ; le bilan JSON complet accompagne ce rapport.":
-        "Detail limited to the first 50 items; the complete JSON report accompanies this document.",
-    "Aucun écart de couverture signalé au moment de la génération.":
-        "No coverage gap was reported when this document was generated.",
+    "Détail limité aux 50 premiers points ; le bilan JSON complet accompagne ce rapport.": "Detail limited to the first 50 items; the complete JSON report accompanies this document.",
+    "Aucun écart de couverture signalé au moment de la génération.": "No coverage gap was reported when this document was generated.",
     "Chronologie limitée aux 60 premières fenêtres.": "Timeline limited to the first 60 windows.",
-    "Aucune fenêtre temporelle n'a pu être construite à partir des constats.":
-        "No time window could be built from the findings.",
-    "Tableau limité aux 300 constats les plus graves ; le reste est conservé dans l'analyse.":
-        "Table limited to the 300 most serious findings; the rest is kept in the analysis.",
-    "Un constat est une règle déclenchée sur un hôte dans une fenêtre de temps ; il ne constitue pas à lui seul une conclusion de compromission.":
-        "A finding is a rule triggered on a host within a time window; on its own it is not a conclusion that a compromise occurred.",
+    "Aucune fenêtre temporelle n'a pu être construite à partir des constats.": "No time window could be built from the findings.",
+    "Tableau limité aux 300 constats les plus graves ; le reste est conservé dans l'analyse.": "Table limited to the 300 most serious findings; the rest is kept in the analysis.",
+    "Un constat est une règle déclenchée sur un hôte dans une fenêtre de temps ; il ne constitue pas à lui seul une conclusion de compromission.": "A finding is a rule triggered on a host within a time window; on its own it is not a conclusion that a compromise occurred.",
     "Aucun constat Hayabusa n'est présent dans ce case.": "There is no Hayabusa finding in this case.",
-    "Les hôtes, les techniques observées et les indicateurs suivis, ordonnés selon la chaîne d'attaque ; les étiquettes sont celles posées par l'analyste.":
-        "The hosts, the observed techniques and the tracked indicators, ordered along the attack chain; the labels are the ones set by the analyst.",
+    "Les hôtes, les techniques observées et les indicateurs suivis, ordonnés selon la chaîne d'attaque ; les étiquettes sont celles posées par l'analyste.": "The hosts, the observed techniques and the tracked indicators, ordered along the attack chain; the labels are the ones set by the analyst.",
     "Aucun graphe n'a été joint à ce rapport.": "No graph is attached to this report.",
-    "Liste limitée à 500 indicateurs ; le suivi complet est joint en CSV.":
-        "List limited to 500 indicators; the complete tracking is attached as CSV.",
-    "Aucun indicateur n'est suivi dans ce case à la date du rapport.":
-        "No indicator is tracked in this case at the date of this report.",
+    "Liste limitée à 500 indicateurs ; le suivi complet est joint en CSV.": "List limited to 500 indicators; the complete tracking is attached as CSV.",
+    "Aucun indicateur n'est suivi dans ce case à la date du rapport.": "No indicator is tracked in this case at the date of this report.",
     "Aucune action n'est consignée dans ce case.": "No action is recorded in this case.",
-    "Les procès-verbaux de destruction signés accompagnent ce rapport.":
-        "The signed destruction certificates accompany this report.",
-    "Aucune destruction de preuve n'a été enregistrée à la date du rapport.":
-        "No evidence destruction was recorded at the date of this report.",
-    "Les constats proviennent des règles Hayabusa appliquées aux journaux collectés ; les indicateurs ont été rapprochés hors ligne, sans requête réseau. Les empreintes SHA-256 des sources ont été relevées à l'import. Ce rapport décrit les éléments présents dans les analyses fournies : il ne prouve pas que la collecte était complète, ni qu'aucune activité n'a échappé aux journaux disponibles.":
-        "The findings come from the Hayabusa rules applied to the collected logs; the indicators were matched offline, with no network request. The SHA-256 fingerprints of the sources were taken at import. This report describes what is present in the analyses provided: it does not prove that the collection was complete, nor that no activity escaped the available logs.",
-    "{} alerte(s) regroupée(s) en {} constat(s) sur {} machine(s) et compte(s) déclaré(s), réparties sur {} fenêtre(s) temporelle(s).":
-        "{} alert(s) grouped into {} finding(s) across {} declared machine(s) and account(s), spread over {} time window(s).",
+    "Les procès-verbaux de destruction signés accompagnent ce rapport.": "The signed destruction certificates accompany this report.",
+    "Aucune destruction de preuve n'a été enregistrée à la date du rapport.": "No evidence destruction was recorded at the date of this report.",
+    "Les constats proviennent des règles Hayabusa appliquées aux journaux collectés ; les indicateurs ont été rapprochés hors ligne, sans requête réseau. Les empreintes SHA-256 des sources ont été relevées à l'import. Ce rapport décrit les éléments présents dans les analyses fournies : il ne prouve pas que la collecte était complète, ni qu'aucune activité n'a échappé aux journaux disponibles.": "The findings come from the Hayabusa rules applied to the collected logs; the indicators were matched offline, with no network request. The SHA-256 fingerprints of the sources were taken at import. This report describes what is present in the analyses provided: it does not prove that the collection was complete, nor that no activity escaped the available logs.",
+    "{} alerte(s) regroupée(s) en {} constat(s) sur {} machine(s) et compte(s) déclaré(s), réparties sur {} fenêtre(s) temporelle(s).": "{} alert(s) grouped into {} finding(s) across {} declared machine(s) and account(s), spread over {} time window(s).",
     "{} action(s) close(s) sur {}.": "{} action(s) closed out of {}.",
     "{} fichier(s)": "{} file(s)",
     "Rapport d'investigation — Fireblade": "Investigation report — Fireblade",
     # Investigation report
-    "Les constats ci-dessous sont des éléments à examiner. Les empreintes sources sont celles enregistrées à l’import ; leur présence ne prouve pas une nouvelle vérification de la source.":
-        "The findings below are items to review. The source fingerprints are the ones recorded at import; their presence does not prove that the source was verified again.",
+    "Les constats ci-dessous sont des éléments à examiner. Les empreintes sources sont celles enregistrées à l’import ; leur présence ne prouve pas une nouvelle vérification de la source.": "The findings below are items to review. The source fingerprints are the ones recorded at import; their presence does not prove that the source was verified again.",
     "Contrôle de couverture": "Coverage check",
-    "Aucun contrôle de couverture joint. Ce rapport ne démontre pas la complétude de la collecte.":
-        "No coverage check is attached. This report does not demonstrate that the collection is complete.",
-    "Détail limité aux 100 premiers points ; exporter le bilan JSON complet.":
-        "Detail limited to the first 100 items; export the complete JSON report.",
-    "Résultats partiels : limite du rapport atteinte. Les autres constats restent dans les analyses.":
-        "Partial results: the report limit was reached. The other findings remain in the analyses.",
+    "Aucun contrôle de couverture joint. Ce rapport ne démontre pas la complétude de la collecte.": "No coverage check is attached. This report does not demonstrate that the collection is complete.",
+    "Détail limité aux 100 premiers points ; exporter le bilan JSON complet.": "Detail limited to the first 100 items; export the complete JSON report.",
+    "Résultats partiels : limite du rapport atteinte. Les autres constats restent dans les analyses.": "Partial results: the report limit was reached. The other findings remain in the analyses.",
     "{} correspondance(s) dans cette analyse.": "{} match(es) in this analysis.",
     "Aucun filtre": "No filter",
     "Filtres appliqués": "Filters applied",
@@ -130,8 +113,7 @@ DOCUMENTS = {
     "Volume traité": "Volume processed",
     "1. Fichiers détruits": "1. Files destroyed",
     "Aucun fichier n'a été détruit.": "No file was destroyed.",
-    "Empreintes abrégées dans le tableau ; les valeurs complètes figurent en annexe, pour les mêmes fichiers.":
-        "Fingerprints are shortened in the table; the complete values are given in the annex, for the same files.",
+    "Empreintes abrégées dans le tableau ; les valeurs complètes figurent en annexe, pour les mêmes fichiers.": "Fingerprints are shortened in the table; the complete values are given in the annex, for the same files.",
     "2. Empreintes complètes": "2. Complete fingerprints",
     "4. Portée et limites": "4. Scope and limits",
     "5. Signatures": "5. Signatures",
@@ -139,37 +121,29 @@ DOCUMENTS = {
     "Taille": "Size",
     "État": "Status",
     "détruit et vérifié": "destroyed and verified",
-    "Chaque signataire atteste avoir assisté à l'opération décrite ci-dessus.":
-        "Each signatory attests to having attended the operation described above.",
+    "Chaque signataire atteste avoir assisté à l'opération décrite ci-dessus.": "Each signatory attests to having attended the operation described above.",
     "Représentant du client": "Client representative",
     "Rapport": "Report",
     "indisponible": "unavailable",
     "Contrat {} · Responsable {} · Du {} au {}": "Contract {} · Lead {} · From {} to {}",
-
     # Coverage diagnostics
     "Fichier modifié pendant la vérification": "File changed during the check",
     "Le journal de couverture est un lien": "The coverage log is a link",
-    "Journal de couverture limité à 8 Mio ; exporter les résultats avant de poursuivre":
-        "Coverage log limited to 8 MiB; export the results before going on",
+    "Journal de couverture limité à 8 Mio ; exporter les résultats avant de poursuivre": "Coverage log limited to 8 MiB; export the results before going on",
     "Journal de couverture invalide ou supérieur à 8 Mio": "Coverage log invalid or larger than 8 MiB",
     "Contrôle limité à 1000 analyses": "The check is limited to 1000 analyses",
-    "Analyses ouvertes, inventaires fournis et opérations journalisées ; aucune preuve de complétude des fichiers jamais acquis.":
-        "Open analyses, inventories provided and logged operations; no proof of completeness for files that were never acquired.",
-    "Le bilan ne peut pas remplacer une source ou une analyse":
-        "The report cannot replace a source or an analysis",
+    "Analyses ouvertes, inventaires fournis et opérations journalisées ; aucune preuve de complétude des fichiers jamais acquis.": "Open analyses, inventories provided and logged operations; no proof of completeness for files that were never acquired.",
+    "Le bilan ne peut pas remplacer une source ou une analyse": "The report cannot replace a source or an analysis",
     "Le bilan de couverture est un lien": "The coverage report is a link",
-    "Bilan de couverture limité à 32 Mio ; exporter le résultat séparément":
-        "Coverage report limited to 32 MiB; export the result separately",
+    "Bilan de couverture limité à 32 Mio ; exporter le résultat séparément": "Coverage report limited to 32 MiB; export the result separately",
     "Bilan de couverture invalide ou supérieur à 32 Mio": "Coverage report invalid or larger than 32 MiB",
     "Périmètre de bilan invalide": "Invalid report scope",
-    "Contenu du fichier exporté différent des valeurs transmises au rédacteur":
-        "The exported file differs from the values given to the writer",
+    "Contenu du fichier exporté différent des valeurs transmises au rédacteur": "The exported file differs from the values given to the writer",
     "Entrée de journal de couverture invalide": "Invalid coverage log entry",
     "Mesures du journal invalides": "Invalid log measurements",
     "Gravité de journal invalide": "Invalid log severity",
     "Référence de source invalide": "Invalid source reference",
-    "En-tête du fichier exporté différent du schéma attendu":
-        "The exported file's header differs from the expected schema",
+    "En-tête du fichier exporté différent du schéma attendu": "The exported file's header differs from the expected schema",
     "En-tête d’inventaire invalide": "Invalid inventory header",
     "Inventaire invalide ou supérieur à 200 000 entrées": "Inventory invalid or larger than 200,000 entries",
     "Référence d’analyse invalide": "Invalid analysis reference",
@@ -186,10 +160,8 @@ DOCUMENTS = {
     "Résultats de chasse introuvables": "Hunt results not found",
     "Métadonnée de chasse trop volumineuse": "Hunt metadata too large",
     "Métadonnées de chasse invalides": "Invalid hunt metadata",
-    "L’export ne peut pas remplacer une chasse, une analyse ou sa source":
-        "The export cannot replace a hunt, an analysis or its source",
-    "Périmètre limité à 1000 analyses et 16 Mio de métadonnées":
-        "Scope limited to 1000 analyses and 16 MiB of metadata",
+    "L’export ne peut pas remplacer une chasse, une analyse ou sa source": "The export cannot replace a hunt, an analysis or its source",
+    "Périmètre limité à 1000 analyses et 16 Mio de métadonnées": "Scope limited to 1000 analyses and 16 MiB of metadata",
     "Chasse limitée à 50000 IOC": "A hunt is limited to 50000 indicators",
     "Liste IOC enregistrée trop volumineuse": "Saved indicator list too large",
     "IOC enregistré incohérent": "Inconsistent saved indicator",
@@ -197,16 +169,12 @@ DOCUMENTS = {
     # Timeline
     "Type de corrélation invalide": "Invalid correlation type",
     "Période de chronologie invalide": "Invalid timeline period",
-    "Date ISO invalide ; indiquez le fuseau (ex. 2026-01-01T12:00:00Z)":
-        "Invalid ISO date; give the time zone (e.g. 2026-01-01T12:00:00Z)",
-    "L’export ne peut pas remplacer une analyse ou sa source":
-        "The export cannot replace an analysis or its source",
+    "Date ISO invalide ; indiquez le fuseau (ex. 2026-01-01T12:00:00Z)": "Invalid ISO date; give the time zone (e.g. 2026-01-01T12:00:00Z)",
+    "L’export ne peut pas remplacer une analyse ou sa source": "The export cannot replace an analysis or its source",
     # Portable case
     "Chemin d’archive incompatible avec Windows": "Archive path not compatible with Windows",
-    "L’archive ne peut pas remplacer une analyse ou une source":
-        "The archive cannot replace an analysis or a source",
-    "Enregistrez l’archive hors du dossier des chasses IOC":
-        "Save the archive outside the indicator hunts folder",
+    "L’archive ne peut pas remplacer une analyse ou une source": "The archive cannot replace an analysis or a source",
+    "Enregistrez l’archive hors du dossier des chasses IOC": "Save the archive outside the indicator hunts folder",
     "Enregistrez l’archive hors du dossier de collecte": "Save the archive outside the collection folder",
     "Archive limitée à 50000 fichiers et 64 Gio": "Archive limited to 50000 files and 64 GiB",
     "Archive trop grande ou entrées dupliquées": "Archive too large or duplicated entries",
@@ -221,26 +189,21 @@ DOCUMENTS = {
     "Fichier décompressé trop grand": "Unpacked file too large",
     "Références de collecte trop volumineuses": "Collection references too large",
     "Métadonnées d’analyse incohérentes": "Inconsistent analysis metadata",
-    "Références de collecte trop volumineuses pour le transport (16 Mio maximum)":
-        "Collection references too large to be carried (16 MiB at most)",
+    "Références de collecte trop volumineuses pour le transport (16 Mio maximum)": "Collection references too large to be carried (16 MiB at most)",
     # Case destruction
     "Le dossier du case est un lien ; il n’est jamais suivi": "The case folder is a link; it is never followed",
     "Le dossier du case n’existe pas": "The case folder does not exist",
-    "Ce dossier ne ressemble pas à un case Fireblade ; destruction refusée":
-        "This folder does not look like a Fireblade case; destruction refused",
-    "Le procès-verbal doit être écrit hors du case, puisque le case disparaît":
-        "The certificate must be written outside the case, since the case disappears",
+    "Ce dossier ne ressemble pas à un case Fireblade ; destruction refusée": "This folder does not look like a Fireblade case; destruction refused",
+    "Le procès-verbal doit être écrit hors du case, puisque le case disparaît": "The certificate must be written outside the case, since the case disappears",
     "Le case ne contient aucun fichier à détruire": "The case holds no file to destroy",
     "Destruction du case : {} fichier(s), {} Mo": "Case destruction: {} file(s), {} MB",
     "Résidus du case : {} fichier(s) hors du dossier": "Case residue: {} file(s) outside the folder",
     "Le case dépasse {} fichiers ; destruction refusée": "The case exceeds {} files; destruction refused",
-    "Rapport trop volumineux ; réduisez le nombre de constats ou de colonnes (16 millions de caractères maximum)":
-        "Report too large; reduce the number of findings or columns (16 million characters at most)",
+    "Rapport trop volumineux ; réduisez le nombre de constats ou de colonnes (16 millions de caractères maximum)": "Report too large; reduce the number of findings or columns (16 million characters at most)",
     "Titre de rapport requis (500 caractères maximum)": "A report title is required (500 characters at most)",
     "Rapport limité à 1 à 10000 constats": "A report holds from 1 to 10000 findings",
     "Sélection du rapport invalide": "Invalid report selection",
-    "Le rapport ne peut pas écraser une analyse ou sa source":
-        "The report cannot overwrite an analysis or its source",
+    "Le rapport ne peut pas écraser une analyse ou sa source": "The report cannot overwrite an analysis or its source",
     "Contrôle de couverture": "Coverage check",
 }
 
@@ -249,8 +212,7 @@ PHRASES = {
     " lignes au lieu de ": " rows instead of ",
     "Export incomplet à la relecture : ": "Incomplete export on re-reading: ",
     "Import déclaré : ": "Declared import: ",
-    " constats supplémentaires non détaillés ; compteurs complets conservés.":
-        " more findings not detailed; complete counters kept.",
+    " constats supplémentaires non détaillés ; compteurs complets conservés.": " more findings not detailed; complete counters kept.",
     " lignes dans la vue actuelle.": " rows in the current view.",
     " colonnes entièrement vides.": " columns that are entirely empty.",
     " lignes sans date exploitable dans ": " rows without a usable date in ",

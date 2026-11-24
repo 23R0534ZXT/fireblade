@@ -14,6 +14,7 @@ Layout, top to bottom:
 Every string is written in English: from 0.4.2 the product is English only, and a new
 surface must not add French to the interface.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,23 +27,52 @@ import time
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import (QSizePolicy, QAbstractItemView, QComboBox, QDialog, QDialogButtonBox,
-                               QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMenu,
-                               QPlainTextEdit, QPushButton, QRadioButton, QSplitter, QTableWidget,
-                               QTableWidgetItem, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QSizePolicy,
+    QAbstractItemView,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QPlainTextEdit,
+    QPushButton,
+    QRadioButton,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
-from fireblade.core.assistant import (Assistant, answer, catalogue, install_model, install_runtime,
-                                      write_manifest)
+from fireblade.core.assistant import (
+    Assistant,
+    answer,
+    catalogue,
+    install_model,
+    install_runtime,
+    write_manifest,
+)
 from fireblade.core.assistant_chat import Chat
 from fireblade.core.assistant_history import History
 from fireblade.core.case_tools import CaseTools
-from fireblade.core.explain import (SCHEMA, build_pack, describe_without_model, read_answer,
-                                    render_structured, verify)
+from fireblade.core.explain import (
+    SCHEMA,
+    build_pack,
+    describe_without_model,
+    read_answer,
+    render_structured,
+    verify,
+)
 from fireblade.core.findings import group_alerts, group_alerts_sql, summarise
 from fireblade.ui.maps import CircularMap, HeatMap, ChainMap
 
-COLUMNS = ('Time', 'Level', 'Rule', 'Host', 'Count', 'Event IDs', 'MITRE')
-VIEWS = (('Clock', CircularMap), ('Heat map', HeatMap), ('Chain', ChainMap))
+COLUMNS = ("Time", "Level", "Rule", "Host", "Count", "Event IDs", "MITRE")
+VIEWS = (("Clock", CircularMap), ("Heat map", HeatMap), ("Chain", ChainMap))
 
 
 def shrinkable(label):
@@ -83,32 +113,36 @@ class HayabusaPanel(QWidget):
         self.state.setWordWrap(True)
         self.state.setMinimumWidth(0)
         run.addWidget(self.state, 1)
-        self.rerun = QPushButton('Run Hayabusa…')
-        self.rerun.setToolTip('Runs Hayabusa from the Imports tab; the results come back here.')
+        self.rerun = QPushButton("Run Hayabusa…")
+        self.rerun.setToolTip("Runs Hayabusa from the Imports tab; the results come back here.")
         self.rerun.clicked.connect(self.open_imports)
         run.addWidget(self.rerun)
-        self.refresh_button = QPushButton('Refresh')
+        self.refresh_button = QPushButton("Refresh")
         self.refresh_button.clicked.connect(self.reload)
         run.addWidget(self.refresh_button)
         layout.addLayout(run)
 
         bar = QHBoxLayout()
-        bar.addWidget(QLabel('View'))
+        bar.addWidget(QLabel("View"))
         self.view_box = QComboBox()
         for label, _factory in VIEWS:
             self.view_box.addItem(label)
         self.view_box.currentIndexChanged.connect(self.change_view)
         bar.addWidget(self.view_box)
-        bar.addWidget(QLabel('Grouped by'))
+        bar.addWidget(QLabel("Grouped by"))
         self.level_box = QComboBox()
-        for label, code in (('All levels', None), ('Critical only', 'critical'), ('High and above', 'high'),
-                            ('Medium and above', 'medium')):
+        for label, code in (
+            ("All levels", None),
+            ("Critical only", "critical"),
+            ("High and above", "high"),
+            ("Medium and above", "medium"),
+        ):
             self.level_box.addItem(label, code)
         self.level_box.currentIndexChanged.connect(lambda *_: self.render())
         bar.addWidget(self.level_box)
         bar.addStretch()
         self.filter_box = QLineEdit()
-        self.filter_box.setPlaceholderText('filter: rule, host, event id…')
+        self.filter_box.setPlaceholderText("filter: rule, host, event id…")
         self.filter_box.setClearButtonEnabled(True)
         self.filter_box.textChanged.connect(lambda *_: self.render())
         bar.addWidget(self.filter_box, 1)
@@ -146,25 +180,29 @@ class HayabusaPanel(QWidget):
         side_layout.addWidget(self.card)
         history_row = QHBoxLayout()
         self.conversations = QComboBox()
-        self.conversations.setToolTip('Conversations are saved inside this case.')
+        self.conversations.setToolTip("Conversations are saved inside this case.")
         self.conversations.activated.connect(self.open_conversation)
         history_row.addWidget(self.conversations, 1)
-        self.new_conversation = QPushButton('New')
-        self.new_conversation.setToolTip('Start a conversation that does not carry the previous one.')
+        self.new_conversation = QPushButton("New")
+        self.new_conversation.setToolTip(
+            "Start a conversation that does not carry the previous one."
+        )
         self.new_conversation.clicked.connect(self.start_conversation)
         history_row.addWidget(self.new_conversation)
         side_layout.addLayout(history_row)
         self.explanation = QPlainTextEdit()
         self.explanation.setReadOnly(True)
-        self.explanation.setPlaceholderText('Select a finding to see what Fireblade knows about it.')
+        self.explanation.setPlaceholderText(
+            "Select a finding to see what Fireblade knows about it."
+        )
         self.explanation.setMinimumHeight(72)
         side_layout.addWidget(self.explanation, 1)
         ask_row = QHBoxLayout()
         self.ask = QLineEdit()
-        self.ask.setPlaceholderText('Ask anything about this case…')
+        self.ask.setPlaceholderText("Ask anything about this case…")
         self.ask.returnPressed.connect(self.ask_question)
         ask_row.addWidget(self.ask, 1)
-        self.ask_button = QPushButton('Ask')
+        self.ask_button = QPushButton("Ask")
         self.ask_button.clicked.connect(self.ask_question)
         ask_row.addWidget(self.ask_button)
         side_layout.addLayout(ask_row)
@@ -227,18 +265,26 @@ class HayabusaPanel(QWidget):
         layout.addWidget(self.main, 1)
 
         self.actions_row = QHBoxLayout()
-        self.explain_button = QPushButton('Explain this finding')
+        self.explain_button = QPushButton("Explain this finding")
         self.explain_button.setEnabled(False)
-        self.explain_button.setToolTip('Ask the local model to read this finding and say what it shows.')
+        self.explain_button.setToolTip(
+            "Ask the local model to read this finding and say what it shows."
+        )
         self.explain_button.clicked.connect(self.explain_group)
         self.actions_row.addWidget(self.explain_button)
-        self.setup_button = QPushButton('Set up the local model…')
-        self.setup_button.setToolTip('Download the engine and the weights once; everything runs offline after that.')
+        self.setup_button = QPushButton("Set up the local model…")
+        self.setup_button.setToolTip(
+            "Download the engine and the weights once; everything runs offline after that."
+        )
         self.setup_button.clicked.connect(self.setup_assistant)
         self.actions_row.addWidget(self.setup_button)
-        self.rules_button = QPushButton(translate('Règles de détection…'))
-        self.rules_button.setToolTip(translate('Lire et ajuster les règles Hayabusa ; les changements '
-                                               's’appliquent à la prochaine analyse.'))
+        self.rules_button = QPushButton(translate("Règles de détection…"))
+        self.rules_button.setToolTip(
+            translate(
+                "Lire et ajuster les règles Hayabusa ; les changements "
+                "s’appliquent à la prochaine analyse."
+            )
+        )
         self.rules_button.clicked.connect(self.open_rules)
         self.actions_row.addWidget(self.rules_button)
         self.progress_label = shrinkable(QLabel())
@@ -268,18 +314,18 @@ class HayabusaPanel(QWidget):
 
     def reload_if_stale(self):
         case = self.analysis()
-        current = getattr(case, 'path', None)
-        if current != getattr(self, '_loaded_path', None) or not self.groups:
+        current = getattr(case, "path", None)
+        if current != getattr(self, "_loaded_path", None) or not self.groups:
             self._loaded_path = current
             self.reload()
 
     def analysis(self):
         """The loaded Hayabusa analysis: the open document when it is one, else the case's."""
-        case = getattr(self.window, 'case', None)
+        case = getattr(self.window, "case", None)
         if case is None:
             return None
-        headers = set(getattr(case, 'headers', []))
-        if {'RuleTitle', 'Level', 'Timestamp'}.issubset(headers):
+        headers = set(getattr(case, "headers", []))
+        if {"RuleTitle", "Level", "Timestamp"}.issubset(headers):
             return case
         return None
 
@@ -287,49 +333,62 @@ class HayabusaPanel(QWidget):
         case = self.analysis()
         if case is None:
             self.groups, self.incidents, self.rows = [], [], []
-            self.state.setText('No Hayabusa analysis is loaded. Parse a collection in Imports, then click '
-                               'Run Hayabusa; Fireblade keeps every alert and this tab reads them.')
+            self.state.setText(
+                "No Hayabusa analysis is loaded. Parse a collection in Imports, then click "
+                "Run Hayabusa; Fireblade keeps every alert and this tab reads them."
+            )
             self.render()
             return
         # DuckDB groups the alerts: a folder that produced millions of rows never has to
         # fit in memory. The in-memory path stays as the fallback, and says so.
-        self.mode = 'sql'
+        self.mode = "sql"
         try:
             with case.operation():
                 self.groups, self.incidents = group_alerts_sql(case)
-        except Exception as exc:                       # a broken analysis must say why
+        except Exception as exc:  # a broken analysis must say why
             try:
                 self.rows = self.read_rows(case)
                 self.groups, self.incidents = group_alerts(self.rows)
                 # Samples are positions in that list; the rest of the panel addresses rows
                 # by identifier, exactly as the SQL path does.
                 for group in self.groups:
-                    group.samples = [self.rows[index]['__row_id'] for index in group.samples
-                                     if index < len(self.rows)]
-                self.mode = 'python'
+                    group.samples = [
+                        self.rows[index]["__row_id"]
+                        for index in group.samples
+                        if index < len(self.rows)
+                    ]
+                self.mode = "python"
             except Exception as nested:
                 self.groups, self.incidents, self.rows = [], [], []
-                self.mode = 'none'
-                self.state.setText('The Hayabusa table could not be read: %s (%s)' % (nested, exc))
+                self.mode = "none"
+                self.state.setText("The Hayabusa table could not be read: %s (%s)" % (nested, exc))
                 self.render()
                 return
         self.summary = summarise(self.groups)
         self.selected = -1
         self.refresh_suggestions()
         # 'incident' is a word the French heuristic flags, so the sentence avoids it.
-        self.state.setText('%d alerts grouped into %d findings over %d time windows (%s).'
-                           % (self.summary['hits'], self.summary['groups'], len(self.incidents),
-                              'grouped in DuckDB' if self.mode == 'sql' else 'grouped in memory'))
+        self.state.setText(
+            "%d alerts grouped into %d findings over %d time windows (%s)."
+            % (
+                self.summary["hits"],
+                self.summary["groups"],
+                len(self.incidents),
+                "grouped in DuckDB" if self.mode == "sql" else "grouped in memory",
+            )
+        )
         self.render()
 
     def read_rows(self, case):
         """Every alert row, as a dict keyed by the analysis' own column names."""
         headers = list(case.headers)
         wanted = self.wanted_columns(case)
-        columns = ','.join(case.column(headers.index(name)) if name != '__row_id' else '__row_id'
-                           for name in wanted)
+        columns = ",".join(
+            case.column(headers.index(name)) if name != "__row_id" else "__row_id"
+            for name in wanted
+        )
         with case.operation():
-            cursor = case.db.execute('SELECT %s FROM events' % columns)
+            cursor = case.db.execute("SELECT %s FROM events" % columns)
             rows = []
             while batch := cursor.fetchmany(4096):
                 for values in batch:
@@ -337,16 +396,30 @@ class HayabusaPanel(QWidget):
         return rows
 
     def visible_groups(self):
-        floors = {'critical': ['critical'], 'high': ['critical', 'high'],
-                  'medium': ['critical', 'high', 'medium']}
+        floors = {
+            "critical": ["critical"],
+            "high": ["critical", "high"],
+            "medium": ["critical", "high", "medium"],
+        }
         allowed = floors.get(self.level_box.currentData())
         text = self.filter_box.text().strip().casefold()
         result = []
         for index, group in enumerate(self.groups):
             if allowed and group.level not in allowed:
                 continue
-            if text and text not in ' '.join((group.title, group.host, ' '.join(group.event_ids),
-                                              group.techniques, group.tactics)).casefold():
+            if (
+                text
+                and text
+                not in " ".join(
+                    (
+                        group.title,
+                        group.host,
+                        " ".join(group.event_ids),
+                        group.techniques,
+                        group.tactics,
+                    )
+                ).casefold()
+            ):
                 continue
             result.append((index, group))
         return result
@@ -360,19 +433,33 @@ class HayabusaPanel(QWidget):
             self.select_group(visible[0][0])
         else:
             self.show_card()
-        levels = self.summary.get('levels', {})
-        self.status.setText('critical %d · high %d · medium %d · low %d · info %d   |   showing %d of %d'
-                            % (levels.get('critical', 0), levels.get('high', 0), levels.get('medium', 0),
-                               levels.get('low', 0), levels.get('informational', 0),
-                               len(visible), len(self.groups)))
+        levels = self.summary.get("levels", {})
+        self.status.setText(
+            "critical %d · high %d · medium %d · low %d · info %d   |   showing %d of %d"
+            % (
+                levels.get("critical", 0),
+                levels.get("high", 0),
+                levels.get("medium", 0),
+                levels.get("low", 0),
+                levels.get("informational", 0),
+                len(visible),
+                len(self.groups),
+            )
+        )
 
     def fill_table(self, visible):
         self.table.blockSignals(True)
         self.table.setRowCount(len(visible))
         for row, (index, group) in enumerate(visible):
-            values = (group.start.strftime('%Y-%m-%d %H:%M:%S') if group.start else 'no date',
-                      group.level, group.title, group.host, str(group.count),
-                      ', '.join(group.event_ids[:4]), group.techniques or group.tactics)
+            values = (
+                group.start.strftime("%Y-%m-%d %H:%M:%S") if group.start else "no date",
+                group.level,
+                group.title,
+                group.host,
+                str(group.count),
+                ", ".join(group.event_ids[:4]),
+                group.techniques or group.tactics,
+            )
             for column, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
                 if column == 4:
@@ -395,7 +482,7 @@ class HayabusaPanel(QWidget):
             return
         self.selected = index
         group = self.groups[index]
-        for row, visible_index in enumerate(getattr(self, '_visible', [])):
+        for row, visible_index in enumerate(getattr(self, "_visible", [])):
             if visible_index == index:
                 self.table.blockSignals(True)
                 self.table.selectRow(row)
@@ -425,26 +512,48 @@ class HayabusaPanel(QWidget):
         if not ids:
             return []
         wanted = self.wanted_columns(case)
-        columns = ','.join('__row_id' if name == '__row_id' else case.column(case.headers.index(name))
-                           for name in wanted)
-        placeholders = ','.join('?' for _ in ids)
+        columns = ",".join(
+            "__row_id" if name == "__row_id" else case.column(case.headers.index(name))
+            for name in wanted
+        )
+        placeholders = ",".join("?" for _ in ids)
         with case.operation():
-            rows = case.db.execute('SELECT %s FROM events WHERE __row_id IN (%s) ORDER BY __row_id'
-                                   % (columns, placeholders), ids).fetchall()
+            rows = case.db.execute(
+                "SELECT %s FROM events WHERE __row_id IN (%s) ORDER BY __row_id"
+                % (columns, placeholders),
+                ids,
+            ).fetchall()
         return [dict(zip(wanted, values)) for values in rows]
 
     def wanted_columns(self, case):
-        names = [name for name in ('Timestamp', 'RuleTitle', 'Level', 'Computer', 'Channel', 'EventID',
-                                   'MitreTactics', 'MitreTags', 'Details', 'DetailsShort', 'RuleID',
-                                   'RuleFile', 'EvtxFile', 'RecordID') if name in case.headers]
-        return ['__row_id'] + names
+        names = [
+            name
+            for name in (
+                "Timestamp",
+                "RuleTitle",
+                "Level",
+                "Computer",
+                "Channel",
+                "EventID",
+                "MitreTactics",
+                "MitreTags",
+                "Details",
+                "DetailsShort",
+                "RuleID",
+                "RuleFile",
+                "EvtxFile",
+                "RecordID",
+            )
+            if name in case.headers
+        ]
+        return ["__row_id"] + names
 
     def tick_progress(self):
         """A model call takes a minute: the panel says how long it has been running."""
         if self._busy_since is None:
             return
         elapsed = int(time.monotonic() - self._busy_since)
-        self.progress_label.setText('The local model is reading this finding - %d s' % elapsed)
+        self.progress_label.setText("The local model is reading this finding - %d s" % elapsed)
 
     def show_explanation(self, group):
         pack = build_pack(group, self.group_rows(group), self.groups, self.incidents)
@@ -458,45 +567,56 @@ class HayabusaPanel(QWidget):
         text = describe_without_model(pack)
         remembered = self._answers.get(group.key)
         if remembered:
-            text += '\n\n--- local assistant ---\n' + remembered
+            text += "\n\n--- local assistant ---\n" + remembered
         elif self.assistant.status().enabled:
-            text += '\n\nAssistant: ' + self.assistant.status().detail
+            text += "\n\nAssistant: " + self.assistant.status().detail
         self.explanation.setPlainText(text)
 
     def show_card(self):
         group = self.current_group()
         if group is None:
-            self.card.setText('No finding selected.')
+            self.card.setText("No finding selected.")
             return
-        window = 'context ±5 min' if group.start else 'no usable timestamp'
-        self.card.setText('<b>%s</b> · %s · %s<br>%d occurrence(s) between %s and %s · %s'
-                          % (group.title.replace('&', '&amp;'), group.level, group.host or 'unknown host',
-                             group.count,
-                             group.start.strftime('%H:%M:%S') if group.start else '—',
-                             group.end.strftime('%H:%M:%S') if group.end else '—', window))
+        window = "context ±5 min" if group.start else "no usable timestamp"
+        self.card.setText(
+            "<b>%s</b> · %s · %s<br>%d occurrence(s) between %s and %s · %s"
+            % (
+                group.title.replace("&", "&amp;"),
+                group.level,
+                group.host or "unknown host",
+                group.count,
+                group.start.strftime("%H:%M:%S") if group.start else "—",
+                group.end.strftime("%H:%M:%S") if group.end else "—",
+                window,
+            )
+        )
 
     def refresh_suggestions(self):
         """Rewrite the suggestion chips from what the case now holds."""
         from fireblade.core.suggestions import suggest
         from fireblade.core.i18n import translate
+
         for button in self.chip_buttons:
             button.deleteLater()
         self.chip_buttons = []
         workspace = None
-        case = getattr(self.window, 'active_investigation', None)
+        case = getattr(self.window, "active_investigation", None)
         if case is not None:
             try:
                 from fireblade.core import case_workspace
-                workspace = case_workspace.load(self.window.investigation_library.folder(case['id']))
+
+                workspace = case_workspace.load(
+                    self.window.investigation_library.folder(case["id"])
+                )
             except (OSError, ValueError):
                 workspace = None
-        for question in suggest(list(getattr(self, 'groups', []) or []), workspace, limit=3):
+        for question in suggest(list(getattr(self, "groups", []) or []), workspace, limit=3):
             text = translate(question)
             button = QPushButton(text)
             button.setFlat(True)
             button.setCursor(Qt.PointingHandCursor)
             button.setToolTip(text)
-            button.setStyleSheet('text-align:left;color:#457b9d;')
+            button.setStyleSheet("text-align:left;color:#457b9d;")
             button.clicked.connect(lambda _checked=False, value=text: self.use_suggestion(value))
             self.chips.addWidget(button, 1)
             self.chip_buttons.append(button)
@@ -513,35 +633,51 @@ class HayabusaPanel(QWidget):
         if not text:
             return
         self.ask.clear()
-        self.explanation.appendPlainText('\nYou: ' + text)
+        self.explanation.appendPlainText("\nYou: " + text)
         self.run_chat(text)
 
     def finding_rows(self):
         """The detections as plain dicts: the assistant reads the same list the table shows."""
         rows = []
-        for group in getattr(self, 'groups', []) or []:
-            rows.append(dict(key=group.key, level=group.level, title=group.title, host=group.host,
-                             count=group.count,
-                             start=group.start.isoformat(sep=' ', timespec='seconds')
-                             if group.start else 'unknown'))
-        rows.sort(key=lambda item: (item['level'] != 'critical', item['level'] != 'high',
-                                    item['level'] != 'medium', item['start']))
+        for group in getattr(self, "groups", []) or []:
+            rows.append(
+                dict(
+                    key=group.key,
+                    level=group.level,
+                    title=group.title,
+                    host=group.host,
+                    count=group.count,
+                    start=group.start.isoformat(sep=" ", timespec="seconds")
+                    if group.start
+                    else "unknown",
+                )
+            )
+        rows.sort(
+            key=lambda item: (
+                item["level"] != "critical",
+                item["level"] != "high",
+                item["level"] != "medium",
+                item["start"],
+            )
+        )
         return rows
 
     def selection_brief(self):
         """The finding on screen, handed to the assistant as the words and rows it holds."""
-        pack = getattr(self, '_pack', None)
+        pack = getattr(self, "_pack", None)
         if pack is None or not pack.facts:
-            return ''
-        lines = ['SELECTED FINDING: [%s] %s on %s, %s, %s occurrence(s)' % (
-            pack.level, pack.title, pack.host, pack.start, pack.count)]
+            return ""
+        lines = [
+            "SELECTED FINDING: [%s] %s on %s, %s, %s occurrence(s)"
+            % (pack.level, pack.title, pack.host, pack.start, pack.count)
+        ]
         for row in pack.facts[:8]:
-            lines.append('  %s %s id=%s %s' % (row.stamp, row.host, row.event_id, row.text[:180]))
-        return '\n'.join(lines)
+            lines.append("  %s %s id=%s %s" % (row.stamp, row.host, row.event_id, row.text[:180]))
+        return "\n".join(lines)
 
     def case_history(self):
         """The conversations of this case, read from the case folder, not from the window."""
-        case = getattr(self.window, 'case', None)
+        case = getattr(self.window, "case", None)
         if case is None:
             return None
         try:
@@ -549,16 +685,16 @@ class HayabusaPanel(QWidget):
         except OSError:
             return None
 
-    def refresh_conversations(self, select=''):
+    def refresh_conversations(self, select=""):
         """The list the analyst sees: one line per conversation, newest first."""
         history = self.case_history()
         self._conversations = history.conversations() if history is not None else []
         self.conversations.blockSignals(True)
         self.conversations.clear()
-        self.conversations.addItem('New conversation', '')
+        self.conversations.addItem("New conversation", "")
         for conversation in self._conversations:
-            when = conversation.updated[11:16] if len(conversation.updated) >= 16 else ''
-            label = conversation.title if not when else '%s  ·  %s' % (conversation.title, when)
+            when = conversation.updated[11:16] if len(conversation.updated) >= 16 else ""
+            label = conversation.title if not when else "%s  ·  %s" % (conversation.title, when)
             self.conversations.addItem(label, conversation.identifier)
         index = self.conversations.findData(select)
         self.conversations.setCurrentIndex(max(0, index))
@@ -566,90 +702,105 @@ class HayabusaPanel(QWidget):
 
     def open_conversation(self, index=0):
         """Reopen what was said in this case, and keep going from there."""
-        identifier = self.conversations.itemData(index) or ''
+        identifier = self.conversations.itemData(index) or ""
         if not identifier:
             self.start_conversation()
             return
         history = self.case_history()
         conversation = history.load(identifier) if history is not None else None
         if conversation is None:
-            self.explanation.appendPlainText('That conversation could not be read.')
+            self.explanation.appendPlainText("That conversation could not be read.")
             return
-        self.chat = Chat(str(self.assistant.root), self.case_tools(), history=history,
-                         conversation=conversation)
+        self.chat = Chat(
+            str(self.assistant.root), self.case_tools(), history=history, conversation=conversation
+        )
         self.explanation.clear()
         for message in conversation.messages:
-            if message.role == 'user':
-                self.explanation.appendPlainText('You: ' + message.text)
+            if message.role == "user":
+                self.explanation.appendPlainText("You: " + message.text)
             else:
-                self.explanation.appendPlainText('\n' + message.text)
-        self.explanation.verticalScrollBar().setValue(self.explanation.verticalScrollBar().maximum())
+                self.explanation.appendPlainText("\n" + message.text)
+        self.explanation.verticalScrollBar().setValue(
+            self.explanation.verticalScrollBar().maximum()
+        )
 
     def start_conversation(self):
         if self.chat is not None:
             self.chat.reset()
         self.explanation.clear()
-        self.explanation.setPlaceholderText('Ask anything about this case.')
+        self.explanation.setPlaceholderText("Ask anything about this case.")
         self.conversations.setCurrentIndex(0)
         self.refresh_conversations()
 
     def case_tools(self):
         """The case as the assistant can read it: a bounded query on the open connection."""
-        case = getattr(self.window, 'case', None)
+        case = getattr(self.window, "case", None)
         findings = self.finding_rows
         context = self.selection_brief
         if case is None:
             return CaseTools(lambda sql, params: [], findings=findings, context=context)
+
         def query(sql, params):
             with case.lock:
                 return case.db.execute(sql, params).fetchall()
-        return CaseTools(query, findings=findings, context=context,
-                         inventory=self.case_inventory)
+
+        return CaseTools(query, findings=findings, context=context, inventory=self.case_inventory)
 
     def case_inventory(self):
         """The other analyses of the case, named: one analysis is not the whole case."""
-        documents = list(getattr(self.window, 'documents', []) or [])
+        documents = list(getattr(self.window, "documents", []) or [])
         if len(documents) < 2:
-            return ''
-        active = str(getattr(getattr(self.window, 'case', None), 'path', ''))
+            return ""
+        active = str(getattr(getattr(self.window, "case", None), "path", ""))
         names = []
         for document in documents:
-            path = str(getattr(document, 'path', ''))
+            path = str(getattr(document, "path", ""))
             if path == active:
                 continue
-            info = getattr(document, 'source_info', None)
+            info = getattr(document, "source_info", None)
             if info is None and isinstance(document, dict):
-                info = document.get('source_info') or {}
+                info = document.get("source_info") or {}
             info = info or {}
-            name = Path(str(info.get('path', path))).name
-            rows = info.get('rows')
-            names.append(name + (' (%s rows)' % rows if rows not in (None, '') else ''))
+            name = Path(str(info.get("path", path))).name
+            rows = info.get("rows")
+            names.append(name + (" (%s rows)" % rows if rows not in (None, "") else ""))
         if not names:
-            return ''
-        return ('The case also holds: ' + ', '.join(names[:12])
-                + '. The rows above come from the analysis open in the window; say so if the '
-                'question is about one of the others.')
+            return ""
+        return (
+            "The case also holds: "
+            + ", ".join(names[:12])
+            + ". The rows above come from the analysis open in the window; say so if the "
+            "question is about one of the others."
+        )
 
     def run_chat(self, question):
         """One conversation turn from a worker thread, with the lookups the model asked for."""
         status = self.assistant.status()
         if self._busy_since is not None:
-            self.progress_label.setText('An operation is already running; try again after it.')
-            self.explanation.appendPlainText('\nA question is already running: this one was not sent.')
+            self.progress_label.setText("An operation is already running; try again after it.")
+            self.explanation.appendPlainText(
+                "\nA question is already running: this one was not sent."
+            )
             return
         if not status.can_answer:
-            self.explanation.appendPlainText('\nThe local assistant cannot answer: ' + status.detail)
+            self.explanation.appendPlainText(
+                "\nThe local assistant cannot answer: " + status.detail
+            )
             return
         if self.chat is None or self.chat.root != str(self.assistant.root):
             history = self.case_history()
             conversation = history.latest() if history is not None else None
-            self.chat = Chat(str(self.assistant.root), self.case_tools(), history=history,
-                             conversation=conversation)
+            self.chat = Chat(
+                str(self.assistant.root),
+                self.case_tools(),
+                history=history,
+                conversation=conversation,
+            )
         self._busy_since = time.monotonic()
         self._ticker.start()
         self.explain_button.setEnabled(False)
         self.ask_button.setEnabled(False)
-        self.progress_label.setText('The local model is reading the case…')
+        self.progress_label.setText("The local model is reading the case…")
         chat = self.chat
         self.window.run(lambda: chat.ask(question), self.chat_ready, on_error=self.chat_failed)
 
@@ -657,98 +808,113 @@ class HayabusaPanel(QWidget):
         self._busy_since = None
         self._ticker.stop()
         self._engine_used = True
-        self.progress_label.setText('')
-        self.explain_button.setEnabled(bool(getattr(self, '_pack', None)))
+        self.progress_label.setText("")
+        self.explain_button.setEnabled(bool(getattr(self, "_pack", None)))
         self.ask_button.setEnabled(True)
-        if turn is None or not getattr(turn, 'text', ''):
-            self.explanation.appendPlainText('The local assistant did not answer.')
+        if turn is None or not getattr(turn, "text", ""):
+            self.explanation.appendPlainText("The local assistant did not answer.")
             return
-        self.refresh_conversations(getattr(turn, 'conversation', '') or '')
+        self.refresh_conversations(getattr(turn, "conversation", "") or "")
         lines = [turn.text]
         if turn.steps:
-            lines.append('Read: ' + ', '.join('%s (%d row(s))' % (step.tool, step.rows)
-                                              for step in turn.steps))
-        lines.append('(%s s)' % turn.seconds)
-        self.explanation.appendPlainText('\n' + '\n'.join(lines))
+            lines.append(
+                "Read: "
+                + ", ".join("%s (%d row(s))" % (step.tool, step.rows) for step in turn.steps)
+            )
+        lines.append("(%s s)" % turn.seconds)
+        self.explanation.appendPlainText("\n" + "\n".join(lines))
 
     def chat_failed(self, error):
         self._busy_since = None
         self._ticker.stop()
         self.ask_button.setEnabled(True)
-        self.explain_button.setEnabled(bool(getattr(self, '_pack', None)))
-        self.progress_label.setText('')
-        self.explanation.appendPlainText('\nThe local assistant failed: %s' % error)
+        self.explain_button.setEnabled(bool(getattr(self, "_pack", None)))
+        self.progress_label.setText("")
+        self.explanation.appendPlainText("\nThe local assistant failed: %s" % error)
 
     def explain_group(self):
         """Explain the selected finding with the local model, without freezing the window."""
-        pack = getattr(self, '_pack', None)
+        pack = getattr(self, "_pack", None)
         if pack is None or self.current_group() is None:
             return
-        self.run_assistant('')
+        self.run_assistant("")
 
     def run_assistant(self, question):
         """One model call from a worker thread; both the button and the box go through it."""
-        pack = getattr(self, '_pack', None)
+        pack = getattr(self, "_pack", None)
         status = self.assistant.status()
         if self._busy_since is not None:
             # window.run queues a second job instead of refusing it, and two model calls
             # against one engine would only make both slower.
-            self.progress_label.setText('An operation is already running; try again after it.')
-            self.explanation.appendPlainText('\nA question is already running: this one was not sent.')
+            self.progress_label.setText("An operation is already running; try again after it.")
+            self.explanation.appendPlainText(
+                "\nA question is already running: this one was not sent."
+            )
             return
         if pack is None or not status.can_answer:
-            self.explanation.appendPlainText('The local assistant cannot answer: ' + status.detail)
+            self.explanation.appendPlainText("The local assistant cannot answer: " + status.detail)
             return
         if not question:
-            self.explanation.appendPlainText('\nLocal assistant, reading %d event(s) of this finding…'
-                                             % len(pack.facts))
+            self.explanation.appendPlainText(
+                "\nLocal assistant, reading %d event(s) of this finding…" % len(pack.facts)
+            )
         self._pending_question = question
         self.explain_button.setEnabled(False)
         self.ask_button.setEnabled(False)
         self._busy_since = time.monotonic()
         self._ticker.start()
-        first = not getattr(self, '_engine_used', False)
-        self.progress_label.setText('Loading the local model…' if first
-                                    else 'The local model is reading %d event(s)…' % len(pack.facts))
-        self.window.run(lambda: answer(str(self.assistant.root), pack, question, schema=SCHEMA),
-                        self.explanation_ready, on_error=self.explanation_failed)
+        first = not getattr(self, "_engine_used", False)
+        self.progress_label.setText(
+            "Loading the local model…"
+            if first
+            else "The local model is reading %d event(s)…" % len(pack.facts)
+        )
+        self.window.run(
+            lambda: answer(str(self.assistant.root), pack, question, schema=SCHEMA),
+            self.explanation_ready,
+            on_error=self.explanation_failed,
+        )
 
     def explanation_ready(self, result):
         self._busy_since = None
         self._ticker.stop()
         self._engine_used = True
-        pack = getattr(self, '_pack', None)
-        question = getattr(self, '_pending_question', '')
-        self._pending_question = ''
+        pack = getattr(self, "_pack", None)
+        question = getattr(self, "_pending_question", "")
+        self._pending_question = ""
         able = self.assistant.status().can_answer and bool(pack and pack.facts)
         self.explain_button.setEnabled(able)
         self.ask_button.setEnabled(able)
-        self.progress_label.setText('')
-        if not result or not result.get('ok'):
-            self.explanation.appendPlainText('The local assistant did not answer: %s'
-                                             % ((result or {}).get('text') or 'no reason given'))
+        self.progress_label.setText("")
+        if not result or not result.get("ok"):
+            self.explanation.appendPlainText(
+                "The local assistant did not answer: %s"
+                % ((result or {}).get("text") or "no reason given")
+            )
             return
-        decoded = read_answer(result.get('text', ''), pack)
-        structured = decoded.get('structured') or {}
-        structured['links'] = structured.get('links') or []
-        pack.links = structured['links']
+        decoded = read_answer(result.get("text", ""), pack)
+        structured = decoded.get("structured") or {}
+        structured["links"] = structured.get("links") or []
+        pack.links = structured["links"]
         self.maps[ChainMap].set_pack(pack)
         lines = []
-        if decoded.get('valid'):
+        if decoded.get("valid"):
             lines.append(render_structured(structured))
         else:
-            lines.append('The draft was discarded: '
-                         + '; '.join(decoded.get('dropped') or ['the answer could not be read']))
-        for item in decoded.get('dropped') or []:
-            lines.append('Dropped: ' + item)
-        cost = '%s s' % result.get('seconds')
-        if result.get('completion_tokens'):
-            cost += ' · %s tokens out' % result['completion_tokens']
+            lines.append(
+                "The draft was discarded: "
+                + "; ".join(decoded.get("dropped") or ["the answer could not be read"])
+            )
+        for item in decoded.get("dropped") or []:
+            lines.append("Dropped: " + item)
+        cost = "%s s" % result.get("seconds")
+        if result.get("completion_tokens"):
+            cost += " · %s tokens out" % result["completion_tokens"]
         if question:
-            cost += ' · answer to your question'
-        rendered = '\n'.join(lines) + '\n(' + cost + ')'
+            cost += " · answer to your question"
+        rendered = "\n".join(lines) + "\n(" + cost + ")"
         start = len(self.explanation.toPlainText())
-        self.explanation.appendPlainText('\n' + rendered)
+        self.explanation.appendPlainText("\n" + rendered)
         # An answer that arrives below the fold looks like no answer at all: bring its first
         # line into view (the end of a long answer is not what an analyst wants to land on),
         # and leave a line saying it landed even when the box is scrolled back up.
@@ -756,27 +922,33 @@ class HayabusaPanel(QWidget):
         cursor.setPosition(min(start + 1, len(self.explanation.toPlainText())))
         self.explanation.setTextCursor(cursor)
         self.explanation.ensureCursorVisible()
-        self.progress_label.setText('Answered in %s s - %s'
-                                    % (result.get('seconds', 0), 'read it below'))
-        if pack is not None and decoded.get('valid'):
+        self.progress_label.setText(
+            "Answered in %s s - %s" % (result.get("seconds", 0), "read it below")
+        )
+        if pack is not None and decoded.get("valid"):
             self._answers[pack.group_key] = rendered
 
     def explanation_failed(self, message):
         self._busy_since = None
         self._ticker.stop()
         self.explain_button.setEnabled(True)
-        self.progress_label.setText('')
-        self.explanation.appendPlainText('The local assistant failed: %s' % message)
+        self.progress_label.setText("")
+        self.explanation.appendPlainText("The local assistant failed: %s" % message)
 
     # ---------------------------------------------------------------- installation
     def open_rules(self):
         from pathlib import Path
         from fireblade.ui.hayabusa_rules_dialog import HayabusaRulesDialog
-        pack = self.window.toolpack() if hasattr(self.window, 'toolpack') else None
-        root = Path(getattr(pack, 'root', ''))/'Hayabusa'/'rules' if pack else None
+
+        pack = self.window.toolpack() if hasattr(self.window, "toolpack") else None
+        root = Path(getattr(pack, "root", "")) / "Hayabusa" / "rules" if pack else None
         if root is None or not root.is_dir():
-            self.window.error(translate('Les règles Hayabusa ne sont pas installées dans cette '
-                                        'construction : rien à modifier.'))
+            self.window.error(
+                translate(
+                    "Les règles Hayabusa ne sont pas installées dans cette "
+                    "construction : rien à modifier."
+                )
+            )
             return
         HayabusaRulesDialog(root, self).exec()
 
@@ -789,7 +961,7 @@ class HayabusaPanel(QWidget):
         model = chooser.model()
         chooser.deleteLater()
         self.setup_button.setEnabled(False)
-        self.progress_label.setText('Starting the download of %s…' % model)
+        self.progress_label.setText("Starting the download of %s…" % model)
         root = str(self.assistant.root)
         job = InstallJob(self, model)
         self.install_job = job
@@ -800,16 +972,18 @@ class HayabusaPanel(QWidget):
 
     def install_progress(self, received, total):
         if total:
-            self.progress_label.setText('%d%% of %s MB downloaded · the window stays usable'
-                                        % (int(100 * received / total), round(total / 1024 / 1024)))
+            self.progress_label.setText(
+                "%d%% of %s MB downloaded · the window stays usable"
+                % (int(100 * received / total), round(total / 1024 / 1024))
+            )
         else:
-            self.progress_label.setText('%s MB downloaded' % round(received / 1024 / 1024))
+            self.progress_label.setText("%s MB downloaded" % round(received / 1024 / 1024))
 
     def install_done(self, root):
         self.assistant = Assistant(root)
         status = self.assistant.status()
         self.assistant_state.setText(status.detail)
-        self.progress_label.setText('Installed · ' + status.state)
+        self.progress_label.setText("Installed · " + status.state)
         self.setup_button.setEnabled(True)
         group = self.current_group()
         if group is not None:
@@ -817,12 +991,12 @@ class HayabusaPanel(QWidget):
 
     def install_failed(self, message):
         self.setup_button.setEnabled(False)
-        self.progress_label.setText('')
-        self.explanation.appendPlainText('Installation failed: %s' % message)
+        self.progress_label.setText("")
+        self.explanation.appendPlainText("Installation failed: %s" % message)
 
     # ---------------------------------------------------------------- the grid
     def open_imports(self):
-        index = self.window.workbench.indexOf(getattr(self.window, 'detection_panel', None))
+        index = self.window.workbench.indexOf(getattr(self.window, "detection_panel", None))
         if index >= 0:
             self.window.workbench.setCurrentIndex(index)
 
@@ -833,8 +1007,8 @@ class HayabusaPanel(QWidget):
         item = self.table.item(index, 0)
         group = self.groups[int(item.data(Qt.UserRole))]
         menu = QMenu(self)
-        menu.addAction('Show the alerts in the grid', lambda: self.open_in_grid(group))
-        menu.addAction('Bookmark every alert of this finding', lambda: self.bookmark(group))
+        menu.addAction("Show the alerts in the grid", lambda: self.open_in_grid(group))
+        menu.addAction("Bookmark every alert of this finding", lambda: self.bookmark(group))
         menu.exec(self.table.viewport().mapToGlobal(point))
 
     def open_in_grid(self, group):
@@ -842,35 +1016,44 @@ class HayabusaPanel(QWidget):
         window = self.window
         if not window.documents or window.case is None:
             return
-        target = next((i for i, snapshot in enumerate(window.documents)
-                       if snapshot.path == str(window.case.path)), 0)
+        target = next(
+            (
+                i
+                for i, snapshot in enumerate(window.documents)
+                if snapshot.path == str(window.case.path)
+            ),
+            0,
+        )
         window.switch_document(target)
         QTimer.singleShot(0, lambda: self.apply_search(group))
 
     def apply_search(self, group):
         """One search on the rule title, so the alert appears selected rather than hunted."""
         window = self.window
-        if not getattr(window, 'model', None):
+        if not getattr(window, "model", None):
             return
-        window.search.setText(group.title or '')
+        window.search.setText(group.title or "")
         window.search.returnPressed.emit()
         window.workbench.setCurrentIndex(0)
 
     def bookmark(self, group):
-        case = getattr(self.window, 'case', None)
+        case = getattr(self.window, "case", None)
         if case is None:
             return
-        ids = [int(self.rows[index]['__row_id']) for index in group.samples
-               if isinstance(self.rows[index].get('__row_id'), (int, str))]
+        ids = [
+            int(self.rows[index]["__row_id"])
+            for index in group.samples
+            if isinstance(self.rows[index].get("__row_id"), (int, str))
+        ]
         if not ids:
-            self.status.setText('Bookmarking needs the row identifiers of this analysis.')
+            self.status.setText("Bookmarking needs the row identifiers of this analysis.")
             return
         try:
-            case.bookmark_many(ids, 'Hayabusa: ' + group.title, mode='mark')
+            case.bookmark_many(ids, "Hayabusa: " + group.title, mode="mark")
         except Exception as exc:
-            self.status.setText('Bookmarking failed: %s' % exc)
+            self.status.setText("Bookmarking failed: %s" % exc)
             return
-        self.status.setText('Bookmarked %d alert(s) of this finding.' % len(ids))
+        self.status.setText("Bookmarked %d alert(s) of this finding." % len(ids))
 
 
 class ModelChooser(QDialog):
@@ -883,33 +1066,41 @@ class ModelChooser(QDialog):
 
     def __init__(self, available_mb=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle('Install the local model')
+        self.setWindowTitle("Install the local model")
         self.resize(560, 320)
         layout = QVBoxLayout(self)
-        intro = QLabel('Everything runs offline after this download. The larger the model, '
-                       'the better it follows instructions, and the slower it answers on a '
-                       'machine without a graphics card.')
+        intro = QLabel(
+            "Everything runs offline after this download. The larger the model, "
+            "the better it follows instructions, and the slower it answers on a "
+            "machine without a graphics card."
+        )
         intro.setWordWrap(True)
         layout.addWidget(intro)
         self.buttons = []
         entries = catalogue()
-        fits = lambda spec: available_mb is None or available_mb >= spec['weights_mb'] + 1300
+        fits = lambda spec: available_mb is None or available_mb >= spec["weights_mb"] + 1300
         for spec in entries:
-            radio = QRadioButton('%s  -  %s' % (spec['name'], spec['label']))
-            radio.setToolTip('%s GB to download' % round(spec['bytes'] / 1024 ** 3, 1))
+            radio = QRadioButton("%s  -  %s" % (spec["name"], spec["label"]))
+            radio.setToolTip("%s GB to download" % round(spec["bytes"] / 1024**3, 1))
             radio.setEnabled(fits(spec))
-            self.buttons.append((radio, spec['name']))
+            self.buttons.append((radio, spec["name"]))
             layout.addWidget(radio)
             if not fits(spec):
-                radio.setText(radio.text() + '  (needs more memory than this machine has)')
+                radio.setText(radio.text() + "  (needs more memory than this machine has)")
         chosen = next((radio for radio, _name in self.buttons if radio.isEnabled()), None)
-        preferred = next((radio for radio, name in self.buttons
-                          if radio.isEnabled() and name == 'Qwen3-4B-Instruct-2507'), None)
+        preferred = next(
+            (
+                radio
+                for radio, name in self.buttons
+                if radio.isEnabled() and name == "Qwen3-4B-Instruct-2507"
+            ),
+            None,
+        )
         (preferred or chosen).setChecked(True)
         layout.addStretch(1)
         box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        box.button(QDialogButtonBox.Ok).setText('Download')
-        box.button(QDialogButtonBox.Cancel).setText('Cancel')
+        box.button(QDialogButtonBox.Ok).setText("Download")
+        box.button(QDialogButtonBox.Cancel).setText("Cancel")
         box.accepted.connect(self.accept)
         box.rejected.connect(self.reject)
         layout.addWidget(box)
@@ -936,10 +1127,15 @@ class InstallJob(QThread):
     def run(self):
         try:
             root = self.panel.assistant.root
-            install_runtime(root, progress=lambda received, total: self.progress.emit(received, total))
-            weights = install_model(root, model=self.model,
-                                    progress=lambda received, total: self.progress.emit(received, total))
+            install_runtime(
+                root, progress=lambda received, total: self.progress.emit(received, total)
+            )
+            weights = install_model(
+                root,
+                model=self.model,
+                progress=lambda received, total: self.progress.emit(received, total),
+            )
             write_manifest(root, enabled=True, model=self.model, weights=weights.name)
             self.done.emit(str(root))
-        except Exception as exc:            # a failed download must reach the panel, not the log
-            self.failed.emit('%s: %s' % (type(exc).__name__, exc))
+        except Exception as exc:  # a failed download must reach the panel, not the log
+            self.failed.emit("%s: %s" % (type(exc).__name__, exc))

@@ -8,6 +8,7 @@ those take on the way out.
 Only wording changes. Values the analyst or the evidence supplied (names, paths, hashes,
 dates, the text of a log line) are carried through exactly as they were.
 """
+
 from __future__ import annotations
 
 import html as htmllib
@@ -66,10 +67,10 @@ def document(text: str) -> str:
             out.append(piece)
             continue
         plain = htmllib.unescape(piece)
-        lead = plain[:len(plain) - len(plain.lstrip())]
+        lead = plain[: len(plain) - len(plain.lstrip())]
         core = plain.strip()
         if cell:
-            translated = lead + _cell(core) + plain[len(plain.rstrip()):]
+            translated = lead + _cell(core) + plain[len(plain.rstrip()) :]
         else:
             translated = english_text(plain)
         out.append(piece if translated == plain else htmllib.escape(translated, quote=False))

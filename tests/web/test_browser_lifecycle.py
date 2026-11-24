@@ -5,6 +5,7 @@ whole life of a case as the analyst lives it, and what is left on disk at the en
 
 Skipped without Playwright and a Chromium; never failed for lack of them.
 """
+
 import os
 
 import pytest
@@ -28,7 +29,9 @@ def page(host):
     base, _root, _tmp = host
     try:
         playwright = sync_playwright().start()
-        browser = playwright.chromium.launch(executable_path=os.environ.get("FIREBLADE_CHROMIUM") or None)
+        browser = playwright.chromium.launch(
+            executable_path=os.environ.get("FIREBLADE_CHROMIUM") or None
+        )
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"no Chromium available: {exc}")
     page = browser.new_page(viewport={"width": 1400, "height": 850})
@@ -65,15 +68,21 @@ def test_a_case_is_created_saved_imported_renamed_and_erased(page, host):
 
     # Open, then save -------------------------------------------------------------------
     page.dblclick('tr:has(td:text-is("Lifecycle")) td >> nth=0')
-    page.wait_for_function("document.getElementById('casecombo-label').innerText.includes('Lifecycle')")
+    page.wait_for_function(
+        "document.getElementById('casecombo-label').innerText.includes('Lifecycle')"
+    )
     page.keyboard.press("Control+s")
-    page.wait_for_function("document.getElementById('status').innerText.startsWith('Case saved at')")
+    page.wait_for_function(
+        "document.getElementById('status').innerText.startsWith('Case saved at')"
+    )
 
     # Import a file through the dialog ------------------------------------------------
     page.click('.toolbar .tb[data-act="import-file"]')
     page.wait_for_selector("#import-modal.show")
     sample = tmp / "events.csv"
-    sample.write_text("Time,Host,User\n2026-11-01T10:00:00Z,PC01,alice\n2026-11-01T10:05:00Z,PC02,bob\n")
+    sample.write_text(
+        "Time,Host,User\n2026-11-01T10:00:00Z,PC01,alice\n2026-11-01T10:05:00Z,PC02,bob\n"
+    )
     page.set_input_files("#preview-input", str(sample))
     page.wait_for_function("!document.getElementById('preview-import').disabled", timeout=15000)
     page.click("#preview-import")
@@ -97,9 +106,12 @@ def test_a_case_is_created_saved_imported_renamed_and_erased(page, host):
     page.fill("#destroy-operator", "A. Analyst")
     page.fill("#destroy-confirm", "Lifecycle renamed")
     page.click('#destroy-modal [data-act="destroy-run"]')
-    page.wait_for_function("document.getElementById('status').innerText.startsWith('Case erased')",
-                           timeout=60000)
-    assert not [p for p in root.iterdir() if p.is_dir() and len(p.name) == 32], "no folder of the case is left"
+    page.wait_for_function(
+        "document.getElementById('status').innerText.startsWith('Case erased')", timeout=60000
+    )
+    assert not [p for p in root.iterdir() if p.is_dir() and len(p.name) == 32], (
+        "no folder of the case is left"
+    )
     certificates = [p for p in tmp.rglob("*.html") if "pv-" in p.name]
     assert certificates, "the certificate is written outside the case"
     text = certificates[0].read_text(encoding="utf-8")

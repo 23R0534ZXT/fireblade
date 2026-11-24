@@ -29,16 +29,22 @@ def settle(app, window):
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         app.processEvents()
-        if not window.jobs and not window.pool.activeThreadCount() and (window.model is None or not window.model.jobs):
+        if (
+            not window.jobs
+            and not window.pool.activeThreadCount()
+            and (window.model is None or not window.model.jobs)
+        ):
             return
-        time.sleep(.005)
+        time.sleep(0.005)
     pytest.fail("The desktop did not finish its background operations")
 
 
 @pytest.fixture
 def window(app, tmp_path):
     source = tmp_path / "source.csv"
-    source.write_text("Artifact,User,ID\nMFT,alice,001\nEVTX,bob,10\nMFT,alice,2\nEVTX,,3\n", encoding="utf-8")
+    source.write_text(
+        "Artifact,User,ID\nMFT,alice,001\nEVTX,bob,10\nMFT,alice,2\nEVTX,,3\n", encoding="utf-8"
+    )
     case = Case(tmp_path / "source.timeline")
     case.import_csv(source)
     w = Window(require_case=False)
@@ -63,13 +69,23 @@ def test_header_actions_sort_group_and_hide(app, window):
     assert header_menu(window, 0) is None
     trigger(header_menu(window, 3), "Trier par ordre décroissant")
     settle(app, window)
-    assert [window.model.node(window.model.index(i, 0)).values[3] for i in range(4)] == ["3", "2", "10", "001"]
+    assert [window.model.node(window.model.index(i, 0)).values[3] for i in range(4)] == [
+        "3",
+        "2",
+        "10",
+        "001",
+    ]
     menu = header_menu(window, 3)
     types = next(action.menu() for action in menu.actions() if action.text() == "Type de tri")
     next(action for action in types.actions() if action.text() == "Nombre").trigger()
     menu.deleteLater()
     settle(app, window)
-    assert [window.model.node(window.model.index(i, 0)).values[3] for i in range(4)] == ["10", "3", "2", "001"]
+    assert [window.model.node(window.model.index(i, 0)).values[3] for i in range(4)] == [
+        "10",
+        "3",
+        "2",
+        "001",
+    ]
     trigger(header_menu(window, 1), "Grouper par cette colonne")
     settle(app, window)
     assert window.view.groups == [0]
@@ -111,6 +127,7 @@ def test_header_filter_prefills_column_and_filters_rows(app, window, monkeypatch
         assert operator.currentData() == "contains"
         dialog.findChild(QLineEdit).setText("bob")
         return QDialog.Accepted
+
     monkeypatch.setattr(QDialog, "exec", accept_filter)
     trigger(header_menu(window, 2), "Filtrer cette colonne…")
     settle(app, window)
@@ -153,10 +170,12 @@ def test_drag_drop_import_unicode_path_and_reopen(app, tmp_path, monkeypatch):
     source.write_text('User,ID\n"évidence",0001\nalice,0002\n', encoding="utf-8")
     original = hashlib.sha256(source.read_bytes()).hexdigest()
     target = tmp_path / "analyse été.timeline"
+
     def accept_import(dialog):
         dialog.target.setText(str(target))
         dialog.accept()
         return dialog.result()
+
     monkeypatch.setattr(ImportDialog, "exec", accept_import)
     window = Window(require_case=False)
     errors = []
@@ -218,14 +237,17 @@ def test_drop_rejects_multiple_or_remote_files(app, window, tmp_path):
 
 def test_interrupted_grid_can_retry_and_queued_count_is_cancelled(app, window, monkeypatch):
     import threading
+
     started, release = threading.Event(), threading.Event()
     native_page = window.case.page
+
     def waiting_page(*args, **kwargs):
         with window.case.operation():
             started.set()
             release.wait(3)
             window.case.check_cancelled()
         return native_page(*args, **kwargs)
+
     with monkeypatch.context() as patch:
         patch.setattr(window.case, "page", waiting_page)
         window.apply()
@@ -245,9 +267,12 @@ def test_interrupted_grid_can_retry_and_queued_count_is_cancelled(app, window, m
 
 def test_cancelled_exclusive_job_restores_desktop_controls(app, window):
     from fireblade.core.errors import OperationCancelled
+
     completed = []
+
     def operation():
         raise OperationCancelled()
+
     window.run(operation, completed.append, exclusive=True)
     assert window.busy and not window.centralWidget().isEnabled()
     settle(app, window)
@@ -259,12 +284,15 @@ def test_cancelled_exclusive_job_restores_desktop_controls(app, window):
 
 def test_cancel_before_database_entry_is_not_lost(app, window):
     import threading
+
     entered, release = threading.Event(), threading.Event()
     completed = []
+
     def delayed_query():
         entered.set()
         release.wait(3)
         return window.case.count(View())
+
     window.run(delayed_query, completed.append)
     assert entered.wait(2)
     window.interrupt_queries()
@@ -278,8 +306,15 @@ def test_cancel_before_database_entry_is_not_lost(app, window):
 def test_failed_import_reopens_previous_view_layout_and_notes(app, window, tmp_path, monkeypatch):
     old_path = window.case.path
     window.case.bookmark(1, "Keep this note")
-    previous = View(search="alice", filters=[Filter(0, "eq", "MFT")], groups=[1],
-                    sort_column=2, sort_type="number", descending=True, highlight="alice")
+    previous = View(
+        search="alice",
+        filters=[Filter(0, "eq", "MFT")],
+        groups=[1],
+        sort_column=2,
+        sort_type="number",
+        descending=True,
+        highlight="alice",
+    )
     window.set_view(previous)
     settle(app, window)
     window.tree.header().moveSection(1, 3)
@@ -288,10 +323,12 @@ def test_failed_import_reopens_previous_view_layout_and_notes(app, window, tmp_p
     bad_source = tmp_path / "malformed.csv"
     bad_source.write_text("a,b\n1,2\n3,4,5\n")
     target = tmp_path / "failed.timeline"
+
     def accept_import(dialog):
         dialog.target.setText(str(target))
         dialog.accept()
         return dialog.result()
+
     monkeypatch.setattr(ImportDialog, "exec", accept_import)
     errors = []
     window.error = errors.append
@@ -314,24 +351,31 @@ def test_failed_import_reopens_previous_view_layout_and_notes(app, window, tmp_p
     assert window.can_open_file()
 
 
-def test_cancelled_import_restores_previous_case_then_next_import_succeeds(app, window, tmp_path, monkeypatch):
+def test_cancelled_import_restores_previous_case_then_next_import_succeeds(
+    app, window, tmp_path, monkeypatch
+):
     old_path = window.case.path
     window.tree.setColumnHidden(1, True)
     new_source = tmp_path / "new.csv"
     new_source.write_text("NewID\n0009\n0010\n")
     target = tmp_path / "cancelled.timeline"
+
     def accept_import(dialog):
         dialog.target.setText(str(target))
         dialog.accept()
         return dialog.result()
+
     monkeypatch.setattr(ImportDialog, "exec", accept_import)
     native_import = Case.import_csv
+
     def cancelling_import(case, source, delimiter=None, encoding="utf-8", progress=lambda _: None):
         def forward(message):
             progress(message)
             if message == "Validation de l’analyse…":
                 case.interrupt()
+
         return native_import(case, source, delimiter, encoding, forward)
+
     with monkeypatch.context() as patch:
         patch.setattr(Case, "import_csv", cancelling_import)
         window.import_file(new_source)
@@ -353,15 +397,19 @@ def test_cancelled_import_restores_previous_case_then_next_import_succeeds(app, 
 
 def test_first_import_cancel_returns_to_welcome(app, tmp_path, monkeypatch):
     from fireblade.core.errors import OperationCancelled
+
     source = tmp_path / "source.csv"
     source.write_text("ID\n001\n")
     target = tmp_path / "cancelled.timeline"
+
     def accept_import(dialog):
         dialog.target.setText(str(target))
         dialog.accept()
         return dialog.result()
+
     def cancel_import(*args, **kwargs):
         raise OperationCancelled()
+
     monkeypatch.setattr(ImportDialog, "exec", accept_import)
     monkeypatch.setattr(Case, "import_csv", cancel_import)
     w = Window(require_case=False)
@@ -418,51 +466,75 @@ def test_restore_rejects_different_decoding_of_the_same_source(app, tmp_path):
     assert window.close()
 
 
-def test_tle_shortcuts_act_on_raw_cell_and_clear_filters(app,window):
+def test_tle_shortcuts_act_on_raw_cell_and_clear_filters(app, window):
     from PySide6.QtTest import QTest
-    window.activateWindow();window.tree.setFocus()
-    index=window.model.index(0,3)
+
+    window.activateWindow()
+    window.tree.setFocus()
+    index = window.model.index(0, 3)
     window.tree.setCurrentIndex(index)
-    QTest.keyClick(window.tree,Qt.Key_F,Qt.ControlModifier|Qt.ShiftModifier)
-    settle(app,window)
-    assert window.view.filters==[Filter(2,'eq','001')]
-    assert window.case.count(window.view)==1
-    QTest.keyClick(window.tree,Qt.Key_E,Qt.ControlModifier)
-    settle(app,window)
-    assert window.view.filters==[] and window.case.count(window.view)==4
-    window.group_column(0);settle(app,window)
-    QTest.keyClick(window.tree,Qt.Key_M,Qt.ControlModifier)
-    settle(app,window)
+    QTest.keyClick(window.tree, Qt.Key_F, Qt.ControlModifier | Qt.ShiftModifier)
+    settle(app, window)
+    assert window.view.filters == [Filter(2, "eq", "001")]
+    assert window.case.count(window.view) == 1
+    QTest.keyClick(window.tree, Qt.Key_E, Qt.ControlModifier)
+    settle(app, window)
+    assert window.view.filters == [] and window.case.count(window.view) == 4
+    window.group_column(0)
+    settle(app, window)
+    QTest.keyClick(window.tree, Qt.Key_M, Qt.ControlModifier)
+    settle(app, window)
     assert window.view.expand_all
-    assert not window.case.bookmarks([1,2,3,4])
-    QTest.keyClick(window.tree,Qt.Key_K,Qt.ControlModifier)
-    settle(app,window)
+    assert not window.case.bookmarks([1, 2, 3, 4])
+    QTest.keyClick(window.tree, Qt.Key_K, Qt.ControlModifier)
+    settle(app, window)
     assert not window.view.expand_all
 
 
-def test_current_cell_filter_handles_null_and_ignores_group_and_line(app,window):
-    window.tree.setCurrentIndex(window.model.index(3,2));window.filter_current_cell();settle(app,window)
-    assert window.view.filters==[Filter(1,'empty')]
-    window.clear_filters();settle(app,window)
-    window.tree.setCurrentIndex(window.model.index(0,0));window.filter_current_cell()
+def test_current_cell_filter_handles_null_and_ignores_group_and_line(app, window):
+    window.tree.setCurrentIndex(window.model.index(3, 2))
+    window.filter_current_cell()
+    settle(app, window)
+    assert window.view.filters == [Filter(1, "empty")]
+    window.clear_filters()
+    settle(app, window)
+    window.tree.setCurrentIndex(window.model.index(0, 0))
+    window.filter_current_cell()
     assert not window.view.filters
-    window.group_column(0);settle(app,window)
-    window.tree.setCurrentIndex(window.model.index(0,1));window.filter_current_cell()
+    window.group_column(0)
+    settle(app, window)
+    window.tree.setCurrentIndex(window.model.index(0, 1))
+    window.filter_current_cell()
     assert not window.view.filters
 
 
-def test_all_date_group_intervals_are_accessible_in_header_menu(app,window):
-    menu=header_menu(window,2)
-    dates=next(action.menu() for action in menu.actions() if action.text()=='Regrouper les dates par')
+def test_all_date_group_intervals_are_accessible_in_header_menu(app, window):
+    menu = header_menu(window, 2)
+    dates = next(
+        action.menu() for action in menu.actions() if action.text() == "Regrouper les dates par"
+    )
     try:
-        assert [action.text() for action in dates.actions()]==['Valeur entière','Année','Trimestre','Mois','Semaine','Jour','Heure','Minute','Seconde']
-        next(action for action in dates.actions() if action.text()=='Semaine').trigger();settle(app,window)
-        assert window.view.group_intervals['1']=='week'
-    finally:menu.deleteLater()
+        assert [action.text() for action in dates.actions()] == [
+            "Valeur entière",
+            "Année",
+            "Trimestre",
+            "Mois",
+            "Semaine",
+            "Jour",
+            "Heure",
+            "Minute",
+            "Seconde",
+        ]
+        next(action for action in dates.actions() if action.text() == "Semaine").trigger()
+        settle(app, window)
+        assert window.view.group_intervals["1"] == "week"
+    finally:
+        menu.deleteLater()
 
 
 def test_inline_filters_sort_pins_and_clear(app, window):
     from PySide6.QtTest import QTest
+
     header = window.tree.header()
     edit, up, down, _close = header.controls[2]
     QTest.keyClicks(edit, "ali")
@@ -501,11 +573,14 @@ def test_inline_filters_sort_pins_and_clear(app, window):
 def test_group_chips_remove_one_level(app, window):
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QToolButton
+
     window.group_column(0)
     window.group_column(1, append=True)
     settle(app, window)
     chips = window.groups_label.findChildren(QToolButton)
-    chips = [chip for chip in chips if chip.isVisible() and chip is not window.groups_label.clear_button]
+    chips = [
+        chip for chip in chips if chip.isVisible() and chip is not window.groups_label.clear_button
+    ]
     assert [chip.text() for chip in chips] == ["1  Artifact  ×", "2  User  ×"]
     QTest.mouseClick(chips[0], Qt.LeftButton)
     settle(app, window)
@@ -514,6 +589,7 @@ def test_group_chips_remove_one_level(app, window):
 
 def test_group_bar_clears_every_level(app, window):
     from PySide6.QtTest import QTest
+
     window.group_column(0)
     window.group_column(1, append=True)
     window.group_column(2, append=True)
@@ -548,7 +624,7 @@ def test_a_drop_on_the_group_bar_waits_for_the_drag_to_end(app, window):
     bar = GroupBar(lambda *args, **kwargs: calls.append((args, kwargs)))
     try:
         mime = QMimeData()
-        mime.setData(MIME, b'3')
+        mime.setData(MIME, b"3")
 
         class Drop:
             accepted = False
@@ -562,9 +638,9 @@ def test_a_drop_on_the_group_bar_waits_for_the_drag_to_end(app, window):
         event = Drop()
         bar.drop_at(event, 1)
         assert event.accepted
-        assert calls == []          # the view is untouched while the drag runs
+        assert calls == []  # the view is untouched while the drag runs
         app.processEvents()
-        assert calls == [((3,), {'append': True, 'position': 1})]
+        assert calls == [((3,), {"append": True, "position": 1})]
     finally:
         bar.close()
         bar.setParent(None)
@@ -574,24 +650,26 @@ def test_a_drop_on_the_group_bar_waits_for_the_drag_to_end(app, window):
 
 def test_the_version_is_shown_in_the_status_bar_and_on_the_start_screen(app, window):
     from fireblade import __version__
-    expected = f'Fireblade {__version__}'
+
+    expected = f"Fireblade {__version__}"
     assert window.version_label.text() == expected
     assert window.welcome_version.text() == expected
 
 
 def test_command_palette_lists_and_filters_menu_commands(app, window):
     from fireblade.ui.command_palette import CommandPalette, flatten_actions
+
     entries = flatten_actions(window.menuBar())
     labels = [label for label, _action in entries]
     assert len(labels) > 20
-    assert any('Colonnes' in label for label in labels)
+    assert any("Colonnes" in label for label in labels)
     palette = CommandPalette(window)
     try:
         total = palette.listing.count()
         assert total == len(entries)
-        palette.filter('colonnes')
+        palette.filter("colonnes")
         assert 0 < palette.listing.count() < total
-        palette.filter('')
+        palette.filter("")
         assert palette.listing.count() == total
     finally:
         palette.deleteLater()
@@ -600,10 +678,13 @@ def test_command_palette_lists_and_filters_menu_commands(app, window):
 def test_boolean_cards_invert_preserves_nested_siblings(app):
     from fireblade.ui.advanced_dialogs import ExpressionEditor
     from fireblade.core.models import FilterGroup
+
     expression = FilterGroup("and", [Filter(0, "contains", "alice"), Filter(1, "eq", "MFT")])
     editor = ExpressionEditor(["User", "Artifact"], expression)
     editor.root.children[0].inverse.setChecked(True)
-    assert editor.value() == FilterGroup("and", [FilterGroup("not", [expression.children[0]]), expression.children[1]])
+    assert editor.value() == FilterGroup(
+        "and", [FilterGroup("not", [expression.children[0]]), expression.children[1]]
+    )
     editor.root.children[0].inverse.setChecked(False)
     assert editor.value() == expression
     editor.root.inverse.setChecked(True)
@@ -621,6 +702,7 @@ def test_boolean_cards_invert_preserves_nested_siblings(app):
 
 def test_header_controls_follow_layout_and_cancel_pending_on_view_change(app, window):
     from PySide6.QtTest import QTest
+
     header = window.tree.header()
     for column in range(header.count()):
         window.tree.setColumnWidth(column, 400)

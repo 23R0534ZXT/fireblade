@@ -1,4 +1,5 @@
 """Pinned views share one paged model and selection; no duplicated data rows."""
+
 from PySide6.QtCore import QModelIndex, Qt, QTimer
 from PySide6.QtWidgets import QFrame, QHeaderView, QTreeView
 from fireblade.ui.grid import GridDelegate
@@ -12,7 +13,8 @@ class PinnedTree(QTreeView):
         self._positioning = False
         self._widths = {}
         from fireblade.ui.row_heights import RowHeights
-        self.row_heights=RowHeights(self)
+
+        self.row_heights = RowHeights(self)
         self.setHorizontalScrollMode(QTreeView.ScrollPerPixel)
         self.frozen = self.make_panel()
         self.right_frozen = self.make_panel()
@@ -22,17 +24,18 @@ class PinnedTree(QTreeView):
         self.right_frozen.setTreePosition(0)
         self.header().sectionResized.connect(self.columns_changed)
 
-    def setHeader(self,header):
+    def setHeader(self, header):
         super().setHeader(header)
         header.sectionResized.connect(self.columns_changed)
 
-    def columns_changed(self,*_):
+    def columns_changed(self, *_):
         self.position_pins()
         self.row_heights.schedule()
 
-    def setColumnHidden(self,column,hidden):
-        super().setColumnHidden(column,hidden)
-        if hasattr(self,'row_heights'):self.row_heights.schedule()
+    def setColumnHidden(self, column, hidden):
+        super().setColumnHidden(column, hidden)
+        if hasattr(self, "row_heights"):
+            self.row_heights.schedule()
 
     @property
     def frozen_views(self):
@@ -43,12 +46,19 @@ class PinnedTree(QTreeView):
         return self.pinned + self.right_pinned
 
     def frozen_for(self, column):
-        return self.right_frozen if column in self.right_pinned else self.frozen if column in self.pinned else self
+        return (
+            self.right_frozen
+            if column in self.right_pinned
+            else self.frozen
+            if column in self.pinned
+            else self
+        )
 
     def make_panel(self):
         panel = QTreeView(self)
-        panel._pinned_tree=self
+        panel._pinned_tree = self
         from fireblade.ui.grouping import GroupHeader
+
         panel.setHeader(GroupHeader(panel))
         panel.hide()
         panel.setFrameShape(QFrame.NoFrame)
@@ -74,7 +84,7 @@ class PinnedTree(QTreeView):
         return panel
 
     def setModel(self, model):
-        if hasattr(self, 'frozen'):
+        if hasattr(self, "frozen"):
             for panel in self.frozen_views:
                 panel.setModel(model)
         super().setModel(model)
@@ -95,7 +105,10 @@ class PinnedTree(QTreeView):
             self.pinned = list(dict.fromkeys(columns))
             self.right_pinned = [c for c in dict.fromkeys(right_columns) if c not in self.pinned]
             if self.model():
-                for panel, pinned in ((self.frozen, self.pinned), (self.right_frozen, self.right_pinned)):
+                for panel, pinned in (
+                    (self.frozen, self.pinned),
+                    (self.right_frozen, self.right_pinned),
+                ):
                     for column in range(self.model().columnCount()):
                         panel.setColumnHidden(column, column not in pinned)
                     for position, column in enumerate(pinned):
@@ -104,7 +117,10 @@ class PinnedTree(QTreeView):
                         panel.setColumnWidth(column, width)
                         panel.header().moveSection(panel.header().visualIndex(column), position)
                         super().setColumnHidden(column, True)
-            for panel, pinned in ((self.frozen, self.pinned), (self.right_frozen, self.right_pinned)):
+            for panel, pinned in (
+                (self.frozen, self.pinned),
+                (self.right_frozen, self.right_pinned),
+            ):
                 panel.setVisible(bool(pinned) and self.model() is not None)
         finally:
             self._syncing = False
@@ -126,7 +142,11 @@ class PinnedTree(QTreeView):
         self._positioning = True
         try:
             left = sum(self.frozen.columnWidth(c) for c in self.pinned) if self.model() else 0
-            right = sum(self.right_frozen.columnWidth(c) for c in self.right_pinned) if self.model() else 0
+            right = (
+                sum(self.right_frozen.columnWidth(c) for c in self.right_pinned)
+                if self.model()
+                else 0
+            )
             # Keep the center usable when fields are wide or the window is narrow.
             budget = max(0, self.width() - 100 - self.verticalScrollBar().sizeHint().width())
             total = left + right
@@ -136,11 +156,17 @@ class PinnedTree(QTreeView):
             self.setViewportMargins(left, self.header().height(), right, 0)
             frame = self.frameWidth()
             height = self.viewport().height() + self.header().height()
-            self.header().setGeometry(self.viewport().x(), frame, self.viewport().width(), self.header().height())
+            self.header().setGeometry(
+                self.viewport().x(), frame, self.viewport().width(), self.header().height()
+            )
             self.frozen.setGeometry(frame, frame, left, height)
-            self.right_frozen.setGeometry(self.viewport().geometry().right() + 1, frame, right, height)
+            self.right_frozen.setGeometry(
+                self.viewport().geometry().right() + 1, frame, right, height
+            )
             self.horizontalScrollBar().setPageStep(self.viewport().width())
-            self.horizontalScrollBar().setRange(0, max(0, self.header().length() - self.viewport().width()))
+            self.horizontalScrollBar().setRange(
+                0, max(0, self.header().length() - self.viewport().width())
+            )
             for panel in self.frozen_views:
                 panel.header().setFixedHeight(self.header().height())
                 panel.raise_()
@@ -165,7 +191,7 @@ class PinnedTree(QTreeView):
                     stack.append(index)
 
     def updateGeometries(self):
-        if getattr(self, '_positioning', False):
+        if getattr(self, "_positioning", False):
             return
         super().updateGeometries()
         if not getattr(self, "_spanning", False):
@@ -177,7 +203,7 @@ class PinnedTree(QTreeView):
                 pass
             finally:
                 self._spanning = False
-        if hasattr(self, 'right_frozen'):
+        if hasattr(self, "right_frozen"):
             self.position_pins()
 
     def resizeEvent(self, event):

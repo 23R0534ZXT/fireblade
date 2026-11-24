@@ -10,7 +10,7 @@ def test_the_hunt_summary_is_written_in_english(qt_application):
     class FakeWindow(QMainWindow):
         def __init__(self):
             super().__init__()
-            self.main_toolbar = self.addToolBar('main')
+            self.main_toolbar = self.addToolBar("main")
 
         def can_open_file(self, **_):
             return True
@@ -25,33 +25,40 @@ def test_the_hunt_summary_is_written_in_english(qt_application):
             pass
 
     class Store:
-        metadata = {'status': 'complete', 'scanned_rows': 2499027, 'matching_fields': 1525533,
-                    'stored_hits': 250000, 'truncated': True, 'respect_filters': False, 'rejected': 1}
+        metadata = {
+            "status": "complete",
+            "scanned_rows": 2499027,
+            "matching_fields": 1525533,
+            "stored_hits": 250000,
+            "truncated": True,
+            "respect_filters": False,
+            "rejected": 1,
+        }
 
         def indicators(self):
             return []
 
         def sources(self):
-            return [{'error': ''}]
+            return [{"error": ""}]
 
         def close(self):
             pass
 
     # The interface language decides the spinbox prefix at construction time.
-    set_language('en')
+    set_language("en")
     window = FakeWindow()
     panel = HuntPanel(window)
     try:
         panel.page = lambda delta: None
         panel.display(Store())
         text = panel.status.text()
-        assert 'Terminée' not in text, text
-        assert 'Détails limités' not in text, text
-        assert 'IOC rejetés' not in text, text
-        assert 'Périmètre' not in text, text
-        assert 'Completed' in text and 'details kept' in text, text
-        assert panel.limit.prefix().strip().startswith('Max details'), panel.limit.prefix()
+        assert "Terminée" not in text, text
+        assert "Détails limités" not in text, text
+        assert "IOC rejetés" not in text, text
+        assert "Périmètre" not in text, text
+        assert "Completed" in text and "details kept" in text, text
+        assert panel.limit.prefix().strip().startswith("Max details"), panel.limit.prefix()
     finally:
-        set_language('fr')
+        set_language("fr")
         panel.close()
         window.close()

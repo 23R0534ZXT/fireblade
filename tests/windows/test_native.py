@@ -1,4 +1,5 @@
 """These tests require Windows filesystem/locking semantics; never substitute POSIX."""
+
 import os
 import stat
 

@@ -1,4 +1,5 @@
 """Read-only embedded files; user data always lives outside the executable."""
+
 import json
 from pathlib import Path
 import sys
@@ -35,4 +36,7 @@ def build_info():
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
     from fireblade import __version__
-    return dict(application="Fireblade", version=__version__, maturity="prototype", packaging="source")
+
+    return dict(
+        application="Fireblade", version=__version__, maturity="prototype", packaging="source"
+    )

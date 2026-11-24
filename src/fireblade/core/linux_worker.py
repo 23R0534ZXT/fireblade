@@ -6,6 +6,7 @@ on a 250 MB access.log, two files read by two threads finished in 50.8 s against
 per line on stdin, one answer per line on stdout, so the parent keeps the report
 and the child keeps the CPU.
 """
+
 import json
 import sys
 from pathlib import Path
@@ -24,21 +25,22 @@ def _plain(value):
 
 def main():
     from fireblade.core.linux_logs import parse
+
     for line in sys.stdin:
         line = line.strip()
         if not line:
             continue
         try:
             job = json.loads(line)
-            if job.get('stop'):
+            if job.get("stop"):
                 break
-            result = parse(Path(job['source']), Path(job['output']), span=job.get('span'))
-            answer = dict(status='ok', result=_plain(result))
+            result = parse(Path(job["source"]), Path(job["output"]), span=job.get("span"))
+            answer = dict(status="ok", result=_plain(result))
         except BaseException as exc:  # noqa: BLE001 - the parent needs the reason
-            answer = dict(status='error', error='%s: %s' % (type(exc).__name__, exc))
-        sys.stdout.write(json.dumps(answer) + '\n')
+            answer = dict(status="error", error="%s: %s" % (type(exc).__name__, exc))
+        sys.stdout.write(json.dumps(answer) + "\n")
         sys.stdout.flush()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

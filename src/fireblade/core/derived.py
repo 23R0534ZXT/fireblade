@@ -79,10 +79,7 @@ def validate_definition(data):
     if op not in ("timestamp", "expression", "category", "macb"):
         raise ValueError("Transformation inconnue")
     if op == "expression":
-        if (
-            not isinstance(data.get("expression"), str)
-            or len(data["expression"]) > 65536
-        ):
+        if not isinstance(data.get("expression"), str) or len(data["expression"]) > 65536:
             raise ValueError("Expression invalide")
     else:
         columns = data.get("columns")
@@ -96,9 +93,7 @@ def validate_definition(data):
         if data.get("format", "iso") not in FORMATS:
             raise ValueError("Format temporel inconnu")
         zone = data.get("timezone", "UTC")
-        if not isinstance(zone, str) or not re.fullmatch(
-            r"[A-Za-z0-9_ /+:.\-]{1,100}", zone
-        ):
+        if not isinstance(zone, str) or not re.fullmatch(r"[A-Za-z0-9_ /+:.\-]{1,100}", zone):
             raise ValueError("Fuseau horaire invalide")
         if "timezone_column" in data and not isinstance(data["timezone_column"], str):
             raise ValueError("Colonne de fuseau invalide")
@@ -152,13 +147,15 @@ def timestamp_sql(value, fmt="iso", zone="'UTC'", suppress_input_errors=True):
         zoned = f"regexp_matches(trim({value}), '(Z|[+-][0-9]{{2}}:?[0-9]{{2}})$')"
         # Numeric UTC offsets are handled explicitly; ICU accepts IANA names.
         fixed = f"regexp_full_match({zone}, '(UTC|GMT)?[+-][0-9]{{2}}:?[0-9]{{2}}')"
-        hours = f"try_cast(regexp_extract({zone}, '([+-])([0-9]{{2}}):?([0-9]{{2}})$',2) AS INTEGER)"
-        minutes = f"try_cast(regexp_extract({zone}, '([+-])([0-9]{{2}}):?([0-9]{{2}})$',3) AS INTEGER)"
+        hours = (
+            f"try_cast(regexp_extract({zone}, '([+-])([0-9]{{2}}):?([0-9]{{2}})$',2) AS INTEGER)"
+        )
+        minutes = (
+            f"try_cast(regexp_extract({zone}, '([+-])([0-9]{{2}}):?([0-9]{{2}})$',3) AS INTEGER)"
+        )
         sign = f"CASE WHEN contains({zone},'-') THEN -1 ELSE 1 END"
         local = f"CASE WHEN {fixed} THEN CASE WHEN {hours}<=23 AND {minutes}<60 THEN timezone('UTC',{parsed})-({sign})*({hours}*60+{minutes})*INTERVAL 1 MINUTE END ELSE timezone({zone},{parsed}) END"
-        stamp = (
-            f"CASE WHEN {zoned} THEN try_cast({short} AS TIMESTAMPTZ) ELSE {local} END"
-        )
+        stamp = f"CASE WHEN {zoned} THEN try_cast({short} AS TIMESTAMPTZ) ELSE {local} END"
 
         ns = f"CASE WHEN length(regexp_extract({value}, '\\.([0-9]+)',1))<=9 THEN cast(epoch_us(date_trunc('second',{stamp})) AS HUGEINT)*1000+try_cast({fraction} AS HUGEINT) END"
     # Row-local SQL lambdas factor the nanosecond value without a correlated
@@ -166,7 +163,7 @@ def timestamp_sql(value, fmt="iso", zone="'UTC'", suppress_input_errors=True):
     rendered = """TRY(CASE WHEN __fb_n BETWEEN -62135596800000000000 AND 253402300799999999999
         THEN strftime(make_timestamp(cast(((__fb_n-__fb_r)//1000000000)*1000000 AS BIGINT)), '%Y-%m-%dT%H:%M:%S')
         ||'.'||lpad(cast(__fb_r AS VARCHAR),9,'0')||'Z' END)"""
-    source=f'TRY({ns})' if suppress_input_errors else ns
+    source = f"TRY({ns})" if suppress_input_errors else ns
     return f"list_extract(list_transform([{source}], lambda __fb_n: list_extract(list_transform([((__fb_n%1000000000)+1000000000)%1000000000], lambda __fb_r: {rendered}),1)),1)"
 
 
@@ -192,9 +189,7 @@ def compile_definition(data, headers, column, numeric):
             zone = column(index(data["timezone_column"]))
             mappings = (
                 "MAP {"
-                + ",".join(
-                    literal(k) + ":" + literal(v) for k, v in WINDOWS_ZONES.items()
-                )
+                + ",".join(literal(k) + ":" + literal(v) for k, v in WINDOWS_ZONES.items())
                 + "}"
             )
             zone = f"coalesce(map_extract_value({mappings},{zone}),nullif({zone},''),'UTC')"

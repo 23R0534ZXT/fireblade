@@ -25,10 +25,8 @@ def build_outline(case, view, progress=lambda _: None):
     summaries = summary_expressions(case, view)
     where, args = case.where(view)
     count = len(groupcols)
-    footer_count=0 if view.group_footer_mode=="hidden" else 1
-    preserve = case.db.execute(
-        "SELECT current_setting('preserve_insertion_order')"
-    ).fetchone()[0]
+    footer_count = 0 if view.group_footer_mode == "hidden" else 1
+    preserve = case.db.execute("SELECT current_setting('preserve_insertion_order')").fetchone()[0]
 
     def create(suffix, query, parameters=()):
         name = prefix + suffix
@@ -38,9 +36,7 @@ def build_outline(case, view, progress=lambda _: None):
         return name
 
     def equal(left, right, depth):
-        return " AND ".join(
-            f"{left}.g{i} IS NOT DISTINCT FROM {right}.g{i}" for i in range(depth)
-        )
+        return " AND ".join(f"{left}.g{i} IS NOT DISTINCT FROM {right}.g{i}" for i in range(depth))
 
     try:
         with case.serial_query_threads():
@@ -50,21 +46,23 @@ def build_outline(case, view, progress=lambda _: None):
             for depth in range(1, count + 1):
                 stage = f"agrégation du niveau {depth}/{count}"
                 progress("Index du dépliage · " + stage + "…")
-                fields = ", ".join(
-                    f"{col} AS g{i}" for i, col in enumerate(groupcols[:depth])
-                )
-                aggregates = "".join(
-                    f", {expr} AS s{i}" for i, expr in enumerate(summaries)
-                )
+                fields = ", ".join(f"{col} AS g{i}" for i, col in enumerate(groupcols[:depth]))
+                aggregates = "".join(f", {expr} AS s{i}" for i, expr in enumerate(summaries))
                 query = (
                     f"SELECT {fields}, count(*) AS n{aggregates} FROM events{where} GROUP BY "
                     + ", ".join(groupcols[:depth])
                 )
-                parts=[]
-                for kind,summary,descending in group_sort_terms(view,view.groups[depth-1]):
-                    primary='n' if kind=='count' else f'g{depth-1}' if kind=='value' else f's{summary}'
-                    parts.append(primary+(' DESC' if descending else ' ASC')+' NULLS LAST')
-                order=', '.join(parts+[f'g{depth-1} ASC NULLS LAST'])
+                parts = []
+                for kind, summary, descending in group_sort_terms(view, view.groups[depth - 1]):
+                    primary = (
+                        "n"
+                        if kind == "count"
+                        else f"g{depth - 1}"
+                        if kind == "value"
+                        else f"s{summary}"
+                    )
+                    parts.append(primary + (" DESC" if descending else " ASC") + " NULLS LAST")
+                order = ", ".join(parts + [f"g{depth - 1} ASC NULLS LAST"])
                 partition = (
                     "PARTITION BY " + ",".join(f"g{i}" for i in range(depth - 1)) + " "
                     if depth > 1
@@ -97,9 +95,7 @@ def build_outline(case, view, progress=lambda _: None):
             for depth in range(1, count + 1):
                 stage = f"position du niveau {depth}/{count}"
                 partition = (
-                    "PARTITION BY "
-                    + ",".join(f"g.g{i}" for i in range(depth - 1))
-                    + " "
+                    "PARTITION BY " + ",".join(f"g.g{i}" for i in range(depth - 1)) + " "
                     if depth > 1
                     else ""
                 )
@@ -108,8 +104,7 @@ def build_outline(case, view, progress=lambda _: None):
                 join = (
                     ""
                     if depth == 1
-                    else f' JOIN "{prefix}_pos{depth - 1}" p ON '
-                    + equal("g", "p", depth - 1)
+                    else f' JOIN "{prefix}_pos{depth - 1}" p ON ' + equal("g", "p", depth - 1)
                 )
                 create(
                     f"_pos{depth}",
@@ -131,7 +126,9 @@ def build_outline(case, view, progress=lambda _: None):
                     f'SELECT start AS position,{depth} AS depth,NULL::BIGINT AS row_id,to_json([{path}]) AS path,n{sums} FROM "{prefix}_pos{depth}"'
                 )
                 if footer_count:
-                    unions.append(f'SELECT start+span-1 AS position,{-depth} AS depth,NULL::BIGINT AS row_id,to_json([{path}]) AS path,n{sums} FROM "{prefix}_pos{depth}"')
+                    unions.append(
+                        f'SELECT start+span-1 AS position,{-depth} AS depth,NULL::BIGINT AS row_id,to_json([{path}]) AS path,n{sums} FROM "{prefix}_pos{depth}"'
+                    )
             sums = ",NULL" * len(summaries)
             unions.append(
                 f'SELECT position,0 AS depth,row_id,NULL AS path,NULL AS n{sums} FROM "{prefix}_leaves"'
@@ -161,9 +158,7 @@ def build_outline(case, view, progress=lambda _: None):
         with case.finalizing_transaction():
             for name in reversed(owned):
                 case.db.execute(f'DROP TABLE IF EXISTS "{name}"')
-            case.db.execute(
-                "SET preserve_insertion_order=" + ("true" if preserve else "false")
-            )
+            case.db.execute("SET preserve_insertion_order=" + ("true" if preserve else "false"))
 
 
 def outline_page(case, view, offset=0, limit=None, progress=lambda _: None):
@@ -186,7 +181,8 @@ def outline_page(case, view, offset=0, limit=None, progress=lambda _: None):
             group = bool(row[0])
             path = tuple(json.loads(row[1])) if group else ()
             cells = (path[-1], row[2], *row[3:-1]) if group else values[row[-1]]
-            record=dict(group=group, path=path, values=cells)
-            if row[0]<0:record["footer"]=True
+            record = dict(group=group, path=path, values=cells)
+            if row[0] < 0:
+                record["footer"] = True
             result.append(record)
         return result

@@ -2,6 +2,7 @@
 
 Only standard-library imports here: a missing Qt/DuckDB DLL must also be reported.
 """
+
 from datetime import datetime, timezone
 import faulthandler
 import json
@@ -46,9 +47,18 @@ def failed_report(path, message, log_path):
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("x", encoding="utf-8") as output:
-            json.dump(dict(status="failed", phase="startup", error=message,
-                           platform=sys.platform, frozen=bool(getattr(sys, "frozen", False)),
-                           log=str(log_path) if log_path else None), output, indent=2)
+            json.dump(
+                dict(
+                    status="failed",
+                    phase="startup",
+                    error=message,
+                    platform=sys.platform,
+                    frozen=bool(getattr(sys, "frozen", False)),
+                    log=str(log_path) if log_path else None,
+                ),
+                output,
+                indent=2,
+            )
     except OSError:
         pass  # Never overwrite an existing report or hide the original startup error.
 
@@ -57,6 +67,7 @@ def notify_failure(log_path):
     if os.name != "nt":
         return
     import ctypes
+
     message = "Fireblade n’a pas pu démarrer."
     if log_path:
         message += f"\n\nLe journal d’erreur se trouve ici :\n{log_path}"
@@ -66,8 +77,9 @@ def notify_failure(log_path):
 def main():
     # A parsing child re-launches this same executable: answer before Qt, DuckDB
     # or any window is loaded, so a frozen build reads logs like a source run.
-    if '--parse-worker' in sys.argv[1:]:
+    if "--parse-worker" in sys.argv[1:]:
         from fireblade.core.linux_worker import main as worker_main
+
         worker_main()
         return
     report = report_argument(sys.argv[1:])
@@ -85,6 +97,7 @@ def main():
             sys.stderr = log
     try:
         from fireblade.ui.app import main as application_main
+
         application_main()
     except SystemExit as exc:
         if exc.code not in (None, 0):

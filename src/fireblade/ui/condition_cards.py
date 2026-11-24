@@ -1,8 +1,18 @@
 """Visual Boolean condition cards shared by filters and formatting rules."""
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QButtonGroup, QCheckBox, QComboBox, QFrame, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QVBoxLayout, QWidget, QSizePolicy,
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+    QSizePolicy,
 )
 
 from fireblade.core.models import Filter, FilterGroup, OPERATORS
@@ -20,7 +30,9 @@ class ConditionRow(QFrame):
         super().__init__()
         self.editor, self.owner = editor, owner
         self.setObjectName("conditionRow")
-        self.setStyleSheet("QFrame#conditionRow { background: palette(base); border: 1px solid palette(mid); border-radius: 6px; }")
+        self.setStyleSheet(
+            "QFrame#conditionRow { background: palette(base); border: 1px solid palette(mid); border-radius: 6px; }"
+        )
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
@@ -65,7 +77,9 @@ class ConditionRow(QFrame):
     def update_operator(self, *_):
         needs_value = self.operator.currentData() not in ("empty", "not_empty")
         self.text.setEnabled(needs_value)
-        self.text.setPlaceholderText("Valeur à rechercher…" if needs_value else "Aucune valeur nécessaire")
+        self.text.setPlaceholderText(
+            "Valeur à rechercher…" if needs_value else "Aucune valeur nécessaire"
+        )
         self.editor.changed()
 
     def value(self, depth=0):
@@ -82,7 +96,12 @@ class ConditionGroup(QFrame):
         self.setObjectName("conditionGroup")
         self.direct_not = condition.logic == "not"
         inverted = self.direct_not
-        if inverted and len(condition.children) == 1 and isinstance(condition.children[0], FilterGroup) and condition.children[0].logic in ("and", "or"):
+        if (
+            inverted
+            and len(condition.children) == 1
+            and isinstance(condition.children[0], FilterGroup)
+            and condition.children[0].logic in ("and", "or")
+        ):
             condition = condition.children[0]
             self.direct_not = False
         self.layout_box = QVBoxLayout(self)
@@ -99,9 +118,9 @@ class ConditionGroup(QFrame):
         title.setFont(font)
         heading.addWidget(title)
         heading.addStretch()
-        self.fold = button('Replier', self.toggle_fold, self)
+        self.fold = button("Replier", self.toggle_fold, self)
         self.fold.setCheckable(True)
-        self.fold.setAccessibleName('Replier ou déplier ce groupe de conditions')
+        self.fold.setAccessibleName("Replier ou déplier ce groupe de conditions")
         heading.addWidget(self.fold)
         if owner is not None:
             remove = button("Supprimer le groupe", lambda: editor.remove_node(self), self)
@@ -124,7 +143,8 @@ class ConditionGroup(QFrame):
         self.inverse.setToolTip("Garde les lignes qui ne correspondent pas à ce groupe.")
         self.inverse.toggled.connect(self.update_logic)
         options.addWidget(self.inverse)
-        self.options_widget=QWidget();self.options_widget.setLayout(options)
+        self.options_widget = QWidget()
+        self.options_widget.setLayout(options)
         self.layout_box.addWidget(self.options_widget)
         self.explanation = QLabel()
         self.explanation.setWordWrap(True)
@@ -132,27 +152,34 @@ class ConditionGroup(QFrame):
         self.body = QVBoxLayout()
         self.body.setContentsMargins(8, 0, 0, 0)
         self.body.setSpacing(7)
-        self.body_widget=QWidget();self.body_widget.setLayout(self.body)
+        self.body_widget = QWidget()
+        self.body_widget.setLayout(self.body)
         self.layout_box.addWidget(self.body_widget)
         self.empty = QLabel("Aucune condition. Ajoutez une condition pour commencer.")
         self.empty.setWordWrap(True)
         self.body.addWidget(self.empty)
         actions = QHBoxLayout()
-        self.add_condition_button = button("+ Condition", lambda: editor.add_node(self, Filter(0, "contains")), self)
-        self.add_group_button = button("+ Sous-groupe", lambda: editor.add_node(self, FilterGroup()), self)
+        self.add_condition_button = button(
+            "+ Condition", lambda: editor.add_node(self, Filter(0, "contains")), self
+        )
+        self.add_group_button = button(
+            "+ Sous-groupe", lambda: editor.add_node(self, FilterGroup()), self
+        )
         actions.addWidget(self.add_condition_button)
         actions.addWidget(self.add_group_button)
         actions.addStretch()
-        self.actions_widget=QWidget();self.actions_widget.setLayout(actions)
+        self.actions_widget = QWidget()
+        self.actions_widget.setLayout(actions)
         self.layout_box.addWidget(self.actions_widget)
         for child in condition.children:
             editor.add_node(self, child, notify=False)
         self.update_logic()
 
     def toggle_fold(self):
-        folded=self.fold.isChecked()
-        self.fold.setText('Déplier' if folded else 'Replier')
-        for widget in (self.options_widget,self.body_widget,self.actions_widget):widget.setVisible(not folded)
+        folded = self.fold.isChecked()
+        self.fold.setText("Déplier" if folded else "Replier")
+        for widget in (self.options_widget, self.body_widget, self.actions_widget):
+            widget.setVisible(not folded)
         self.explanation.setVisible(not folded)
         self.editor.changed()
 
@@ -169,19 +196,35 @@ class ConditionGroup(QFrame):
         inverse = self.inverse.isChecked()
         label = "NON" if inverse else "OU" if self.logic == "or" else "ET"
         self.badge.setText(label)
-        self.badge.setStyleSheet("border: 1px solid palette(mid); border-radius: 5px; padding: 5px; font-weight: bold;")
-        self.setStyleSheet('QFrame#conditionGroup { background: palette(alternate-base); border: 1px solid palette(mid); border-radius: 8px; } QPushButton[logicChoice="true"] { padding: 3px 12px; border: 1px solid palette(mid); border-radius: 5px; } QPushButton[logicChoice="true"]:checked { background: palette(midlight); font-weight: bold; }')
+        self.badge.setStyleSheet(
+            "border: 1px solid palette(mid); border-radius: 5px; padding: 5px; font-weight: bold;"
+        )
+        self.setStyleSheet(
+            'QFrame#conditionGroup { background: palette(alternate-base); border: 1px solid palette(mid); border-radius: 8px; } QPushButton[logicChoice="true"] { padding: 3px 12px; border: 1px solid palette(mid); border-radius: 5px; } QPushButton[logicChoice="true"]:checked { background: palette(midlight); font-weight: bold; }'
+        )
         if inverse:
-            text = "Écarter les lignes qui respectent toutes ces conditions." if self.logic == "and" else "Écarter les lignes qui respectent au moins une de ces conditions."
+            text = (
+                "Écarter les lignes qui respectent toutes ces conditions."
+                if self.logic == "and"
+                else "Écarter les lignes qui respectent au moins une de ces conditions."
+            )
         else:
-            text = "Chaque condition doit être respectée." if self.logic == "and" else "Une seule condition respectée suffit."
+            text = (
+                "Chaque condition doit être respectée."
+                if self.logic == "and"
+                else "Une seule condition respectée suffit."
+            )
         self.explanation.setText(text)
         self.editor.changed()
 
     def refresh_children(self):
         while self.body.count():
             item = self.body.takeAt(0)
-            if item.widget() and item.widget() not in self.children and item.widget() is not self.empty:
+            if (
+                item.widget()
+                and item.widget() not in self.children
+                and item.widget() is not self.empty
+            ):
                 item.widget().hide()
                 item.widget().deleteLater()
         self.empty.setVisible(not self.children)

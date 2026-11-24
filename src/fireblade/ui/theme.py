@@ -1,4 +1,5 @@
 """One coherent light style, including on Windows with dark system preferences."""
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFontDatabase, QPalette
 
@@ -24,57 +25,108 @@ def theme_palette(theme="light", overrides=None):
     """Build colors/styles without modifying QApplication or any open window."""
     palette = QPalette()
     roles = {
-        QPalette.Window: "#f0f0f0", QPalette.WindowText: "#202020",
-        QPalette.Base: "#ffffff", QPalette.AlternateBase: "#f6f6f6",
-        QPalette.Text: "#202020", QPalette.Button: "#f0f0f0",
-        QPalette.ButtonText: "#202020", QPalette.Highlight: "#cce8ff",
-        QPalette.HighlightedText: "#101010", QPalette.ToolTipBase: "#ffffe1",
-        QPalette.ToolTipText: "#202020", QPalette.PlaceholderText: "#686868",
-        QPalette.BrightText: "#202020", QPalette.Link: "#0645ad",
+        QPalette.Window: "#f0f0f0",
+        QPalette.WindowText: "#202020",
+        QPalette.Base: "#ffffff",
+        QPalette.AlternateBase: "#f6f6f6",
+        QPalette.Text: "#202020",
+        QPalette.Button: "#f0f0f0",
+        QPalette.ButtonText: "#202020",
+        QPalette.Highlight: "#cce8ff",
+        QPalette.HighlightedText: "#101010",
+        QPalette.ToolTipBase: "#ffffe1",
+        QPalette.ToolTipText: "#202020",
+        QPalette.PlaceholderText: "#686868",
+        QPalette.BrightText: "#202020",
+        QPalette.Link: "#0645ad",
         QPalette.LinkVisited: "#663399",
     }
     if theme == "dark":
-        replacements = {"#f0f0f0": "#303030", "#202020": "#eeeeee", "#ffffff": "#242424",
-                        "#f6f6f6": "#2b2b2b", "#cce8ff": "#315b7d", "#101010": "#ffffff",
-                        "#ffffe1": "#35352b", "#686868": "#b0b0b0", "#0645ad": "#80bfff", "#663399": "#c6a2ee"}
+        replacements = {
+            "#f0f0f0": "#303030",
+            "#202020": "#eeeeee",
+            "#ffffff": "#242424",
+            "#f6f6f6": "#2b2b2b",
+            "#cce8ff": "#315b7d",
+            "#101010": "#ffffff",
+            "#ffffe1": "#35352b",
+            "#686868": "#b0b0b0",
+            "#0645ad": "#80bfff",
+            "#663399": "#c6a2ee",
+        }
         roles = {role: replacements.get(color, color) for role, color in roles.items()}
-    custom={};overrides=overrides or {}
-    for key,role in [('window',QPalette.Window),('text',QPalette.Text),('base',QPalette.Base),('alternate',QPalette.AlternateBase),('highlight',QPalette.Highlight),('selection_text',QPalette.HighlightedText)]:
-        if key in overrides:custom[roles[role].lower()]=overrides[key]
-    if 'base' in overrides and theme!='dark':custom['white']=overrides['base']
-    roles={r:custom.get(c.lower(),c) for r,c in roles.items()}
+    custom = {}
+    overrides = overrides or {}
+    for key, role in [
+        ("window", QPalette.Window),
+        ("text", QPalette.Text),
+        ("base", QPalette.Base),
+        ("alternate", QPalette.AlternateBase),
+        ("highlight", QPalette.Highlight),
+        ("selection_text", QPalette.HighlightedText),
+    ]:
+        if key in overrides:
+            custom[roles[role].lower()] = overrides[key]
+    if "base" in overrides and theme != "dark":
+        custom["white"] = overrides["base"]
+    roles = {r: custom.get(c.lower(), c) for r, c in roles.items()}
     for group in (QPalette.Active, QPalette.Inactive, QPalette.Disabled):
         for role, color in roles.items():
             palette.setColor(group, role, QColor(color))
     for role in (QPalette.WindowText, QPalette.Text, QPalette.ButtonText):
-        palette.setColor(QPalette.Disabled, role, QColor(("#d0d0d0" if overrides else "#b0b0b0") if theme == "dark" else "#686868"))
+        palette.setColor(
+            QPalette.Disabled,
+            role,
+            QColor(("#d0d0d0" if overrides else "#b0b0b0") if theme == "dark" else "#686868"),
+        )
     stylesheet = STYLE
     if theme == "dark":
         import re
-        colors = {**replacements, "#eeeeee": "#383838", "#bcbcbc": "#555555", "#b5b5b5": "#606060", "#c5c5c5": "#555555"}
-        stylesheet = re.sub(r'#[0-9a-fA-F]{6}|\bwhite\b', lambda m: colors.get(m.group(0), "#242424" if m.group(0) == "white" else m.group(0)), STYLE)
+
+        colors = {
+            **replacements,
+            "#eeeeee": "#383838",
+            "#bcbcbc": "#555555",
+            "#b5b5b5": "#606060",
+            "#c5c5c5": "#555555",
+        }
+        stylesheet = re.sub(
+            r"#[0-9a-fA-F]{6}|\bwhite\b",
+            lambda m: colors.get(m.group(0), "#242424" if m.group(0) == "white" else m.group(0)),
+            STYLE,
+        )
     if custom:
         import re
-        stylesheet=re.sub(r'#[0-9a-fA-F]{6}|\bwhite\b',lambda m:custom.get(m.group(0).lower(),m.group(0)),stylesheet)
+
+        stylesheet = re.sub(
+            r"#[0-9a-fA-F]{6}|\bwhite\b",
+            lambda m: custom.get(m.group(0).lower(), m.group(0)),
+            stylesheet,
+        )
     if overrides:
         from PySide6.QtGui import QPalette as P
-        window=roles[P.Window];base=roles[P.Base];text=roles[P.Text]
-        disabled=QColor(base).lighter(160).name() if theme=='dark' else '#eeeeee'
-        muted='#d0d0d0' if theme=='dark' else '#686868'
-        stylesheet+=f"\nQPushButton:disabled, QToolButton:disabled, QCheckBox:disabled, QLabel:disabled, QMenuBar::item:disabled, QMenu::item:disabled {{ color: {muted}; }}\nQHeaderView::section {{ background: {window}; color: {text}; }}\nQLineEdit:disabled, QComboBox:disabled {{ background: {disabled}; color: {muted}; }}\nQToolTip {{ background: {base}; color: {text}; }}"
+
+        window = roles[P.Window]
+        base = roles[P.Base]
+        text = roles[P.Text]
+        disabled = QColor(base).lighter(160).name() if theme == "dark" else "#eeeeee"
+        muted = "#d0d0d0" if theme == "dark" else "#686868"
+        stylesheet += f"\nQPushButton:disabled, QToolButton:disabled, QCheckBox:disabled, QLabel:disabled, QMenuBar::item:disabled, QMenu::item:disabled {{ color: {muted}; }}\nQHeaderView::section {{ background: {window}; color: {text}; }}\nQLineEdit:disabled, QComboBox:disabled {{ background: {disabled}; color: {muted}; }}\nQToolTip {{ background: {base}; color: {text}; }}"
     return palette, stylesheet
 
 
 def apply_theme(app, theme="light", overrides=None):
     # Native Windows 11 styles can keep dark foregrounds while custom backgrounds
     # are light. Fusion renders every control from the same explicit palette.
-    app.styleHints().setColorScheme(Qt.ColorScheme.Dark if theme == "dark" else Qt.ColorScheme.Light)
+    app.styleHints().setColorScheme(
+        Qt.ColorScheme.Dark if theme == "dark" else Qt.ColorScheme.Light
+    )
     app.setStyle("Fusion")
     app.setProperty("fireblade_style", "Fusion " + theme)
     font = QFontDatabase.systemFont(QFontDatabase.GeneralFont)
     if font.pointSizeF() < 9:
         font.setPointSizeF(9)
     app.setFont(font)
-    palette,stylesheet=theme_palette(theme,overrides)
+    palette, stylesheet = theme_palette(theme, overrides)
     app.setPalette(palette)
     app.setStyleSheet(stylesheet)

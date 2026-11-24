@@ -8,12 +8,13 @@ only identifier an examiner can defend, so the index is built on it.
 The index lives beside the collections of one case, never inside a collection,
 so a second import can ask what the first already read.
 """
+
 import json
 import os
 from pathlib import Path
 
 
-NAME = 'import-index.json'
+NAME = "import-index.json"
 
 
 def path_for(folder):
@@ -24,13 +25,16 @@ def load(folder):
     """digest -> what read it. A damaged index costs duplicates, never an import."""
     target = path_for(folder)
     try:
-        data = json.loads(target.read_text(encoding='utf-8-sig'))
+        data = json.loads(target.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return {}
-    if not isinstance(data, dict) or data.get('format') != 'fireblade-import-index':
+    if not isinstance(data, dict) or data.get("format") != "fireblade-import-index":
         return {}
-    return {str(key): value for key, value in (data.get('files') or {}).items()
-            if isinstance(value, dict)}
+    return {
+        str(key): value
+        for key, value in (data.get("files") or {}).items()
+        if isinstance(value, dict)
+    }
 
 
 def update(folder, records):
@@ -45,11 +49,11 @@ def update(folder, records):
         added += 1
     if not added and target.is_file():
         return added
-    payload = dict(format='fireblade-import-index', version=1, files=files)
-    temporary = target.with_name(target.name + '.partial')
+    payload = dict(format="fireblade-import-index", version=1, files=files)
+    temporary = target.with_name(target.name + ".partial")
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
+        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         os.replace(temporary, target)
     except OSError:
         temporary.unlink(missing_ok=True)

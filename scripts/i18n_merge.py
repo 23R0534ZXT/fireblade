@@ -12,14 +12,20 @@ as they are. Refuses the whole batch if anything is off:
     python -m scripts.i18n_merge translations/*.json
     python -m scripts.i18n_merge --check translations/*.json   # verify only
 """
+
 import argparse
 import ast
 import json
 import os
 import sys
 
-I18N = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                    "src", "fireblade", "core", "i18n.py")
+I18N = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "src",
+    "fireblade",
+    "core",
+    "i18n.py",
+)
 PLACEHOLDER = "{}"
 
 
@@ -29,7 +35,8 @@ def load_table(path=I18N):
     tree = ast.parse(source)
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(
-                isinstance(target, ast.Name) and target.id == "EN" for target in node.targets):
+            isinstance(target, ast.Name) and target.id == "EN" for target in node.targets
+        ):
             return ast.literal_eval(node.value), node.lineno, node.end_lineno or node.lineno
     raise SystemExit("no EN table found in i18n.py")
 
@@ -60,8 +67,10 @@ def gather(paths, table):
                 continue
             existing = table.get(source)
             if existing is not None and existing != target:
-                problems.append(f"{path}: {source!r} is already translated as {existing!r}, "
-                                f"the batch says {target!r}")
+                problems.append(
+                    f"{path}: {source!r} is already translated as {existing!r}, "
+                    f"the batch says {target!r}"
+                )
                 continue
             if source in additions and additions[source] != target:
                 problems.append(f"{path}: {source!r} translated twice, differently")
@@ -73,8 +82,10 @@ def gather(paths, table):
 def render(entries):
     lines = []
     for source, target in entries:
-        lines.append(f"    {json.dumps(source, ensure_ascii=False)}: "
-                     f"{json.dumps(target, ensure_ascii=False)},")
+        lines.append(
+            f"    {json.dumps(source, ensure_ascii=False)}: "
+            f"{json.dumps(target, ensure_ascii=False)},"
+        )
     return lines
 
 
@@ -88,11 +99,14 @@ def merge(path, additions, table):
     fresh = [(key, value) for key, value in sorted(additions.items()) if key not in table]
     if not fresh:
         return 0
-    block = ["\n", "    # Added for the full English interface: one entry per French label\n",
-             "    # the application can display.\n"] + [line + "\n" for line in render(fresh)]
+    block = [
+        "\n",
+        "    # Added for the full English interface: one entry per French label\n",
+        "    # the application can display.\n",
+    ] + [line + "\n" for line in render(fresh)]
     lines[closing:closing] = block
     updated = "".join(lines)
-    ast.parse(updated)          # a broken table must never reach the file
+    ast.parse(updated)  # a broken table must never reach the file
     open(path, "w", encoding="utf-8", newline="\n").write(updated)
     return len(fresh)
 
@@ -111,7 +125,9 @@ def main(argv=None):
             print("  " + problem)
         return 1
     new = [(key, value) for key, value in additions.items() if key not in table]
-    print(f"{len(additions)} entries read, {len(new)} new, {len(additions) - len(new)} already there")
+    print(
+        f"{len(additions)} entries read, {len(new)} new, {len(additions) - len(new)} already there"
+    )
     if args.check:
         return 0
     written = merge(I18N, additions, table)

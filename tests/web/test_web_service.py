@@ -1,4 +1,5 @@
 """The HTTP service reads a real case written the way the desktop writes it."""
+
 import csv
 
 import pytest
@@ -13,11 +14,13 @@ def _write_csv(path):
     with path.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
         writer.writerow(["Timestamp", "Artifact", "User", "SourceIP"])
-        writer.writerows([
-            ["2026-11-02T10:00:00Z", "EVTX", "alice", "192.0.2.10"],
-            ["2026-11-02T10:01:00Z", "EVTX", "bob", "192.0.2.20"],
-            ["2026-11-02T10:02:00Z", "Prefetch", "alice", ""],
-        ])
+        writer.writerows(
+            [
+                ["2026-11-02T10:00:00Z", "EVTX", "alice", "192.0.2.10"],
+                ["2026-11-02T10:01:00Z", "EVTX", "bob", "192.0.2.20"],
+                ["2026-11-02T10:02:00Z", "Prefetch", "alice", ""],
+            ]
+        )
 
 
 @pytest.fixture()
@@ -117,10 +120,20 @@ def test_export_writes_a_csv(case_with_analysis):
 def _write_profile_csv(path):
     with path.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
-        writer.writerow(["TimeCreated", "EventId", "Level", "Provider", "Channel",
-                         "Computer", "MapDescription"])
-        writer.writerow(["2026-11-02T10:00:00Z", "4624", "Information",
-                         "Microsoft-Windows-Security-Auditing", "Security", "PC-1", "logon"])
+        writer.writerow(
+            ["TimeCreated", "EventId", "Level", "Provider", "Channel", "Computer", "MapDescription"]
+        )
+        writer.writerow(
+            [
+                "2026-11-02T10:00:00Z",
+                "4624",
+                "Information",
+                "Microsoft-Windows-Security-Auditing",
+                "Security",
+                "PC-1",
+                "logon",
+            ]
+        )
 
 
 def test_preview_shows_columns_and_profile(case_with_analysis, tmp_path):
@@ -164,8 +177,10 @@ def test_actions_export_is_a_csv(case_with_analysis):
     root, identifier = case_with_analysis
     service = Library(root)
     try:
-        service.add_action(identifier, {"title": "Ask the client for DNS logs",
-                                        "owner": "client", "priority": "high"})
+        service.add_action(
+            identifier,
+            {"title": "Ask the client for DNS logs", "owner": "client", "priority": "high"},
+        )
         text = service.actions_csv(identifier)
         lines = [line for line in text.splitlines() if line]
         assert lines[0].startswith("id,title,detail,owner,status,priority")
@@ -173,13 +188,18 @@ def test_actions_export_is_a_csv(case_with_analysis):
     finally:
         service.close()
 
+
 def _write_french_csv(path, delimiter=";", encoding="cp1252"):
     """A French export: semicolons, and an accent cp1252 alone can decode."""
     with path.open("w", encoding=encoding, newline="") as stream:
         writer = csv.writer(stream, delimiter=delimiter)
         writer.writerow(["Horodatage", "Evenement", "Utilisateur"])
-        writer.writerows([["2026-11-02T10:00:00Z", "ouverture de session", "élève"],
-                          ["2026-11-02T10:01:00Z", "connexion", "bob"]])
+        writer.writerows(
+            [
+                ["2026-11-02T10:00:00Z", "ouverture de session", "élève"],
+                ["2026-11-02T10:01:00Z", "connexion", "bob"],
+            ]
+        )
 
 
 def test_preview_reads_the_chosen_encoding_and_separator(case_with_analysis, tmp_path):
@@ -224,6 +244,7 @@ def test_import_uses_the_chosen_encoding(case_with_analysis, tmp_path):
     finally:
         service.close()
 
+
 def test_closing_an_analysis_leaves_the_others_and_its_file(case_with_analysis, tmp_path):
     """Closing a view is not deleting: the other analyses and the file survive."""
     root, identifier = case_with_analysis
@@ -238,6 +259,7 @@ def test_closing_an_analysis_leaves_the_others_and_its_file(case_with_analysis, 
         remaining = service.case(identifier)["analyses"]
         assert len(remaining) == 1
         from pathlib import Path as _Path
+
         assert _Path(path).is_file(), "closing an analysis must not delete its file"
         # The one left is the imported analysis, not a stale copy of the closed one.
         assert remaining[0]["path"] != path

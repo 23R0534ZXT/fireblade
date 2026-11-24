@@ -25,7 +25,10 @@ from fireblade.ui.workspace import read_session
 @pytest.fixture
 def case(tmp_path):
     source = tmp_path / "evidence.csv"
-    source.write_text('User,EventID,Details\nalice,4624,"{\"\"ok\"\": true}"\nbob,4625,failed\nalice,1,other\n,4625,unknown\n', encoding="utf-8")
+    source.write_text(
+        'User,EventID,Details\nalice,4624,"{""ok"": true}"\nbob,4625,failed\nalice,1,other\n,4625,unknown\n',
+        encoding="utf-8",
+    )
     case = Case(tmp_path / "evidence.timeline")
     case.import_csv(source)
     yield case
@@ -33,9 +36,13 @@ def case(tmp_path):
 
 
 def test_nested_boolean_conditions_share_export_and_group_semantics(case, tmp_path):
-    expression = FilterGroup("and", [
-        FilterGroup("or", [Filter(0, "eq", "alice"), Filter(0, "eq", "bob")]),
-        FilterGroup("not", [Filter(1, "eq", "1")])])
+    expression = FilterGroup(
+        "and",
+        [
+            FilterGroup("or", [Filter(0, "eq", "alice"), Filter(0, "eq", "bob")]),
+            FilterGroup("not", [Filter(1, "eq", "1")]),
+        ],
+    )
     view = View(expression=expression, groups=[0])
     assert case.count(view) == 2
     assert case.page(view) == [("alice", 1), ("bob", 1)]
@@ -54,9 +61,13 @@ def test_nested_boolean_conditions_share_export_and_group_semantics(case, tmp_pa
 
 def test_legacy_views_and_new_views_roundtrip(case):
     assert View.from_json('{"search":"alice","filters":[]}') == View(search="alice")
-    view = View(expression=FilterGroup("or", [Filter(1, "eq", "4625"), Filter(0, "empty")]),
-                format_rules=[FormatRule(FilterGroup("and", [Filter(1, "ge", "4625")]), "#ffc7ce", "#111111", True, 1)],
-                sorts=[SortKey(0), SortKey(1, "number", True)])
+    view = View(
+        expression=FilterGroup("or", [Filter(1, "eq", "4625"), Filter(0, "empty")]),
+        format_rules=[
+            FormatRule(FilterGroup("and", [Filter(1, "ge", "4625")]), "#ffc7ce", "#111111", True, 1)
+        ],
+        sorts=[SortKey(0), SortKey(1, "number", True)],
+    )
     assert View.from_json(view.to_json()) == view
     case.save_view("advanced", view)
     assert case.views()["advanced"] == view
@@ -88,9 +99,11 @@ def test_condition_budget_and_rule_validation(case):
 
 
 def test_styles_match_sql_and_only_requested_rows(case):
-    rules = [FormatRule(FilterGroup("and", [Filter(1, "ge", "4625")]), target=1),
-             FormatRule(FilterGroup("or", [Filter(0, "eq", "alice"), Filter(0, "empty")])),
-             FormatRule(enabled=False)]
+    rules = [
+        FormatRule(FilterGroup("and", [Filter(1, "ge", "4625")]), target=1),
+        FormatRule(FilterGroup("or", [Filter(0, "eq", "alice"), Filter(0, "empty")])),
+        FormatRule(enabled=False),
+    ]
     view = View(format_rules=rules)
     visible_rows = case.page(view)[:2]
     assert case.page_styles(view, visible_rows) == {1: (1,), 2: (0,)}
@@ -160,9 +173,11 @@ def test_cancel_xlsx_import_rolls_back_and_can_retry(tmp_path):
     workbook_source(source)
     case = Case(tmp_path / "case.timeline")
     try:
+
         def cancel(message):
             if message.startswith("Écriture"):
                 case.interrupt()
+
         with pytest.raises(OperationCancelled):
             case.import_excel(source, "Événements", cancel)
         assert case.headers == []
@@ -187,9 +202,13 @@ def settle(app, window):
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         app.processEvents()
-        if not window.jobs and not window.pool.activeThreadCount() and (window.model is None or not window.model.jobs):
+        if (
+            not window.jobs
+            and not window.pool.activeThreadCount()
+            and (window.model is None or not window.model.jobs)
+        ):
             return
-        time.sleep(.005)
+        time.sleep(0.005)
     pytest.fail("Background work timed out")
 
 
@@ -258,10 +277,14 @@ def test_invalid_session_preserves_current_analysis(case, tmp_path):
 
 def test_editors_roundtrip_nested_expression_and_format_priorities(case):
     app = QApplication.instance() or QApplication([])
-    expression = FilterGroup("or", [Filter(0, "eq", "alice"), FilterGroup("not", [Filter(1, "gt", "1")])])
+    expression = FilterGroup(
+        "or", [Filter(0, "eq", "alice"), FilterGroup("not", [Filter(1, "gt", "1")])]
+    )
     editor = ExpressionEditor(case.headers, expression)
     assert editor.value() == expression
-    rules = RulesDialog(case.headers, [FormatRule(expression, "#ff0000"), FormatRule(background="#00ff00")])
+    rules = RulesDialog(
+        case.headers, [FormatRule(expression, "#ff0000"), FormatRule(background="#00ff00")]
+    )
     rules.move(1)
     rules.accept()
     assert rules.rules[1].condition == expression
@@ -282,7 +305,13 @@ def test_bookmark_highlights_whole_row_while_retaining_rule_font(case):
     window.attach(case)
     window.show()
     settle(app, window)
-    view = View(format_rules=[FormatRule(FilterGroup("and", [Filter(0, "eq", "alice")]), "#ff0000", "#0000ff", True, 1)])
+    view = View(
+        format_rules=[
+            FormatRule(
+                FilterGroup("and", [Filter(0, "eq", "alice")]), "#ff0000", "#0000ff", True, 1
+            )
+        ]
+    )
     window.set_view(view)
     settle(app, window)
     assert window.model.data(window.model.index(0, 2), Qt.BackgroundRole).name() == "#fff4c2"
@@ -290,7 +319,12 @@ def test_bookmark_highlights_whole_row_while_retaining_rule_font(case):
     assert window.model.data(window.model.index(0, 1), Qt.BackgroundRole).name() == "#fff4c2"
     window.tree.clearSelection()
     rectangle = window.tree.visualRect(window.model.index(0, 2))
-    pixel = window.tree.viewport().grab().toImage().pixelColor(rectangle.right() - 8, rectangle.bottom() - 4)
+    pixel = (
+        window.tree.viewport()
+        .grab()
+        .toImage()
+        .pixelColor(rectangle.right() - 8, rectangle.bottom() - 4)
+    )
     assert pixel.name() == "#fff4c2"
     assert window.close()
 
@@ -299,29 +333,39 @@ def test_rules_dialog_click_creation_replaces_visible_editor_and_saves(case, mon
     from PySide6.QtGui import QColor
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QColorDialog, QPushButton, QDialogButtonBox, QDialog
+
     app = QApplication.instance() or QApplication([])
     dialog = RulesDialog(case.headers, [])
     dialog.show()
     app.processEvents()
+
     def click(text):
-        button = next(b for b in dialog.findChildren(QPushButton) if b.text() == text and b.isVisible() and b.isEnabled())
+        button = next(
+            b
+            for b in dialog.findChildren(QPushButton)
+            if b.text() == text and b.isVisible() and b.isEnabled()
+        )
         QTest.mouseClick(button, Qt.LeftButton)
         app.processEvents()
+
     try:
-        click('Ajouter')
+        click("Ajouter")
         # processEvents deliberately does not force DeferredDelete delivery:
         # these controls must already be retired while a modal loop is active.
         assert sum(e.isVisible() for e in dialog.findChildren(ExpressionEditor)) == 1
         row = dialog.editor.root.children[0]
-        row.operator.setCurrentIndex(row.operator.findData('eq'))
-        QTest.keyClicks(row.text, 'alice')
-        monkeypatch.setattr(QColorDialog, 'getColor', lambda *a, **k: QColor('#ff0000'))
-        dialog.rule_steps.setCurrentIndex(2);app.processEvents()
-        click('Fond')
-        QTest.mouseClick(dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Ok), Qt.LeftButton)
+        row.operator.setCurrentIndex(row.operator.findData("eq"))
+        QTest.keyClicks(row.text, "alice")
+        monkeypatch.setattr(QColorDialog, "getColor", lambda *a, **k: QColor("#ff0000"))
+        dialog.rule_steps.setCurrentIndex(2)
+        app.processEvents()
+        click("Fond")
+        QTest.mouseClick(
+            dialog.findChild(QDialogButtonBox).button(QDialogButtonBox.Ok), Qt.LeftButton
+        )
         assert dialog.result() == QDialog.DialogCode.Accepted
-        assert dialog.rules[0].condition == FilterGroup('and', [Filter(0, 'eq', 'alice')])
-        assert dialog.rules[0].background == '#ff0000'
+        assert dialog.rules[0].condition == FilterGroup("and", [Filter(0, "eq", "alice")])
+        assert dialog.rules[0].background == "#ff0000"
         view = View(format_rules=dialog.rules)
         assert case.page_styles(view, case.page(view)) == {1: (0,), 2: (), 3: (0,), 4: ()}
     finally:
@@ -329,107 +373,190 @@ def test_rules_dialog_click_creation_replaces_visible_editor_and_saves(case, mon
         dialog.deleteLater()
 
 
-@pytest.mark.parametrize('mode', ['bar', 'scale', 'icon'])
+@pytest.mark.parametrize("mode", ["bar", "scale", "icon"])
 def test_graphical_rule_editor_model_persistence_and_paint(case, mode, tmp_path):
     from fireblade.ui.visual_rules import VISUAL_ROLE, visual_value
     from fireblade.core.rule_store import RuleBook
     from PySide6.QtGui import QImage, QPainter, QColor
     from PySide6.QtWidgets import QStyleOptionViewItem
+
     app = QApplication.instance() or QApplication([])
-    rule = FormatRule(target=1, visual=mode, italic=True, underline=True, strikeout=True, minimum='0', maximum='5000', background='#ff0000', foreground='#0000ff')
-    rule.condition = FilterGroup('and', [Filter(1, 'not_empty')])
+    rule = FormatRule(
+        target=1,
+        visual=mode,
+        italic=True,
+        underline=True,
+        strikeout=True,
+        minimum="0",
+        maximum="5000",
+        background="#ff0000",
+        foreground="#0000ff",
+    )
+    rule.condition = FilterGroup("and", [Filter(1, "not_empty")])
     encoded = RuleBook(case.headers, [rule]).to_bytes()
     assert RuleBook.from_bytes(encoded).rules == [rule]
-    dialog = RulesDialog(case.headers, [rule]);dialog.accept()
+    dialog = RulesDialog(case.headers, [rule])
+    dialog.accept()
     assert dialog.result() == 1 and dialog.rules == [rule]
-    window = Window(require_case=False, rule_path=tmp_path/'rules.json');window.attach(case);window.show()
+    window = Window(require_case=False, rule_path=tmp_path / "rules.json")
+    window.attach(case)
+    window.show()
     try:
-        window.set_view(View(format_rules=[rule]));settle(app, window)
-        index = window.model.index(0,2)
+        window.set_view(View(format_rules=[rule]))
+        settle(app, window)
+        index = window.model.index(0, 2)
         font = index.data(Qt.FontRole)
         assert font.italic() and font.underline() and font.strikeOut()
-        graphic = visual_value(rule,'4624')
-        assert graphic[1] == pytest.approx(4624/5000)
-        assert visual_value(rule,None) is None and visual_value(rule,'NaN') is None
-        assert visual_value(rule,'999999')[1] == 1
-        assert visual_value(rule,'-1')[1] == 0
-        if mode == 'scale':
+        graphic = visual_value(rule, "4624")
+        assert graphic[1] == pytest.approx(4624 / 5000)
+        assert visual_value(rule, None) is None and visual_value(rule, "NaN") is None
+        assert visual_value(rule, "999999")[1] == 1
+        assert visual_value(rule, "-1")[1] == 0
+        if mode == "scale":
             assert index.data(Qt.BackgroundRole) == graphic[2]
         else:
             assert index.data(VISUAL_ROLE) == graphic
-        image=QImage(200,30,QImage.Format_ARGB32);image.fill(Qt.white)
-        painter=QPainter(image);option=QStyleOptionViewItem();option.rect=image.rect()
-        window.tree.itemDelegate().paint(painter,option,index);painter.end()
-        assert any(image.pixelColor(x,y)==graphic[2] for x in range(180,198) for y in range(30))
+        image = QImage(200, 30, QImage.Format_ARGB32)
+        image.fill(Qt.white)
+        painter = QPainter(image)
+        option = QStyleOptionViewItem()
+        option.rect = image.rect()
+        window.tree.itemDelegate().paint(painter, option, index)
+        painter.end()
+        assert any(image.pixelColor(x, y) == graphic[2] for x in range(180, 198) for y in range(30))
     finally:
-        window.close();dialog.deleteLater()
+        window.close()
+        dialog.deleteLater()
 
 
 def test_graphical_rules_reject_ambiguous_or_nonfinite_bounds(case):
-    for rule in [FormatRule(visual='bar'), FormatRule(target=0,visual='scale',minimum='3',maximum='3'), FormatRule(target=0,visual='icon',maximum='NaN')]:
+    for rule in [
+        FormatRule(visual="bar"),
+        FormatRule(target=0, visual="scale", minimum="3", maximum="3"),
+        FormatRule(target=0, visual="icon", maximum="NaN"),
+    ]:
         with pytest.raises(ValueError):
             case.validate_view(View(format_rules=[rule]))
 
 
-@pytest.mark.parametrize('background,expected',[('#ffff00','#000000'),('#00ff00','#000000'),('#0000ff','#ffffff'),('#222222','#ffffff'),('#ffffff','#000000')])
+@pytest.mark.parametrize(
+    "background,expected",
+    [
+        ("#ffff00", "#000000"),
+        ("#00ff00", "#000000"),
+        ("#0000ff", "#ffffff"),
+        ("#222222", "#ffffff"),
+        ("#ffffff", "#000000"),
+    ],
+)
 def test_graphical_scale_contrast_handles_bright_saturated_colors(background, expected):
     from fireblade.ui.visual_rules import contrast_color
     from PySide6.QtGui import QColor
+
     assert contrast_color(QColor(background)).name() == expected
 
 
-def test_combined_rules_and_fractional_font_survive_editor_and_model(case,tmp_path):
+def test_combined_rules_and_fractional_font_survive_editor_and_model(case, tmp_path):
     from dataclasses import replace
-    app=QApplication.instance() or QApplication([])
-    rules=[FormatRule(target=1,background='#ffff00',use_foreground=False,use_font=False,stop_if_true=False),FormatRule(target=1,foreground='#0000ff',use_background=False,font_family='Consolas',font_size=14.5,bold=True)]
-    dialog=RulesDialog(case.headers,rules);dialog.show();app.processEvents();dialog.accept()
-    assert dialog.rules==rules
-    window=Window(require_case=False, rule_path=tmp_path/'rules.json');window.attach(case);window.show()
+
+    app = QApplication.instance() or QApplication([])
+    rules = [
+        FormatRule(
+            target=1, background="#ffff00", use_foreground=False, use_font=False, stop_if_true=False
+        ),
+        FormatRule(
+            target=1,
+            foreground="#0000ff",
+            use_background=False,
+            font_family="Consolas",
+            font_size=14.5,
+            bold=True,
+        ),
+    ]
+    dialog = RulesDialog(case.headers, rules)
+    dialog.show()
+    app.processEvents()
+    dialog.accept()
+    assert dialog.rules == rules
+    window = Window(require_case=False, rule_path=tmp_path / "rules.json")
+    window.attach(case)
+    window.show()
     try:
-        window.set_view(View(format_rules=rules));settle(app,window);index=window.model.index(0,2)
-        assert index.data(Qt.BackgroundRole).name()=='#ffff00' and index.data(Qt.ForegroundRole).name()=='#0000ff'
-        assert index.data(Qt.FontRole).pointSizeF()==14.5 and index.data(Qt.FontRole).bold()
-        window.set_view(View(format_rules=[replace(rules[0],stop_if_true=True),rules[1]]));settle(app,window)
-        assert window.model.index(0,2).data(Qt.FontRole) is None
-    finally:window.close();dialog.deleteLater()
+        window.set_view(View(format_rules=rules))
+        settle(app, window)
+        index = window.model.index(0, 2)
+        assert (
+            index.data(Qt.BackgroundRole).name() == "#ffff00"
+            and index.data(Qt.ForegroundRole).name() == "#0000ff"
+        )
+        assert index.data(Qt.FontRole).pointSizeF() == 14.5 and index.data(Qt.FontRole).bold()
+        window.set_view(View(format_rules=[replace(rules[0], stop_if_true=True), rules[1]]))
+        settle(app, window)
+        assert window.model.index(0, 2).data(Qt.FontRole) is None
+    finally:
+        window.close()
+        dialog.deleteLater()
 
 
 def test_statistic_editor_controls_remain_on_appearance_tab(case):
     from PySide6.QtWidgets import QScrollArea
-    app=QApplication.instance() or QApplication([]);dialog=RulesDialog(case.headers,[FormatRule(target=1,statistic='top',stat_rank='2')]);dialog.show();app.processEvents()
+
+    app = QApplication.instance() or QApplication([])
+    dialog = RulesDialog(case.headers, [FormatRule(target=1, statistic="top", stat_rank="2")])
+    dialog.show()
+    app.processEvents()
     try:
-        dialog.rule_steps.setCurrentIndex(2);app.processEvents()
-        appearance=dialog.format_tabs.widget(0);assert isinstance(appearance,QScrollArea)
+        dialog.rule_steps.setCurrentIndex(2)
+        app.processEvents()
+        appearance = dialog.format_tabs.widget(0)
+        assert isinstance(appearance, QScrollArea)
         assert appearance.widget().isAncestorOf(dialog.statistic)
-        appearance.ensureWidgetVisible(dialog.statistic);app.processEvents()
-        assert dialog.statistic.isVisible() and dialog.statistic.currentData()=='top'
-        dialog.accept();assert dialog.result()==1 and dialog.rules[0].statistic=='top'
-    finally:dialog.close();dialog.deleteLater()
+        appearance.ensureWidgetVisible(dialog.statistic)
+        app.processEvents()
+        assert dialog.statistic.isVisible() and dialog.statistic.currentData() == "top"
+        dialog.accept()
+        assert dialog.result() == 1 and dialog.rules[0].statistic == "top"
+    finally:
+        dialog.close()
+        dialog.deleteLater()
 
 
-@pytest.mark.parametrize('shape',['triangles','squares','diamonds','stars','ratings','flags'])
-def test_additional_icon_presets_roundtrip_and_render(case,shape):
+@pytest.mark.parametrize("shape", ["triangles", "squares", "diamonds", "stars", "ratings", "flags"])
+def test_additional_icon_presets_roundtrip_and_render(case, shape):
     from fireblade.core.rule_store import RuleBook
     from fireblade.ui.icon_shapes import paint_shape
-    from PySide6.QtGui import QImage,QPainter,QColor
+    from PySide6.QtGui import QImage, QPainter, QColor
     from PySide6.QtCore import QRect
-    rule=FormatRule(target=1,visual='icon',icon_set=shape)
-    assert RuleBook.from_bytes(RuleBook(case.headers,[rule]).to_bytes()).rules[0]==rule
-    image=QImage(32,32,QImage.Format_ARGB32);image.fill(Qt.white);p=QPainter(image)
-    paint_shape(p,QRect(0,0,32,32),shape,2,3,QColor('#123456'));p.end()
-    assert any(image.pixelColor(x,y).name()=='#123456' for x in range(32) for y in range(32))
+
+    rule = FormatRule(target=1, visual="icon", icon_set=shape)
+    assert RuleBook.from_bytes(RuleBook(case.headers, [rule]).to_bytes()).rules[0] == rule
+    image = QImage(32, 32, QImage.Format_ARGB32)
+    image.fill(Qt.white)
+    p = QPainter(image)
+    paint_shape(p, QRect(0, 0, 32, 32), shape, 2, 3, QColor("#123456"))
+    p.end()
+    assert any(image.pixelColor(x, y).name() == "#123456" for x in range(32) for y in range(32))
 
 
 def test_mixed_icon_units_survive_editor_and_change_independently(case):
-    rule=FormatRule(target=1,visual='icon',bound_mode='auto',icon_thresholds=['200','50'],icon_threshold_modes=['number','percentile'])
-    dialog=RulesDialog(case.headers,[rule])
+    rule = FormatRule(
+        target=1,
+        visual="icon",
+        bound_mode="auto",
+        icon_thresholds=["200", "50"],
+        icon_threshold_modes=["number", "percentile"],
+    )
+    dialog = RulesDialog(case.headers, [rule])
     try:
         dialog.accept()
-        assert dialog.result()==1 and dialog.rules==[rule]
-        dialog.icon_threshold_modes[0].setCurrentIndex(dialog.icon_threshold_modes[0].findData('percent'))
-        dialog.icon_thresholds[0].setText('25')
+        assert dialog.result() == 1 and dialog.rules == [rule]
+        dialog.icon_threshold_modes[0].setCurrentIndex(
+            dialog.icon_threshold_modes[0].findData("percent")
+        )
+        dialog.icon_thresholds[0].setText("25")
         dialog.store()
-        assert dialog.rules[0].icon_threshold_modes==['percent','percentile']
-        assert dialog.rules[0].icon_thresholds==['25','50']
-        assert rule.icon_threshold_modes==['number','percentile']
-    finally:dialog.deleteLater()
+        assert dialog.rules[0].icon_threshold_modes == ["percent", "percentile"]
+        assert dialog.rules[0].icon_thresholds == ["25", "50"]
+        assert rule.icon_threshold_modes == ["number", "percentile"]
+    finally:
+        dialog.deleteLater()

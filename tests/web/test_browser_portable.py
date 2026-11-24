@@ -6,6 +6,7 @@ its bookmarks and its notes. History and recovery keeps a state each time the ca
 
 Skipped without Playwright and a Chromium; never failed for lack of them.
 """
+
 import httpx
 import pytest
 
@@ -21,11 +22,16 @@ def host(tmp_path):
     identifier = InvestigationLibrary(root).create("Portable", "round trip", "linux")["id"]
     evidence = tmp_path / "evidence"
     evidence.mkdir()
-    (evidence / "events.csv").write_text("Time,Host,User\n" + "".join(
-        f"2026-11-01T10:{i:02d}:00Z,PC{i % 3},user{i % 5}\n" for i in range(40)))
+    (evidence / "events.csv").write_text(
+        "Time,Host,User\n"
+        + "".join(f"2026-11-01T10:{i:02d}:00Z,PC{i % 3},user{i % 5}\n" for i in range(40))
+    )
     with serving(root) as base:
-        started = httpx.post(f"{base}/api/cases/{identifier}/import-jobs",
-                             data={"source": str(evidence), "organization": "files"}, timeout=30)
+        started = httpx.post(
+            f"{base}/api/cases/{identifier}/import-jobs",
+            data={"source": str(evidence), "organization": "files"},
+            timeout=30,
+        )
         job = started.json()["job"]
         for _ in range(120):
             state = httpx.get(f"{base}/api/import-jobs/{job}").json()
@@ -45,7 +51,9 @@ def page(host):
 def test_a_bookmarked_row_survives_the_portable_round_trip(page, host):
     base, identifier, tmp = host
     page.click("#body tr[data-row] >> nth=3 >> .markcell")
-    page.wait_for_function("document.querySelectorAll('#body .cb.on, #body .cb.checked, #body .cb.marked').length > 0")
+    page.wait_for_function(
+        "document.querySelectorAll('#body .cb.on, #body .cb.checked, #body .cb.marked').length > 0"
+    )
 
     box = page.locator('.menubar .m[data-menu="exporter"]').bounding_box()
     page.mouse.move(box["x"] + 5, box["y"] + 5)
@@ -62,7 +70,9 @@ def test_a_bookmarked_row_survives_the_portable_round_trip(page, host):
 
     page.click('.tabs .tab:text-is("Cases")')
     page.set_input_files("#package-input", str(package))
-    page.wait_for_function("document.querySelectorAll('#cases-rows tr, tr[data-case]').length >= 2", timeout=60000)
+    page.wait_for_function(
+        "document.querySelectorAll('#cases-rows tr, tr[data-case]').length >= 2", timeout=60000
+    )
     cases = httpx.get(f"{base}/api/cases").json()["cases"]
     assert len(cases) == 2, cases
     copy = next(item for item in cases if item["id"] != identifier)
@@ -78,8 +88,10 @@ def test_history_keeps_a_state_after_a_change_and_restores_it(page, host):
     base, identifier, _tmp = host
     before = httpx.get(f"{base}/api/cases/{identifier}/history").json()["count"]
     page.click("#body tr[data-row] >> nth=0 >> .markcell")
-    page.wait_for_function("document.querySelectorAll('#body .cb.on, #body .cb.checked, #body .cb.marked').length > 0")
-    page.keyboard.press("Control+s")      # Save case: a recovery point is asked for, and announced
+    page.wait_for_function(
+        "document.querySelectorAll('#body .cb.on, #body .cb.checked, #body .cb.marked').length > 0"
+    )
+    page.keyboard.press("Control+s")  # Save case: a recovery point is asked for, and announced
     page.wait_for_function("document.getElementById('status').innerText.includes('recovery point')")
     after = httpx.get(f"{base}/api/cases/{identifier}/history").json()["count"]
     assert after > before, f"Save case leaves a state to recover: {before} -> {after}"
@@ -92,4 +104,6 @@ def test_history_keeps_a_state_after_a_change_and_restores_it(page, host):
     page.mouse.down()
     page.mouse.up()
     page.wait_for_selector("#history-modal.show")
-    page.wait_for_function("document.querySelectorAll('#history-modal button').length > 1", timeout=15000)
+    page.wait_for_function(
+        "document.querySelectorAll('#history-modal button').length > 1", timeout=15000
+    )

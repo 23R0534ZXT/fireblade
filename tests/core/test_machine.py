@@ -1,4 +1,5 @@
 """The effort levels must fit the machine they describe, not a fixed table."""
+
 from fireblade.core.machine import LEVELS, describe, effort, from_settings, tone_for
 
 
@@ -23,18 +24,18 @@ def test_no_level_takes_more_than_the_machine_has():
 
 
 def test_light_stays_green_and_maximum_says_red():
-    assert effort('light', cpu=8, ram=16384).tone == 'green'
-    assert effort('maximum', cpu=8, ram=16384).tone == 'red'
-    assert tone_for(0.44) == 'green' and tone_for(0.5) == 'amber' and tone_for(0.9) == 'red'
+    assert effort("light", cpu=8, ram=16384).tone == "green"
+    assert effort("maximum", cpu=8, ram=16384).tone == "red"
+    assert tone_for(0.44) == "green" and tone_for(0.5) == "amber" and tone_for(0.9) == "red"
 
 
 def test_the_line_is_readable_without_a_manual():
-    line = describe(effort('balanced', cpu=16, ram=32768), ram=32768)
-    assert 'threads' in line and 'GB of' in line and '32.0 GB' in line
+    line = describe(effort("balanced", cpu=16, ram=32768), ram=32768)
+    assert "threads" in line and "GB of" in line and "32.0 GB" in line
 
 
 def test_a_hand_edited_choice_is_described_the_same_way():
     item = from_settings(30, 20000, cpu=16, ram=32768)
-    assert item.threads == 16, 'jamais plus de threads que de cœurs'
-    assert item.memory_mb == 20000, 'une valeur explicite sous la RAM est respectée'
-    assert item.tone in ('green', 'amber', 'red')
+    assert item.threads == 16, "jamais plus de threads que de cœurs"
+    assert item.memory_mb == 20000, "une valeur explicite sous la RAM est respectée"
+    assert item.tone in ("green", "amber", "red")

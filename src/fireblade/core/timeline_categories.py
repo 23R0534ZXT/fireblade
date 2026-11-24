@@ -194,9 +194,6 @@ def category_sql(family, columns):
         raise ValueError("Famille de timeline inconnue")
     return (
         "CASE "
-        + " ".join(
-            f"WHEN ({condition}) THEN {literal(category)}"
-            for condition, category in rules
-        )
+        + " ".join(f"WHEN ({condition}) THEN {literal(category)}" for condition, category in rules)
         + " ELSE NULL END"
     )

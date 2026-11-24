@@ -1,4 +1,5 @@
 """The Resources tab reads out what "automatic" resolves to, not a sentinel word."""
+
 import re
 
 from fireblade.core.machine import from_settings
@@ -21,7 +22,8 @@ def test_the_automatic_memory_reads_as_the_resolved_megabytes(qt_application):
         assert 512 <= expected <= 2048
         assert dialog.memory.value() == 0, "the field still stores 0"
     finally:
-        dialog.close(); dialog.deleteLater()
+        dialog.close()
+        dialog.deleteLater()
 
 
 def test_both_thread_fields_read_as_the_resolved_thread_count(qt_application):
@@ -36,11 +38,13 @@ def test_both_thread_fields_read_as_the_resolved_thread_count(qt_application):
             assert expected in numbers(text), text
             assert spin.value() == 0, "the field still stores 0"
     finally:
-        dialog.close(); dialog.deleteLater()
+        dialog.close()
+        dialog.deleteLater()
 
 
 def test_a_rebuilt_dialog_recomputes_the_numbers_from_the_machine(qt_application, monkeypatch):
     import fireblade.ui.preferences_dialog as module
+
     monkeypatch.setattr(module.machine, "cores", lambda: 3)
     monkeypatch.setattr(module.machine, "memory_mb", lambda: 2048)
     dialog = PreferencesDialog(Preferences())
@@ -49,7 +53,8 @@ def test_a_rebuilt_dialog_recomputes_the_numbers_from_the_machine(qt_application
         assert dialog.query_threads.specialValueText() == "Automatic \u00b7 3 threads"
         assert dialog.memory.specialValueText() == "Automatic \u00b7 682 MB"
     finally:
-        dialog.close(); dialog.deleteLater()
+        dialog.close()
+        dialog.deleteLater()
 
 
 def test_an_explicit_memory_still_round_trips(qt_application):
@@ -60,4 +65,5 @@ def test_an_explicit_memory_still_round_trips(qt_application):
         assert dialog.memory.text().startswith("512"), dialog.memory.text()
         assert dialog.query_threads.value() == 0 and dialog.parsing_threads.value() == 0
     finally:
-        dialog.close(); dialog.deleteLater()
+        dialog.close()
+        dialog.deleteLater()

@@ -4,6 +4,7 @@ The pack ships dotnet.exe for the desktop edition; the container runs the same
 dll files through the distribution runtime. One branch, no change to the command
 line: the tool, its arguments and its CSV stay identical.
 """
+
 import pytest
 
 from fireblade.core import collection
@@ -23,7 +24,10 @@ def test_windows_uses_the_bundled_dotnet_exe(tmp_path, monkeypatch):
     monkeypatch.setattr(collection, "WINDOWS", True)
     pack = _pack(tmp_path, "dotnet.exe")
     command = pack.command("WxTCmd")
-    assert command == [str(tmp_path / "dotnet" / "dotnet.exe"), str(tmp_path / "WxTCmd" / "WxTCmd.dll")]
+    assert command == [
+        str(tmp_path / "dotnet" / "dotnet.exe"),
+        str(tmp_path / "WxTCmd" / "WxTCmd.dll"),
+    ]
 
 
 def test_linux_uses_the_plain_dotnet_binary(tmp_path, monkeypatch):

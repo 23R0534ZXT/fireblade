@@ -17,9 +17,7 @@ from fireblade.core.windows_zones import WINDOWS_ZONES
 class DerivedDialog(QDialog):
     def __init__(self, headers, parent=None, expression=False):
         super().__init__(parent)
-        self.setWindowTitle(
-            "Colonne calculée" if expression else "Conversion temporelle"
-        )
+        self.setWindowTitle("Colonne calculée" if expression else "Conversion temporelle")
         self.resize(620, 300)
         layout = QFormLayout(self)
         self.name = QLineEdit("Calcul" if expression else "Timestamp UTC")
@@ -81,8 +79,15 @@ def add_columns(window, definitions, finished=None):
     case = window.case
     window.capture_pin_widths()
     view = copy.deepcopy(window.view)
-    header=window.tree.header()
-    layout=[(header.logicalIndex(i),window.tree.frozen_for(header.logicalIndex(i)).columnWidth(header.logicalIndex(i)),window.tree.isColumnHidden(header.logicalIndex(i))) for i in range(header.count())]
+    header = window.tree.header()
+    layout = [
+        (
+            header.logicalIndex(i),
+            window.tree.frozen_for(header.logicalIndex(i)).columnWidth(header.logicalIndex(i)),
+            window.tree.isColumnHidden(header.logicalIndex(i)),
+        )
+        for i in range(header.count())
+    ]
 
     def done(_):
         window.tree.setModel(None)
@@ -90,18 +95,17 @@ def add_columns(window, definitions, finished=None):
             window.model.deleteLater()
         window.model = None
         window.attach(case, view)
-        header=window.tree.header()
-        for position,(section,width,hidden) in enumerate(layout):
-            header.moveSection(header.visualIndex(section),position)
-            window.tree.setColumnWidth(section,width)
-            window.tree.setColumnHidden(section,hidden)
-            if section in window.tree.all_pinned:window.tree.frozen_for(section).setColumnWidth(section,width)
+        header = window.tree.header()
+        for position, (section, width, hidden) in enumerate(layout):
+            header.moveSection(header.visualIndex(section), position)
+            window.tree.setColumnWidth(section, width)
+            window.tree.setColumnHidden(section, hidden)
+            if section in window.tree.all_pinned:
+                window.tree.frozen_for(section).setColumnWidth(section, width)
         if finished:
             finished()
         else:
-            window.statusBar().showMessage(
-                "Colonnes dérivées ajoutées ; source inchangée"
-            )
+            window.statusBar().showMessage("Colonnes dérivées ajoutées ; source inchangée")
 
     window.run(lambda: case.add_derived_columns(definitions), done, exclusive=True)
 

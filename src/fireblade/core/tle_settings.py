@@ -20,7 +20,11 @@ def read_tle_settings(path, current=None):
         raise ValueError("Préférences TLE limitées à 128 Ko")
     raw = path.read_text(encoding="utf-8-sig")
     if "<!DOCTYPE" in raw.upper() or "<!ENTITY" in raw.upper():
-        raise ValueError('Préférences TLE refusées : {} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-les depuis Timeline Explorer sans DTD, puis réessayez.'.format(path.name))
+        raise ValueError(
+            "Préférences TLE refusées : {} déclare une DTD ou des entités XML, que Fireblade ne lit pas. Enregistrez-les depuis Timeline Explorer sans DTD, puis réessayez.".format(
+                path.name
+            )
+        )
     root = ET.fromstring(raw)
     local = lambda tag: tag.rsplit("}", 1)[-1]
     if local(root.tag) != "Settings":
@@ -56,37 +60,62 @@ def read_tle_settings(path, current=None):
             preferences.date_format = "custom"
             preferences.custom_date_format = value
         elif name == "Theme":
-            from fireblade.core.themes import THEMES,tle_theme
-            preferences.theme_preset=tle_theme(value)
-            preferences.theme = THEMES[preferences.theme_preset].mode if preferences.theme_preset else (
-                'dark' if any(t in value.casefold() for t in ('black','dark','noir','sombre')) else 'light')
-            preferences.theme_palette={}
-            warnings.append(f'Thème {value} adapté à '+(THEMES[preferences.theme_preset].name if preferences.theme_preset else preferences.theme)+' de Fireblade (rendu Qt)')
+            from fireblade.core.themes import THEMES, tle_theme
+
+            preferences.theme_preset = tle_theme(value)
+            preferences.theme = (
+                THEMES[preferences.theme_preset].mode
+                if preferences.theme_preset
+                else (
+                    "dark"
+                    if any(t in value.casefold() for t in ("black", "dark", "noir", "sombre"))
+                    else "light"
+                )
+            )
+            preferences.theme_palette = {}
+            warnings.append(
+                f"Thème {value} adapté à "
+                + (
+                    THEMES[preferences.theme_preset].name
+                    if preferences.theme_preset
+                    else preferences.theme
+                )
+                + " de Fireblade (rendu Qt)"
+            )
         elif name == "FirstPinnedColumns":
             if all(local(c.tag) == "string" for c in child):
-                preferences.pinned_columns_by_format={}
-                preferences.first_pinned_columns = [
-                    (c.text or "").strip() for c in child
-                ]
+                preferences.pinned_columns_by_format = {}
+                preferences.first_pinned_columns = [(c.text or "").strip() for c in child]
             else:
                 # DataContract dictionary entries: Key + Value/ArrayOfstring.
                 # Unknown structures preserve existing choices atomically.
-                mapping={}
-                valid=True
+                mapping = {}
+                valid = True
                 for entry in child:
-                    parts={local(c.tag):c for c in entry}
-                    if set(parts)!={'Key','Value'} or len(entry)!=2 or list(parts['Key']):
-                        valid=False;break
-                    key=(parts['Key'].text or '').strip()
-                    value=parts['Value']
-                    if not key or key.casefold() in {k.casefold() for k in mapping} or any(local(c.tag)!='string' or list(c) for c in value) or (value.text or '').strip():
-                        valid=False;break
-                    mapping[key]=[(c.text or '').strip() for c in value]
+                    parts = {local(c.tag): c for c in entry}
+                    if set(parts) != {"Key", "Value"} or len(entry) != 2 or list(parts["Key"]):
+                        valid = False
+                        break
+                    key = (parts["Key"].text or "").strip()
+                    value = parts["Value"]
+                    if (
+                        not key
+                        or key.casefold() in {k.casefold() for k in mapping}
+                        or any(local(c.tag) != "string" or list(c) for c in value)
+                        or (value.text or "").strip()
+                    ):
+                        valid = False
+                        break
+                    mapping[key] = [(c.text or "").strip() for c in value]
                 if valid:
-                    preferences.pinned_columns_by_format=mapping
-                    warnings.append('Épinglage structuré Key/Value importé ; comparaison avec un export TLE réel encore à qualifier')
+                    preferences.pinned_columns_by_format = mapping
+                    warnings.append(
+                        "Épinglage structuré Key/Value importé ; comparaison avec un export TLE réel encore à qualifier"
+                    )
                 else:
-                    warnings.append('FirstPinnedColumns structuré inconnu ou ambigu : épinglage actuel conservé')
+                    warnings.append(
+                        "FirstPinnedColumns structuré inconnu ou ambigu : épinglage actuel conservé"
+                    )
         else:
             warnings.append("Préférence TLE non traduite : " + name)
     return TleSettings(preferences.validate(), warnings)

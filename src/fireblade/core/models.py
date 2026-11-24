@@ -1,4 +1,5 @@
 """Plain data structures shared by the engine and interface. No Qt imports."""
+
 from __future__ import annotations
 
 import json
@@ -25,6 +26,7 @@ def analysis_label(source_info):
     if not path:
         return ""
     from fireblade.core.artifact_names import GENERIC_STEMS, csv_kind
+
     # The separator belongs to the machine that collected the evidence, not to the one
     # reading the case: a Windows path must be split on "\\" inside a Linux container.
     parts = _path_parts(path)
@@ -36,7 +38,7 @@ def analysis_label(source_info):
         if kind:
             if generic or kind.casefold() in stem.casefold():
                 return kind
-            return kind+" · "+stem
+            return kind + " · " + stem
         if generic:
             family = str(info.get("artifact") or info.get("parser") or "").strip()
             if family:
@@ -69,8 +71,11 @@ def _suffix_depth(parts, index, indexes):
         if other == index or parts[other] == mine:
             continue
         shared = 0
-        while (shared < len(mine) and shared < len(parts[other])
-               and mine[-1 - shared] == parts[other][-1 - shared]):
+        while (
+            shared < len(mine)
+            and shared < len(parts[other])
+            and mine[-1 - shared] == parts[other][-1 - shared]
+        ):
             shared += 1
         if shared + 1 > depth:
             depth = shared + 1
@@ -149,7 +154,9 @@ def condition_from_dict(data, depth=0):
     children = data["children"]
     if not isinstance(children, list) or len(children) > 256:
         raise ValueError("Trop de conditions dans un groupe")
-    return FilterGroup(data.get("logic", "and"), [condition_from_dict(c, depth + 1) for c in children])
+    return FilterGroup(
+        data.get("logic", "and"), [condition_from_dict(c, depth + 1) for c in children]
+    )
 
 
 @dataclass
@@ -197,8 +204,8 @@ class FormatRule:
     icon_threshold_mode: str = "percent"
     icon_threshold_modes: list[str] = field(default_factory=list)
     icon_set: str = "circles"
-    icon_colors: list[str] = field(default_factory=lambda:["#c62828","#c58b00","#218739"])
-    icon_images: list[str] = field(default_factory=lambda:["","",""])
+    icon_colors: list[str] = field(default_factory=lambda: ["#c62828", "#c58b00", "#218739"])
+    icon_images: list[str] = field(default_factory=lambda: ["", "", ""])
     appearance: dict = field(default_factory=dict)
 
 
@@ -253,8 +260,8 @@ class View:
     right_pinned_columns: list[int] = field(default_factory=list)
     group_sorts: list[GroupSort] = field(default_factory=list)
     layout_styles: dict = field(default_factory=dict)
-    tle_fields: dict[str,dict[str,str]] = field(default_factory=dict)
-    tle_expressions: dict[str,str] = field(default_factory=dict)
+    tle_fields: dict[str, dict[str, str]] = field(default_factory=dict)
+    tle_expressions: dict[str, str] = field(default_factory=dict)
     group_footer_mode: str = "hidden"
     total_summaries: list[Summary] = field(default_factory=list)
     show_total_footer: bool = True
@@ -275,7 +282,9 @@ class View:
         rules = data.get("format_rules", [])
         if len(rules) > 32:
             raise ValueError("32 règles de coloration au maximum")
-        data["format_rules"] = [FormatRule(**{**r, "condition": condition_from_dict(r["condition"])}) for r in rules]
+        data["format_rules"] = [
+            FormatRule(**{**r, "condition": condition_from_dict(r["condition"])}) for r in rules
+        ]
         data["sorts"] = [SortKey(**key) for key in data.get("sorts", [])]
         data["summaries"] = [Summary(**item) for item in data.get("summaries", [])]
         data["total_summaries"] = [Summary(**item) for item in data.get("total_summaries", [])]
@@ -286,18 +295,36 @@ class View:
 @dataclass
 class AnalysisSnapshot:
     """Small UI state for reopening the current case after a failed import."""
+
     path: str
     source_info: dict
     view: View
     header_state: bytes
 
 
-
-OPERATORS = [("Contient", "contains"), ("Ne contient pas", "not_contains"),
-    ("Égal à (exact)", "eq"), ("Différent de (exact)", "ne"),
-    ("Commence par", "starts"), ("Finit par", "ends"), ("Expression régulière RE2", "regex"),
-    ("Vide / NULL", "empty"), ("Non vide", "not_empty"),
-    ("Nombre >", "gt"), ("Nombre ≥", "ge"), ("Nombre <", "lt"),
-    ("Nombre ≤", "le"), ("Date ≥ (ISO)", "after"), ("Date ≤ (ISO)", "before"), ("Date < (ISO)", "date_before"), ("Date > (ISO)", "date_after"), ("Date égale", "date_eq"), ("Date différente", "date_ne"),
-    ("Texte >", "text_gt"), ("Texte ≥", "text_ge"), ("Texte <", "text_lt"), ("Texte ≤", "text_le"), ("Expression nommée", "expression")]
-
+OPERATORS = [
+    ("Contient", "contains"),
+    ("Ne contient pas", "not_contains"),
+    ("Égal à (exact)", "eq"),
+    ("Différent de (exact)", "ne"),
+    ("Commence par", "starts"),
+    ("Finit par", "ends"),
+    ("Expression régulière RE2", "regex"),
+    ("Vide / NULL", "empty"),
+    ("Non vide", "not_empty"),
+    ("Nombre >", "gt"),
+    ("Nombre ≥", "ge"),
+    ("Nombre <", "lt"),
+    ("Nombre ≤", "le"),
+    ("Date ≥ (ISO)", "after"),
+    ("Date ≤ (ISO)", "before"),
+    ("Date < (ISO)", "date_before"),
+    ("Date > (ISO)", "date_after"),
+    ("Date égale", "date_eq"),
+    ("Date différente", "date_ne"),
+    ("Texte >", "text_gt"),
+    ("Texte ≥", "text_ge"),
+    ("Texte <", "text_lt"),
+    ("Texte ≤", "text_le"),
+    ("Expression nommée", "expression"),
+]

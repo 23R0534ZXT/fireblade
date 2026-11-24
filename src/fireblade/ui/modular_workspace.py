@@ -1,10 +1,20 @@
 """Movable investigation panels, named layouts and lightweight persisted geometry."""
+
 import base64
 import json
 
 from PySide6.QtCore import QByteArray, Qt, QTimer
-from PySide6.QtWidgets import (QDockWidget, QHBoxLayout, QLabel, QMenu, QPushButton,
-                             QTabWidget, QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QDockWidget,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QPushButton,
+    QTabWidget,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 from fireblade.core.layout import write_json
 from fireblade.ui.language import source_text
 from fireblade.runtime.windows_paths import user_directory
@@ -24,14 +34,17 @@ class Workbench(QTabWidget):
         if index < 0 or not self.isTabEnabled(index):
             return
         menu = QMenu(self)
-        menu.addAction('Rattacher' if index in self.panels else 'Détacher le panneau',
-                       lambda: self.attach_panel(index) if index in self.panels else self.detach_panel(index))
+        menu.addAction(
+            "Rattacher" if index in self.panels else "Détacher le panneau",
+            lambda: self.attach_panel(index) if index in self.panels else self.detach_panel(index),
+        )
         menu.exec(self.tabBar().mapToGlobal(position))
 
     def detach_panel(self, index, floating=False):
         if index in self.panels:
             dock = self.panels[index][1]
-            dock.show(); dock.raise_()
+            dock.show()
+            dock.raise_()
             return dock
         if not 0 <= index < self.count() or not self.isTabEnabled(index):
             return None
@@ -39,23 +52,33 @@ class Workbench(QTabWidget):
         placeholder = QWidget()
         layout = QVBoxLayout(placeholder)
         layout.addStretch()
-        text = QLabel(title + ' · panneau détaché');text.setAlignment(Qt.AlignCenter)
+        text = QLabel(title + " · panneau détaché")
+        text.setAlignment(Qt.AlignCenter)
         layout.addWidget(text)
         row = QHBoxLayout()
-        for label, callback in [('Afficher', lambda: self.detach_panel(index)),
-                                ('Rattacher', lambda: self.attach_panel(index))]:
-            button = QPushButton(label);button.clicked.connect(callback);row.addWidget(button)
-        layout.addLayout(row);layout.addStretch()
+        for label, callback in [
+            ("Afficher", lambda: self.detach_panel(index)),
+            ("Rattacher", lambda: self.attach_panel(index)),
+        ]:
+            button = QPushButton(label)
+            button.clicked.connect(callback)
+            row.addWidget(button)
+        layout.addLayout(row)
+        layout.addStretch()
         blocked = self.blockSignals(True)
-        self.removeTab(index);self.insertTab(index, placeholder, title);self.setCurrentIndex(index)
+        self.removeTab(index)
+        self.insertTab(index, placeholder, title)
+        self.setCurrentIndex(index)
         self.blockSignals(blocked)
         dock = QDockWidget(title, self.window)
-        dock.setObjectName('workspace-panel-' + str(index))
+        dock.setObjectName("workspace-panel-" + str(index))
         dock.setAllowedAreas(Qt.AllDockWidgetAreas)
         dock.setWidget(page)
         self.panels[index] = (page, dock, placeholder, title)
         self.window.addDockWidget(Qt.RightDockWidgetArea, dock)
-        dock.resize(850, 650);dock.setFloating(floating);dock.show()
+        dock.resize(850, 650)
+        dock.setFloating(floating)
+        dock.show()
         return dock
 
     def attach_panel(self, index):
@@ -64,20 +87,26 @@ class Workbench(QTabWidget):
             return
         page, dock, placeholder, title = item
         page.setParent(self)
-        self.window.removeDockWidget(dock);dock.hide();dock.deleteLater()
+        self.window.removeDockWidget(dock)
+        dock.hide()
+        dock.deleteLater()
         blocked = self.blockSignals(True)
-        self.removeTab(index);self.insertTab(index, page, title);self.setCurrentIndex(index)
+        self.removeTab(index)
+        self.insertTab(index, page, title)
+        self.setCurrentIndex(index)
         self.blockSignals(blocked)
         placeholder.deleteLater()
 
     def indexOf(self, widget):
         for index, (page, *_rest) in self.panels.items():
-            if page is widget:return index
+            if page is widget:
+                return index
         return super().indexOf(widget)
 
     def setCurrentWidget(self, widget):
         index = self.indexOf(widget)
-        if index in self.panels:self.detach_panel(index)
+        if index in self.panels:
+            self.detach_panel(index)
         self.setCurrentIndex(index)
 
 
@@ -94,35 +123,61 @@ class WorkspaceLayout:
         window.main_toolbar.setMovable(True)
         window.collection_toolbar.setMovable(True)
         window.collection_toolbar.setObjectName("collection-toolbar")
-        self.path = user_directory() / 'workspace-layout.json'
-        menus = {source_text(a).replace('&', ''): a.menu() for a in window.menuBar().actions()}
-        menu = menus['Affichage'].addMenu('Espace de travail')
-        for title, function in [('Analyse', self.analysis), ('Chronologie seule', self.timeline),
-                                ('Analyse + chronologie', self.side_by_side),
-                                ('Rétablir les panneaux', self.reset), ('Enregistrer la disposition', self.save)]:
+        self.path = user_directory() / "workspace-layout.json"
+        menus = {source_text(a).replace("&", ""): a.menu() for a in window.menuBar().actions()}
+        menu = menus["Affichage"].addMenu("Espace de travail")
+        for title, function in [
+            ("Analyse", self.analysis),
+            ("Chronologie seule", self.timeline),
+            ("Analyse + chronologie", self.side_by_side),
+            ("Rétablir les panneaux", self.reset),
+            ("Enregistrer la disposition", self.save),
+        ]:
             menu.addAction(title, function)
-        panels = menu.addMenu('Détacher / afficher un panneau')
+        panels = menu.addMenu("Détacher / afficher un panneau")
         for index in range(window.workbench.count()):
             action = panels.addAction(window.workbench.tabText(index))
             action.triggered.connect(lambda _=False, i=index: window.workbench.detach_panel(i))
         panels.addSeparator()
-        panels.addAction('Artefacts', lambda: self.detach_auxiliary('artifacts', window.navigator, window.workspace_splitter))
-        panels.addAction('Détails de la ligne', lambda: self.detach_auxiliary('details', window.details, window.splitter))
-        toolbar = window.addToolBar('Espace de travail');toolbar.setObjectName('workspace-toolbar')
+        panels.addAction(
+            "Artefacts",
+            lambda: self.detach_auxiliary("artifacts", window.navigator, window.workspace_splitter),
+        )
+        panels.addAction(
+            "Détails de la ligne",
+            lambda: self.detach_auxiliary("details", window.details, window.splitter),
+        )
+        toolbar = window.addToolBar("Espace de travail")
+        toolbar.setObjectName("workspace-toolbar")
         toolbar.setMovable(True)
-        button = QToolButton();button.setText('Espace de travail');button.setPopupMode(QToolButton.InstantPopup)
-        button.setMenu(menu);toolbar.addWidget(button)
-        global_search = toolbar.addAction('Recherche globale');global_search.setShortcut('Ctrl+Shift+F3')
+        button = QToolButton()
+        button.setText("Espace de travail")
+        button.setPopupMode(QToolButton.InstantPopup)
+        button.setMenu(menu)
+        toolbar.addWidget(button)
+        global_search = toolbar.addAction("Recherche globale")
+        global_search.setShortcut("Ctrl+Shift+F3")
         global_search.triggered.connect(window.find_workspace)
-        rule_action = toolbar.addAction('Règles', window.edit_rules)
-        rule_action.setEnabled(window.case is not None);window.analysis_actions.append(rule_action)
-        toolbar.addAction('Plugins', window.manage_plugins)
+        rule_action = toolbar.addAction("Règles", window.edit_rules)
+        rule_action.setEnabled(window.case is not None)
+        window.analysis_actions.append(rule_action)
+        toolbar.addAction("Plugins", window.manage_plugins)
+
         def help_workspace():
             from fireblade.ui.help_dialogs import show_text
             from fireblade.runtime.resources import resource_path
-            path = resource_path('docs/guides/ESPACE-DE-TRAVAIL.md')
-            show_text(window, 'Espace de travail', path.read_text(encoding='utf-8'), markdown=True, base_url=path)
-        menu.addSeparator();menu.addAction('Guide de l’espace de travail', help_workspace)
+
+            path = resource_path("docs/guides/ESPACE-DE-TRAVAIL.md")
+            show_text(
+                window,
+                "Espace de travail",
+                path.read_text(encoding="utf-8"),
+                markdown=True,
+                base_url=path,
+            )
+
+        menu.addSeparator()
+        menu.addAction("Guide de l’espace de travail", help_workspace)
         self.toolbar = toolbar
         window.workbench.currentChanged.connect(self.tab_changed)
         window.tree.header().sectionMoved.connect(self.schedule_columns)
@@ -131,49 +186,79 @@ class WorkspaceLayout:
             panel.header().setSectionsMovable(True)
             panel.header().setFirstSectionMovable(False)
             panel.header().sectionMoved.connect(lambda *_args, p=panel: self.sync_pinned_order(p))
-        self.column_timer = QTimer(window);self.column_timer.setSingleShot(True)
-        self.column_timer.setInterval(750);self.column_timer.timeout.connect(window.save_format_layout)
+        self.column_timer = QTimer(window)
+        self.column_timer.setSingleShot(True)
+        self.column_timer.setInterval(750)
+        self.column_timer.timeout.connect(window.save_format_layout)
         window.analysis_add_bar.hide()
-        window.details_action.toggled.connect(lambda visible: self.show_auxiliary('details', visible))
-        window.navigation_action.toggled.connect(lambda visible: self.show_auxiliary('artifacts', visible))
+        window.details_action.toggled.connect(
+            lambda visible: self.show_auxiliary("details", visible)
+        )
+        window.navigation_action.toggled.connect(
+            lambda visible: self.show_auxiliary("artifacts", visible)
+        )
         self.restore()
 
     def show_auxiliary(self, name, visible):
-        if name in self.auxiliary:self.auxiliary[name][0].setVisible(visible)
+        if name in self.auxiliary:
+            self.auxiliary[name][0].setVisible(visible)
 
     def detach_auxiliary(self, name, widget, splitter):
         if name in self.auxiliary:
-            self.auxiliary[name][0].show();return
+            self.auxiliary[name][0].show()
+            return
         position = splitter.indexOf(widget)
-        dock = QDockWidget('Artefacts' if name == 'artifacts' else 'Détails de la ligne', self.window)
-        dock.setObjectName('workspace-' + name);dock.setWidget(widget)
+        dock = QDockWidget(
+            "Artefacts" if name == "artifacts" else "Détails de la ligne", self.window
+        )
+        dock.setObjectName("workspace-" + name)
+        dock.setWidget(widget)
         self.auxiliary[name] = (dock, widget, splitter, position)
-        self.window.addDockWidget(Qt.LeftDockWidgetArea if name == 'artifacts' else Qt.BottomDockWidgetArea, dock)
-        dock.show();widget.show()
+        self.window.addDockWidget(
+            Qt.LeftDockWidgetArea if name == "artifacts" else Qt.BottomDockWidgetArea, dock
+        )
+        dock.show()
+        widget.show()
         dock.setContextMenuPolicy(Qt.CustomContextMenu)
+
         def context(point):
-            menu = QMenu(dock);menu.addAction('Rattacher', lambda: self.attach_auxiliary(name));menu.exec(dock.mapToGlobal(point))
+            menu = QMenu(dock)
+            menu.addAction("Rattacher", lambda: self.attach_auxiliary(name))
+            menu.exec(dock.mapToGlobal(point))
+
         dock.customContextMenuRequested.connect(context)
 
     def attach_auxiliary(self, name):
         dock, widget, splitter, position = self.auxiliary.pop(name)
-        widget.setParent(splitter);splitter.insertWidget(max(0,position), widget)
-        self.window.removeDockWidget(dock);dock.hide();dock.deleteLater()
+        widget.setParent(splitter)
+        splitter.insertWidget(max(0, position), widget)
+        self.window.removeDockWidget(dock)
+        dock.hide()
+        dock.deleteLater()
         widget.show()
 
     def sync_pinned_order(self, panel):
         window = self.window
-        if not window.model or window.tree._syncing:return
+        if not window.model or window.tree._syncing:
+            return
         right = panel is window.tree.right_frozen
         pinned = window.tree.right_pinned if right else window.tree.pinned
-        ordered = [panel.header().logicalIndex(i) for i in range(panel.header().count()) if panel.header().logicalIndex(i) in pinned]
-        if right:window.view.right_pinned_columns = [section-1 for section in ordered if section > 0];window.tree.right_pinned = ordered
-        else:window.view.pinned_columns = [section-1 for section in ordered if section > 0];window.tree.pinned = ordered
+        ordered = [
+            panel.header().logicalIndex(i)
+            for i in range(panel.header().count())
+            if panel.header().logicalIndex(i) in pinned
+        ]
+        if right:
+            window.view.right_pinned_columns = [section - 1 for section in ordered if section > 0]
+            window.tree.right_pinned = ordered
+        else:
+            window.view.pinned_columns = [section - 1 for section in ordered if section > 0]
+            window.tree.pinned = ordered
         self.schedule_columns()
 
     def schedule_columns(self, *_):
         window = self.window
-        if window.model and not window.busy and getattr(window, '_layout_save_enabled', False):
+        if window.model and not window.busy and getattr(window, "_layout_save_enabled", False):
             self.column_timer.start()
 
     def tab_changed(self, index):
@@ -182,7 +267,8 @@ class WorkspaceLayout:
             self.leave_focus()
 
     def leave_focus(self):
-        if not self.focused:return
+        if not self.focused:
+            return
         for widget, visible in self.previous_visibility:
             # A panel can be gone by the time the mode is left: restoring visibility
             # on a deleted widget is how a mode switch used to raise.
@@ -207,7 +293,8 @@ class WorkspaceLayout:
         # state, and leaving it then restored nothing — the toolbars stayed gone.
         self.leave_focus()
         window = self.window
-        if not window.workbench.isTabEnabled(window.timeline_tab_index):return
+        if not window.workbench.isTabEnabled(window.timeline_tab_index):
+            return
         window.workbench.attach_panel(window.timeline_tab_index)
         window.show_timeline()
         # Only what takes space goes: the docks. Every top bar and the tab strip stay
@@ -215,7 +302,8 @@ class WorkspaceLayout:
         # that leads back, makes the analyst hunt for what they were just using.
         self.previous_visibility = []
         for dock in window.findChildren(QDockWidget):
-            self.previous_visibility.append((dock, not dock.isHidden()));dock.hide()
+            self.previous_visibility.append((dock, not dock.isHidden()))
+            dock.hide()
         self.focused = True
         window.timeline_panel.focus_button.setText("Rétablir")
 
@@ -224,15 +312,20 @@ class WorkspaceLayout:
         self.window.show_timeline()
         self.window.workbench.detach_panel(self.window.timeline_tab_index)
         self.window.workbench.setCurrentIndex(0)
-        self.window.resizeDocks([self.window.workbench.panels[self.window.timeline_tab_index][1]], [650], Qt.Horizontal)
+        self.window.resizeDocks(
+            [self.window.workbench.panels[self.window.timeline_tab_index][1]], [650], Qt.Horizontal
+        )
 
     def reset(self):
         self.leave_focus()
-        for name in list(self.auxiliary):self.attach_auxiliary(name)
-        for index in list(self.window.workbench.panels):self.window.workbench.attach_panel(index)
+        for name in list(self.auxiliary):
+            self.attach_auxiliary(name)
+        for index in list(self.window.workbench.panels):
+            self.window.workbench.attach_panel(index)
         self.window.workbench.setCurrentIndex(0)
         self.window.workbench.tabBar().show()
-        self.window.main_toolbar.show();self.window.collection_toolbar.show()
+        self.window.main_toolbar.show()
+        self.window.collection_toolbar.show()
         self.window.statusBar().show()
 
     def save(self):
@@ -241,50 +334,94 @@ class WorkspaceLayout:
         self.leave_focus()
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            write_json(self.path, dict(version=1, detached=list(window.workbench.panels), auxiliary=list(self.auxiliary),
-                state=base64.b64encode(window.saveState()).decode('ascii'),
-                geometry=base64.b64encode(window.saveGeometry()).decode('ascii'), focus=focused,
-                splitters={name:base64.b64encode(widget.saveState()).decode('ascii') for name, widget in
-                    [('workspace',window.workspace_splitter),('details',window.splitter),('timeline',window.timeline_panel.splitter)]},
-                timeline_header=base64.b64encode(window.timeline_panel.table.horizontalHeader().saveState()).decode('ascii'),
-                timeline_widgets=dict(events=window.timeline_panel.events_visible.isChecked(),details=window.timeline_panel.details_visible.isChecked())))
-            window.statusBar().showMessage('Disposition enregistrée')
-        except (OSError, ValueError) as exc:window.statusBar().showMessage(str(exc))
+            write_json(
+                self.path,
+                dict(
+                    version=1,
+                    detached=list(window.workbench.panels),
+                    auxiliary=list(self.auxiliary),
+                    state=base64.b64encode(window.saveState()).decode("ascii"),
+                    geometry=base64.b64encode(window.saveGeometry()).decode("ascii"),
+                    focus=focused,
+                    splitters={
+                        name: base64.b64encode(widget.saveState()).decode("ascii")
+                        for name, widget in [
+                            ("workspace", window.workspace_splitter),
+                            ("details", window.splitter),
+                            ("timeline", window.timeline_panel.splitter),
+                        ]
+                    },
+                    timeline_header=base64.b64encode(
+                        window.timeline_panel.table.horizontalHeader().saveState()
+                    ).decode("ascii"),
+                    timeline_widgets=dict(
+                        events=window.timeline_panel.events_visible.isChecked(),
+                        details=window.timeline_panel.details_visible.isChecked(),
+                    ),
+                ),
+            )
+            window.statusBar().showMessage("Disposition enregistrée")
+        except (OSError, ValueError) as exc:
+            window.statusBar().showMessage(str(exc))
         finally:
-            if focused:self.timeline()
+            if focused:
+                self.timeline()
 
     def restore(self):
-        if getattr(self.window, 'require_case', False) and self.window.active_investigation is None:
+        if getattr(self.window, "require_case", False) and self.window.active_investigation is None:
             self.pending_restore = True
             return
         self.pending_restore = False
         try:
-            if not self.path.exists() or self.path.stat().st_size > 128*1024:return
-            data = json.loads(self.path.read_text(encoding='utf-8'))
-            if not isinstance(data, dict) or data.get('version') != 1:return
-            for index in data.get('detached', []):
-                if type(index) is int:self.window.workbench.detach_panel(index)
-            for name in data.get('auxiliary', []):
-                if name == 'artifacts':self.detach_auxiliary(name, self.window.navigator, self.window.workspace_splitter)
-                elif name == 'details':self.detach_auxiliary(name, self.window.details, self.window.splitter)
-            self.window.restoreGeometry(QByteArray.fromBase64(data['geometry'].encode('ascii')))
-            self.window.restoreState(QByteArray.fromBase64(data['state'].encode('ascii')))
-            for name, widget in [('workspace',self.window.workspace_splitter),('details',self.window.splitter),('timeline',self.window.timeline_panel.splitter)]:
-                value = data.get('splitters', {}).get(name)
-                if isinstance(value, str):widget.restoreState(QByteArray.fromBase64(value.encode('ascii')))
+            if not self.path.exists() or self.path.stat().st_size > 128 * 1024:
+                return
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict) or data.get("version") != 1:
+                return
+            for index in data.get("detached", []):
+                if type(index) is int:
+                    self.window.workbench.detach_panel(index)
+            for name in data.get("auxiliary", []):
+                if name == "artifacts":
+                    self.detach_auxiliary(
+                        name, self.window.navigator, self.window.workspace_splitter
+                    )
+                elif name == "details":
+                    self.detach_auxiliary(name, self.window.details, self.window.splitter)
+            self.window.restoreGeometry(QByteArray.fromBase64(data["geometry"].encode("ascii")))
+            self.window.restoreState(QByteArray.fromBase64(data["state"].encode("ascii")))
+            for name, widget in [
+                ("workspace", self.window.workspace_splitter),
+                ("details", self.window.splitter),
+                ("timeline", self.window.timeline_panel.splitter),
+            ]:
+                value = data.get("splitters", {}).get(name)
+                if isinstance(value, str):
+                    widget.restoreState(QByteArray.fromBase64(value.encode("ascii")))
             # restoreState also restores toolbar visibility: a layout saved while a
             # bar was hidden used to keep "Parse a folder" invisible at every start.
             self.window.main_toolbar.setVisible(self.window.preferences.main_toolbar_visible)
-            if hasattr(self.window, 'collection_toolbar'):
-                self.window.collection_toolbar.setVisible(self.window.preferences.collection_toolbar_visible)
-            value = data.get('timeline_header')
-            if isinstance(value, str):self.window.timeline_panel.table.horizontalHeader().restoreState(QByteArray.fromBase64(value.encode('ascii')))
-            for key, widget in [('events', self.window.timeline_panel.events_visible), ('details', self.window.timeline_panel.details_visible)]:
-                value = data.get('timeline_widgets', {}).get(key)
-                if type(value) is bool:widget.setChecked(value)
+            if hasattr(self.window, "collection_toolbar"):
+                self.window.collection_toolbar.setVisible(
+                    self.window.preferences.collection_toolbar_visible
+                )
+            value = data.get("timeline_header")
+            if isinstance(value, str):
+                self.window.timeline_panel.table.horizontalHeader().restoreState(
+                    QByteArray.fromBase64(value.encode("ascii"))
+                )
+            for key, widget in [
+                ("events", self.window.timeline_panel.events_visible),
+                ("details", self.window.timeline_panel.details_visible),
+            ]:
+                value = data.get("timeline_widgets", {}).get(key)
+                if type(value) is bool:
+                    widget.setChecked(value)
             # The saved layout may say the session was left in timeline focus. Replaying
             # it at launch hid the tab bar and the toolbars before any case existed,
             # leaving an empty window: the mode needs a case, and the analyst can enter
             # it again from the Workspace menu.
         except (OSError, ValueError, TypeError, KeyError, AttributeError):
-            self.window.statusBar().showMessage('Disposition ignorée ; utilisez Affichage → Espace de travail.')
+            self.window.statusBar().showMessage(
+                "Disposition ignorée ; utilisez Affichage → Espace de travail."
+            )

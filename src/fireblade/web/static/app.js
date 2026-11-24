@@ -6174,7 +6174,7 @@ function wire() {
   $("hayabusa-run").addEventListener("click", runHayabusa);
   $("detrules-open").addEventListener("click", openDetectionRules);
   $("detrules-reload").addEventListener("click", loadDetectionRules);
-  $("detrules-changed").addEventListener("change", loadRules);
+  $("detrules-changed").addEventListener("change", loadDetectionRules);
   $("detrules-filter").addEventListener("input", (event) => {
     rulesState.filter = event.target.value;
     renderRules();

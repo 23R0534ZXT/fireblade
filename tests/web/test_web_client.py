@@ -700,3 +700,15 @@ def test_the_destroy_dialog_asks_where_the_certificate_goes():
     assert 'id="destroy-certificate"' in page
     assert "certificate_folder" in js, "the chosen folder travels with the destruction"
     assert "certificate_choice" in js, "the driver's own folder is shown read-only"
+
+
+def test_the_changed_only_box_of_the_detection_rules_reloads_the_detection_rules():
+    """It was wired to the colour rules' loader, so ticking it did nothing to the list."""
+    source = (STATIC / "app.js").read_text(encoding="utf-8") if "STATIC" in globals() else None
+    if source is None:
+        from pathlib import Path
+
+        source = (
+            Path(__file__).resolve().parents[2] / "src/fireblade/web/static/app.js"
+        ).read_text(encoding="utf-8")
+    assert '$("detrules-changed").addEventListener("change", loadDetectionRules);' in source

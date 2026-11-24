@@ -1568,3 +1568,26 @@ def test_the_graph_leaves_as_a_png(page, tmp_path):
     download.value.save_as(str(saved))
     data = saved.read_bytes()
     assert data[:8] == b"\x89PNG\r\n\x1a\n" and len(data) > 500
+
+
+# -- What launched this process? --------------------------------------------------------------
+
+
+def test_the_pivot_finds_every_row_that_names_the_same_executable(page, server):
+    _import_more(
+        page,
+        server,
+        "edr.csv",
+        "Time,Image,Parent\n2026-11-01T10:00:30Z,C:\\Users\\alice\\f0.exe,cmd.exe\n",
+    )
+    page.click('.tabs .tab:text-is("Analyses")')
+    page.click('#tree .node:has-text("events.csv")')
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 60')")
+    _context(page, 0, 4, "pivot")
+    page.wait_for_selector("#pivot-modal.show")
+    page.wait_for_function(
+        "document.getElementById('pivot-modal').innerText.includes('across the case')"
+    )
+    text = page.inner_text("#pivot-modal")
+    assert "f0.exe" in text and "2 row(s)" in text, text
+    assert "events.csv" in text and "edr.csv" in text, text

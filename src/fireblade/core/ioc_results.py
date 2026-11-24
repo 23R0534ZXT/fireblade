@@ -18,7 +18,7 @@ from fireblade.core.errors import OperationCancelled
 from fireblade.core.ioc_hunt import (Indicator, IndicatorBatch, IndicatorMatcher, KINDS, MAX_IOCS,
                                       check_cancelled, indicator)
 from fireblade.core.models import View
-from fireblade.core.paths import protected_destination
+from fireblade.core.paths import evidence_name, protected_destination
 from fireblade.core.timeline import guess_time_column
 
 DEFAULT_HIT_LIMIT = 250_000
@@ -234,7 +234,7 @@ def hunt(reader,batch,root,*,name='Chasse IOC',include_subdomains=True,respect_f
                 pending.clear()
         for source,document in enumerate(reader.documents):
             reader.check();scanned=0;total=0;error=''
-            progress(f'Chasse IOC · analyse {source+1}/{len(reader.documents)} · '+Path(document.source_info['path']).name)
+            progress(f'Chasse IOC · analyse {source+1}/{len(reader.documents)} · '+evidence_name(document.source_info['path']))
             try:
                 with reader.open(document) as case:
                     view=document.view if respect_filters else View()

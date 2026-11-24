@@ -22,7 +22,7 @@ def collection(tmp_path):
     pack = tmp_path/'pack'
     (pack/'EvtxECmd').mkdir(parents=True)
     (pack/'EvtxECmd'/'EvtxECmd.dll').touch()
-    (pack/'dotnet').mkdir();(pack/'dotnet'/'dotnet.exe').touch()
+    (pack/'dotnet').mkdir();(pack/'dotnet'/'dotnet.exe').touch();(pack/'dotnet'/'dotnet').touch()
     (pack/'Hayabusa'/'rules').mkdir(parents=True)
     (pack/'Hayabusa'/'hayabusa.exe').touch()
     return Collection(root, tmp_path/'work', ToolPack(pack))
@@ -259,7 +259,7 @@ def test_files_are_parsed_in_parallel_and_merged_in_file_order(tmp_path):
     (root/'a').mkdir(parents=True)
     for index in range(6):
         (root/'a'/('log%02d.csv' % index)).write_text('User,Value\r\nalice,%03d\r\n' % index, encoding='utf-8', newline='')
-    pack = tmp_path/'pack'; (pack/'dotnet').mkdir(parents=True); (pack/'dotnet'/'dotnet.exe').touch()
+    pack = tmp_path/'pack'; (pack/'dotnet').mkdir(parents=True); (pack/'dotnet'/'dotnet.exe').touch();(pack/'dotnet'/'dotnet').touch()
     from fireblade.core.settings import Settings
 
     def build(threads):

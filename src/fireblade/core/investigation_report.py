@@ -8,7 +8,7 @@ import tempfile
 import base64
 
 from fireblade.core.models import View, FilterGroup, OPERATORS
-from fireblade.core.paths import protected_destination
+from fireblade.core.paths import evidence_name, protected_destination
 from fireblade.core.workspace_reader import WorkspaceReader
 
 
@@ -81,7 +81,7 @@ def build_report(reader: WorkspaceReader, title, description='', *, bookmarks_on
     omitted=abbreviated=0
     for document in reader.documents:
         reader.check()
-        result.append('<h2>' + escape(Path(document.source_info['path']).name) + '</h2>')
+        result.append('<h2>' + escape(evidence_name(document.source_info['path'])) + '</h2>')
         info = document.source_info
         result.append('<table>' + ''.join('<tr><th>' + escape(label) + '</th><td><pre>' + escape(value) + '</pre></td></tr>'
                       for label, value in [('Analyse', document.path), ('Source', info['path']),

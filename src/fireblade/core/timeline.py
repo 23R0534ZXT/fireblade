@@ -16,6 +16,7 @@ from fireblade.core.models import View
 from fireblade.core.timestamps import timestamp_key
 from fireblade.core.workspace_reader import WorkspaceReader
 from fireblade.core.csv_chunks import csv_chunks
+from fireblade.core.paths import evidence_name
 
 KINDS = {'text': 'Tout le texte', 'user': 'Utilisateur', 'ip': 'Adresse IP', 'path': 'Chemin', 'hash': 'Empreinte'}
 
@@ -154,7 +155,7 @@ class TimelineStore:
                 for number, document in enumerate(reader.documents):
                     reader.check()
                     progress(f'Chronologie · lecture de l’analyse {number+1}/{len(reader.documents)} : {analysis_label(document.source_info)}')
-                    source = dict(id=number, path=document.path, name=Path(document.source_info['path']).name,
+                    source = dict(id=number, path=document.path, name=evidence_name(document.source_info['path']),
                                   original=document.source_info['path'],
                                   sha256=document.source_info.get('sha256',''),
                                   rows=0, dated=0, undated=0, naive=0, error='', column=None)

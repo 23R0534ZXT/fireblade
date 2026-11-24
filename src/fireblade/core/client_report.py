@@ -19,6 +19,7 @@ from pathlib import Path
 
 from fireblade.core.model_texts import ACTION_TYPE_LABELS, OWNER_LABELS, PRIORITY_LABELS, STATUS_LABELS
 from fireblade.core.pdf_export import html_to_pdf
+from fireblade.core.paths import evidence_name
 
 MAX_BYTES = 32 * 1024 * 1024
 
@@ -160,7 +161,7 @@ def build(*, title, case_name='', case_id='', workspace=None, documents=(), find
     else:
         parts.append('<p class="muted">Aucune machine ni compte n\'a été enregistré pour ce case.</p>')
     if documents:
-        parts.append(_table([(Path(document.source_info.get('path', '')).name,
+        parts.append(_table([(evidence_name(document.source_info.get('path', '')),
                               document.source_info.get('sha256', 'indisponible'),
                               document.source_info.get('rows', ''), document.path)
                              for document in documents],

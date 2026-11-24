@@ -25,7 +25,10 @@ def analysis_label(source_info):
     if not path:
         return ""
     from fireblade.core.artifact_names import GENERIC_STEMS, csv_kind
-    name = Path(path).name
+    # The separator belongs to the machine that collected the evidence, not to the one
+    # reading the case: a Windows path must be split on "\\" inside a Linux container.
+    parts = _path_parts(path)
+    name = parts[-1] if parts else ""
     stem = Path(name).stem
     if name.casefold().endswith((".csv", ".tsv", ".jsonl")):
         kind = csv_kind(path)
@@ -38,7 +41,7 @@ def analysis_label(source_info):
             family = str(info.get("artifact") or info.get("parser") or "").strip()
             if family:
                 return family
-            parent = Path(path).parent.name
+            parent = parts[-2] if len(parts) > 1 else ""
             if parent and len(parent) > 2:
                 return parent
     return name

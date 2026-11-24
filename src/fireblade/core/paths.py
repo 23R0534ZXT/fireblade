@@ -4,6 +4,17 @@ import json
 from pathlib import Path
 
 
+def evidence_name(path):
+    """The file name of a recorded evidence path, whatever machine wrote it.
+
+    A case written by the Windows edition records ``C:\\work\\evidence\\Security.evtx``;
+    read in a Linux container, ``Path`` would take the whole string for one name.
+    Both separators split, so the same case reads the same on either edition.
+    """
+    parts = [part for part in str(path or "").replace("\\", "/").split("/") if part]
+    return parts[-1] if parts else ""
+
+
 def same_file(first, second):
     first,second=Path(first).resolve(),Path(second).resolve()
     if first==second:return True

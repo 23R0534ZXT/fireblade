@@ -29,12 +29,14 @@ Faits utiles pour la suite :
 - **Suppression d'un case** : opération livrée en 0.7.9 (3 ou 7 passes DoD 5220.22-M,
   relecture, PV hors du dossier, confirmation par saisie du nom).
 - **Aucune API réseau** : rien n'écoute sur le réseau ; l'assistant IA est local par défaut.
-- **Un seul analyste à la fois par case** : le bail et DuckDB en écriture exclusive
-  l'imposent. Deux analystes sur deux cases différents, oui ; sur le même case, non.
+- **Un seul analyste à la fois par case, aujourd'hui** : le bail et DuckDB en écriture exclusive
+  l'imposent. Deux analystes sur deux cases différents, oui ; sur le même case, non — et c'est
+  précisément ce que l'édition Server doit permettre.
 
 Ce dernier point est le vrai sujet du chantier : le schéma cible ne demande pas seulement
-« mettre Fireblade dans Docker », il demande **plusieurs analystes simultanés, chacun dans
-son case, avec un poste central qui gère les accès**.
+« mettre Fireblade dans Docker », il demande **plusieurs analystes simultanés, y compris
+plusieurs sur le même case pendant que d'autres travaillent sur d'autres cases, avec un poste
+central qui gère les accès**.
 
 ---
 

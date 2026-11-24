@@ -19,7 +19,7 @@ release (see [Updates](#updates)).
 | --- | --- | --- | --- |
 | Status | **maintained** | frozen at 0.7.9 | planned |
 | Runs on | a Linux container, in a browser | Windows x64 | a Linux host with Docker |
-| Users | one analyst, on their own machine | one analyst | several analysts, one case at a time each |
+| Users | one analyst, on their own machine | one analyst | several analysts at once, on the same case or on different ones |
 | Cases | one container per case | files on disk | one container per case |
 | Access control | none — local use only | none | accounts, roles, audit log |
 
@@ -38,10 +38,10 @@ specified but not started — see [Roadmap](#roadmap).
 One line; Docker downloads the image the first time, and creates the cases folder if it is missing:
 
 ```bash
-docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/fireblade-cases:/data/cases" ghcr.io/23r0534zxt/fireblade:latest
+docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/fireblade-cases:/data/cases" ghcr.io/23r0534zxt/fireblade:latest && echo "Fireblade is starting: open http://localhost:8080 in a few seconds"
 ```
 
-Open <http://localhost:8080>. `/data/cases` is the path inside the container; your cases are in
+Prefix the command with `sudo` if your user is not in the `docker` group. Then open <http://localhost:8080>. `/data/cases` is the path inside the container; your cases are in
 `~/fireblade-cases` on your machine, and a case written by the Desktop opens as soon as its
 folder is there. On Windows PowerShell, write the folder as `"$HOME\fireblade-cases"`.
 
@@ -160,9 +160,11 @@ and the [raw artifact pack](https://github.com/23R0534ZXT/fireblade/releases/dow
 
 ## Roadmap
 
-**Server** is the Host for several analysts: an application that manages cases and their
-containers, role-based access control, an audit log of every action, HTTPS, and a secure erasure
-that stops the case container, removes it and wipes its data. The design is in
+**Server** is the Host for several analysts working at once, several of them on the same case while
+others work on other cases: an application that manages cases and their containers, role-based
+access control, an audit log of every action, HTTPS, and a secure erasure that stops the case
+container, removes it and wipes its data. Several analysts on one case means one service per case
+container that serves all of them, with each analyst's marks, notes and views attributed to them. The design is in
 [docs/host/HANDOFF-DOCKER.md](docs/host/HANDOFF-DOCKER.md). Nothing of it is implemented yet.
 
 Planned for the Host: per-case encrypted volumes, so that erasing a case means destroying its key.
@@ -186,7 +188,7 @@ tests/         core, web (including real-browser tests), runtime, ui, fixtures
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-python -m pip install -e '.[dev,web]'
+python -m pip install -e '.[dev,web,browser]'
 python -m scripts.dev_check          # version, ruff, client JavaScript, full suite
 ```
 

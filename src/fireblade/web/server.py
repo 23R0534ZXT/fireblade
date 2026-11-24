@@ -825,13 +825,18 @@ def create_app(
         encoding: str | None = Form(None),
         sheet: str = Form(""),
         source: str = Form(""),
+        sources: list[str] = Form([]),
         file: UploadFile | None = File(None),
     ):
-        """Start an import in the background; the caller polls it and can stop it."""
+        """Start an import in the background; the caller polls it and can stop it.
+
+        `sources` is the files of one selection, read together as one collection."""
         library.library.folder(identifier)
         try:
             if file is not None:
                 target = _store_upload(library.library.folder(identifier), file)
+            elif sources:
+                target = sources
             elif source:
                 target = source
             else:

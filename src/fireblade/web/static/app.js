@@ -912,7 +912,8 @@ const importJobState = { job: null, stopped: false };
 async function startImportJob(source, layout, options, sheet) {
   const body = new FormData();
   body.append("organization", layout);
-  body.append("source", source);
+  if (Array.isArray(source)) source.forEach((item) => body.append("sources", item));
+  else body.append("source", source);
   if (options.delimiter) body.append("delimiter", options.delimiter);
   if (options.encoding) body.append("encoding", options.encoding);
   if (sheet) body.append("sheet", sheet);
@@ -972,6 +973,28 @@ async function confirmImport() {
   const layout = $("import-layout").value;
   const options = csvOptions();
   let imported = 0;
+  const ready = previewState.items.filter((item) => !item.error && item.payload && item.payload.path);
+  // Files chosen together are one collection: the layout (per file, per artifact family, or one
+  // grid for everything) is how that collection is laid out, so it is imported in one go. A
+  // workbook is read sheet by sheet and keeps its own import.
+  const together = layout !== "files" && ready.length > 1 &&
+    ready.every((item) => !/\.(xlsx|xlsm|xls)$/i.test(item.payload.path));
+  if (together) {
+    say(`Importing ${ready.length} files…`);
+    try {
+      const job = await startImportJob(ready.map((item) => item.payload.path), layout, options, "");
+      const outcome = await followImportJob(job);
+      if (outcome.status === "complete" && outcome.result && outcome.result.analyses) imported = ready.length;
+      else say(`${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
+    } catch (error) {
+      say(error.message, true);
+      return;
+    }
+    closeModals();
+    await openCase(state.openCase.id);
+    say(`${imported} file(s) imported`);
+    return;
+  }
   for (const item of previewState.items) {
     if (item.error) continue;
     const source = item.payload && item.payload.path;

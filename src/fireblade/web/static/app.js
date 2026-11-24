@@ -2910,6 +2910,12 @@ async function buildGraph() {
   $("graph-summary").textContent = "Building…";
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/graph`);
+    if (payload.empty) {
+      // Nothing to draw yet: say what to do, as a hint rather than an error.
+      renderGraph({ nodes: [], edges: [] });
+      $("graph-summary").textContent = payload.message;
+      return;
+    }
     renderGraph(payload);
   } catch (error) {
     $("graph-summary").textContent = error.message;
@@ -4241,16 +4247,32 @@ function shownActions() {
   });
 }
 
+// What a code stored in the case reads as on screen; an unknown code is shown as it is.
+const ACTION_TEXT = {
+  owner: { us: "Our team", client: "Client", third_party: "Third party", vendor: "Vendor",
+           unassigned: "Unassigned" },
+  status: { todo: "To do", in_progress: "In progress", waiting_client: "Waiting for the client",
+            waiting_us: "Waiting on our side", blocked: "Blocked", done: "Done", cancelled: "Cancelled" },
+  priority: { low: "Low", medium: "Medium", high: "High", critical: "Critical" },
+  type: { collect: "Collection", analysis: "Analysis", remediation: "Remediation",
+          coordination: "Coordination", meeting: "Meeting", report: "Report",
+          destruction: "Destruction", legal: "Legal", other: "Other" },
+};
+
+function actionText(kind, code) {
+  return (ACTION_TEXT[kind] && ACTION_TEXT[kind][code]) || code || "";
+}
+
 function renderActions() {
   const items = shownActions();
   actionState.shown = items;
   $("action-rows").innerHTML = items.length ? items.map((item) => `
     <tr data-action="${escapeHtml(item.id)}" class="${actionState.selected === item.id ? "sel" : ""}">
       <td>${escapeHtml(item.date || "")}</td>
-      <td>${escapeHtml(item.priority || "")}</td>
-      <td>${escapeHtml(item.status || "")}</td>
-      <td>${escapeHtml(item.type || "")}</td>
-      <td>${escapeHtml(item.intervenant || item.owner || "")}</td>
+      <td>${escapeHtml(actionText("priority", item.priority))}</td>
+      <td>${escapeHtml(actionText("status", item.status))}</td>
+      <td>${escapeHtml(actionText("type", item.type))}</td>
+      <td>${escapeHtml(item.intervenant || actionText("owner", item.owner))}</td>
       <td title="${escapeHtml(item.detail || "")}">${escapeHtml(item.title || "")}</td>
       <td><button class="btn" data-action-close="${escapeHtml(item.id)}">${
         item.status === "done" ? "Reopen" : "Done"}</button></td>

@@ -583,7 +583,7 @@
       "kind": "command",
       "status": "covered",
       "where": "Attack graph tab, with the ATT&CK layer and the PNG.",
-      "test": "test_the_attack_graph_refuses_on_an_empty_case",
+      "test": "test_the_attack_graph_of_an_empty_case_is_empty_and_says_what_to_do",
       "reason": "",
       "plan": ""
     },
@@ -745,7 +745,7 @@
       "kind": "command",
       "status": "covered",
       "where": "Attack graph > Export an ATT&CK layer…",
-      "test": "test_the_attack_graph_refuses_on_an_empty_case",
+      "test": "test_the_attack_graph_of_an_empty_case_is_empty_and_says_what_to_do",
       "reason": "",
       "plan": ""
     },
@@ -943,7 +943,7 @@
       "kind": "command",
       "status": "covered",
       "where": "Attack graph inputs.",
-      "test": "test_the_attack_graph_refuses_on_an_empty_case",
+      "test": "test_the_attack_graph_of_an_empty_case_is_empty_and_says_what_to_do",
       "reason": "",
       "plan": ""
     },

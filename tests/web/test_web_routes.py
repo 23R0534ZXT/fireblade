@@ -184,14 +184,16 @@ def test_an_ioc_hunt_is_saved_and_replayed(service):
     assert hunts[0]["hits"] >= 1
 
 
-def test_the_attack_graph_refuses_on_an_empty_case(service):
-    """No finding and no declared machine is a readable refusal, not an empty graph."""
+def test_the_attack_graph_of_an_empty_case_is_empty_and_says_what_to_do(service):
+    """No finding and no declared machine is a state of the case, not an HTTP failure."""
     library, identifier = service
+    graph = library.graph(identifier)
+    assert graph["empty"] is True and graph["nodes"] == [] and graph["edges"] == []
+    assert "machine" in graph["message"] or "detection" in graph["message"]
+    # Only an export has nothing to export: that one is refused, with the reason.
     with pytest.raises(ServiceError) as caught:
-        library.graph(identifier)
-    assert "machine" in str(caught.value).lower() or "detection" in str(caught.value).lower()
-    with pytest.raises(ServiceError):
         library.graph(identifier, navigator=True)
+    assert "nothing to export" in str(caught.value).lower()
 
 
 def test_the_client_report_is_written_and_served_back(service):
@@ -452,8 +454,7 @@ def test_the_timeline_can_read_two_columns_as_one_date(service, tmp_path):
 
 def test_a_free_node_joins_the_graph_and_stays_with_the_case(service):
     library, identifier = service
-    with pytest.raises(ServiceError):
-        library.graph(identifier)          # nothing to draw yet, and it says so
+    assert library.graph(identifier)["empty"] is True      # nothing to draw yet, and it says so
     node = library.add_graph_node(identifier, "SRV-EXCHANGE", tags="host, pivot")
     assert node["label"] == "SRV-EXCHANGE"
     assert node["tags"] == ["host", "pivot"]

@@ -235,8 +235,12 @@ class Library:
             workspace = {}
         manual = (workspace.get("graph") or {}).get("nodes") or []
         if not groups and not (workspace.get("entities")) and not manual:
-            raise ServiceError("No finding, no entity and no free node: run a detection, "
-                               "declare a machine, or add a node by hand.")
+            # An empty graph is a state of the case, not a failure: the window says what to do.
+            message = ("No finding, no entity and no free node: run a detection, "
+                       "declare a machine, or add a node by hand.")
+            if navigator:
+                raise ServiceError("Nothing to export: " + message[0].lower() + message[1:])
+            return {"empty": True, "message": message, "nodes": [], "edges": [], "summary": {}}
         graph = ag.build(list(groups.values()), workspace)
         if navigator:
             layer = ag.navigator_layer(graph, name=data.get("name") or "Fireblade",

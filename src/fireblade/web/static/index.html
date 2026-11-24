@@ -426,29 +426,31 @@
           <div class="filterbar">
             <input class="search" id="action-title" placeholder="New action — what has to be done?">
             <select class="select" id="action-owner">
-              <option value="us">us</option>
-              <option value="client">client</option>
-              <option value="third-party">third-party</option>
+              <option value="us">Our team</option>
+              <option value="client">Client</option>
+              <option value="third_party">Third party</option>
+              <option value="vendor">Vendor</option>
+              <option value="unassigned">Unassigned</option>
             </select>
             <select class="select" id="action-priority">
-              <option value="medium">medium</option>
-              <option value="low">low</option>
-              <option value="high">high</option>
-              <option value="critical">critical</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
             </select>
             <!-- The core's own vocabulary (core.case_workspace.ACTION_TYPES).
                  The service also publishes it on /api/settings and the window
                  rebuilds this list from there; these values are the fallback. -->
             <select class="select" id="action-type">
-              <option value="collect">collect</option>
-              <option value="analysis">analysis</option>
-              <option value="remediation">remediation</option>
-              <option value="coordination">coordination</option>
-              <option value="meeting">meeting</option>
-              <option value="report">report</option>
-              <option value="destruction">destruction</option>
-              <option value="legal">legal</option>
-              <option value="other">other</option>
+              <option value="collect">Collection</option>
+              <option value="analysis">Analysis</option>
+              <option value="remediation">Remediation</option>
+              <option value="coordination">Coordination</option>
+              <option value="meeting">Meeting</option>
+              <option value="report">Report</option>
+              <option value="destruction">Destruction</option>
+              <option value="legal">Legal</option>
+              <option value="other">Other</option>
             </select>
             <button class="btn" id="action-add">New action…</button>
             <button class="btn" id="action-delete">Delete</button>
@@ -458,7 +460,7 @@
             <div class="gridbody">
               <table>
                 <colgroup><col style="width:110px"><col style="width:90px"><col style="width:100px"><col style="width:110px"><col style="width:110px"><col><col style="width:100px"></colgroup>
-                <thead><tr><th>Date</th><th>Priority</th><th>Action status</th><th>Action type</th><th>Intervenant</th><th>Details</th><th></th></tr></thead>
+                <thead><tr><th>Date</th><th>Priority</th><th>Action status</th><th>Action type</th><th>Assignee</th><th>Details</th><th></th></tr></thead>
                 <tbody id="action-rows"></tbody>
               </table>
             </div>

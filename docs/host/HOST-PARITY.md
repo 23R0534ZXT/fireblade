@@ -32,7 +32,7 @@ still missing, read `HOST-AUDIT.md`.
 | Ajouter une note à la sélection… | Row details note applied to the whole selection. | `test_the_grid_selects_a_range_and_a_selection` |
 | Analyses | Analyses tab and the analysis tree. | `test_analysis_columns_and_rows` |
 | Apparence | Display settings: text size, row height, palette. | `test_display_layout_is_saved_in_the_analysis` |
-| Attack graph | Attack graph tab, with the ATT&CK layer and the PNG. | `test_the_attack_graph_refuses_on_an_empty_case` |
+| Attack graph | Attack graph tab, with the ATT&CK layer and the PNG. | `test_the_attack_graph_of_an_empty_case_is_empty_and_says_what_to_do` |
 | Automatique (BOM) | Import dialog: CSV options, encoding. | `test_preview_reads_the_chosen_encoding_and_separator` |
 | Basculer l’affichage booléen | Column manager and display settings. | `test_display_layout_is_saved_in_the_analysis` |
 | Bookmark every alert of this finding | Hayabusa tab, the Mark button of a finding. | `test_a_finding_marks_every_alert_it_names` |
@@ -49,7 +49,7 @@ still missing, read `HOST-AUDIT.md`.
 | Copier la valeur complète | Show the whole cell… then Copy. | `test_the_row_menu_offers_every_cell_action` |
 | Copier les lignes sélectionnées | Row menu > Copy the selected rows, over the selection. | `test_the_grid_selects_a_range_and_a_selection` |
 | Corréler dans toutes les analyses | Global search across every analysis of the case. | `test_a_global_search_finds_the_value_and_names_its_analysis` |
-| Couche ATT&CK Navigator… | Attack graph > Export an ATT&CK layer… | `test_the_attack_graph_refuses_on_an_empty_case` |
+| Couche ATT&CK Navigator… | Attack graph > Export an ATT&CK layer… | `test_the_attack_graph_of_an_empty_case_is_empty_and_says_what_to_do` |
 | Créer une règle pour cette valeur… | Row menu > Colour rule for this value… | `test_colour_rules_round_trip` |
 | Date + heure (colonnes séparées) | Timeline: the 'date + time (separate columns)' option of a source. | `test_the_timeline_can_read_two_columns_as_one_date` |
 | Dispositions de la grille | Column layout remembered in the analysis. | `test_display_layout_is_saved_in_the_analysis` |
@@ -72,7 +72,7 @@ still missing, read `HOST-AUDIT.md`.
 | Importer une liste… | IOC hunting: paste indicators. | `test_an_ioc_scan_matches_the_pasted_indicator` |
 | Imports | Imports tab, file by file, with the reader and the reason. | `test_the_import_history_lists_the_files_of_the_case` |
 | Indicateurs | IOC hunting results. | `test_an_ioc_scan_matches_the_pasted_indicator` |
-| Machines et comptes | Attack graph inputs. | `test_the_attack_graph_refuses_on_an_empty_case` |
+| Machines et comptes | Attack graph inputs. | `test_the_attack_graph_of_an_empty_case_is_empty_and_says_what_to_do` |
 | Marquer la sélection | Row menu > Mark the selection. | `test_the_grid_selects_a_range_and_a_selection` |
 | Masquer cette colonne | Row menu > Hide this column, and Columns… | `test_the_row_menu_offers_every_cell_action` |
 | Modifier… | Actions & tracking > edit. | `test_tracking_actions_are_created_updated_and_exported` |

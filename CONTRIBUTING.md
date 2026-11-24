@@ -20,7 +20,7 @@ Python 3.11 or newer. The Host runs on Linux; the frozen Desktop is built on Win
 ```bash
 python -m ruff format --check src scripts tests
 python -m ruff check src scripts tests
-python -m pytest tests -q --ignore=tests/windows
+python -m pytest tests -q --ignore=tests/windows --ignore=tests/ui
 ```
 
 `tests/web/test_browser*.py` drive the client with a real mouse and need Playwright and a Chromium

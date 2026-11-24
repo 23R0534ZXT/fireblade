@@ -49,8 +49,8 @@ jobs:
       - name: Client JavaScript syntax
         run: |
           for file in src/fireblade/web/static/*.js; do node --check "$file"; done
-      - name: Suite, browser tests included
-        run: python -m pytest tests -q --ignore=tests/windows --junitxml=artifacts/host-tests.xml
+      - name: Suite, browser tests included (the Desktop's Qt tests run in the Windows workflow)
+        run: python -m pytest tests -q --ignore=tests/windows --ignore=tests/ui --junitxml=artifacts/host-tests.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:

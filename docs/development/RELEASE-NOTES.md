@@ -1,7 +1,15 @@
 # Fireblade 0.8.2 — the Host, checked in a real browser
 
 Each change below was found by driving the Host with a real mouse in a real browser, on a case
-of Linux logs, and comes with the test that would have caught it.
+of Linux logs, or by running its images in CI, and comes with the test that would have caught it.
+
+## The per-case driver image starts again
+
+- **The published driver image could not start**, from 0.8.1 on: it copied one file of the web
+  package, and 0.8.1 made that file import the update check, so it died with
+  `No module named 'fireblade.web.updates'`. Nothing noticed, because the tests import the sources
+  and not the image. The Dockerfile copies what the driver imports, a test builds the file tree its
+  `COPY` lines build and starts the driver in it, and the CI starts the real image.
 
 ## Commands that did not work, and now do
 
@@ -67,6 +75,16 @@ of Linux logs, and comes with the test that would have caught it.
 - A case written on Windows records `C:\…` paths; read in the Linux container, they showed in full
   as labels and in the reports. They are read the same on both.
 
+## Recette
+
+- `scripts/recette/host_recette.py` puts a pack of known content through the real image, one source
+  at a time, and compares: every file accounted for, nothing in error, and the counts the pack
+  states. First measurements on the image with its .NET readers: **13 EVTX events read, 13
+  expected; 1 612 WebCache rows read, 1 612 expected**; Shellbags are a documented limit of the
+  Linux edition. `docs/host/RECETTE.md` says what each level of testing proves and what is missing.
+- Its first run found that importing a CatScale folder and its archive together reads every row
+  twice, and that the analyses organised into families were named in French; they read in English.
+
 ## Tests
 
 - `tests/web/test_browser*.py` drive the client with a real mouse: every menu command and
@@ -83,6 +101,18 @@ of Linux logs, and comes with the test that would have caught it.
 - `FIREBLADE_UPDATE_CHECK=off` switches the check for a newer release off: the container then
   makes no outbound request at all. The documentation no longer says the Host talks to no outside
   service, which the check made untrue.
+
+## Repository
+
+- The code base is formatted (`ruff format`, syntax tree verified identical) and `ruff check`
+  enforces pycodestyle, pyflakes, import order, upgrades and the bugbear checks; the frozen
+  Desktop's code is exempted where listed in `pyproject.toml`.
+- A Linux workflow checks the Host on every pull request and push: formatting, lint, the suite with
+  its real-browser tests, the case and driver images, and the recette. The Windows workflow, for
+  the frozen Desktop, runs by hand only.
+- `SECURITY.md`, `CODEOWNERS`, `CONTRIBUTING.md` in English, `CHANGELOG.md`, a pull request
+  template, `.editorconfig`, a `pre-commit` configuration; Dependabot also watches the Docker bases.
+- The `web` extra carries `httpx` and `python-multipart`; a `browser` extra names Playwright.
 
 ## Documentation
 

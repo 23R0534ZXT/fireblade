@@ -2358,19 +2358,41 @@ class Library:
 
     def _headers_of(self, path) -> list[str]:
         """The columns of an analysis, for the date selector."""
+        return self._header_names(path)[0]
+
+    def _header_names(self, path) -> tuple[list[str], list[str]]:
+        """The stored column names of an analysis and the names the analyst reads.
+
+        One opening of the file for both: the timeline asks for them once per source.
+        """
         if not path or not Path(str(path)).is_file():
-            return []
+            return [], []
         try:
             case = Case(Path(str(path)), read_only=True)
         except (OSError, ValueError):
-            return []
+            return [], []
         try:
-            return list(case.headers)
+            return list(case.headers), column_labels(case)
         finally:
             try:
                 case.close()
             except Exception:
                 pass
+
+    def _timeline_source(self, item: dict, dates) -> dict:
+        """One source of the timeline, with the columns its date can be read from."""
+        from fireblade.core.timeline import split_date_time
+
+        headers, labels = self._header_names(item.get("path"))
+        shown = dict(zip(headers, labels))
+        source = {key: item.get(key) for key in ("id", "name", "original", "rows", "dated", "undated",
+                                                 "column", "column_name", "combined", "error")}
+        source.update(
+            headers=headers, labels=labels,
+            column_label=shown.get(item.get("column_name") or "", item.get("column_name")),
+            split=bool(headers and split_date_time(headers)),
+            chosen=(dates or {}).get(str(item.get("id")), "auto"))
+        return source
 
     def _split_available(self, path) -> bool:
         from fireblade.core.timeline import split_date_time
@@ -2436,12 +2458,7 @@ class Library:
         low, high, total, dated = store.extent(**filters)
         page = store.page(offset, **filters)
         payload = {
-            "sources": [dict({k: item.get(k) for k in ("id", "name", "original", "rows", "dated",
-                                                       "undated", "column", "column_name", "combined", "error")},
-                             headers=list(self._headers_of(item.get("path"))),
-                             split=self._split_available(item.get("path")),
-                             chosen=(dates or {}).get(str(item.get("id")), "auto"))
-                        for item in store.sources],
+            "sources": [self._timeline_source(item, dates) for item in store.sources],
             "extent": {"start": low, "end": high, "rows": int(total or 0), "dated": int(dated or 0)},
             "count": int(page["count"]),
             "page_size": store.PAGE_SIZE,

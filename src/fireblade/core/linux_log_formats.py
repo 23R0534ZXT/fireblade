@@ -5,6 +5,10 @@ import json
 import re
 
 
+MONTHS = {name: number for number, name in enumerate(
+    ('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'), 1)}
+
+
 def utc_time(value, epoch=False):
     """Normalize only explicitly zoned dates/Unix epochs; never infer local time."""
     try:
@@ -16,6 +20,16 @@ def utc_time(value, epoch=False):
             base = timestamp(seconds)
             return base[:-6]+('.'+fraction.ljust(6,'0') if fraction else '')+'+00:00'
         value = str(value)
+        # Common Log Format (nginx, Apache): the offset is written, so the instant is certain.
+        clf = re.fullmatch(r'(\d{2}/[A-Za-z]{3}/\d{4}):(\d{2}:\d{2}:\d{2}) ([+-]\d{4})', value)
+        if clf:
+            # Month names are read from a table: strptime follows the machine's locale.
+            day, month, year = clf[1].split('/')
+            number = MONTHS.get(month.casefold())
+            if number is None:
+                return ''
+            return datetime.fromisoformat(f'{year}-{number:02d}-{day}T{clf[2]}{clf[3][:3]}:{clf[3][3:]}') \
+                .astimezone(timezone.utc).isoformat()
         if not re.search(r'(?:Z|[+-]\d{2}:?\d{2})$', value):
             return ''
         result = datetime.fromisoformat(value).astimezone(timezone.utc)

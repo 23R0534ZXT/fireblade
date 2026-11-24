@@ -4495,15 +4495,16 @@ function renderTimelineDates(payload) {
   box.innerHTML = (payload.sources || []).map((source) => {
     const chosen = timelineState.dates[String(source.id)] || "auto";
     const options = [
-      `<option value="auto" ${chosen === "auto" ? "selected" : ""}>detected${source.column_name ? ": " + escapeHtml(source.column_name) : ""}</option>`,
+      `<option value="auto" ${chosen === "auto" ? "selected" : ""}>detected${source.column_name ? ": " + escapeHtml(source.column_label || source.column_name) : ""}</option>`,
       `<option value="none" ${chosen === "none" ? "selected" : ""}>no date (correlation only)</option>`,
     ];
     if (source.split) {
       options.push(`<option value="split" ${chosen === "split" ? "selected" : ""}>date + time (separate columns)</option>`);
     }
-    for (const name of source.headers || []) {
-      options.push(`<option value="${escapeHtml(name)}" ${chosen === name ? "selected" : ""}>${escapeHtml(name)}</option>`);
-    }
+    (source.headers || []).forEach((name, position) => {
+      const label = (source.labels && source.labels[position]) || name;
+      options.push(`<option value="${escapeHtml(name)}" ${chosen === name ? "selected" : ""}>${escapeHtml(label)}</option>`);
+    });
     return `<div class="tsrc"><span class="tname" title="${escapeHtml(source.original || source.name)}">${escapeHtml(source.name)}</span>
       <select class="select" data-source="${source.id}">${options.join("")}</select></div>`;
   }).join("");

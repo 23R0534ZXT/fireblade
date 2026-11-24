@@ -376,3 +376,13 @@ def test_zeek_declarations_are_kept_but_are_not_data(tmp_path):
     assert result.get('raw', 0) == 0
     assert len(rows) == 4, 'every line stays in the evidence'
     assert rows[2]['Format'] == 'Zeek TSV'
+
+
+def test_a_common_log_format_date_with_its_offset_is_normalised_to_utc():
+    from fireblade.core.linux_log_formats import utc_time
+    assert utc_time('01/Nov/2026:10:00:00 +0000') == '2026-11-01T10:00:00+00:00'
+    assert utc_time('01/Nov/2026:10:00:00 +0200') == '2026-11-01T08:00:00+00:00'
+    assert utc_time('15/Dec/2026:23:30:00 -0500') == '2026-12-16T04:30:00+00:00'
+    # No offset, no year, an unknown month: nothing is inferred.
+    assert utc_time('Nov  1 10:00:00') == ''
+    assert utc_time('01/Foo/2026:10:00:00 +0000') == ''

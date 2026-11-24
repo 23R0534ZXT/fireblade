@@ -87,7 +87,7 @@ body{
 /* artifacts */
 /* The desktop keeps its artifacts tree on the right, the grid on the left: the
    same order here, so a glance moves the same way in both editions. */
-.artifacts{width:212px;flex:0 0 212px;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--window);order:2}
+.artifacts{width:212px;flex:0 0 212px;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--window);order:3}
 .pane{order:1}
 .artifacts .head{display:flex;align-items:center;height:22px;padding:0 6px}
 .artifacts .head .x{margin-left:auto;color:var(--disabled)}
@@ -373,6 +373,19 @@ td.noted .notemark{position:absolute;top:2px;right:2px;width:0;height:0;
 .preview-card{max-width:100%;overflow:hidden}
 .preview-sample{display:block;overflow-x:auto;max-width:100%}
 .dialog{max-width:96vw}
+
+/* Windows: a dialog is moved by its title bar and resized from its corner, as on the desktop. */
+.dialog.window{display:flex;flex-direction:column;resize:both;overflow:hidden;max-height:96vh;min-width:260px;min-height:110px}
+.dialog.window>.body,.dialog.window>.content{flex:1 1 auto;overflow:auto;min-height:0}
+.dialog.window>h3,.dialog.window>.foot{flex:0 0 auto}
+.dialog h3.grab{cursor:move;user-select:none;touch-action:none}
+
+/* Splitters: the two panes the desktop lets you drag apart. */
+.splitter{flex:0 0 5px;background:transparent;position:relative;touch-action:none;z-index:3}
+.splitter.vsplit{order:2;cursor:col-resize;width:5px;border-left:1px solid var(--border)}
+.splitter.hsplit{cursor:row-resize;height:5px;margin:0 6px}
+.splitter:hover,.splitter.drag{background:var(--accent)}
+.splitter.drag{opacity:.55}
 #prefs-profiles .pin{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
 
 /* The desktop's visual formats, in a cell: a bar that fills, a tint, an icon. */

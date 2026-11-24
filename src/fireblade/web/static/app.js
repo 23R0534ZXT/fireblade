@@ -2885,7 +2885,7 @@ function pinFromCell(side = "left") {
 function hideFromCell() {
   const column = contextColumnIndex();
   if (column === null) { say("Right-click a cell first", true); return; }
-  state.hidden.add(column);
+  state.hidden.add(column + 1);  // hidden columns are numbered with the row id first
   saveLayoutSoon();
   renderGrid();
   say(`Hid ${state.columns[column + 1]} — Columns… brings it back`);

@@ -29,30 +29,34 @@ def _csv():
 
 
 @pytest.fixture(scope="module")
-def host(tmp_path_factory):
+def server(tmp_path_factory):
     root = tmp_path_factory.mktemp("command-cases")
-    identifier = InvestigationLibrary(root).create("Commands", "", "windows")["id"]
-    evidence = tmp_path_factory.mktemp("command-evidence")
-    (evidence / "events.csv").write_text(_csv())
     with serving(root) as base:
-        started = httpx.post(
-            f"{base}/api/cases/{identifier}/import-jobs",
-            data={"source": str(evidence / "events.csv"), "organization": "files"},
-            timeout=30,
-        )
-        assert started.status_code == 200, started.text
-        job = started.json()["job"]
-        for _ in range(240):
-            state = httpx.get(f"{base}/api/import-jobs/{job}").json()
-            if state.get("status") not in ("running", "pending", "queued"):
-                break
-        assert state.get("status") == "complete", state
-        yield base
+        yield base, root, tmp_path_factory.mktemp("command-evidence")
 
 
 @pytest.fixture()
-def page(host):
-    with browser_page(host, "Commands") as opened:
+def page(server, request):
+    """A fresh case for every test: the view an analyst leaves behind (sorts, hidden columns,
+    filters) is saved with the case, and one command's effect must not become the next one's."""
+    base, root, evidence = server
+    name = "Commands " + request.node.name[:40]
+    identifier = InvestigationLibrary(root).create(name, "", "windows")["id"]
+    source = evidence / f"{identifier}.csv"
+    source.write_text(_csv())
+    started = httpx.post(
+        f"{base}/api/cases/{identifier}/import-jobs",
+        data={"source": str(source), "organization": "files"},
+        timeout=30,
+    )
+    assert started.status_code == 200, started.text
+    job = started.json()["job"]
+    for _ in range(240):
+        state = httpx.get(f"{base}/api/import-jobs/{job}").json()
+        if state.get("status") not in ("running", "pending", "queued"):
+            break
+    assert state.get("status") == "complete", state
+    with browser_page(base, name) as opened:
         opened.context.grant_permissions(["clipboard-read", "clipboard-write"])
         yield opened
 
@@ -332,6 +336,116 @@ def test_reset_widths_restores_the_default_width_of_a_column(page):
     )
 
 
-def test_next_and_previous_analysis_switch_the_open_analysis(host):
-    # Needs two analyses: a second file is imported through the service.
-    from _browser import browser_page  # noqa: F401
+# -- The right-click menu of a cell, and the column headers -----------------------------------
+
+
+def _cell(page, row, column):
+    return page.locator("#body tr[data-row]").nth(row).locator(f"td[data-cell='{column}']")
+
+
+def _context(page, row, column, act):
+    _cell(page, row, column).click(button="right")
+    page.click(f'#row-menu [data-act="{act}"]')
+
+
+def test_the_context_menu_copies_the_value_of_the_cell(page):
+    _context(page, 1, 2, "copy-value")
+    assert page.evaluate("navigator.clipboard.readText()") == "bob"
+
+
+def test_the_context_menu_filters_on_a_value_and_excludes_it(page):
+    _context(page, 0, 2, "filter-value")  # alice
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 20')")
+    assert set(_column_values(page, "User")) == {"alice"}
+    command(page, "clear-filters")
+    _context(page, 0, 2, "exclude-value")
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 40')")
+    assert "alice" not in set(_column_values(page, "User"))
+    command(page, "clear-filters")
+
+
+def test_the_context_menu_sorts_ascending_and_descending(page):
+    _context(page, 0, 3, "sort-asc")
+    page.wait_for_function(
+        "(() => { const v = [...document.querySelectorAll('#body td[data-cell=\"3\"]')]"
+        ".map(e => +e.innerText); return v.length === 60 && v.every((x, i) => !i || v[i - 1] <= x); })()"
+    )
+    events = [int(v) for v in _column_values(page, "Event")]
+    assert events == sorted(events)
+    _context(page, 0, 3, "sort-desc")
+    page.wait_for_function(
+        "document.querySelector('#body tr[data-row] td[data-cell=\"3\"]').innerText === '4688'"
+    )
+    events = [int(v) for v in _column_values(page, "Event")]
+    assert events == sorted(events, reverse=True)
+
+
+def test_the_context_menu_groups_by_the_column_of_the_cell(page):
+    _context(page, 0, 1, "group-by-column")
+    page.wait_for_selector("#body tr[data-group]")
+    assert page.locator("#body tr[data-group]").count() == 4
+    command(page, "group-column")
+    page.click('[data-act="group-remove"]')
+
+
+def test_the_context_menu_hides_a_column_and_pins_another(page):
+    _context(page, 0, 4, "hide-column")
+    page.wait_for_function(
+        "![...document.querySelectorAll('#head tr:first-child th')].some(t => t.innerText.trim() === 'Path')"
+    )
+    _context(page, 0, 1, "pin-column")
+    page.wait_for_function("document.querySelectorAll('#head th.pinned-left').length > 0")
+    _context(page, 0, 1, "pin-column")
+    page.wait_for_function("document.querySelectorAll('#head th.pinned-left').length === 0")
+    _context(page, 0, 3, "pin-column-right")
+    page.wait_for_function("document.querySelectorAll('#head th.pinned-right').length > 0")
+    _context(page, 0, 3, "pin-column-right")
+    command(page, "columns")
+    page.click('[data-act="columns-reset"]')
+    page.click('.modal.show [data-act="settings-close"]')
+
+
+def test_the_context_menu_marks_a_row_and_a_colour_rule_paints_what_it_matches(page):
+    _cell(page, 2, 0).click()
+    _context(page, 2, 0, "bookmark-row")
+    page.wait_for_function("document.querySelectorAll('#body .cb.marked').length === 1")
+    _context(page, 2, 0, "unmark-selection")
+    page.wait_for_function("document.querySelectorAll('#body .cb.marked').length === 0")
+    _context(page, 1, 2, "rule-from-cell")  # bob
+    page.wait_for_function(
+        "[...document.querySelectorAll('#body tr[data-row]')].some(r => r.style.background)"
+    )
+    painted = page.eval_on_selector_all(
+        "#body tr[data-row]",
+        "rows => rows.filter(r => r.style.background).map(r => r.querySelector('td[data-cell=\"2\"]').innerText)",
+    )
+    assert painted and set(painted) == {"bob"}
+
+
+def test_clicking_a_header_sorts_by_it_and_a_second_click_reverses(page):
+    head = page.locator("#head tr:first-child th", has_text="Host")
+    head.click()
+    page.wait_for_function("document.querySelector('#head th.sorted') !== null")
+    hosts = _column_values(page, "Host")
+    assert hosts == sorted(hosts)
+    page.locator("#head tr:first-child th", has_text="Host").click()
+    page.wait_for_timeout(600)
+    hosts = _column_values(page, "Host")
+    assert hosts == sorted(hosts, reverse=True)
+
+
+def test_a_column_filter_box_filters_that_column_only(page):
+    page.fill('#head input[data-filter="2"]', "carol")
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 20')")
+    assert set(_column_values(page, "User")) == {"carol"}
+    page.fill('#head input[data-filter="2"]', "")
+    page.wait_for_function(f"document.getElementById('pageinfo').innerText.includes('/ {ROWS}')")
+
+
+def test_the_search_box_searches_every_column_and_clear_resets_it(page):
+    page.fill("#search", "C:\\Users\\bob\\f4.exe")
+    page.press("#search", "Enter")
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 1 ')")
+    page.click('button:text-is("Clear the filters")')
+    page.wait_for_function(f"document.getElementById('pageinfo').innerText.includes('/ {ROWS}')")
+    assert page.input_value("#search") == ""

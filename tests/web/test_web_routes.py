@@ -1627,3 +1627,16 @@ def test_a_plugin_in_the_hosts_plugin_folder_reaches_the_import_profiles(
     monkeypatch.setenv("FIREBLADE_PLUGINS", str(folder))
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "nobody-writes-here"))
     assert "Mine" in [item["name"] for item in library.profiles()["profiles"]]
+
+
+def test_a_profile_folder_the_process_cannot_enter_holds_no_plugin(tmp_path, monkeypatch):
+    """Inside the container the user's profile is /root, which the service cannot read; that
+    made every import dialog and the Profiles window answer 'Permission denied'."""
+    from fireblade.core import profile_plugins
+
+    class Locked:
+        def exists(self):
+            raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(profile_plugins, "Path", lambda *_a: Locked())
+    assert profile_plugins.load_plugins(tmp_path) == ([], [])

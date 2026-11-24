@@ -56,7 +56,10 @@ def validate_plugin(data):
 def load_plugins(directory=None):
     directory = Path(directory) if directory else plugin_path()
     plugins, errors = [], []
-    if not directory.exists():
+    try:
+        if not directory.exists():
+            return plugins, errors
+    except OSError:  # a profile folder the process cannot enter holds no plugin for it
         return plugins, errors
     for path in sorted(directory.glob("*.json"))[:100]:
         try:

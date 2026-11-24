@@ -704,11 +704,9 @@ def test_the_destroy_dialog_asks_where_the_certificate_goes():
 
 def test_the_changed_only_box_of_the_detection_rules_reloads_the_detection_rules():
     """It was wired to the colour rules' loader, so ticking it did nothing to the list."""
-    source = (STATIC / "app.js").read_text(encoding="utf-8") if "STATIC" in globals() else None
-    if source is None:
-        from pathlib import Path
+    from pathlib import Path
 
-        source = (
-            Path(__file__).resolve().parents[2] / "src/fireblade/web/static/app.js"
-        ).read_text(encoding="utf-8")
+    source = (Path(__file__).resolve().parents[2] / "src/fireblade/web/static/app.js").read_text(
+        encoding="utf-8"
+    )
     assert '$("detrules-changed").addEventListener("change", loadDetectionRules);' in source

@@ -211,3 +211,18 @@ def test_a_json_answer_is_translated_value_by_value_and_keys_stay():
     assert list(translated) == ["stage", "reason", "items"]
     assert translated["reason"] == "No collection inventory"
     assert translated["items"] == ["Coverage check", 3]
+
+
+def test_the_disk_errors_a_job_reports_are_in_english():
+    from fireblade.core import i18n
+
+    french = (
+        "Aucun système de fichiers lisible : le conteneur est reconnu mais aucune partition "
+        "exploitable n’en a été extraite (image sans table de partitions, volume chiffré ou "
+        "format non pris en charge)."
+    )
+    assert i18n.english_text(french).startswith("No readable file system")
+    assert (
+        i18n.english_text("Source modifiée pendant la copie")
+        == "The source changed during the copy"
+    )

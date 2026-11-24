@@ -4230,11 +4230,11 @@ class Library:
             return {
                 "job": job_id,
                 "status": job["status"],
-                "message": job.get("message", ""),
+                "message": english.english_text(job.get("message", "")),
                 "started": job.get("started"),
                 "finished": job.get("finished"),
-                "error": job.get("error"),
-                "log": list(job.get("log") or [])[-40:],
+                "error": english.english_text(job["error"]) if job.get("error") else None,
+                "log": [english.english_text(line) for line in list(job.get("log") or [])[-40:]],
                 "progress": snapshot,
                 "result": job.get("result"),
             }
@@ -4413,12 +4413,15 @@ class Library:
                 "job": job_id,
                 "kind": job.get("kind"),
                 "status": job["status"],
-                "message": job.get("message", ""),
+                "message": english.english_text(job.get("message", "")),
                 "started": job.get("started"),
                 "finished": job.get("finished"),
-                "error": job.get("error"),
-                "progress": dict(job.get("progress") or {}),
-                "log": list(job.get("log") or [])[-12:],
+                "error": english.english_text(job["error"]) if job.get("error") else None,
+                "progress": {
+                    key: english.english_text(value) if isinstance(value, str) else value
+                    for key, value in (job.get("progress") or {}).items()
+                },
+                "log": [english.english_text(line) for line in list(job.get("log") or [])[-12:]],
                 "result": job.get("result"),
             }
 

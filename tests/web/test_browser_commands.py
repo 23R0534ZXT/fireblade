@@ -1227,3 +1227,46 @@ def test_the_help_windows_open_with_their_text(page):
             assert marker.lower() in text.lower(), (act, text[:200])
         page.keyboard.press("Escape")
         page.wait_for_selector(".modal.show", state="detached")
+
+
+# -- Profiles and plugins ---------------------------------------------------------------------
+
+
+def test_an_installed_plugin_names_the_profile_of_the_next_file_previewed(
+    page, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("FIREBLADE_PLUGINS", str(tmp_path / "plugins"))
+    plugin = tmp_path / "mine.json"
+    plugin.write_text(
+        '{"name": "Badge reader", "signature": ["Badge", "Door"], "timestamp": ["Seen"], '
+        '"columns": ["Seen", "Badge", "Door"]}',
+        encoding="utf-8",
+    )
+    command(page, "profiles-plugins")
+    page.set_input_files("#plugin-input", str(plugin))
+    page.click('[data-act="plugin-install"]')
+    page.wait_for_function(
+        "document.querySelector('.modal.show .dialog').innerText.includes('Badge reader')",
+        timeout=15000,
+    )
+    page.click('.modal.show [data-act="settings-close"]')
+    log = tmp_path / "badges.csv"
+    log.write_text("Seen,Badge,Door\n2026-11-02T08:00:00Z,B-17,North\n", encoding="utf-8")
+    page.click('.toolbar .tb[data-act="import-file"]')
+    page.wait_for_selector("#import-modal.show")
+    page.set_input_files("#preview-input", str(log))
+    page.wait_for_function(
+        "document.getElementById('import-modal').innerText.includes('profile: Badge reader')",
+        timeout=20000,
+    )
+
+
+def test_a_profile_is_created_from_the_open_analysis_and_listed(page, tmp_path, monkeypatch):
+    monkeypatch.setenv("FIREBLADE_PLUGINS", str(tmp_path / "plugins"))
+    command(page, "profiles-plugins")
+    page.fill("#compat-name", "Event export")
+    page.click('[data-act="profile-create"]')
+    page.wait_for_function(
+        "document.querySelector('.modal.show .dialog').innerText.includes('Event export')",
+        timeout=15000,
+    )

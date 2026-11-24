@@ -7,6 +7,16 @@ puts in); a message added to the core without an entry here is caught by
 """
 
 ERRORS = {
+    # Disk images and volumes
+    "Taille du périphérique indisponible": "The size of the device is not available",
+    "Le case doit être stocké hors du volume analysé": "The case must be stored outside the volume being analysed",
+    "Copie tronquée : taille différente de la source": "Truncated copy: its size differs from the source",
+    "Source modifiée pendant la copie": "The source changed during the copy",
+    "Compagnons modifiés pendant la copie": "Companion files changed during the copy",
+    "Source ou compagnon modifié pendant la copie": "The source or a companion file changed during the copy",
+    "Jeu EWF incomplet : le segment {} est absent. Fournissez tous les segments de l’acquisition.": "Incomplete EWF set: segment {} is missing. Provide every segment of the acquisition.",
+    "Lecture refusée par Windows sur ce disque physique : elle exige des droits administrateur. Relancez Fireblade en tant qu’administrateur, ou analysez une image acquise (.raw / .E01) avec les droits courants.": "Windows refused to read this physical disk: it needs administrator rights. Start Fireblade as an administrator, or analyse an acquired image (.raw / .E01) with ordinary rights.",
+    "Aucun système de fichiers lisible : le conteneur est reconnu mais aucune partition exploitable n’en a été extraite (image sans table de partitions, volume chiffré ou format non pris en charge).": "No readable file system: the container is recognised but no usable partition could be extracted from it (an image without a partition table, an encrypted volume, or an unsupported format).",
     # Conditions, colour rules, visual formats
     "Opérateur inconnu : {}": "Unknown operator: {}",
     "Opérateur inconnu": "Unknown operator",

@@ -126,3 +126,39 @@ def test_every_dialog_a_menu_opens_keeps_its_buttons_on_screen(page):
                         assert edge["y"] + edge["height"] <= 760 + 1, (label, button.inner_text())
             page.evaluate("document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'))")
     assert len(seen) >= 25, "too few dialogs were reached: " + ", ".join(sorted(seen))
+
+
+def test_every_shortcut_a_menu_announces_is_wired(page):
+    """A hint that does nothing is a lie: each announced combination opens what it says."""
+    hints = page.eval_on_selector_all(
+        ".menu .item .key", "els => els.map(e => [e.closest('.item').dataset.act, e.textContent.trim()])")
+    announced = {act: keys for act, keys in hints}
+    # What each combination opens, by the command it is announced beside.
+    expected = {"import-file": ("Control+o", "#import-modal.show"),
+                "import-folder": ("Control+Shift+I", None),      # opens the browser's own folder chooser
+                "global-search": ("Control+f", "#search-modal.show"),
+                "palette": ("Control+k", "#palette-modal.show"),
+                "help-guide": ("F1", "#help-modal.show")}
+    for act, (combination, result) in expected.items():
+        assert act in announced, f"{act} no longer announces its shortcut"
+        if result is None:
+            with page.expect_file_chooser(timeout=5000):
+                page.keyboard.press(combination)
+            continue
+        page.keyboard.press(combination)
+        page.wait_for_selector(result, timeout=5000)
+        page.keyboard.press("Escape")
+        page.wait_for_selector(".modal.show", state="detached", timeout=5000)
+    # Nothing is announced that no handler owns.
+    assert set(announced) <= set(expected) | {"export-csv", "copy-row", "mark-selection", "case-save"}, announced
+
+
+def test_no_menu_offers_the_same_command_twice_or_under_two_names(page):
+    for name in page.eval_on_selector_all(".menubar .m", "els => els.map(e => e.dataset.menu)"):
+        items = page.eval_on_selector_all(
+            f'.menu[data-for="{name}"] .item',
+            "els => els.map(e => [e.dataset.act, e.textContent.replace(/Ctrl.*$/, '').trim()])")
+        acts = [act for act, _ in items]
+        assert len(acts) == len(set(acts)), (name, [a for a in acts if acts.count(a) > 1])
+        labels = [label for _, label in items]
+        assert len(labels) == len(set(labels)), (name, labels)

@@ -20,13 +20,12 @@
     <div class="m" data-menu="help"><span class="mnemonic">H</span>elp</div>
 
     <div class="menu" data-for="case">
-      <div class="item" data-act="import-file">Import evidence…<span class="key">Ctrl+O</span></div>
-      <div class="item" data-act="import-folder">Import a folder…<span class="key">Ctrl+Shift+I</span></div>
-      <div class="item" data-act="open-analyses">Open an analysis…<span class="key">Ctrl+Shift+O</span></div>
+      <div class="item" data-act="import-file">Import a file…<span class="key">Ctrl+O</span></div>
+      <div class="item" data-act="import-folder">Parse a folder…<span class="key">Ctrl+Shift+I</span></div>
       <div class="item" data-act="disk-open">Analyse a disk…</div>
       <div class="sep"></div>
       <div class="item" data-act="new-case">New case…</div>
-      <div class="item" data-act="case-save">Save case</div>
+      <div class="item" data-act="case-save">Save case<span class="key">Ctrl+S</span></div>
       <div class="item" data-act="close-case">Close the case</div>
       <div class="item" data-act="case-history">History and recovery…</div>
       <div class="item" data-act="cases-list">Cases…</div>
@@ -71,20 +70,20 @@
       <div class="item" data-act="group-column">Group by…</div>
       <div class="item" data-act="summaries">Group summaries and order…</div>
       <div class="item" data-act="expand-groups">Expand every group</div>
-      <div class="item" data-act="collapse-groups">Collapse every group<span class="key">Ctrl+K</span></div>
+      <div class="item" data-act="collapse-groups">Collapse every group</div>
       <div class="item" data-act="columns">Columns…</div>
       <div class="item" data-act="row-height">Row height…</div>
-      <div class="item" data-act="reset-widths">Reset the widths<span class="key">Ctrl+R</span></div>
+      <div class="item" data-act="reset-widths">Reset the widths</div>
       <div class="sep"></div>
       <div class="item" data-act="sort-priority">Multi-column sort…</div>
       <div class="item" data-act="details-toggle">Row details</div>
       <div class="sep"></div>
-      <div class="item" data-act="open-analyses">Open analyses…<span class="key">Ctrl+Shift+P</span></div>
+      <div class="item" data-act="open-analyses">Open analyses…</div>
       <div class="item" data-act="messages">Messages…</div>
       <div class="item" data-act="preferences">Preferences…</div>
       <div class="sep"></div>
       <div class="item" data-act="palette">Commands…<span class="key">Ctrl+K</span></div>
-      <div class="item" data-act="next-tab">Next analysis<span class="key">Ctrl+Tab</span></div>
+      <div class="item" data-act="next-tab">Next analysis</div>
       <div class="item" data-act="previous-tab">Previous analysis</div>
       <div class="item" data-act="workspace-guide">Organize the workspace…</div>
       <div class="item" data-act="profiles-plugins">Profiles and plugins…</div>
@@ -93,18 +92,16 @@
     </div>
 
     <div class="menu" data-for="filters">
-      <div class="item" data-act="expression">Text expression…</div>
-      <div class="item" data-act="expression-andor">AND / OR / NOT editor…</div>
+      <div class="item" data-act="expression-andor">Advanced filter (AND / OR / NOT)…</div>
       <div class="item" data-act="filter-active-cell">Filter on the active cell</div>
       <div class="item" data-act="add-filter">Add a filter…</div>
-      <div class="item" data-act="clear-filters">Clear the filters<span class="key">Ctrl+E</span></div>
+      <div class="item" data-act="clear-filters">Clear the filters</div>
       <div class="sep"></div>
       <div class="item" data-act="global-search">Search across every analysis…<span class="key">Ctrl+F</span></div>
     </div>
 
     <div class="menu" data-for="analysis">
-      <div class="item" data-act="views">Save the view…<span class="key">Ctrl+S</span></div>
-      <div class="item" data-act="view-load">Load a view…<span class="key">Ctrl+L</span></div>
+      <div class="item" data-act="views">Saved views…</div>
       <div class="item" data-act="layout-export">Export the layout…</div>
       <div class="item" data-act="layout-import">Import a layout…</div>
       <div class="sep"></div>
@@ -159,8 +156,8 @@
       </svg>Export</div>
     <div class="tbsep"></div>
     <div class="tb" data-act="case-save">Save case</div>
-    <div class="tb" data-act="import-evidence">Import evidence</div>
-    <div class="tb" data-act="parse-folder">Parse a folder</div>
+    <div class="tb" data-act="import-folder">Parse a folder</div>
+    <div class="tb" data-act="disk-open">Analyze a disk</div>
     <div class="tb" data-act="display-settings">Workspace…</div>
     <div class="tb" data-act="global-search">Global search</div>
     <div class="tb" data-act="rules">Rules</div>
@@ -187,7 +184,7 @@
     <div class="tab" data-tab="cases">Cases</div>
     <div class="tab" data-tab="timeline">Timeline &amp; correlations</div>
     <div class="tab" data-tab="ioc">IOC hunting</div>
-    <div class="tab" data-tab="hayabusa">Hayabusa + AI</div>
+    <div class="tab" data-tab="hayabusa">Hayabusa findings</div>
     <div class="tab" data-tab="actions">Actions &amp; tracking</div>
     <div class="tab" data-tab="graph">Attack graph</div>
     <div class="tab" data-tab="evtx">EVTX detection</div>
@@ -313,7 +310,7 @@
           <button class="btn" id="hayabusa-run">Run the detection</button>
           <button class="btn" id="detrules-open" title="Enable, disable or edit the detection rules">Detection rules…</button>
           <div class="info" id="hayabusa-summary">No detection run yet.</div>
-          <div class="note" style="margin-left:auto">No AI assistant is connected in this edition: the detection runs locally on the server.</div>
+          <div class="note" style="margin-left:auto">The detection runs locally, in this container: nothing leaves the machine.</div>
         </div>
         <div class="filterbar">
           <input class="search" id="finding-search" placeholder="filter: rule, host, event id…"
@@ -358,8 +355,8 @@
           <p>Windows artifacts, Linux logs and CatScale collections.</p>
         </div>
         <div class="filterbar">
-          <button class="btn" data-act="import-file">Import evidence…</button>
-          <button class="btn" data-act="import-folder">Import a folder…</button>
+          <button class="btn" data-act="import-file">Import a file…</button>
+          <button class="btn" data-act="import-folder">Parse a folder…</button>
           <button class="btn" id="retry-open" title="A file that could not be read: try another reader">Read again with a reader…</button>
           <button class="btn" id="coverage-open" data-act="coverage-open" title="Reopen every analysis and check what could not be attested">Full report</button>
           <button class="btn" data-act="case-history">History…</button>

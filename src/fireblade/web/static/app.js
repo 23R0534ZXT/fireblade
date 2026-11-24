@@ -1977,7 +1977,7 @@ function showHelp(name) {
       "3. Colour rules. Analysis > Colour rules… writes rules with this analysis; the second",
       "tab of the same dialog edits the book shared by every analysis of the instance.",
       "Visual formats (bar, two- and three-colour scale, icons) are set in the same rule.",
-      "4. Detection. Hayabusa + AI runs the local detection, its rules are edited beside the",
+      "4. Detection. Hayabusa findings runs the local detection, its rules are edited beside the",
       "pack, and its findings open as a table, a clock, a heat map or a chain.",
       "5. Timeline. Every dated row of the case, by source: drag to select a duration,",
       "shift-drag to pan, wheel to zoom, export a verified CSV with its receipt.",
@@ -6149,15 +6149,37 @@ function wire() {
     if (event.target.id === "about-modal") closeModals();
   });
 
+  // The shortcuts the menus announce, and no others: a hint that does nothing is a lie.
+  // Only combinations a page may own are used; the browser keeps Ctrl+R, Ctrl+L, Ctrl+Tab...
+  const SHORTCUTS = [
+    { key: "o", act: "import-file" },
+    { key: "i", shift: true, act: "import-folder" },
+    { key: "s", act: "case-save" },
+    { key: "e", shift: true, act: "export-csv" },
+    { key: "f", act: "global-search" },
+    { key: "k", act: "palette" },
+    { key: "b", alt: true, act: "mark-selection" },
+  ];
   document.addEventListener("keydown", (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "i") {
-      event.preventDefault(); openFolderPicker(); return;
+    const command = event.ctrlKey || event.metaKey;
+    if (command) {
+      const shortcut = SHORTCUTS.find((item) => item.key === event.key.toLowerCase()
+        && !!item.shift === event.shiftKey && !!item.alt === event.altKey);
+      if (shortcut) {
+        event.preventDefault();
+        act(shortcut.act).catch((error) => say(error.message, true));
+        return;
+      }
+      // Ctrl+C copies the selected rows, unless the analyst is copying text they selected.
+      if (event.key.toLowerCase() === "c" && !event.shiftKey && !event.altKey
+          && !(window.getSelection && String(window.getSelection())) && !/^(INPUT|TEXTAREA|SELECT)$/.test(
+            (document.activeElement || {}).tagName || "") && state.selection && state.selection.size) {
+        event.preventDefault();
+        act("copy-row").catch((error) => say(error.message, true));
+        return;
+      }
     }
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-      event.preventDefault();
-      openPalette();
-      return;
-    }
+    if (event.key === "F1") { event.preventDefault(); act("help-guide").catch(() => {}); return; }
     if (event.key === "F5") { event.preventDefault(); loadCases(); }
     if (event.key === "Escape") closeModals();
     if (event.key === "/" && document.activeElement.tagName !== "INPUT") {
@@ -6238,13 +6260,11 @@ async function act(name, node) {
       break;
     case "import-file": openImportDialog(); break;
     case "import-folder": openFolderPicker(); break;
-    case "import-evidence": openImportDialog(); break;
     case "import-view-file": await viewCollectedFile(); break;
     case "import-copy-unread": await copyUnprocessedFiles(); break;
     case "import-export-list": exportCollectedList(); break;
     case "import-park": await parkCollectedFile(); break;
     case "import-delete": await deleteCollectedFile(); break;
-    case "parse-folder": $("import-layout").value = "artifacts"; openImportDialog(); break;
     case "open-view-menu": openMenu("view"); break;
     case "preview-choose": $("preview-input").click(); break;
     case "preview-path": await previewServerPath(); break;
@@ -6320,7 +6340,6 @@ async function act(name, node) {
     case "bookmark-note": await bookmarkNote(); break;
     case "mark-selection": await markSelection("bookmarked"); break;
     case "integrity": await openIntegrity(); break;
-    case "view-load": await openViewsDialog(); break;
     case "next-tab": stepAnalysis(1); break;
     case "previous-tab": stepAnalysis(-1); break;
     case "expand-groups": expandEveryGroup(); break;
@@ -6346,7 +6365,6 @@ async function act(name, node) {
     case "report-build-pdf": await buildReport(true); break;
     case "columns": openColumnManager(); break;
     case "preferences": await openPreferences(); break;
-    case "expression": openExpressionDialog(); break;
     case "expr-apply": applyExpression(); break;
     case "expr-clear":
       state.expression = null;

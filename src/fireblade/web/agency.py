@@ -34,6 +34,7 @@ from starlette.background import BackgroundTask
 
 from fireblade.core.case_destruction import destroy_case, outside_entries
 from fireblade.core.investigations import InvestigationLibrary
+from fireblade.web import english
 from fireblade.web.updates import Checker
 
 STATIC = Path(__file__).with_name("static")
@@ -492,8 +493,6 @@ class Agency:
             attachments=payload.get("attachments") or [],
         )
         try:
-            from fireblade.web import english
-
             english.rewrite(certificate)
         except FileNotFoundError:
             pass

@@ -199,7 +199,7 @@ def inventory():
         if "__pycache__" in directory:
             continue
         for name in sorted(files):
-            if not name.endswith(".py") or name == "i18n.py":
+            if not name.endswith(".py") or name in ("i18n.py", "i18n_documents.py"):
                 continue
             path = os.path.join(directory, name)
             relative = os.path.relpath(path, ROOT)

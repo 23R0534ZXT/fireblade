@@ -419,6 +419,11 @@ class Agency:
                               certificate_path=certificate, case_name=data.get("name", ""),
                               case_id=identifier, extras=extras,
                               attachments=payload.get("attachments") or [])
+        try:
+            from fireblade.web import english
+            english.rewrite(certificate)
+        except FileNotFoundError:
+            pass
         if record.get("folder_removed"):
             self.volumes.remove(identifier)
         reported = self.host_certificates/certificate.name

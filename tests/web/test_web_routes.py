@@ -959,7 +959,7 @@ def test_the_client_report_is_the_one_the_client_receives(service):
     assert made["actions"] == 0 and made["indicators"] >= 1
     path = library.library.folder(identifier) / "reports" / made["name"]
     text = path.read_text(encoding="utf-8")
-    assert "CONFIDENTIEL" in text
+    assert "CONFIDENTIAL" in text and "CONFIDENTIEL" not in text
     assert "Rapport client de test" in text
     assert "SRV-DC01" in text, "the declared machine is in the client report"
     assert "192.0.2.66" in text, "a tracked indicator is in the client report"

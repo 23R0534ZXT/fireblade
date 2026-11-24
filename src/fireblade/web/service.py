@@ -30,6 +30,7 @@ from fireblade.core.errors import OperationCancelled
 from fireblade.core.sessions import read_session
 from fireblade.core.timeline import TimelineStore
 from fireblade.core.workspace_reader import WorkspaceReader
+from fireblade.web import english
 
 # Columns the grid always shows before the analysis own columns, in display order.
 META_COLUMNS = ["__row_id"]
@@ -1831,6 +1832,7 @@ class Library:
                               certificate_path=certificate, case_name=data.get("name", ""),
                               case_id=identifier, attachments=list(attachments or []),
                               extras=extras)
+        _in_english(certificate)
         return {"id": record.get("id"), "method": record.get("method"),
                 "files": len(record.get("files") or []),
                 "outside": int(record.get("outside") or 0),
@@ -1991,6 +1993,7 @@ class Library:
         target = folder / "reports" / (datetime.now(timezone.utc).strftime("report-%Y%m%d-%H%M%S") + ".html")
         target.parent.mkdir(parents=True, exist_ok=True)
         write_report(target, report, snapshots)
+        _in_english(target)
         return {"name": target.name, "records": report.get("records", 0),
                 "errors": report.get("errors", []), "url": f"/api/cases/{identifier}/reports/{target.name}"}
 
@@ -2047,7 +2050,7 @@ class Library:
             try:
                 from fireblade.core import coverage as coverage_core
 
-                coverage = coverage_core.load_report(self._coverage_path(identifier))
+                coverage = english.data(coverage_core.load_report(self._coverage_path(identifier)))
             except (OSError, ValueError, ServiceError):
                 coverage = None
         document = client_report_core.build(
@@ -2058,6 +2061,7 @@ class Library:
         target = folder / "reports" / (datetime.now(timezone.utc).strftime("client-%Y%m%d-%H%M%S") + ".html")
         target.parent.mkdir(parents=True, exist_ok=True)
         client_report_core.write(target, document, pdf=False)
+        _in_english(target)
         if pdf:
             pdf_target = target.with_suffix(".pdf")
             text_pdf(target.read_text(encoding="utf-8", errors="replace"), pdf_target,
@@ -2322,7 +2326,7 @@ class Library:
             saved = True
         except (OSError, ValueError):
             saved = False
-        return {"report": report, "counts": report.get("counts") or {},
+        return {"report": english.data(report), "counts": report.get("counts") or {},
                 "profiles": list(coverage_core.EXPECTED),
                 "families": list(coverage_core.EXPECTED.get(expected) or []),
                 "analyses": len(snapshots), "saved": saved}
@@ -2335,7 +2339,7 @@ class Library:
         if not path.is_file():
             raise ServiceError("No coverage check has been kept for this case yet.")
         report = coverage_core.load_report(path)
-        return {"report": report, "counts": report.get("counts") or {},
+        return {"report": english.data(report), "counts": report.get("counts") or {},
                 "profiles": list(coverage_core.EXPECTED), "saved": True}
 
     def coverage_export(self, identifier: str, as_csv: bool = False) -> bytes:
@@ -2344,7 +2348,7 @@ class Library:
         path = self._coverage_path(identifier)
         if not path.is_file():
             raise ServiceError("Run the coverage check before exporting its report.")
-        report = coverage_core.load_report(path)
+        report = english.data(coverage_core.load_report(path))
         target = Path(tempfile.mkdtemp(prefix="fbcoverage-")) / ("coverage.csv" if as_csv else "coverage.json")
         coverage_core.export_report(target, report)
         return target.read_bytes()
@@ -3244,7 +3248,7 @@ class Library:
             self._jobs[job_id] = job
 
         def note(text):
-            text = str(text or "").strip()
+            text = english.english_text(str(text or "").strip())
             with self._lock:
                 if text:
                     job["message"] = text[:300]
@@ -3687,6 +3691,16 @@ def _labels_for_export(header, case) -> list[str]:
     labels = column_labels(case)
     own = list(case.headers)
     return [labels[own.index(name)] if name in own else name for name in header]
+
+
+def _in_english(path) -> None:
+    """The document a generator wrote, rewritten in English; one that is missing is skipped."""
+    from fireblade.web import english
+
+    try:
+        english.rewrite(path)
+    except FileNotFoundError:
+        pass
 
 
 def column_labels(case) -> list[str]:

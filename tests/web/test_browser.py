@@ -6,76 +6,31 @@ it, and never when a hand pressed it. These tests press.
 
 They need Playwright and its Chromium; without them the file is skipped, never failed.
 """
-import os
-import socket
-import threading
-import time
-
 import httpx
 import pytest
 
-pytest.importorskip("playwright.sync_api")
-uvicorn = pytest.importorskip("uvicorn")
+from fireblade.core.investigations import InvestigationLibrary
 
-from playwright.sync_api import sync_playwright  # noqa: E402
-
-from fireblade.core.investigations import InvestigationLibrary  # noqa: E402
-from fireblade.web.server import create_app  # noqa: E402
-
-
-def _free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+from _browser import browser_page, serving  # noqa: E402
 
 
 @pytest.fixture(scope="module")
 def host(tmp_path_factory):
     root = tmp_path_factory.mktemp("browser-cases")
     InvestigationLibrary(root).create("Browser case", "driven by a test", "windows")
-    port = _free_port()
-    server = uvicorn.Server(uvicorn.Config(create_app(root), host="127.0.0.1", port=port,
-                                           log_level="warning"))
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    deadline = time.monotonic() + 15
-    while not server.started and time.monotonic() < deadline:
-        time.sleep(0.05)
-    assert server.started, "the Host did not start"
-    base = f"http://127.0.0.1:{port}"
-    identifier = httpx.get(f"{base}/api/cases").json()["cases"][0]["id"]
-    csv_text = "Time,Host,User,Event\n2026-11-01T10:00:00Z,PC01,alice,4624\n2026-11-01T10:05:00Z,PC01,bob,4625\n"
-    sent = httpx.post(f"{base}/api/cases/{identifier}/upload", params={"organization": "files"},
-                      files={"file": ("events.csv", csv_text.encode(), "text/csv")})
-    assert sent.status_code == 200, sent.text
-    yield f"{base}/"
-    server.should_exit = True
-    thread.join(timeout=10)
+    with serving(root) as base:
+        identifier = httpx.get(f"{base}/api/cases").json()["cases"][0]["id"]
+        csv_text = "Time,Host,User,Event\n2026-11-01T10:00:00Z,PC01,alice,4624\n2026-11-01T10:05:00Z,PC01,bob,4625\n"
+        sent = httpx.post(f"{base}/api/cases/{identifier}/upload", params={"organization": "files"},
+                          files={"file": ("events.csv", csv_text.encode(), "text/csv")})
+        assert sent.status_code == 200, sent.text
+        yield base
 
 
 @pytest.fixture()
 def page(host):
-    try:
-        playwright = sync_playwright().start()
-        # FIREBLADE_CHROMIUM points at a browser Playwright did not download itself.
-        executable = os.environ.get("FIREBLADE_CHROMIUM") or None
-        browser = playwright.chromium.launch(executable_path=executable)
-    except Exception as exc:  # noqa: BLE001 - no browser installed here
-        pytest.skip(f"no Chromium available: {exc}")
-    page = browser.new_page(viewport={"width": 1400, "height": 850})
-    errors = []
-    page.on("pageerror", lambda error: errors.append(str(error)))
-    page.goto(host)
-    page.wait_for_selector("#menubar")
-    # Open the case, as an analyst does: from the Cases tab.
-    page.click('.tabs .tab:text-is("Cases")')
-    page.dblclick('tr:has(td:text-is("Browser case")) td >> nth=0')
-    page.wait_for_selector("#body tr[data-row]", timeout=15000)
-    page.click('.tabs .tab:text-is("Analyses")')
-    yield page
-    assert not errors, errors
-    browser.close()
-    playwright.stop()
+    with browser_page(host, "Browser case") as opened:
+        yield opened
 
 
 def _press(page, selector):

@@ -1862,6 +1862,13 @@ EN = {
     "Étiquettes du nœud": "Node tags",
 }
 
+# The documents' own sentences: added to the table without replacing a label that is already there.
+from fireblade.core.i18n_documents import DOCUMENTS as _DOCUMENTS  # noqa: E402
+from fireblade.core.i18n_documents import PHRASES as _PHRASES  # noqa: E402
+
+for _french, _english in _DOCUMENTS.items():
+    EN.setdefault(_french, _english)
+
 LANGUAGES = ("en", "fr")
 SOURCE_LANGUAGE = "fr"
 DEFAULT = "en"
@@ -1935,6 +1942,29 @@ def lookup(text):
 def english(text):
     """English display text, whatever language is on: the reference form."""
     return lookup(text)
+
+
+def english_text(text):
+    """English for a sentence that also carries values: the whole text first, then its phrases.
+
+    Reports put their values inside their sentences (``Case X · Référence client Y``), so the
+    whole text can never be a key. The known phrases are replaced in place, the longest
+    first, and everything else (names, dates, hashes) is left exactly as written. A template
+    that matched only the front of the sentence leaves its tail to the phrases as well.
+    """
+    if not text:
+        return text
+    result = lookup(text)
+    if result == text and text.strip() != text:
+        inner = lookup(text.strip())
+        if inner != text.strip():
+            result = text[:len(text) - len(text.lstrip())] + inner + text[len(text.rstrip()):]
+    # French typography puts a no-break space before a colon: phrases are written with a plain one.
+    result = result.replace("\u00a0", " ").replace("\u202f", " ")
+    for phrase in sorted(_PHRASES, key=len, reverse=True):
+        if phrase in result:
+            result = result.replace(phrase, _PHRASES[phrase])
+    return result
 
 
 def has_english(text):

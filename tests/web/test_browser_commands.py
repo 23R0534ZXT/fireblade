@@ -125,18 +125,21 @@ def test_the_bookmarks_button_keeps_only_the_marked_rows(page):
 
 
 def test_a_note_is_added_then_replaced(page):
+    """A selection's note is the note of its bookmarks, as in the desktop."""
+    mark = "#body tr[data-row] >> nth=3 >> .cb"
     select(page, 3)
     command(page, "note-selection")
     answer(page, "first lead")
-    page.wait_for_selector("#body td.noted")
-    assert "first lead" in page.get_attribute("#body td.noted", "title")
+    page.wait_for_function("document.querySelectorAll('#body .cb.marked').length === 1")
+    assert page.get_attribute(mark, "title") == "first lead"
     command(page, "note-selection")
     answer(page, "second lead")
-    page.wait_for_function("document.querySelector('#body td.noted').title.includes('second lead')")
-    assert "first lead" in page.get_attribute("#body td.noted", "title")
+    page.wait_for_function(
+        "document.querySelector('#body .cb.marked').title === 'first lead\\nsecond lead'"
+    )
     command(page, "note-replace")
     answer(page, "only this")
-    page.wait_for_function("document.querySelector('#body td.noted').title === 'only this'")
+    page.wait_for_function("document.querySelector('#body .cb.marked').title === 'only this'")
 
 
 def test_copy_the_rows_puts_them_on_the_clipboard(page):
@@ -605,3 +608,87 @@ def test_the_advanced_filter_applies_a_regular_expression_and_a_date_operator(pa
     dialog.locator('[data-act="expr-apply"]').click()
     page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 12')")
     assert {v[:10] for v in _column_values(page, "Time")} == {"2026-11-01"}
+
+
+# -- Exporter --------------------------------------------------------------------------------
+
+
+def _download(page, act, tmp_path, name):
+    with page.expect_download(timeout=30000) as download:
+        command(page, act)
+    saved = tmp_path / name
+    download.value.save_as(str(saved))
+    return saved
+
+
+def test_export_csv_gives_the_rows_the_grid_shows_with_the_names_on_screen(page, tmp_path):
+    import csv
+
+    command(page, "add-filter")
+    answer(page, "User")
+    answer(page, "bob")
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 20')")
+    saved = _download(page, "export-csv", tmp_path, "grid.csv")
+    with open(saved, encoding="utf-8-sig", newline="") as handle:
+        table = list(csv.reader(handle))
+    # The export carries the grid's columns, then the desktop's three provenance columns.
+    assert table[0][:5] == ["Time", "Host", "User", "Event", "Path"], table[0]
+    assert table[0][5:] == ["Fireblade_SourceRecord", "Fireblade_Bookmarked", "Fireblade_Note"]
+    assert len(table) == 21, len(table)
+    assert {row[2] for row in table[1:]} == {"bob"}
+    assert table[1][4].startswith("C:\\Users\\bob\\"), "a value is exported as it is in the source"
+
+
+def test_export_xlsx_is_a_workbook_with_the_same_rows(page, tmp_path):
+    openpyxl = pytest.importorskip("openpyxl")
+    saved = _download(page, "export-xlsx", tmp_path, "grid.xlsx")
+    sheet = openpyxl.load_workbook(saved).active
+    rows = list(sheet.iter_rows(values_only=True))
+    assert list(rows[0])[:5] == ["Time", "Host", "User", "Event", "Path"], rows[0]
+    assert len(rows) == ROWS + 1
+    assert {row[2] for row in rows[1:]} == {"alice", "bob", "carol"}
+
+
+def test_export_annotations_lists_the_bookmarks_and_the_notes(page, tmp_path):
+    select(page, 0, 1)
+    command(page, "mark-selection")
+    page.wait_for_function("document.querySelectorAll('#body .cb.marked').length === 2")
+    select(page, 2)
+    command(page, "note-selection")
+    answer(page, "check this one")
+    page.wait_for_function("document.querySelectorAll('#body .cb.marked').length === 3")
+    saved = _download(page, "export-annotations", tmp_path, "annotations.out")
+    text = saved.read_text(encoding="utf-8-sig")
+    assert "check this one" in text
+    assert text.count("check this one") == 1 and text.count("bookmarked") == 2, text[:600]
+
+
+def test_a_session_is_saved_and_opened_again(page, tmp_path):
+    saved = _download(page, "session-save", tmp_path, "case.fireblade-session")
+    import json
+
+    document = json.loads(saved.read_text(encoding="utf-8"))
+    assert document["format"] == "fireblade-session"
+    assert document["documents"], "the session names the analyses"
+    with page.expect_file_chooser() as chooser:
+        command(page, "session-open")
+    chooser.value.set_files(str(saved))
+    page.wait_for_function("document.getElementById('status').innerText.length > 0")
+    page.wait_for_function(f"document.getElementById('pageinfo').innerText.includes('/ {ROWS}')")
+
+
+def test_the_portable_case_is_a_package_the_host_can_import_back(page, server, tmp_path):
+    import zipfile
+
+    saved = _download(page, "export-portable", tmp_path, "case.fireblade")
+    assert zipfile.is_zipfile(saved)
+    with zipfile.ZipFile(saved) as package:
+        names = package.namelist()
+    assert any(name.endswith("case.json") or "manifest" in name for name in names), names[:10]
+    base, _root, _evidence = server
+    answer = httpx.post(
+        f"{base}/api/cases/import-package",
+        files={"file": ("case.fireblade", saved.read_bytes(), "application/octet-stream")},
+        timeout=60,
+    )
+    assert answer.status_code == 200, answer.text

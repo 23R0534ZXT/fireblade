@@ -1887,18 +1887,16 @@ async function noteSelection(mode) {
       : "Note to add to the selected rows",
     note: `${limited.length} row(s)` });
   if (text === null || !text.trim()) return;
+  // As in the desktop, the note of a selection is the note of its bookmarks: the rows are
+  // marked, a note is added after the existing one or replaces it, and the export of the
+  // bookmarks and notes carries it. A plain mark's own text is not a note.
+  const plain = (note) => (note === "bookmarked" ? "" : note || "");
   try {
-    const current = mode === "append"
-      ? await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/cellnotes`,
-                      { row_ids: limited })
-      : { notes: {} };
     for (const id of limited) {
-      const before = (current.notes && current.notes[String(id)] && current.notes[String(id)]["0"]) || "";
-      const note = mode === "append" && before ? `${before} ${text.trim()}` : text.trim();
-      await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/cellnote`,
-                    { row_id: id, column: 0, note });
+      const before = plain(state.bookmarks.get(String(id)));
+      const note = mode === "append" && before ? `${before}\n${text.trim()}` : text.trim();
+      await postBookmark(id, note);
     }
-    await loadCellNotes();
     renderGrid();
     say(`${limited.length} row(s) noted`);
   } catch (error) {
@@ -5268,7 +5266,7 @@ function renderGrid() {
       ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"`
       : "";
     return `<tr data-row="${escapeHtml(String(id))}" class="${rowSelected(id) ? "sel" : ""}"${style}>
-      <td class="markcell"><span class="cb ${marked}" title="Bookmark this row"></span></td>${cells}</tr>`;
+      <td class="markcell"><span class="cb ${marked}" title="${marked ? escapeHtml(String(state.bookmarks.get(String(id)) || "Bookmarked")) : "Bookmark this row"}"></span></td>${cells}</tr>`;
   }).join("");
 
   const from = state.total ? state.offset + 1 : 0;

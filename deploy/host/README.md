@@ -130,5 +130,4 @@ docker run --rm -v /srv/fireblade/cases:/data/cases fireblade:host \
 It opens every case in the library and counts its rows: a real number from a real
 DuckDB file, with no browser involved.
 
-> The Host edition is a **beta of a beta**: no published tag, no upgrade path. See
-> [`../../docs/host/BETA.md`](../../docs/host/BETA.md).
+> What the Host's tests verify, and what they do not: [`../../docs/host/STATUS.md`](../../docs/host/STATUS.md).

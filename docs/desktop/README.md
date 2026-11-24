@@ -44,4 +44,4 @@ The gate is the same command CI runs. `scripts/dev_check --quick` skips the suit
 
 The AI assistant, the .NET Timeline Explorer plugin, French, the window manager
 (detach, dock, splash) and the file-manager gestures. The Host has the rest of the
-feature set, in a browser, and is a **beta of a beta** — see [../host](../host).
+feature set, in a browser — see [../host](../host).

@@ -2,109 +2,72 @@
 
 [![Windows validation](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
 
-**A local DFIR workspace for Windows artifacts, Linux logs and tabular evidence — with an
-analyst assistant that runs on your own machine.**
+**A local DFIR workspace for Windows artifacts, Linux logs and tabular evidence.**
 
-Fireblade parses a collected folder, keeps every file accounted for, and puts the results
-in one workspace: filterable tables, a cross-analysis timeline, indicator hunting,
-detection results grouped into findings, an attack graph, and a case that can be saved,
-archived and reopened. Everything runs locally: no server, no upload, no cloud account,
-no API key.
+Fireblade reads a collected folder, keeps every file accounted for, and puts the results in
+one workspace: filterable tables, a cross-analysis timeline, indicator hunting, detections
+grouped into findings, an attack graph, and a case that can be saved, moved and erased
+verifiably. Everything runs on the analyst's own machine: no upload, no cloud account, no
+API key, no telemetry.
 
-The same engine ships in two editions: the **Host**, maintained, and the **Desktop**,
-frozen at 0.7.9 — its window still works, but it no longer receives changes.
+![The Fireblade Host workspace: a case of Linux logs](docs/assets/host/host-workspace.png)
 
-## Two editions, one engine
+## Editions
 
-| | **Desktop** | **Host** |
-| --- | --- | --- |
-| Status | **frozen — 0.7.9** | **maintained — 0.8.0** |
-| Runs on | Windows x64, one unzipped folder | a Linux container, a browser |
-| Interface | Qt window, English | web page, English |
-| Cases | on disk, portable `.fireblade` | one container per case, same format |
-| For | one analyst at a workstation | one analyst (or a small team) on a server |
+| | **Host** | **Desktop** | **Server** |
+| --- | --- | --- | --- |
+| Status | **maintained** | frozen at 0.7.9 | planned |
+| Runs on | a Linux container, in a browser | Windows x64 | a Linux host with Docker |
+| Users | one analyst, on their own machine | one analyst | several analysts, one case at a time each |
+| Cases | one container per case | files on disk | one container per case |
+| Access control | none — local use only | none | accounts, roles, audit log |
 
-> ### The Host edition is a beta of a beta
-> It exists, it imports real evidence, and it was walked screen by screen against the
-> desktop. It is **not** a production deliverable: no support, no migration promise, its
-> HTTP API may change between two commits, and there is no published image or upgrade
-> path. Do not put an investigation you cannot redo in it.
-> Read [docs/host/BETA.md](docs/host/BETA.md) before you rely on anything there.
+All editions share the same engine (`src/fireblade/core`), the same readers and the same case
+format: a case written by one opens in another.
 
-| Desktop | Host |
-| --- | --- |
-| ![Desktop workspace](docs/assets/fireblade-workspace.png) | ![Host workspace](docs/assets/host/host-workspace.png) |
+The **Host** is the Desktop's workspace served to a browser from a container. It is meant to
+run on the analyst's own machine and to listen on it alone; it has no accounts, and nothing in
+it is designed to be exposed to a network. The **Server** edition, for collaboration, is
+specified but not started — see [Roadmap](#roadmap).
 
-*The same workspace in both editions — artifact tree, filterable table, per-column
-filters, row details: the desktop's Qt window on the left, the Host's page on the right,
-each on its own case.*
+## Host
 
-## Desktop edition — frozen at 0.7.9
-
-The Windows window is no longer updated: this is its last published build, kept for the
-cases it already reads. Everything new happens in the Host edition below.
-
-**[Download Fireblade 0.7.9 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip)**
-· [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.7.9)
-· [Windows qualification](https://github.com/23R0534ZXT/fireblade/actions/runs/44548361173)
-
-Unzip, then run **Fireblade.exe**. There is nothing else to install: Python, Qt, the
-parsers and the .NET readers are inside the folder. The assistant is optional and
-downloaded once.
-
-1. Create a case.
-2. Point Fireblade at a collected folder (**Parse a folder…**), a file (**Import a
-   file…**) or a disk image (**Analyze a disk…**).
-3. Open the Imports tab to see what was read and what was not, then work the table or the
-   timeline.
-4. Optional: **Set up the local model…** in the Hayabusa + AI tab.
-
-Sample data, if you have nothing at hand: the
-[sample collection](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip)
-(a real Windows 11 machine: 183 event logs, Amcache, 60 Prefetch entries, 251 scheduled
-tasks) · the
-[discovery pack](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
-· the
-[raw artifact pack](https://github.com/23R0534ZXT/fireblade/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip)
-· a [3 GiB CSV](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/Fireblade-test-3GiB.zip).
-
-The executable is **unsigned**: Windows may show a SmartScreen prompt on first launch
-(*More info* → *Run anyway*), and Smart App Control on a fresh Windows 11 may refuse it.
-Verify the download against the SHA-256 in the release notes.
-
-The desktop's own documentation lives in [docs/desktop](docs/desktop): user guides,
-release notes, architecture, plugins.
-
-## Host edition — beta of a beta
-
-The desktop's engine behind HTTP: the same `src/fireblade/core`, the same readers, the
-same case format — without Qt, without a Windows session. One analyst, one container
-per case, a browser as the window.
+### Run it
 
 ```bash
 mkdir -p ~/fireblade/cases
-docker run -d --name fireblade -p 8080:8080 \
+docker run -d --name fireblade -p 127.0.0.1:8080:8080 \
     -v ~/fireblade/cases:/data/cases \
     ghcr.io/23r0534zxt/fireblade:latest
-# then open http://localhost:8080
 ```
 
-That is the whole install: nothing to clone, nothing to build. **`/data/cases` is the path
-*inside* the container** — on your machine the cases are in `~/fireblade/cases`, which is
-what you mount. Without `-v`, Docker gives the container a private volume and your cases
-are nowhere you can reach: `docker inspect fireblade --format '{{range .Mounts}}{{.Source}}{{end}}'`
-tells you where they went.
+Open <http://localhost:8080>. `/data/cases` is the path inside the container; the cases are in
+`~/fireblade/cases` on your machine. Tags: `:latest` is the newest release, `:0.8.1` pins one,
+`:edge` follows `main`. To build from a clone: `docker build -t fireblade:host .`.
 
-`:latest` is the newest release, `:0.8.0` pins one, `:edge` follows `main`. Building from
-source stays one command: `docker build -t fireblade:host .`.
+The image carries the .NET 10 runtime and the thirteen pinned readers, so it reads the same
+artifacts as the Desktop. A case written by the Desktop opens as soon as its folder is in
+`/data/cases`.
 
-One container per case — the 0.8 shape: a driver creates a container for each case opened,
-mounts that case's volume alone, and takes the container and the volume with the case when
-it is erased. The certificate is written outside the volumes.
+### One container per case
+
+The default deployment above serves every case from one container. For isolation, run the
+driver: it creates a container for each case that is opened, mounts that case's volume and
+nothing else, and removes the container and the volume when the case is erased. The
+destruction certificate is written outside the volumes.
+
+```mermaid
+flowchart LR
+    B[Browser] --> D[Driver<br/>lists, opens, erases]
+    D -->|/case/id1/| C1[Case container 1<br/>volume: case 1]
+    D -->|/case/id2/| C2[Case container 2<br/>volume: case 2]
+    D -.->|docker API| E[(Docker engine)]
+    D --> P[(Certificates<br/>outside the volumes)]
+```
 
 ```bash
 docker network create fireblade-cases 2>/dev/null || true
-docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
+docker run -d --name fireblade-driver -p 127.0.0.1:8080:8080 --network fireblade-cases \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /srv/fireblade/volumes:/data/volumes \
     -v /srv/fireblade/certificates:/data/certificates \
@@ -114,188 +77,116 @@ docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
       --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
       --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
       --host 0.0.0.0 --port 8080
-# the driver's page lists the cases; each opens under /case/<id>/
 ```
 
-From a clone, the same driver comes with its compose:
-`docker compose -f deploy/host/docker-compose.driver.yml up -d --build`.
+From a clone: `docker compose -f deploy/host/docker-compose.driver.yml up -d --build`. The driver
+mounts the Docker socket, which is root on the machine: run it only where that is acceptable.
+Deployment notes and the upgrade recipe: [deploy/host](deploy/host/README.md).
 
-The image carries the .NET 10 runtime and the thirteen pinned readers, so it reads the
-same artifacts as the desktop. A case written by the desktop opens as soon as its folder
-is in `/data/cases`.
+### What you can do
 
-![Timeline build in the Host, with its progress bar](docs/assets/host/host-timeline-progress.png)
+- **Import** a file, a folder (sent from the browser), a mounted volume or a disk image. Every
+  file is hashed, copied into the case and read by the matching reader; the Imports tab says
+  which files were read, by which reader, and why one was not.
+- **Investigate a table**: per-column filters, grouping, multi-column sort, pinned and derived
+  columns, bookmarks, row and cell notes, colour rules and visual formats, saved views. Source
+  values are never rewritten.
+- **Build a timeline** across analyses from the dates the analyst designates, with the rows that
+  carry no usable date counted rather than dropped.
+- **Hunt indicators** (IPs, domains, URLs, hashes) across every analysis of a case.
+- **Detect**: Hayabusa rules run locally over parsed EVTX; findings are grouped, mapped to
+  ATT&CK and drawn as an attack graph.
+- **Track the work**: actions, machines and accounts, indicators.
+- **Report**: an investigation report and a client report, as HTML or PDF.
+- **Keep or move a case**: portable `.fireblade` packages with verified hashes, history and
+  recovery, and a verified erasure with a certificate.
 
-*The Host builds a five-analysis timeline: the bar counts the analyses and the message is
-the core's own — every long command (import, IOC scan, timeline, Hayabusa, report,
-portable case) reports and can be stopped.*
+Long commands (import, scan, timeline, detection, report, package) run as jobs with a progress
+bar, the engine's own messages, and a Stop.
 
-![Hayabusa clock in the Host](docs/assets/host/host-hayabusa-clock.png)
-
-*Hayabusa findings drawn as a clock — the desktop's four views are all in the Host.*
-
-**What it does not do — measured, not guessed**
+### Limits
 
 | | |
 | --- | --- |
-| `SRUDB.dat` (SRUM) | `SrumECmd` refuses to run outside Windows (ESE libraries). The Host says so and points at the desktop's CSV. |
-| Assistant IA | no model is connected; the button that would lie is absent. |
-| Language | English only, by product decision since 0.3.2. |
-| Windows | no detach/dock, no splash: a browser tab has no window manager. |
-| Files | no "show in Explorer", no "open with": no file manager behind a browser. |
-| Timeline Explorer | the .NET plugin is not in the container. |
+| `SRUDB.dat` (SRUM) | `SrumECmd` needs Windows' ESE libraries. The Host says so; import the CSV the Desktop produced. |
+| Assistant | The local analyst assistant exists in the Desktop only. |
+| Language | English. |
+| Erasure | Overwriting files cannot be guaranteed on SSDs, copy-on-write or journaled file systems; the certificate states the method used, not a physical guarantee. |
+| Access control | None. Do not expose the Host to a network. |
+| Tested at scale | A 31 574-row EVTX and a 333-file collection. No claim is made beyond that. |
 
-An import of 333 real artifact files in the container reads 327 of them, with the same
-row counts as Windows on the same files (EVTX 1 327, AppCompatCache 239). Every reader,
-tool by tool, with the rows it wrote: [docs/host/LINUX-READERS.md](docs/host/LINUX-READERS.md).
-The feature-by-feature audit against the desktop, and the seven defects it found and
-fixed: [docs/host/HOST-AUDIT.md](docs/host/HOST-AUDIT.md).
+The full statement of what is and is not verified: [docs/host/STATUS.md](docs/host/STATUS.md).
+Reader by reader, with the rows each wrote: [docs/host/LINUX-READERS.md](docs/host/LINUX-READERS.md).
 
-Build and deployment notes: [deploy/host](deploy/host). The edition's documents:
-[docs/host](docs/host).
+## Desktop
 
-## The engine both editions share
+The Windows edition is frozen: version 0.7.9 is its last build and receives no changes.
 
-### Investigate a table
+**[Download Fireblade 0.7.9 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.7.9)
 
-Per-column filters, grouping by one or more columns, sorting, pinned columns, calculated
-columns, bookmarks, row and cell notes, colour rules and a command palette. Values are
-never rewritten: the source columns, the source row number and the reader that produced
-them stay available.
+Unzip and run `Fireblade.exe`; Python, Qt, the parsers and the .NET readers are inside the
+folder. The executable is unsigned: Windows may show a SmartScreen prompt (*More info* →
+*Run anyway*), and Smart App Control on a fresh Windows 11 may refuse it. Verify the download
+against the SHA-256 in the release notes. Documentation: [docs/desktop](docs/desktop).
 
-![Table investigation](docs/assets/fireblade-column-filters.png)
+![The Desktop workspace](docs/assets/fireblade-workspace.png)
 
-### Build a timeline across analyses
+Sample data: the
+[sample collection](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip)
+(a Windows 11 machine: 183 event logs, Amcache, 60 Prefetch entries, 251 scheduled tasks), the
+[discovery pack](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
+and the [raw artifact pack](https://github.com/23R0534ZXT/fireblade/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip).
 
-One histogram and one lane per analysis, built from the dates the analyst designates. A
-counter says how many rows carry no usable date and how many carry none with an explicit
-time zone, so a gap in the chronology is a stated fact rather than a silent one.
+## Roadmap
 
-![Timeline](docs/assets/fireblade-timeline.png)
+**Server** is the Host for several analysts: an application that manages cases and their
+containers, role-based access control, an audit log of every action, HTTPS, and a secure erasure
+that stops the case container, removes it and wipes its data. The design is in
+[docs/host/HANDOFF-DOCKER.md](docs/host/HANDOFF-DOCKER.md). Nothing of it is implemented yet.
 
-### Hunt indicators in bulk
+Planned for the Host: per-case encrypted volumes, so that erasing a case means destroying its key.
 
-Paste IPs, domains, URLs or hashes (or load a CSV), hunt across every open analysis, then
-read the matches per indicator, per analysis and per source row — and export the summary
-and the details as verified CSV.
-
-![Indicator hunting](docs/assets/fireblade-ioc-hunt.png)
-
-### Know what was imported — and what was not
-
-The Imports report lists every file with its status, the readers that touched it, the
-reason when something went wrong and the hash taken at collection. Files can be previewed,
-re-read with a chosen reader, copied aside, parked or removed — and a removal is refused
-if the file changed since it was collected.
-
-![Imports report](docs/assets/fireblade-collection-report.png)
-
-An empty jump list, a prefetch without an executable or an engine that needs Windows each
-come back with a sentence that says which one it is, not with an exit code.
-
-### Detect, and open the context
-
-Hayabusa rules run locally over the parsed EVTX. An alert opens the events around its date
-on the same machine, kept as an analysis tab like any other. The **Hayabusa + AI** tab
-takes the same analysis further: findings, maps, and — in the desktop edition — the local
-analyst.
-
-### Case work that survives the investigation
-
-Cases hold their analyses, views, notes and history. A case can be archived after being
-verified, moved as a portable package, and reopened later with its recovery history
-intact. Exports carry the SHA-256 of what they contain.
-
-### The local analyst (desktop only)
-
-Reading 30 000 alerts one at a time is not analysis. Fireblade groups them, draws them, and
-then lets a small local model explain one of them under a rule that makes the answer usable
-in a report: **it may not state anything it cannot cite.**
-
-![The Hayabusa + AI tab: findings map, finding card and the assistant's answer](docs/assets/fireblade-assistant.png)
-
-A fact that cites no event, or an event that is not in the pack, is dropped with its
-reason; a link is kept only when both of its ends exist. Every answer ends with what the
-evidence does *not* establish. The engine is the CPU build of llama.cpp, the weights
-MiniCPM5-2B (1.5 GB), fetched once and then offline; measured at 25 to 45 s per
-explanation on four cores with no GPU.
-
-## Compared with Timeline Explorer — measured
-
-Same machine, same files, both tools driven to completion. Timeline Explorer 2026.10.0;
-Fireblade 0.4 with a 1 GB budget.
-
-| On a 3.65 GB / 32 M-row CSV | Fireblade | Timeline Explorer |
-| --- | --- | --- |
-| Open the file | **56.6 s** | 108.3 s |
-| Search "host07" in every column | **2.4 s** | 149.9 s |
-| Group by host (37 groups) | **0.12 s** | 134.3 s |
-| Sort by timestamp | **0.64 s** | 8.5 s |
-| Memory while open | **1.1 GB** | 15.3 GB |
-
-Both tools were checked to return the same rows (864 865 for one host, 37 groups). The
-durable difference is memory, not seconds: Timeline Explorer holds roughly 4.2× the file
-size in RAM, so an 8 GB machine caps it near 1.9 GB of log; Fireblade stays at its
-configured budget. Method, every figure, and what the comparison does not prove:
-[BENCHMARK-0.4.0.md](docs/development/BENCHMARK-0.4.0.md).
-
-## Repository map
+## Repository
 
 ```
 src/fireblade/
-  core/          the engine both editions run: cases, readers, grid, timeline, reports
-  ui/            the desktop edition (Qt) — not imported by the Host
-  web/           the Host edition: FastAPI service, client in static/
-  runtime/       bootstrap, resources, settings shared by both
-  validation/     the Windows qualification harness
-config/          the pinned readers (forensic-toolchain.json), profiles
-deploy/host/     how to build and run the Host image
-docs/
-  desktop/       the desktop's documents
-  host/          the Host's documents, its audit and its beta statement
-  guides/        the user guides, shipped inside the desktop application
-  development/   architecture, releases, plugins, contributor notes
-  assets/        screenshots, demo animation, theme gallery
-tests/           core, ui (desktop), web (Host), runtime, fixtures
+  core/        the engine every edition runs: cases, readers, grid, timeline, reports
+  web/         the Host: FastAPI service, per-case driver, browser client in static/
+  ui/          the Desktop (Qt); frozen, not imported by the Host
+  runtime/     bootstrap and resources
+  validation/  the Windows qualification harness
+config/        the pinned readers and profiles
+deploy/host/   building and running the Host
+docs/          desktop, host, user guides, development notes
+tests/         core, web (including real-browser tests), runtime, ui, fixtures
 ```
 
 ## Build and test
 
 ```bash
-python -m venv .venv
-python -m pip install -e '.[dev]'
-python -m scripts.dev_check        # version, ruff, client JavaScript, window, full suite
-fireblade                          # the desktop edition
+python -m venv .venv && . .venv/bin/activate
+python -m pip install -e '.[dev,web]'
+python -m scripts.dev_check          # version, ruff, client JavaScript, full suite
 ```
 
-`scripts/dev_check --quick` skips the suite. The same gate runs in CI on Windows.
+The browser tests in `tests/web/test_browser*.py` drive the client with a real mouse; they need
+Playwright and a Chromium (`FIREBLADE_CHROMIUM` names one it did not download) and are skipped
+without them. Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Documentation
 
-- **Desktop** — [docs/desktop](docs/desktop): user guides, release notes, architecture.
-- **Host (beta)** — [docs/host](docs/host): edition, audit, parity, readers, beta statement.
-- **Releases** — [release notes](docs/development/RELEASE-NOTES.md) and the
-  [releases page](https://github.com/23R0534ZXT/fireblade/releases).
-
-The interface is English. French remains selectable in **Preferences → Language** for the
-parts already translated and is no longer maintained; the local assistant answers in the
-language you ask in, whatever the interface shows.
+- [Host status and what is verified](docs/host/STATUS.md) · [Host audit against the Desktop](docs/host/HOST-AUDIT.md)
+- [Desktop](docs/desktop) · [user guides](docs/guides) · [architecture](docs/development/ARCHITECTURE.md)
+- [Release notes](docs/development/RELEASE-NOTES.md) · [Timeline Explorer comparison](docs/development/BENCHMARK-0.4.0.md)
 
 ## Known limits
 
-- **Unsigned binary**: SmartScreen warns, and Smart App Control can block it on a fresh
-  Windows 11 install.
-- **Paths beyond 260 characters** need `LongPathsEnabled=1`.
-- **An analysis workspace, not an acquisition tool**: no disk imaging, no carving, no
-  decryption, no OCR. A PDF without a text layer is reported as such.
-- **Detection assists, it does not conclude**: alerts require an analyst's review.
-- **The assistant is an assistant**: a verified citation is not a verified conclusion.
-- **.NET plugins run with your rights** — load only assemblies you trust.
-- **The Host is a beta of a beta** — its limits are listed in
-  [docs/host/BETA.md](docs/host/BETA.md).
+- **Detections assist, they do not conclude**: an alert is a lead for an analyst to verify.
+- **An analysis workspace, not an acquisition tool**: no disk imaging, carving, decryption or OCR.
+- **.NET plugins run with your rights**: load only assemblies you trust.
+- **Paths beyond 260 characters** on Windows need `LongPathsEnabled=1`.
 
 ## License
 
 Code under [MIT](LICENSE). Bundled tools and dependencies keep their own licences, including
-AGPL components; notices are in [licenses/THIRD_PARTY.md](licenses/THIRD_PARTY.md) and in
-**Help → Licences**.
+AGPL components; notices are in [licenses/THIRD_PARTY.md](licenses/THIRD_PARTY.md).

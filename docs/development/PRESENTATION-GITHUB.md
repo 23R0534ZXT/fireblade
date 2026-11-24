@@ -26,5 +26,5 @@ administration rights needed to change them: GitHub answers HTTP 403.
 
 ## What not to promise on the page
 
-No support, no SLA, no "production ready". The Host edition is a beta of a beta and the
-desktop is unsigned; saying so is what keeps the page honest.
+No support, no SLA, no "production ready". The Host has no access control and the Desktop is
+unsigned; saying so is what keeps the page honest.

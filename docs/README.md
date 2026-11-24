@@ -8,7 +8,7 @@ plus what a contributor needs.
 | Need | Document |
 |---|---|
 | Use the Windows edition | [Desktop](desktop/README.md) |
-| Understand the Host edition, its audit and its **beta of a beta** status | [Host](host/README.md) |
+| Understand the Host edition, its audit and what is verified | [Host](host/README.md) |
 | Build and run the Host image | [deploy/host](../deploy/host/README.md) |
 
 ## Use it

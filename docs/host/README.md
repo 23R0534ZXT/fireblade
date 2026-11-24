@@ -1,9 +1,7 @@
-# Fireblade Host — **beta of a beta**
+# Fireblade Host
 
-> **Status: beta of a beta.** The Host edition exists, imports real evidence, and has
-> been walked screen by screen against the desktop. It is **not** a production
-> deliverable: no support, no migration promise, and its HTTP API may change between
-> two commits. Do not put an investigation you cannot redo in it.
+> **Status:** functional and tested in a real browser; for the analyst's own machine, with no
+> access control. What is and is not verified: [STATUS.md](STATUS.md).
 
 The Host is the desktop's engine behind HTTP: the same `src/fireblade/core`, the same
 readers, the same case format on disk — without Qt, without a Windows session. One
@@ -70,8 +68,8 @@ The container needs the .NET runtime (it is inside the image) and reads the case
 | [HOST-AUDIT.md](HOST-AUDIT.md) | the feature-by-feature audit against the desktop, and the seven defects the comparison recette found |
 | [HOST-PARITY.md](HOST-PARITY.md) | the command-level parity page, generated |
 | [LINUX-READERS.md](LINUX-READERS.md) | every reader under Linux, tool by tool, with the rows it wrote |
-| [BETA.md](BETA.md) | what "beta of a beta" means, precisely |
-| [HANDOFF-HOST.md](HANDOFF-HOST.md) · [HANDOFF-DOCKER.md](HANDOFF-DOCKER.md) | the working notes |
+| [STATUS.md](STATUS.md) | what is verified, and what cannot be relied on |
+| [HANDOFF-DOCKER.md](HANDOFF-DOCKER.md) | the Server edition design · [earlier working notes](../archive/host) |
 
 ![Hayabusa clock map in the Host](../assets/host/host-hayabusa-clock.png)
 

@@ -1331,3 +1331,15 @@ def test_a_null_row_id_is_a_400_not_a_traceback(case_with_analysis):
         answer = client.post(f"{base}/{path}", json=body)
         assert answer.status_code == 400, (path, body, answer.text)
         assert answer.json()["detail"], "the answer says what was wrong"
+
+
+def test_a_service_refusal_has_the_same_shape_as_every_other_refusal(case_with_analysis):
+    from fastapi.testclient import TestClient
+    from fireblade.web.server import create_app
+
+    root, identifier = case_with_analysis
+    client = TestClient(create_app(root), raise_server_exceptions=False)
+    answer = client.get(f"/api/cases/{identifier}/analyses/9/rows")
+    assert answer.status_code == 400
+    body = answer.json()
+    assert body["detail"] and body["detail"] == body["error"]

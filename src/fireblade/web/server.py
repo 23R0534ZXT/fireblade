@@ -84,7 +84,9 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
 
     @app.exception_handler(ServiceError)
     async def _service_error(_request, exc: ServiceError):
-        return JSONResponse(status_code=400, content={"error": str(exc)})
+        # One shape for every refusal: `detail`, in English; `error` stays for older readers.
+        message = english.english_text(str(exc))
+        return JSONResponse(status_code=400, content={"detail": message, "error": message})
 
     @app.on_event("shutdown")
     def _shutdown():

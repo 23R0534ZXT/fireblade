@@ -6,3 +6,5 @@ ruff==0.14.3
 # and the case image installs the service's own dependencies from requirements-core.txt.
 fastapi>=0.115,<1
 httpx>=0.27,<1
+# The upload routes read multipart forms: the tests that post a file need it.
+python-multipart>=0.0.9,<1

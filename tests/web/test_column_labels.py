@@ -126,3 +126,35 @@ def test_analyses_of_one_database_are_told_apart_by_their_container(tmp_path):
         "WebCacheV01.dat — Cookies",
         "other.csv",
     ]
+
+
+def test_tables_a_reader_writes_from_one_file_are_named_by_what_the_reader_called_them():
+    from fireblade.web.service import Library
+
+    def entry(working, source):
+        return {
+            "label": source.rsplit("/", 1)[1],
+            "source_info": {"working_path": working, "path": source, "parser": "RECmd"},
+        }
+
+    entries = [
+        entry("/r/20261124201404/20261124201404_AppCompat_/SYSTEM.csv", "/e/SYSTEM"),
+        entry("/r/20261124201404/20261124201404_Services_/SYSTEM.csv", "/e/SYSTEM"),
+        entry(
+            "/r/20261124201403055415_Cars_Companies_af5bcf3f-b316-4e49-8d12-ce9e180b3914.csv",
+            "/e/CarsDB.db",
+        ),
+        entry(
+            "/r/20261124201403055415_Cars_MakeModel_af5bcf3f-b316-4e49-8d12-ce9e180b3914.csv",
+            "/e/CarsDB.db",
+        ),
+        entry("/r/20261124201402_Single.csv", "/e/Single.pf"),
+    ]
+    Library._tell_apart(entries)
+    assert [e["label"] for e in entries] == [
+        "SYSTEM — AppCompat",
+        "SYSTEM — Services",
+        "CarsDB.db — Cars_Companies",
+        "CarsDB.db — Cars_MakeModel",
+        "Single.pf",
+    ]

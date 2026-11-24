@@ -182,9 +182,11 @@ class Library:
     def _tell_apart(entries: list[dict]) -> None:
         """Give each analysis of one source its own name in the tree.
 
-        A WebCache database is read as one analysis per container, and the core names every one
-        of them after the file: two dozen tabs called "WebCacheV01.dat". The analyst needs the
-        container; it is in the first row of each table. Anything still alike is numbered.
+        A reader that writes several tables from one file (a registry hive read by RECmd, a
+        database by SQLECmd, a WebCache by its containers) gives every table the name of the
+        file: fifteen tabs called "SYSTEM". The analyst needs to know which table is which, and
+        the reader has already said it, in the name of the file it wrote. Anything still alike
+        is numbered.
         """
         counts: dict[str, int] = {}
         for entry in entries:
@@ -193,23 +195,42 @@ class Library:
             if counts[entry["label"]] < 2:
                 continue
             info = entry["source_info"]
-            working = str(info.get("working_path", ""))
-            if info.get("parser") != "WebCache" or not working:
-                continue
-            try:
-                with open(working, encoding="utf-8", newline="") as handle:
-                    rows = csv.DictReader(handle)
-                    first = next(rows, None) or {}
-            except (OSError, UnicodeDecodeError, csv.Error):
-                continue
-            name = first.get("WebCache_Container") or first.get("WebCache_Table") or ""
-            if name:
+            name = Library._output_name(info)
+            if name and name.casefold() not in entry["label"].casefold():
                 entry["label"] = f"{entry['label']} — {name}"
         seen: dict[str, int] = {}
         for entry in entries:
             seen[entry["label"]] = seen.get(entry["label"], 0) + 1
             if seen[entry["label"]] > 1:
                 entry["label"] = f"{entry['label']} ({seen[entry['label']]})"
+
+    @staticmethod
+    def _output_name(info: dict) -> str:
+        """What a table is, from the file its reader wrote it to."""
+        working = str(info.get("working_path", "") or "")
+        if not working:
+            return ""
+        if info.get("parser") == "WebCache":
+            try:
+                with open(working, encoding="utf-8", newline="") as handle:
+                    first = next(csv.DictReader(handle), None) or {}
+            except (OSError, UnicodeDecodeError, csv.Error):
+                first = {}
+            named = first.get("WebCache_Container") or first.get("WebCache_Table")
+            if named:
+                return str(named)
+        path = Path(working.replace("\\", "/"))
+        source = Path(str(info.get("path", "")).replace("\\", "/")).stem.casefold()
+
+        def clean(text: str) -> str:
+            text = re.sub(r"^\d{12,20}_?", "", text)  # the reader's run stamp
+            text = re.sub(r"_[0-9a-f]{8}-[0-9a-f-]{27}$", "", text)  # a database's id
+            return text.strip("_ ")
+
+        stem = clean(path.stem)
+        if stem.casefold() == source:  # one folder per batch: the folder is the name
+            stem = clean(path.parent.name) or stem
+        return stem
 
     @staticmethod
     def _label(source, fallback) -> str:

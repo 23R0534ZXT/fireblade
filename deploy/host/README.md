@@ -78,16 +78,16 @@ which is why an erasure can take the whole volume with it.
 ## Upgrade to a new release
 
 ```bash
-docker pull ghcr.io/23r0534zxt/fireblade:0.8.1
-docker pull ghcr.io/23r0534zxt/fireblade-driver:0.8.1
+docker pull ghcr.io/23r0534zxt/fireblade:0.8.2
+docker pull ghcr.io/23r0534zxt/fireblade-driver:0.8.2
 docker rm -f fireblade-driver
 docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /srv/fireblade/volumes:/data/volumes \
     -v /srv/fireblade/certificates:/data/certificates \
-    ghcr.io/23r0534zxt/fireblade-driver:0.8.1 \
+    ghcr.io/23r0534zxt/fireblade-driver:0.8.2 \
     python -m fireblade.web.agency serve \
-      --image ghcr.io/23r0534zxt/fireblade:0.8.1 \
+      --image ghcr.io/23r0534zxt/fireblade:0.8.2 \
       --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
       --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
       --host 0.0.0.0 --port 8080

@@ -1,4 +1,4 @@
-# Fireblade 0.9.0 — the Host, checked in a real browser
+# Fireblade 0.8.2 — the Host, checked in a real browser
 
 Each change below was found by driving the Host with a real mouse in a real browser, on a case
 of Linux logs, and comes with the test that would have caught it.

@@ -1,6 +1,7 @@
 """Declarative plugins: field names, types and layout; no arbitrary code execution."""
 
 import json
+import os
 from pathlib import Path
 
 from fireblade.runtime.windows_paths import user_directory
@@ -9,7 +10,9 @@ MAX_BYTES = 2 * 1024 * 1024
 
 
 def plugin_path():
-    return user_directory() / "Plugins"
+    """The presentation plugins' folder: FIREBLADE_PLUGINS when a host names one, else the user's."""
+    named = os.environ.get("FIREBLADE_PLUGINS")
+    return Path(named) if named else user_directory() / "Plugins"
 
 
 def validate_plugin(data):

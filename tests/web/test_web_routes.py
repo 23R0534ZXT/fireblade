@@ -1611,3 +1611,19 @@ def test_the_browser_finds_its_icon(service):
     client = TestClient(create_app(service[0].root))
     answer = client.get("/favicon.ico")
     assert answer.status_code == 200 and "svg" in answer.headers["content-type"]
+
+
+def test_a_plugin_in_the_hosts_plugin_folder_reaches_the_import_profiles(
+    service, tmp_path, monkeypatch
+):
+    """The profiles are read from the folder the host names, not from the user's profile."""
+    library, _identifier = service
+    folder = tmp_path / "plugins"
+    folder.mkdir()
+    (folder / "mine.json").write_text(
+        '{"name": "Mine", "signature": ["Alpha", "Beta"], "timestamp": [], "columns": []}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("FIREBLADE_PLUGINS", str(folder))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "nobody-writes-here"))
+    assert "Mine" in [item["name"] for item in library.profiles()["profiles"]]

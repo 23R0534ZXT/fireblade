@@ -6,7 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DOTNET_ROOT=/usr/share/dotnet \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/src \
-    FIREBLADE_CASES=/data/cases
+    FIREBLADE_CASES=/data/cases \
+    LOCALAPPDATA=/data/plugins/.state
 
 WORKDIR /app
 

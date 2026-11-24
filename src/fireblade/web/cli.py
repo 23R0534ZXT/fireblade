@@ -11,6 +11,7 @@ read from a real DuckDB file.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -69,6 +70,10 @@ def serve(args) -> int:
 
     root = Path(args.root).resolve()
     root.mkdir(parents=True, exist_ok=True)
+    if args.plugins:
+        # The core reads the plugins of the import profiles from the user's folder; a host that
+        # keeps them elsewhere says where, so the profiles and the plugins list agree.
+        os.environ["FIREBLADE_PLUGINS"] = str(Path(args.plugins).resolve())
     app = create_app(root, _version(), tools_root=args.tools, plugins_root=args.plugins or None)
     print(f"Fireblade Host {_version()} on {args.host}:{args.port} — cases in {root}", flush=True)
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level)

@@ -2700,13 +2700,13 @@ function selectRow(tr, event) {
       state.selection = new Set(ids.slice(Math.min(from, to), Math.max(from, to) + 1));
     }
   } else if (event.ctrlKey || event.metaKey) {
+    // Ctrl toggles one row: a row already selected leaves the selection.
     if (state.selection.has(id)) state.selection.delete(id); else state.selection.add(id);
     state.anchor = id;
   } else {
     state.selection = new Set([id]);
     state.anchor = id;
   }
-  state.selection.add(id);
   state.selected = row ? row[0] : null;
   paintSelection();
   showDetails(row);
@@ -5925,6 +5925,15 @@ function wire() {
       const current = state.bookmarks.get(String(id)) || "";
       toggleBookmark(id, current ? "" : "bookmarked").catch((error) => say(error.message, true));
       return;
+    }
+    // The cell clicked is the active cell, as in the desktop: the commands that act on "the
+    // active cell" (filter on it, copy it, highlight it) no longer need a right-click first.
+    const cell = event.target.closest("td[data-cell]");
+    if (cell) {
+      contextCell = cell.dataset.cell;
+      contextRow = tr;
+      $("body").querySelectorAll("td.activecell").forEach((node) => node.classList.remove("activecell"));
+      cell.classList.add("activecell");
     }
     selectRow(tr, event);
   });

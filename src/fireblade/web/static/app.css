@@ -429,3 +429,5 @@ thead th{height:var(--head-height,22px)}
 .progress .bar { height: 100%; width: 0%; background: #2f6fb0; transition: width .25s ease; }
 .progress .bar.indeterminate { width: 35%; background: #7aa7d4; animation: fb-slide 1.3s ease-in-out infinite; }
 @keyframes fb-slide { 0% { margin-left: 0; } 50% { margin-left: 65%; } 100% { margin-left: 0; } }
+
+td.activecell{outline:1px solid var(--accent);outline-offset:-1px}

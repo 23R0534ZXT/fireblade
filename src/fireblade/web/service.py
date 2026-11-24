@@ -754,8 +754,12 @@ class Library:
         from fireblade.core.case_package import export_package
 
         if progress:
-            progress("Case portable · empreintes des analyses")
+            progress("Portable case · fingerprints of the analyses")
         data = self.library.read(identifier)
+        # DuckDB refuses a second connection to a file with another configuration, and the
+        # grid keeps its own open: release them first, or reading the analyses below fails
+        # with "Can't open a connection to same database file".
+        self.close_case(identifier)
         # The snapshots come from the repaired path resolution (a case written on
         # Windows packs here even though its session stores absolute paths), and
         # from the files themselves, so a stale session cannot block the export.
@@ -765,7 +769,6 @@ class Library:
         # change while it is being packed, and the packer refuses that.
         target = self.root / "exports" / (identifier[:8] + ".fireblade")
         target.parent.mkdir(parents=True, exist_ok=True)
-        self.close_case(identifier)
         result = export_package(self.library, data, documents, active, target,
                                 include_sources=include_sources, include_case_files=True,
                                 max_bytes=4 * 1024**4)
@@ -1983,7 +1986,7 @@ class Library:
         from fireblade.core.investigation_report import build_report, write_report
 
         if progress:
-            progress("Rapport · lecture des analyses")
+            progress("Report · reading the analyses")
         snapshots = self._snapshots(identifier)
         if not snapshots:
             raise ServiceError("This case holds no analysis.")
@@ -2041,7 +2044,7 @@ class Library:
         from fireblade.web.pdf import text_pdf
 
         if progress:
-            progress("Rapport client · constats, actions, indicateurs")
+            progress("Client report · findings, actions, indicators")
 
         folder = self.library.folder(identifier)
         data = self.library.read(identifier)
@@ -2196,7 +2199,7 @@ class Library:
         per_analysis = []
         for position, (target_index, entry) in enumerate(targets, start=1):
             if progress:
-                progress(f"Chasse IOC · analyse {position}/{len(targets)} — "
+                progress(f"Indicator hunt · analysis {position}/{len(targets)} — "
                          f"{self._label(entry.get('source_info') or {}, entry.get('path') or '')}")
             case = self._case_for(identifier, target_index)
             view = View()
@@ -3397,6 +3400,23 @@ class Library:
                           data.get("active_collection"), data.get("revision"))
         return {"analyses": len(ordered), "active": new_active,
                 "labels": [self._label(item.source_info, item.path) for item in ordered]}
+
+    def save_case(self, identifier: str) -> dict:
+        """Write the case's session again, which leaves a state to recover in its History.
+
+        Every command that changes the tabs already does this; Save case is the analyst
+        asking for a recovery point now, as the desktop's command does, and being told it
+        is there.
+        """
+        data = self.library.read(identifier)
+        snapshots, active, closed = self._session_snapshots(identifier, with_closed=True)
+        if snapshots:
+            collections = [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)]
+            self.close_case(identifier)
+            self.library.save(identifier, snapshots, active, collections,
+                              data.get("active_collection"), data.get("revision"), closed=list(closed))
+        # A case with no analysis has no session to write: it is saved, and says so.
+        return {"analyses": len(snapshots), "recovery_points": self.history(identifier)["count"]}
 
     def history(self, identifier: str) -> dict:
         """The case's History folder: the states the desktop lets the analyst recover."""

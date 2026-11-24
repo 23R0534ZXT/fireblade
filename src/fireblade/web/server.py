@@ -714,6 +714,13 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/save")
+    def save_case(identifier: str):
+        try:
+            return library.save_case(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/analyses/reorder")
     def reorder_analyses(identifier: str, payload: dict):
         try:

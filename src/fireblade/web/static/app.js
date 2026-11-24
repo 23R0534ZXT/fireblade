@@ -1022,8 +1022,14 @@ async function saveCase() {
   // screen is the layout of the analysis in view, so that is written now, and said.
   if (!state.openCase) { say("No case is open", true); return; }
   await saveDisplayNow();
-  const now = new Date();
-  say(`Case saved at ${now.toLocaleTimeString([], { hour12: false })}`);
+  try {
+    const saved = await apiPost(`/api/cases/${state.openCase.id}/save`, {});
+    const now = new Date();
+    say(`Case saved at ${now.toLocaleTimeString([], { hour12: false })} — `
+      + `${saved.recovery_points} recovery point(s) in History`);
+  } catch (error) {
+    say(error.message, true);
+  }
 }
 
 async function confirmCaseDialog() {
@@ -5207,7 +5213,7 @@ function renderGrid() {
       const isDate = (Array.isArray(state.timestamps) && state.timestamps.includes(index - 1))
         || DATE_TEXT.test(value === null || value === undefined ? "" : String(value));
       const text = value === null || value === ""
-        ? "☐"
+        ? "∅"
         : String(isDate ? formatTimestamp(value, copyPrefs.dateFormat) : value);
       const noted = rowNotes[String(index - 1)];
       const cls = [value === null || value === "" ? "cellnull" : (index === 0 ? "rowid" : ""),

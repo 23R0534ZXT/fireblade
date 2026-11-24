@@ -1310,13 +1310,13 @@ class Library:
         case = self._case_for(identifier, index)
         with case.lock:
             case.add_derived_columns([clean])
-        return {"columns": META_COLUMNS + list(case.headers), "added": clean.get("name")}
+        return {"columns": META_COLUMNS + column_labels(case), "added": clean.get("name")}
 
     def derived_columns(self, identifier: str, index: int) -> dict:
         case = self._case_for(identifier, index)
         with case.lock:
             return {"derived": list(getattr(case, "derived", []) or []),
-                    "columns": META_COLUMNS + list(case.headers)}
+                    "columns": META_COLUMNS + column_labels(case)}
 
     # -- import history ----------------------------------------------------
 
@@ -3474,7 +3474,7 @@ class Library:
 
     def columns(self, identifier: str, index: int) -> list[str]:
         case = self._case_for(identifier, index)
-        return META_COLUMNS + list(case.headers)
+        return META_COLUMNS + column_labels(case)
 
     def rows(self, identifier: str, index: int, offset: int = 0, limit: int = 200,
              search: str = "", sort: int | None = None, descending: bool = False,
@@ -3552,7 +3552,7 @@ class Library:
             rows = [[json_value(value) for value in row] for row in page]
         grouped = len(depth) < len(view.groups)
         return {
-            "columns": META_COLUMNS + list(case.headers),
+            "columns": META_COLUMNS + column_labels(case),
             "rows": rows,
             "total": int(total),
             "offset": offset,
@@ -3561,7 +3561,7 @@ class Library:
             "path": list(depth),
             "timestamps": timestamps,
             "summaries": [{"column": item.column,
-                           "name": case.headers[item.column] if 0 <= item.column < len(case.headers) else "",
+                           "name": column_label(case, item.column),
                            "operation": item.operation, "kind": item.kind}
                           for item in cleaned_summaries],
             "order": view.group_order, "order_descending": view.group_descending,
@@ -3612,6 +3612,8 @@ class Library:
         target = Path(tempfile.gettempdir()) / f"fireblade-{uuid.uuid4().hex}{suffix}"
         with case.lock:
             case.export(str(target), view, include_annotations=True)
+        if not as_xlsx:
+            _translate_csv_header(target, case)
         return target
 
 
@@ -3644,6 +3646,48 @@ def _english(text):
             return translate(str(text))
         except (ImportError, ValueError):
             return str(text)
+
+
+def _translate_csv_header(path: Path, case) -> None:
+    """Rewrite the first row of an exported CSV with English column names, in a stream."""
+    import shutil
+    temporary = path.with_name(path.name + ".part")
+    with path.open("r", encoding="utf-8-sig", newline="") as source, \
+            temporary.open("w", encoding="utf-8-sig", newline="") as target:
+        header = next(csv.reader([source.readline()]), None)
+        if header is not None:
+            csv.writer(target).writerow(_labels_for_export(header, case))
+        shutil.copyfileobj(source, target)
+    temporary.replace(path)
+
+
+def _labels_for_export(header, case) -> list[str]:
+    """The exported header row: the table's own columns named as on screen, the rest as is."""
+    labels = column_labels(case)
+    own = list(case.headers)
+    return [labels[own.index(name)] if name in own else name for name in header]
+
+
+def column_labels(case) -> list[str]:
+    """Column names as the analyst reads them.
+
+    The core writes the names of the columns a Fireblade reader generates (the Linux log
+    reader, for one) in the source language of the table, and the desktop translates them
+    when it draws a header. The Host does the same on the way out. Two rules keep that honest:
+    only the *display* changes, never the stored names, so a colour rule, a filter or a
+    session keeps pointing at the same column by position; and a table that came straight
+    from the analyst's own file (no reader recorded) is never touched: its headers are
+    evidence, whatever language they are in.
+    """
+    headers = list(case.headers)
+    if not (getattr(case, "info", None) or {}).get("parser"):
+        return headers
+    return [_english(name) for name in headers]
+
+
+def column_label(case, position: int) -> str:
+    labels = column_labels(case)
+    return labels[position] if 0 <= position < len(labels) else ""
 
 
 def parse_filters(values) -> list[tuple[int, str, str]]:

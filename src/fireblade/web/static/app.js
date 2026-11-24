@@ -5363,7 +5363,10 @@ function showDetails(row) {
 
 /* ---------- tabs and panels ---------- */
 
+let tabChosen = false;
+
 function showTab(name) {
+  tabChosen = true;
   document.querySelectorAll(".tab[data-tab]").forEach((tab) =>
     tab.classList.toggle("active", tab.dataset.tab === name));
   $("analysis-view").style.display = name === "analyses" ? "flex" : "none";
@@ -6506,7 +6509,10 @@ async function boot() {
     $("version").textContent = `Fireblade ${health.version} · Host`;
   } catch (_) { /* the version is cosmetic */ }
   await loadCases();
-  showTab(state.cases.length === 1 ? "analyses" : "cases");
+  // A first start can be slow (a case container is starting): do not take the analyst
+  // back from the tab they already chose while the list was loading.
+  if (!tabChosen) showTab(state.cases.length === 1 ? "analyses" : "cases");
+  tabChosen = false;
   clearGrid(state.cases.length
     ? "Open a case from the Cases tab."
     : "The library is empty. A case written by the Windows edition opens here as soon as its folder is in the library.");

@@ -1013,11 +1013,20 @@ function openCaseDialog(mode) {
   $("case-environment").value = current ? current.environment || "unspecified" : "unspecified";
   $("case-environment").disabled = mode === "rename";
   $("case-name").closest(".row").style.display = "flex";
-  document.querySelector('[data-act="case-save"]').textContent = mode === "rename" ? "Save" : "Create";
+  $("case-confirm").textContent = mode === "rename" ? "Rename" : "Create";
   $("case-modal").classList.add("show");
 }
 
 async function saveCase() {
+  // Save case: everything the case holds is written as it changes; what is still only on
+  // screen is the layout of the analysis in view, so that is written now, and said.
+  if (!state.openCase) { say("No case is open", true); return; }
+  await saveDisplayNow();
+  const now = new Date();
+  say(`Case saved at ${now.toLocaleTimeString([], { hour12: false })}`);
+}
+
+async function confirmCaseDialog() {
   const name = $("case-name").value.trim();
   if (!name) { say("A name is required", true); return; }
   closeModals();
@@ -6358,6 +6367,7 @@ async function act(name, node) {
       break;
     case "rename-case": openCaseDialog("rename"); break;
     case "case-save": await saveCase(); break;
+    case "case-confirm": await confirmCaseDialog(); break;
     case "destroy-case": openDestroyDialog(); break;
     case "destroy-run": await runDestroy(); break;
     case "report": $("report-modal").classList.add("show"); break;

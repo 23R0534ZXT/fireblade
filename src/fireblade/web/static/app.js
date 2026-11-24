@@ -1401,7 +1401,17 @@ async function saveDisplayNow() {
 
 /* ---------- advanced filter ---------- */
 
-const EXPR_OPERATORS = ["contains", "ne", "eq", "starts", "ends", "gt", "ge", "lt", "le", "empty", "not_empty"];
+/* The operators of the engine, named as the desktop names them. */
+const EXPR_OPERATORS = [
+  ["contains", "Contains"], ["not_contains", "Does not contain"], ["eq", "Equals (exact)"],
+  ["ne", "Differs (exact)"], ["starts", "Starts with"], ["ends", "Ends with"],
+  ["regex", "Regular expression (RE2)"], ["empty", "Empty / NULL"], ["not_empty", "Not empty"],
+  ["gt", "Number >"], ["ge", "Number ≥"], ["lt", "Number <"], ["le", "Number ≤"],
+  ["after", "Date ≥ (ISO)"], ["before", "Date ≤ (ISO)"], ["date_before", "Date < (ISO)"],
+  ["date_after", "Date > (ISO)"], ["date_eq", "Date equals"], ["date_ne", "Date differs"],
+  ["text_gt", "Text >"], ["text_ge", "Text ≥"], ["text_lt", "Text <"], ["text_le", "Text ≤"],
+  ["expression", "Named expression"],
+];
 const EXPR_MAX_DEPTH = 3;
 
 function exprConditionNode(condition = {}) {
@@ -1410,8 +1420,8 @@ function exprConditionNode(condition = {}) {
   row.dataset.kind = "condition";
   row.innerHTML = `<select data-expr-col>${state.columns.slice(1).map((name, index) =>
       `<option value="${index}" ${index === (condition.column ?? 0) ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select>
-    <select data-expr-op>${EXPR_OPERATORS.map((code) =>
-      `<option value="${code}" ${code === (condition.operator || "contains") ? "selected" : ""}>${code}</option>`).join("")}</select>
+    <select data-expr-op>${EXPR_OPERATORS.map(([code, label]) =>
+      `<option value="${code}" ${code === (condition.operator || "contains") ? "selected" : ""}>${label}</option>`).join("")}</select>
     <input data-expr-value value="${escapeHtml(condition.value ?? "")}" placeholder="value">
     <button class="btn" data-expr-remove title="Remove this condition">✕</button>`;
   row.querySelector("[data-expr-remove]").addEventListener("click", () => {
@@ -2642,7 +2652,7 @@ function dateCondition() {
     const next = new Date(Date.UTC(year, month - 1, day + 1));
     end = next.toISOString().slice(0, 10);
   }
-  return [[{ column, operator: "ge", value: start }, { column, operator: "lt", value: end }],
+  return [[{ column, operator: "after", value: start }, { column, operator: "date_before", value: end }],
           `${name} from ${start} to ${end}`];
 }
 
@@ -5824,7 +5834,10 @@ function wire() {
     event.preventDefault();
     const index = Number(grip.dataset.grip);
     const th = grip.closest("th");
-    resizing = { index, startX: event.clientX, startWidth: th.getBoundingClientRect().width };
+    // The <col> of a header sits at the header's own position (the mark column comes first, and
+    // a hidden column leaves a gap in the numbering): not at the column's absolute index.
+    const position = [...th.parentNode.children].indexOf(th);
+    resizing = { index, position, startX: event.clientX, startWidth: th.getBoundingClientRect().width };
     document.body.style.cursor = "col-resize";
   });
   document.addEventListener("mousemove", (event) => {
@@ -5832,7 +5845,7 @@ function wire() {
     const width = Math.max(24, Math.round(resizing.startWidth + event.clientX - resizing.startX));
     state.widths[resizing.index] = width;
     const cols = $("cols").children;
-    if (cols[resizing.index]) cols[resizing.index].style.width = width + "px";
+    if (cols[resizing.position]) cols[resizing.position].style.width = width + "px";
   });
   document.addEventListener("mouseup", () => {
     if (!resizing) return;

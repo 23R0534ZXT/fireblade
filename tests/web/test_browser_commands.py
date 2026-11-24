@@ -322,7 +322,10 @@ def test_row_height_changes_the_height_of_the_rows(page):
 
 def test_reset_widths_restores_the_default_width_of_a_column(page):
     grip = page.locator("#head tr:first-child th .grip").nth(2)
-    th = page.locator("#head tr:first-child th").nth(2)
+    th = grip.locator("xpath=ancestor::th")
+    index = page.evaluate(
+        "el => [...el.closest('tr').children].indexOf(el.closest('th'))", grip.element_handle()
+    )
     before = th.bounding_box()["width"]
     box = grip.bounding_box()
     page.mouse.move(box["x"] + 2, box["y"] + 5)
@@ -332,7 +335,7 @@ def test_reset_widths_restores_the_default_width_of_a_column(page):
     assert th.bounding_box()["width"] > before + 60
     command(page, "reset-widths")
     page.wait_for_function(
-        f"Math.abs(document.querySelectorAll('#head tr:first-child th')[2].getBoundingClientRect().width - {before}) < 4"
+        f"Math.abs(document.querySelectorAll('#head tr:first-child th')[{index}].getBoundingClientRect().width - {before}) < 4"
     )
 
 
@@ -449,3 +452,156 @@ def test_the_search_box_searches_every_column_and_clear_resets_it(page):
     page.click('button:text-is("Clear the filters")')
     page.wait_for_function(f"document.getElementById('pageinfo').innerText.includes('/ {ROWS}')")
     assert page.input_value("#search") == ""
+
+
+# -- Analysis --------------------------------------------------------------------------------
+
+
+def test_highlight_text_marks_the_matches_in_the_cells(page):
+    command(page, "highlight-text")
+    answer(page, "alice")
+    page.wait_for_selector("#body mark")
+    marks = page.eval_on_selector_all(
+        "#body mark", "els => [...new Set(els.map(e => e.innerText.toLowerCase()))]"
+    )
+    assert marks == ["alice"]
+
+
+def test_a_date_condition_keeps_the_rows_of_that_day(page):
+    command(page, "date-filter")
+    page.select_option("#date-column", label="Time")
+    page.select_option("#date-mode", "day")
+    page.fill("#date-day", "2026-11-02")
+    page.click("#date-add")
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 12')")
+    days = {v[:10] for v in _column_values(page, "Time")}
+    assert days == {"2026-11-02"}
+    command(page, "clear-filters")
+
+
+def test_a_derived_column_from_an_expression_joins_the_grid(page):
+    command(page, "derived")
+    page.fill("#derived-name", "HostLower")
+    page.select_option("#derived-operation", "expression")
+    page.fill("#derived-expression", "lower(Host)")
+    page.click('[data-act="derived-add"]')
+    page.wait_for_function(
+        "[...document.querySelectorAll('#head tr:first-child th')].some(t => t.innerText.startsWith('HostLower'))"
+    )
+    assert set(_column_values(page, "HostLower")) == {"pc01", "pc02", "pc03", "pc04"}
+    command(page, "derived-check")
+    page.wait_for_selector(".modal.show .dialog")
+    assert "HostLower" in page.inner_text(".modal.show .dialog")
+
+
+def test_a_derived_column_converts_a_date_into_the_chosen_format(page):
+    command(page, "derived")
+    page.fill("#derived-name", "Day")
+    page.select_option("#derived-operation", "timestamp")
+    page.select_option("#derived-source", label="Time")
+    page.click('[data-act="derived-add"]')
+    page.wait_for_function(
+        "[...document.querySelectorAll('#head tr:first-child th')].some(t => t.innerText.startsWith('Day'))"
+    )
+    values = _column_values(page, "Day")
+    assert len(values) == ROWS and all(v for v in values)
+
+
+def test_the_cell_window_shows_the_whole_value_and_copies_it(page):
+    _cell(page, 3, 4).click()
+    command(page, "cell-json")
+    page.wait_for_selector("#cell-modal.show")
+    assert page.input_value("#cell-full") == "C:\\Users\\alice\\f3.exe"
+    page.click('[data-act="cell-copy"]')
+    page.wait_for_function("document.getElementById('status').innerText.includes('Cell copied')")
+    assert page.evaluate("navigator.clipboard.readText()") == "C:\\Users\\alice\\f3.exe"
+
+
+def test_provenance_gives_the_sha256_of_the_source_file(page, server):
+    import hashlib
+
+    _base, _root, evidence = server
+    command(page, "integrity")
+    page.wait_for_selector(".modal.show .dialog")
+    page.wait_for_function(
+        "/[0-9a-f]{64}/.test(document.querySelector('.modal.show .dialog').innerText)"
+    )
+    shown = set(__import__("re").findall(r"[0-9a-f]{64}", page.inner_text(".modal.show .dialog")))
+    hashes = {hashlib.sha256(path.read_bytes()).hexdigest() for path in evidence.glob("*.csv")}
+    assert shown & hashes, (shown, hashes)
+
+
+def test_reload_and_stop_keep_the_analysis_as_it_was(page):
+    command(page, "stop-query")
+    page.wait_for_function("document.getElementById('status').innerText.includes('No query')")
+    command(page, "reload-analysis")
+    page.wait_for_function(f"document.getElementById('pageinfo').innerText.includes('/ {ROWS}')")
+    assert rows(page) == ROWS
+
+
+def test_the_layout_leaves_as_a_file_and_comes_back(page, tmp_path):
+    grip = page.locator("#head tr:first-child th .grip").nth(2)
+    th = grip.locator("xpath=ancestor::th")
+    index = page.evaluate(
+        "el => [...el.closest('tr').children].indexOf(el.closest('th'))", grip.element_handle()
+    )
+    box = grip.bounding_box()
+    page.mouse.move(box["x"] + 2, box["y"] + 5)
+    page.mouse.down()
+    page.mouse.move(box["x"] + 140, box["y"] + 5, steps=5)
+    page.mouse.up()
+    widened = th.bounding_box()["width"]
+    with page.expect_download() as download:
+        command(page, "layout-export")
+    saved = tmp_path / "layout.json"
+    download.value.save_as(str(saved))
+    assert saved.stat().st_size > 2
+    command(page, "reset-widths")
+    page.wait_for_function(
+        f"document.querySelectorAll('#head th')[{index}].getBoundingClientRect().width < {widened} - 40"
+    )
+    reset = th.bounding_box()["width"]
+    with page.expect_file_chooser() as chooser:
+        command(page, "layout-import")
+    chooser.value.set_files(str(saved))
+    # The table is laid out to fit its pane, so the stored width is a target, not a pixel count:
+    # what the file brings back is a column wider than the default.
+    page.wait_for_function(
+        f"document.querySelectorAll('#head th')[{index}].getBoundingClientRect().width > {reset} + 40"
+    )
+
+
+def test_the_advanced_filter_offers_the_engines_operators_by_name(page):
+    command(page, "expression-andor")
+    options = page.eval_on_selector_all(
+        ".modal.show [data-expr-op] option", "els => els.map(e => e.innerText)"
+    )
+    for wanted in (
+        "Does not contain",
+        "Regular expression (RE2)",
+        "Date ≥ (ISO)",
+        "Date < (ISO)",
+        "Text >",
+        "Named expression",
+    ):
+        assert wanted in options, options
+    assert "contains" not in options, "the operators are named, not shown as codes"
+
+
+def test_the_advanced_filter_applies_a_regular_expression_and_a_date_operator(page):
+    command(page, "expression-andor")
+    dialog = page.locator(".modal.show .dialog")
+    dialog.locator("select").nth(1).select_option(label="Path")
+    dialog.locator("[data-expr-op]").first.select_option("regex")
+    dialog.locator("input").first.fill(r"\\bob\\f\d+\.exe$")
+    dialog.locator('[data-act="expr-apply"]').click()
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 20')")
+    assert set(_column_values(page, "User")) == {"bob"}
+    command(page, "expression-andor")
+    dialog = page.locator(".modal.show .dialog")
+    dialog.locator("[data-expr-op]").first.select_option("date_before")
+    dialog.locator("select").nth(1).select_option(label="Time")
+    dialog.locator("input").first.fill("2026-11-02")
+    dialog.locator('[data-act="expr-apply"]').click()
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 12')")
+    assert {v[:10] for v in _column_values(page, "Time")} == {"2026-11-01"}

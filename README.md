@@ -34,20 +34,27 @@ specified but not started — see [Roadmap](#roadmap).
 
 ### Run it
 
+One line; Docker downloads the image the first time, and creates the cases folder if it is missing:
+
 ```bash
-mkdir -p ~/fireblade/cases
-docker run -d --name fireblade -p 127.0.0.1:8080:8080 \
-    -v ~/fireblade/cases:/data/cases \
-    ghcr.io/23r0534zxt/fireblade:latest
+docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/fireblade-cases:/data/cases" ghcr.io/23r0534zxt/fireblade:latest
 ```
 
-Open <http://localhost:8080>. `/data/cases` is the path inside the container; the cases are in
-`~/fireblade/cases` on your machine. Tags: `:latest` is the newest release, `:0.8.1` pins one,
-`:edge` follows `main`. To build from a clone: `docker build -t fireblade:host .`.
+Open <http://localhost:8080>. `/data/cases` is the path inside the container; your cases are in
+`~/fireblade-cases` on your machine, and a case written by the Desktop opens as soon as its
+folder is there. On Windows PowerShell, write the folder as `"$HOME\fireblade-cases"`.
+
+| | |
+| --- | --- |
+| Stop / start | `docker stop fireblade` · `docker start fireblade` |
+| Upgrade | `docker pull ghcr.io/23r0534zxt/fireblade:latest && docker rm -f fireblade`, then run the line above again (the cases stay in their folder) |
+| Pin a version | replace `:latest` with `:0.8.2` · `:edge` follows `main` |
+| Remove | `docker rm -f fireblade` (your cases are not touched) |
+
+To build from a clone instead: `docker build -t fireblade:host .`.
 
 The image carries the .NET 10 runtime and the thirteen pinned readers, so it reads the same
-artifacts as the Desktop. A case written by the Desktop opens as soon as its folder is in
-`/data/cases`.
+artifacts as the Desktop.
 
 ### One container per case
 

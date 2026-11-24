@@ -4391,12 +4391,23 @@ async function toggleAction(actionId) {
 
 const iocState = { hits: [], summary: "" };
 
+/* What the grid shows, for the commands that "respect the filter": the page keeps the search,
+   the column filters and the advanced filter, so it tells the server which they are. */
+function liveView() {
+  return {
+    index: state.analysis, search: state.search, filters: state.filters,
+    expression: state.expression && (state.expression.children || []).length ? state.expression : null,
+    bookmarks_only: state.bookmarksOnly,
+  };
+}
+
 function iocOptions() {
   return {
     all: $("ioc-all").checked,
     filters: $("ioc-filters").checked,
     subdomains: $("ioc-subdomains").checked,
     index: state.analysis,
+    live: liveView(),
   };
 }
 
@@ -4437,6 +4448,7 @@ async function runIocFile(file) {
   const options = iocOptions();
   body.append("all_analyses", options.all ? "true" : "false");
   body.append("respect_filters", options.filters ? "true" : "false");
+  body.append("live", JSON.stringify(options.live));
   body.append("subdomains", options.subdomains ? "true" : "false");
   body.append("index", String(options.index));
   say(`Reading ${file.name}…`);
@@ -4627,7 +4639,10 @@ async function loadTimeline(reset, force) {
   if (timelineState.start !== null) params.set("start", String(timelineState.start));
   if (timelineState.end !== null) params.set("end", String(timelineState.end));
   if ($("timeline-undated").checked) params.set("include_undated", "true");
-  if ($("timeline-filters").checked) params.set("respect_filters", "true");
+  if ($("timeline-filters").checked) {
+    params.set("respect_filters", "true");
+    params.set("live", JSON.stringify(liveView()));
+  }
   try {
     let payload;
     if (heavy) {
@@ -4638,6 +4653,7 @@ async function loadTimeline(reset, force) {
       if (timelineState.end !== null) wanted.end = timelineState.end;
       wanted.include_undated = $("timeline-undated").checked;
       wanted.respect_filters = $("timeline-filters").checked;
+      if (wanted.respect_filters) wanted.live = liveView();
       payload = await runTask("timeline", wanted, "Timeline");
       if (!payload) return;
     } else {
@@ -6171,6 +6187,10 @@ function wire() {
     const dates = timelineDatesParam();
     if (dates) params.set("dates", dates);
     if ($("timeline-undated").checked) params.set("include_undated", "true");
+    if ($("timeline-filters").checked) {
+      params.set("respect_filters", "true");
+      params.set("live", JSON.stringify(liveView()));
+    }
     // The run is verified server-side; the receipt comes back in the response headers.
     window.location.href = url(`/api/cases/${state.openCase.id}/timeline/export?${params}`);
     say("Timeline exported: the file carries only rows that were written and counted");

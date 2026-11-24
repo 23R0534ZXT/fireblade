@@ -75,6 +75,19 @@ def _store_upload(folder: Path, file: UploadFile, relative: str = "") -> Path:
     return target
 
 
+def _json_object(text: str) -> dict | None:
+    """A JSON object sent in a query or a form field; anything else is refused."""
+    if not text:
+        return None
+    try:
+        value = json.loads(text)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="'live' must be a JSON object.") from exc
+    if not isinstance(value, dict):
+        raise HTTPException(status_code=400, detail="'live' must be a JSON object.")
+    return value
+
+
 def create_app(
     root: str | Path,
     version: str = "",
@@ -759,6 +772,8 @@ def create_app(
         kind: str = "text",
         dates: str = "",
         include_undated: bool = False,
+        respect_filters: bool = False,
+        live: str = "",
     ):
         """The timeline as a verified CSV: the receipt rides in the headers."""
         options = None
@@ -778,6 +793,8 @@ def create_app(
                 kind=kind,
                 dates=options,
                 include_undated=include_undated,
+                respect_filters=respect_filters,
+                live=_json_object(live),
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1119,6 +1136,7 @@ def create_app(
             "respect_filters": bool(payload.get("filters")),
             "include_subdomains": payload.get("subdomains", True) is not False,
             "declared_format": (payload.get("format") or None),
+            "live": payload.get("live") or None,
         }
 
     @app.post("/api/cases/{identifier}/analyses/{index}/ioc")
@@ -1148,6 +1166,7 @@ def create_app(
         respect_filters: bool = Form(False),
         subdomains: bool = Form(True),
         index: int = Form(0),
+        live: str = Form(""),
     ):
         """A TXT, CSV or TSV list read as the desktop reads it: encoding, then format."""
         raw = file.file.read()
@@ -1173,6 +1192,7 @@ def create_app(
                 respect_filters=respect_filters,
                 include_subdomains=subdomains,
                 declared_format=declared,
+                live=_json_object(live),
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1188,6 +1208,7 @@ def create_app(
         dates: str = "",
         include_undated: bool = False,
         respect_filters: bool = False,
+        live: str = "",
     ):
         options = None
         if dates:
@@ -1208,6 +1229,7 @@ def create_app(
                 dates=options,
                 include_undated=include_undated,
                 respect_filters=respect_filters,
+                live=_json_object(live),
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

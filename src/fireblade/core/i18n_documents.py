@@ -140,6 +140,12 @@ DOCUMENTS = {
     "Raccourcis LNK": "LNK shortcuts",
     "Corbeille": "Recycle Bin",
     "Journaux Linux": "Linux logs",
+    # How an indicator was matched
+    "Adresse IP normalisée": "Normalised IP address",
+    "Empreinte exacte": "Exact hash",
+    "Sous-domaine": "Sub-domain",
+    "Domaine exact": "Exact domain",
+    "URL — ponctuation finale ignorée": "URL — trailing punctuation ignored",
     # Coverage diagnostics
     "Fichier modifié pendant la vérification": "File changed during the check",
     "Le journal de couverture est un lien": "The coverage log is a link",

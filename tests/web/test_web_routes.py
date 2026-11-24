@@ -816,7 +816,7 @@ def test_rows_without_a_date_join_the_timeline_on_request(tmp_path):
             identifier, start=instant, end=instant, include_undated=True
         )
         assert receipt["written"] == 2
-        assert "Fuseau_UTC_supposé" in data_bytes.decode("utf-8-sig").splitlines()[0]
+        assert "Assumed_UTC_zone" in data_bytes.decode("utf-8-sig").splitlines()[0]
     finally:
         library.close()
 

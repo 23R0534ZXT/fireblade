@@ -2792,6 +2792,7 @@ class Library:
         include_subdomains: bool = True,
         declared_format: str | None = None,
         progress=None,
+        live: dict | None = None,
     ) -> dict:
         """Match an indicator list against one analysis, or against the whole case.
 
@@ -2839,6 +2840,9 @@ class Library:
                         view = View.from_json(json.dumps(stored))
                     except (ValueError, TypeError, KeyError):
                         view = View()
+                shown = self._live_view(identifier, live)
+                if shown is not None and target_index == int(live["index"]):
+                    view = shown
             local = 0
             with case.lock:
                 offset = 0
@@ -2867,7 +2871,7 @@ class Library:
                                         "indicator": item.value,
                                         "kind": item.kind,
                                         "observed": observed,
-                                        "rule": rule,
+                                        "rule": english.english_text(rule),
                                     }
                                 )
                                 local += 1
@@ -3037,15 +3041,45 @@ class Library:
         coverage_core.export_report(target, report)
         return target.read_bytes()
 
-    def _snapshots(self, identifier: str):
-        """The case's analyses as snapshots, with the source record the timeline needs."""
+    def _live_view(self, identifier: str, live: dict | None) -> View | None:
+        """The filters the analyst has on screen, as the core's View.
+
+        The Host client keeps the search, the column filters and the advanced filter in the page,
+        not in the stored session, so "respect the filter" must be told what they are. They
+        are those of the analysis the grid is showing: the other analyses have none to respect.
+        """
+        if not isinstance(live, dict) or live.get("index") is None:
+            return None
+        from fireblade.core.models import condition_from_dict
+
+        case = self._case_for(identifier, int(live["index"]))
+        view = View(search=str(live.get("search") or ""), filters=[])
+        view.bookmarks_only = bool(live.get("bookmarks_only"))
+        for item in live.get("filters") or []:
+            operator = str(item.get("operator"))
+            column = int(item.get("column"))
+            if operator not in OPERATORS or not 0 <= column < len(case.headers):
+                raise ServiceError("A filter on screen does not fit this analysis.")
+            view.filters.append(Filter(column, operator, str(item.get("value", ""))))
+        if live.get("expression"):
+            view.expression = condition_from_dict(_raw_condition(case, live["expression"]))
+        return view
+
+    def _snapshots(
+        self, identifier: str, shown: View | None = None, shown_index: int | None = None
+    ):
+        """The case's analyses as snapshots, with the source record the timeline needs.
+
+        `shown` is the view of the analysis the grid is showing, `shown_index`.
+        """
         data = self.library.read(identifier)
         snapshots = []
         for entry in self._analyses(data):
             if not entry["found"]:
                 continue
+            view = shown if shown is not None and entry["index"] == shown_index else View()
             snapshots.append(
-                AnalysisSnapshot(entry["path"], entry.get("source_info") or {}, View(), b"")
+                AnalysisSnapshot(entry["path"], entry.get("source_info") or {}, view, b"")
             )
         return snapshots
 
@@ -3159,6 +3193,7 @@ class Library:
         include_undated: bool = False,
         respect_filters: bool = False,
         progress=None,
+        live: dict | None = None,
     ) -> dict:
         """Counts the case's rows over time with the desktop's own TimelineStore.
 
@@ -3167,7 +3202,7 @@ class Library:
         is what the desktop does when the analyst has not chosen a column.
         """
         store = self._timeline_store(
-            identifier, dates, respect_filters=respect_filters, progress=progress
+            identifier, dates, respect_filters=respect_filters, progress=progress, live=live
         )
         filters = {"include_undated": bool(include_undated)}
         if text:
@@ -3226,14 +3261,18 @@ class Library:
         dates: dict | None = None,
         respect_filters: bool = False,
         progress=None,
+        live: dict | None = None,
     ):
         """The built index for this case and these date readings, cached."""
         options = self._date_options(identifier, dates or {})
+        # Read before the grid's handles are closed below: building the view opens the analysis.
+        shown = self._live_view(identifier, live) if respect_filters else None
         key = (
             identifier,
             self.library.read(identifier).get("revision"),
             tuple(sorted(options.items())),
             bool(respect_filters),
+            json.dumps(live, sort_keys=True) if respect_filters and live else "",
         )
         # DuckDB refuses a second connection to a file with another configuration:
         # the grid's handles are closed on every call, cache hit or not, because
@@ -3248,7 +3287,7 @@ class Library:
         store = self._timelines.get(key)
         if store is not None:
             return store
-        snapshots = self._snapshots(identifier)
+        snapshots = self._snapshots(identifier, shown, int(live["index"]) if shown else None)
         if not snapshots:
             raise ServiceError("This case holds no analysis.")
         store = TimelineStore(self._timeline_dir)
@@ -3304,13 +3343,15 @@ class Library:
         kind: str = "text",
         dates: dict | None = None,
         include_undated: bool = False,
+        respect_filters: bool = False,
+        live: dict | None = None,
     ) -> tuple[bytes, dict]:
         """The timeline as the desktop exports it: verified rows, and a receipt.
 
         `TimelineStore.export_csv` writes the file, counts what it wrote and returns
         the SHA-256 of the content; a short write raises instead of returning.
         """
-        store = self._timeline_store(identifier, dates)
+        store = self._timeline_store(identifier, dates, respect_filters=respect_filters, live=live)
         filters = {"include_undated": bool(include_undated)}
         if text:
             filters.update(text=text, kind=kind)
@@ -4309,11 +4350,15 @@ class Library:
                 payload.get("index"),
                 payload.get("text", ""),
                 limit=int(payload.get("limit") or 2000),
-                all_analyses=bool(payload.get("all_analyses")),
-                respect_filters=bool(payload.get("respect_filters")),
-                include_subdomains=bool(payload.get("include_subdomains", True)),
+                # The page names its options as the window does (all, filters, subdomains).
+                all_analyses=bool(payload.get("all_analyses", payload.get("all"))),
+                respect_filters=bool(payload.get("respect_filters", payload.get("filters"))),
+                include_subdomains=bool(
+                    payload.get("include_subdomains", payload.get("subdomains", True))
+                ),
                 declared_format=payload.get("format") or None,
                 progress=note,
+                live=payload.get("live") or None,
             )
         if kind == "timeline":
             return lambda note: self.timeline(
@@ -4327,6 +4372,7 @@ class Library:
                 include_undated=bool(payload.get("include_undated")),
                 respect_filters=bool(payload.get("respect_filters")),
                 progress=note,
+                live=payload.get("live") or None,
             )
         if kind == "detect":
             return lambda note: self.detect(

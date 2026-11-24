@@ -768,3 +768,174 @@ def test_a_timeline_row_opens_its_source_line_with_every_column(page):
     for name in ("Time", "Host", "User", "Event", "Path", "Src"):
         assert name in text, text
     assert "C:\\Users\\" in text
+
+
+# -- IOC hunting -----------------------------------------------------------------------------
+
+
+def _hunt(page, text):
+    page.click('.tabs .tab:text-is("IOC hunting")')
+    page.fill("#ioc-input", text)
+    page.click("#ioc-scan")
+    page.wait_for_function(
+        "!document.getElementById('ioc-summary').innerText.includes('Nothing scanned yet')",
+        timeout=60000,
+    )
+
+
+def test_an_indicator_hunt_finds_every_row_that_holds_it(page):
+    _hunt(page, "10.0.0.2")
+    summary = page.inner_text("#ioc-summary")
+    assert "12" in summary, summary
+    page.wait_for_selector("#ioc-rows tr")
+    assert page.locator("#ioc-rows tr").count() >= 1
+    assert "10.0.0.2" in page.inner_text("#ioc-view")
+
+
+def test_an_indicator_that_is_nowhere_matches_nothing(page):
+    _hunt(page, "203.0.113.99")
+    page.wait_for_function(
+        "document.getElementById('ioc-summary').innerText.includes('0')", timeout=30000
+    )
+    assert page.locator("#ioc-rows tr").count() == 0 or "0" in page.inner_text("#ioc-summary")
+
+
+def test_the_hunt_exports_its_matches_and_its_summary(page, tmp_path):
+    _hunt(page, "10.0.0.1\n10.0.0.3")
+    page.wait_for_selector("#ioc-rows tr")
+    with page.expect_download(timeout=30000) as matches:
+        page.click('[data-act="ioc-export-matches"]')
+    saved = tmp_path / "matches.csv"
+    matches.value.save_as(str(saved))
+    text = saved.read_text(encoding="utf-8-sig")
+    assert "10.0.0.1" in text and "10.0.0.3" in text
+    assert "10.0.0.2" not in text, "only what was hunted"
+    with page.expect_download(timeout=30000) as summary:
+        page.click('[data-act="ioc-export-summary"]')
+    other = tmp_path / "summary.csv"
+    summary.value.save_as(str(other))
+    assert "10.0.0.1" in other.read_text(encoding="utf-8-sig")
+
+
+def test_a_hunt_can_be_limited_to_the_filtered_rows(page):
+    command(page, "add-filter")
+    answer(page, "User")
+    answer(page, "alice")
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 20')")
+    page.click('.tabs .tab:text-is("IOC hunting")')
+    page.fill("#ioc-input", "10.0.0.0")
+    page.check("#ioc-filters")
+    page.click("#ioc-scan")
+    page.wait_for_function("document.getElementById('ioc-summary').innerText.includes('4 hit')")
+    page.uncheck("#ioc-filters")
+    page.click("#ioc-scan")
+    page.wait_for_function("document.getElementById('ioc-summary').innerText.includes('12 hit')")
+
+
+def test_the_reason_a_value_matched_is_in_english(page):
+    _hunt(page, "10.0.0.4")
+    page.wait_for_selector("#ioc-rows tr")
+    assert "Normalised IP address" in page.inner_text("#ioc-rows")
+    assert "Adresse" not in page.inner_text("#ioc-view")
+
+
+def _import_more(page, server, name, content):
+    """A second analysis in the open case, imported by path the way a collection is."""
+    import time
+
+    base, _root, evidence = server
+    case = page.evaluate("state.openCase.id")
+    source = evidence / case / name
+    source.write_text(content)
+    job = httpx.post(
+        f"{base}/api/cases/{case}/import-jobs",
+        data={"source": str(source), "organization": "files"},
+        timeout=30,
+    ).json()["job"]
+    for _ in range(120):
+        if httpx.get(f"{base}/api/import-jobs/{job}").json().get("status") != "running":
+            break
+        time.sleep(0.25)
+    page.evaluate("openCase(state.openCase.id)")
+    page.wait_for_function(f"state.openCase.analyses.some(a => a.label === '{name}')")
+
+
+def test_a_hunt_over_every_analysis_reads_them_all(page, server):
+    _import_more(
+        page, server, "proxy.csv", "Time,Url\n2026-11-01T10:00:00Z,http://evil.example/a\n"
+    )
+    page.click('.tabs .tab:text-is("IOC hunting")')
+    page.fill("#ioc-input", "evil.example\n10.0.0.1")
+    page.click("#ioc-scan")
+    page.wait_for_function(
+        "document.getElementById('ioc-summary').innerText.includes('this analysis')", timeout=60000
+    )
+    assert "1 hit" not in page.inner_text("#ioc-summary") or "12" in page.inner_text("#ioc-summary")
+    first = page.inner_text("#ioc-summary")
+    page.check("#ioc-all")
+    page.click("#ioc-scan")
+    page.wait_for_function(
+        "document.getElementById('ioc-summary').innerText.includes('every analysis')", timeout=60000
+    )
+    everywhere = page.inner_text("#ioc-summary")
+    assert "every analysis" in everywhere and everywhere != first
+    assert "proxy.csv" in page.inner_text("#ioc-view")
+
+
+def test_the_subdomain_option_decides_whether_a_parent_domain_matches_its_children(page, server):
+    _import_more(page, server, "dns.csv", "Time,Query\n2026-11-01T10:00:00Z,mail.evil.example\n")
+    page.click('.tabs .tab:text-is("Analyses")')
+    page.click('#tree .node:has-text("dns.csv")')
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 1')")
+    page.click('.tabs .tab:text-is("IOC hunting")')
+    page.fill("#ioc-input", "evil.example")
+    page.check("#ioc-subdomains")
+    page.click("#ioc-scan")
+    page.wait_for_function("document.getElementById('ioc-summary').innerText.includes('1 hit')")
+    page.uncheck("#ioc-subdomains")
+    page.click("#ioc-scan")
+    page.wait_for_function("document.getElementById('ioc-summary').innerText.includes('0 hit')")
+
+
+def test_the_timeline_can_respect_the_filter_on_screen(page):
+    command(page, "add-filter")
+    answer(page, "User")
+    answer(page, "alice")
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 20')")
+    page.click('.tabs .tab:text-is("Timeline & correlations")')
+    page.click("#timeline-build")
+    page.wait_for_function(
+        "document.getElementById('timeline-view').innerText.includes('60 dated / 60 row(s)')",
+        timeout=60000,
+    )
+    page.check("#timeline-filters")
+    page.wait_for_function(
+        "document.getElementById('timeline-view').innerText.includes('20 dated / 20 row(s)')",
+        timeout=60000,
+    )
+    texts = page.eval_on_selector_all("#timeline-rows tr", "els => els.map(e => e.innerText)")
+    assert texts and all("alice" in text for text in texts)
+
+
+def test_the_timeline_export_follows_the_same_filter(page, tmp_path):
+    command(page, "add-filter")
+    answer(page, "User")
+    answer(page, "bob")
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 20')")
+    page.click('.tabs .tab:text-is("Timeline & correlations")')
+    page.click("#timeline-build")
+    page.wait_for_function(
+        "document.getElementById('timeline-view').innerText.includes('60 dated / 60 row(s)')",
+        timeout=60000,
+    )
+    page.check("#timeline-filters")
+    page.wait_for_function(
+        "document.getElementById('timeline-view').innerText.includes('20 dated / 20 row(s)')",
+        timeout=60000,
+    )
+    with page.expect_download(timeout=30000) as download:
+        page.click("#timeline-export")
+    saved = tmp_path / "t.csv"
+    download.value.save_as(str(saved))
+    lines = saved.read_text(encoding="utf-8-sig").splitlines()
+    assert len(lines) - 1 == 20, len(lines)

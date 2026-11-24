@@ -11,6 +11,7 @@ never reported as "up to date".
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import urllib.error
@@ -43,20 +44,41 @@ def parse(payload: dict) -> dict:
             "published": (payload.get("published_at") or "").strip()}
 
 
+RUN_LINE = ('docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 '
+            '-v "$HOME/fireblade-cases:/data/cases"')
+
+
 def command(edition: str, tag: str) -> list:
-    """What the analyst pastes. The driver is the only one whose line is unambiguous."""
+    """What the analyst pastes: lines a shell can run, and nothing else.
+
+    The host edition's is one line, the README's own start command preceded by the pull and
+    the removal of the old container; the cases stay in their folder. The driver's and the
+    case's need the options they were started with, so they stop at what is unambiguous.
+    """
     tag = tag or "latest"
     case = f"{REGISTRY}/fireblade:{tag}"
     driver = f"{REGISTRY}/fireblade-driver:{tag}"
     if edition == "driver":
-        return [f"docker pull {driver}", f"docker pull {case}",
-                "docker rm -f fireblade-driver",
-                "then start it again with the same options (deploy/host/README.md, Upgrade)"]
+        return [f"docker pull {driver}", f"docker pull {case}", "docker rm -f fireblade-driver"]
     if edition == "case":
-        return [f"docker pull {case}",
-                "the driver restarts the case containers on the new image; open the case again"]
-    return [f"docker pull {case}",
-            "then recreate your container with the same options (deploy/host/README.md, Upgrade)"]
+        return [f"docker pull {case}"]
+    return [f"docker pull {case} && docker rm -f fireblade && {RUN_LINE} {case}"]
+
+
+def guidance(edition: str) -> str:
+    """The sentence that goes with the command: what it assumes, and what comes next."""
+    if edition == "driver":
+        return ("then start the driver again with the same options (deploy/host/README.md, Upgrade): "
+                "the case containers are rebuilt on the new image when a case is opened")
+    if edition == "case":
+        return "the driver restarts the case containers on the new image; open the case again"
+    return ("this is the line from the README: use it as it stands if you started Fireblade that way, "
+            "otherwise see deploy/host/README.md (Upgrade). Your cases stay in their folder")
+
+
+def disabled() -> bool:
+    """FIREBLADE_UPDATE_CHECK=off: the service never asks anyone whether a release exists."""
+    return os.environ.get("FIREBLADE_UPDATE_CHECK", "").strip().lower() in {"0", "off", "false", "no"}
 
 
 class Checker:
@@ -91,6 +113,9 @@ class Checker:
 
     def info(self, *, refresh: bool = True) -> dict:
         """The banner's data. A stale answer is refreshed once; a failure keeps the last one."""
+        if disabled():
+            return {"current": self.version(), "latest": "", "available": False, "url": "", "name": "",
+                    "command": [], "note": "", "checked": "", "error": "", "disabled": True}
         with self.lock:
             age = self.now() - self.checked_at
             interval = self.retry if self.failure else self.ttl
@@ -115,6 +140,8 @@ class Checker:
                 "url": self.url,
                 "name": self.name,
                 "command": command(self.edition, self.latest),
+                "note": guidance(self.edition),
+                "disabled": False,
                 "checked": (datetime.fromtimestamp(self.checked_at, timezone.utc).isoformat()
                             if self.checked_at else ""),
                 "error": self.failure,

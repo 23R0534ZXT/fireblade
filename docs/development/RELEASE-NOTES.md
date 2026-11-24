@@ -76,9 +76,17 @@ of Linux logs, and comes with the test that would have caught it.
   per-case driver. They are skipped without Playwright and a Chromium.
 - The suite no longer depends on a system `dotnet`.
 
+## Updates
+
+- The update band offers one line a shell can run — pull the new image, remove the old container,
+  start it again with the README's options — instead of a bare `docker pull` and a sentence.
+- `FIREBLADE_UPDATE_CHECK=off` switches the check for a newer release off: the container then
+  makes no outbound request at all. The documentation no longer says the Host talks to no outside
+  service, which the check made untrue.
+
 ## Documentation
 
-- A new README; the "beta of a beta" wording is replaced by `docs/host/STATUS.md`, which says what
+- A new README, with the Host started by one line; the "beta of a beta" wording is replaced by `docs/host/STATUS.md`, which says what
   is verified and how, and what cannot be relied on (no access control; software erasure is not a
   physical guarantee on SSDs).
 

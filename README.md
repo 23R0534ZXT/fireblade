@@ -8,7 +8,8 @@ Fireblade reads a collected folder, keeps every file accounted for, and puts the
 one workspace: filterable tables, a cross-analysis timeline, indicator hunting, detections
 grouped into findings, an attack graph, and a case that can be saved, moved and erased
 verifiably. Everything runs on the analyst's own machine: no upload, no cloud account, no
-API key, no telemetry.
+API key, no telemetry. The Host's one outbound request is the optional check for a newer
+release (see [Updates](#updates)).
 
 ![The Fireblade Host workspace: a case of Linux logs](docs/assets/host/host-workspace.png)
 
@@ -52,6 +53,19 @@ folder is there. On Windows PowerShell, write the folder as `"$HOME\fireblade-ca
 | Remove | `docker rm -f fireblade` (your cases are not touched) |
 
 To build from a clone instead: `docker build -t fireblade:host .`.
+
+### Updates
+
+When a newer release exists, a band across the top of the page says so, with the release notes
+and the line to run: pull the new image, remove the old container, start it again. Your cases
+stay in their folder, and nothing updates itself — a tool that signs destruction certificates
+changes version when someone decides to.
+
+To find out, the container asks GitHub's public releases API at most once every six hours. That
+request carries no information about you or your cases, and it is the only one the Host makes.
+On an isolated network, or if you prefer it that way, switch it off with
+`-e FIREBLADE_UPDATE_CHECK=off`: the band never appears, and you follow the
+[releases](https://github.com/23R0534ZXT/fireblade/releases) yourself.
 
 The image carries the .NET 10 runtime and the thirteen pinned readers, so it reads the same
 artifacts as the Desktop.

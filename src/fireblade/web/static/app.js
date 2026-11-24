@@ -6480,7 +6480,7 @@ async function checkForUpdate() {
     const commands = info.command || [];
     $("update-text").textContent = `Fireblade ${info.latest} is available — you run ${info.current}.`;
     $("update-command").textContent = commands[0] || "";
-    $("update-command").title = commands.join("\n");
+    $("update-command").title = info.note || "";
     $("update-copy").onclick = async () => {
       try { await navigator.clipboard.writeText(commands.join("\n")); say("Update command copied"); }
       catch (_) { say(commands.join(" · ")); }

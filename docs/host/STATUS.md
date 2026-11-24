@@ -10,8 +10,9 @@ API. This page says which is which, so that nobody relies on more than has been 
 - **The analysis is the desktop's.** The Host imports and reads evidence through the
   same `src/fireblade/core`: same parsers, same case format, same filters, same
   timeline, same reports. A case opened in the Host is the case the desktop wrote.
-- **Nothing is uploaded.** The container talks to no outside service; the only network
-  peer is your browser.
+- **Nothing is uploaded.** The container sends nothing about you or your cases. Its only
+  outbound request is the check for a newer release (GitHub's public releases API, at most every
+  six hours), which `FIREBLADE_UPDATE_CHECK=off` removes; otherwise the only peer is your browser.
 - **The evidence is read, never modified.** Sources are copied into the case and
   hashed; the readers only read.
 - **A long command tells you what it is doing** and can be stopped at a checkpoint.

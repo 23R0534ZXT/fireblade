@@ -55,8 +55,24 @@ def test_the_command_names_the_editions_own_image():
     assert driver[0] == "docker pull ghcr.io/23r0534zxt/fireblade-driver:0.9.0"
     assert any("fireblade:0.9.0" in line for line in driver)
     case = updates.command("case", "0.9.0")
-    assert case[0] == "docker pull ghcr.io/23r0534zxt/fireblade:0.9.0"
-    assert "driver" in case[1]
-    host = updates.command("host", "0.9.0")
-    assert host[0] == "docker pull ghcr.io/23r0534zxt/fireblade:0.9.0"
-    assert "recreate" in host[1]
+    assert case == ["docker pull ghcr.io/23r0534zxt/fireblade:0.9.0"]
+    assert "driver" in updates.guidance("case")
+
+
+def test_the_host_update_is_one_line_a_shell_can_run():
+    host = updates.command("host", "0.8.2")
+    assert len(host) == 1
+    line = host[0]
+    image = "ghcr.io/23r0534zxt/fireblade:0.8.2"
+    assert line.startswith(f"docker pull {image} && docker rm -f fireblade && docker run -d ")
+    assert line.endswith(image) and "-p 127.0.0.1:8080:8080" in line
+    assert "README" in updates.guidance("host")
+
+
+def test_the_check_can_be_switched_off_and_then_asks_nobody(monkeypatch):
+    monkeypatch.setenv("FIREBLADE_UPDATE_CHECK", "off")
+    asked = []
+    checker = updates.Checker("0.8.1", "host", fetch=lambda: asked.append(1) or {"tag_name": "v9.0.0"})
+    answer = checker.info()
+    assert answer["disabled"] is True and answer["available"] is False and answer["command"] == []
+    assert asked == [], "no request leaves the machine"

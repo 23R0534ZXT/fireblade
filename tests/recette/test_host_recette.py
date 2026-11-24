@@ -80,8 +80,19 @@ def test_the_host_accounts_for_every_file_of_each_source_and_reads_the_known_cou
         scenario["scenario"]: {c["name"]: c for c in scenario["checks"]}
         for scenario in result["scenarios"]
     }
-    assert set(seen) == {"catscale-folder", "catscale-archive", "volume", "exports"}
+    assert set(seen) == {
+        "catscale-folder",
+        "catscale-archive",
+        "volume",
+        "exports",
+        "dialog-import",
+    }
+    assert {c["verdict"] for c in seen["dialog-import"].values()} == {host_recette.PASS}, seen[
+        "dialog-import"
+    ]
     for name, checks in seen.items():
+        if name == "dialog-import":
+            continue
         for pinned in ("import-completes", "every-file-accounted-for", "no-file-in-error"):
             assert checks[pinned]["verdict"] == host_recette.PASS, (name, checks[pinned])
     assert seen["volume"]["volume-rows"]["verdict"] == host_recette.PASS, seen["volume"]

@@ -130,12 +130,12 @@ class Container:
         self.logs = (logs.stdout + logs.stderr)[-4000:]
 
 
-def import_pack(base: str, case_id: str, source: str) -> dict:
+def import_pack(base: str, case_id: str, source: str, organization: str = "artifacts") -> dict:
     started = request(
         base,
         "POST",
         f"/api/cases/{case_id}/import-jobs",
-        form={"source": source, "organization": "artifacts"},
+        form={"source": source, "organization": organization},
     )
     deadline = time.monotonic() + 3600
     while time.monotonic() < deadline:
@@ -328,6 +328,79 @@ def load_expected(pack: Path) -> dict:
     return {}
 
 
+def upload(base: str, path: str, name: str, content: bytes, fields: dict | None = None):
+    """A file sent the way the browser's dialog sends it (multipart), the answer read as JSON."""
+    boundary = uuid.uuid4().hex
+    parts = []
+    for key, value in (fields or {}).items():
+        parts.append(
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode()
+        )
+    parts.append(
+        (
+            f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\n'
+            "Content-Type: text/csv\r\n\r\n"
+        ).encode()
+        + content
+        + f"\r\n--{boundary}--\r\n".encode()
+    )
+    call = urllib.request.Request(
+        base + path,
+        data=b"".join(parts),
+        method="POST",
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
+    try:
+        with urllib.request.urlopen(call, timeout=120) as answer:
+            return json.loads(answer.read().decode("utf-8") or "null")
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(
+            f"POST {path}: {exc.code} {exc.read().decode('utf-8', 'replace')[:300]}"
+        ) from exc
+
+
+def dialog_import(base: str) -> dict:
+    """The analyst's own way in: a file chosen in the dialog, previewed, then imported.
+
+    The other scenarios import a folder by path; this one goes through the upload routes, which
+    is how a CSV reached the Host in 0.8.2 and failed there (the profile detection could not
+    read a folder of the user's profile inside the container).
+    """
+    started = time.monotonic()
+    case = request(
+        base, "POST", "/api/cases", data={"name": "Recette dialog", "environment": "windows"}
+    )
+    content = b"Time,Host,User\n2026-11-01T10:00:00Z,PC01,alice\n2026-11-01T10:05:00Z,PC02,bob\n"
+    checks = []
+    try:
+        preview = upload(base, f"/api/cases/{case['id']}/preview-upload", "events.csv", content)
+        columns = [column["name"] for column in preview.get("columns", [])]
+        checks.append(
+            Check(
+                "dialog-preview",
+                ["Time", "Host", "User"],
+                columns,
+                PASS if columns == ["Time", "Host", "User"] else FAIL,
+            )
+        )
+        # Confirming the preview imports the bytes the preview already stored.
+        import_pack(base, case["id"], preview["path"], "files")
+        observed = observe(base, case["id"])
+        rows = sum(item["rows"] for item in observed["analyses"] if item["label"] == "events.csv")
+        checks.append(Check("dialog-rows", 2, rows, PASS if rows == 2 else FAIL))
+    except RuntimeError as exc:
+        checks.append(Check("dialog-import", "works", "refused", FAIL, str(exc)[:300]))
+    return {
+        "scenario": "dialog-import",
+        "source": "(uploaded)",
+        "windows": False,
+        "seconds": round(time.monotonic() - started, 1),
+        "statuses": {},
+        "analyses": [],
+        "checks": [asdict(item) for item in checks],
+    }
+
+
 def run(args) -> dict:
     pack = Path(args.pack).resolve()
     expected = load_expected(pack)
@@ -362,6 +435,7 @@ def run(args) -> dict:
                     "checks": [asdict(item) for item in checks],
                 }
             )
+        scenarios.append(dialog_import(base))
         return scenarios
 
     if args.url:

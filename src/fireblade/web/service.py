@@ -550,9 +550,16 @@ class Library:
                 readers[name] = False
         hayabusa = bool(pack and Path(self.tools_root or "") / "Hayabusa" / "hayabusa" and
                         (Path(self.tools_root or "") / "Hayabusa" / "hayabusa").is_file())
+        edition = os.environ.get("FIREBLADE_EDITION", "host")
         return {
             "cases_root": str(self.root),
             "tools_root": str(self.tools_root or ""),
+            # Where a destruction certificate goes, and whether the analyst may pick.
+            # In the per-case edition the driver writes it, outside the volume: the
+            # path shown is the one on the host, and it cannot be moved from here.
+            "certificate_folder": (os.environ.get("FIREBLADE_CERTIFICATES")
+                                   or str(self.root / "certificates")),
+            "certificate_choice": edition != "case",
             "page_size": Case.PAGE_SIZE,
             # The action types come from the core, not from the window: a list
             # written twice is a list that drifts (the window offered
@@ -1781,16 +1788,35 @@ class Library:
 
     def destroy(self, identifier: str, method: str = "dod3", operator: str = "",
                 witness: str = "", reason: str = "", confirmation: str = "",
-                attachments: list | None = None) -> dict:
-        """Destroy the case the way the desktop does, and keep the certificate outside."""
+                attachments: list | None = None, certificate_folder: str = "") -> dict:
+        """Destroy the case the way the desktop does, and keep the certificate outside.
+
+        The certificate goes to the folder the analyst named, when they named one: a
+        document nobody can find is a document that was not written. The default is the
+        library's own ``certificates`` folder.
+        """
         from fireblade.core.case_destruction import destroy_case, outside_entries
 
         data = self.library.read(identifier)
         if (confirmation or "").strip() != data.get("name", ""):
             raise ServiceError("The confirmation must repeat the case name exactly.")
         folder = self.library.folder(identifier)
-        certificates = self.root / "certificates"
-        certificates.mkdir(parents=True, exist_ok=True)
+        if (certificate_folder or "").strip():
+            certificates = Path(certificate_folder.strip()).expanduser()
+            if not certificates.is_absolute():
+                raise ServiceError("The certificate folder must be an absolute path on the server.")
+            try:
+                certificates.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                raise ServiceError(f"The certificate folder cannot be created: {exc}") from exc
+            resolved = certificates.resolve()
+            if resolved == folder or folder in resolved.parents:
+                raise ServiceError(
+                    "The certificate must be written outside the case, "
+                    "since that folder is what disappears.")
+        else:
+            certificates = self.root / "certificates"
+            certificates.mkdir(parents=True, exist_ok=True)
         # The generator writes HTML unless the target ends in .pdf.
         certificate = certificates / (datetime.now(timezone.utc).strftime("pv-%Y%m%d-%H%M%S-")
                                       + identifier[:8] + ".html")

@@ -21,6 +21,7 @@
 
     <div class="menu" data-for="case">
       <div class="item" data-act="import-file">Import evidence…<span class="key">Ctrl+O</span></div>
+      <div class="item" data-act="import-folder">Import a folder…<span class="key">Ctrl+Shift+I</span></div>
       <div class="item" data-act="open-analyses">Open an analysis…<span class="key">Ctrl+Shift+O</span></div>
       <div class="item" data-act="disk-open">Analyse a disk…</div>
       <div class="sep"></div>
@@ -137,6 +138,14 @@
     </div>
   </div>
 
+  <div class="updatebar" id="update-bar" hidden>
+    <span id="update-text"></span>
+    <code id="update-command"></code>
+    <button class="btn" id="update-copy">Copy the command</button>
+    <button class="btn" id="update-link">Release notes</button>
+    <span class="grow"></span>
+    <button class="btn" id="update-dismiss">Dismiss</button>
+  </div>
   <div class="toolbar">
     <div class="tb" data-act="import-file" title="Send a file to the server and read it">
       <svg class="ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
@@ -350,6 +359,7 @@
         </div>
         <div class="filterbar">
           <button class="btn" data-act="import-file">Import evidence…</button>
+          <button class="btn" data-act="import-folder">Import a folder…</button>
           <button class="btn" id="retry-open" title="A file that could not be read: try another reader">Read again with a reader…</button>
           <button class="btn" id="coverage-open" data-act="coverage-open" title="Reopen every analysis and check what could not be attested">Full report</button>
           <button class="btn" data-act="case-history">History…</button>
@@ -746,6 +756,12 @@
         <span class="note" style="max-width:none">or a path on the server</span>
         <input id="preview-server" placeholder="/data/cases/…" style="flex:1">
         <button class="btn" data-act="preview-path">Preview the path</button>
+      </div>
+      <div class="row">
+        <label>Folder</label>
+        <button class="btn" data-act="import-folder">Choose a folder…</button>
+        <input type="file" id="folder-input" webkitdirectory directory multiple hidden>
+        <span class="note" style="max-width:none">a whole collection, subfolders kept — the browser sends it, then it is read like a folder on the server</span>
       </div>
       <div class="row">
         <label>CSV options</label>
@@ -1467,6 +1483,9 @@
         <span id="destroy-photo-count" class="muted">none</span></div>
       <div class="note">They are copied beside the case, fingerprinted, and embedded in the
         certificate before the case disappears.</div>
+      <div class="row"><label for="destroy-certificate">Certificate folder</label>
+        <input id="destroy-certificate" placeholder="/srv/fireblade/certificates" style="flex:1">
+        <span class="note" style="max-width:none" id="destroy-certificate-note">outside the case</span></div>
       <div class="row"><label for="destroy-confirm">Type the case name</label><input id="destroy-confirm"></div>
       <div class="note" id="destroy-target"></div>
     </div>

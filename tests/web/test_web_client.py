@@ -604,3 +604,29 @@ def test_every_request_carries_the_case_prefix():
     assert all(value.strip().startswith("url(") for value in navigations), navigations
     # The shell's own assets are relative, or the prefix never reaches them.
     assert 'href="static/app.css"' in page and 'src="static/app.js"' in page
+
+
+def test_the_client_has_an_update_band_and_it_never_bypasses_the_prefix():
+    """The band reads /api/version through api(), so it works under /case/<id>/ too."""
+    js, page = _read(APP), _read(INDEX)
+    assert 'id="update-bar"' in page and 'id="update-command"' in page
+    assert "checkForUpdate" in js and 'api("/api/version")' in js
+    assert "fb-update-dismissed" in js, "a dismissed version stays dismissed"
+
+
+def test_a_folder_can_be_sent_from_the_browser_and_keeps_its_tree():
+    """A collection is a tree: the picker hands each file over with its relative path."""
+    js, page = _read(APP), _read(INDEX)
+    assert 'id="folder-input"' in page and "webkitdirectory" in page
+    assert 'data-act="import-folder"' in page
+    assert "async function importFolder(" in js
+    assert "upload-folder`" in js, "the files go to the tree-preserving route"
+    assert 'body.append("relative"' in js
+
+
+def test_the_destroy_dialog_asks_where_the_certificate_goes():
+    """A document nobody can find was not written: the folder is named, not assumed."""
+    js, page = _read(APP), _read(INDEX)
+    assert 'id="destroy-certificate"' in page
+    assert "certificate_folder" in js, "the chosen folder travels with the destruction"
+    assert "certificate_choice" in js, "the driver's own folder is shown read-only"

@@ -725,6 +725,57 @@ function openImportDialog() {
   $("import-modal").classList.add("show");
 }
 
+/* A collection is a tree. The browser hands a directory over one file at a time, each
+   with its relative path; the case rebuilds that tree under evidence/, then the folder is
+   previewed and imported exactly as a folder on the server. */
+function openFolderPicker() {
+  if (!state.openCase) { say("Open a case before importing", true); return; }
+  $("folder-input").click();
+}
+
+async function importFolder(files) {
+  if (!state.openCase) { say("Open a case before importing", true); return; }
+  const identifier = state.openCase.id;
+  $("import-modal").classList.add("show");
+  $("import-title").textContent = "Import a folder";
+  previewState.items = [];
+  renderPreview();
+  const note = $("preview-note");
+  note.classList.remove("err");
+  let root = "";
+  let index = 0;
+  for (const file of files) {
+    index += 1;
+    note.textContent = `Sending ${index}/${files.length} — ${file.webkitRelativePath || file.name}`;
+    const body = new FormData();
+    body.append("file", file);
+    body.append("relative", file.webkitRelativePath || file.name);
+    try {
+      const response = await fetch(url(`/api/cases/${identifier}/upload-folder`), { method: "POST", body });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText);
+      root = payload.root || root;
+    } catch (error) {
+      previewState.items = [{ name: file.name, error: error.message }];
+      note.textContent = error.message;
+      note.classList.add("err");
+      renderPreview();
+      return;
+    }
+  }
+  note.textContent = `${files.length} file(s) sent — reading the folder…`;
+  try {
+    const payload = await apiPost(`/api/cases/${identifier}/preview`, { source: root, ...csvOptions() });
+    previewState.items = [{ name: payload.name || root, payload }];
+    note.textContent = `${files.length} file(s) ready. Nothing has been read into the case yet.`;
+  } catch (error) {
+    previewState.items = [{ name: root, error: error.message }];
+    note.textContent = error.message;
+    note.classList.add("err");
+  }
+  renderPreview();
+}
+
 async function previewFiles(files) {
   if (!state.openCase) { say("Open a case before importing", true); return; }
   $("import-modal").classList.add("show");
@@ -994,6 +1045,17 @@ async function openDestroyDialog() {
   $("destroy-confirm").value = "";
   $("destroy-target").textContent = `Case: ${name} — type that name to confirm.`;
   $("destroy-modal").classList.add("show");
+  /* Where the certificate goes: the analyst decides, because a document nobody can find
+     was not written. The service gives its own default; the driver's folder cannot move. */
+  try {
+    const settings = await api("/api/settings");
+    const field = $("destroy-certificate");
+    field.value = settings.certificate_folder || "";
+    field.readOnly = settings.certificate_choice === false;
+    $("destroy-certificate-note").textContent = settings.certificate_choice === false
+      ? "the driver writes it there, outside the case volume"
+      : "an absolute path on the server, outside the case";
+  } catch (_) { /* the service's default stands */ }
   /* A portable package or an archive of this case is the case: the dialog says
      how much of it lives outside the folder, before the analyst commits. */
   try {
@@ -1044,6 +1106,7 @@ async function runDestroy() {
     reason: $("destroy-reason").value,
     confirmation,
     attachments: state.destroyAttachments || [],
+    certificate_folder: $("destroy-certificate").value.trim(),
   };
   if (confirmation !== state.openCase.name) { say("The typed name does not match", true); return; }
   closeModals();
@@ -5845,6 +5908,11 @@ function wire() {
     event.target.value = "";
     if (files.length) previewFiles(files);
   });
+  $("folder-input").addEventListener("change", (event) => {
+    const files = [...(event.target.files || [])];
+    event.target.value = "";        // the same folder can be picked again
+    if (files.length) importFolder(files);
+  });
   for (const id of ["preview-delimiter", "preview-encoding"]) {
     $(id).addEventListener("change", refreshPreviews);
   }
@@ -6048,6 +6116,9 @@ function wire() {
   });
 
   document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "i") {
+      event.preventDefault(); openFolderPicker(); return;
+    }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
       event.preventDefault();
       openPalette();
@@ -6132,6 +6203,7 @@ async function act(name, node) {
       say("Excel export: the same rows, as a workbook");
       break;
     case "import-file": openImportDialog(); break;
+    case "import-folder": openFolderPicker(); break;
     case "import-evidence": openImportDialog(); break;
     case "import-view-file": await viewCollectedFile(); break;
     case "import-copy-unread": await copyUnprocessedFiles(); break;
@@ -6304,6 +6376,31 @@ async function act(name, node) {
 
 /* ---------- boot ---------- */
 
+/* A newer release? The service has already asked the registry (and cached the answer);
+   this only decides whether to show the band. It never blocks, never retries in a loop,
+   and a dismissed version stays dismissed. */
+async function checkForUpdate() {
+  try {
+    const info = await api("/api/version");
+    if (!info || !info.available) return;
+    if (localStorage.getItem("fb-update-dismissed") === info.latest) return;
+    const commands = info.command || [];
+    $("update-text").textContent = `Fireblade ${info.latest} is available — you run ${info.current}.`;
+    $("update-command").textContent = commands[0] || "";
+    $("update-command").title = commands.join("\n");
+    $("update-copy").onclick = async () => {
+      try { await navigator.clipboard.writeText(commands.join("\n")); say("Update command copied"); }
+      catch (_) { say(commands.join(" · ")); }
+    };
+    $("update-link").onclick = () => { if (info.url) window.open(info.url, "_blank", "noreferrer"); };
+    $("update-dismiss").onclick = () => {
+      localStorage.setItem("fb-update-dismissed", info.latest);
+      $("update-bar").hidden = true;
+    };
+    $("update-bar").hidden = false;
+  } catch (_) { /* a comfort, not a dependency: the page works without the answer */ }
+}
+
 async function boot() {
   loadCopyPrefs();
   loadPalette();
@@ -6322,6 +6419,7 @@ async function boot() {
     ? "Open a case from the Cases tab."
     : "The library is empty. A case written by the Windows edition opens here as soon as its folder is in the library.");
   $("tree").innerHTML = '<div class="empty">No case open.</div>';
+  checkForUpdate();
 }
 
 document.addEventListener("DOMContentLoaded", boot);

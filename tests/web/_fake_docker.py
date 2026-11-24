@@ -5,6 +5,7 @@ decision it takes: which containers exist, what they mount, in which state they 
 The state lives in the JSON file named by ``FAKE_DOCKER_STATE``; every call is kept, so
 a test can read back the arguments that were actually used.
 """
+import hashlib
 import json
 import os
 import sys
@@ -28,6 +29,30 @@ def save(state: dict) -> None:
 
 def flag(args, name, default=""):
     return args[args.index(name) + 1] if name in args else default
+
+
+def image_id(image: str) -> str:
+    """A stable id per image name: two names, two ids — which is all an upgrade needs."""
+    return "sha256:" + hashlib.sha1(image.encode("utf-8")).hexdigest()
+
+
+VALUED = {"--name", "--label", "--network", "--restart", "-v", "-e", "-p", "-u", "--memory"}
+
+
+def positional(args):
+    """The first argument that is neither an option nor an option's value."""
+    skip = False
+    for value in args:
+        if skip:
+            skip = False
+            continue
+        if value in VALUED:
+            skip = True
+            continue
+        if value.startswith("-"):
+            continue
+        return value
+    return ""
 
 
 def main(argv) -> int:
@@ -68,9 +93,31 @@ def main(argv) -> int:
             if value == "--label":
                 key, _, content = args[index + 1].partition("=")
                 labels[key] = content
-        containers[name] = {"state": "running", "labels": labels, "args": args}
+        image = positional(args)
+        containers[name] = {"state": "running", "labels": labels, "args": args,
+                            "image": image, "image_id": image_id(image)}
         save(state)
         print("fake-" + name)
+        return 0
+
+    if command == "inspect":
+        name = args[-1]
+        item = containers.get(name)
+        if item is None:
+            print(f"Error: No such object: {name}", file=sys.stderr)
+            return 1
+        fmt = flag(args, "-f", "")
+        if "{{.Image}}" in fmt:
+            print(item.get("image_id", ""))
+        elif "{{.Config.Image}}" in fmt:
+            print(item.get("image", ""))
+        else:
+            print(json.dumps(item))
+        return 0
+
+    if command == "image" and args and args[0] == "inspect":
+        name = args[-1]
+        print(image_id(name))
         return 0
 
     if command in ("start", "stop"):

@@ -1,3 +1,46 @@
+# Fireblade 0.8.1 — an update that reaches the cases
+
+## Upgrading is a pull and a restart
+
+- The driver compares the image id of every case container with the image it is configured
+  with. A container built from another image is stopped, removed and rebuilt on the next
+  open, and the stale ones are swept when the driver starts — the volume keeps the case, and
+  nothing is migrated.
+- `--image` now defaults to the published case image, and the compose passes it: a driver
+  deployment no longer needs a locally built `fireblade:host` under another name.
+- `deploy/host/README.md` gains the upgrade recipe: pull both tags, recreate the driver with
+  the same `--image` tag, open the cases.
+
+## A collection can be sent as a folder
+
+- **Import a folder…** (Case menu, `Ctrl+Shift+I`): the browser hands over a directory, every
+  file keeps its relative path under the case's `evidence/`, and the folder is then previewed
+  and imported exactly as a folder on the server. A collection is a tree — the readers look
+  for what its subfolders hold — and until now only single files could cross the browser.
+
+## The certificate goes where the analyst says
+
+- The erase dialog asks for the folder the certificate is written to, outside the case, with
+  the service's own default filled in. A document nobody can find was not written.
+- Under the driver, the folder is the one mounted from the host: the dialog shows it and
+  says it cannot be moved from there, since a path typed in a case would point inside the
+  container.
+
+## The client says when a newer release exists
+
+- A band across the window, at most one per version: the release you run, the one available
+  and the command to paste, with a Copy and the release notes. Dismissing it is remembered.
+- The check is cached for six hours and a failed request is reported as a failure, never as
+  "up to date"; `/api/version` carries the answer and `/health` repeats it.
+- Nothing updates itself. Watchtower does, from the labels it already knows, and the driver
+  rebuilds the case containers from the new image on the next open.
+
+## Verified on this machine
+
+- A driver started on a locally built case image, then restarted on the published one: at
+  start-up the stale case container was removed, the case folder untouched, and opening the
+  case rebuilt the container from the new image.
+
 # Fireblade 0.8.0 — one container per case
 
 ## The Host gives each case its own container

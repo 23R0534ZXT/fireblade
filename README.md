@@ -82,13 +82,18 @@ same case format — without Qt, without a Windows session. One analyst, one con
 per case, a browser as the window.
 
 ```bash
-docker run -p 8080:8080 ghcr.io/23r0534zxt/fireblade:latest
+mkdir -p ~/fireblade/cases
+docker run -d --name fireblade -p 8080:8080 \
+    -v ~/fireblade/cases:/data/cases \
+    ghcr.io/23r0534zxt/fireblade:latest
 # then open http://localhost:8080
 ```
 
-That is the whole install: nothing to clone, nothing to build. Without `-v` the cases live
-inside the container; to keep them, add `-v /srv/fireblade/cases:/data/cases` (and
-`-v /srv/fireblade/plugins:/data/plugins` for the presentation plugins).
+That is the whole install: nothing to clone, nothing to build. **`/data/cases` is the path
+*inside* the container** — on your machine the cases are in `~/fireblade/cases`, which is
+what you mount. Without `-v`, Docker gives the container a private volume and your cases
+are nowhere you can reach: `docker inspect fireblade --format '{{range .Mounts}}{{.Source}}{{end}}'`
+tells you where they went.
 
 `:latest` is the newest release, `:0.8.0` pins one, `:edge` follows `main`. Building from
 source stays one command: `docker build -t fireblade:host .`.
@@ -105,6 +110,7 @@ docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
     -v /srv/fireblade/certificates:/data/certificates \
     ghcr.io/23r0534zxt/fireblade-driver:latest \
     python -m fireblade.web.agency serve \
+      --image ghcr.io/23r0534zxt/fireblade:latest \
       --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
       --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
       --host 0.0.0.0 --port 8080

@@ -33,6 +33,7 @@ from starlette.background import BackgroundTask
 
 from fireblade.core.case_destruction import destroy_case, outside_entries
 from fireblade.core.investigations import InvestigationLibrary
+from fireblade.web.updates import Checker
 
 STATIC = Path(__file__).with_name("static")
 CASE_ID = re.compile(r"^[0-9a-f]{32}$")
@@ -78,8 +79,10 @@ class Docker:
 class CaseContainer:
     """One case, one container: born when the case is opened, gone when it is destroyed."""
 
-    def __init__(self, docker, identifier: str, *, volume, image: str = "fireblade:host",
-                 network: str = "fireblade-cases", port: int = 8080, name: str = ""):
+    def __init__(self, docker, identifier: str, *, volume,
+                 image: str = "ghcr.io/23r0534zxt/fireblade:latest",
+                 network: str = "fireblade-cases", port: int = 8080, name: str = "",
+                 env=None):
         if not CASE_ID.match(identifier or ""):
             raise ValueError("A case identifier is 32 hexadecimal characters")
         self.docker = docker
@@ -89,6 +92,7 @@ class CaseContainer:
         self.network = network
         self.port = port
         self.name = name or f"fireblade-case-{identifier[:8]}"
+        self.env = dict(env or {})
 
     @property
     def url(self) -> str:
@@ -114,6 +118,8 @@ class CaseContainer:
             "--label", f"{ROLE_LABEL}=case",
             "--network", self.network,
             "--restart", "no",
+            "-e", "FIREBLADE_EDITION=case",
+            *[part for key, value in self.env.items() for part in ("-e", f"{key}={value}")],
             "-v", f"{self.volume}:/data/library",
             self.image,
             "python", "-m", "fireblade.web", "serve",
@@ -129,6 +135,26 @@ class CaseContainer:
 
     def remove(self) -> None:
         self.docker.run("rm", "-f", self.name, check=False)
+
+    def current_image_id(self) -> str:
+        """The image the container was built from, as the daemon sees it."""
+        return self.docker.run("inspect", "-f", "{{.Image}}", self.name, check=False).strip()
+
+    def wanted_image_id(self) -> str:
+        """The image this driver would build it from now; empty when it is not local."""
+        return self.docker.run("image", "inspect", "-f", "{{.Id}}", str(self.image),
+                               check=False).strip()
+
+    def follows(self) -> bool:
+        """True when the container already runs the image this driver is configured with.
+
+        Compared by image id, not by name: `docker pull` moves the tag, and a case that
+        kept running yesterday's image would be an upgrade that never happened.
+        """
+        wanted = self.wanted_image_id()
+        if not wanted:
+            return True          # not pulled locally: docker will fetch it when it creates
+        return self.current_image_id() == wanted
 
     def wait_healthy(self, timeout: float = 25.0) -> None:
         """A case answers /health in a few seconds; past that, the container is not starting."""
@@ -264,7 +290,8 @@ class Volumes:
 class Agency:
     """The driver's decisions, without HTTP: one container per case, and nothing after it."""
 
-    def __init__(self, volumes, certificates="", docker=None, *, image: str = "fireblade:host",
+    def __init__(self, volumes, certificates="", docker=None, *,
+                 image: str = "ghcr.io/23r0534zxt/fireblade:latest",
                  network: str = "fireblade-cases", max_open: int = 3,
                  host_volumes="", host_certificates="", case_uid: int = 10001,
                  case_gid: int = 10001):
@@ -292,7 +319,8 @@ class Agency:
     def container(self, identifier: str) -> CaseContainer:
         self.volumes.folder(identifier)      # validated here, not in a docker argument
         return CaseContainer(self.docker, identifier, volume=self.host_volumes/identifier,
-                             image=self.image, network=self.network)
+                             image=self.image, network=self.network,
+                             env={"FIREBLADE_CERTIFICATES": str(self.host_certificates)})
 
     def cases(self) -> dict:
         return self.volumes.cases()
@@ -309,6 +337,10 @@ class Agency:
             gate = self.waiting.setdefault(identifier, threading.Lock())
         with gate:
             case = self.container(identifier)
+            if case.exists() and not case.follows():
+                # An upgrade: the volume stays, the container is rebuilt on the new image.
+                case.stop()
+                case.remove()
             if case.exists():
                 if not case.running():
                     case.start()
@@ -342,7 +374,9 @@ class Agency:
         removed = []
         for identifier, name in tagged(self.docker):
             if self.volumes.has(identifier):
-                continue
+                if self.container(identifier).follows():
+                    continue    # same image, same case: nothing to do
+                # The case survived an upgrade: the container goes, the volume stays.
             try:
                 self.docker.run("rm", "-f", name)
                 removed.append(identifier)
@@ -360,6 +394,9 @@ class Agency:
         path, so a volume cannot outlive its case by accident.
         """
         payload = payload or {}
+        # The certificate folder is the driver's own: it is mounted from the host, and a
+        # path typed in a case would point inside the driver container, not at the host.
+        payload.pop("certificate_folder", None)
         if not CASE_ID.match(identifier or "") or not self.volumes.has(identifier):
             raise KeyError(identifier)
         library_root = self.volumes.library(identifier)
@@ -417,7 +454,7 @@ def _version() -> str:
         return "0"
 
 
-def page(catalogue: dict, *, version: str = "", error: str = "") -> str:
+def page(catalogue: dict, *, version: str = "", error: str = "", update: dict | None = None) -> str:
     """The driver's own page, in the Host's own clothes.
 
     It reuses ``static/app.css`` — the client's palette and density, carried from the
@@ -454,6 +491,7 @@ def page(catalogue: dict, *, version: str = "", error: str = "") -> str:
             ".grow{flex:1}.rowform{display:flex;align-items:center;gap:4px;margin:0}"
             ".filterbar{align-items:center;height:24px}"
             ".topline a.btn{text-decoration:none}"
+            ".statusbar .note{color:#8a5a00}"
             ".rowform .search{width:118px;flex:none}"
             ".caseswrap td .ref{font:9px monospace;color:var(--muted);line-height:10px}"
             ".caseswrap td.when{color:var(--muted)}"
@@ -472,11 +510,15 @@ def page(catalogue: dict, *, version: str = "", error: str = "") -> str:
             " container and the volume.</span>"
             + ("<span class=\"err\">" + problems + "</span>" if problems else "")
             + ("<span class=\"err\">" + escape(error) + "</span>" if error else "")
+            + ("<span class=\"note\">" + escape((update or {}).get("latest", ""))
+               + " available — " + escape(((update or {}).get("command") or [""])[0]) + "</span>"
+               if (update or {}).get("available") else "")
             + "<span class=\"right\"><span>version " + escape(version or "0") + "</span></span></div>"
             "</div></body></html>")
 
 
-def create_app(volumes_root, certificates_root="", *, image: str = "fireblade:host",
+def create_app(volumes_root, certificates_root="", *,
+               image: str = "ghcr.io/23r0534zxt/fireblade:latest",
                network: str = "fireblade-cases", max_open: int = 3, version: str = "",
                docker=None, agency=None, host_volumes="", host_certificates="",
                case_uid: int = 10001, case_gid: int = 10001) -> FastAPI:
@@ -485,6 +527,7 @@ def create_app(volumes_root, certificates_root="", *, image: str = "fireblade:ho
                               network=network, max_open=max_open,
                               host_volumes=host_volumes, host_certificates=host_certificates,
                               case_uid=case_uid, case_gid=case_gid)
+    updates = Checker(version or "0", "driver")
     client = httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=5.0, read=None),
                                follow_redirects=False)
 
@@ -508,11 +551,18 @@ def create_app(volumes_root, certificates_root="", *, image: str = "fireblade:ho
         catalogue = agency.cases()
         return {"status": "ok", "version": version or "0", "root": str(catalogue["root"]),
                 "cases": len(catalogue["cases"]), "errors": len(catalogue["errors"]),
-                "open": len(agency.opened), "containers": len(tagged(agency.docker))}
+                "open": len(agency.opened), "containers": len(tagged(agency.docker)),
+                "update": updates.info(refresh=False)}
 
     @app.get("/")
     def home(error: str = ""):
-        return HTMLResponse(page(agency.cases(), version=version or _version(), error=error))
+        return HTMLResponse(page(agency.cases(), version=version or _version(), error=error,
+                                 update=updates.info(refresh=False)))
+
+    @app.get("/api/version")
+    def version_check():
+        """Is there a newer release? The page says so; nothing depends on the answer."""
+        return updates.info()
 
     @app.get("/api/cases")
     def cases():
@@ -642,7 +692,8 @@ def main(argv=None) -> int:
     p_serve.add_argument("--case-uid", type=int, default=10001,
                          help="the uid the case image runs as; a new volume is handed to it")
     p_serve.add_argument("--case-gid", type=int, default=10001)
-    p_serve.add_argument("--image", default="fireblade:host")
+    p_serve.add_argument("--image", default="ghcr.io/23r0534zxt/fireblade:latest",
+                         help="the case image; every case container is built from it")
     p_serve.add_argument("--network", default="fireblade-cases")
     p_serve.add_argument("--max-open", type=int, default=3,
                          help="how many case containers may run at once")

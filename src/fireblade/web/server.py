@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -10,22 +11,40 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from fireblade.web.service import Library, ServiceError, _english, parse_filters
+from fireblade.web.updates import Checker
 
 STATIC = Path(__file__).with_name("static")
 
 
-def _store_upload(folder: Path, file: UploadFile) -> Path:
+def _store_upload(folder: Path, file: UploadFile, relative: str = "") -> Path:
     """Write the sent file into the case's evidence folder under a free name.
 
     Overwriting an existing evidence file would change the bytes an earlier import
     recorded a hash for, so a second upload of the same name becomes `name-2.ext`.
     The collection then sees a duplicate by hash and says so, which is the truth.
+
+    With a ``relative`` path — a folder sent from the browser — the tree is kept, because
+    a collection is a tree: the readers look for `C/Windows/System32/...`, not for a pile
+    of files that lost their path on the way.
     """
+    evidence = folder / "evidence"
+    evidence.mkdir(parents=True, exist_ok=True)
+    raw = Path(relative.replace("\\", "/")).parts if relative else ()
+    if any(part == ".." for part in raw):
+        raise HTTPException(status_code=400, detail="Invalid relative path.")
+    parts = [part for part in raw if part not in ("", ".", "/")]
+    if relative and not parts:
+        raise HTTPException(status_code=400, detail="Invalid relative path.")
+    if parts:
+        target = evidence.joinpath(*parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("wb") as stream:
+            while chunk := file.file.read(1024 * 1024):
+                stream.write(chunk)
+        return target
     name = Path(file.filename or "evidence").name
     if not name or name in (".", ".."):
         raise HTTPException(status_code=400, detail="Invalid file name.")
-    evidence = folder / "evidence"
-    evidence.mkdir(parents=True, exist_ok=True)
     target = evidence / name
     if target.exists():
         stem, suffix = Path(name).stem, Path(name).suffix
@@ -42,6 +61,9 @@ def _store_upload(folder: Path, file: UploadFile) -> Path:
 def create_app(root: str | Path, version: str = "", tools_root: str | Path | None = None,
                plugins_root: str | Path | None = None) -> FastAPI:
     library = Library(root, tools_root=tools_root, plugins_root=plugins_root)
+    # One check per process, cached for hours: the page asks once, the registry is not
+    # polled, and a failure is reported as a failure.
+    updates = Checker(version or "0", os.environ.get("FIREBLADE_EDITION", "host"))
     app = FastAPI(title="Fireblade Host", version=version or "0", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
     @app.exception_handler(ServiceError)
@@ -61,7 +83,13 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             "root": catalogue["root"],
             "cases": len(catalogue["cases"]),
             "errors": len(catalogue["errors"]),
+            "update": updates.info(refresh=False),
         }
+
+    @app.get("/api/version")
+    def version_check():
+        """Is there a newer release? The banner reads this; nothing else depends on it."""
+        return updates.info()
 
     @app.get("/api/cases")
     def cases():
@@ -92,7 +120,8 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
             return library.destroy(identifier, payload.get("method", "dod3"),
                                    payload.get("operator", ""), payload.get("witness", ""),
                                    payload.get("reason", ""), payload.get("confirmation", ""),
-                                   payload.get("attachments") or [])
+                                   payload.get("attachments") or [],
+                                   certificate_folder=payload.get("certificate_folder") or "")
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -200,6 +229,25 @@ def create_app(root: str | Path, version: str = "", tools_root: str | Path | Non
                                           encoding=encoding)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/upload-folder")
+    def upload_folder(identifier: str, file: UploadFile = File(...),
+                      relative: str = Form(...)):
+        """One file of a folder the browser sent, at its own path under evidence/.
+
+        The browser can hand over a whole directory (`webkitdirectory`): each file arrives
+        with its relative path, the tree is rebuilt in the case, and the folder is then
+        previewed and imported exactly as the desktop imports a collection.
+        """
+        folder = library.library.folder(identifier)
+        try:
+            target = _store_upload(folder, file, relative=relative)
+        except (ValueError, OSError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        parts = [part for part in Path(relative.replace("\\", "/")).parts
+                 if part not in ("", ".", "..", "/")]
+        root = folder/"evidence"/parts[0] if parts else target
+        return {"path": str(target), "root": str(root)}
 
     @app.post("/api/cases/{identifier}/upload")
     def upload(identifier: str, organization: str = "files", file: UploadFile = File(...),

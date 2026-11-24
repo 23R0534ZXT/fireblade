@@ -100,6 +100,7 @@ docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
     -v /srv/fireblade/certificates:/data/certificates \
     ghcr.io/23r0534zxt/fireblade-driver:latest \
     python -m fireblade.web.agency serve \
+      --image ghcr.io/23r0534zxt/fireblade:latest \
       --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
       --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
       --host 0.0.0.0 --port 8080

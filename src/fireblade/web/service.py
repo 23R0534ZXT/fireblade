@@ -3320,7 +3320,8 @@ class Library:
             filters["end"] = int(end)
         target = Path(tempfile.mkdtemp(prefix="fbtimeline-")) / "timeline.csv"
         receipt = store.export_csv(target, receipt=True, **filters)
-        return target.read_bytes(), (receipt if isinstance(receipt, dict) else {})
+        _timeline_header_in_english(target)
+        return target.read_bytes(), english.data(receipt if isinstance(receipt, dict) else {})
 
     # -- importing ---------------------------------------------------------
 
@@ -4795,6 +4796,36 @@ def _english(text):
             return translate(str(text))
         except (ImportError, ValueError):
             return str(text)
+
+
+TIMELINE_HEADER = {
+    "Date_UTC": "Date_UTC",
+    "Analyse": "Analysis",
+    "Source": "Source",
+    "Ligne_source": "Source_row",
+    "Date_source": "Source_date",
+    "Résumé_d’événement": "Event_summary",
+    "Note": "Note",
+    "Signet": "Bookmark",
+    "Fuseau_UTC_supposé": "Assumed_UTC_zone",
+    "SHA256_source_à_l_import": "Source_SHA256_at_import",
+}
+
+
+def _timeline_header_in_english(path: Path) -> None:
+    """The first row of an exported timeline, in English; the events themselves are evidence."""
+    import shutil
+
+    temporary = path.with_name(path.name + ".part")
+    with (
+        path.open("r", encoding="utf-8-sig", newline="") as source,
+        temporary.open("w", encoding="utf-8-sig", newline="") as target,
+    ):
+        header = next(csv.reader([source.readline()]), None)
+        if header is not None:
+            csv.writer(target).writerow([TIMELINE_HEADER.get(name, name) for name in header])
+        shutil.copyfileobj(source, target)
+    temporary.replace(path)
 
 
 def _translate_csv_header(path: Path, case) -> None:

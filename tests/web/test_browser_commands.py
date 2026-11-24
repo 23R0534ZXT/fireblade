@@ -19,11 +19,11 @@ ROWS = 60
 
 
 def _csv():
-    lines = ["Time,Host,User,Event,Path"]
+    lines = ["Time,Host,User,Event,Path,Src"]
     for i in range(ROWS):
         lines.append(
             f"2026-11-0{1 + i % 5}T1{i % 10}:{i % 60:02d}:00Z,PC0{i % 4 + 1},{USERS[i % 3]},"
-            f"{EVENTS[i % 3]},C:\\Users\\{USERS[i % 3]}\\f{i}.exe"
+            f"{EVENTS[i % 3]},C:\\Users\\{USERS[i % 3]}\\f{i}.exe,10.0.0.{i % 5}"
         )
     return "\n".join(lines) + "\n"
 
@@ -42,7 +42,8 @@ def page(server, request):
     base, root, evidence = server
     name = "Commands " + request.node.name[:40]
     identifier = InvestigationLibrary(root).create(name, "", "windows")["id"]
-    source = evidence / f"{identifier}.csv"
+    (evidence / identifier).mkdir()
+    source = evidence / identifier / "events.csv"
     source.write_text(_csv())
     started = httpx.post(
         f"{base}/api/cases/{identifier}/import-jobs",
@@ -530,7 +531,7 @@ def test_provenance_gives_the_sha256_of_the_source_file(page, server):
         "/[0-9a-f]{64}/.test(document.querySelector('.modal.show .dialog').innerText)"
     )
     shown = set(__import__("re").findall(r"[0-9a-f]{64}", page.inner_text(".modal.show .dialog")))
-    hashes = {hashlib.sha256(path.read_bytes()).hexdigest() for path in evidence.glob("*.csv")}
+    hashes = {hashlib.sha256(path.read_bytes()).hexdigest() for path in evidence.glob("*/*.csv")}
     assert shown & hashes, (shown, hashes)
 
 
@@ -632,8 +633,8 @@ def test_export_csv_gives_the_rows_the_grid_shows_with_the_names_on_screen(page,
     with open(saved, encoding="utf-8-sig", newline="") as handle:
         table = list(csv.reader(handle))
     # The export carries the grid's columns, then the desktop's three provenance columns.
-    assert table[0][:5] == ["Time", "Host", "User", "Event", "Path"], table[0]
-    assert table[0][5:] == ["Fireblade_SourceRecord", "Fireblade_Bookmarked", "Fireblade_Note"]
+    assert table[0][:6] == ["Time", "Host", "User", "Event", "Path", "Src"], table[0]
+    assert table[0][6:] == ["Fireblade_SourceRecord", "Fireblade_Bookmarked", "Fireblade_Note"]
     assert len(table) == 21, len(table)
     assert {row[2] for row in table[1:]} == {"bob"}
     assert table[1][4].startswith("C:\\Users\\bob\\"), "a value is exported as it is in the source"
@@ -644,7 +645,7 @@ def test_export_xlsx_is_a_workbook_with_the_same_rows(page, tmp_path):
     saved = _download(page, "export-xlsx", tmp_path, "grid.xlsx")
     sheet = openpyxl.load_workbook(saved).active
     rows = list(sheet.iter_rows(values_only=True))
-    assert list(rows[0])[:5] == ["Time", "Host", "User", "Event", "Path"], rows[0]
+    assert list(rows[0])[:6] == ["Time", "Host", "User", "Event", "Path", "Src"], rows[0]
     assert len(rows) == ROWS + 1
     assert {row[2] for row in rows[1:]} == {"alice", "bob", "carol"}
 
@@ -692,3 +693,78 @@ def test_the_portable_case_is_a_package_the_host_can_import_back(page, server, t
         timeout=60,
     )
     assert answer.status_code == 200, answer.text
+
+
+# -- Timeline & correlations -------------------------------------------------------------------
+
+
+def _timeline(page):
+    page.click('.tabs .tab:text-is("Timeline & correlations")')
+    page.click("#timeline-build")
+    page.wait_for_function(
+        "document.getElementById('timeline-view').innerText.includes('60 dated / 60 row(s)')",
+        timeout=60000,
+    )
+
+
+def _timeline_rows(page):
+    return page.locator("#timeline-rows tr").count()
+
+
+def test_the_timeline_dates_every_row_of_the_analysis(page):
+    _timeline(page)
+    assert "detected: Time" in page.inner_text("#timeline-view")
+    assert _timeline_rows(page) > 0
+    first = page.locator("#timeline-rows tr").first.inner_text()
+    assert "2026-11-01" in first and "events.csv" in first
+
+
+def test_the_timeline_search_keeps_the_matching_events(page):
+    _timeline(page)
+    before = _timeline_rows(page)
+    page.fill("#timeline-search", "carol")
+    page.press("#timeline-search", "Enter")
+    page.wait_for_function(
+        "document.getElementById('timeline-view').innerText.includes('20 dated') "
+        "|| document.getElementById('timeline-view').innerText.includes('/ 20')"
+    )
+    texts = page.eval_on_selector_all("#timeline-rows tr", "els => els.map(e => e.innerText)")
+    assert texts and all("carol" in text for text in texts), texts[:3]
+    assert len(texts) < before
+
+
+def test_the_timeline_exports_its_events(page, tmp_path):
+    _timeline(page)
+    with page.expect_download(timeout=30000) as download:
+        page.click("#timeline-export")
+    saved = tmp_path / "timeline.csv"
+    download.value.save_as(str(saved))
+    lines = saved.read_text(encoding="utf-8-sig").splitlines()
+    assert lines[0].startswith("Date_UTC,Analysis,Source,Source_row"), lines[0]
+    assert "é" not in lines[0], "the header is English"
+    assert len(lines) - 1 == ROWS, len(lines)
+
+
+def test_zooming_the_timeline_narrows_the_window_and_fit_restores_it(page):
+    _timeline(page)
+    assert "whole extent" in page.inner_text("#timeline-view")
+    page.click('[data-act="tl-zoom-in"]')
+    page.wait_for_function(
+        "!document.getElementById('timeline-view').innerText.includes('whole extent')"
+    )
+    page.click('[data-act="tl-fit"]')
+    page.wait_for_function(
+        "document.getElementById('timeline-view').innerText.includes('whole extent')"
+    )
+
+
+def test_a_timeline_row_opens_its_source_line_with_every_column(page):
+    _timeline(page)
+    page.locator("#timeline-rows tr").nth(3).click()
+    page.click('[data-act="timeline-open-row"]')
+    page.wait_for_selector("#source-row-modal.show")
+    page.wait_for_function("document.getElementById('source-row-list').innerText.includes('Path')")
+    text = page.inner_text("#source-row-list")
+    for name in ("Time", "Host", "User", "Event", "Path", "Src"):
+        assert name in text, text
+    assert "C:\\Users\\" in text

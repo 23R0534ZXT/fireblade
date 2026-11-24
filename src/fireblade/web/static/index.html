@@ -169,6 +169,7 @@
       <option value="combined">one grid for everything</option>
     </select>
     <input type="file" id="import-input" multiple hidden>
+    <input type="file" id="folder-input" webkitdirectory directory multiple hidden>
     <input type="file" id="package-input" accept=".fireblade" hidden>
     <input type="file" id="session-file" accept=".fireblade-session" hidden>
     <input type="file" id="layout-file" accept=".json" hidden>
@@ -755,12 +756,6 @@
         <span class="note" style="max-width:none">or a path on the server</span>
         <input id="preview-server" placeholder="/data/cases/…" style="flex:1">
         <button class="btn" data-act="preview-path">Preview the path</button>
-      </div>
-      <div class="row">
-        <label>Folder</label>
-        <button class="btn" data-act="import-folder">Choose a folder…</button>
-        <input type="file" id="folder-input" webkitdirectory directory multiple hidden>
-        <span class="note" style="max-width:none">a whole collection, subfolders kept — the browser sends it, then it is read like a folder on the server</span>
       </div>
       <div class="row">
         <label>CSV options</label>

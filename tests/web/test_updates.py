@@ -72,7 +72,7 @@ def test_the_host_update_is_one_line_a_shell_can_run():
     line = host[0]
     image = "ghcr.io/23r0534zxt/fireblade:0.8.2"
     assert line.startswith(f"docker pull {image} && docker rm -f fireblade && docker run -d ")
-    assert line.endswith(image) and "-p 127.0.0.1:8080:8080" in line
+    assert f"{image} && echo" in line and "-p 127.0.0.1:8080:8080" in line
     assert "README" in updates.guidance("host")
 
 

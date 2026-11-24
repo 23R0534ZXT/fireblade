@@ -17,7 +17,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 RELEASES = "https://api.github.com/repos/23R0534ZXT/fireblade/releases/latest"
 REGISTRY = "ghcr.io/23r0534zxt"
@@ -48,6 +48,7 @@ def parse(payload: dict) -> dict:
     }
 
 
+STARTED = 'echo "Fireblade is starting: open http://localhost:8080 in a few seconds"'
 RUN_LINE = (
     "docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 "
     '-v "$HOME/fireblade-cases:/data/cases"'
@@ -68,7 +69,7 @@ def command(edition: str, tag: str) -> list:
         return [f"docker pull {driver}", f"docker pull {case}", "docker rm -f fireblade-driver"]
     if edition == "case":
         return [f"docker pull {case}"]
-    return [f"docker pull {case} && docker rm -f fireblade && {RUN_LINE} {case}"]
+    return [f"docker pull {case} && docker rm -f fireblade && {RUN_LINE} {case} && {STARTED}"]
 
 
 def guidance(edition: str) -> str:
@@ -178,7 +179,7 @@ class Checker:
                 "note": guidance(self.edition),
                 "disabled": False,
                 "checked": (
-                    datetime.fromtimestamp(self.checked_at, timezone.utc).isoformat()
+                    datetime.fromtimestamp(self.checked_at, UTC).isoformat()
                     if self.checked_at
                     else ""
                 ),

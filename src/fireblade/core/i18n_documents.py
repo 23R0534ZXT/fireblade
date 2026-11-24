@@ -126,6 +126,15 @@ DOCUMENTS = {
     "Rapport": "Report",
     "indisponible": "unavailable",
     "Contrat {} · Responsable {} · Du {} au {}": "Contract {} · Lead {} · From {} to {}",
+    # The families a CatScale collection is organised into: the names of the analyses it produces
+    "Processus et réseau": "Processes and network",
+    "Persistance": "Persistence",
+    "Journaux et connexions": "Logs and connections",
+    "Système": "System",
+    "Utilisateurs": "Users",
+    "Fichiers et chronologie": "Files and timeline",
+    "Conteneurs et virtualisation": "Containers and virtualisation",
+    "Collecte CatScale": "CatScale collection",
     # Coverage diagnostics
     "Fichier modifié pendant la vérification": "File changed during the check",
     "Le journal de couverture est un lien": "The coverage log is a link",

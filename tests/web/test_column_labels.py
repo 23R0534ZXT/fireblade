@@ -88,3 +88,12 @@ def test_a_refusal_is_in_english_whatever_module_raised_it(tmp_path):
     assert refused.status_code == 400
     detail = refused.json()["detail"]
     assert not any(ch in detail for ch in "éèàçô") and "attendu" not in detail, detail
+
+
+def test_an_organised_family_reads_in_english_and_a_file_the_analyst_brought_keeps_its_name(tmp_path):
+    from fireblade.web.service import Library
+
+    organised = {"path": "/case/collections/import-1/results/organisation-ab12/Persistance.csv"}
+    brought = {"path": "/case/evidence/Persistance.csv"}
+    assert Library._label(organised, "") == "Persistence.csv"
+    assert Library._label(brought, "") == "Persistance.csv", "an analyst's own file name is evidence"

@@ -189,6 +189,12 @@ class Library:
             if raw:
                 name = Path(raw.replace("\\", "/")).name
                 sheet = str(source.get("sheet", "") or "")
+                if name and "/results/organisation-" in raw.replace("\\", "/"):
+                    # An analysis Fireblade organised (a CatScale family): its name is the
+                    # core's, in its source language. The name of a file the analyst brought
+                    # is evidence and is never translated.
+                    stem, dot, extension = name.rpartition(".")
+                    name = english.english_text(stem) + dot + extension if stem else english.english_text(name)
                 if name:
                     return f"{name} — {sheet}" if sheet else name
         return Path(str(fallback).replace("\\", "/")).stem or "analysis"

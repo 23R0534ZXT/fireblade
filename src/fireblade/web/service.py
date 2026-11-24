@@ -175,7 +175,41 @@ class Library:
                     "active": index == active,
                 }
             )
+        self._tell_apart(entries)
         return entries
+
+    @staticmethod
+    def _tell_apart(entries: list[dict]) -> None:
+        """Give each analysis of one source its own name in the tree.
+
+        A WebCache database is read as one analysis per container, and the core names every one
+        of them after the file: two dozen tabs called "WebCacheV01.dat". The analyst needs the
+        container; it is in the first row of each table. Anything still alike is numbered.
+        """
+        counts: dict[str, int] = {}
+        for entry in entries:
+            counts[entry["label"]] = counts.get(entry["label"], 0) + 1
+        for entry in entries:
+            if counts[entry["label"]] < 2:
+                continue
+            info = entry["source_info"]
+            working = str(info.get("working_path", ""))
+            if info.get("parser") != "WebCache" or not working:
+                continue
+            try:
+                with open(working, encoding="utf-8", newline="") as handle:
+                    rows = csv.DictReader(handle)
+                    first = next(rows, None) or {}
+            except (OSError, UnicodeDecodeError, csv.Error):
+                continue
+            name = first.get("WebCache_Container") or first.get("WebCache_Table") or ""
+            if name:
+                entry["label"] = f"{entry['label']} — {name}"
+        seen: dict[str, int] = {}
+        for entry in entries:
+            seen[entry["label"]] = seen.get(entry["label"], 0) + 1
+            if seen[entry["label"]] > 1:
+                entry["label"] = f"{entry['label']} ({seen[entry['label']]})"
 
     @staticmethod
     def _label(source, fallback) -> str:

@@ -1601,3 +1601,13 @@ def test_a_service_refusal_has_the_same_shape_as_every_other_refusal(case_with_a
     assert answer.status_code == 400
     body = answer.json()
     assert body["detail"] and body["detail"] == body["error"]
+
+
+def test_the_browser_finds_its_icon(service):
+    from fastapi.testclient import TestClient
+
+    from fireblade.web.server import create_app
+
+    client = TestClient(create_app(service[0].root))
+    answer = client.get("/favicon.ico")
+    assert answer.status_code == 200 and "svg" in answer.headers["content-type"]

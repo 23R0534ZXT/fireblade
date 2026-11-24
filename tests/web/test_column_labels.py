@@ -101,3 +101,28 @@ def test_an_organised_family_reads_in_english_and_a_file_the_analyst_brought_kee
     assert Library._label(brought, "") == "Persistance.csv", (
         "an analyst's own file name is evidence"
     )
+
+
+def test_analyses_of_one_database_are_told_apart_by_their_container(tmp_path):
+    from fireblade.web.service import Library
+
+    def table(name, container):
+        path = tmp_path / f"{name}.csv"
+        path.write_text(
+            f"WebCache_Table,WebCache_Container\n{name},{container}\n", encoding="utf-8"
+        )
+        return {"label": "WebCacheV01.dat", "parser": "WebCache", "working_path": str(path)}
+
+    entries = [
+        {"label": "WebCacheV01.dat", "source_info": table("a", "History")},
+        {"label": "WebCacheV01.dat", "source_info": table("b", "History")},
+        {"label": "WebCacheV01.dat", "source_info": table("c", "Cookies")},
+        {"label": "other.csv", "source_info": {}},
+    ]
+    Library._tell_apart(entries)
+    assert [e["label"] for e in entries] == [
+        "WebCacheV01.dat — History",
+        "WebCacheV01.dat — History (2)",
+        "WebCacheV01.dat — Cookies",
+        "other.csv",
+    ]

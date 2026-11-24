@@ -6260,7 +6260,7 @@ async function act(name, node) {
     case "group-column": openGroupPicker(); break;
     case "row-height": openRowHeight(); break;
     case "coverage-open": await openCoverage(); break;
-    case "detrules-open": openRulesDialog(); break;
+    case "detrules-open": await openDetectionRules(); break;
     case "details-toggle": toggleDetails(); break;
     case "reset-widths": resetWidths(); break;
     case "add-filter": await openAddFilter(); break;

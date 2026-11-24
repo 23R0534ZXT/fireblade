@@ -11,6 +11,7 @@ import socket
 import threading
 import time
 
+import httpx
 import pytest
 
 pytest.importorskip("playwright.sync_api")
@@ -41,7 +42,13 @@ def host(tmp_path_factory):
     while not server.started and time.monotonic() < deadline:
         time.sleep(0.05)
     assert server.started, "the Host did not start"
-    yield f"http://127.0.0.1:{port}/"
+    base = f"http://127.0.0.1:{port}"
+    identifier = httpx.get(f"{base}/api/cases").json()["cases"][0]["id"]
+    csv_text = "Time,Host,User,Event\n2026-11-01T10:00:00Z,PC01,alice,4624\n2026-11-01T10:05:00Z,PC01,bob,4625\n"
+    sent = httpx.post(f"{base}/api/cases/{identifier}/upload", params={"organization": "files"},
+                      files={"file": ("events.csv", csv_text.encode(), "text/csv")})
+    assert sent.status_code == 200, sent.text
+    yield f"{base}/"
     server.should_exit = True
     thread.join(timeout=10)
 
@@ -60,6 +67,11 @@ def page(host):
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.goto(host)
     page.wait_for_selector("#menubar")
+    # Open the case, as an analyst does: from the Cases tab.
+    page.click('.tabs .tab:text-is("Cases")')
+    page.dblclick('tr:has(td:text-is("Browser case")) td >> nth=0')
+    page.wait_for_selector("#body tr[data-row]", timeout=15000)
+    page.click('.tabs .tab:text-is("Analyses")')
     yield page
     assert not errors, errors
     browser.close()
@@ -123,3 +135,39 @@ def test_the_splitters_resize_the_tree_and_the_details_and_reset_on_double_click
     assert tree.bounding_box()["width"] > before + 100
     page.locator(".splitter.vsplit").dblclick()
     assert abs(tree.bounding_box()["width"] - before) < 2
+
+
+def test_every_dialog_a_menu_opens_keeps_its_buttons_on_screen(page):
+    """A dialog that fills in after it opens must not slide its buttons below the page.
+
+    Every command of every menu is run; whichever dialog it opens, each of its visible
+    buttons has to lie inside the viewport (or inside the dialog's own scrolling body).
+    """
+    page.set_viewport_size({"width": 1400, "height": 760})
+    menus = page.eval_on_selector_all(".menubar .m", "els => els.map(e => e.dataset.menu)")
+    seen = set()
+    for name in menus:
+        count = page.locator(f'.menu[data-for="{name}"] [data-act]').count()
+        for position in range(count):
+            _press(page, f'.menubar .m[data-menu="{name}"]')
+            item = page.locator(".menu.show [data-act]").nth(position)
+            label = item.inner_text().strip()
+            if any(word in label for word in ("Erase", "Close the case")):
+                page.mouse.click(700, 500)
+                continue
+            action = item.get_attribute("data-act")
+            item.click()
+            page.wait_for_timeout(350)
+            modal = page.locator(".modal.show .dialog")
+            if modal.count() == 1 and action not in seen:
+                seen.add(action)
+                box = modal.bounding_box()
+                assert box["y"] >= 0 and box["y"] + box["height"] <= 760 + 1, (label, box)
+                foot = page.locator(".modal.show .dialog .foot button, .modal.show .dialog button.close")
+                for index in range(foot.count()):
+                    button = foot.nth(index)
+                    if button.is_visible():
+                        edge = button.bounding_box()
+                        assert edge["y"] + edge["height"] <= 760 + 1, (label, button.inner_text())
+            page.evaluate("document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'))")
+    assert len(seen) >= 25, "too few dialogs were reached: " + ", ".join(sorted(seen))

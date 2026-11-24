@@ -38,9 +38,12 @@
     var left = parseFloat(dialog.style.left) || 0;
     var top = parseFloat(dialog.style.top) || 0;
     var width = dialog.offsetWidth;
-    /* The title bar must stay reachable: never let it leave the viewport. */
+    var height = dialog.offsetHeight;
+    /* The title bar must stay reachable, and so must the buttons at the foot: a dialog that
+       fills in after it opened (the preferences read the server first) grows downward, and
+       would otherwise leave its Close button below the visible page. */
     dialog.style.left = clamp(left, 40 - width, window.innerWidth - 40) + "px";
-    dialog.style.top = clamp(top, 0, window.innerHeight - 24) + "px";
+    dialog.style.top = clamp(top, 0, Math.max(0, window.innerHeight - height - 4)) + "px";
   }
 
   function arrange(modal) {
@@ -87,9 +90,11 @@
     dialog.classList.add("window");
     title.classList.add("grab");
 
+    var dragging = false;
     title.addEventListener("pointerdown", function (event) {
       if (event.button !== 0 || event.target.closest("button, input, select, a")) { return; }
       if (!dialog.dataset.free) { freeze(dialog); }
+      dragging = true;
       var startX = event.clientX, startY = event.clientY;
       var originX = parseFloat(dialog.style.left) || 0, originY = parseFloat(dialog.style.top) || 0;
       title.setPointerCapture(event.pointerId);
@@ -99,6 +104,7 @@
         keepInside(dialog);
       }
       function stop() {
+        dragging = false;
         title.removeEventListener("pointermove", move);
         title.removeEventListener("pointerup", stop);
         title.removeEventListener("pointercancel", stop);
@@ -112,6 +118,13 @@
 
     /* Resize comes from the browser's own corner handle (CSS `resize`); its end is noticed here. */
     dialog.addEventListener("pointerup", function () { remember(modal); });
+
+    /* Content that arrives after the dialog opened changes its height: keep it in view. */
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () {
+        if (modal.classList.contains("show") && dialog.dataset.free && !dragging) { keepInside(dialog); }
+      }).observe(dialog);
+    }
 
     new MutationObserver(function () {
       if (modal.classList.contains("show")) {

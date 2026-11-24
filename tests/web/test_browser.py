@@ -162,3 +162,16 @@ def test_no_menu_offers_the_same_command_twice_or_under_two_names(page):
         assert len(acts) == len(set(acts)), (name, [a for a in acts if acts.count(a) > 1])
         labels = [label for _, label in items]
         assert len(labels) == len(set(labels)), (name, labels)
+
+
+def test_analysis_menu_detection_rules_opens_the_detection_rules_not_the_colour_rules(page):
+    box = page.locator('.menubar .m[data-menu="analysis"]').bounding_box()
+    page.mouse.move(box["x"] + 5, box["y"] + 5)
+    page.mouse.down()
+    page.mouse.up()
+    item = page.locator('.menu.show [data-act="detrules-open"]').bounding_box()
+    page.mouse.move(item["x"] + 8, item["y"] + 5)
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_selector("#detrules-modal.show", timeout=10000)
+    assert page.locator("#rules-modal.show").count() == 0, "not the colour-rule editor"

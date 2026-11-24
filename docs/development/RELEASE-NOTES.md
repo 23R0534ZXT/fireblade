@@ -1,3 +1,87 @@
+# Fireblade 0.9.0 — the Host, checked in a real browser
+
+Each change below was found by driving the Host with a real mouse in a real browser, on a case
+of Linux logs, and comes with the test that would have caught it.
+
+## Commands that did not work, and now do
+
+- **No menu command ran when clicked.** The page closed every menu on mouse-down, so the item
+  was gone before the click reached it; only a script calling `click()` worked. Presses inside a
+  menu now reach their item, and the menu closes once the command is chosen.
+- **Save case** answered "A name is required": it ran the handler of the new-case dialog, and
+  the dialog rewrote the label of the menu entry it shared an action with. They are two commands
+  now. Save case writes the session again, which leaves a recovery point in History, and says how
+  many are kept.
+- **Export the portable case** failed as soon as an analysis had been looked at, with
+  "Can't open a connection to same database file with a different configuration". The grid's
+  connection is released first. The case now makes the trip (export, download, import as a new
+  case) with its analyses and its bookmarks.
+- **Analysis > Detection rules…** opened the colour-rule editor; it opens the Hayabusa rules.
+- **Choosing "third-party" as an action's owner** was refused by the core ("Action owner must be
+  one of…"); the owner list now speaks the core's vocabulary, and vendor and unassigned are in it.
+- **Group by this column** on the row menu answered with a 500 and a stack trace (a group key was
+  sent where a row id belongs). A missing or null number is now a 400 with a sentence.
+- **Reports** were opened with `window.open` after a long wait, which a browser takes for a
+  pop-up, and which pointed outside the case's prefix behind the per-case driver. The dialog
+  comes back with the result as links that carry the prefix, and says when nothing was selected.
+- **An empty attack graph** was an HTTP 400 and a red status line; it is an empty graph with what
+  to do next. Only exporting one is refused.
+
+## Windows and panes
+
+- Every dialog is moved by its title bar and resized from its corner, and always stays inside
+  the page, including a dialog that fills in after it opens (the preferences used to push their
+  Close button below the screen).
+- The artifact tree and the row details are resized from splitters; a double click resets them.
+  Geometry is kept across reloads.
+
+## One command, one name
+
+- Import evidence and Import a file opened the same dialog; Parse a folder was that dialog with a
+  preset; Text expression and the AND / OR / NOT editor opened the same window; Save the view and
+  Load a view the same list; Open an analysis sat in two menus. Each is one command under one name.
+  The toolbar offers Analyze a disk, as the Desktop's does.
+- The menus announced a dozen shortcuts and the page bound three, one of them to two commands.
+  It binds the ones a page may own — Ctrl+O, Ctrl+Shift+I, Ctrl+S, Ctrl+F, Ctrl+K, Ctrl+Shift+E,
+  Ctrl+C on a selection, F1 — and announces only those.
+- The detection tab is no longer named after an assistant the Host does not have.
+
+## English everywhere
+
+- The client report, the investigation report and the destruction certificate were handed out
+  with a French body under an English title. They are English, through one door
+  (`web/english.py`): sentences are translated, values inside them are kept, and nothing inside
+  `<pre>`, `<code>` or free text in a table is rewritten — that is where the evidence is.
+- The coverage diagnostics and their exports, the progress of long commands and every HTTP
+  refusal are English; 240 refusals of the core's parsers, importers and case files were
+  translated, and a test fails on any new one that is not.
+- The columns a Fireblade reader generates (the Linux logs) read in English on screen, in dialogs
+  and in the CSV export. The headers of a file the analyst brought are never touched.
+  Expressions and derived columns accept the names on screen.
+
+## Linux logs
+
+- nginx and Apache dates (`01/Nov/2026:10:00:00 +0200`) carry their offset and are normalised to
+  UTC; a whole access log read "0 dated" on the timeline before. A date with no offset or no year
+  is still never guessed.
+- A case written on Windows records `C:\…` paths; read in the Linux container, they showed in full
+  as labels and in the reports. They are read the same on both.
+
+## Tests
+
+- `tests/web/test_browser*.py` drive the client with a real mouse: every menu command and
+  shortcut, every dialog's buttons kept on screen, the windows and splitters, the grid, views,
+  colour rules, derived columns, search, the indicator hunt, the timeline, actions, reports,
+  export, the portable round trip, a case from creation to erasure, and the page behind the
+  per-case driver. They are skipped without Playwright and a Chromium.
+- The suite no longer depends on a system `dotnet`.
+
+## Documentation
+
+- A new README; the "beta of a beta" wording is replaced by `docs/host/STATUS.md`, which says what
+  is verified and how, and what cannot be relied on (no access control; software erasure is not a
+  physical guarantee on SSDs).
+
 # Fireblade 0.8.1 — an update that reaches the cases
 
 ## Upgrading is a pull and a restart

@@ -1,11 +1,9 @@
 name: Windows tests and standalone EXE
 
+# The Desktop is frozen at 0.7.9: nothing of it is released any more, so this workflow no longer
+# runs on every push and pull request. It stays, to be started by hand, for the day the frozen
+# build has to be reproduced or checked again. The Host is checked by host.yml.
 on:
-  push:
-    branches: [main]
-    tags: ['v[0-9]*']
-    paths-ignore: ['README.md', 'docs/**', 'licenses/**', 'scripts/raw_pack/**', 'scripts/test_pack/**', 'tests/raw_pack/**', 'config/raw-pack-sources.json', 'requirements/raw-pack.txt', '.github/workflows/raw-pack.yml']
-  pull_request:
   workflow_dispatch:
     inputs:
       publish_release:

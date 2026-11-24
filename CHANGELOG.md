@@ -14,6 +14,7 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   `.editorconfig` and a `pre-commit` configuration.
 
 ### Changed
+- The Windows workflow, for the frozen Desktop, runs by hand only; the Host is checked by its own workflow.
 - The code base is formatted with `ruff format`, and `ruff check` enforces a real rule set instead
   of syntax errors only.
 

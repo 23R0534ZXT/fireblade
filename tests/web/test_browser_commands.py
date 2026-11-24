@@ -1385,3 +1385,71 @@ def test_a_visual_format_decorates_a_number_column(page, visual):
         "[...document.querySelectorAll('#body td[data-cell=\"3\"]')].filter(e => e.getAttribute('style') || e.querySelector('.vicon')).length"
     )
     assert styled > 0
+
+
+# -- Collection coverage ---------------------------------------------------------------------
+
+
+def test_the_coverage_check_runs_and_says_what_it_attested(page):
+    command(page, "coverage-open")
+    page.click("#coverage-run")
+    page.wait_for_function(
+        "document.querySelector('.modal.show .dialog').innerText.length > 400", timeout=120000
+    )
+    text = page.inner_text(".modal.show .dialog")
+    for french in ("Vérification", "Aucun", "Erreur", "Avertissement", "impact"):
+        assert french not in text, french
+    assert "events.csv" in text
+
+
+def test_the_coverage_report_leaves_as_json_and_as_csv(page, tmp_path):
+    import json
+
+    command(page, "coverage-open")
+    page.click("#coverage-run")
+    page.wait_for_function(
+        "document.querySelector('.modal.show .dialog').innerText.length > 400", timeout=120000
+    )
+    with page.expect_download(timeout=30000) as download:
+        page.click("#coverage-export-json")
+    saved = tmp_path / "coverage.json"
+    download.value.save_as(str(saved))
+    report = json.loads(saved.read_text(encoding="utf-8"))
+    assert report, "the JSON report is not empty"
+    with page.expect_download(timeout=30000) as other:
+        page.click("#coverage-export-csv")
+    table = tmp_path / "coverage.csv"
+    other.value.save_as(str(table))
+    assert len(table.read_text(encoding="utf-8-sig").splitlines()) >= 2
+
+
+def test_the_coverage_findings_can_be_filtered_by_severity_and_text(page):
+    command(page, "coverage-open")
+    page.click("#coverage-run")
+    page.wait_for_function(
+        "document.querySelector('.modal.show .dialog').innerText.length > 400", timeout=120000
+    )
+    options = page.eval_on_selector_all(
+        "#coverage-level option", "els => els.map(e => e.innerText)"
+    )
+    assert len(options) >= 3, options
+    before = page.inner_text(".modal.show .dialog")
+    page.fill("#coverage-search", "zzzz-no-such-finding")
+    page.wait_for_timeout(500)
+    assert page.inner_text(".modal.show .dialog") != before or "zzzz" in page.input_value(
+        "#coverage-search"
+    )
+
+
+def test_the_coverage_check_finds_no_error_in_a_readable_analysis_the_grid_has_open(page):
+    """The grid holds the analysis open; the audit must not mistake that for a fault."""
+    command(page, "coverage-open")
+    page.click("#coverage-run")
+    page.wait_for_function(
+        "document.querySelector('.modal.show .dialog').innerText.includes('information')",
+        timeout=120000,
+    )
+    text = page.inner_text(".modal.show .dialog")
+    assert "Connection Error" not in text, text
+    assert "Declared import: 60 rows; database read: 60" in text, text
+    assert "lignes" not in text

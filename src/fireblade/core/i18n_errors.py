@@ -7,6 +7,8 @@ puts in); a message added to the core without an entry here is caught by
 """
 
 ERRORS = {
+    # What the coverage audit says of an analysis
+    "Import déclaré : {} lignes ; base lue : {} ; vue courante : {}.": "Declared import: {} rows; database read: {}; current view: {}.",
     # Disk images and volumes
     "Taille du périphérique indisponible": "The size of the device is not available",
     "Le case doit être stocké hors du volume analysé": "The case must be stored outside the volume being analysed",

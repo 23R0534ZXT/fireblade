@@ -2985,8 +2985,16 @@ class Library:
         snapshots = self._snapshots(identifier)
         if not snapshots:
             raise ServiceError("This case has no analysis to check yet.")
-        # DuckDB refuses a second connection with another configuration: the timeline
-        # keeps its index open, so it is closed first and rebuilt on demand.
+        # DuckDB refuses a second connection with another configuration: the grid keeps the
+        # analyses it shows open, and the timeline keeps its index open, so both are closed
+        # first (they reopen on the next request). Without it the audit reports an error on an
+        # analysis that is perfectly readable.
+        with self._lock:
+            for open_key in [item for item in self._open if item[0] == identifier]:
+                try:
+                    self._open.pop(open_key).close()
+                except (KeyError, OSError, ValueError):
+                    pass
         for key in [item for item in self._timelines if item[0] == identifier]:
             try:
                 self._timelines.pop(key).close()

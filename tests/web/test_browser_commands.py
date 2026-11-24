@@ -939,3 +939,183 @@ def test_the_timeline_export_follows_the_same_filter(page, tmp_path):
     download.value.save_as(str(saved))
     lines = saved.read_text(encoding="utf-8-sig").splitlines()
     assert len(lines) - 1 == 20, len(lines)
+
+
+# -- Actions & tracking ------------------------------------------------------------------------
+
+
+def _new_action(page, title, owner="us", priority="medium"):
+    page.fill("#action-title", title)
+    page.select_option("#action-owner", owner)
+    page.select_option("#action-priority", priority)
+    page.click("#action-add")
+    page.wait_for_function(f"document.getElementById('action-rows').innerText.includes({title!r})")
+
+
+def test_actions_are_searched_closed_hidden_and_deleted(page):
+    page.click('.tabs .tab:text-is("Actions & tracking")')
+    _new_action(page, "Collect the proxy logs")
+    _new_action(page, "Reset the admin password", "client", "critical")
+    assert page.locator("#action-rows tr[data-action]").count() == 2
+    page.fill("#action-search", "proxy")
+    page.press("#action-search", "Enter")
+    page.wait_for_function("document.querySelectorAll('#action-rows tr[data-action]').length === 1")
+    assert "proxy" in page.inner_text("#action-rows")
+    page.fill("#action-search", "")
+    page.press("#action-search", "Enter")
+    page.wait_for_function("document.querySelectorAll('#action-rows tr[data-action]').length === 2")
+    page.locator("#action-rows tr[data-action]", has_text="proxy").locator(
+        "[data-action-close]"
+    ).click()
+    page.wait_for_function("document.querySelector('#action-rows').innerText.includes('Done')")
+    page.check("#action-open-only")
+    page.wait_for_function("document.querySelectorAll('#action-rows tr[data-action]').length === 1")
+    assert "admin password" in page.inner_text("#action-rows")
+    page.uncheck("#action-open-only")
+    page.locator("#action-rows tr[data-action]", has_text="admin").click()
+    page.once("dialog", lambda dialog: dialog.accept())  # "Remove … from the case?"
+    page.click("#action-delete")
+    page.wait_for_function("document.querySelectorAll('#action-rows tr[data-action]').length === 1")
+    assert "admin password" not in page.inner_text("#action-rows")
+
+
+def test_an_action_without_a_title_is_refused_with_a_reason(page):
+    page.click('.tabs .tab:text-is("Actions & tracking")')
+    page.click("#action-add")
+    page.wait_for_function("document.getElementById('status').innerText.includes('needs a title')")
+    assert page.locator("#action-rows tr[data-action]").count() == 0
+
+
+def test_the_actions_leave_as_a_csv_in_english(page, tmp_path):
+    page.click('.tabs .tab:text-is("Actions & tracking")')
+    _new_action(page, "Image the laptop", "third_party", "high")
+    with page.expect_download(timeout=30000) as download:
+        page.click("#action-export")
+    saved = tmp_path / "actions.csv"
+    download.value.save_as(str(saved))
+    text = saved.read_text(encoding="utf-8-sig")
+    assert "Image the laptop" in text
+    assert "Third party" in text or "third_party" in text
+    for french in ("Priorité", "Responsable", "À faire", "Titre"):
+        assert french not in text, text[:300]
+
+
+def test_indicators_are_tracked_and_removed(page):
+    page.click('.tabs .tab:text-is("Actions & tracking")')
+    page.click('[data-sub="indicators"]')
+    page.fill("#indicator-values", "203.0.113.7\nevil.example")
+    page.fill("#indicator-label", "C2 seen in the proxy")
+    page.click("#indicator-add")
+    page.wait_for_function(
+        "document.getElementById('indicator-rows').innerText.includes('evil.example')"
+    )
+    assert "203.0.113.7" in page.inner_text("#indicator-rows")
+    page.locator("#indicator-rows tr", has_text="evil.example").click()
+    page.click("#indicator-remove")
+    page.wait_for_function(
+        "!document.getElementById('indicator-rows').innerText.includes('evil.example')"
+    )
+    assert "203.0.113.7" in page.inner_text("#indicator-rows")
+
+
+def test_a_machine_and_an_account_are_recorded(page):
+    page.click('.tabs .tab:text-is("Actions & tracking")')
+    page.click('[data-sub="entities"]')
+    page.fill("#entity-label", "Finance laptop")
+    page.fill("#entity-hostname", "FIN-LT-04")
+    page.fill("#entity-ip", "10.0.0.44")
+    page.click("#entity-add")
+    page.wait_for_function("document.getElementById('entity-rows').innerText.includes('FIN-LT-04')")
+    assert "Finance laptop" in page.inner_text("#entity-rows")
+
+
+# -- Imports ---------------------------------------------------------------------------------
+
+
+def _mixed_folder(page, server):
+    """A folder of one readable file and two that no reader recognises, imported by path."""
+    import time
+
+    base, _root, evidence = server
+    case = page.evaluate("state.openCase.id")
+    folder = evidence / case / "mixed"
+    folder.mkdir()
+    (folder / "good.csv").write_text("A,B\n1,2\n3,4\n")
+    (folder / "junk.bin").write_bytes(bytes(range(256)) * 4)
+    (folder / "notes.txt").write_text("hello analyst\n")
+    job = httpx.post(
+        f"{base}/api/cases/{case}/import-jobs",
+        data={"source": str(folder), "organization": "files"},
+        timeout=30,
+    ).json()["job"]
+    for _ in range(120):
+        if httpx.get(f"{base}/api/import-jobs/{job}").json().get("status") != "running":
+            break
+        time.sleep(0.25)
+    page.evaluate("openCase(state.openCase.id)")
+    page.click('.tabs .tab:text-is("Imports")')
+    page.wait_for_function("document.getElementById('imports-rows').innerText.includes('junk.bin')")
+
+
+def _import_lines(page):
+    return page.eval_on_selector_all(
+        "#imports-rows tr", "els => els.map(e => e.innerText.replace(/\\s+/g, ' ').trim())"
+    )
+
+
+def test_the_imports_table_says_which_files_were_read_and_why_one_was_not(page, server):
+    _mixed_folder(page, server)
+    lines = _import_lines(page)
+    assert any(line.startswith("complete good.csv") for line in lines), lines
+    assert any("junk.bin" in line and "No reader recognised" in line for line in lines), lines
+    assert "not read" in page.inner_text("#imports-view")
+
+
+def test_the_imports_filter_by_status_and_by_text(page, server):
+    _mixed_folder(page, server)
+    page.select_option("#imports-status", "unsupported")
+    page.wait_for_function(
+        "!document.getElementById('imports-rows').innerText.includes('good.csv')"
+    )
+    assert len(_import_lines(page)) == 2
+    page.select_option("#imports-status", "")
+    page.fill("#imports-search", "notes")
+    page.wait_for_function(
+        "document.querySelectorAll('#imports-rows tr').length === 1 "
+        "&& document.getElementById('imports-rows').innerText.includes('notes.txt')"
+    )
+
+
+def test_a_file_is_viewed_from_the_imports_table(page, server):
+    _mixed_folder(page, server)
+    page.locator("#imports-rows tr", has_text="good.csv").click()
+    page.click('[data-act="import-view-file"]')
+    page.wait_for_selector("#preview-modal.show, .modal.show .dialog")
+    page.wait_for_function(
+        "document.querySelector('.modal.show .dialog').innerText.includes('good.csv')"
+    )
+
+
+def test_the_list_of_imports_is_exported(page, server, tmp_path):
+    _mixed_folder(page, server)
+    with page.expect_download(timeout=30000) as download:
+        page.click('[data-act="import-export-list"]')
+    saved = tmp_path / "imports.csv"
+    download.value.save_as(str(saved))
+    text = saved.read_text(encoding="utf-8-sig")
+    assert "good.csv" in text and "junk.bin" in text and "notes.txt" in text
+    assert "Aucun lecteur" not in text, "the reasons are in English"
+
+
+def test_a_file_parked_from_the_report_leaves_the_list_and_is_found_under_parked(page, server):
+    _mixed_folder(page, server)
+    page.locator("#imports-rows tr", has_text="notes.txt").click()
+    page.click('[data-act="import-park"]')
+    page.wait_for_function(
+        "!document.getElementById('imports-rows').innerText.includes('notes.txt')"
+    )
+    page.select_option("#imports-status", "ignored")
+    page.wait_for_function(
+        "document.querySelectorAll('#imports-rows tr').length === 1 "
+        "&& document.getElementById('imports-rows').innerText.includes('notes.txt')"
+    )

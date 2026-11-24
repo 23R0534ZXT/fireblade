@@ -5619,13 +5619,24 @@ function wire() {
       }
     });
   });
-  document.addEventListener("mousedown", () => {
+  function closeMenus() {
     document.querySelectorAll(".menu").forEach((m) => m.classList.remove("show"));
     document.querySelectorAll(".menubar .m").forEach((m) => m.classList.remove("open"));
+  }
+  // A press inside an open menu must reach its item: closing the menu on mousedown hides
+  // the item before the click can land on it, and no menu command would ever run.
+  document.addEventListener("mousedown", (event) => {
+    if (event.target.closest && event.target.closest(".menu")) return;
+    closeMenus();
   });
 
   document.querySelectorAll("[data-act]").forEach((node) => {
-    node.addEventListener("click", () => act(node.dataset.act, node));
+    node.addEventListener("click", () => {
+      // The menu closes first, then the command runs: a command that opens a dialog or
+      // reads the page must not find the menu still on screen.
+      if (node.closest(".menu")) closeMenus();
+      act(node.dataset.act, node);
+    });
   });
 
   document.querySelectorAll(".subtab[data-scope]").forEach((tab) => {

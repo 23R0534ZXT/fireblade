@@ -2732,12 +2732,19 @@ function selectedIds() {
 async function copySelectedRows() {
   const ids = selectedIds();
   if (!ids.length) { say("Select a row first", true); return; }
+  // As the desktop copies: the columns on screen, without the row number, one tab-separated
+  // line per row, a cell quoted when it holds a tab, a quote or a line break.
+  const shown = visibleColumns().filter((item) => item.index > 0);
+  const cell = (value) => {
+    const text = value === null || value === undefined ? "" : String(value);
+    return /[\t\n\r"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
   const lines = [];
-  if (copyPrefs.headers) lines.push(state.columns.map((name) => String(name)).join("\t"));
+  if (copyPrefs.headers) lines.push(shown.map((item) => cell(item.name)).join("\t"));
   for (const id of ids) {
     const row = state.rows.find((item) => String(item[0]) === id);
     if (!row) continue;
-    lines.push(row.map((cell) => (cell === null || cell === undefined ? "" : String(cell))).join("\t"));
+    lines.push(shown.map((item) => cell(row[item.index])).join("\t"));
   }
   try {
     await navigator.clipboard.writeText(lines.join("\n"));

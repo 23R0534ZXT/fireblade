@@ -1119,3 +1119,111 @@ def test_a_file_parked_from_the_report_leaves_the_list_and_is_found_under_parked
         "document.querySelectorAll('#imports-rows tr').length === 1 "
         "&& document.getElementById('imports-rows').innerText.includes('notes.txt')"
     )
+
+
+# -- Preferences, the palette, messages, history, reports ------------------------------------------
+
+
+def test_the_date_format_preference_rewrites_how_dates_read(page):
+    first = page.locator("#body tr[data-row] td[data-cell='0']").first
+    assert first.inner_text() == "2026-11-01T10:00:00Z"
+    command(page, "preferences")
+    page.select_option("#prefs-date-format", "iso7")
+    page.wait_for_function(
+        "document.querySelector('#body tr[data-row] td[data-cell=\"0\"]').innerText"
+        " === '2026-11-01T10:00:00.0000000Z'"
+    )
+    page.select_option("#prefs-date-format", "source")
+    page.wait_for_function(
+        "document.querySelector('#body tr[data-row] td[data-cell=\"0\"]').innerText"
+        " === '2026-11-01T10:00:00Z'"
+    )
+
+
+def test_the_size_preference_scales_the_interface_and_is_remembered(page):
+    command(page, "preferences")
+    before = page.locator(".menubar").bounding_box()["height"]
+    page.select_option("#prefs-scale", "1.5")
+    page.wait_for_function("getComputedStyle(document.querySelector('.app')).zoom === '1.5'")
+    assert page.locator(".menubar").bounding_box()["height"] > before
+    page.reload()
+    page.wait_for_selector("#menubar")
+    assert page.evaluate("getComputedStyle(document.querySelector('.app')).zoom") == "1.5"
+    page.evaluate("localStorage.removeItem('fireblade.scale')")
+
+
+def test_copied_rows_carry_the_header_when_the_preference_says_so(page):
+    command(page, "preferences")
+    page.check("#prefs-copy-headers")
+    page.click('.modal.show [data-act="settings-close"]')
+    select(page, 0)
+    command(page, "copy-row")
+    page.wait_for_function("document.getElementById('status').innerText.length > 0")
+    lines = page.evaluate("navigator.clipboard.readText()").strip().splitlines()
+    assert lines[0].split("\t") == ["Time", "Host", "User", "Event", "Path", "Src"], lines[0]
+    assert len(lines) == 2 and lines[1].split("\t")[1] == "PC01", "no row number is copied"
+
+
+def test_the_command_palette_finds_a_command_and_runs_it(page):
+    command(page, "palette")
+    page.fill("#palette-input", "show timeline")
+    items = page.eval_on_selector_all(
+        "#palette-list > *", "els => els.map(e => e.innerText.trim())"
+    )
+    assert items and "Timeline & correlations" in items[0], items
+    page.press("#palette-input", "Enter")
+    page.wait_for_function("document.getElementById('timeline-view').offsetParent !== null")
+
+
+def test_messages_keeps_what_the_window_said_and_clears_it(page):
+    select(page, 0)
+    command(page, "messages")
+    assert "1 row selected" in page.inner_text(".modal.show .dialog")
+    page.click("#messages-clear")
+    page.wait_for_function(
+        "!document.querySelector('.modal.show .dialog').innerText.includes('1 row selected')"
+    )
+
+
+def test_history_lists_the_states_of_the_case_and_restores_one(page):
+    page.keyboard.press("Control+s")
+    page.wait_for_function("document.getElementById('status').innerText.startsWith('Case saved')")
+    command(page, "case-history")
+    page.wait_for_function(
+        "document.querySelector('.modal.show .dialog').innerText.includes('.json')"
+    )
+    assert page.locator('.modal.show .dialog button:text-is("Restore")').count() >= 1
+
+
+def test_a_report_is_built_in_html_with_the_title_the_analyst_gave(page, tmp_path):
+    command(page, "report")
+    page.fill("#report-title", "Intrusion review")
+    page.click('[data-act="report-build"]')
+    page.wait_for_selector("#report-result a", timeout=60000)
+    href = page.get_attribute("#report-result a", "href")
+    html = httpx.get(page.url.rstrip("/") + href).text
+    assert "Intrusion review" in html
+    for french in ("Rapport", "Synthèse", "Périmètre", "Conclusions"):
+        assert french not in html, french
+
+
+def test_the_help_windows_open_with_their_text(page):
+    for act, marker in (
+        ("help-guide", "user guide"),
+        ("help-tutorial", ""),
+        ("help-ioc", ""),
+        ("help-timeline", ""),
+        ("help-coverage", ""),
+        ("help-licenses", ""),
+        ("about", "Fireblade"),
+        ("legend", ""),
+        ("workspace-guide", ""),
+    ):
+        command(page, act)
+        page.wait_for_selector(".modal.show .dialog")
+        text = page.inner_text(".modal.show .dialog")
+        assert len(text.strip()) > 40, (act, text)
+        if marker:
+            assert marker.lower() in text.lower(), (act, text[:200])
+        page.keyboard.press("Escape")
+        page.wait_for_selector(".modal.show", state="detached")

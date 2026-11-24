@@ -16,6 +16,7 @@ import io
 import json
 import os
 import re
+import shutil
 import tempfile
 import threading
 import time as clock
@@ -248,12 +249,10 @@ class Library:
                     # An analysis Fireblade organised (a CatScale family): its name is the
                     # core's, in its source language. The name of a file the analyst brought
                     # is evidence and is never translated.
-                    stem, dot, extension = name.rpartition(".")
-                    name = (
-                        english.english_text(stem) + dot + extension
-                        if stem
-                        else english.english_text(name)
-                    )
+                    # It is a name Fireblade chose, not a file the analyst brought: the
+                    # extension of the table it was written to says nothing, so it is dropped.
+                    stem = name.rpartition(".")[0]
+                    name = english.english_text(stem or name)
                 if name:
                     return f"{name} — {sheet}" if sheet else name
         return Path(str(fallback).replace("\\", "/")).stem or "analysis"
@@ -3943,10 +3942,37 @@ class Library:
             "analyses_added": merged,
         }
 
+    def _stage(self, identifier: str, sources: list) -> Path:
+        """One folder holding the files chosen together, so they are read as one collection.
+
+        The desktop reads the files of one selection as one collection, and the layout (one
+        grid per file, per artifact family, or for everything) applies to that collection. The
+        files are already in the case's evidence folder: they are linked, or copied when the
+        file system will not link them, into a folder of their own.
+        """
+        folder = self.library.folder(identifier)
+        root = (folder / "evidence").resolve()
+        stage = root / ("selection-" + uuid.uuid4().hex[:8])
+        stage.mkdir(parents=True)
+        for item in sources:
+            path = Path(str(item)).resolve()
+            if not path.is_file() or root not in path.parents:
+                raise ServiceError("A file of the selection is not in this case.")
+            target = stage / path.name
+            number = 1
+            while target.exists():
+                number += 1
+                target = stage / f"{path.stem} ({number}){path.suffix}"
+            try:
+                os.link(path, target)
+            except OSError:
+                shutil.copy2(path, target)
+        return stage
+
     def start_import_job(
         self,
         identifier: str,
-        source: str | Path,
+        source: str | Path | list,
         organization: str = "files",
         delimiter: str | None = None,
         encoding: str | None = None,
@@ -3954,6 +3980,8 @@ class Library:
     ) -> dict:
         """Run an import in the background, so the window stays usable and the run
         can be stopped: a collection of a few hundred files takes minutes."""
+        if isinstance(source, list):
+            source = source[0] if len(source) == 1 else self._stage(identifier, source)
         job_id = uuid.uuid4().hex
         job = {
             "id": job_id,

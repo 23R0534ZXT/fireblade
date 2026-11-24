@@ -134,6 +134,12 @@ DOCUMENTS = {
     "Fichiers et chronologie": "Files and timeline",
     "Conteneurs et virtualisation": "Containers and virtualisation",
     "Collecte CatScale": "CatScale collection",
+    # The artifact families a Windows collection is organised into
+    "MFT et USN": "MFT and USN",
+    "Registre": "Registry",
+    "Raccourcis LNK": "LNK shortcuts",
+    "Corbeille": "Recycle Bin",
+    "Journaux Linux": "Linux logs",
     # Coverage diagnostics
     "Fichier modifié pendant la vérification": "File changed during the check",
     "Le journal de couverture est un lien": "The coverage log is a link",

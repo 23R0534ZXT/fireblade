@@ -97,7 +97,7 @@ def test_an_organised_family_reads_in_english_and_a_file_the_analyst_brought_kee
 
     organised = {"path": "/case/collections/import-1/results/organisation-ab12/Persistance.csv"}
     brought = {"path": "/case/evidence/Persistance.csv"}
-    assert Library._label(organised, "") == "Persistence.csv"
+    assert Library._label(organised, "") == "Persistence"
     assert Library._label(brought, "") == "Persistance.csv", (
         "an analyst's own file name is evidence"
     )

@@ -9,9 +9,11 @@ import re
 import shutil
 import signal
 import subprocess
+import tarfile
 import threading
 import time
 import uuid
+import zipfile
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -871,6 +873,9 @@ class Collection:
 
     def label_for(self, source):
         """The shortest name that still tells two analysed logs apart."""
+        extracted = getattr(self, "_extracted", {})
+        if str(source) in extracted:
+            return extracted[str(source)]
         try:
             return str(Path(source).resolve().relative_to(self.root)).replace("\\", "/")
         except ValueError:
@@ -930,7 +935,71 @@ class Collection:
                     entry = dict(path=str(source), status="pending", tools=[])
                     self.report["files"].append(entry)
                     pending.append((source, entry))
-        return pending
+        return self.open_archives(pending)
+
+    def open_archives(self, pending):
+        """Every archive met — a zip, a tar, a compressed tar, in a folder or in another archive — is
+        opened into the collection's work folder and its members join the inventory. An archive another
+        reader owns (a CatScale collection) stays whole."""
+        from fireblade.core import archives
+
+        queue, kept, number = list(pending), [], 0
+        extracted = getattr(self, "_extracted", None)
+        if extracted is None:
+            extracted = self._extracted = {}
+        while queue:
+            check_cancel()
+            source, entry = queue.pop(0)
+            depth = int(entry.get("archive_depth", 0))
+            owner = identify(source) if archives.is_archive(source) else ["not an archive"]
+            # A CatScale collection stays whole; a tar or a zip is opened even when its first bytes
+            # could pass for a compressed log.
+            if owner and owner != ["LinuxLogs"]:
+                kept.append((source, entry))
+                continue
+            label = extracted.get(str(source)) or self.label_for(source)
+            if depth >= archives.MAX_DEPTH:
+                entry.update(
+                    status="attention", reason="Archives nested too deep: not opened", tools=[]
+                )
+                continue
+            number += 1
+            where = self.output / "extracted" / f"{number:04d}"
+            self.progress("Opening the archive: " + label)
+            try:
+                files, problems = archives.extract(source, where, check_cancel)
+            except (OSError, ValueError, EOFError, tarfile.TarError, zipfile.BadZipFile) as exc:
+                entry.update(
+                    status="attention", reason=f"The archive could not be opened: {exc}", tools=[]
+                )
+                continue
+            entry.update(
+                status="complete",
+                tools=[],
+                kind="archive",
+                reason=f"Archive opened: {len(files)} file(s)"
+                + (
+                    f"; {len(problems)} entry(ies) refused: " + " | ".join(problems[:3])
+                    if problems
+                    else ""
+                ),
+            )
+            if problems:
+                entry["status"] = "attention"
+            for member in sorted(files):
+                inner = str(member.relative_to(where)).replace("\\", "/")
+                extracted[str(member)] = f"{label}!/{inner}"
+                child = dict(
+                    path=str(member),
+                    status="pending",
+                    tools=[],
+                    container=str(source),
+                    label=f"{label}!/{inner}",
+                    archive_depth=depth + 1,
+                )
+                self.report["files"].append(child)
+                queue.append((member, child))
+        return kept
 
     def publish_results(self, start, entry):
         """Hook for immutable, closed results after source integrity checks."""
@@ -1022,7 +1091,11 @@ class Collection:
         check_cancel()
         self.progress("Collecte : " + self.label_for(source))
         try:
-            if source.is_symlink() or self.root not in source.resolve().parents:
+            inside = (
+                self.root in source.resolve().parents
+                or self.output.resolve() in source.resolve().parents
+            )
+            if source.is_symlink() or not inside:
                 entry.update(status="skipped", error="Lien de fichier non suivi")
                 return documents
             if not source.is_file():
@@ -1089,7 +1162,7 @@ class Collection:
                     else:
                         command = self.pack.arguments(tool, source, output)
                         run["command"] = command
-                        self.progress(tool + " : " + str(source.relative_to(self.root)))
+                        self.progress(tool + " : " + self.label_for(source))
                         try:
                             execute(
                                 command, str(Path(self.pack.root) / tool), output / "parser.log"

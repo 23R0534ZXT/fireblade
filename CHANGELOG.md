@@ -13,6 +13,11 @@ Every control was pressed again and judged by what it leaves on screen, on the r
 pack and real collections. Most of what follows is what that found.
 
 ### Added
+- **Archives inside a folder are opened.** A `/var/log` with sub-folders and, here and there, a zip, a tar,
+  a `.tar.gz`/`.tgz`/`.tar.bz2`/`.tar.xz` — even an archive inside an archive — is read whole: each
+  archive is unpacked into the collection's own work folder (the evidence is never written to), its
+  members join the inventory, and the Imports tab names them `archive!/path/inside`. Links, devices and
+  names that climb out of the archive are refused and reported; a bomb stops at a size bound.
 - **SRUDB.dat is read on Linux** (native reader; SrumECmd cannot start outside Windows).
 - **Shellbags is read in the image** (523 rows on the pack's hive, the count it states).
 - **A comparison icon left of every column filter** (contains, does not contain, equals, differs,

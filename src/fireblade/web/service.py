@@ -1673,7 +1673,8 @@ class Library:
             for item in data.get("files") or []:
                 files.append(
                     {
-                        "name": Path(str(item.get("path", ""))).name,
+                        # a member of an archive is named by the archive it came out of
+                        "name": item.get("label") or Path(str(item.get("path", ""))).name,
                         "path": str(item.get("path", "")),
                         "status": str(item.get("status", "")),
                         # the reason is the engine's sentence, never the analyst's evidence

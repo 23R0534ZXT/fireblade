@@ -523,6 +523,7 @@ EN = {
     "Archiver": "Archive",
     "Archiver et libérer l’espace…": "Archive and free the space…",
     "Arrêter": "Stop",
+    "Linux — journaux": "Linux — logs",
     "Artefacts Windows, journaux Linux et collectes CatScale.": "Windows artifacts, Linux logs and CatScale collections.",
     "Aucun case actif": "No active case",
     "Aucune collecte ouverte. Importez un dossier ou reprenez une collecte existante.": "No collection open. Import a folder or resume an existing collection.",

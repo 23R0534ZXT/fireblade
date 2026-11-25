@@ -185,7 +185,7 @@ class Library:
             if counts[entry["label"]] < 2:
                 continue
             info = entry["source_info"]
-            name = Library._output_name(info)
+            name = english.english_text(Library._output_name(info))
             if name and name.casefold() not in entry["label"].casefold():
                 entry["label"] = f"{entry['label']} — {name}"
         seen: dict[str, int] = {}
@@ -2945,6 +2945,16 @@ class Library:
             "by_kind": summary,
             "per_analysis": per_analysis,
             "rejected": len(getattr(batch, "rejected", None) or []),
+            # which lines were not searched, and why, so the list can say so instead of
+            # showing them as "no hit"
+            "rejected_lines": [
+                {
+                    "line": item.get("line"),
+                    "value": item.get("value", ""),
+                    "reason": english.english_text(str(item.get("reason", ""))),
+                }
+                for item in (getattr(batch, "rejected", None) or [])
+            ],
             "duplicates": int(getattr(batch, "duplicates", 0) or 0),
             "all_analyses": bool(all_analyses),
             "respect_filters": bool(respect_filters),

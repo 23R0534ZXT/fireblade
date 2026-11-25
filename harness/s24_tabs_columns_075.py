@@ -4,6 +4,7 @@ What it proves on the real window: closing an artifact grid removes the tab but 
 file in the navigation tree, greyed out; double-clicking it brings the tab back with its
 saved view; and the small cross on a column header hides that column.
 """
+
 import os
 import sys
 from pathlib import Path
@@ -33,9 +34,12 @@ for item in LOGS.glob("*.csv"):
 for index, name in enumerate(("alpha", "beta", "gamma")):
     # Different content: identical files are recognised as duplicates and skipped.
     (LOGS / f"{name}.csv").write_text(
-        'TimeCreated,EventId,User\n'
-        f'2026-11-17 10:0{index}:00,{4624 + index},jdoe\n'
-        f'2026-11-17 10:1{index}:00,{4625 + index},asmith\n', encoding="utf-8", newline="")
+        "TimeCreated,EventId,User\n"
+        f"2026-11-17 10:0{index}:00,{4624 + index},jdoe\n"
+        f"2026-11-17 10:1{index}:00,{4625 + index},asmith\n",
+        encoding="utf-8",
+        newline="",
+    )
 
 screen = fb.work_screen(app)
 window = Window(require_case=False)
@@ -70,22 +74,32 @@ window.close_document(1)
 fb.settle(app, 800)
 
 tree = window.navigator.tree
-closed_items = [item for item in window.navigator.items() if item.data(0, Qt.UserRole + 2) == "closed"]
+closed_items = [
+    item for item in window.navigator.items() if item.data(0, Qt.UserRole + 2) == "closed"
+]
 opened_items = [item for item in window.navigator.items() if item.data(0, Qt.UserRole) is not None]
 print("TREE closed:", [item.text(0) for item in closed_items])
 print("TREE opened:", [item.text(0) for item in opened_items])
-journal.add("T02", "OK" if len(closed_items) == 1 else "FAIL",
-            f"{len(window.documents)} tabs, {len(closed_items)} closed in the tree", None,
-            {"shot": fb.shot(window, "T02-closed-in-tree")})
+journal.add(
+    "T02",
+    "OK" if len(closed_items) == 1 else "FAIL",
+    f"{len(window.documents)} tabs, {len(closed_items)} closed in the tree",
+    None,
+    {"shot": fb.shot(window, "T02-closed-in-tree")},
+)
 assert len(window.documents) == 2, [Path(doc.path).name for doc in window.documents]
 assert len(closed_items) == 1, [item.text(0) for item in window.navigator.items()]
 
 # Double-click it: the tab comes back.
 window.navigator.activate(closed_items[0])
 fb.settle(app, 800)
-journal.add("T03", "OK" if len(window.documents) == 3 else "FAIL",
-            f"{len(window.documents)} tabs after reopening", None,
-            {"shot": fb.shot(window, "T03-reopened")})
+journal.add(
+    "T03",
+    "OK" if len(window.documents) == 3 else "FAIL",
+    f"{len(window.documents)} tabs after reopening",
+    None,
+    {"shot": fb.shot(window, "T03-reopened")},
+)
 assert len(window.documents) == 3
 assert not [item for item in window.navigator.items() if item.data(0, Qt.UserRole + 2) == "closed"]
 
@@ -94,12 +108,17 @@ header = window.tree.header()
 header.resizeSection(2, 180)
 fb.settle(app, 400)
 close_button = header.controls[2][3]
-assert close_button.text() == '×'
+assert close_button.text() == "×"
 close_button.click()
 fb.settle(app, 500)
 hidden = window.tree.isColumnHidden(2)
-journal.add("T04", "OK" if hidden else "FAIL", f"column 2 hidden by its cross: {hidden}", None,
-            {"shot": fb.shot(window, "T04-column-hidden")})
+journal.add(
+    "T04",
+    "OK" if hidden else "FAIL",
+    f"column 2 hidden by its cross: {hidden}",
+    None,
+    {"shot": fb.shot(window, "T04-column-hidden")},
+)
 assert hidden
 
 window.close()

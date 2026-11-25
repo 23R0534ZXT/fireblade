@@ -4,6 +4,7 @@ Prefetch, shortcuts and event logs each go through their own reader; what must h
 three is the same rule: a recognised file ends imported (or with a named reason), never
 silently unsupported, and every analysis it produces is readable.
 """
+
 import os
 import shutil
 import sys
@@ -37,15 +38,15 @@ for item in LOGS.glob("*"):
 
 SOURCES = []
 for pf in sorted(Path(r"C:\Windows\Prefetch").glob("*.pf"))[:2]:
-    shutil.copy2(pf, LOGS/pf.name)
+    shutil.copy2(pf, LOGS / pf.name)
     SOURCES.append(pf.name)
 for lnk in sorted(Path(r"C:\Users\fb\AppData\Roaming\Microsoft\Windows\Recent").glob("*.lnk"))[:2]:
-    destination = LOGS/lnk.name
+    destination = LOGS / lnk.name
     shutil.copy2(lnk, destination)
     SOURCES.append(lnk.name)
 security = Path(r"C:\Windows\System32\winevt\Logs\Security.evtx")
 if security.is_file():
-    shutil.copy2(security, LOGS/security.name)
+    shutil.copy2(security, LOGS / security.name)
     SOURCES.append(security.name)
 print("SOURCES", SOURCES)
 
@@ -92,10 +93,16 @@ for index, document in enumerate(documents):
     fb.wait(app, lambda: not window.busy, 300)
     fb.settle(app, 300)
     rows[Path(document.source_info.get("path", "")).name] = window.case.db.execute(
-        "SELECT count(*) FROM events").fetchone()[0]
+        "SELECT count(*) FROM events"
+    ).fetchone()[0]
 print("ROWS", rows)
 assert rows and all(rows.values()), rows
-journal.add("A01", "OK", f"{len(documents)} analyses, {sum(rows.values())} rows", None,
-            {"shot": fb.shot(window, "A01-artefacts")})
+journal.add(
+    "A01",
+    "OK",
+    f"{len(documents)} analyses, {sum(rows.values())} rows",
+    None,
+    {"shot": fb.shot(window, "A01-artefacts")},
+)
 window.close()
 print("SECTION OK")

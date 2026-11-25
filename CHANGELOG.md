@@ -7,6 +7,8 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.8.6] — 2026-11-25
+
 ### Added
 - **The attack graph proves what it shows.** Every card and every link opens its evidence: what it
   represents, how Fireblade got it (the column or the record it was read from), and the alert groups

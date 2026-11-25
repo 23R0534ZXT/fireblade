@@ -4,6 +4,7 @@ What it proves on the real window: right-clicking a PowerShell event offers "wha
 this?", and the timeline finds the process-creation event in another artefact; the filter
 field carries an operator; and a parser CSV is named by its artefact, not by "amcache.csv".
 """
+
 import os
 import sys
 from pathlib import Path
@@ -34,27 +35,34 @@ for item in LOGS.glob("*.csv"):
 
 # The script block, as PowerShell records it.
 (LOGS / "powershell-4104.csv").write_text(
-    'TimeCreated,EventId,Computer,Channel,ScriptBlockText\n'
+    "TimeCreated,EventId,Computer,Channel,ScriptBlockText\n"
     '"2026-11-17 10:04:12",4104,SRV-DC01,Microsoft-Windows-PowerShell/Operational,'
     '"powershell.exe -enc SQBFAFgAIABOAGUAdwAtAE8AYgBqAGUAYwB0AA=="\n'
     '"2026-11-17 10:09:40",4104,SRV-DC01,Microsoft-Windows-PowerShell/Operational,'
-    '"Get-ChildItem C:\\Users"\n', encoding="utf-8", newline="")
+    '"Get-ChildItem C:\\Users"\n',
+    encoding="utf-8",
+    newline="",
+)
 
 # The process creation, forty seconds earlier, in another artefact.
 (LOGS / "sysmon-1.csv").write_text(
-    'UtcTime,Computer,Image,ParentImage,CommandLine\n'
+    "UtcTime,Computer,Image,ParentImage,CommandLine\n"
     '"2026-11-17 10:03:32",SRV-DC01,C:\\Windows\\System32\\cmd.exe,'
     'C:\\Windows\\explorer.exe,"cmd.exe /c whoami"\n'
     '"2026-11-17 10:03:55",SRV-DC01,'
-    'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe,'
+    "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe,"
     'C:\\Windows\\System32\\cmd.exe,"powershell.exe -enc SQBFAFgAIABOAGUAdwAtAE8AYgBqAGUAYwB0AA=="\n',
-    encoding="utf-8", newline="")
+    encoding="utf-8",
+    newline="",
+)
 
 # A parser CSV whose name says nothing, and one whose name says everything.
 (LOGS / "amcache.csv").write_text(
-    'Application Name,SHA1,File Path\nupdate.exe,aabb,C:\\Temp\\u.exe\n', encoding="utf-8")
+    "Application Name,SHA1,File Path\nupdate.exe,aabb,C:\\Temp\\u.exe\n", encoding="utf-8"
+)
 (LOGS / "export.csv").write_text(
-    'Application Name,SHA1,File Path\nsetup.exe,ccdd,C:\\Temp\\s.exe\n', encoding="utf-8")
+    "Application Name,SHA1,File Path\nsetup.exe,ccdd,C:\\Temp\\s.exe\n", encoding="utf-8"
+)
 
 screen = fb.work_screen(app)
 window = Window(require_case=False)
@@ -78,18 +86,28 @@ window.parse_collection()
 fb.wait(app, lambda: fb.idle(window) and window.centralWidget().isEnabled(), 900)
 fb.settle(app, 1500)
 
-titles = [item.text(0) for item in window.navigator.items() if item.data(0, Qt.UserRole) is not None]
+titles = [
+    item.text(0) for item in window.navigator.items() if item.data(0, Qt.UserRole) is not None
+]
 print("TITLES", titles)
 assert any(title.startswith("Amcache") for title in titles), titles
 assert not any("amcache.csv" == title for title in titles), titles
-journal.add("V01", "OK", "artefact named by what it holds", None,
-            {"shot": fb.shot(window, "V01-labels")})
+journal.add(
+    "V01", "OK", "artefact named by what it holds", None, {"shot": fb.shot(window, "V01-labels")}
+)
 
 # The pivot: from the PowerShell row, find what launched it.
-window.switch_document(next(i for i, doc in enumerate(window.documents)
-                            if "powershell-4104" in str(doc.source_info.get("path", ""))))
+window.switch_document(
+    next(
+        i
+        for i, doc in enumerate(window.documents)
+        if "powershell-4104" in str(doc.source_info.get("path", ""))
+    )
+)
 fb.settle(app, 800)
-anchor = anchor_of(list(window.case.headers), list(window.model.node(window.model.index(0, 0)).values[1:]))
+anchor = anchor_of(
+    list(window.case.headers), list(window.model.node(window.model.index(0, 0)).values[1:])
+)
 print("ANCHOR", anchor)
 assert anchor and anchor["token"] == "powershell.exe", anchor
 assert anchor["host"] == "SRV-DC01", anchor
@@ -109,8 +127,13 @@ assert "powershell.exe" in joined.casefold(), joined[:400]
 sources = {str(panel.documents[row[0]].source_info.get("path", "")) for row in rows}
 print("PIVOT SOURCES", sources)
 assert any("sysmon" in path for path in sources), sources
-journal.add("V02", "OK" if rows else "FAIL", f"{len(rows)} event(s) around the launch", None,
-            {"shot": fb.shot(window, "V02-pivot")})
+journal.add(
+    "V02",
+    "OK" if rows else "FAIL",
+    f"{len(rows)} event(s) around the launch",
+    None,
+    {"shot": fb.shot(window, "V02-pivot")},
+)
 
 # The operator glyph beside a column field.
 window.workbench.setCurrentIndex(0)
@@ -124,8 +147,9 @@ fb.settle(app, 900)
 applied = [(f.column, f.operator, f.value) for f in window.view.filters]
 print("FILTERS", applied)
 assert applied == [(0, "eq", value)], applied
-journal.add("V03", "OK", f"operator in use: {applied}", None,
-            {"shot": fb.shot(window, "V03-operator")})
+journal.add(
+    "V03", "OK", f"operator in use: {applied}", None, {"shot": fb.shot(window, "V03-operator")}
+)
 
 window.close()
 print("SECTION OK")

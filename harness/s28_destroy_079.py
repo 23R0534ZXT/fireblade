@@ -3,6 +3,7 @@
 Creates a case, imports one file, then uses the real command: the dialog is filled, the
 confirmation accepted, and the case folder must be gone while the certificate exists outside.
 """
+
 import os
 import sys
 from pathlib import Path
@@ -58,7 +59,7 @@ window.parse_collection()
 fb.wait(app, lambda: fb.idle(window) and window.centralWidget().isEnabled(), 900)
 fb.settle(app, 1200)
 assert folder.is_dir(), folder
-print("CASE", folder, sum(1 for _ in folder.rglob('*') if _.is_file()), "files")
+print("CASE", folder, sum(1 for _ in folder.rglob("*") if _.is_file()), "files")
 
 QMessageBox.question = staticmethod(lambda *args, **kwargs: QMessageBox.Yes)
 
@@ -88,7 +89,12 @@ assert not folder.exists(), "the case folder survived the destruction"
 assert CERTIFICATE.is_file(), "no certificate was written"
 assert CERTIFICATE.stat().st_size > 1000, CERTIFICATE.stat().st_size
 assert window.active_investigation is None, window.active_investigation
-journal.add("X01", "OK", "case destroyed, certificate outside", None,
-            {"shot": fb.shot(window, "X01-destroyed"), "certificate": str(CERTIFICATE)})
+journal.add(
+    "X01",
+    "OK",
+    "case destroyed, certificate outside",
+    None,
+    {"shot": fb.shot(window, "X01-destroyed"), "certificate": str(CERTIFICATE)},
+)
 window.close()
 print("SECTION OK")

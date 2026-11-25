@@ -1,3 +1,13 @@
+# Fireblade 0.8.6 — the attack graph proves what it shows
+
+Every card and link of the attack graph opens its evidence: what it represents, how Fireblade got it,
+and the exact lines of the alert analysis it rests on. The cell right-click menu now has the desktop's
+notes, "search every analysis" and "correlate"; the text filter expression and Reset the view are
+there; filtering on a cell appends as the desktop does (found by replaying commands on the desktop
+window and on the Host, row for row). CatScale family names and engine reasons are English everywhere.
+
+---
+
 # Fireblade 0.8.5 — nothing a collection holds is left unread
 
 A collection from an offline collector (2 600 files: process binaries, browser profiles, command

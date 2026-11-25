@@ -2266,6 +2266,11 @@ function renderFindingView() {
     ? `${findingState.groups.length} finding(s), ${hits} alert(s)`
       + (findingState.source ? ` — ${findingState.source}` : "")
     : `${eventLogCount()} event log(s) in the case — no finding yet: run the detection, or open the alert analysis.`;
+  // Findings kept in the case from an earlier run are not "no detection yet".
+  const ran = $("hayabusa-summary");
+  if (findingState.groups.length && ran.textContent.startsWith("No detection run yet")) {
+    ran.textContent = `${hits} alert(s) kept from the last detection: run it again to refresh them.`;
+  }
   if (view === "table") { renderFindingSeverity(shownFindings()); renderFindingTable(); return; }
   drawFindingMap(view);
 }
@@ -3682,6 +3687,11 @@ async function openCoverage() {
   $("coverage-note").textContent = "Reading the last check kept with this case…";
   try {
     const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/coverage?run=false`);
+    if (!payload.report) {
+      $("coverage-note").textContent = "No check kept yet: press \"Check the coverage\".";
+      $("coverage-summary").textContent = "";
+      return;
+    }
     showCoverage(payload);
   } catch (_) {
     $("coverage-note").textContent = "No check kept yet: press \"Check the coverage\".";
@@ -4514,11 +4524,13 @@ function renderImports() {
     if (analysis.source) outputs.set(analysis.source, analysis.label);
   }
   const rows = [];
-  let imported = 0, failed = 0;
+  let imported = 0, failed = 0, companions = 0;
   for (const collection of importState.collections) {
     for (const file of collection.files || []) {
       const ok = ["complete", "attention", "duplicate"].includes(file.status);
-      if (ok) imported += 1; else failed += 1;
+      // A transaction log kept beside its hive is read with it: it is not a file left unread.
+      if (file.status === "companion") companions += 1;
+      else if (ok) imported += 1; else failed += 1;
       if (wanted === "ignored" ? !file.ignored : (wanted && file.status !== wanted)) continue;
       if (!wanted && file.ignored) continue;
       if (term && !`${file.name} ${file.path} ${file.reason} ${(file.tools || []).join(" ")}`
@@ -4542,7 +4554,8 @@ function renderImports() {
     });
   });
   $("imports-summary").textContent =
-    `${importState.collections.length} import(s) — ${imported} file(s) read, ${failed} not read`;
+    `${importState.collections.length} import(s) — ${imported} file(s) read, ${failed} not read`
+    + (companions ? `, ${companions} companion file(s) read with their hive` : "");
   say($("imports-summary").textContent);
 }
 
@@ -4554,7 +4567,11 @@ async function runGlobalSearch() {
   if (!text) { say("Type something to search", true); return; }
   $("global-summary").textContent = "Searching…";
   try {
-    const payload = await api(`/api/cases/${state.openCase.id}/search?text=${encodeURIComponent(text)}`);
+    // A case of hundreds of analyses takes a while: it runs as a job, with progress and a Stop.
+    const payload = (state.openCase.analyses || []).length > 40
+      ? await runTask("search", { text }, "Global search")
+      : await api(`/api/cases/${state.openCase.id}/search?text=${encodeURIComponent(text)}`);
+    if (!payload) { $("global-summary").textContent = "Search stopped"; return; }
     $("global-summary").textContent = `${payload.total} hit(s) in ${payload.analyses.filter((a) => a.count).length} analysis(es)`;
     $("global-results").innerHTML = payload.analyses.map((analysis) => {
       if (!analysis.count) return "";
@@ -5120,7 +5137,8 @@ function timelineDatesParam() {
 
 function renderTimelineDates(payload) {
   const box = $("timeline-dates");
-  box.innerHTML = (payload.sources || []).map((source) => {
+  const sources = payload.sources || [];
+  const items = sources.map((source) => {
     const chosen = timelineState.dates[String(source.id)] || "auto";
     const options = [
       `<option value="auto" ${chosen === "auto" ? "selected" : ""}>detected${source.column_name ? ": " + escapeHtml(source.column_label || source.column_name) : ""}</option>`,
@@ -5136,6 +5154,13 @@ function renderTimelineDates(payload) {
     return `<div class="tsrc"><span class="tname" title="${escapeHtml(source.original || source.name)}">${escapeHtml(source.name)}</span>
       <select class="select" data-source="${source.id}">${options.join("")}</select></div>`;
   }).join("");
+  // A collection of hundreds of analyses has hundreds of selectors: folded, they would push the
+  // chart and the rows off the screen. The choice stays one click away, and still travels.
+  const wasOpen = !!box.querySelector("details[open]");
+  box.innerHTML = sources.length > 6
+    ? `<details class="tdates-all"${wasOpen ? " open" : ""}><summary>How the dates of ${sources.length} analyses are read
+         — detected automatically; open to change one</summary><div class="tdates-grid">${items}</div></details>`
+    : items;
 }
 
 function applyTimelineDates() {
@@ -5576,13 +5601,13 @@ function renderTree() {
     analyses.map((item) => `
       <div class="node child ${item.index === state.analysis ? "sel" : ""}" data-analysis="${item.index}"
            title="${escapeHtml(item.source || item.path)}">
-        <span class="caret"></span>${escapeHtml(item.label)}
+        <span class="caret"></span><span class="nlabel">${escapeHtml(item.label)}</span>
       </div>`).join("") +
     (closed.length ? '<div class="node grp closed-group"><span class="caret">▷</span>Closed (kept in the case)</div>'
       + closed.map((item) => `
       <div class="node child closed" data-reopen="${item.index}"
            title="Open this analysis again — ${escapeHtml(item.source || item.path)}">
-        <span class="caret"></span>${escapeHtml(item.label)}
+        <span class="caret"></span><span class="nlabel">${escapeHtml(item.label)}</span>
       </div>`).join("") : "");
   tree.querySelectorAll("[data-reopen]").forEach((node) => {
     node.addEventListener("click", () => reopenAnalysis(Number(node.dataset.reopen)));

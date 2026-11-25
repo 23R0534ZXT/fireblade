@@ -238,3 +238,38 @@ def test_a_linux_log_table_is_told_apart_in_english():
         "auth.log \u2014 Linux \u2014 logs",
         "auth.log \u2014 Linux \u2014 logs (2)",
     ]
+
+
+def test_two_files_of_one_name_are_told_apart_by_their_folder_not_a_number():
+    from fireblade.web.service import Library
+
+    def entry(folder):
+        return {
+            "label": "WiFiTask",
+            "source_info": {
+                "working_path": "/r/lines.csv",
+                "path": f"/e/Tasks/{folder}/WiFiTask",
+                "parser": "LinuxLogs",
+            },
+        }
+
+    entries = [entry("NlaSvc"), entry("WCM")]
+    Library._tell_apart(entries)
+    assert [e["label"] for e in entries] == ["WiFiTask (NlaSvc)", "WiFiTask (WCM)"]
+
+
+def test_a_prefetch_table_is_named_for_what_it_holds():
+    from fireblade.web.service import Library
+
+    def entry(output):
+        return {
+            "label": "AM_BASE.EXE.pf",
+            "source_info": {"working_path": f"/r/{output}.csv", "path": "/e/AM_BASE.EXE.pf"},
+        }
+
+    entries = [entry("PECmd_Output"), entry("PECmd_Output_Timeline")]
+    Library._tell_apart(entries)
+    assert [e["label"] for e in entries] == [
+        "AM_BASE.EXE.pf — Prefetch",
+        "AM_BASE.EXE.pf — Prefetch timeline",
+    ]

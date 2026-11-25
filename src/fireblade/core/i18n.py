@@ -30,6 +30,7 @@ EN = {
     "Format de session Fireblade inconnu": "Unknown Fireblade session format",
     "L’analyse est introuvable.": "The analysis cannot be found.",
     "Moteur terminé avec le code {}": "Engine exited with code {}",
+    "journal": "log",
     "Onglet actif invalide": "Invalid active tab",
     "Suppression impossible": "Delete failed",
     "le fichier a changé depuis la collecte : suppression refusée": "the file has changed since the collection: deletion refused",

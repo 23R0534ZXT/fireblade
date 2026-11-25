@@ -185,9 +185,26 @@ class Library:
             if counts[entry["label"]] < 2:
                 continue
             info = entry["source_info"]
-            name = english.english_text(Library._output_name(info))
+            name = Library._output_name(info)
+            # the reader's own word for a table is not what an analyst reads
+            name = OUTPUT_NAMES.get(name, english.english_text(name))
             if name and name.casefold() not in entry["label"].casefold():
                 entry["label"] = f"{entry['label']} — {name}"
+        # Still alike: two files of one name in different folders (two scheduled tasks called
+        # WiFiTask) are told apart by the folder that holds them, before any number.
+        groups: dict[str, list[dict]] = {}
+        for entry in entries:
+            groups.setdefault(entry["label"], []).append(entry)
+        for label, same in groups.items():
+            if len(same) < 2:
+                continue
+            parents = [
+                Path(str((e["source_info"] or {}).get("path", "")).replace("\\", "/")).parent.name
+                for e in same
+            ]
+            if all(parents) and len(set(parents)) == len(parents):
+                for entry, parent in zip(same, parents, strict=True):
+                    entry["label"] = f"{label} ({parent})"
         seen: dict[str, int] = {}
         for entry in entries:
             seen[entry["label"]] = seen.get(entry["label"], 0) + 1
@@ -1601,7 +1618,7 @@ class Library:
         for entry in self._analyses(self.library.read(identifier)):
             if not entry["found"]:
                 continue
-            other = self._case_for(identifier, entry["index"])
+            other = self._case_for(identifier, entry["index"], entry)
             with other.lock:
                 columns = list(other.headers)
                 process_index = next(
@@ -1861,21 +1878,24 @@ class Library:
             raise ServiceError("The file to preview does not exist.")
         if path.is_dir():
             entries = []
+            total = 0
             for item in sorted(path.rglob("*")):
-                if len(entries) >= 200:
-                    break
-                if item.is_file():
-                    try:
-                        tools = identify(item)
-                    except (OSError, ValueError):
-                        tools = []
-                    entries.append({"name": str(item.relative_to(path)), "readers": tools})
+                if not item.is_file():
+                    continue
+                total += 1
+                if len(entries) >= 200:  # only the list shown is bounded, never the count
+                    continue
+                try:
+                    tools = identify(item)
+                except (OSError, ValueError):
+                    tools = []
+                entries.append({"name": str(item.relative_to(path)), "readers": tools})
             return {
                 "kind": "folder",
                 "name": path.name,
                 "path": str(path),
                 "files": entries,
-                "count": len(entries),
+                "count": total,
                 "note": "A folder is inventoried file by file: each format is read by its own reader.",
             }
 
@@ -2009,17 +2029,18 @@ class Library:
 
     # -- global search -----------------------------------------------------
 
-    def search(self, identifier: str, text: str, limit: int = 50) -> dict:
+    def search(self, identifier: str, text: str, limit: int = 50, progress=None) -> dict:
         """Search every analysis of the case, and say where the hits are."""
         needle = (text or "").strip()
         if not needle:
             raise ServiceError("Type some text to search for.")
         results = []
         total = 0
-        for entry in self._analyses(self.library.read(identifier)):
-            if not entry["found"]:
-                continue
-            case = self._case_for(identifier, entry["index"])
+        entries = [item for item in self._analyses(self.library.read(identifier)) if item["found"]]
+        for position, entry in enumerate(entries, start=1):
+            if progress:
+                progress(f"Searching · analysis {position}/{len(entries)} — {entry['label']}")
+            case = self._case_for(identifier, entry["index"], entry)
             with case.lock:
                 view = View(search=needle)
                 count = int(case.count(view))
@@ -2875,7 +2896,7 @@ class Library:
                     f"Indicator hunt · analysis {position}/{len(targets)} — "
                     f"{self._label(entry.get('source_info') or {}, entry.get('path') or '')}"
                 )
-            case = self._case_for(identifier, target_index)
+            case = self._case_for(identifier, target_index, entry if entry.get("path") else None)
             view = View()
             if respect_filters:
                 stored = entry.get("view") if isinstance(entry, dict) else None
@@ -4500,6 +4521,8 @@ class Library:
 
     def _task_work(self, identifier: str, kind: str, payload: dict):
         """The callable a task runs, bound to the method the window already knows."""
+        if kind == "search":
+            return lambda note: self.search(identifier, payload.get("text", ""), progress=note)
         if kind == "scan":
             return lambda note: self.ioc_scan(
                 identifier,
@@ -4744,17 +4767,20 @@ class Library:
             case.condition(expression)
         return {"expression": expression}
 
-    def _case_for(self, identifier: str, index: int) -> Case:
+    def _case_for(self, identifier: str, index: int, entry: dict | None = None) -> Case:
+        """The open analysis. A caller that walks every analysis already holds each `entry`:
+        passing it spares re-reading the whole session (and testing every file) per analysis."""
         key = (identifier, index)
         with self._lock:
             existing = self._open.get(key)
             if existing is not None:
                 return existing
-            data = self.library.read(identifier)
-            analyses = self._analyses(data)
-            if not 0 <= index < len(analyses):
-                raise ServiceError("This analysis does not exist in the case.")
-            entry = analyses[index]
+            if entry is None:
+                data = self.library.read(identifier)
+                analyses = self._analyses(data)
+                if not 0 <= index < len(analyses):
+                    raise ServiceError("This analysis does not exist in the case.")
+                entry = analyses[index]
             if not entry["found"]:
                 raise ServiceError(
                     "The analysis file is missing from the case "
@@ -5003,6 +5029,26 @@ class Library:
             case.bookmark(int(row_id), clean or None, None if column is None else int(column))
         return {"row_id": int(row_id), "column": column, "note": clean}
 
+    def export_name(self, identifier: str, index: int, extension: str) -> str:
+        """The file an export is saved as: the case and the analysis it holds, not ids."""
+        try:
+            data = self.library.read(identifier)
+            entry = next((e for e in self._analyses(data) if e["index"] == int(index)), {})
+            case_name = str(data.get("name") or "")
+            label = str(entry.get("label") or "")
+        except (ServiceError, ValueError, OSError, KeyError):
+            case_name = label = ""
+
+        def slug(text: str) -> str:
+            return re.sub(r"[^\w.-]+", "-", text, flags=re.UNICODE).strip("-.")[:60]
+
+        parts = [slug(case_name), slug(label)]
+        stem = (
+            "_".join(part for part in parts if part)
+            or f"fireblade-{identifier[:8]}-analysis-{index}"
+        )
+        return f"{stem}.{extension}"
+
     def export(
         self,
         identifier: str,
@@ -5071,6 +5117,12 @@ def _english(text):
         except (ImportError, ValueError):
             return str(text)
 
+
+OUTPUT_NAMES = {
+    "PECmd_Output": "Prefetch",
+    "PECmd_Output_Timeline": "Prefetch timeline",
+    "lines": "",  # the generic text reader's table: it says nothing the file name does not
+}
 
 GENERATED_NAMES = {
     "Alertes Hayabusa.csv": "Hayabusa alerts",

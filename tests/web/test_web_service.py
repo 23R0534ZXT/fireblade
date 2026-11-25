@@ -265,3 +265,31 @@ def test_closing_an_analysis_leaves_the_others_and_its_file(case_with_analysis, 
         assert remaining[0]["path"] != path
     finally:
         service.close()
+
+
+def test_an_export_is_named_after_the_case_and_the_analysis(case_with_analysis):
+    root, identifier = case_with_analysis
+    service = Library(root)
+    try:
+        name = service.export_name(identifier, 0, "csv")
+        assert name.startswith("Test-case_") and name.endswith(".csv"), name
+        assert "analysis-0" not in name and identifier[:8] not in name
+        assert service.export_name("missing", 3, "xlsx").endswith("analysis-3.xlsx")
+    finally:
+        service.close()
+
+
+def test_a_folder_preview_counts_every_file_and_lists_a_bounded_number(tmp_path):
+    root = tmp_path / "cases"
+    root.mkdir()
+    folder = tmp_path / "collection"
+    folder.mkdir()
+    for number in range(230):
+        (folder / f"log-{number:03}.txt").write_text("x\n", encoding="utf-8")
+    service = Library(root)
+    try:
+        preview = service.preview_source(str(folder))
+        assert preview["kind"] == "folder"
+        assert preview["count"] == 230 and len(preview["files"]) == 200
+    finally:
+        service.close()

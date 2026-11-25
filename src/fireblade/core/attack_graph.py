@@ -35,6 +35,8 @@ TACTICS = (
     "Execution",
     "Persistence",
     "Privilege Escalation",
+    "Stealth",
+    "Defense Impairment",
     "Defense Evasion",
     "Credential Access",
     "Discovery",
@@ -46,6 +48,25 @@ TACTICS = (
 )
 
 _TACTIC_KEYS = {re.sub(r"[^a-z]", "", name.casefold()): index for index, name in enumerate(TACTICS)}
+# Hayabusa 4.x writes the short names of its config/mitre_tactics.txt ("Exec ¦ DefImpair"),
+# not the full ones: a graph that only knew the full names never got a single stage.
+_SHORT_NAMES = {
+    "recon": "Reconnaissance",
+    "resdev": "Resource Development",
+    "initaccess": "Initial Access",
+    "exec": "Execution",
+    "persis": "Persistence",
+    "privesc": "Privilege Escalation",
+    "defimpair": "Defense Impairment",
+    "credaccess": "Credential Access",
+    "disc": "Discovery",
+    "latmov": "Lateral Movement",
+    "collect": "Collection",
+    "c2": "Command and Control",
+    "exfil": "Exfiltration",
+}
+for _short, _full in _SHORT_NAMES.items():
+    _TACTIC_KEYS[_short] = TACTICS.index(_full)
 _TECHNIQUE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b")
 MAX_NODES = 2000
 
@@ -53,7 +74,7 @@ MAX_NODES = 2000
 def tactic_index(text):
     """Kill-chain position of a tactic written any way Hayabusa writes it, or None."""
     for token in re.split(r"[,;¦|]+", str(text or "")):
-        key = re.sub(r"[^a-z]", "", token.casefold())
+        key = re.sub(r"[^a-z0-9]", "", token.casefold())
         if key in _TACTIC_KEYS:
             return _TACTIC_KEYS[key]
     return None

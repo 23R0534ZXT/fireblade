@@ -7,6 +7,16 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.8.5] — 2026-11-25
+
+### Added
+- **Everything a collection holds is read.** A file no dedicated reader owns used to end as "No reader
+  recognised this file" — 1 900 of 2 600 files of an offline collector. It is now read as what it is:
+  a SQLite database (every table), Firefox's compressed JSON and any JSON (flattened), a text file
+  (one row per line), and the binaries — executables, libraries, opaque data — in one *Files inventory*
+  (size, dates, SHA-256 and, for a PE, machine, compile time, subsystem, signature present). A database
+  no SQLECmd map knows is read table by table. The desktop is unchanged.
+
 ## [0.8.4] — 2026-11-25
 
 Every control was pressed again and judged by what it leaves on screen, on the real image with a real

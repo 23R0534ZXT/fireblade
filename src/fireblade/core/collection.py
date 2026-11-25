@@ -21,6 +21,7 @@ import duckdb
 
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
+from fireblade.core.generic_files import classify as generic_classify
 from fireblade.core.i18n import translate
 from fireblade.core.import_index import load as load_index
 from fireblade.core.import_index import update as update_index
@@ -531,6 +532,9 @@ class Collection:
     # collection must not: two partitions holding the same bytes are two pieces of
     # evidence, each with its own location, and the report would lose one of them.
     deduplicate_content = True
+    # The Host reads everything it is given: what no reader owns is read as what it is (SQLite,
+    # JSON, text) or listed in an inventory. The desktop keeps saying "no reader recognised it".
+    read_everything = False
 
     def __init__(
         self,
@@ -998,7 +1002,45 @@ class Collection:
                 )
                 self.report["files"].append(child)
                 queue.append((member, child))
-        return kept
+        return self.inventory_unowned(kept)
+
+    def inventory_unowned(self, pending):
+        """The binaries no reader owns (executables, libraries, opaque data) are listed in one
+        inventory — size, dates, SHA-256, PE header — instead of one analysis each."""
+        from fireblade.core import generic_files
+
+        listed, rest = [], []
+        for source, entry in pending:
+            if (
+                self.read_everything
+                and source.is_file()
+                and not source.is_symlink()
+                and not identify(source)
+                and generic_files.classify(source) in ("pe", "binary")
+            ):
+                listed.append((source, entry))
+            else:
+                rest.append((source, entry))
+        if not listed:
+            return rest
+        folder = self.output / "results" / "inventory"
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / "Files inventory.csv"
+        self.progress(f"Listing {len(listed)} binary file(s)")
+        generic_files.write_inventory(
+            [source for source, _entry in listed], target, label=self.label_for, check=check_cancel
+        )
+        for _source, entry in listed:
+            entry.update(
+                status="complete",
+                tools=["Inventory"],
+                kind="inventory",
+                reason="Listed in the files inventory (size, dates, SHA-256, PE header)",
+            )
+        child = dict(path=str(target), status="pending", tools=[])
+        self.report["files"].append(child)
+        rest.append((target, child))
+        return rest
 
     def publish_results(self, start, entry):
         """Hook for immutable, closed results after source integrity checks."""
@@ -1103,6 +1145,9 @@ class Collection:
                 )
                 return documents
             tools = identify(source)
+            if not tools and self.read_everything:
+                # No dedicated reader: the file is read as what it is (SQLite, JSON, text…).
+                tools = ["Files"]
             entry["tools"] = tools
             if not tools:
                 entry["status"] = "unsupported"
@@ -1145,6 +1190,21 @@ class Collection:
                         run["webcache"] = result
                         run["warnings"] = result["warnings"]
                         csvs = [Path(item["csv"]) for item in result["outputs"]]
+                    elif tool == "Files" or (
+                        tool == "SQLECmd"
+                        and self.read_everything
+                        and not self.pack.available("SQLECmd")
+                        and generic_classify(source) == "sqlite"
+                    ):
+                        from fireblade.core.generic_files import parse as parse_generic
+
+                        result = parse_generic(source, output, self.progress)
+                        run["files"] = result
+                        run["warnings"] = result["warnings"]
+                        csvs = [Path(item["csv"]) for item in result["outputs"]]
+                        if not csvs:
+                            run["status"] = "no_output"
+                            run["reason"] = "The file holds no record"
                     elif tool in ("CatScale", "LinuxLogs"):
                         if tool == "LinuxLogs":
                             result = self.parse_linux(source, output)
@@ -1177,8 +1237,17 @@ class Collection:
                         csvs = sorted(output.rglob("*.csv"))
                         csvs = [csv for csv in csvs if not _empty_output(csv)]
                         if not csvs and not run.get("exit_error"):
-                            run["status"] = "no_output"
-                            run["reason"] = _no_output_reason(source)
+                            from fireblade.core import generic_files
+
+                            if self.read_everything and generic_files.classify(source) == "sqlite":
+                                # SQLECmd has no map for this database: its tables are read as they are.
+                                result = generic_files.parse(source, output, self.progress)
+                                run["files"] = result
+                                run["warnings"] = result["warnings"]
+                                csvs = [Path(item["csv"]) for item in result["outputs"]]
+                            if not csvs:
+                                run["status"] = "no_output"
+                                run["reason"] = _no_output_reason(source)
                     for csv in csvs:
                         # The provenance travels with the import: the parser CSV is
                         # read once, and no enriched copy is written beside it.

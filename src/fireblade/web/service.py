@@ -3597,6 +3597,7 @@ class Library:
             delimiter=delimiter if delimiter in self.CSV_DELIMITERS else None,
             encoding=encoding if encoding in self.CSV_ENCODINGS else "auto",
         )
+        collection.read_everything = True
         if callable(on_collection):
             # A running import can be interrupted from outside; the collection is the
             # object that knows how.

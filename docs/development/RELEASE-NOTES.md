@@ -1,3 +1,12 @@
+# Fireblade 0.8.5 — nothing a collection holds is left unread
+
+A collection from an offline collector (2 600 files: process binaries, browser profiles, command
+outputs) left 1 900 of them "not read". Every file no dedicated reader owns is now read as what it is
+— SQLite tables, Firefox JSON, JSON, text lines — and the binaries are listed in one Files inventory
+(size, dates, SHA-256, PE header). The desktop edition is unchanged.
+
+---
+
 # Fireblade 0.8.4 — every control judged by its effect
 
 See the changelog for the list; the short version: colour rules paint every row with the core's own

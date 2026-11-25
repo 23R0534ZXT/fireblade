@@ -75,12 +75,13 @@ def test_show_opens_the_alerts_and_mark_bookmarks_them(detected, browse):
     assert marks["bookmarks"], "the alerts of the finding are bookmarked"
 
 
-def test_the_findings_screen_says_how_many_event_logs_the_case_holds(detected, browse):
+def test_the_findings_screen_counts_the_findings_and_their_alerts(detected, browse):
     name, _case = detected
     with browse(name) as page:
         page.click('.tabs .tab:text-is("Hayabusa findings")')
         page.wait_for_function(
-            "document.getElementById('finding-summary').innerText.includes('event log(s)')",
+            "/\\d+ finding\\(s\\), \\d+ alert\\(s\\)/.test("
+            "document.getElementById('finding-summary').innerText)",
             timeout=30000,
         )
 

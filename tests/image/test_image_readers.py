@@ -96,5 +96,7 @@ def test_the_exports_of_the_pack_read_as_the_same_rows(expected):
     case = create_case(unique("Exports"))
     state = import_path(case, f"{SERVER_PACK}/03-Exports")
     assert state["status"] == "complete", state
-    totals = [rows_of(case, item["index"]) for item in analyses(case)]
+    # The files inventory is what Fireblade writes about the files no reader owns: not an export.
+    found = [item for item in analyses(case) if "inventory" not in item["label"].lower()]
+    totals = [rows_of(case, item["index"]) for item in found]
     assert totals and all(count == expected["exports_rows"] for count in totals), totals

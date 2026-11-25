@@ -7,6 +7,29 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+### Fixed
+- **A new case opens at once**, as in the desktop, instead of waiting in the Cases list.
+- **The attack graph places techniques on the kill chain.** Hayabusa 4 writes tactics in short form
+  (`Exec ¦ DefImpair`); only the full names were recognised, so no technique ever had a tactic.
+- **The PDF keeps the report's structure.** Bold headings, real table columns with the header
+  repeated on every page, summary tiles in reading order, page numbers, and `→` is no longer a `?`.
+  The client report names each analysis by its file instead of a path on the server.
+- **IOC hunt:** a line the parser rejects (`backdoor` is not a domain) is listed as "not searched"
+  with its reason, not shown as "no hit"; the hunt covers the whole case by default, like the desktop.
+- **Folder import:** the preview counts every file (it stopped at 200), and the message says how many
+  files were imported rather than "1".
+- **Names:** "Linux — journaux" is "Linux — logs"; Prefetch tables are "Prefetch" and "Prefetch
+  timeline" rather than "PECmd_Output"; two files of one name are told apart by their folder, not "(2)".
+  Exported files are named after the case and the analysis.
+- **Global search** runs on Enter, and on a case of hundreds of analyses it is a job with progress and
+  a Stop (it was one silent request, quadratic in the number of analyses).
+- **Detection:** reopening a case no longer says "No detection run yet" above its findings.
+- **Imports:** transaction logs beside a hive are no longer counted as "not read"; the failure reason
+  of an engine says "log", not "journal".
+- The toolbar scrolls in a narrow window, long names in the artifacts tree are cut with an ellipsis,
+  and "Collection coverage" no longer causes a 400 when no check has been kept yet.
+- `scripts/fetch_readers.py` counted the Hayabusa rules without looking in sub-folders ("0 rule(s)").
+
 ## [0.8.6] — 2026-11-25
 
 ### Added

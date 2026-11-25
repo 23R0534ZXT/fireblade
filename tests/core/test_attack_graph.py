@@ -33,7 +33,7 @@ def group(
 def test_tactics_are_recognised_in_hayabusa_writings():
     assert tactic_index("InitialAccess") == 2
     assert tactic_index("TA0002, Execution") == 3
-    assert tactic_index("credential-access") == 7
+    assert tactic_index("credential-access") == TACTICS.index("Credential Access")
     assert tactic_index("Unknown thing") is None
     assert tactic_name("DefenseEvasion") == "Defense Evasion"
     assert TACTICS[0] == "Reconnaissance"
@@ -148,3 +148,14 @@ def test_a_declared_machine_does_not_duplicate_the_finding_host():
     hosts = [node for node in graph["nodes"] if node["kind"] == "host"]
     assert len(hosts) == 1, [node["label"] for node in hosts]
     assert hosts[0]["tags"] == ["critique"]
+
+
+def test_hayabusa_short_tactic_names_place_a_technique_on_the_kill_chain():
+    from fireblade.core import attack_graph as ag
+
+    assert ag.tactic_name("Exec ¦ DefImpair") == "Execution"
+    assert ag.tactic_name("DefImpair") == "Defense Impairment"
+    assert ag.tactic_name("CredAccess") == "Credential Access"
+    assert ag.tactic_name("C2") == "Command and Control"
+    assert ag.tactic_name("InitialAccess") == "Initial Access"
+    assert ag.tactic_name("") == ""

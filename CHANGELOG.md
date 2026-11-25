@@ -22,6 +22,9 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   own parser), Reset the view, and the Hayabusa sources pointer.
 
 ### Fixed
+- **Filtering on a cell appends, as the desktop does.** Excluding two values of one column now keeps both
+  exclusions; the Host used to replace the first. Found by replaying the same commands on the desktop window and
+  on the Host (`tests/web/test_parity_grid.py`: 35 commands compared row for row).
 - CatScale family names ("Utilisateurs", "Processus et réseau"…) are English in the Artifact column
   and in the timeline; the reasons of a file read by two missing engines are translated; the severity
   counts of the findings tab are spaced and coloured.

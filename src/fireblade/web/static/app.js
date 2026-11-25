@@ -3073,8 +3073,10 @@ function filterFromCell(operator) {
   if (column === null) { say("Right-click a cell first", true); return; }
   const row = selectedRowValues();
   const value = row ? String(row[column + 1] ?? "") : "";
-  state.filters = state.filters.filter((item) => item.column !== column);
-  if (operator === "empty" || operator === "not_empty" || value !== "") {
+  // The desktop appends: excluding two values of one column keeps both exclusions. The same
+  // condition twice is one condition.
+  const same = (item) => item.column === column && item.operator === operator && String(item.value || "") === value;
+  if ((operator === "empty" || operator === "not_empty" || value !== "") && !state.filters.some(same)) {
     state.filters.push({ column, operator, value });
   }
   const input = document.querySelector(`input[data-filter="${column}"]`);

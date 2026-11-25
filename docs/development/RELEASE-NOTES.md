@@ -1,3 +1,12 @@
+# Fireblade 0.8.4 — every control judged by its effect
+
+See the changelog for the list; the short version: colour rules paint every row with the core's own
+comparisons, the findings table has Show and Mark again, a stopped import says so, SRUM and Shellbags
+are read on Linux, the derived-column window reads its zone, and each column filter has a comparison
+icon. The real image is now driven in a real browser in CI.
+
+---
+
 # Fireblade 0.8.3 — importing a file works in the container
 
 Found by running the published 0.8.2 images with a real browser, on real Docker, with the recette's

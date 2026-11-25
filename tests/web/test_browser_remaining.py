@@ -2,7 +2,8 @@
 
 import re
 
-from _audit import column_values, command, headers, rows
+import pytest
+from _audit import column_values, command, headers, rows, total
 
 
 def _root_condition(page, group, column, operator, value):
@@ -170,3 +171,53 @@ def test_the_preferences_copy_option_adds_the_headers_to_a_copied_row(page):
     command(page, "preferences")
     page.uncheck("#prefs-copy-headers")
     page.click('.modal.show [data-act="settings-close"]')
+
+
+FILTER_CASES = [
+    ("contains", "ali", 20),
+    ("not_contains", "ali", 40),
+    ("eq", "alice", 20),
+    ("eq", "ALICE", 0),
+    ("ne", "alice", 40),
+    ("starts", "bo", 20),
+    ("ends", "ol", 20),
+    ("regex", "^(alice|bob)$", 40),
+]
+
+
+@pytest.mark.parametrize(("operator", "value", "count"), FILTER_CASES)
+def test_the_icon_left_of_a_column_filter_chooses_the_comparison(page, operator, value, count):
+    names = headers(page)
+    column = names.index("User") - 2
+    button = page.locator(f'#head button[data-fop="{names.index("User") - 2}"]')
+    button.click()
+    page.click(f'#filter-operators [data-fop-choose="{operator}"]')
+    page.fill(f'#head input[data-filter="{names.index("User") - 2}"]', value)
+    expected = f"/ {count} row" if count else "No row matches"
+    page.wait_for_function(
+        "(text) => document.getElementById('pageinfo').innerText.includes(text) || "
+        "document.getElementById('grid-empty').innerText.includes(text)",
+        arg=expected,
+        timeout=15000,
+    )
+    assert column
+    if count:
+        assert total(page) == count
+    # the icon shows the comparison now in force
+    assert page.locator(f'#head button[data-fop="{names.index("User") - 2}"]').inner_text() != ""
+
+
+def test_the_empty_comparison_filters_without_a_value(page):
+    names = headers(page)
+    index = names.index("User") - 2
+    page.locator(f'#head button[data-fop="{index}"]').click()
+    page.click('#filter-operators [data-fop-choose="not_empty"]')
+    page.wait_for_function(
+        "document.getElementById('status').innerText.startsWith('Column filter')"
+    )
+    assert total(page) == 60
+    page.locator(f'#head button[data-fop="{index}"]').click()
+    page.click('#filter-operators [data-fop-choose="empty"]')
+    page.wait_for_function(
+        "document.getElementById('grid-empty').innerText.includes('No row matches')"
+    )

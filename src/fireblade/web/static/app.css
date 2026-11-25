@@ -141,6 +141,14 @@ thead th .grip{position:absolute;right:0;top:0;width:4px;height:100%;cursor:col-
   width:100%;height:19px;border:1px solid var(--border);background:var(--base);font-size:11px;
   padding:0 4px;outline:none;font-family:inherit;color:var(--text)
 }
+.colfilter .fcell{display:flex;gap:2px;align-items:center}
+.colfilter .fcell input{flex:1;min-width:0}
+.fop{width:20px;height:19px;padding:0;border:1px solid var(--border);background:var(--base);color:var(--text);font-size:11px;cursor:pointer;line-height:1}
+.fop:hover{border-color:var(--accent)}
+.fmenu{position:fixed;z-index:60;min-width:240px;background:var(--window);border:1px solid var(--menu-border);box-shadow:2px 2px 3px rgba(0,0,0,.18);padding:3px 0}
+.fmenu .item{padding:3px 12px;line-height:17px;white-space:nowrap;cursor:default}
+.fmenu .item:hover{background:var(--sel);color:var(--sel-text)}
+#filter-operators .fglyph{display:inline-block;width:22px;text-align:center;font-weight:600}
 .colfilter input::placeholder{color:var(--disabled)}
 .colfilter input:focus{border-color:var(--accent);background:var(--input-focus)}
 tbody td{height:var(--row-height);padding:1px 5px;border-right:1px solid var(--grid-line);white-space:var(--wrap,nowrap);overflow:hidden;text-overflow:ellipsis}
@@ -436,3 +444,4 @@ tbody tr[data-group] td{height:var(--group-height,22px)}
 @keyframes fb-slide { 0% { margin-left: 0; } 50% { margin-left: 65%; } 100% { margin-left: 0; } }
 
 td.activecell{outline:1px solid var(--accent);outline-offset:-1px}
+#filter-operators[hidden]{display:none}

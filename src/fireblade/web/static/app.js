@@ -48,6 +48,7 @@ const state = {
   orderSummary: 0,
   payload: null,        // the last rows answer, kept for its summary labels
   timestamps: [],       // columns the case marks as dates
+  filterOps: {},        // column -> the comparison its filter field uses
   styles: {},           // {row id: [indexes into ruleSet]} — the rules each row of the page matched
   ruleSet: [],          // the rules the page was evaluated against, as each paints
 };
@@ -511,7 +512,20 @@ function filterPrefix(operator) {
   return FILTER_PREFIX[operator] === undefined ? "" : FILTER_PREFIX[operator];
 }
 
-function parseFilterValue(raw) {
+/* The comparisons a column filter offers: the core's own, with the glyph the small button shows. */
+const FILTER_GLYPHS = { contains: "≈", not_contains: "≉", eq: "=", ne: "≠", starts: "^", ends: "$",
+  regex: ".*", gt: ">", ge: "≥", lt: "<", le: "≤", empty: "∅", not_empty: "●" };
+const FILTER_OPERATORS = [
+  ["contains", "≈", "contains"], ["not_contains", "≉", "does not contain"],
+  ["eq", "=", "equals (exact)"], ["ne", "≠", "differs from (exact)"],
+  ["starts", "^", "starts with"], ["ends", "$", "ends with"],
+  ["regex", ".*", "matches the regular expression"],
+  ["gt", ">", "number greater than"], ["ge", "≥", "number at least"],
+  ["lt", "<", "number less than"], ["le", "≤", "number at most"],
+  ["empty", "∅", "is empty"], ["not_empty", "●", "is not empty"],
+];
+
+function parseFilterValue(raw, fallback = "contains") {
   const text = String(raw);
   const rules = [
     ["!=", "ne"], [">=", "ge"], ["<=", "le"], ["=", "eq"], [">", "gt"], ["<", "lt"],
@@ -522,7 +536,34 @@ function parseFilterValue(raw) {
   }
   if (/^empty$/i.test(text.trim())) return { operator: "empty", value: "" };
   if (/^notempty$/i.test(text.trim())) return { operator: "not_empty", value: "" };
-  return { operator: "contains", value: text.trim() };
+  return { operator: fallback, value: text.trim() };
+}
+
+/* The small list under a filter's icon: choosing a comparison re-filters at once. */
+function openFilterOperators(button) {
+  const column = Number(button.dataset.fop);
+  const box = $("filter-operators");
+  box.innerHTML = FILTER_OPERATORS.map(([code, glyph, label]) =>
+    `<div class="item" data-fop-choose="${code}"><span class="fglyph">${glyph}</span> ${escapeHtml(label)}</div>`).join("");
+  const rect = button.getBoundingClientRect();
+  box.style.left = `${rect.left}px`;
+  box.style.top = `${rect.bottom}px`;
+  box.hidden = false;
+  box.querySelectorAll("[data-fop-choose]").forEach((item) => {
+    item.addEventListener("click", async () => {
+      const operator = item.dataset.fopChoose;
+      box.hidden = true;
+      state.filterOps[column] = operator;
+      const current = state.filters.find((entry) => entry.column === column);
+      const value = current ? current.value : "";
+      state.filters = state.filters.filter((entry) => entry.column !== column);
+      if (operator === "empty" || operator === "not_empty" || value) {
+        state.filters.push({ column, operator, value: operator === "empty" || operator === "not_empty" ? "" : value });
+      }
+      await loadRows(true);
+      say(`Column filter: ${(FILTER_OPERATORS.find(([code]) => code === operator) || [])[2]}`);
+    });
+  });
 }
 
 function defaultWidth(name, index) {
@@ -2994,7 +3035,7 @@ function filterFromCell(operator) {
     state.filters.push({ column, operator, value });
   }
   const input = document.querySelector(`input[data-filter="${column}"]`);
-  if (input) input.value = filterPrefix(operator) + value;
+  if (input) input.value = value;
   loadRows(true);
   say(`${operator === "ne" ? "Excluding" : "Filtering on"} ${state.columns[column + 1]} ${operator === "ne" ? "≠" : "="} ${value || "(empty)"}`);
 }
@@ -5429,10 +5470,12 @@ function renderGrid() {
   shown.forEach(({ index }) => {
     if (index === 0) { head.push("<th></th>"); return; }
     const current = state.filters.find((item) => item.column === index - 1);
-    // The input carries the operator's prefix, so editing the text keeps the
-    // intent: a value filtered with "=" must not silently become "contains".
-    const shownValue = current ? filterPrefix(current.operator) + current.value : "";
-    head.push(`<th><input data-filter="${index - 1}" placeholder="Filter…" value="${escapeHtml(shownValue)}"></th>`);
+    // The operator is shown as a small icon on the left of the field and chosen from a list; the
+    // field holds the value alone. (Typing a prefix such as "=" or "!=" still works.)
+    const operator = current ? current.operator : (state.filterOps[index - 1] || "contains");
+    const meaning = (FILTER_OPERATORS.find(([code]) => code === operator) || [])[2] || operator;
+    head.push(`<th><div class="fcell"><button class="fop" data-fop="${index - 1}" title="Comparison: ${escapeHtml(meaning)}">${FILTER_GLYPHS[operator] || "≈"}</button>`
+      + `<input data-filter="${index - 1}" placeholder="Filter…" value="${escapeHtml(current ? current.value : "")}"></div></th>`);
   });
   head.push("</tr>");
   $("head").innerHTML = head.join("");
@@ -6077,11 +6120,21 @@ function wire() {
     loadRows(true);
   });
 
+  $("head").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-fop]");
+    if (!button) return;
+    event.stopPropagation();
+    openFilterOperators(button);
+  });
   $("head").addEventListener("input", (event) => {
     const input = event.target.closest("input[data-filter]");
     if (!input) return;
     const column = Number(input.dataset.filter);
-    const parsed = parseFilterValue(input.value);
+    // A comparison chosen with the icon is taken as it is ("^abc$" is then a pattern); the typed
+    // prefixes (=, !=, ^, $…) only speak while no comparison has been chosen for the column.
+    const parsed = state.filterOps[column]
+      ? { operator: state.filterOps[column], value: input.value.trim() }
+      : parseFilterValue(input.value);
     state.filters = state.filters.filter((item) => item.column !== column);
     if (input.value.trim() || parsed.operator === "empty" || parsed.operator === "not_empty") {
       state.filters.push({ column, ...parsed });
@@ -6118,7 +6171,7 @@ function wire() {
     menu.style.top = `${event.clientY}px`;
     menu.hidden = false;
   });
-  document.addEventListener("click", () => { $("row-menu").hidden = true; });
+  document.addEventListener("click", () => { $("row-menu").hidden = true; $("filter-operators").hidden = true; });
 
   $("body").addEventListener("click", (event) => {
     const group = event.target.closest("tr[data-group]");

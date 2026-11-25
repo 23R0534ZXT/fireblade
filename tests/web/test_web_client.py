@@ -38,6 +38,11 @@ def test_the_row_menu_offers_every_cell_action():
         "unmark-selection",
         "rule-from-cell",
         "pivot",
+        "cell-note",
+        "bookmark-note",
+        "note-selection",
+        "search-value",
+        "correlate-value",
     )
     for action in actions:
         assert f'data-act="{action}"' in html, f"no menu entry for {action}"

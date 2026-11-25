@@ -1360,12 +1360,12 @@ def test_a_free_node_joins_the_graph_and_stays_with_the_case(page):
     page.fill("#graph-node-tags", "T1003, lateral")
     page.click('[data-act="graph-node-save"]')
     page.wait_for_function("document.getElementById('graph-summary').innerText.includes('1 node')")
-    assert "Domain controller" in _graph_nodes(page)
+    assert any("Domain controller" in node for node in _graph_nodes(page))
     page.click('.tabs .tab:text-is("Analyses")')
     page.click('.tabs .tab:text-is("Attack graph")')
     page.click("#graph-build")
     page.wait_for_function("document.getElementById('graph-summary').innerText.includes('1 node')")
-    assert "Domain controller" in _graph_nodes(page)
+    assert any("Domain controller" in node for node in _graph_nodes(page))
 
 
 def test_a_declared_machine_and_a_tracked_indicator_are_drawn(page):

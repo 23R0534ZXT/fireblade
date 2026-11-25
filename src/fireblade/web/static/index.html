@@ -242,7 +242,7 @@
       <div id="graph-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="panel-title">
           <h2>Attack graph</h2>
-          <p>Hosts, observed techniques and tracked indicators, ordered along the attack chain.</p>
+          <p>Hosts, observed techniques and tracked indicators, ordered along the attack chain. Click anything to see what it rests on: the exact lines it was read from.</p>
         </div>
         <div class="filterbar">
           <button class="btn" id="graph-build">Rebuild</button>
@@ -256,14 +256,20 @@
           <button class="btn" data-act="graph-zoom-out">−</button>
           <button class="btn" data-act="graph-zoom-in">+</button>
           <button class="btn" data-act="graph-recentre">Recentre</button>
-          <button class="btn" id="graph-node">Tag…</button>
-          <button class="btn" id="graph-navigator" title="ATT&amp;CK Navigator layer">…</button>
-          <button class="btn" id="graph-png" title="Export the graph as an image">PNG</button>
+          <button class="btn" id="graph-node" title="A node the data does not carry: it records your own reading and says so">Add a node…</button>
+          <button class="btn" id="graph-navigator" title="Export the techniques as an ATT&amp;CK Navigator layer">ATT&amp;CK layer</button>
+          <button class="btn" id="graph-png" title="Export the graph as an image">Export PNG</button>
           <div class="info" id="graph-summary"></div>
         </div>
-        <div class="graph-wrap" id="graph-wrap">
-          <svg id="graph-edges" width="100%" height="100%"></svg>
-          <div id="graph-nodes"></div>
+        <div class="glegend" id="graph-legend"></div>
+        <div class="graph-body">
+          <div class="graph-wrap" id="graph-wrap">
+            <div id="graph-stage">
+              <svg id="graph-edges" width="100%" height="100%"></svg>
+              <div id="graph-nodes"></div>
+            </div>
+          </div>
+          <aside class="graph-evidence" id="graph-evidence" aria-live="polite" hidden></aside>
         </div>
       </div>
 
@@ -698,9 +704,14 @@
   <div class="item" data-act="pin-column-right">Pin / unpin this column on the right</div>
   <div class="item" data-act="hide-column">Hide this column</div>
   <div class="sep"></div>
+  <div class="item" data-act="cell-note">Add / edit the note of this cell…</div>
+  <div class="item" data-act="bookmark-note">Bookmark / note…</div>
+  <div class="item" data-act="note-selection">Add a note to the selection…</div>
   <div class="item" data-act="bookmark-row">Mark the selection</div>
   <div class="item" data-act="unmark-selection">Remove marks from the selection</div>
   <div class="item" data-act="rule-from-cell">Colour rule for this value…</div>
+  <div class="item" data-act="search-value">Search every analysis for this value</div>
+  <div class="item" data-act="correlate-value">Correlate this value across the case</div>
   <div class="item" data-act="pivot">What launched this process?</div>
   <div class="sep"></div>
   <div class="item" data-act="alert-context" hidden>Show the EVTX context of this alert</div>

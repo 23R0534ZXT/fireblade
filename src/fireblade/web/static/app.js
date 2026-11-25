@@ -2986,6 +2986,55 @@ async function copyCellValue() {
   }
 }
 
+/* The right-click commands that act on the cell under the pointer, as the desktop's cell menu does. */
+async function editCellNote() {
+  const column = contextColumnIndex();
+  const row = contextRow ? contextRow.dataset.row : null;
+  if (column === null || row === null) { say("Right-click a cell first", true); return; }
+  const current = notesForRow(row)[String(column)] || "";
+  const note = await ask({ title: "Cell note", label: `Note for ${state.columns[column + 1] || "this cell"}`, value: current });
+  if (note === null) return;
+  try {
+    await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/cellnote`,
+      { row_id: Number(row), column, note });
+    await loadCellNotes();
+    renderGrid();
+    say(note ? "Cell note saved" : "Cell note removed");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+function valueOfActiveCell() {
+  const column = contextColumnIndex();
+  const row = selectedRowValues();
+  return column === null || !row ? "" : String(row[column + 1] ?? "");
+}
+
+async function searchValueEverywhere() {
+  const value = valueOfActiveCell();
+  if (!value) { say("Right-click a cell with a value first", true); return; }
+  $("global-text").value = value;
+  $("search-modal").classList.add("show");
+  await runGlobalSearch();
+}
+
+async function correlateValue() {
+  const value = valueOfActiveCell();
+  const column = contextColumnIndex();
+  if (!value) { say("Right-click a cell with a value first", true); return; }
+  const name = String(state.columns[column + 1] || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const kind = /user|account/.test(name) ? "user" : /ip(address)?$|sourceip|destinationip/.test(name) ? "ip"
+    : /path|filename/.test(name) ? "path" : /sha|md5|hash/.test(name) ? "hash" : "text";
+  showTab("timeline");
+  $("timeline-kind").value = kind;
+  $("timeline-search").value = value;
+  timelineState.kind = kind;
+  timelineState.text = value;
+  await loadTimeline(true);
+  say(`Correlating ${value} across the case`);
+}
+
 function filterFromCell(operator) {
   const column = contextColumnIndex();
   if (column === null) { say("Right-click a cell first", true); return; }
@@ -3112,23 +3161,23 @@ async function buildGraph() {
   }
 }
 
-/* The graph is drawn by the server; the window only scales it. A zoom keeps the
-   centre of the drawing where it is, and Recentre puts it back to 1. */
+/* The graph is laid out and drawn in the window (see renderGraph); a zoom scales the whole
+   stage, edges and cards together, and Recentre puts it back to 1. */
 let graphScale = 1;
+let graphFit = 1; // the scale that shows the whole chain in the window: Recentre goes back to it
 
 function graphZoom(factor) {
-  const nodes = $("graph-nodes");
-  if (!nodes || !nodes.children.length) { say("Build the graph first", true); return; }
+  const stage = $("graph-stage");
+  if (!stage || !$("graph-nodes").children.length) { say("Build the graph first", true); return; }
   graphScale = Math.max(0.4, Math.min(3, graphScale * factor));
-  nodes.style.transform = `scale(${graphScale})`;
-  nodes.style.transformOrigin = "top left";
+  stage.style.transform = `scale(${graphScale})`;
   $("graph-summary").textContent = `Zoom ${Math.round(graphScale * 100)} %`;
 }
 
 function graphReset() {
-  graphScale = 1;
-  const nodes = $("graph-nodes");
-  if (nodes) nodes.style.transform = "";
+  graphScale = graphFit;
+  const stage = $("graph-stage");
+  if (stage) stage.style.transform = graphFit === 1 ? "" : `scale(${graphFit})`;
   const wrap = $("graph-wrap");
   if (wrap) wrap.scrollTo({ left: 0, top: 0 });
   say("Graph recentred");
@@ -3138,42 +3187,52 @@ async function exportGraphPng() {
   if (!state.openCase) { say("Open a case first", true); return; }
   try {
     const payload = graphVisible(await api(`/api/cases/${state.openCase.id}/graph`));
-    const nodes = payload.nodes || [];
-    if (!nodes.length) { say("The graph is empty", true); return; }
-    const width = Math.max(...nodes.map((node) => node.x), 400) + 260;
-    const height = Math.max(...nodes.map((node) => node.y), 200) + 80;
+    if (!(payload.nodes || []).length) { say("The graph is empty", true); return; }
+    const layout = graphLayout(payload);
     const canvas = document.createElement("canvas");
     const scale = 2;
-    canvas.width = width * scale;
-    canvas.height = height * scale;
+    canvas.width = layout.width * scale;
+    canvas.height = (layout.height + 28) * scale;
     const context = canvas.getContext("2d");
     context.scale(scale, scale);
     context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, width, height);
-    const positions = new Map(nodes.map((node) => [node.id, node]));
-    context.strokeStyle = "#8a9bb0";
-    for (const edge of payload.edges || []) {
-      const a = positions.get(edge.source);
-      const b = positions.get(edge.target);
-      if (!a || !b) continue;
+    context.fillRect(0, 0, layout.width, layout.height + 28);
+    context.textBaseline = "alphabetic";
+    context.font = "600 10px 'Segoe UI', Arial, sans-serif";
+    context.fillStyle = "#6b7a8a";
+    for (const column of layout.columns) context.fillText(column.title.toUpperCase(), column.x, 18);
+    for (const edge of layout.edges) {
       context.beginPath();
-      context.moveTo(a.x + 60, a.y + 12);
-      context.lineTo(b.x, b.y + 12);
+      context.moveTo(edge.x1, edge.y1);
+      context.bezierCurveTo(edge.cx1, edge.y1, edge.cx2, edge.y2, edge.x2, edge.y2);
+      context.strokeStyle = "#9aa9ba";
+      context.lineWidth = edge.width;
       context.stroke();
     }
-    const palette = { host: "#e8f4ea", technique: "#fdf0e3", stage: "#eae6f5", account: "#f7ecf2" };
-    context.font = "11px 'Segoe UI', sans-serif";
-    for (const node of nodes) {
-      const label = String(node.label || "");
-      const textWidth = context.measureText(label).width;
-      const boxWidth = Math.min(210, textWidth + 16);
-      context.fillStyle = palette[node.kind] || "#eaf1f7";
-      context.strokeStyle = "#9fb3c8";
-      context.fillRect(node.x, node.y, boxWidth, 24);
-      context.strokeRect(node.x, node.y, boxWidth, 24);
+    for (const node of layout.nodes) {
+      context.fillStyle = "#ffffff";
+      context.strokeStyle = "#b5b5b5";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.roundRect(node.x, node.y, GRAPH_CARD_W, GRAPH_CARD_H, 7);
+      context.fill();
+      context.stroke();
+      context.fillStyle = node.colour;
+      context.fillRect(node.x, node.y + 1, 6, GRAPH_CARD_H - 2);
+      context.fillStyle = "#6b7a8a";
+      context.font = "9px 'Segoe UI', Arial, sans-serif";
+      context.fillText(graphKindLabel(node).toUpperCase(), node.x + 14, node.y + 15);
       context.fillStyle = "#202020";
-      context.fillText(label.slice(0, 34), node.x + 6, node.y + 16);
+      context.font = "600 12px 'Segoe UI', Arial, sans-serif";
+      context.fillText(String(node.label || "").slice(0, 30), node.x + 14, node.y + 31);
+      context.fillStyle = "#6b7a8a";
+      context.font = "10.5px 'Segoe UI', Arial, sans-serif";
+      context.fillText(graphMeta(node).slice(0, 38), node.x + 14, node.y + 46);
     }
+    context.fillStyle = "#6b7a8a";
+    context.font = "10px 'Segoe UI', Arial, sans-serif";
+    context.fillText(`Fireblade — ${state.openCase.name || "case"} — every node rests on rows of the alert analysis; open the graph to see them.`,
+      GRAPH_LEFT, layout.height + 14);
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -3205,6 +3264,16 @@ async function exportNavigator() {
 }
 
 let graphPayload = { nodes: [], edges: [] };
+let graphSelection = null;
+
+const GRAPH_CARD_W = 200;
+const GRAPH_CARD_H = 58;
+const GRAPH_GAP_X = 70;
+const GRAPH_GAP_Y = 14;
+const GRAPH_TOP = 34;
+const GRAPH_LEFT = 24;
+const GRAPH_KIND = { host: "Host", account: "Account", technique: "Technique", stage: "Tactic", ioc: "Indicator", custom: "Free node" };
+const GRAPH_COLOUR = { host: "#4c9a5e", account: "#4c9a5e", technique: "#d28a3c", stage: "#7b6cc4", ioc: "#c4506e", custom: "#6f7f90" };
 
 /* "Which levels of the chain to show": hosts, techniques or indicators; free nodes always stay. */
 function graphVisible(payload) {
@@ -3215,37 +3284,280 @@ function graphVisible(payload) {
   return { ...payload, nodes, edges: payload.edges.filter((edge) => kept.has(edge.source) && kept.has(edge.target)) };
 }
 
+function graphKindLabel(node) {
+  const base = GRAPH_KIND[node.kind] || "Node";
+  return node.kind === "technique" && node.code ? `${base} ${node.code}` : (node.kind === "ioc" && node.code ? `${base} · ${node.code}` : base);
+}
+
+function graphMeta(node) {
+  const alerts = Number(node.alerts || 0);
+  if (alerts) return `${alerts} alert(s)${node.level ? " · " + node.level : ""}`;
+  if (node.kind === "ioc") return node.level ? `status ${node.level}` : "tracked indicator";
+  return node.auto === false ? "declared by you" : "no alert";
+}
+
+function graphNodeColour(node) {
+  return node.level && node.alerts ? findingLevelColour(node.level) : (GRAPH_COLOUR[node.kind] || "#6f7f90");
+}
+
+/* Columns along the chain: indicators, hosts and accounts, then one column per tactic with its
+   techniques under it, then what the analyst added by hand. Deterministic: the same data gives
+   the same picture, which is what makes a screenshot in a report reproducible. */
+function graphLayout(payload) {
+  const nodes = payload.nodes || [];
+  const rank = (node) => [-(Number(node.alerts) || 0), String(node.label || "")];
+  const order = (a, b) => (rank(a)[0] - rank(b)[0]) || rank(a)[1].localeCompare(rank(b)[1]);
+  const stageOf = new Map();
+  for (const edge of payload.edges || []) {
+    if (edge.label === "tactic") stageOf.set(edge.source, edge.target);
+  }
+  const columns = [];
+  const add = (title, members) => { if (members.length) columns.push({ title, members }); };
+  add("Indicators", nodes.filter((node) => node.kind === "ioc").sort(order));
+  add("Hosts and accounts", nodes.filter((node) => node.kind === "host" || node.kind === "account").sort(order));
+  const stages = nodes.filter((node) => node.kind === "stage").sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+  for (const stage of stages) {
+    const techniques = nodes.filter((node) => node.kind === "technique" && stageOf.get(node.id) === stage.id).sort(order);
+    add("ATT&CK tactic", [stage, ...techniques]);
+  }
+  const placed = new Set(columns.flatMap((column) => column.members.map((node) => node.id)));
+  add("Technique without tactic", nodes.filter((node) => node.kind === "technique" && !placed.has(node.id)).sort(order));
+  add("Added by hand", nodes.filter((node) => !placed.has(node.id) && !["technique", "ioc", "host", "account", "stage"].includes(node.kind)).sort(order));
+  const where = new Map();
+  columns.forEach((column, index) => {
+    column.x = GRAPH_LEFT + index * (GRAPH_CARD_W + GRAPH_GAP_X);
+    column.members.forEach((node, row) => {
+      where.set(node.id, { ...node, x: column.x, y: GRAPH_TOP + row * (GRAPH_CARD_H + GRAPH_GAP_Y), colour: graphNodeColour(node) });
+    });
+  });
+  const placedNodes = [...where.values()];
+  const edges = [];
+  const taken = []; // the badges already placed
+  for (const edge of payload.edges || []) {
+    if (edge.label === "tactic") continue; // a technique sits in the column of its tactic
+    const a = where.get(edge.source);
+    const b = where.get(edge.target);
+    if (!a || !b || a === b) continue;
+    const forward = a.x < b.x;
+    const x1 = forward ? a.x + GRAPH_CARD_W : a.x;
+    const x2 = forward ? b.x : b.x + GRAPH_CARD_W;
+    const y1 = a.y + GRAPH_CARD_H / 2;
+    const y2 = b.y + GRAPH_CARD_H / 2;
+    const pull = Math.max(40, Math.abs(x2 - x1) / 2);
+    const cx1 = x1 + (forward ? pull : -pull);
+    const cx2 = x2 - (forward ? pull : -pull);
+    const mix = (t, a0, a1, a2, a3) => (1 - t) ** 3 * a0 + 3 * (1 - t) ** 2 * t * a1 + 3 * (1 - t) * t ** 2 * a2 + t ** 3 * a3;
+    // The badge sits in the gap beside a card, where no card can hide it, at the first spot no other badge holds.
+    const labelWidth = (edge.alerts ? String(edge.alerts) : (edge.label === "observed on" ? "on" : (edge.label || ""))).length * 6 + 14;
+    const sourceGap = (x) => (forward ? x > x1 + labelWidth / 2 && x < x1 + GRAPH_GAP_X - labelWidth / 2 : x < x1 - labelWidth / 2 && x > x1 - GRAPH_GAP_X + labelWidth / 2);
+    const targetGap = (x) => (forward ? x < x2 - labelWidth / 2 && x > x2 - GRAPH_GAP_X + labelWidth / 2 : x > x2 + labelWidth / 2 && x < x2 + GRAPH_GAP_X - labelWidth / 2);
+    let spot = null;
+    for (let t = 0.01; t < 0.99 && !spot; t += 0.01) {
+      const x = mix(t, x1, cx1, cx2, x2);
+      const y = mix(t, y1, y1, y2, y2);
+      if (!sourceGap(x) && !targetGap(x)) continue;
+      if (taken.some((box) => Math.abs(box.x - x) < (box.w + labelWidth) / 2 + 2 && Math.abs(box.y - y) < 20)) continue;
+      spot = { x, y };
+    }
+    if (!spot) { const t = 0.5; spot = { x: mix(t, x1, cx1, cx2, x2), y: mix(t, y1, y1, y2, y2) }; }
+    taken.push({ x: spot.x, y: spot.y, w: labelWidth });
+    edges.push({
+      ...edge, x1, y1, x2, y2, cx1, cx2, bx: spot.x, by: spot.y,
+      width: 1.2 + Math.min(4, Math.log2(1 + (Number(edge.alerts) || 0))),
+    });
+  }
+  const rows = Math.max(1, ...columns.map((column) => column.members.length));
+  return {
+    nodes: placedNodes, edges, columns,
+    width: GRAPH_LEFT * 2 + columns.length * (GRAPH_CARD_W + GRAPH_GAP_X) - GRAPH_GAP_X,
+    height: GRAPH_TOP + rows * (GRAPH_CARD_H + GRAPH_GAP_Y) + 20,
+  };
+}
+
 function renderGraph(whole) {
   graphPayload = whole;
   const payload = graphVisible(whole);
-  const nodes = payload.nodes;
-  const box = $("graph-nodes");
-  const wrap = $("graph-wrap");
-  const width = Math.max(...nodes.map((node) => node.x), 400) + 260;
-  const height = Math.max(...nodes.map((node) => node.y), 200) + 80;
-  wrap.querySelector("#graph-nodes").style.width = width + "px";
-  wrap.querySelector("#graph-nodes").style.height = height + "px";
-  box.innerHTML = nodes.map((node) =>
-    `<div class="gnode ${escapeHtml(node.kind)}" data-node="${escapeHtml(node.id)}"
-       style="left:${node.x}px;top:${node.y}px" title="${escapeHtml(node.label)}">${escapeHtml(node.label)}</div>`).join("");
-
-  const positions = new Map(nodes.map((node) => [node.id, node]));
+  const layout = graphLayout(payload);
+  const width = Math.max(layout.width, 420);
+  const height = Math.max(layout.height, 220);
+  const stage = $("graph-stage");
+  stage.style.width = width + "px";
+  stage.style.height = height + "px";
+  $("graph-nodes").style.width = width + "px";
+  $("graph-nodes").style.height = height + "px";
+  $("graph-nodes").innerHTML = layout.nodes.map((node) =>
+    `<div class="gnode ${escapeHtml(node.kind)}" data-node="${escapeHtml(node.id)}" tabindex="0" role="button"
+       style="left:${node.x}px;top:${node.y}px;--gcolor:${node.colour}"
+       title="${escapeHtml(node.label)} — click to see what it rests on">
+       <span class="gkind">${escapeHtml(graphKindLabel(node))}</span>
+       <span class="gtitle">${escapeHtml(node.label)}</span>
+       <span class="gmeta">${escapeHtml(graphMeta(node))}</span></div>`).join("");
   const svg = $("graph-edges");
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.setAttribute("width", width);
   svg.setAttribute("height", height);
-  svg.innerHTML = payload.edges.filter((edge) => positions.has(edge.source) && positions.has(edge.target))
-    .map((edge) => {
-      const a = positions.get(edge.source);
-      const b = positions.get(edge.target);
-      return `<line x1="${a.x + 60}" y1="${a.y + 12}" x2="${b.x}" y2="${b.y + 12}"
-        stroke="#8a9bb0" stroke-width="1" marker-end="url(#arrow)"/>`;
-    }).join("") + '<defs><marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#8a9bb0"/></marker></defs>';
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  const heads = layout.columns.map((column) =>
+    `<text class="gcol" x="${column.x}" y="20">${escapeHtml(column.title)}</text>`).join("");
+  const labelOf = (edge) => (edge.alerts ? String(edge.alerts) : (edge.label === "observed on" ? "on" : (edge.label || "")));
+  const lines = layout.edges.map((edge) => {
+    const d = `M${edge.x1},${edge.y1} C${edge.cx1},${edge.y1} ${edge.cx2},${edge.y2} ${edge.x2},${edge.y2}`;
+    return `<g class="gedge" data-edge="${escapeHtml(edge.id)}" data-from="${escapeHtml(edge.source)}" data-to="${escapeHtml(edge.target)}">
+      <path class="line" d="${d}" stroke-width="${edge.width}" marker-end="url(#garrow)"/>
+      <path class="hit" d="${d}"><title>${escapeHtml(edge.evidence ? edge.evidence.what : edge.label)} — click for the evidence</title></path></g>`;
+  }).join("");
+  // The badges are drawn last, above every link, so a link never hides the badge of another.
+  const pills = layout.edges.map((edge) => {
+    const label = labelOf(edge);
+    return label ? `<g class="gpill" data-edge="${escapeHtml(edge.id)}" data-from="${escapeHtml(edge.source)}" data-to="${escapeHtml(edge.target)}">
+      <rect x="${edge.bx - (6 + 3 * label.length)}" y="${edge.by - 9}" width="${12 + 6 * label.length}" height="18" rx="9"/>
+      <text x="${edge.bx}" y="${edge.by + 3.5}" text-anchor="middle">${escapeHtml(label)}</text>
+      <title>${escapeHtml(edge.evidence ? edge.evidence.what : label)} — click for the evidence</title></g>` : "";
+  }).join("");
+  svg.innerHTML = `<defs><marker id="garrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+    <path d="M0,0 L7,3.5 L0,7 z" fill="#9aa9ba"/></marker></defs>${heads}${lines}${pills}`;
 
   const kinds = {};
-  for (const node of nodes) kinds[node.kind] = (kinds[node.kind] || 0) + 1;
-  $("graph-summary").textContent = `${nodes.length} node(s), ${payload.edges.length} edge(s) — ` +
+  for (const node of payload.nodes) kinds[node.kind] = (kinds[node.kind] || 0) + 1;
+  $("graph-summary").textContent = `${payload.nodes.length} node(s), ${payload.edges.length} edge(s) — ` +
     Object.entries(kinds).map(([kind, count]) => `${count} ${kind}`).join(", ");
+  $("graph-legend").innerHTML = payload.nodes.length
+    ? graphLegendItems() + '<span class="gnote">Click a card or a link: its evidence opens, with the exact lines it rests on. The colour bar is the worst alert level; the badge on a link is its alert count.</span>' : "";
+  const known = graphSelection && (graphSelection.type === "node"
+    ? payload.nodes.some((node) => node.id === graphSelection.id)
+    : payload.edges.some((edge) => edge.id === graphSelection.id));
+  if (!known) graphSelection = null;
+  const room = $("graph-wrap").clientWidth;
+  graphFit = room && width > room ? Math.max(0.7, (room - 8) / width) : 1;
+  graphScale = graphFit;
+  stage.style.transform = graphFit === 1 ? "" : `scale(${graphFit})`;
+  graphHighlight();
+  renderGraphEvidence();
+}
+
+/* The selection lights its own links and dims the rest, so the chain around one claim reads at a glance. */
+function graphHighlight() {
+  const nodes = [...$("graph-nodes").children];
+  const edges = [...$("graph-edges").querySelectorAll(".gedge, .gpill")];
+  const chosen = graphSelection;
+  const near = new Set();
+  for (const edge of edges) {
+    const mine = chosen && ((chosen.type === "edge" && edge.dataset.edge === chosen.id)
+      || (chosen.type === "node" && (edge.dataset.from === chosen.id || edge.dataset.to === chosen.id)));
+    edge.classList.toggle("hot", Boolean(mine));
+    edge.classList.toggle("selected", Boolean(chosen && chosen.type === "edge" && edge.dataset.edge === chosen.id));
+    edge.classList.toggle("dim", Boolean(chosen && !mine));
+    if (mine) { near.add(edge.dataset.from); near.add(edge.dataset.to); }
+  }
+  for (const node of nodes) {
+    const id = node.dataset.node;
+    node.classList.toggle("selected", Boolean(chosen && chosen.type === "node" && chosen.id === id));
+    node.classList.toggle("dim", Boolean(chosen && chosen.id !== id && !near.has(id)));
+  }
+}
+
+function graphSelect(type, id) {
+  graphSelection = graphSelection && graphSelection.type === type && graphSelection.id === id ? null : { type, id };
+  graphHighlight();
+  renderGraphEvidence();
+  if (graphSelection && graphSelection.type === "node") graphReveal(graphSelection.id);
+}
+
+/* The evidence drawer covers the right of the picture: a card it would hide is scrolled into the clear part. */
+function graphReveal(id) {
+  const wrap = $("graph-wrap");
+  const card = [...$("graph-nodes").children].find((node) => node.dataset.node === id);
+  if (!card || !wrap) return;
+  const box = card.getBoundingClientRect();
+  const view = wrap.getBoundingClientRect();
+  const clear = view.right - Math.min(410, view.width * 0.88) - 12;
+  if (box.right > clear) wrap.scrollLeft += box.right - clear;
+  if (box.left < view.left) wrap.scrollLeft -= view.left - box.left + 12;
+}
+
+function graphMoment(value) {
+  return value ? String(value).replace("T", " ").replace("+00:00", "Z").replace(/\.\d+/, "").slice(0, 20) : "";
+}
+
+function graphLegendItems() {
+  const kinds = [["host", "Host or account"], ["technique", "ATT&CK technique"], ["stage", "ATT&CK tactic"], ["ioc", "Tracked indicator"], ["custom", "Free node"]];
+  return kinds.map(([kind, label]) => `<span style="--gcolor:${GRAPH_COLOUR[kind]}"><i></i>${label}</span>`).join("");
+}
+
+function graphItemHtml(item, analysis) {
+  const rows = (item.rows || []).map((row) => analysis !== null && analysis !== undefined
+    ? `<button class="btn" data-act="graph-line" data-analysis="${analysis}" data-row="${row}"
+         title="Show this line exactly as the detection engine wrote it">row ${row}</button>`
+    : `<span class="gm">line ${row}</span>`).join("");
+  const more = item.rows_total > (item.rows || []).length
+    ? `<span class="gm">… ${item.rows_total - item.rows.length} more row(s) in the grid</span>` : "";
+  const when = item.start ? `${graphMoment(item.start)}${item.end && item.end !== item.start ? " → " + graphMoment(item.end) : ""}` : "";
+  return `<div class="gitem" style="--gcolor:${findingLevelColour(item.level)}">
+    <div class="gt">${escapeHtml(item.title)}</div>
+    <div class="gm">${escapeHtml(item.level || "")} · ${escapeHtml(item.host || "")} · ${escapeHtml(item.channel || "")}
+      ${item.event_ids && item.event_ids.length ? "· event " + escapeHtml(item.event_ids.join(", ")) : ""}
+      · ${item.count} alert(s)${when ? " · " + escapeHtml(when) : ""}</div>
+    <div class="gm">${item.rule_id ? "rule " + escapeHtml(item.rule_id) : ""}${item.rule_file ? " · " + escapeHtml(item.rule_file) : ""}
+      ${item.techniques ? " · " + escapeHtml(item.techniques) : ""}</div>
+    <div class="grows">${rows}${more}
+      ${analysis !== null && analysis !== undefined ? `<button class="btn gshow" data-act="graph-show"
+        data-title="${escapeHtml(item.title)}" data-host="${escapeHtml(item.host || "")}"
+        title="Open the alerts of this rule on this host in the grid">Show in the grid</button>` : ""}</div>
+    <div class="gslot"></div></div>`;
+}
+
+function renderGraphEvidence() {
+  const box = $("graph-evidence");
+  box.hidden = !graphSelection;
+  if (!graphSelection) { box.innerHTML = ""; return; }
+  const node = graphSelection.type === "node" ? graphPayload.nodes.find((item) => item.id === graphSelection.id) : null;
+  const edge = graphSelection.type === "edge" ? graphPayload.edges.find((item) => item.id === graphSelection.id) : null;
+  const entity = node || edge;
+  if (!entity) { box.hidden = true; box.innerHTML = ""; return; }
+  const evidence = entity.evidence || {};
+  const analysis = graphPayload.source ? graphPayload.source.analysis : null;
+  const names = new Map(graphPayload.nodes.map((item) => [item.id, item.label]));
+  const title = node ? node.label : `${names.get(edge.source) || edge.source} → ${names.get(edge.target) || edge.target}`;
+  const kind = node ? graphKindLabel(node) : `Link${edge.label ? " · " + edge.label : ""}`;
+  const stats = [["alerts", evidence.alerts], ["rules", evidence.rules], ["machines", evidence.hosts]]
+    .filter(([, value]) => value).map(([label, value]) => `<div><b>${value}</b>${label}</div>`).join("");
+  const declared = evidence.declared
+    ? `<h4>Recorded by the analyst</h4><div class="gdecl">${Object.entries(evidence.declared).map(([key, value]) =>
+      `<div><span class="gm">${escapeHtml(key)}</span> ${escapeHtml(Array.isArray(value) ? value.join(", ") : String(value))}</div>`).join("")}</div>` : "";
+  const items = (evidence.items || []).map((item) => graphItemHtml(item, analysis)).join("");
+  const span = evidence.first ? `<p class="gm">First alert ${escapeHtml(graphMoment(evidence.first))} · last ${escapeHtml(graphMoment(evidence.last))}</p>` : "";
+  box.innerHTML = `<button class="gclose" data-act="graph-close" title="Close the evidence">✕</button><h3>${escapeHtml(title)}</h3>
+    <p><span class="gk">${escapeHtml(kind)}</span>${evidence.level ? `<span class="gk" style="border-color:${findingLevelColour(evidence.level)}">worst: ${escapeHtml(evidence.level)}</span>` : ""}</p>
+    <h4>What this is</h4><p>${escapeHtml(evidence.what || "")}</p>
+    <h4>How Fireblade got it</h4><p>${escapeHtml(evidence.how || "")}</p>
+    ${stats ? `<div class="gstats">${stats}</div>` : ""}${span}${declared}
+    ${items ? `<h4>Evidence — ${evidence.items_total} alert group(s)${evidence.items_total > evidence.items.length ? `, ${evidence.items.length} shown` : ""}</h4>${items}` : ""}`;
+}
+
+/* One row, exactly as the alert analysis holds it: every column the engine wrote. */
+async function graphOpenLine(analysis, row, button) {
+  const target = button && button.closest(".gitem") ? button.closest(".gitem").querySelector(".gslot") : null;
+  if (!target || !state.openCase) return;
+  document.querySelectorAll("#graph-evidence .gslot").forEach((slot) => { if (slot !== target) slot.innerHTML = ""; });
+  target.innerHTML = '<div class="gm">Reading the row…</div>';
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/timeline/row/${analysis}/${row}`);
+    const lines = payload.columns.map((name, position) => [name, payload.values[position]])
+      .filter(([, value]) => value !== null && value !== "");
+    const hidden = payload.columns.length - lines.length;
+    target.innerHTML = `<div class="gline"><header>${escapeHtml(payload.label)} — row ${payload.row_id}</header>
+      <table>${lines.map(([name, value]) => `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(String(value))}</td></tr>`).join("")}</table>
+      ${hidden ? `<div class="gm" style="padding:3px 8px">${hidden} empty column(s) not shown</div>` : ""}</div>`;
+  } catch (error) {
+    target.innerHTML = "";
+    say(error.message, true);
+  }
+}
+
+async function graphShowAlerts(title, host) {
+  const analysis = graphPayload.source ? graphPayload.source.analysis : null;
+  if (analysis === null || analysis === undefined) { say("The alert analysis is not open in the case", true); return; }
+  findingState.analysis = analysis;
+  await showFindingInGrid({ title, host });
 }
 
 /* ---------- Hayabusa ---------- */
@@ -6360,6 +6672,29 @@ function wire() {
   $("graph-navigator").addEventListener("click", exportNavigator);
   $("graph-png").addEventListener("click", exportGraphPng);
   $("graph-node").addEventListener("click", openGraphNode);
+  // Cards, links and the evidence panel are drawn again at every build: one listener each, on the box.
+  $("graph-nodes").addEventListener("click", (event) => {
+    const card = event.target.closest(".gnode");
+    if (card) { event.stopPropagation(); graphSelect("node", card.dataset.node); }
+  });
+  $("graph-nodes").addEventListener("keydown", (event) => {
+    const card = event.target.closest(".gnode");
+    if (card && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); graphSelect("node", card.dataset.node); }
+  });
+  $("graph-edges").addEventListener("click", (event) => {
+    const link = event.target.closest(".gedge, .gpill");
+    if (link) { event.stopPropagation(); graphSelect("edge", link.dataset.edge); }
+  });
+  $("graph-wrap").addEventListener("click", (event) => {
+    if (graphSelection && !event.target.closest(".gnode, .gedge, .gpill")) { graphSelection = null; graphHighlight(); renderGraphEvidence(); }
+  });
+  $("graph-evidence").addEventListener("click", (event) => {
+    if (event.target.closest('[data-act="graph-close"]')) { graphSelection = null; graphHighlight(); renderGraphEvidence(); return; }
+    const line = event.target.closest('[data-act="graph-line"]');
+    if (line) { graphOpenLine(Number(line.dataset.analysis), Number(line.dataset.row), line); return; }
+    const show = event.target.closest('[data-act="graph-show"]');
+    if (show) graphShowAlerts(show.dataset.title, show.dataset.host);
+  });
   $("imports-refresh").addEventListener("click", loadImports);
   $("imports-status").addEventListener("change", renderImports);
   $("imports-search").addEventListener("input", renderImports);
@@ -6590,6 +6925,9 @@ async function act(name, node) {
       break;
     case "preview-import": await confirmImport(); break;
     case "copy-value": await copyCellValue(); break;
+    case "cell-note": await editCellNote(); break;
+    case "search-value": await searchValueEverywhere(); break;
+    case "correlate-value": await correlateValue(); break;
     case "filter-value": filterFromCell("eq"); break;
     case "exclude-value": filterFromCell("ne"); break;
     case "sort-asc": sortFromCell(false); break;

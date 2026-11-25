@@ -279,16 +279,81 @@ class Library:
         """The kill-chain graph, built from the detection findings and the case record."""
         from fireblade.core import attack_graph as ag
         from fireblade.core.case_workspace import load as load_workspace
-        from fireblade.core.findings import Group
 
         folder = self.library.folder(identifier)
         data = self.library.read(identifier)
+        groups, source = self._graph_groups(identifier, folder)
+        try:
+            workspace = load_workspace(folder)
+        except (OSError, ValueError):
+            workspace = {}
+        manual = (workspace.get("graph") or {}).get("nodes") or []
+        if not groups and not (workspace.get("entities")) and not manual:
+            # An empty graph is a state of the case, not a failure: the window says what to do.
+            message = (
+                "No finding, no entity and no free node: run a detection, "
+                "declare a machine, or add a node by hand."
+            )
+            if navigator:
+                raise ServiceError("Nothing to export: " + message[0].lower() + message[1:])
+            return {"empty": True, "message": message, "nodes": [], "edges": [], "summary": {}}
+        graph = ag.build(groups, workspace)
+        if navigator:
+            layer = ag.navigator_layer(
+                graph,
+                name=data.get("name") or "Fireblade",
+                description=data.get("description") or "",
+                case=data.get("name") or "",
+            )
+            text = json.dumps(layer, ensure_ascii=False, indent=2)
+            # The layer goes to the analyst, not to a folder inside the container.
+            return {
+                "layer": layer,
+                "bytes": len(text.encode("utf-8")),
+                "techniques": len(layer.get("techniques") or []),
+            }
+        positioned = ag.layout(graph)
+        from fireblade.web import graph_evidence
+
+        graph_evidence.build(positioned, groups, workspace, source)
+        return {
+            "nodes": positioned.get("nodes", []),
+            "edges": positioned.get("edges", []),
+            "groups": len(groups),
+            "source": source,
+        }
+
+    def _graph_groups(self, identifier: str, folder: Path) -> tuple[list, dict]:
+        """The alert groups the graph is drawn from, and where they were read.
+
+        The alert analysis of the case is preferred: its groups carry the identifiers of the
+        rows behind them, so every claim of the graph can open the exact line. The detection
+        output file is the fallback when no alert analysis is open; its groups then point at
+        the line numbers of that file.
+        """
+        from fireblade.core.findings import Group
+
+        try:
+            found, _incidents = self.findings(identifier)
+        except (ServiceError, ValueError, OSError, KeyError):
+            found = []
+        debug = dict(getattr(self, "_findings_debug", {}) or {})
+        if found and debug.get("index") is not None:
+            return list(found), {
+                "analysis": debug.get("index"),
+                "label": debug.get("label") or "Hayabusa alerts",
+                "rows": debug.get("count") or 0,
+                "file": "",
+            }
         groups = {}
+        shown = ""
         for csv_path in sorted(
             (folder / "collections").glob("import-*/results/hayabusa-*/hayabusa.csv")
         ):
+            shown = csv_path.name
             with csv_path.open(encoding="utf-8", errors="replace", newline="") as stream:
-                for record in csv.DictReader(stream):
+                reader = csv.DictReader(stream)
+                for line, record in enumerate(reader, start=1):
                     host = (record.get("Computer") or "").strip()
                     title = (record.get("RuleTitle") or "").strip()
                     if not host or not title:
@@ -310,44 +375,12 @@ class Library:
                             start=None,
                             end=None,
                             count=1,
+                            samples=[line],
                         )
                     else:
                         group.count += 1
-        try:
-            workspace = load_workspace(folder)
-        except (OSError, ValueError):
-            workspace = {}
-        manual = (workspace.get("graph") or {}).get("nodes") or []
-        if not groups and not (workspace.get("entities")) and not manual:
-            # An empty graph is a state of the case, not a failure: the window says what to do.
-            message = (
-                "No finding, no entity and no free node: run a detection, "
-                "declare a machine, or add a node by hand."
-            )
-            if navigator:
-                raise ServiceError("Nothing to export: " + message[0].lower() + message[1:])
-            return {"empty": True, "message": message, "nodes": [], "edges": [], "summary": {}}
-        graph = ag.build(list(groups.values()), workspace)
-        if navigator:
-            layer = ag.navigator_layer(
-                graph,
-                name=data.get("name") or "Fireblade",
-                description=data.get("description") or "",
-                case=data.get("name") or "",
-            )
-            text = json.dumps(layer, ensure_ascii=False, indent=2)
-            # The layer goes to the analyst, not to a folder inside the container.
-            return {
-                "layer": layer,
-                "bytes": len(text.encode("utf-8")),
-                "techniques": len(layer.get("techniques") or []),
-            }
-        positioned = ag.layout(graph)
-        return {
-            "nodes": positioned.get("nodes", []),
-            "edges": positioned.get("edges", []),
-            "groups": len(groups),
-        }
+                        group.samples.append(line)
+        return list(groups.values()), {"analysis": None, "label": "", "rows": 0, "file": shown}
 
     def add_graph_node(self, identifier: str, label: str, tags=None, kind: str = "custom") -> dict:
         """Add a node the data does not carry, as the desktop's free node does.

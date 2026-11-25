@@ -7,6 +7,21 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+### Added
+- **The attack graph proves what it shows.** Every card and every link opens its evidence: what it
+  represents, how Fireblade got it (the column or the record it was read from), and the alert groups
+  behind it with the row identifiers of the alert analysis. A row chip shows the exact line the
+  detection engine wrote, and "Show in the grid" opens those alerts. What the analyst entered by hand
+  (a machine, an indicator, a free node) says so and shows its record. The graph is redrawn in
+  columns along the attack chain, with badges that carry each link's alert count.
+- **The cell right-click menu is complete.** Added the desktop's cell note, bookmark / note, note on
+  the selection, "search every analysis for this value" and "correlate this value across the case".
+
+### Fixed
+- CatScale family names ("Utilisateurs", "Processus et réseau"…) are English in the Artifact column
+  and in the timeline; the reasons of a file read by two missing engines are translated; the severity
+  counts of the findings tab are spaced and coloured.
+
 ## [0.8.5] — 2026-11-25
 
 ### Added

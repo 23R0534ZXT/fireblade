@@ -90,6 +90,31 @@ def merge(folder: Path) -> dict[str, dict]:
     return merged
 
 
+MISSED = False
+
+
+def _print_missed(source: str, starts: list[int], executable, ran) -> None:
+    """The lines no page ran, as ranges: a block of code a test never reached."""
+    run_start = None
+    last = None
+    for number, start in enumerate(starts, start=1):
+        end = starts[number] if number < len(starts) else len(source)
+        text = source[start:end].strip()
+        skip = not text or text in ("{", "}", "});", "},", ");") or text.startswith("//")
+        missed = (not skip) and executable[start:end].any() and not ran[start:end].any()
+        if missed:
+            if run_start is None:
+                run_start = number
+            last = number
+        elif not skip and run_start is not None:
+            print(
+                f"  missed {run_start}-{last}: {source[starts[run_start - 1] : starts[run_start]].strip()[:100]}"
+            )
+            run_start = None
+    if run_start is not None:
+        print(f"  missed {run_start}-{last}")
+
+
 def report(merged: dict[str, dict], show: int) -> int:
     lines_missed = 0
     for name, slot in merged.items():
@@ -117,6 +142,8 @@ def report(merged: dict[str, dict], show: int) -> int:
             if not ran[span].any():
                 missed += 1
         lines_missed += missed
+        if MISSED:
+            _print_missed(source, starts, executable, ran)
         never = sorted(
             (
                 (line_of(start), end - start, fn_name or "(anonymous)")
@@ -140,7 +167,10 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("folder", help="the FIREBLADE_JS_COVERAGE folder")
     parser.add_argument("--show", type=int, default=400, help="functions to list per script")
+    parser.add_argument("--missed", action="store_true", help="also list the lines no page ran")
     args = parser.parse_args(argv)
+    global MISSED
+    MISSED = args.missed
     merged = merge(Path(args.folder))
     if merge.stale:
         print(f"{merge.stale} page dump(s) skipped: they ran another version of a script")

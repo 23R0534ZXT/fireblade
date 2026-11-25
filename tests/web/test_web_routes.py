@@ -970,6 +970,27 @@ def test_a_stopped_import_ends_as_stopped_and_never_as_complete(service, tmp_pat
     assert len(library.case(identifier)["analyses"]) >= kept
 
 
+def test_an_import_that_read_nothing_says_why_not_that_the_format_was_unknown(service, tmp_path):
+    """A hive whose reader is absent is a file that could not be read, not an unknown format."""
+    library, identifier = service
+    folder = tmp_path / "hives"
+    folder.mkdir()
+    (folder / "UsrClass.dat").write_bytes(b"regf" + b"\x00" * 4096)
+    result = library.import_source(identifier, folder, organization="artifacts")
+    assert result["analyses"] == 0
+    assert "could not be read" in result["message"], result["message"]
+    assert "format was not recognised" not in result["message"]
+    listing = library.imports(identifier)
+    reasons = [
+        item.get("reason", "")
+        for entry in listing["collections"]
+        for item in entry.get("files", [])
+    ]
+    assert reasons and not any(
+        "Moteur" in reason or "construction" in reason for reason in reasons
+    ), reasons
+
+
 def test_unread_files_are_listed_with_the_readers_that_can_retry(service):
     library, identifier = service
     listing = library.unread_files(identifier)

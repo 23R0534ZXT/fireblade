@@ -44,6 +44,17 @@ the two files is exactly the longer Windows path repeated on every row.
 | WxTCmd 2026.10.1 | `ActivitiesCache.db` | 4 activities, 8 package ids | parses |
 
 All twelve `net10.0` builds start and print their help under the Linux runtime.
+
+### Shellbags — works (since 0.8.4)
+
+Fireblade's own Shellbags host (`src/fireblade/shellbags_host`) is managed .NET like the
+other readers. The image publishes it in a build stage (`dotnet publish -r win-x64
+--self-contained false`: the target only names the lock file, the assemblies are portable) and
+the runtime of the final image runs it. Measured on the test pack's `UsrClass.dat`, a dirty hive
+without transaction logs: **523 decoded rows**, the count the pack states and the Windows run
+gives. The file stays in *attention* for the same reason as on Windows — RECmd refuses to read
+a dirty hive without its logs — and the Shellbags analysis is there beside that sentence.
+
 Not yet measured: MFTECmd, SrumECmd, RBCmd, AmcacheParser, RecentFileCacheParser —
 their inputs (`$MFT`, `SRUDB.dat`, `$Recycle.Bin`, `Amcache.hve`, `RecentFileCache.bcf`)
 are locked on a running Windows and need a shadow copy or a disk image;

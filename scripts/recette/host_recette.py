@@ -7,7 +7,7 @@ count the pack's own ``RESULTATS-ATTENDUS.json`` states. Every check ends as one
 
 ``pass``         what was measured is what was expected;
 ``fail``         it is not;
-``known-limit``  a documented limit of the Linux edition (for example the Shellbags host);
+``known-limit``  a documented limit of the Linux edition (for example the SRUM reader);
 ``info``         measured and reported, not yet pinned: the first runs on real artifacts calibrate it.
 
 Without ``--strict`` only the failures of checks that are already pinned fail the run; with it,
@@ -358,8 +358,8 @@ def check_shellbags(expected: dict, observed: dict) -> list[Check]:
                 "shellbags",
                 want,
                 got,
-                PASS if got == want else LIMIT,
-                "the Shellbags host has no linux-x64 build yet (docs/host/LINUX-READERS.md)",
+                PASS if got == want else FAIL,
+                "Fireblade's own Shellbags host, published into the image, reads the hive",
             )
         ]
     )

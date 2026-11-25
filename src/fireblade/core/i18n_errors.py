@@ -20,6 +20,7 @@ ERRORS = {
     "Lecture refusée par Windows sur ce disque physique : elle exige des droits administrateur. Relancez Fireblade en tant qu’administrateur, ou analysez une image acquise (.raw / .E01) avec les droits courants.": "Windows refused to read this physical disk: it needs administrator rights. Start Fireblade as an administrator, or analyse an acquired image (.raw / .E01) with ordinary rights.",
     "Aucun système de fichiers lisible : le conteneur est reconnu mais aucune partition exploitable n’en a été extraite (image sans table de partitions, volume chiffré ou format non pris en charge).": "No readable file system: the container is recognised but no usable partition could be extracted from it (an image without a partition table, an encrypted volume, or an unsupported format).",
     # Conditions, colour rules, visual formats
+    "Couleur invalide ; utilisez #RRGGBB ou #AARRGGBB": "Invalid colour; use #RRGGBB or #AARRGGBB",
     "Opérateur inconnu : {}": "Unknown operator: {}",
     "Opérateur inconnu": "Unknown operator",
     "Expression limitée à 24 niveaux et 1024 conditions": "Expression limited to 24 levels and 1024 conditions",

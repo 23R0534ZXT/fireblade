@@ -736,14 +736,21 @@ class Library:
 
     def settings(self) -> dict:
         """What this instance runs with, and which readers are actually present."""
+        import importlib.util
+
         from fireblade.core.case_workspace import ACTION_TYPES
-        from fireblade.core.collection import PARSERS
+        from fireblade.core.collection import ADDITIONAL_PARSERS, PARSERS
 
         pack = ToolPack(self.tools_root) if self.tools_root else None
         readers = {}
-        for name in PARSERS:
+        # The thirteen Zimmerman tools, then Fireblade's own: the Shellbags host (a .NET dll beside
+        # the others) and the WebCache reader (Python, so it is there when its library is).
+        for name in (*PARSERS, *ADDITIONAL_PARSERS):
             try:
-                readers[name] = bool(pack and pack.available(name))
+                if name == "WebCache":
+                    readers[name] = importlib.util.find_spec("dissect.esedb") is not None
+                else:
+                    readers[name] = bool(pack and pack.available(name))
             except Exception:
                 readers[name] = False
         hayabusa = bool(
@@ -1686,7 +1693,10 @@ class Library:
                         "name": Path(str(item.get("path", ""))).name,
                         "path": str(item.get("path", "")),
                         "status": str(item.get("status", "")),
-                        "reason": str(item.get("reason") or item.get("error") or ""),
+                        # the reason is the engine's sentence, never the analyst's evidence
+                        "reason": english.english_text(
+                            str(item.get("reason") or item.get("error") or "")
+                        ),
                         "tools": list(item.get("tools") or []),
                     }
                 )
@@ -3610,17 +3620,23 @@ class Library:
         report = collection.parse()
         session = output / "collection.fireblade-session"
         if not session.is_file():
-            stopped = report.get("status") == "cancelled"
+            files = report.get("files") or []
+            unreadable = sum(1 for item in files if item.get("status") in ("attention", "error"))
+            if report.get("status") == "cancelled":
+                message = "Import stopped before anything was written."
+            elif unreadable:
+                message = (
+                    f"No analysis produced: {unreadable} file(s) could not be read. "
+                    "The Imports tab says why, file by file."
+                )
+            else:
+                message = "No analysis produced: the format was not recognised."
             return {
                 "status": report.get("status"),
                 "analyses": 0,
-                "files": len(report.get("files") or []),
+                "files": len(files),
                 "collection": str(output),
-                "message": (
-                    "Import stopped before anything was written."
-                    if stopped
-                    else "No analysis produced: the format was not recognised."
-                ),
+                "message": message,
             }
         # The session is the workspace: an import adds its analyses to the ones
         # already loaded, exactly as the desktop does.
@@ -4904,7 +4920,10 @@ def _english(text):
             return str(text)
 
 
-GENERATED_NAMES = {"Alertes Hayabusa.csv": "Hayabusa alerts"}
+GENERATED_NAMES = {
+    "Alertes Hayabusa.csv": "Hayabusa alerts",
+    "Contexte EVTX.csv": "EVTX context",
+}
 
 TIMELINE_HEADER = {
     "Date_UTC": "Date_UTC",
@@ -5041,9 +5060,20 @@ def column_labels(case) -> list[str]:
     evidence, whatever language they are in.
     """
     headers = list(case.headers)
-    if not (getattr(case, "info", None) or {}).get("parser"):
+    if not _written_by_fireblade(getattr(case, "info", None) or {}):
         return headers
     return [_english(name) for name in headers]
+
+
+def _written_by_fireblade(info: dict) -> bool:
+    """A table a reader, the organisation of a collection or an alert file wrote — never the
+    analyst's own file, whose headers are evidence."""
+    raw = str(info.get("path") or "").replace("\\", "/")
+    return bool(
+        info.get("parser")
+        or "/results/organisation-" in raw
+        or raw.rpartition("/")[2] in GENERATED_NAMES
+    )
 
 
 def column_label(case, position: int) -> str:

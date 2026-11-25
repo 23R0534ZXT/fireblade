@@ -1,5 +1,16 @@
 # Fireblade Host — the Windows edition's core, served over HTTP, without Qt.
 # The cases live in a mounted folder and keep the desktop's on-disk format.
+
+# Fireblade's own Shellbags reader is managed .NET like the other readers. It is published here,
+# once, and only its dll files travel to the image below: the SDK stays in this stage. The target
+# is win-x64 because that is what the pinned lock file records; the assemblies are portable and
+# the runtime of the final image runs them as they are.
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS shellbags
+WORKDIR /src
+COPY src/fireblade/shellbags_host ./
+RUN dotnet publish Shellbags.csproj -c Release -r win-x64 --self-contained false \
+        -p:UseAppHost=false -p:RestoreLockedMode=true -o /out/Shellbags
+
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -39,6 +50,7 @@ COPY config/forensic-toolchain.json ./config/forensic-toolchain.json
 COPY scripts/fetch_readers.py ./scripts/fetch_readers.py
 RUN python scripts/fetch_readers.py --dest /opt/fireblade/tools \
         --manifest config/forensic-toolchain.json --hayabusa
+COPY --from=shellbags /out/Shellbags /opt/fireblade/tools/Shellbags
 
 RUN useradd --create-home --uid 10001 fireblade \
     && mkdir -p /data/cases \

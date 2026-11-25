@@ -165,3 +165,55 @@ def test_the_alert_file_fireblade_writes_reads_in_english():
 
     source = {"path": "/case/collections/import-1/results/Alertes Hayabusa.csv"}
     assert Library._label(source, "") == "Hayabusa alerts"
+
+
+def _table(tmp_path, folder, name, header):
+    """A real analysis database over a CSV that lives in `folder`."""
+    from fireblade.core.engine import Case
+
+    where = tmp_path / folder
+    where.mkdir(parents=True, exist_ok=True)
+    source = where / name
+    values = ",".join("v" for _ in header.split(","))
+    source.write_text(header + "\n" + values + "\n", encoding="utf-8")
+    case = Case(tmp_path / (folder.replace("/", "-") + ".timeline"))
+    case.import_csv(source)
+    return case
+
+
+def test_the_three_columns_an_organised_collection_adds_read_in_english(tmp_path):
+    from fireblade.web.service import column_labels
+
+    header = "Artefact,Fichier source,Parseur,Path"
+    organised = _table(tmp_path, "case/results/organisation-ab12", "Shellbags.csv", header)
+    assert column_labels(organised) == ["Artifact", "Source file", "Parser", "Path"]
+    organised.close()
+    # the same headers in a file the analyst brought are evidence
+    brought = _table(tmp_path, "evidence", "Shellbags.csv", header)
+    assert column_labels(brought) == ["Artefact", "Fichier source", "Parseur", "Path"]
+    brought.close()
+
+
+def test_the_alert_context_analysis_is_named_and_labelled_in_english(tmp_path):
+    from fireblade.web.service import GENERATED_NAMES, Library, column_labels
+
+    assert GENERATED_NAMES["Contexte EVTX.csv"] == "EVTX context"
+    assert Library._label({"path": "/case/Contexte EVTX.csv"}, "") == "EVTX context"
+    context = _table(tmp_path, "case", "Contexte EVTX.csv", "Relation à l’alerte,EventId,Computer")
+    assert column_labels(context) == ["Relation to the alert", "EventId", "Computer"]
+    context.close()
+
+
+def test_the_reasons_an_engine_gives_read_in_english_sentence_by_sentence():
+    from fireblade.core.i18n import english_text
+
+    reason = (
+        "Moteur terminé avec le code 1 ; Moteur intégré absent : Shellbags. "
+        "La construction du pack forensic est nécessaire."
+    )
+    assert english_text(reason) == (
+        "Engine exited with code 1 ; Built-in engine missing: Shellbags. "
+        "The forensic pack must be built."
+    )
+    # a template that ends in a value must not swallow the sentences that follow it
+    assert english_text("Moteur terminé avec le code 3") == "Engine exited with code 3"

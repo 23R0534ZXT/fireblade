@@ -22,13 +22,31 @@ def _open_dialog(page):
     page.wait_for_function("document.getElementById('destroy-certificate').value !== ''")
 
 
-def _photos(tmp_path, count=2):
-    from PIL import Image
+def _png(path, width, height, colour):
+    """A real PNG, written by hand: the suite needs no imaging library to make a photo."""
+    import struct
+    import zlib
 
+    def chunk(kind, data):
+        body = kind + data
+        return (
+            struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+        )
+
+    rows = b"".join(b"\x00" + bytes(colour) * width for _ in range(height))
+    path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(rows))
+        + chunk(b"IEND", b"")
+    )
+
+
+def _photos(tmp_path, count=2):
     made = []
     for index in range(count):
         path = tmp_path / f"scene-{index}.png"
-        Image.new("RGB", (90, 60), (30 * index, 90, 200)).save(path)
+        _png(path, 90, 60, (30 * index, 90, 200))
         made.append(str(path))
     return made
 

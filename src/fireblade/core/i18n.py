@@ -1305,6 +1305,8 @@ EN = {
     "Famille CatScale Linux attendue": "Expected CatScale Linux family",
     "Familles Windows attendues": "Expected Windows families",
     "Fichier source": "Source file",
+    "Artefact": "Artifact",
+    "Parseur": "Parser",
     "Fichiers et chronologie": "Files and timeline",
     "Filtrer cette colonne…": "Filter this column…",
     "Filtrer la colonne": "Filter the column",
@@ -1897,7 +1899,7 @@ def templates():
         parts = source.split(PLACEHOLDER)
         pattern = re.compile("^" + "(.+?)".join(re.escape(part) for part in parts) + "$", re.S)
         anchor = max(parts, key=len)
-        compiled.append((sum(len(part) for part in parts), anchor, pattern, target))
+        compiled.append((sum(len(part) for part in parts), anchor, pattern, target, " ; " in source))
     compiled.sort(key=lambda item: -item[0])
     return tuple(compiled)
 
@@ -1908,11 +1910,14 @@ def lookup(text):
     exact = EN.get(text)
     if exact is not None:
         return exact
-    for _, anchor, pattern, target in templates():
+    for _, anchor, pattern, target, separated in templates():
         if anchor and anchor not in text:
             continue
         match = pattern.match(text)
         if match is not None:
+            if not separated and any(" ; " in value for value in match.groups()):
+                # An engine joins its reasons with " ; ": a value never spans two sentences.
+                continue
             result = target
             for value in match.groups():
                 # The value is often a label of its own: translate it too.
@@ -1946,6 +1951,11 @@ def english_text(text):
     for phrase in sorted(_PHRASES, key=len, reverse=True):
         if phrase in result:
             result = result.replace(phrase, _PHRASES[phrase])
+    if " ; " in result:
+        # An engine's reasons are joined with " ; ", each one a sentence of its own, and a template
+        # that ends in a value swallows the sentences that follow it: what is still unknown is read
+        # again one sentence at a time.
+        result = " ; ".join(lookup(part) for part in result.split(" ; "))
     return result
 
 

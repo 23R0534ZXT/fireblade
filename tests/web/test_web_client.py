@@ -243,11 +243,11 @@ def test_the_detection_rules_dialog_edits_a_rule():
 def test_the_colour_rules_carry_two_scopes():
     js, html = _read(APP), _read(INDEX)
     assert 'data-scope="analysis"' in html and 'data-scope="global"' in html
-    for name in ("showRulesScope", "loadGlobalRules", "persistGlobalRules", "globalRuleList"):
+    for name in ("showRulesScope", "loadGlobalRules", "persistGlobalRules", "refreshPaint"):
         assert f"function {name}(" in js, name
     assert "/api/global-rules" in js
-    # A rule the grid cannot evaluate is skipped, never approximated.
-    assert "rule.simple === false" in js
+    # The grid never evaluates a rule itself: the core says which rule each row answers to.
+    assert "matchesRule" not in js and "state.styles" in js and "state.ruleSet" in js
     assert 'id="rule-global-export"' in html and 'id="rule-global-import"' in html
 
 
@@ -340,7 +340,7 @@ def test_a_disk_can_be_analysed_from_the_window():
 def test_a_rule_statistic_is_read_from_the_server():
     js, html = _read(APP), _read(INDEX)
     assert 'id="rule-statistic"' in html and 'id="rule-stat-rank"' in html
-    assert "rule.resolved" in js
+    assert "state.ruleSet" in js and "payload.rule_set" in js
     for statistic in ("top", "duplicate", "above_avg", "unique"):
         assert f'<option value="{statistic}"' in html, statistic
 
@@ -363,7 +363,7 @@ def test_a_timeline_row_opens_its_source_line():
 def test_a_rule_is_read_as_a_sentence():
     js = _read(APP)
     assert "function ruleSentence(" in js
-    assert "is not empty" in js and "does not contain" in js
+    assert "Not empty" in js and "Does not contain" in js
     assert "${escapeHtml(ruleSentence(rule))}" in js
 
 
@@ -496,7 +496,6 @@ def test_a_rule_combines_conditions():
     assert 'id="rule-logic"' in html and 'id="rule-add-condition"' in html
     assert 'id="rule-conditions"' in html
     for name in (
-        "matchesConditionTree",
         "conditionSentence",
         "ruleConditionPayload",
         "addConditionRow",
@@ -524,7 +523,7 @@ def test_the_highlight_marks_without_breaking_escaping():
 
 def test_the_derived_dialog_asks_what_the_desktop_asks():
     js, html = _read(APP), _read(INDEX)
-    assert 'id="derived-zone"' in html and "Time zone for dates without an offset" in html
+    assert 'id="derived-zone"' in html and "Time zone of dates without an offset" in html
     assert "Source values remain intact" in html
     assert "Convert a date" in html and "Expression" in html
     assert '["Bytes", entry' in js

@@ -361,3 +361,32 @@ def test_the_workspace_and_the_destruction_certificate_travel_with_the_case(tmp_
     assert attachment.is_file(), "the photo did not travel with the case"
     html = destruction_certificate.build(records[0], case_folder=restored_folder)["html"]
     assert "data:image/png;base64," in html
+
+
+def test_a_package_keeps_the_names_of_the_files_it_carries(tmp_path):
+    library, data, document, case, source = prepared(tmp_path)
+    try:
+        archive = tmp_path / "named.fireblade-case"
+        export_package(
+            library, data, [document], 0, archive, include_sources=True, active_case=case
+        )
+    finally:
+        case.close()
+    with zipfile.ZipFile(archive) as package:
+        members = [name for name in package.namelist() if name.startswith("sources/")]
+    assert members == ["sources/0000/source.csv"], members
+    source.unlink()
+    Path(document.path).unlink()
+    target = InvestigationLibrary(tmp_path / "elsewhere" / "cases")
+    imported = import_package(target, archive)["case"]
+    snapshots, _ = read_session(target.session_path(imported))
+    assert Path(snapshots[0].source_info["path"]).name == "source.csv"
+
+
+def test_a_name_windows_refuses_falls_back_to_the_number():
+    from fireblade.core.case_package import source_member
+
+    assert source_member(3, Path("/e/CarsDB.db")) == "sources/0003/CarsDB.db"
+    assert source_member(4, Path("/e/$MFT")) == "sources/0004/$MFT"
+    assert source_member(5, Path("/e/odd.TXT ")) == "sources/0005.txt"
+    assert source_member(6, Path("/e/CON.txt")) == "sources/0006.txt"

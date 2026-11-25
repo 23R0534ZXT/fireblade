@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -689,7 +690,16 @@ def create_app(
             path = library.package_file(identifier)
         except ServiceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
-        return FileResponse(path, media_type="application/zip", filename=path.name)
+        # saved under the case's name, which is what an analyst looks for; the file on the
+        # server keeps its id, so two cases of one name never overwrite each other
+        try:
+            name = str(library.case(identifier).get("name") or "")
+        except (ServiceError, ValueError, OSError, KeyError):
+            name = ""
+        stem = re.sub(r"[^\w.-]+", "-", name, flags=re.UNICODE).strip("-.")[:60]
+        return FileResponse(
+            path, media_type="application/zip", filename=f"{stem}.fireblade" if stem else path.name
+        )
 
     @app.post("/api/cases/import-package")
     def import_package(file: UploadFile = File(...)):

@@ -28,6 +28,12 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   of an engine says "log", not "journal".
 - The toolbar scrolls in a narrow window, long names in the artifacts tree are cut with an ellipsis,
   and "Collection coverage" no longer causes a 400 when no check has been kept yet.
+- **A portable case keeps the names of its files.** The package renamed every source `0000.pf`,
+  `0003.db`…, so the imported case showed those numbers as analysis names; sources now travel under
+  their own name (a name Windows would refuse falls back to its number), and the download is named
+  after the case.
+- **Disk analysis** speaks English while it works, and a path that does not exist is refused with a
+  plain message instead of an internal "RawLoader" one.
 - `scripts/fetch_readers.py` counted the Hayabusa rules without looking in sub-folders ("0 rule(s)").
 
 ## [0.8.6] — 2026-11-25

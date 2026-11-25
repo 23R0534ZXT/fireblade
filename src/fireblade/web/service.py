@@ -3225,6 +3225,7 @@ class Library:
         respect_filters: bool = False,
         progress=None,
         live: dict | None = None,
+        sources: list[int] | None = None,
     ) -> dict:
         """Counts the case's rows over time with the desktop's own TimelineStore.
 
@@ -3236,6 +3237,8 @@ class Library:
             identifier, dates, respect_filters=respect_filters, progress=progress, live=live
         )
         filters = {"include_undated": bool(include_undated)}
+        if sources is not None:
+            filters["sources"] = [int(item) for item in sources]
         if text:
             filters.update(text=text, kind=kind)
         # The page and the extent follow the window the analyst is looking at; the
@@ -3376,6 +3379,7 @@ class Library:
         include_undated: bool = False,
         respect_filters: bool = False,
         live: dict | None = None,
+        sources: list[int] | None = None,
     ) -> tuple[bytes, dict]:
         """The timeline as the desktop exports it: verified rows, and a receipt.
 
@@ -3384,6 +3388,8 @@ class Library:
         """
         store = self._timeline_store(identifier, dates, respect_filters=respect_filters, live=live)
         filters = {"include_undated": bool(include_undated)}
+        if sources is not None:
+            filters["sources"] = [int(item) for item in sources]
         if text:
             filters.update(text=text, kind=kind)
         if start is not None:
@@ -4413,6 +4419,7 @@ class Library:
                 respect_filters=bool(payload.get("respect_filters")),
                 progress=note,
                 live=payload.get("live") or None,
+                sources=payload.get("sources"),
             )
         if kind == "detect":
             return lambda note: self.detect(

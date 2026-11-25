@@ -4759,6 +4759,14 @@ function utcLabel(ns) {
   return new Date(ms).toISOString().replace("T", " ").replace(".000Z", "Z");
 }
 
+/* The sources still shown: a lane or a legend chip that hides one removes its events from the list
+   and the counts too, as the desktop's lanes do, not only from the chart. */
+function timelineVisibleSources() {
+  const sources = (timelineState.payload && timelineState.payload.sources) || [];
+  if (!timelineState.hidden.size || !sources.length) return null;
+  return sources.filter((item) => !timelineState.hidden.has(item.id)).map((item) => item.id);
+}
+
 async function loadTimeline(reset, force) {
   if (!state.openCase) return;
   if (reset) timelineState.offset = 0;
@@ -4776,6 +4784,8 @@ async function loadTimeline(reset, force) {
     params.set("respect_filters", "true");
     params.set("live", JSON.stringify(liveView()));
   }
+  const visible = timelineVisibleSources();
+  if (visible) params.set("sources", visible.join(","));
   try {
     let payload;
     if (heavy) {
@@ -4787,6 +4797,7 @@ async function loadTimeline(reset, force) {
       wanted.include_undated = $("timeline-undated").checked;
       wanted.respect_filters = $("timeline-filters").checked;
       if (wanted.respect_filters) wanted.live = liveView();
+      if (visible) wanted.sources = visible;
       payload = await runTask("timeline", wanted, "Timeline");
       if (!payload) return;
     } else {
@@ -4821,7 +4832,7 @@ function renderTimeline(payload) {
           if (String(source.id) !== lane.value) timelineState.hidden.add(source.id);
         }
       }
-      renderTimeline(timelineState.payload);
+      loadTimeline(true);
     });
   }
   $("timeline-legend").querySelectorAll("[data-tl-source-chip]").forEach((chip) => {
@@ -4829,7 +4840,7 @@ function renderTimeline(payload) {
       const id = Number(chip.dataset.tlSourceChip);
       if (timelineState.hidden.has(id)) timelineState.hidden.delete(id);
       else timelineState.hidden.add(id);
-      renderTimeline(timelineState.payload);
+      loadTimeline(true);
     });
   });
 
@@ -6326,6 +6337,8 @@ function wire() {
       params.set("respect_filters", "true");
       params.set("live", JSON.stringify(liveView()));
     }
+    const visible = timelineVisibleSources();
+    if (visible) params.set("sources", visible.join(","));
     // The run is verified server-side; the receipt comes back in the response headers.
     window.location.href = url(`/api/cases/${state.openCase.id}/timeline/export?${params}`);
     say("Timeline exported: the file carries only rows that were written and counted");
@@ -6336,14 +6349,8 @@ function wire() {
     timelineState.kind = $("timeline-kind").value;
     loadTimeline(true);
   });
-  $("timeline-prev").addEventListener("click", () => {
-    timelineState.offset = Math.max(0, timelineState.offset - (timelineState.payload?.page_size || 250));
-    loadTimeline(false);
-  });
-  $("timeline-next").addEventListener("click", () => {
-    const size = timelineState.payload?.page_size || 250;
-    if (timelineState.offset + size < (timelineState.payload?.count || 0)) { timelineState.offset += size; loadTimeline(false); }
-  });
+  $("timeline-prev").addEventListener("click", () => timelinePage(-1));
+  $("timeline-next").addEventListener("click", () => timelinePage(1));
 
   $("row-height").addEventListener("change", (event) => {
     localStorage.setItem("fireblade.rowHeight", event.target.value);
@@ -6512,9 +6519,6 @@ async function act(name, node) {
     case "layout-export": exportLayout(); break;
     case "layout-import": $("layout-file").click(); break;
     case "timeline-duration": await timelineDuration(); break;
-    case "timeline-dates": $("timeline-dates").scrollIntoView({ block: "nearest" }); break;
-    case "timeline-previous": timelinePage(-1); break;
-    case "timeline-next": timelinePage(1); break;
     case "timeline-open-row": await openSelectedTimelineRow(); break;
     case "tl-zoom-in": timelineZoom(0.6); break;
     case "tl-zoom-out": timelineZoom(1.8); break;
@@ -6524,7 +6528,8 @@ async function act(name, node) {
       // Clicking a chip hides one source, the way the desktop isolates one; this
       // brings them all back without rebuilding anything.
       timelineState.hidden.clear();
-      renderTimeline(timelineState.payload);
+      $("timeline-lane").value = "";
+      loadTimeline(true);
       say("Every source is shown again");
       break;
     case "preview-import": await confirmImport(); break;

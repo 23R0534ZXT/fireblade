@@ -533,7 +533,7 @@ def test_the_derived_dialog_asks_what_the_desktop_asks():
 def test_the_timeline_has_lanes_and_a_duration():
     js, html = _read(APP), _read(INDEX)
     assert 'id="timeline-lane"' in html and "All lanes" in html
-    assert 'data-act="timeline-duration"' in html and 'data-act="timeline-dates"' in html
+    assert 'data-act="timeline-duration"' in html and 'id="timeline-dates"' in html
     assert "function timelineDuration(" in js
     assert "timelineState.hidden.add(source.id)" in js
 
@@ -590,8 +590,9 @@ def test_the_timeline_table_reads_like_the_desktop():
     js, html = _read(APP), _read(INDEX)
     for column in ("Date UTC", "Analysis", "Source row", "Summary"):
         assert f"<th>{column}</th>" in html, column
-    for action in ("timeline-previous", "timeline-next", "timeline-open-row"):
-        assert f'data-act="{action}"' in html, action
+    assert 'data-act="timeline-open-row"' in html
+    for button in ("timeline-prev", "timeline-next"):
+        assert f'id="{button}"' in html, button
     for name in ("timelinePage", "openSelectedTimelineRow"):
         assert f"function {name}(" in js, name
 

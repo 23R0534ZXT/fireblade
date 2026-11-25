@@ -88,6 +88,16 @@ def _json_object(text: str) -> dict | None:
     return value
 
 
+def _id_list(text: str) -> list[int] | None:
+    """Ids sent as ``1,3,4`` (none sent means every one); anything else is refused."""
+    if not text:
+        return None
+    try:
+        return [int(part) for part in text.split(",") if part.strip() != ""]
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="'sources' must be a list of numbers.") from exc
+
+
 def create_app(
     root: str | Path,
     version: str = "",
@@ -780,6 +790,7 @@ def create_app(
         include_undated: bool = False,
         respect_filters: bool = False,
         live: str = "",
+        sources: str = "",
     ):
         """The timeline as a verified CSV: the receipt rides in the headers."""
         options = None
@@ -801,6 +812,7 @@ def create_app(
                 include_undated=include_undated,
                 respect_filters=respect_filters,
                 live=_json_object(live),
+                sources=_id_list(sources),
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1215,6 +1227,7 @@ def create_app(
         include_undated: bool = False,
         respect_filters: bool = False,
         live: str = "",
+        sources: str = "",
     ):
         options = None
         if dates:
@@ -1236,6 +1249,7 @@ def create_app(
                 include_undated=include_undated,
                 respect_filters=respect_filters,
                 live=_json_object(live),
+                sources=_id_list(sources),
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

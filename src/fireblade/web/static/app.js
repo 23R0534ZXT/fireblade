@@ -5602,6 +5602,8 @@ function showDetails(row) {
           { row_id: Number(id), column, note });
         await loadCellNotes();
         await loadRules();
+        // the panel the note was written from shows it now, not after the next selection
+        showDetails(state.rows.find((item) => String(item[0]) === id) || null);
         say(note ? "Cell note saved" : "Cell note removed");
       } catch (error) {
         say(error.message, true);
@@ -6415,10 +6417,6 @@ function wire() {
   $("timeline-prev").addEventListener("click", () => timelinePage(-1));
   $("timeline-next").addEventListener("click", () => timelinePage(1));
 
-  $("row-height").addEventListener("change", (event) => {
-    localStorage.setItem("fireblade.rowHeight", event.target.value);
-    applyRowHeight();
-  });
   $("prefs-scale").addEventListener("change", (event) => {
     localStorage.setItem("fireblade.scale", event.target.value);
     applyScale();

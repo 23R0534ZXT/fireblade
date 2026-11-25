@@ -45,7 +45,7 @@ PARSERS = (
 )
 
 
-ADDITIONAL_PARSERS = ("Shellbags", "WebCache", "SRUM")
+ADDITIONAL_PARSERS = ("Shellbags", "WebCache")
 
 
 _WINDOWS_ONLY = re.compile(

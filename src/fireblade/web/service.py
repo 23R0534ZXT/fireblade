@@ -732,7 +732,7 @@ class Library:
         readers = {}
         # The thirteen Zimmerman tools, then Fireblade's own: the Shellbags host (a .NET dll beside
         # the others) and the WebCache reader (Python, so it is there when its library is).
-        for name in (*PARSERS, *ADDITIONAL_PARSERS):
+        for name in (*PARSERS, *ADDITIONAL_PARSERS, "SRUM"):
             try:
                 if name in ("WebCache", "SRUM"):
                     readers[name] = importlib.util.find_spec("dissect.esedb") is not None

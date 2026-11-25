@@ -4330,7 +4330,7 @@ class Library:
             raise ServiceError(f"This path does not exist on the server: {source}")
         folder = self.library.folder(identifier)
         stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-        workspace = folder / "Disques" / (stamp + "-" + uuid.uuid4().hex[:8])
+        workspace = folder / "Disks" / (stamp + "-" + uuid.uuid4().hex[:8])
         job_id = uuid.uuid4().hex
         job = {
             "id": job_id,
@@ -4722,8 +4722,35 @@ class Library:
                 when = datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat(
                     timespec="seconds"
                 )
-                entries.append({"name": path.name, "bytes": size, "when": when})
+                entries.append(
+                    {
+                        "name": path.name,
+                        "bytes": size,
+                        "when": when,
+                        "label": self._state_label(path),
+                    }
+                )
         return {"entries": entries, "folder": str(folder), "count": len(entries)}
+
+    @staticmethod
+    def _state_label(path: Path) -> str:
+        """What a recorded state holds, in words: a file named by a hash tells nothing."""
+        try:
+            if path.stat().st_size > 1024 * 1024:
+                return ""
+            recorded = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return ""
+        if not isinstance(recorded, dict):
+            return ""
+        count = recorded.get("analysis_count")
+        parts = [f"{count} analysis(es)" if isinstance(count, int) else ""]
+        status = str(recorded.get("status") or "")
+        if status:
+            parts.append(f"status {status}")
+        return "Case state" + (
+            " — " + ", ".join(part for part in parts if part) if any(parts) else ""
+        )
 
     def history_file(self, identifier: str, name: str) -> dict:
         """One recorded state, as JSON, for reading before a recovery."""

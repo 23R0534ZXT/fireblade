@@ -1069,7 +1069,7 @@ def test_history_lists_the_states_of_the_case_and_restores_one(page):
     page.wait_for_function("document.getElementById('status').innerText.startsWith('Case saved')")
     command(page, "case-history")
     page.wait_for_function(
-        "document.querySelector('.modal.show .dialog').innerText.includes('.json')"
+        "document.querySelector('.modal.show .dialog').innerText.includes('Case state')"
     )
     assert page.locator('.modal.show .dialog button:text-is("Restore")').count() >= 1
 

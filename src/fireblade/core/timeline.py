@@ -299,15 +299,23 @@ class TimelineStore:
                             summary_columns = [
                                 case.column(i)
                                 for i, h in enumerate(case.headers)
-                                if field_kind(h)
-                                or any(
-                                    s in h.casefold()
-                                    for s in (
-                                        "description",
-                                        "commandline",
-                                        "eventid",
-                                        "rule",
-                                        "artifact",
+                                # where the evidence file sits, and Fireblade's own bookkeeping
+                                # columns, say nothing about the event: they only crowd it out
+                                if h.casefold() not in ("sourcefile", "source file", "evtxfile")
+                                and not h.casefold().startswith("fireblade_")
+                                and (
+                                    field_kind(h)
+                                    or any(
+                                        s in h.casefold()
+                                        for s in (
+                                            "description",
+                                            "commandline",
+                                            "eventid",
+                                            "rule",
+                                            "artifact",
+                                            "payload",
+                                            "provider",
+                                        )
                                     )
                                 )
                             ][:8]

@@ -438,7 +438,7 @@ async function openCaseHistory() {
     const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/history`);
     $("history-list").innerHTML = (payload.entries || []).length
       ? payload.entries.map((item) => `<div class="analysis-line">
-          <span class="analysis-name" title="${escapeHtml(payload.folder)}">${escapeHtml(item.when)} — ${escapeHtml(item.name)}</span>
+          <span class="analysis-name" title="${escapeHtml(payload.folder + "/" + item.name)}">${escapeHtml(item.when)} — ${escapeHtml(item.label || item.name)}</span>
           <span class="pin"><button class="btn" data-history-restore="${escapeHtml(item.name)}">Restore</button></span>
         </div>`).join("")
       : '<div class="emptygrid">No recorded state for this case yet.</div>';

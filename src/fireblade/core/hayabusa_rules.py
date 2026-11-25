@@ -130,6 +130,10 @@ def inventory(pack_rules, base=None):
         name = path.name
         key = name.casefold()
         seen.add(key)
+        # The engine's own field-mapping files sit under rules/config: they carry no level and
+        # no detection, and turning one off would blank the details of every alert.
+        if "config" in path.relative_to(pack_rules).parts[:-1]:
+            continue
         source = "user" if key in overrides else "pack"
         target = overrides.get(key, path)
         try:

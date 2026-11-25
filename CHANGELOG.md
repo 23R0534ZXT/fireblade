@@ -36,6 +36,12 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   plain message instead of an internal "RawLoader" one.
 - **Coverage check** names each finding by its analysis (it showed internal file names), and the
   About box no longer says the import "is not wired yet".
+- **History** lists each recorded state by what it holds ("Case state — 482 analyses, status open")
+  rather than by a hash file name; the file name is in the tooltip.
+- **Detection rules** no longer lists the engine's 13 field-mapping files (no level, not rules).
+- **The timeline's event summary** leaves out the path of the evidence file and Fireblade's own
+  columns, and reads the payload and provider of an event.
+- The disk workspace folder is `Disks`, not `Disques`.
 - `scripts/fetch_readers.py` counted the Hayabusa rules without looking in sub-folders ("0 rule(s)").
 
 ## [0.8.6] — 2026-11-25

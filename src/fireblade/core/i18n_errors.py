@@ -21,6 +21,8 @@ ERRORS = {
     "Aucun système de fichiers lisible : le conteneur est reconnu mais aucune partition exploitable n’en a été extraite (image sans table de partitions, volume chiffré ou format non pris en charge).": "No readable file system: the container is recognised but no usable partition could be extracted from it (an image without a partition table, an encrypted volume, or an unsupported format).",
     # Conditions, colour rules, visual formats
     "Couleur invalide ; utilisez #RRGGBB ou #AARRGGBB": "Invalid colour; use #RRGGBB or #AARRGGBB",
+    "Fuseau horaire inconnu : {}": "Unknown time zone: {}",
+    "Colonne dérivée impossible à calculer : {}": "The derived column cannot be computed: {}",
     "Opérateur inconnu : {}": "Unknown operator: {}",
     "Opérateur inconnu": "Unknown operator",
     "Expression limitée à 24 niveaux et 1024 conditions": "Expression limited to 24 levels and 1024 conditions",

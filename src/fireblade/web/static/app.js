@@ -48,6 +48,8 @@ const state = {
   orderSummary: 0,
   payload: null,        // the last rows answer, kept for its summary labels
   timestamps: [],       // columns the case marks as dates
+  styles: {},           // {row id: [indexes into ruleSet]} — the rules each row of the page matched
+  ruleSet: [],          // the rules the page was evaluated against, as each paints
 };
 
 /* ---------- the recognised import profile ---------- */
@@ -1710,6 +1712,7 @@ function applyRowHeightPrefs() {
   document.documentElement.style.setProperty("--group-height", `${prefs.groups}px`);
   document.documentElement.style.setProperty("--head-height", `${prefs.headers}px`);
   document.documentElement.style.setProperty("--wrap", prefs.wrap || prefs.fit ? "normal" : "nowrap");
+  document.documentElement.classList.toggle("rowclip", prefs.wrap && !prefs.fit);
   renderGrid();
   closeModals();
   say(`Row height: ${prefs.rows} px${prefs.wrap || prefs.fit ? " — text wrapped" : ""}`);
@@ -1721,6 +1724,7 @@ function applyStoredRowHeight() {
   document.documentElement.style.setProperty("--group-height", `${prefs.groups}px`);
   document.documentElement.style.setProperty("--head-height", `${prefs.headers}px`);
   document.documentElement.style.setProperty("--wrap", prefs.wrap || prefs.fit ? "normal" : "nowrap");
+  document.documentElement.classList.toggle("rowclip", prefs.wrap && !prefs.fit);
 }
 
 function resetWidths() {
@@ -1753,11 +1757,18 @@ async function openAddFilter() {
   say(`Filter added on ${state.columns[column + 1]}`);
 }
 
+/* Everything that narrows the grid, as the desktop's own command clears it: the search, the column
+   filters, the advanced filter (the date windows live there) and the bookmarks-only switch. */
 function clearEveryFilter() {
   state.filters = [];
   state.search = "";
+  state.expression = null;
+  state.bookmarksOnly = false;
   state.offset = 0;
   $("search").value = "";
+  $("bookmarks-only").classList.remove("active");
+  $("expr-root").innerHTML = "";
+  $("expr-root").appendChild(exprGroupNode({ logic: "and", children: [] }, 0));
   loadRows(true);
   say("Filters cleared");
 }
@@ -2719,13 +2730,26 @@ async function openDateFilter() {
   $("date-modal").classList.add("show");
 }
 
+/* The core names its windows in CamelCase ("EarlierThisWeek", "MonthAgo3"): the list reads them. */
+function dateRangeLabel(name) {
+  const months = name.match(/^Month(Ago|After)(\d+)$/);
+  if (months) {
+    const count = Number(months[2]);
+    const unit = count === 1 ? "month" : "months";
+    return months[1] === "Ago" ? `${count} ${unit} ago` : `In ${count} ${unit}`;
+  }
+  const words = name.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 async function loadDateRanges() {
   if (dateState.ranges.length) return;
   try {
     const payload = await api("/api/date-ranges");
     dateState.ranges = payload.ranges || [];
     $("date-range").innerHTML = dateState.ranges
-      .map((item) => `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`).join("");
+      .map((item) => `<option value="${escapeHtml(item.name)}">${escapeHtml(dateRangeLabel(item.name))}</option>`)
+      .join("");
   } catch (error) {
     say(error.message, true);
   }
@@ -3647,99 +3671,9 @@ let rulesCache = [];
 let globalRules = null;      // what the shared book says, once, for every analysis
 let rulesScope = "analysis";
 
-/* The book's rules reach the grid already mapped onto this analysis' columns;
-   a rule the grid cannot evaluate (two conditions, an expression) is skipped
-   rather than approximated. */
-function globalRuleList() {
-  if (!globalRules || !globalRules.enabled) return [];
-  return (globalRules.effective || []).filter((rule) => rule.simple !== false);
-}
-
-/* One comparison, against the row's values (index 0 is the row id). */
-function matchesCondition(condition, values) {
-  if (!condition || !Number.isInteger(condition.column) || condition.column < 0) return false;
-  const raw = values[condition.column + 1];
-  const text = raw === null || raw === undefined ? "" : String(raw);
-  const value = condition.value ?? "";
-  switch (condition.operator) {
-    case "eq": return text.toLowerCase() === String(value).toLowerCase();
-    case "ne": return text.toLowerCase() !== String(value).toLowerCase();
-    case "starts": return text.toLowerCase().startsWith(String(value).toLowerCase());
-    case "ends": return text.toLowerCase().endsWith(String(value).toLowerCase());
-    case "gt": case "ge": case "lt": case "le": {
-      const a = Number(text), b = Number(value);
-      if (Number.isNaN(a) || Number.isNaN(b)) return false;
-      if (condition.operator === "gt") return a > b;
-      if (condition.operator === "ge") return a >= b;
-      if (condition.operator === "lt") return a < b;
-      return a <= b;
-    }
-    case "empty": return text === "";
-    case "not_empty": return text !== "";
-    default: return text.toLowerCase().includes(String(value).toLowerCase());
-  }
-}
-
-/* A rule's condition is a tree: a comparison, or a group of them combined with AND,
-   OR or NOT — the desktop's subgroups. */
-function matchesConditionTree(node, values, depth = 0) {
-  if (!node || depth > 24) return false;
-  if (!Array.isArray(node.children)) return matchesCondition(node, values);
-  const children = node.children;
-  const logic = node.logic || "and";
-  if (!children.length) return logic === "not";
-  if (logic === "or") return children.some((child) => matchesConditionTree(child, values, depth + 1));
-  if (logic === "not") {
-    return !children.some((child) => matchesConditionTree(child, values, depth + 1));
-  }
-  return children.every((child) => matchesConditionTree(child, values, depth + 1));
-}
-
-function matchesRule(rule, values) {
-  if (!rule.enabled) return false;
-  if (rule.condition) return matchesConditionTree(rule.condition, values);
-  if (rule.simple === false) return false;
-  if (!Number.isInteger(rule.column) || rule.column < 0) return false;
-  // A statistic names the rows it selects; the server resolved it once.
-  if (rule.statistic) {
-    const column = Number.isInteger(rule.value_column) ? rule.value_column : rule.column;
-    const raw = values[column + 1];
-    const text = raw === null || raw === undefined ? "" : String(raw);
-    const resolved = rule.resolved;
-    if (!resolved) return false;
-    if (Array.isArray(resolved.values)) {
-      const needle = rule.stat_ignore_case ? text.toLowerCase() : text;
-      return resolved.values.some((value) =>
-        (rule.stat_ignore_case ? String(value).toLowerCase() : String(value)) === needle);
-    }
-    const number = Number(text);
-    if (Number.isNaN(number) || resolved.threshold === undefined) return false;
-    if (resolved.compare === "ge") {
-      return resolved.strict ? number > resolved.threshold : number >= resolved.threshold;
-    }
-    return resolved.strict ? number < resolved.threshold : number <= resolved.threshold;
-  }
-  const raw = values[rule.column + 1];
-  const text = raw === null || raw === undefined ? "" : String(raw);
-  const value = rule.value ?? "";
-  switch (rule.operator) {
-    case "eq": return text.toLowerCase() === String(value).toLowerCase();
-    case "ne": return text.toLowerCase() !== String(value).toLowerCase();
-    case "starts": return text.toLowerCase().startsWith(String(value).toLowerCase());
-    case "ends": return text.toLowerCase().endsWith(String(value).toLowerCase());
-    case "gt": case "ge": case "lt": case "le": {
-      const a = Number(text), b = Number(value);
-      if (Number.isNaN(a) || Number.isNaN(b)) return false;
-      if (rule.operator === "gt") return a > b;
-      if (rule.operator === "ge") return a >= b;
-      if (rule.operator === "lt") return a < b;
-      return a <= b;
-    }
-    case "empty": return text === "";
-    case "not_empty": return text !== "";
-    default: return text.toLowerCase().includes(String(value).toLowerCase());
-  }
-}
+/* Which rule paints a row is the core's answer, not the page's: the server evaluates every rule
+   with the evaluator the desktop's grid uses (`state.styles`, the rows each rule matched, and
+   `state.ruleSet`, what each one paints), so an operator means what it means in the desktop. */
 
 /* The values of a column, as the desktop's rules dialog charts them: the shape of
    the data first, the rule second. Clicking a bar fills the value field. */
@@ -3796,7 +3730,6 @@ async function loadGlobalRules() {
   try {
     globalRules = await api(
       `/api/global-rules?identifier=${encodeURIComponent(state.openCase.id)}&index=${state.analysis}`);
-    renderGrid();
   } catch (_) {
     globalRules = null;
   }
@@ -3885,6 +3818,21 @@ async function persistGlobalRules(rules) {
   await apiPut("/api/global-rules", {
     rules, headers: (globalRules && globalRules.case_headers) || state.columns.slice(1) });
   await loadGlobalRules();
+  await refreshPaint();
+}
+
+/* A rule changed: ask the server again which rule each row of this page answers to. The selection,
+   the notes and the page itself stay as they are. */
+async function refreshPaint() {
+  if (!state.openCase || !state.columns.length || state.grouped) { renderGrid(); return; }
+  try {
+    const payload = await api(rowsUrl());
+    state.styles = payload.styles || {};
+    state.ruleSet = payload.rule_set || [];
+    renderGrid();
+  } catch (error) {
+    say(error.message, true);
+  }
 }
 
 async function persistRules() {
@@ -3892,14 +3840,22 @@ async function persistRules() {
     { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rules: rulesCache }) });
   if (!response.ok) throw new Error((await response.json()).detail || response.statusText);
-  // Read the rules back: a statistic is resolved on the server, and the grid can
-  // only apply what the server says it selects.
+  // Read the rules back, then the page again: the server resolves a statistic and decides which
+  // rule each row answers to, and the grid only paints what it is told.
   await loadRules();
+  await refreshPaint();
 }
 
-const RULE_OPERATORS = { contains: "contains", ne: "does not contain", eq: "equals",
-                         starts: "starts with", ends: "ends with", gt: ">", ge: ">=",
-                         lt: "<", le: "<=", empty: "is empty", not_empty: "is not empty" };
+/* The comparisons a rule can make are the core's own list, the one the advanced filter offers:
+   written once, and the sentence of a rule reads them lower-cased ("Event equals (exact) 4625"). */
+const RULE_OPERATORS = Object.fromEntries(EXPR_OPERATORS
+  .filter(([code]) => code !== "expression")
+  .map(([code, label]) => [code, label.charAt(0).toLowerCase() + label.slice(1)]));
+
+function populateRuleOperators() {
+  $("rule-operator").innerHTML = Object.entries(RULE_OPERATORS).map(([code, label]) =>
+    `<option value="${code}">${escapeHtml(label)}</option>`).join("");
+}
 
 function conditionSentence(node) {
   if (!node) return "";
@@ -3979,6 +3935,8 @@ function ruleConditionPayload(flat) {
   const logic = $("rule-logic").value;
   const extra = conditionRows();
   if (logic === "single" || !extra.length) return null;
+  // The core's NOT takes one child: "none of them" is NOT over an OR of the comparisons.
+  if (logic === "not") return { logic: "not", children: [{ logic: "or", children: [flat, ...extra] }] };
   return { logic, children: [flat, ...extra] };
 }
 
@@ -4098,21 +4056,39 @@ async function checkDerivedColumns() {
   $("derived-check-modal").classList.add("show");
 }
 
-function openDerivedDialog() {
+let derivedOptions = null;
+
+async function openDerivedDialog() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
-  $("derived-source").innerHTML = state.columns.slice(1)
+  const columns = state.columns.slice(1)
     .map((name, index) => `<option value="${index}">${escapeHtml(name)}</option>`).join("");
+  $("derived-source").innerHTML = columns;
+  $("derived-time").innerHTML = `<option value="">(date and time in the same column)</option>${columns}`;
   $("derived-name").value = "";
   $("derived-expression").value = "";
+  $("derived-operation").value = "timestamp";
+  derivedOperationChanged();
+  try {
+    // The formats and the zones are the core's own tables: written once, there.
+    derivedOptions = derivedOptions || await api("/api/derived-options");
+    $("derived-format").innerHTML = derivedOptions.formats.map((item) =>
+      `<option value="${escapeHtml(item.code)}">${escapeHtml(item.label)}</option>`).join("");
+    let browserZone = "";
+    try { browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (_) { /* no Intl */ }
+    const zones = [...new Set(["UTC", browserZone, ...derivedOptions.zones].filter(Boolean))];
+    $("derived-zones").innerHTML = zones.map((zone) => `<option value="${escapeHtml(zone)}">`).join("");
+  } catch (error) {
+    say(error.message, true);
+  }
   $("derived-modal").classList.add("show");
 }
 
 function derivedOperationChanged() {
-  const operation = $("derived-operation").value;
-  const simple = operation === "timestamp" || operation === "category" || operation === "macb";
-  $("derived-source-row").style.display = simple ? "flex" : "none";
-  $("derived-format-row").style.display = operation === "timestamp" ? "flex" : "none";
-  $("derived-expression-row").style.display = operation === "expression" ? "flex" : "none";
+  const timestamp = $("derived-operation").value === "timestamp";
+  for (const row of ["source", "time", "format", "zone"]) {
+    $(`derived-${row}-row`).style.display = timestamp ? "flex" : "none";
+  }
+  $("derived-expression-row").style.display = timestamp ? "none" : "flex";
 }
 
 async function addDerived() {
@@ -4124,9 +4100,11 @@ async function addDerived() {
     definition.expression = $("derived-expression").value.trim();
     if (!definition.expression) { say("An expression is required", true); return; }
   } else {
-    const source = state.columns[Number($("derived-source").value) + 1];
-    definition.columns = [source];
-    if (operation === "timestamp") definition.format = $("derived-format").value;
+    const columns = [state.columns[Number($("derived-source").value) + 1]];
+    if ($("derived-time").value !== "") columns.push(state.columns[Number($("derived-time").value) + 1]);
+    definition.columns = columns;
+    definition.format = $("derived-format").value;
+    definition.timezone = $("derived-zone").value.trim() || "UTC";
   }
   closeModals();
   try {
@@ -5330,6 +5308,8 @@ async function loadRows(reset) {
     state.grouped = Boolean(payload.grouped);
     state.payload = payload;
     state.timestamps = payload.timestamps || [];
+    state.styles = payload.styles || {};
+    state.ruleSet = payload.rule_set || [];
     await loadBookmarks();
     await loadCellNotes();
     await loadRules();
@@ -5457,12 +5437,14 @@ function renderGrid() {
   head.push("</tr>");
   $("head").innerHTML = head.join("");
 
+  const clipped = document.documentElement.classList.contains("rowclip");
   $("body").innerHTML = state.rows.map((row) => {
     const id = row[0];
     // Column 0 is the row identifier: it gets its own cell, after the checkbox one.
     const rowNotes = notesForRow(id);
     // The rule is found once, before the cells: a visual needs it per cell.
-    const rule = rulesCache.concat(globalRuleList()).find((item) => matchesRule(item, row));
+    const matched = state.styles[String(id)];
+    const rule = matched && matched.length ? state.ruleSet[matched[0]] : null;
     const cells = shown.map(({ index }) => {
       const value = row[index];
       // The case names its date columns when it has them; a value that reads as a
@@ -5482,10 +5464,12 @@ function renderGrid() {
         && (!rule.visual || rule.visual === "none") && Number(rule.target) === index - 1;
       const painted = visual ? ` style="${visual.style}"`
         : (cellRule ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"` : "");
-      return `<td class="${cls}${visual ? ` ${visual.cls}` : ""}"${title}${painted} data-cell="${index - 1}">`
+      // Wrapped but not fitted: the text lives in a box as tall as the row.
+      const [open, close] = clipped ? ['<div class="clip">', "</div>"] : ["", ""];
+      return `<td class="${cls}${visual ? ` ${visual.cls}` : ""}"${title}${painted} data-cell="${index - 1}">${open}`
         + (visual && visual.icon ? `<span class="vicon" style="color:${visual.ink}">${visual.icon}</span>` : "")
         + `${state.highlight ? markText(text, state.highlight) : renderBoolean(index - 1, text)}`
-        + `${noted ? '<span class="notemark"></span>' : ""}</td>`;
+        + `${noted ? '<span class="notemark"></span>' : ""}${close}</td>`;
     }).join("");
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
     // "none" is a string, and a string is true: a rule without a visual format must
@@ -5964,6 +5948,7 @@ function wire() {
     try {
       await apiPost("/api/global-rules/enabled", { enabled: event.target.checked });
       await loadGlobalRules();
+      await refreshPaint();
       say(event.target.checked ? "Shared rules applied to this analysis"
                                : "Shared rules left out of this analysis");
     } catch (error) {
@@ -5984,6 +5969,7 @@ function wire() {
       if (!response.ok) throw new Error((await response.json()).detail || response.statusText);
       const payload = await response.json();
       await loadGlobalRules();
+      await refreshPaint();
       renderRulesList();
       say(`${payload.imported} shared rule(s) imported`);
     } catch (error) {
@@ -6035,24 +6021,8 @@ function wire() {
     loadRows(true);
   });
 
-  $("clear").addEventListener("click", () => {
-    // Search and every filter go — the advanced one and its date windows too; the
-    // groups, the sort keys and the colours stay, as the desktop's own command says.
-    state.search = "";
-    state.filters = [];
-    state.expression = null;
-    state.sort = null;
-    state.descending = false;
-    state.bookmarksOnly = false;
-    $("bookmarks-only").classList.remove("active");
-    $("search").value = "";
-    const root = $("expr-root");
-    if (root) {
-      root.innerHTML = "";
-      root.appendChild(exprGroupNode({ logic: "and", children: [] }, 0));
-    }
-    loadRows(true);
-  });
+  // The toolbar button and the menu command are the same command: one function clears them.
+  $("clear").addEventListener("click", clearEveryFilter);
 
   let resizing = null;
   $("head").addEventListener("mousedown", (event) => {
@@ -6774,6 +6744,7 @@ async function boot() {
   loadPalette();
   applyScale();
   applyRowHeight();
+  populateRuleOperators();
   wire();
   fillActionTypes();
   try {

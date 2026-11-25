@@ -491,6 +491,10 @@ def create_app(
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/derived-options")
+    def derived_options():
+        return library.derived_options()
+
     @app.get("/api/cases/{identifier}/imports")
     def imports(identifier: str):
         try:

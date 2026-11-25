@@ -145,6 +145,8 @@ thead th .grip{position:absolute;right:0;top:0;width:4px;height:100%;cursor:col-
 .colfilter input:focus{border-color:var(--accent);background:var(--input-focus)}
 tbody td{height:var(--row-height);padding:1px 5px;border-right:1px solid var(--grid-line);white-space:var(--wrap,nowrap);overflow:hidden;text-overflow:ellipsis}
 tbody tr:nth-child(even) td{background:var(--alt)}
+/* A colour rule paints the row: its cells show it, on the odd rows and on the even ones. */
+tbody tr[style*="background"] td{background:inherit}
 tbody tr:hover td{background:var(--row-hover)}
 tbody tr.sel td{background:var(--sel);color:var(--sel-text)}
 tbody tr.sel td .cb{border-color:var(--accent-dark)}
@@ -421,6 +423,9 @@ td .vicon { margin-right: 4px; font-size: 10px; }
 /* The three heights of the desktop's RowHeightDialog, one variable each. */
 :root{--group-height:22px;--head-height:22px}
 thead th{height:var(--head-height,22px)}
+tbody tr[data-group] td{height:var(--group-height,22px)}
+/* Wrapping without fitting: the row keeps its height, the text breaks into lines inside it. */
+.clip{max-height:calc(var(--row-height) - 3px);overflow:hidden;white-space:normal;overflow-wrap:anywhere}
 
 /* One bar for every long command: an import, a scan, a timeline, a detection,
    a report, a portable case. The percentage comes from the job when it knows one;

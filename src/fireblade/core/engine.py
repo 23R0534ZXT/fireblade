@@ -10,6 +10,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import tempfile
 import threading
 from contextlib import contextmanager
@@ -669,6 +670,16 @@ class Case:
                 self.db.execute("CREATE VIEW events AS " + sql)
                 # Bind the entire plan before committing, without scanning the file.
                 self.db.execute("SELECT * FROM events LIMIT 0")
+                # A name the engine only meets when it evaluates a row (a time zone that does not
+                # exist) must be refused now, not leave an analysis that fails on every page.
+                try:
+                    self.db.execute("SELECT * FROM events LIMIT 1").fetchall()
+                except duckdb.Error as exc:
+                    unknown = re.search(r"Unknown TimeZone '([^']*)'", str(exc))
+                    if unknown:
+                        raise ValueError(f"Fuseau horaire inconnu : {unknown.group(1)}") from exc
+                    first = (str(exc).splitlines() or [""])[0][:200]
+                    raise ValueError(f"Colonne dérivée impossible à calculer : {first}") from exc
                 self.db.execute(
                     "INSERT OR REPLACE INTO metadata VALUES ('derived', ?)", [json.dumps(planned)]
                 )

@@ -28,6 +28,7 @@ from fireblade.core.collection import Collection, ToolPack
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled
 from fireblade.core.investigations import InvestigationLibrary
+from fireblade.core.models import OPERATORS as CORE_OPERATORS
 from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View
 from fireblade.core.sessions import read_session
 from fireblade.core.timeline import TimelineStore
@@ -37,23 +38,9 @@ from fireblade.web import english
 # Columns the grid always shows before the analysis own columns, in display order.
 META_COLUMNS = ["__row_id"]
 
-OPERATORS = {
-    "contains",
-    "starts",
-    "ends",
-    "eq",
-    "ne",
-    "empty",
-    "not_empty",
-    "gt",
-    "ge",
-    "lt",
-    "le",
-    "date_after",
-    "date_eq",
-    "date_ne",
-    "date_before",
-}
+# The comparisons are the core's own list, never a copy of it: a filter or a rule the desktop can
+# write must be one the Host accepts.
+OPERATORS = {code for _label, code in CORE_OPERATORS}
 
 
 class ServiceError(Exception):
@@ -1318,18 +1305,21 @@ class Library:
         except (OSError, ValueError, KeyError) as exc:
             return RuleBook(), str(exc), store
 
-    def global_rules(self, identifier: str | None = None, index: int | None = None) -> dict:
-        """The rules that follow the analyst from one analysis to the next."""
+    def _global_rules_enabled(self) -> bool:
         import json as _json
 
-        book, error, _store = self._global_rules_book()
-        enabled = True
         flag = self._global_rules_flag_path()
         if flag.is_file():
             try:
-                enabled = bool(_json.loads(flag.read_text(encoding="utf-8")).get("enabled", True))
+                return bool(_json.loads(flag.read_text(encoding="utf-8")).get("enabled", True))
             except (OSError, ValueError, AttributeError):
-                enabled = True
+                return True
+        return True
+
+    def global_rules(self, identifier: str | None = None, index: int | None = None) -> dict:
+        """The rules that follow the analyst from one analysis to the next."""
+        book, error, _store = self._global_rules_book()
+        enabled = self._global_rules_enabled()
         applied, skipped, headers, effective = 0, [], [], []
         if identifier is not None and index is not None and book.rules:
             case = self._case_for(identifier, index)
@@ -1374,7 +1364,6 @@ class Library:
 
     def save_global_rules(self, rules: list, headers: list | None = None) -> dict:
         """Replace the shared book; a column absent from an analysis skips that rule."""
-        from fireblade.core.models import Filter, FilterGroup, FormatRule
         from fireblade.core.rule_store import RuleBook
 
         book, _error, store = self._global_rules_book()
@@ -1397,40 +1386,13 @@ class Library:
                 column = names.index(column)
             if not isinstance(column, int) or not 0 <= column < len(names):
                 raise ServiceError("A global rule must name a column of the rules book.")
-            operator = item.get("operator", "contains")
-            if operator not in OPERATORS:
-                raise ServiceError(f"Unknown rule operator: {operator}")
             target = item.get("target")
             if isinstance(target, str) and target:
                 if target.casefold() not in {name.casefold() for name in names}:
                     names.append(target)
                 target = names.index(target)
-            # A tree wins over the flat fields: the desktop writes one, and a rule it
-            # wrote must come back unchanged (the analysis rules and the shared book
-            # both go through here).
-            tree = item.get("condition")
-            if isinstance(tree, dict) and "children" in tree:
-                from fireblade.core.models import condition_from_dict
-
-                try:
-                    condition = condition_from_dict(tree)
-                except (ValueError, TypeError) as exc:
-                    raise ServiceError(f"Invalid rule condition: {exc}") from exc
-                if not isinstance(condition, FilterGroup):
-                    condition = FilterGroup("and", [condition])
-            else:
-                condition = FilterGroup(
-                    "and", [Filter(column, operator, str(item.get("value", "")))]
-                )
             cleaned.append(
-                FormatRule(
-                    condition=condition,
-                    background=str(item.get("background") or "#fce2e2"),
-                    foreground=str(item.get("foreground") or "#202020"),
-                    bold=bool(item.get("bold")),
-                    target=target if isinstance(target, int) else None,
-                    enabled=bool(item.get("enabled", True)),
-                )
+                self._format_rule(item, column, target if isinstance(target, int) else None)
             )
         fresh = RuleBook(names, cleaned, dict(book.functions))
         store.save(fresh)
@@ -1458,81 +1420,88 @@ class Library:
         RuleStore(self._global_rules_path()).replace(book)
         return {"imported": len(book.rules), "columns": len(book.headers)}
 
-    def save_rules(self, identifier: str, index: int, rules: list) -> dict:
-        """Store the rules with the core's own FormatRule/FilterGroup objects."""
+    def _format_rule(self, item: dict, column, target):
+        """One rule of the window as the core's FormatRule: the colours, the visual format and the
+        statistic travel with it, whether the rule is the analysis' own or the shared book's."""
         from fireblade.core.models import Filter, FilterGroup, FormatRule
 
+        operator = item.get("operator", "contains")
+        if operator not in OPERATORS:
+            raise ServiceError(f"Unknown rule operator: {operator}")
+        statistic = str(item.get("statistic") or "")
+        if statistic and statistic not in self.STATISTICS:
+            raise ServiceError(f"Unknown rule statistic: {statistic}")
+        value_column = item.get("value_column")
+        if value_column is not None and (not isinstance(value_column, int) or value_column < 0):
+            raise ServiceError("Invalid statistic column.")
+        visual = str(item.get("visual") or "none")
+        if visual not in self.VISUALS:
+            raise ServiceError(f"Unknown rule visual: {visual}")
+        bound_mode = str(item.get("bound_mode") or "fixed")
+        if bound_mode not in self.BOUND_MODES:
+            raise ServiceError(f"Unknown bound mode: {bound_mode}")
+        middle_mode = str(item.get("middle_mode") or "percent")
+        if middle_mode not in self.BOUND_MODES:
+            raise ServiceError(f"Unknown middle mode: {middle_mode}")
+        threshold_mode = str(item.get("icon_threshold_mode") or "percent")
+        if threshold_mode not in self.THRESHOLD_MODES:
+            raise ServiceError(f"Unknown icon threshold mode: {threshold_mode}")
+        # A tree wins over the flat fields: the desktop writes one, and a rule it wrote must come
+        # back unchanged (the analysis rules and the shared book both go through here).
+        tree = item.get("condition")
+        if isinstance(tree, dict) and "children" in tree:
+            from fireblade.core.models import condition_from_dict
+
+            try:
+                condition = condition_from_dict(tree)
+            except (ValueError, TypeError) as exc:
+                raise ServiceError(f"Invalid rule condition: {exc}") from exc
+            if not isinstance(condition, FilterGroup):
+                condition = FilterGroup("and", [condition])
+        else:
+            condition = FilterGroup("and", [Filter(column, operator, str(item.get("value", "")))])
+        # A visual format and a statistic read one column: the rule's own, unless it names another.
+        if (visual != "none" or statistic) and value_column is None and target is None:
+            value_column = column
+        # The core wants three to five icon colours and one image slot for each; a rule that names
+        # none keeps the default set.
+        colours = [str(value) for value in (item.get("icon_colors") or [])]
+        icons = {"icon_colors": colours, "icon_images": [""] * len(colours)} if colours else {}
+        return FormatRule(
+            condition=condition,
+            background=str(item.get("background") or "#fce2e2"),
+            foreground=str(item.get("foreground") or "#202020"),
+            bold=bool(item.get("bold")),
+            target=target,
+            enabled=bool(item.get("enabled", True)),
+            statistic=statistic,
+            stat_rank=str(item.get("stat_rank") or "10"),
+            stat_ignore_case=bool(item.get("stat_ignore_case")),
+            value_column=value_column,
+            visual=visual,
+            minimum=str(item.get("minimum") or "0"),
+            maximum=str(item.get("maximum") or "100"),
+            bound_mode=bound_mode,
+            middle_value=str(item.get("middle_value") or "50"),
+            middle_mode=middle_mode,
+            middle_color=str(item.get("middle_color") or "#ffffbf"),
+            negative_color=str(item.get("negative_color") or "#d64c4c"),
+            zero_based=bool(item.get("zero_based")),
+            icon_thresholds=[str(value) for value in (item.get("icon_thresholds") or [])],
+            icon_threshold_mode=threshold_mode,
+            icon_set=str(item.get("icon_set") or "circles"),
+            show_values=bool(item.get("show_values", True)),
+            **icons,
+        )
+
+    def save_rules(self, identifier: str, index: int, rules: list) -> dict:
+        """Store the rules with the core's own FormatRule/FilterGroup objects."""
         cleaned = []
         for item in rules or []:
             column = item.get("column")
             if not isinstance(column, int) or column < 0:
                 raise ServiceError("Invalid rule column.")
-            operator = item.get("operator", "contains")
-            if operator not in OPERATORS:
-                raise ServiceError(f"Unknown rule operator: {operator}")
-            statistic = str(item.get("statistic") or "")
-            if statistic and statistic not in self.STATISTICS:
-                raise ServiceError(f"Unknown rule statistic: {statistic}")
-            value_column = item.get("value_column")
-            if value_column is not None and (not isinstance(value_column, int) or value_column < 0):
-                raise ServiceError("Invalid statistic column.")
-            visual = str(item.get("visual") or "none")
-            if visual not in self.VISUALS:
-                raise ServiceError(f"Unknown rule visual: {visual}")
-            bound_mode = str(item.get("bound_mode") or "fixed")
-            if bound_mode not in self.BOUND_MODES:
-                raise ServiceError(f"Unknown bound mode: {bound_mode}")
-            middle_mode = str(item.get("middle_mode") or "percent")
-            if middle_mode not in self.BOUND_MODES:
-                raise ServiceError(f"Unknown middle mode: {middle_mode}")
-            threshold_mode = str(item.get("icon_threshold_mode") or "percent")
-            if threshold_mode not in self.THRESHOLD_MODES:
-                raise ServiceError(f"Unknown icon threshold mode: {threshold_mode}")
-            # A tree wins over the flat fields: the desktop writes one, and a rule it
-            # wrote must come back unchanged (the analysis rules and the shared book
-            # both go through here).
-            tree = item.get("condition")
-            if isinstance(tree, dict) and "children" in tree:
-                from fireblade.core.models import condition_from_dict
-
-                try:
-                    condition = condition_from_dict(tree)
-                except (ValueError, TypeError) as exc:
-                    raise ServiceError(f"Invalid rule condition: {exc}") from exc
-                if not isinstance(condition, FilterGroup):
-                    condition = FilterGroup("and", [condition])
-            else:
-                condition = FilterGroup(
-                    "and", [Filter(column, operator, str(item.get("value", "")))]
-                )
-            cleaned.append(
-                FormatRule(
-                    condition=condition,
-                    background=str(item.get("background") or "#fce2e2"),
-                    foreground=str(item.get("foreground") or "#202020"),
-                    bold=bool(item.get("bold")),
-                    target=item.get("target"),
-                    enabled=bool(item.get("enabled", True)),
-                    statistic=statistic,
-                    stat_rank=str(item.get("stat_rank") or "10"),
-                    stat_ignore_case=bool(item.get("stat_ignore_case")),
-                    value_column=value_column,
-                    visual=visual,
-                    minimum=str(item.get("minimum") or "0"),
-                    maximum=str(item.get("maximum") or "100"),
-                    bound_mode=bound_mode,
-                    middle_value=str(item.get("middle_value") or "50"),
-                    middle_mode=middle_mode,
-                    middle_color=str(item.get("middle_color") or "#ffffbf"),
-                    negative_color=str(item.get("negative_color") or "#d64c4c"),
-                    zero_based=bool(item.get("zero_based")),
-                    icon_thresholds=[str(value) for value in (item.get("icon_thresholds") or [])],
-                    icon_threshold_mode=threshold_mode,
-                    icon_colors=[str(value) for value in (item.get("icon_colors") or [])],
-                    icon_set=str(item.get("icon_set") or "circles"),
-                    show_values=bool(item.get("show_values", True)),
-                )
-            )
+            cleaned.append(self._format_rule(item, column, item.get("target")))
         case = self._case_for(identifier, index)
         view = View(format_rules=cleaned)
         with case.lock:
@@ -1655,6 +1624,20 @@ class Library:
         with case.lock:
             case.add_derived_columns([clean])
         return {"columns": META_COLUMNS + column_labels(case), "added": clean.get("name")}
+
+    def derived_options(self) -> dict:
+        """What the derived-column window offers: the core's date formats and the time zones it
+        knows by name (the dialog of the desktop reads the same two tables)."""
+        from fireblade.core.derived import FORMATS
+        from fireblade.core.windows_zones import WINDOWS_ZONES
+
+        return {
+            "formats": [
+                {"code": code, "label": english.english_text(label)}
+                for code, label in FORMATS.items()
+            ],
+            "zones": ["UTC", "Europe/Paris", *sorted(WINDOWS_ZONES)],
+        }
 
     def derived_columns(self, identifier: str, index: int) -> dict:
         case = self._case_for(identifier, index)
@@ -4801,9 +4784,13 @@ class Library:
             page = case.page(view, path=depth, offset=offset, limit=limit)
             rows = [[json_value(value) for value in row] for row in page]
         grouped = len(depth) < len(view.groups)
+        styles, rule_set = ({}, []) if grouped else self._painting(identifier, case, view, page)
         return {
             "columns": META_COLUMNS + column_labels(case),
             "rows": rows,
+            # which colour rule each row of the page answers to, and what each rule paints
+            "styles": styles,
+            "rule_set": rule_set,
             "total": int(total),
             "offset": offset,
             "limit": limit,
@@ -4822,6 +4809,46 @@ class Library:
             "order": view.group_order,
             "order_descending": view.group_descending,
         }
+
+    def _painting(self, identifier: str, case, view, page) -> tuple[dict, list]:
+        """What colours the rows of a page: the analysis' rules, then the shared book's.
+
+        The core decides which rule a row answers to (`Case.page_styles`, the call the desktop's
+        grid makes), so an operator means here what it means there: an exact comparison is exact,
+        a regular expression is one, a statistic is counted over the rows the filters leave. The
+        client only paints what it is told.
+        """
+        import copy
+
+        from fireblade.core.visual_bounds import resolve_rules
+
+        with case.lock:
+            stored = case.views().get(self.RULES_VIEW)
+        local = list(stored.format_rules) if stored else []
+        shared = []
+        if self._global_rules_enabled():
+            book, _error, _store = self._global_rules_book()
+            if book.rules:
+                adapted, _skipped = book.adapt(list(case.headers))
+                shared = [rule for rule in adapted if rule.enabled]
+        if not page or not (local or shared):
+            return {}, []
+        styled = copy.copy(view)
+        styled.format_rules = local
+        styled.global_rules_enabled = True
+        try:
+            with case.lock, case.operation():
+                found = case.page_styles(styled, [tuple(row) for row in page], shared)
+                rendered = resolve_rules(case, view, local + shared)
+        except (ValueError, OSError, ArithmeticError, TypeError, KeyError) as exc:
+            raise ServiceError(f"The colour rules cannot be evaluated: {exc}") from exc
+        styles = {str(row_id): list(hits) for row_id, hits in found.items() if hits}
+        rule_set = []
+        for rule in rendered:
+            payload = self._rule_payload(rule)
+            payload["statistic"] = getattr(rule, "statistic", "") or ""
+            rule_set.append(payload)
+        return styles, rule_set
 
     @staticmethod
     def date_ranges() -> dict:

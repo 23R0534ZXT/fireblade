@@ -2701,6 +2701,8 @@ class Library:
         """The grouped findings of the case's latest detection run, as the desktop groups them."""
         from fireblade.core.findings import group_alerts, group_alerts_sql
 
+        self._findings_debug = {}
+        self._findings_error = ""
         # The candidate is any analysis that carries the Hayabusa columns: the name of
         # the file says nothing once it has been imported under another one.
         entries = [item for item in self._analyses(self.library.read(identifier)) if item["found"]]
@@ -2774,21 +2776,15 @@ class Library:
     def findings_view(self, identifier: str) -> dict:
         """The grouped findings, shaped for the window, with what they were read from."""
         groups, incidents = self.findings(identifier)
-        entries = [item for item in self._analyses(self.library.read(identifier)) if item["found"]]
-        source = next(
-            (
-                item["label"]
-                for item in reversed(entries)
-                if "hayabusa" in str(item.get("source") or "").casefold()
-            ),
-            "",
-        )
+        debug = dict(getattr(self, "_findings_debug", {}))
         return {
             "groups": [group.as_dict() for group in groups],
             "incidents": [item.as_dict() for item in incidents],
             "count": len(groups),
-            "source": source,
-            "debug": getattr(self, "_findings_debug", {}),
+            "source": debug.get("label") or "",
+            # where the alerts of these findings sit in the case: Show and Mark act there
+            "analysis": debug.get("index"),
+            "debug": debug,
             "error": getattr(self, "_findings_error", ""),
         }
 

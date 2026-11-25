@@ -1631,7 +1631,7 @@ function renderEvtx() {
       <td>${escapeHtml(((item.source_info && item.source_info.readers) || []).join(", ")
         || "the engine")}</td>
       <td class="cellnull"></td></tr>`).join("");
-  const alerts = analyses.filter((item) => /alertes hayabusa/i.test(String(item.label || ""))).length;
+  const alerts = analyses.filter((item) => /(alertes hayabusa|hayabusa alerts)/i.test(String(item.label || ""))).length;
   $("evtx-summary").textContent = `${logs.length} event log(s) read`
     + (alerts ? ` — ${alerts} alert analysis(es) in the case` : "");
 }
@@ -2160,7 +2160,7 @@ function showHelp(name) {
 
 const LEVEL_COLOURS = { critical: "#8b1c1c", high: "#c05621", medium: "#b7791f",
                         low: "#2b6cb0", informational: "#4a5568" };
-const findingState = { groups: [], incidents: [], source: "", loaded: false };
+const findingState = { groups: [], incidents: [], source: "", analysis: null, shown: [], loaded: false };
 
 function findingLevelColour(level) {
   return LEVEL_COLOURS[String(level || "informational").toLowerCase()] || LEVEL_COLOURS.informational;
@@ -2180,6 +2180,7 @@ async function loadFindings(force) {
     findingState.groups = payload.groups || [];
     findingState.incidents = payload.incidents || [];
     findingState.source = payload.source || "";
+    findingState.analysis = payload.analysis === undefined ? null : payload.analysis;
     findingState.loaded = true;
     if (payload.error) say(payload.error, true);
     renderFindingView();
@@ -2215,8 +2216,9 @@ function shownFindings() {
 
 function renderFindingTable() {
   const groups = shownFindings();
+  findingState.shown = groups;
   $("hayabusa-rows").innerHTML = groups.length
-    ? groups.map((group) => `<tr>
+    ? groups.map((group, position) => `<tr>
         <td>${escapeHtml(group.start || "(undated)")}</td>
         <td>${escapeHtml(group.level || "")}</td>
         <td title="${escapeHtml(group.details || "")}">${escapeHtml(group.title || "")}</td>
@@ -2224,8 +2226,12 @@ function renderFindingTable() {
         <td>${group.count || 0}</td>
         <td>${escapeHtml((group.event_ids || []).join(", "))}</td>
         <td title="${escapeHtml(group.tactics || "")}">${escapeHtml(group.techniques || "")}</td>
+        <td><button class="btn" data-finding="${position}" data-want="show"
+            title="Open the alerts of this rule on this host in the grid">Show</button>
+          <button class="btn" data-finding="${position}" data-want="mark"
+            title="Mark every alert of this finding">Mark</button></td>
       </tr>`).join("")
-    : '<tr><td colspan="7" class="cellnull">No finding matches this filter.</td></tr>';
+    : '<tr><td colspan="8" class="cellnull">No finding matches this filter.</td></tr>';
   renderFindingSeverity(groups);
 }
 
@@ -3204,7 +3210,7 @@ function renderGraph(whole) {
 
 /* ---------- Hayabusa ---------- */
 
-const hayabusaState = { findings: [], runs: [] };
+const hayabusaState = { runs: [] };
 
 async function runHayabusa() {
   if (!state.openCase) { say("Open a case first", true); return; }
@@ -3215,9 +3221,6 @@ async function runHayabusa() {
     const payload = await runTask("detect", { min_level: level }, "Hayabusa");
     if (!payload) return;
     hayabusaState.runs = payload.runs || [];
-    // Every finding keeps the run it came from: the alert analysis is per run.
-    hayabusaState.findings = hayabusaState.runs.flatMap((run, position) =>
-      (run.findings || []).map((finding) => ({ ...finding, _run: position })));
     const runs = hayabusaState.runs.map((run) => `${escapeHtml(run.collection)}: ${run.summary?.detections ?? 0} detection(s)` +
       (run.analysis === null || run.analysis === undefined ? "" :
         ` · <a href="#" class="lnk" data-sources="${escapeHtml(run.collection)}">export the sources</a>`)).join(" · ");
@@ -3226,7 +3229,6 @@ async function runHayabusa() {
     // leaving the findings the analyst just asked for.
     state.openCase = await api(`/api/cases/${state.openCase.id}`);
     renderTree();
-    renderHayabusa();
     await loadFindings(true);
     say(`Hayabusa: ${payload.total} finding(s) at level ${level}+`);
   } catch (error) {
@@ -3235,52 +3237,40 @@ async function runHayabusa() {
   }
 }
 
-function renderHayabusa() {
-  $("hayabusa-rows").innerHTML = hayabusaState.findings.map((finding, position) => `
-    <tr><td>${escapeHtml(finding.Timestamp || "")}</td>
-      <td>${escapeHtml(finding.Level || "")}</td>
-      <td title="${escapeHtml(finding.Details || "")}">${escapeHtml(finding.RuleTitle || "")}</td>
-      <td>${escapeHtml(finding.Computer || "")}</td>
-      <td>${escapeHtml(finding.Channel || "")}</td>
-      <td>${escapeHtml(String(finding.EventID || ""))}</td>
-      <td title="${escapeHtml(finding.MitreTags || "")}">${escapeHtml(finding.MitreTactics || "")}</td>
-      <td><button class="btn" data-finding="${position}" data-want="show"
-          title="Open the alerts of this rule in the grid">Show</button>
-        <button class="btn" data-finding="${position}" data-want="mark"
-          title="Mark every alert of this finding">Mark</button></td></tr>`).join("");
-}
-
-/* The alert analysis of the run, filtered on the rule that fired. */
-async function showFindingInGrid(item) {
-  const run = hayabusaState.runs[item._run] || {};
-  if (run.analysis === null || run.analysis === undefined) {
-    say("The alert analysis of this run is not open in the case", true);
+/* A finding is one rule on one host: its alerts are the rows of the alert analysis that name both. */
+async function showFindingInGrid(group) {
+  if (findingState.analysis === null || findingState.analysis === undefined) {
+    say("The alert analysis of this detection is not open in the case", true);
     return;
   }
-  state.analysis = run.analysis;
+  state.analysis = findingState.analysis;
   state.groups = []; state.path = []; state.interval = ""; state.expression = null;
   state.summaries = []; state.order = "";
   state.filters = []; state.search = ""; state.sort = null; state.multiSort = [];
   showTab("analyses");
+  renderTree();
   await loadRows(true);
-  const position = state.columns.findIndex((name) => name.toLowerCase() === "ruletitle");
-  if (position > 0 && item.RuleTitle) {
-    state.filters = [{ column: position - 1, operator: "eq", value: item.RuleTitle }];
+  const filters = [];
+  for (const [name, value] of [["ruletitle", group.title], ["computer", group.host]]) {
+    const position = state.columns.findIndex((column) => column.toLowerCase() === name);
+    if (position > 0 && value) filters.push({ column: position - 1, operator: "eq", value });
+  }
+  if (filters.length) {
+    state.filters = filters;
     await loadRows(true);
   }
-  say(`${state.total} alert(s) of this rule — ${item.RuleTitle}`);
+  say(`${state.total} alert(s) of this rule — ${group.title}`);
 }
 
-async function markFinding(item) {
-  const run = hayabusaState.runs[item._run] || {};
-  if (run.analysis === null || run.analysis === undefined) {
-    say("The alert analysis of this run is not open in the case", true);
+async function markFinding(group) {
+  if (findingState.analysis === null || findingState.analysis === undefined) {
+    say("The alert analysis of this detection is not open in the case", true);
     return;
   }
-  const { _run, ...finding } = item;
   try {
     const payload = await apiPost(
-      `/api/cases/${state.openCase.id}/analyses/${run.analysis}/bookmark-finding`, { finding });
+      `/api/cases/${state.openCase.id}/analyses/${findingState.analysis}/bookmark-finding`,
+      { finding: { RuleTitle: group.title, Computer: group.host } });
     const capped = payload.matched > payload.marked ? ` of ${payload.matched}` : "";
     say(`${payload.marked} alert(s) marked${capped}`);
   } catch (error) {
@@ -6347,10 +6337,10 @@ function wire() {
   $("hayabusa-rows").addEventListener("click", (event) => {
     const button = event.target.closest("button[data-finding]");
     if (!button) return;
-    const item = hayabusaState.findings[Number(button.dataset.finding)];
-    if (!item) return;
-    if (button.dataset.want === "mark") markFinding(item);
-    else showFindingInGrid(item);
+    const group = findingState.shown[Number(button.dataset.finding)];
+    if (!group) return;
+    if (button.dataset.want === "mark") markFinding(group);
+    else showFindingInGrid(group);
   });
   $("hayabusa-summary").addEventListener("click", (event) => {
     const link = event.target.closest("a[data-sources]");

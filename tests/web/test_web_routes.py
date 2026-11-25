@@ -756,7 +756,7 @@ def test_the_coverage_check_reads_the_case_and_keeps_its_report(service):
     data = library.coverage_export(identifier)
     assert b"fireblade-coverage" in data
     flat = library.coverage_export(identifier, as_csv=True)
-    assert b"Gravit" in flat
+    assert b"Severity" in flat
     with pytest.raises(ServiceError):
         library.coverage(identifier, expected="nonsense")
 

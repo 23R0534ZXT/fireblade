@@ -221,3 +221,24 @@ def test_the_empty_comparison_filters_without_a_value(page):
     page.wait_for_function(
         "document.getElementById('grid-empty').innerText.includes('No row matches')"
     )
+
+
+def test_the_sort_arrow_sits_on_the_column_that_was_clicked_and_flips_on_a_second_click(page):
+    names = headers(page)
+    position = names.index("User")
+    header = page.locator("#head tr:first-child th").nth(position)
+    header.click()
+    page.wait_for_function(
+        "(i) => document.querySelectorAll('#head tr:first-child th')[i].classList.contains('sorted')",
+        arg=position,
+    )
+    assert page.locator("#head th.sorted").count() == 1
+    assert "▲" in header.inner_text() and "▼" not in header.inner_text()
+    assert column_values(page, "User")[0] == "alice"
+    header.click()
+    page.wait_for_function(
+        "(i) => document.querySelectorAll('#head tr:first-child th')[i].innerText.includes('▼')",
+        arg=position,
+    )
+    assert page.locator("#head th.sorted").count() == 1
+    assert column_values(page, "User")[0] == "carol", "descending"

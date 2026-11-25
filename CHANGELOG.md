@@ -17,6 +17,10 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   (size, dates, SHA-256 and, for a PE, machine, compile time, subsystem, signature present). A database
   no SQLECmd map knows is read table by table. The desktop is unchanged.
 
+### Fixed
+- **The sort arrow and the "sorted" highlight were drawn on the column to the left of the one clicked**
+  (the data was sorted by the right column, the header said otherwise).
+
 ## [0.8.4] — 2026-11-25
 
 Every control was pressed again and judged by what it leaves on screen, on the real image with a real

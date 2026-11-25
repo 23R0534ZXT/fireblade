@@ -5457,8 +5457,9 @@ function renderGrid() {
   shown.forEach(({ index }) => {
     const name = state.columns[index];
     const multi = state.multiSort.findIndex((item) => item.column === index - 1);
-    const sorted = state.sort === index || multi >= 0;
-    const flag = state.sort === index ? state.descending : (multi >= 0 ? state.multiSort[multi].descending : false);
+    // state.sort names a column by its position without the row-id column, like multiSort does
+    const sorted = state.sort === index - 1 || multi >= 0;
+    const flag = state.sort === index - 1 ? state.descending : (multi >= 0 ? state.multiSort[multi].descending : false);
     const arrow = sorted ? (flag ? "▼" : "▲") + (multi >= 0 ? String(multi + 1) : "") : "▲▼";
     head.push(`<th class="${sorted ? "sorted" : ""}" data-column="${index}" title="${escapeHtml(name)}">
       ${index === 0 ? "Ro…" : escapeHtml(name)}<span class="sort">${arrow}</span>

@@ -129,6 +129,18 @@ jobs:
         run: >-
           python -m scripts.recette.host_recette --pack artifacts/pack/Fireblade-Test-Pack-v1
           --image fireblade:ci --report artifacts/recette.json
+      - name: Browser tests on the same image, over the same pack
+        # The readers, Hayabusa and its rules are the ones the user runs: the findings, the graph,
+        # the rules window and the alert context are pressed in a real browser.
+        run: |
+          python -m pip install pytest httpx playwright
+          python -m playwright install --with-deps chromium
+          docker run -d --name fireblade-image -p 127.0.0.1:8080:8080 \
+            -v "$PWD/artifacts/pack/Fireblade-Test-Pack-v1:/pack:ro" fireblade:ci
+          for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/health && break; sleep 2; done
+          FIREBLADE_IMAGE_URL=http://127.0.0.1:8080 FIREBLADE_IMAGE_PACK=/pack \
+          FIREBLADE_IMAGE_PACK_LOCAL="$PWD/artifacts/pack/Fireblade-Test-Pack-v1" \
+            python -m pytest tests/image -q -p no:cacheprovider --confcutdir=tests/image
       - uses: actions/upload-artifact@v4
         if: always()
         with:

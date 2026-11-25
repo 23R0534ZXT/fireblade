@@ -34,6 +34,8 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   after the case.
 - **Disk analysis** speaks English while it works, and a path that does not exist is refused with a
   plain message instead of an internal "RawLoader" one.
+- **Coverage check** names each finding by its analysis (it showed internal file names), and the
+  About box no longer says the import "is not wired yet".
 - `scripts/fetch_readers.py` counted the Hayabusa rules without looking in sub-folders ("0 rule(s)").
 
 ## [0.8.6] — 2026-11-25

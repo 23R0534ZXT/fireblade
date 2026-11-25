@@ -3088,13 +3088,32 @@ class Library:
         except (OSError, ValueError):
             saved = False
         return {
-            "report": english.data(report),
+            "report": self._name_findings(identifier, english.data(report)),
             "counts": report.get("counts") or {},
             "profiles": list(coverage_core.EXPECTED),
             "families": list(coverage_core.EXPECTED.get(expected) or []),
             "analyses": len(snapshots),
             "saved": saved,
         }
+
+    def _name_findings(self, identifier: str, report: dict) -> dict:
+        """The findings of a coverage report, each with the name its analysis has on screen:
+        the audit knows an analysis by the file that holds it, which means nothing to read."""
+        try:
+            names = {
+                str(Path(entry["path"]).resolve()): entry["label"]
+                for entry in self._analyses(self.library.read(identifier))
+            }
+        except (ServiceError, ValueError, OSError, KeyError):
+            return report
+        for item in report.get("findings") or []:
+            try:
+                label = names.get(str(Path(str(item.get("path", ""))).resolve()))
+            except (OSError, ValueError):
+                label = None
+            if label:
+                item["label"] = label
+        return report
 
     def coverage_report(self, identifier: str) -> dict:
         """The last check kept with the case, for reading without running one again."""
@@ -3105,7 +3124,7 @@ class Library:
             raise ServiceError("No coverage check has been kept for this case yet.")
         report = coverage_core.load_report(path)
         return {
-            "report": english.data(report),
+            "report": self._name_findings(identifier, english.data(report)),
             "counts": report.get("counts") or {},
             "profiles": list(coverage_core.EXPECTED),
             "saved": True,

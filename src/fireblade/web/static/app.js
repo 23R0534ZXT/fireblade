@@ -3724,7 +3724,7 @@ function renderCoverage() {
     ? shown.slice(0, 800).map((item) => `<tr class="sev-${escapeHtml(item.severity)}">
         <td>${escapeHtml(item.stage || "")}</td>
         <td>${escapeHtml(item.severity || "")}</td>
-        <td title="${escapeHtml(item.path || "")}">${escapeHtml(String(item.path || "").split(/[\\/]/).pop())}</td>
+        <td title="${escapeHtml(item.path || "")}">${escapeHtml(item.label || String(item.path || "").split(/[\\/]/).pop())}</td>
         <td title="${escapeHtml(item.reason || "")}">${escapeHtml(item.reason || "")}</td>
         <td title="${escapeHtml(item.impact || "")}">${escapeHtml(item.impact || "")}</td>
         <td title="${escapeHtml(item.action || "")}">${escapeHtml(item.action || "")}</td></tr>`).join("")
@@ -7147,7 +7147,8 @@ async function act(name, node) {
       $("about-text").textContent =
         `Fireblade Host ${$("version").textContent.replace("Fireblade ", "")} — the same core as the Windows edition, ` +
         "served over HTTP. The palette, the density and the grid behaviour are carried over from the desktop window. " +
-        "Importing artifacts and the other tabs are not wired yet in this edition.";
+        "Everything stays on this machine: nothing is uploaded, and the only outbound request is the " +
+        "optional check for a newer release.";
       $("about-modal").classList.add("show");
       break;
     case "about-close": closeModals(); break;

@@ -293,3 +293,23 @@ def test_a_folder_preview_counts_every_file_and_lists_a_bounded_number(tmp_path)
         assert preview["count"] == 230 and len(preview["files"]) == 200
     finally:
         service.close()
+
+
+def test_a_disk_walk_speaks_english_and_a_missing_source_is_refused_plainly(tmp_path):
+    from fireblade.web.service import _english_disk_message
+
+    assert _english_disk_message("Extraction en lecture seule : /$MFT") == (
+        "Read-only extraction: /$MFT"
+    )
+    assert _english_disk_message("Découverte : 300 fichiers · 4 artefacts copiés · /x/y") == (
+        "Discovery: 300 files · 4 artifacts copied · /x/y"
+    )
+    root = tmp_path / "cases"
+    root.mkdir()
+    service = Library(root)
+    try:
+        identifier = InvestigationLibrary(root).create("Disks", "", "windows")["id"]
+        with pytest.raises(ServiceError, match="does not exist on the server"):
+            service.start_disk_job(identifier, str(tmp_path / "nothing"), "image")
+    finally:
+        service.close()

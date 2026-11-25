@@ -4307,6 +4307,8 @@ class Library:
         """
         if kind not in self.DISK_KINDS:
             raise ServiceError(f"Unknown disk source: {kind}")
+        if kind != "physical" and not Path(str(source or "")).expanduser().exists():
+            raise ServiceError(f"This path does not exist on the server: {source}")
         folder = self.library.folder(identifier)
         stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         workspace = folder / "Disques" / (stamp + "-" + uuid.uuid4().hex[:8])
@@ -4328,9 +4330,10 @@ class Library:
             self._jobs[job_id] = job
 
         def progress(text):
+            text = _english_disk_message(str(text))
             with self._lock:
-                job["message"] = str(text)[:300]
-                job["log"].append(str(text)[:300])
+                job["message"] = text[:300]
+                job["log"].append(text[:300])
                 if len(job["log"]) > 200:
                     del job["log"][:-200]
 
@@ -5116,6 +5119,17 @@ def _english(text):
             return translate(str(text))
         except (ImportError, ValueError):
             return str(text)
+
+
+def _english_disk_message(text: str) -> str:
+    """A disk walk's progress, in English: the core words the ones that carry a path or a count
+    in its source language, so they cannot be looked up whole."""
+    text = english.english_text(text)
+    text = text.replace("Extraction en lecture seule : ", "Read-only extraction: ")
+    match = re.match(r"Découverte : (\d+) fichiers · (\d+) artefacts copiés · (.*)$", text, re.S)
+    if match:
+        return f"Discovery: {match[1]} files · {match[2]} artifacts copied · {match[3]}"
+    return text
 
 
 OUTPUT_NAMES = {

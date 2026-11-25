@@ -5,7 +5,6 @@ grid per artifact family" merges the three CSV files into a single grid (all row
 source named in a column), and "one grid for everything" gives exactly one grid with a
 grouping that stays.
 """
-
 import os
 import sys
 from pathlib import Path
@@ -34,14 +33,12 @@ if LOGS.exists():
         item.unlink()
 LOGS.mkdir(parents=True, exist_ok=True)
 
-for index, (name, rows) in enumerate(
-    {
-        "amcache-01.csv": "Application Name,SHA1\nupdate.exe,aabbccdd\nsetup.exe,11223344\n",
-        "amcache-02.csv": "Application Name,SHA1\nsvc.exe,55667788\n",
-        "amcache-03.csv": "Application Name,SHA1\nagent.exe,99aabbcc\n",
-        "events.tsv": "Time\tEvent\tUser\n2026-11-17 10:00:00\tlogin\tjdoe\n",
-    }.items()
-):
+for index, (name, rows) in enumerate({
+    "amcache-01.csv": "Application Name,SHA1\nupdate.exe,aabbccdd\nsetup.exe,11223344\n",
+    "amcache-02.csv": "Application Name,SHA1\nsvc.exe,55667788\n",
+    "amcache-03.csv": "Application Name,SHA1\nagent.exe,99aabbcc\n",
+    "events.tsv": "Time\tEvent\tUser\n2026-11-17 10:00:00\tlogin\tjdoe\n",
+}.items()):
     (LOGS / name).write_text(rows, encoding="utf-8", newline="")
 
 screen = fb.work_screen(app)
@@ -70,14 +67,8 @@ def run_round(mode, case_name):
 
     documents = list(window.documents)
     shot = fb.shot(window, f"L-{mode}")
-    journal.add(
-        f"L-{mode}",
-        "OK",
-        f"{len(documents)} grids: "
-        + ", ".join(Path(document.path).stem[:24] for document in documents),
-        None,
-        {"shot": shot},
-    )
+    journal.add(f"L-{mode}", "OK", f"{len(documents)} grids: "
+                + ", ".join(Path(document.path).stem[:24] for document in documents), None, {"shot": shot})
     return window, documents
 
 
@@ -94,12 +85,11 @@ for index, document in enumerate(documents):
     window.switch_document(index)
     fb.wait(app, lambda: not window.busy, 300)
     fb.settle(app, 500)
-    merged_rows[index] = (
-        ("Fichier source" in window.case.headers),
-        window.case.db.execute("SELECT count(*) FROM events").fetchone()[0],
-    )
+    merged_rows[index] = (("Fichier source" in window.case.headers),
+                          window.case.db.execute("SELECT count(*) FROM events").fetchone()[0])
 print("MERGED", merged_rows)
-journal.add("L-rows", "OK", f"grids: {merged_rows}", None, {"shot": fb.shot(window, "L-merged")})
+journal.add("L-rows", "OK", f"grids: {merged_rows}", None,
+            {"shot": fb.shot(window, "L-merged")})
 assert sorted(rows for _merged, rows in merged_rows.values()) == [1, 4], merged_rows
 assert all(merged for merged, _rows in merged_rows.values()), merged_rows
 window.close()

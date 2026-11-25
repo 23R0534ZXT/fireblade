@@ -14,7 +14,6 @@ What it proves, on the real window and with captures at every step:
 - a real file inside the case is destroyed with the 3-pass scheme, the SHA-256 before and
   after are in the certificate, and the case itself is still readable afterwards.
 """
-
 import os
 import sys
 import time
@@ -59,9 +58,7 @@ ALERTS.mkdir(parents=True, exist_ok=True)
     '"ScriptBlock: -enc SQBFAFgA",r7,Execution,T1059.001\n'
     "2026-11-17T10:04:10Z,Outbound connection to rare domain,medium,PC-COMPTA,"
     'Sysmon,3,"Destination: evil.example | Port: 443",r8,CommandAndControl,T1071\n',
-    encoding="utf-8",
-    newline="",
-)
+    encoding="utf-8", newline="")
 
 screen = fb.work_screen(app)
 window = Window(require_case=False)
@@ -77,8 +74,6 @@ folder = window.investigation_library.folder(data["id"])
 fb.settle(app, 800)
 
 uic.choose_import_sources = lambda parent=None, start=None: [str(ALERTS)]
-
-
 def choose_one_grid_per_file(dialog):
     dialog.progressive.setChecked(True)
     return QDialog.Accepted
@@ -99,10 +94,8 @@ assert window.hayabusa_panel.groups, "no finding in the Hayabusa panel"
 panel = window.operations_panel
 window.workbench.setCurrentWidget(panel)
 fb.settle(app, 600)
-columns = [
-    panel.actions_table.horizontalHeaderItem(i).text()
-    for i in range(panel.actions_table.columnCount())
-]
+columns = [panel.actions_table.horizontalHeaderItem(i).text()
+           for i in range(panel.actions_table.columnCount())]
 expected = ["Date", "Priority", "Action status", "Action type", "Intervenant", "Details"]
 assert columns == expected, columns
 journal.add("D02", "OK", "six-column table", None, {"shot": fb.shot(panel, "D02-table-empty")})
@@ -116,10 +109,8 @@ def fill_action(dialog):
     dialog.intervenant.setText("Direction SI (client)")
     dialog.machine.setCurrentText("SRV-DC01")
     dialog.reference.setText("GLPI-4711")
-    dialog.details.setPlainText(
-        "Réinitialiser les comptes du service comptabilité\n"
-        "Comptes AD et sauvegardes à reprendre avant vendredi"
-    )
+    dialog.details.setPlainText("Réinitialiser les comptes du service comptabilité\n"
+                                "Comptes AD et sauvegardes à reprendre avant vendredi")
     return QDialog.Accepted
 
 
@@ -131,9 +122,7 @@ row = [panel.actions_table.item(0, column).text() for column in range(6)]
 assert row[0] == "2026-11-18" and row[1] == "High" and row[2] == "Waiting on client", row
 assert row[3] == "Remediation" and row[4] == "Direction SI (client)", row
 assert "Réinitialiser les comptes" in row[5], row
-journal.add(
-    "D03", "OK", "action recorded from the dialog", None, {"shot": fb.shot(panel, "D03-action")}
-)
+journal.add("D03", "OK", "action recorded from the dialog", None, {"shot": fb.shot(panel, "D03-action")})
 
 panel.actions_table.selectRow(0)
 panel.complete_action()
@@ -160,38 +149,20 @@ ops.ActionDialog.exec = fill_action_two
 panel.add_action()
 fb.settle(app, 400)
 
-case_workspace.mutate(
-    folder,
-    lambda data: data["client"].update(
-        name="ACME Industrie", reference="REF-2026-070", sector="Industrie", contact="M. Client"
-    ),
-)
-case_workspace.mutate(
-    folder,
-    lambda data: data["engagement"].update(
-        contract="CT-070",
-        lead="Maxime MAURIN",
-        start="2026-11-17",
-        end="2026-11-30",
-        notes="Périmètre : contrôleur de domaine et poste comptabilité.",
-    ),
-)
+case_workspace.mutate(folder, lambda data: data["client"].update(
+    name="ACME Industrie", reference="REF-2026-070", sector="Industrie", contact="M. Client"))
+case_workspace.mutate(folder, lambda data: data["engagement"].update(
+    contract="CT-070", lead="Maxime MAURIN", start="2026-11-17", end="2026-11-30",
+    notes="Périmètre : contrôleur de domaine et poste comptabilité."))
 panel.refresh()
 panel.scope.setCurrentIndex(panel.scope.findData("all"))
 fb.settle(app, 600)
-headers = [
-    panel.actions_table.horizontalHeaderItem(i).text()
-    for i in range(panel.actions_table.columnCount())
-]
+headers = [panel.actions_table.horizontalHeaderItem(i).text()
+           for i in range(panel.actions_table.columnCount())]
 assert headers[:2] == ["Case", "Client"], headers
 assert panel.actions_table.item(0, 0).text() == "CASE-070"
-journal.add(
-    "D04",
-    "OK",
-    "global board with case and client",
-    None,
-    {"shot": fb.shot(panel, "D04-all-cases")},
-)
+journal.add("D04", "OK", "global board with case and client", None,
+            {"shot": fb.shot(panel, "D04-all-cases")})
 panel.scope.setCurrentIndex(panel.scope.findData("case"))
 panel.refresh()
 fb.settle(app, 400)
@@ -239,9 +210,7 @@ window.workbench.setCurrentWidget(graph)
 graph.reload()
 fb.settle(app, 700)
 assert graph.canvas.graph["nodes"], graph.status.text()
-technique = next(
-    (node for node in graph.canvas.graph["nodes"] if node["kind"] == "technique"), None
-)
+technique = next((node for node in graph.canvas.graph["nodes"] if node["kind"] == "technique"), None)
 stage = next((node for node in graph.canvas.graph["nodes"] if node["kind"] == "stage"), None)
 assert technique is not None and stage is not None
 graph.canvas.selected = technique["id"]
@@ -263,9 +232,7 @@ saved = case_workspace.load(folder)
 tagged = next((node for node in saved["graph"]["nodes"] if node["id"] == technique["id"]), None)
 assert tagged and tagged["tags"] == ["persistance", "accès initial"], saved["graph"]["nodes"]
 graph.reload()
-technique = next(
-    (node for node in graph.canvas.graph["nodes"] if node["kind"] == "technique"), None
-)
+technique = next((node for node in graph.canvas.graph["nodes"] if node["kind"] == "technique"), None)
 assert technique["tags"] == ["persistance", "accès initial"]
 journal.add("D07", "OK", "graph built and tagged", None, {"shot": fb.shot(graph, "D07-graph")})
 
@@ -280,27 +247,15 @@ def accept_report(dialog):
 
 
 commands.ClientReportDialog.exec = accept_report
-commands.QFileDialog.getSaveFileName = lambda *args, **kwargs: (
-    str(REPORT),
-    "Rapport HTML (*.html)",
-)
+commands.QFileDialog.getSaveFileName = lambda *args, **kwargs: (str(REPORT), "Rapport HTML (*.html)")
 # "Report saved — open it?" must not open a browser on the user's desktop.
 QMessageBox.question = staticmethod(lambda *args, **kwargs: QMessageBox.No)
 window.client_report()
 assert fb.wait(app, lambda: REPORT.exists(), 180), "client report not written"
 html = REPORT.read_text(encoding="utf-8")
-for needle in (
-    "ACME Industrie",
-    "REF-2026-070",
-    "1. Synthèse",
-    "4. Constats détaillés",
-    "5. Graphe d'attaque",
-    "6. Indicateurs suivis",
-    "7. Actions et suivi",
-    "8. Devenir des preuves",
-    "evil.example",
-    "Réinitialiser les comptes",
-):
+for needle in ("ACME Industrie", "REF-2026-070", "1. Synthèse", "4. Constats détaillés",
+               "5. Graphe d'attaque", "6. Indicateurs suivis", "7. Actions et suivi",
+               "8. Devenir des preuves", "evil.example", "Réinitialiser les comptes"):
     assert needle in html, needle
 assert "data:image/png;base64," in html, "the graph was not embedded"
 viewer = QTextBrowser()
@@ -310,13 +265,8 @@ viewer.setHtml(html)
 fb.place(viewer, screen)
 viewer.show()
 fb.settle(app, 900)
-journal.add(
-    "D08",
-    "OK",
-    "client report generated and rendered",
-    None,
-    {"shot": fb.shot(viewer, "D08-report"), "generated": str(REPORT)},
-)
+journal.add("D08", "OK", "client report generated and rendered", None,
+            {"shot": fb.shot(viewer, "D08-report"), "generated": str(REPORT)})
 viewer.close()
 
 EVIDENCE = folder / "preuves-a-detruire"
@@ -349,13 +299,7 @@ try:
     dialog.phrase.setText("DETRUIRE")
     dialog.update_total()
     assert dialog.go.isEnabled()
-    journal.add(
-        "D09",
-        "OK",
-        "destruction dialog ready",
-        None,
-        {"shot": fb.shot(dialog, "D09-destroy-ready")},
-    )
+    journal.add("D09", "OK", "destruction dialog ready", None, {"shot": fb.shot(dialog, "D09-destroy-ready")})
     answers = {"count": 0}
 
     def answer(*args, **kwargs):
@@ -366,9 +310,7 @@ try:
 
     QMessageBox.question = staticmethod(answer)
     dialog.start()
-    assert fb.wait(app, lambda: dialog.job is not None and dialog.job.isFinished(), 240), (
-        "destruction did not finish"
-    )
+    assert fb.wait(app, lambda: dialog.job is not None and dialog.job.isFinished(), 240), "destruction did not finish"
     fb.settle(app, 1200)
     assert dialog.job.error is None, dialog.job.error
     assert not first.exists() and not second.exists(), "evidence still on disk"
@@ -378,13 +320,8 @@ try:
     assert digests["epave-comptes.csv"] in pv, "before-hash missing from the certificate"
     assert "détruit et vérifié" in pv
     assert (folder / "destruction" / (certificates[-1].stem + ".pdf")).exists(), "no PDF"
-    journal.add(
-        "D10",
-        "OK",
-        "evidence destroyed, certificate written",
-        None,
-        {"shot": fb.shot(dialog, "D10-destroyed"), "certificate": str(certificates[-1])},
-    )
+    journal.add("D10", "OK", "evidence destroyed, certificate written", None,
+                {"shot": fb.shot(dialog, "D10-destroyed"), "certificate": str(certificates[-1])})
     pv_view = QTextBrowser()
     pv_view.setWindowTitle("Procès-verbal de destruction")
     pv_view.resize(900, 700)
@@ -392,13 +329,8 @@ try:
     fb.place(pv_view, screen)
     pv_view.show()
     fb.settle(app, 800)
-    journal.add(
-        "D11",
-        "OK",
-        "certificate rendered",
-        None,
-        {"shot": fb.shot(pv_view, "D11-certificate"), "certificate": str(certificates[-1])},
-    )
+    journal.add("D11", "OK", "certificate rendered", None,
+                {"shot": fb.shot(pv_view, "D11-certificate"), "certificate": str(certificates[-1])})
     pv_view.close()
 finally:
     dialog.close()
@@ -416,31 +348,17 @@ LAYER.unlink(missing_ok=True)
 window.workbench.setCurrentWidget(graph)
 graph.reload()
 fb.settle(app, 500)
-graph_view.QFileDialog.getSaveFileName = lambda *args, **kwargs: (
-    str(LAYER),
-    "Couche Navigator (*.json)",
-)
+graph_view.QFileDialog.getSaveFileName = lambda *args, **kwargs: (str(LAYER), "Couche Navigator (*.json)")
 graph.export_navigator()
 fb.settle(app, 600)
 assert LAYER.is_file(), graph.status.text()
 import json as _json
-
 layer = _json.loads(LAYER.read_text(encoding="utf-8"))
-print(
-    "LAYER",
-    layer["domain"],
-    len(layer["techniques"]),
-    [t["techniqueID"] for t in layer["techniques"]][:6],
-)
+print("LAYER", layer["domain"], len(layer["techniques"]), [t["techniqueID"] for t in layer["techniques"]][:6])
 assert layer["domain"] == "enterprise-attack" and layer["techniques"]
 assert all(t["techniqueID"].startswith("T") and t.get("metadata") for t in layer["techniques"])
-journal.add(
-    "D14",
-    "OK",
-    f"{len(layer['techniques'])} techniques exported for the Navigator",
-    None,
-    {"shot": fb.shot(graph, "D14-navigator-layer")},
-)
+journal.add("D14", "OK", f"{len(layer['techniques'])} techniques exported for the Navigator", None,
+            {"shot": fb.shot(graph, "D14-navigator-layer")})
 
 window.workbench.setCurrentWidget(window.operations_panel)
 panel.refresh()

@@ -741,6 +741,7 @@ def test_a_hunt_over_every_analysis_reads_them_all(page, server):
     )
     page.click('.tabs .tab:text-is("IOC hunting")')
     page.fill("#ioc-input", "evil.example\n10.0.0.1")
+    page.uncheck("#ioc-all")  # the whole case is the default, as in the desktop
     page.click("#ioc-scan")
     page.wait_for_function(
         "document.getElementById('ioc-summary').innerText.includes('this analysis')", timeout=60000

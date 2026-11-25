@@ -734,7 +734,7 @@ class Library:
         # the others) and the WebCache reader (Python, so it is there when its library is).
         for name in (*PARSERS, *ADDITIONAL_PARSERS):
             try:
-                if name == "WebCache":
+                if name in ("WebCache", "SRUM"):
                     readers[name] = importlib.util.find_spec("dissect.esedb") is not None
                 else:
                     readers[name] = bool(pack and pack.available(name))

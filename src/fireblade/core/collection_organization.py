@@ -19,6 +19,7 @@ ARTIFACTS = {
     "LECmd": "Raccourcis LNK",
     "JLECmd": "Jump Lists",
     "SrumECmd": "SRUM",
+    "SRUM": "SRUM",
     "WxTCmd": "Windows Timeline",
     "RBCmd": "Corbeille",
     "RecentFileCacheParser": "RecentFileCache",

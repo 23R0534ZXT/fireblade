@@ -95,27 +95,15 @@ AppCompatCache 239 · Jump lists 8 · Prefetch 1 362 · Windows Timeline 12 · L
 exported CSV 1 327. The EVTX and AppCompatCache counts are the ones the Windows
 column of the table above measured, on the same files.
 
-### SRUDB.dat is the one family Linux cannot read
+### SRUDB.dat — read natively (since 0.8.4)
 
-`SrumECmd` refuses to start outside Windows:
+`SrumECmd` refuses to start outside Windows (it loads the Windows ESE library). On Linux the
+collection hands `SRUDB.dat` to `fireblade.core.srum`, which reads it with `dissect.database`:
+one CSV per provider table of the database (application resource use, network usage and
+connections, energy, push notifications, application timeline…), the application and the user
+resolved through `SruDbIdMapTable`, the timestamp read as a date. Measured on two real
+`SRUDB.dat` of the Raw Artifacts pack (Windows 10): 618 rows in the *SRUM* family.
 
-```
-Non-Windows platforms not supported due to the need to load ESE specific Windows libraries! Exiting...
-```
-
-That is not a Fireblade defect and not a missing mount: the engine loads a Windows
-ESE library. The collection used to report `Moteur terminé avec le code 1`, which
-told the analyst nothing. It now reports, in the window's language:
-
-> This reader needs the Windows ESE libraries: it cannot read this file on Linux.
-> Import the CSV the desktop edition produced.
-
-Two ways forward, both honest:
-
-1. **Export with the desktop collector** (Windows), then import its SRUM CSV — works today.
-2. **A native reader with `dissect.esedb`**, already a dependency and already used for
-   WebCache. Measured on this very file: `SruDbIdMapTable` (2 413 ids) and the usage
-   tables (`{DA73FB89…}` 11 020 rows, `{5C8CF1C7…}` 11 210, `{D10CA2FE…}` 4 800, …)
-   are readable under Linux. The network and application tables carry their payload in
-   a `BinaryData` blob, so a faithful reader means decoding those layouts — a project
-   of its own, not a mount. Until then the row is reported, not silently dropped.
+The columns are the database's own: they are **not** SrumECmd's column names, nothing the
+database does not say is decoded, and the table is named in a `SRUM_Table` column. An analyst who
+needs SrumECmd's exact output still exports it with the desktop collector and imports the CSV.

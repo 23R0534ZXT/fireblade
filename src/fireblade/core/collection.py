@@ -43,7 +43,7 @@ PARSERS = (
 )
 
 
-ADDITIONAL_PARSERS = ("Shellbags", "WebCache")
+ADDITIONAL_PARSERS = ("Shellbags", "WebCache", "SRUM")
 
 
 _WINDOWS_ONLY = re.compile(
@@ -199,7 +199,8 @@ def identify(path):
     if name.endswith((".automaticdestinations-ms", ".customdestinations-ms")):
         return ["JLECmd"]
     if name == "srudb.dat":
-        return ["SrumECmd"]
+        # SrumECmd needs the Windows ESE libraries: elsewhere the native reader takes the file.
+        return ["SrumECmd"] if WINDOWS else ["SRUM"]
     if name == "activitiescache.db":
         return ["WxTCmd"]
     if name.startswith("$i") and len(name) > 2:
@@ -1062,8 +1063,11 @@ class Collection:
                 output.mkdir()
                 try:
                     catscale_outputs = {}
-                    if tool == "WebCache":
-                        from fireblade.core.webcache import parse
+                    if tool in ("WebCache", "SRUM"):
+                        if tool == "WebCache":
+                            from fireblade.core.webcache import parse
+                        else:
+                            from fireblade.core.srum import parse
 
                         result = parse(source, output, self.progress)
                         run["webcache"] = result

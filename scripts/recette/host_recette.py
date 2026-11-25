@@ -7,7 +7,7 @@ count the pack's own ``RESULTATS-ATTENDUS.json`` states. Every check ends as one
 
 ``pass``         what was measured is what was expected;
 ``fail``         it is not;
-``known-limit``  a documented limit of the Linux edition (for example the SRUM reader);
+``known-limit``  a documented limit of the Linux edition (none today; SRUM has a native reader);
 ``info``         measured and reported, not yet pinned: the first runs on real artifacts calibrate it.
 
 Without ``--strict`` only the failures of checks that are already pinned fail the run; with it,

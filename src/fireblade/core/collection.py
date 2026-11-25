@@ -951,10 +951,9 @@ class Collection:
             check_cancel()
             source, entry = queue.pop(0)
             depth = int(entry.get("archive_depth", 0))
-            owner = identify(source) if archives.is_archive(source) else ["not an archive"]
-            # A CatScale collection stays whole; a tar or a zip is opened even when its first bytes
-            # could pass for a compressed log.
-            if owner and owner != ["LinuxLogs"]:
+            # An archive a reader already owns (a CatScale collection, the Linux log reader's own zips
+            # and tars) stays whole: that reader opens it, nested members included.
+            if not archives.is_archive(source) or identify(source):
                 kept.append((source, entry))
                 continue
             label = extracted.get(str(source)) or self.label_for(source)

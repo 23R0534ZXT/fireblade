@@ -189,7 +189,10 @@ def base_checks(observed: dict, files_in_pack: int, job: dict) -> list[Check]:
             str(job.get("error") or "")[:200],
         )
     ]
-    accounted = len(observed["files"])
+    # the files inventory the import writes for the binaries is not a file of the source
+    accounted = len(
+        [item for item in observed["files"] if "/results/inventory/" not in item.get("path", "")]
+    )
     checks.append(
         Check(
             "every-file-accounted-for",
@@ -250,8 +253,18 @@ def check_volume(expected: dict, observed: dict) -> list[Check]:
 def check_exports(expected: dict, observed: dict) -> list[Check]:
     """The csv and the tsv carry the same schema and are read as one family: their rows add up."""
     want = expected.get("exports_rows")
-    readable = sum(1 for item in observed["files"] if item.get("status") == "complete")
-    got = sum(item["rows"] for item in observed["analyses"])
+    # the files inventory (one line per binary of the pack) is not an export of the pack
+    listed = "/results/inventory/"
+    readable = sum(
+        1
+        for item in observed["files"]
+        if item.get("status") == "complete"
+        and listed not in item.get("path", "")
+        and "Inventory" not in item.get("tools", [])
+    )
+    got = sum(
+        item["rows"] for item in observed["analyses"] if "inventory" not in item["label"].lower()
+    )
     return (
         [
             Check(

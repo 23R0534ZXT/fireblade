@@ -942,8 +942,9 @@ def test_the_imports_table_says_which_files_were_read_and_why_one_was_not(page, 
     _mixed_folder(page, server)
     lines = _import_lines(page)
     assert any(line.startswith("complete good.csv") for line in lines), lines
-    assert any("junk.bin" in line and "No reader recognised" in line for line in lines), lines
-    assert "not read" in page.inner_text("#imports-view")
+    # nothing is left unread: an opaque file is listed in the files inventory, and says so
+    assert any("junk.bin" in line and "files inventory" in line for line in lines), lines
+    assert any("notes.txt" in line and line.startswith("complete") for line in lines), lines
 
 
 def test_the_imports_filter_by_status_and_by_text(page, server):
@@ -952,7 +953,9 @@ def test_the_imports_filter_by_status_and_by_text(page, server):
     page.wait_for_function(
         "!document.getElementById('imports-rows').innerText.includes('good.csv')"
     )
-    assert len(_import_lines(page)) == 2
+    assert _import_lines(page) == ["No collected file matches this filter."], (
+        "nothing is unsupported"
+    )
     page.select_option("#imports-status", "")
     page.fill("#imports-search", "notes")
     page.wait_for_function(

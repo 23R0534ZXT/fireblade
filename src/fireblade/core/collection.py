@@ -1037,7 +1037,7 @@ class Collection:
                 kind="inventory",
                 reason="Listed in the files inventory (size, dates, SHA-256, PE header)",
             )
-        child = dict(path=str(target), status="pending", tools=[])
+        child = dict(path=str(target), status="pending", tools=[], family="Files inventory")
         self.report["files"].append(child)
         rest.append((target, child))
         return rest
@@ -1272,7 +1272,9 @@ class Collection:
                                 **(
                                     {"family": catscale_outputs[str(csv)]["family"]}
                                     if tool in ("CatScale", "LinuxLogs")
-                                    else {}
+                                    else (
+                                        {"family": entry["family"]} if entry.get("family") else {}
+                                    )
                                 ),
                             )
                         )

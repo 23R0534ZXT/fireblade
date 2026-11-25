@@ -4722,6 +4722,18 @@ class Library:
             "updated": recorded.get("updated"),
         }
 
+    def filter_text(self, identifier: str, index: int, text: str) -> dict:
+        """Parse a text filter (``Contains([User], 'a') And [ID] >= 10``) with the desktop's parser."""
+        from fireblade.core.filter_text import parse_filter
+
+        if not text.strip():
+            raise ServiceError("Type an expression first.")
+        case = self._case_for(identifier, index)
+        with case.lock:
+            expression = parse_filter(text, case.headers)
+            case.condition(expression)
+        return {"expression": expression}
+
     def _case_for(self, identifier: str, index: int) -> Case:
         key = (identifier, index)
         with self._lock:

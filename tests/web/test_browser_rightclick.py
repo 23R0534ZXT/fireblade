@@ -53,3 +53,30 @@ def test_correlating_a_value_opens_the_timeline_on_it(page):
         "document.getElementById('timeline-view').style.display !== 'none'", timeout=30000
     )
     assert page.input_value("#timeline-search") == value
+
+
+def test_a_text_expression_filters_like_the_desktop_parser(page):
+    total = page.evaluate("state.total")
+    page.evaluate("void act('expression-text')")
+    page.wait_for_selector("#ask-modal.show")
+    page.fill("#ask-input", "Contains([User], 'alice')")
+    page.click('#ask-modal [data-act="ask-ok"]')
+    page.wait_for_function("state.total < " + str(total) + " && state.total > 0", timeout=30000)
+    kept = page.evaluate("state.total")
+    page.evaluate("void act('expression-text')")
+    page.wait_for_selector("#ask-modal.show")
+    page.fill("#ask-input", "Contains([")
+    page.click('#ask-modal [data-act="ask-ok"]')
+    page.wait_for_function("!document.querySelector('#ask-modal.show')")
+    assert page.evaluate("state.total") == kept  # a refused expression changes nothing
+
+
+def test_reset_the_view_puts_back_filters_sorts_groups_and_hidden_columns(page):
+    total = page.evaluate("state.total")
+    page.evaluate(
+        "state.filters = [{column: 2, operator: 'eq', value: 'alice'}]; state.hidden.add(1); state.groups = [2]"
+    )
+    page.evaluate("void act('reset-view')")
+    page.wait_for_function(
+        f"state.total === {total} && state.filters.length === 0 && state.groups.length === 0 && state.hidden.size === 0"
+    )

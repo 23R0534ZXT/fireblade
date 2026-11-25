@@ -17,6 +17,10 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 - **The cell right-click menu is complete.** Added the desktop's cell note, bookmark / note, note on
   the selection, "search every analysis for this value" and "correlate this value across the case".
 
+- **Parity with the desktop's menus.** Found by walking every command of the desktop window (126) against
+  the Host: the text filter expression (`Contains([User], 'a') And [ID] >= 10`, parsed by the desktop's
+  own parser), Reset the view, and the Hayabusa sources pointer.
+
 ### Fixed
 - CatScale family names ("Utilisateurs", "Processus et réseau"…) are English in the Artifact column
   and in the timeline; the reasons of a file read by two missing engines are translated; the severity

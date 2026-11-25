@@ -1641,6 +1641,25 @@ function readExpressionGroup(node) {
   return { logic, children };
 }
 
+/* "Text expression…": Contains([Column], 'text') And [ID] >= 10, parsed by the desktop's own parser. */
+async function openTextExpression() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  const text = await ask({
+    title: "Filter expression",
+    label: "Expression",
+    note: "Syntax: Contains([Column], 'text') And [ID] >= 10. Functions: Contains, Iif, InRange, DateTimeFromParts, AddTimeSpan, GetYear…" });
+  if (text === null || !text.trim()) return;
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/filter-text`, { text });
+    state.filters = [];
+    state.expression = payload.expression;
+    await loadRows(true);
+    say(`Text expression applied: ${state.total} row(s)`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 function openExpressionDialog() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
   let group = { logic: "and", children: [] };
@@ -1721,6 +1740,20 @@ function applyStoredRowHeight() {
   document.documentElement.style.setProperty("--head-height", `${prefs.headers}px`);
   document.documentElement.style.setProperty("--wrap", prefs.wrap || prefs.fit ? "normal" : "nowrap");
   document.documentElement.classList.toggle("rowclip", prefs.wrap && !prefs.fit);
+}
+
+/* "Reset the view": the desktop's reset: no filter, no sort, no group, nothing hidden or pinned. */
+function resetView() {
+  if (!state.columns.length) { say("Open an analysis first", true); return; }
+  state.filters = []; state.search = ""; state.expression = null; state.bookmarksOnly = false;
+  state.sort = null; state.multiSort = []; state.groups = []; state.path = []; state.summaries = []; state.order = "";
+  state.hidden = new Set(); state.pinned = new Set(); state.pinnedRight = new Set(); state.widths = {};
+  state.offset = 0;
+  $("search").value = "";
+  $("bookmarks-only").classList.remove("active");
+  saveLayoutSoon();
+  loadRows(true);
+  say("View reset");
 }
 
 function resetWidths() {
@@ -6952,6 +6985,12 @@ async function act(name, node) {
     case "note-replace": await noteSelection("replace"); break;
     case "filter-active-cell": filterFromCell("eq"); break;
     case "expression-andor": openExpressionDialog(); break;
+    case "help-hayabusa-source":
+      window.open("https://github.com/Yamato-Security/hayabusa/tree/v4.3.1", "_blank", "noopener");
+      say("Hayabusa 4.3.1 is the unmodified upstream release: its sources are published at github.com/Yamato-Security/hayabusa");
+      break;
+    case "reset-view": resetView(); break;
+    case "expression-text": await openTextExpression(); break;
     case "show-timeline": showTab("timeline"); break;
     case "highlight-text": await openHighlight(); break;
     case "rowheight-apply": applyRowHeightPrefs(); break;

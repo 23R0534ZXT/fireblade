@@ -400,6 +400,14 @@ def create_app(
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/analyses/{index}/filter-text")
+    def filter_text(identifier: str, index: int, payload: dict):
+        """The desktop's "Text expression…": the text becomes the same condition tree."""
+        try:
+            return library.filter_text(identifier, index, str((payload or {}).get("text") or ""))
+        except (ServiceError, ValueError, TypeError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+
     @app.post("/api/cases/{identifier}/analyses/{index}/cellnotes")
     def cell_notes(identifier: str, index: int, payload: dict):
         rows = (payload or {}).get("row_ids") or []

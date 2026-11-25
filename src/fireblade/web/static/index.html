@@ -452,14 +452,15 @@
               <option value="other">Other</option>
             </select>
             <button class="btn" id="action-add">New action…</button>
+            <button class="btn" id="action-edit" title="Every field of the selected action: status, dates, person, machine, reference, details">Edit…</button>
             <button class="btn" id="action-delete">Delete</button>
             <button class="btn" id="action-export" title="Download the tracking as a spreadsheet">Export CSV</button>
           </div>
           <div class="gridwrap" style="flex:1">
             <div class="gridbody">
               <table>
-                <colgroup><col style="width:110px"><col style="width:90px"><col style="width:100px"><col style="width:110px"><col style="width:110px"><col><col style="width:100px"></colgroup>
-                <thead><tr><th>Date</th><th>Priority</th><th>Action status</th><th>Action type</th><th>Assignee</th><th>Details</th><th></th></tr></thead>
+                <colgroup><col style="width:100px"><col style="width:100px"><col style="width:90px"><col style="width:140px"><col style="width:110px"><col style="width:120px"><col><col style="width:100px"></colgroup>
+                <thead><tr><th>Date</th><th>Due</th><th>Priority</th><th>Action status</th><th>Action type</th><th>Assignee</th><th>Details</th><th></th></tr></thead>
                 <tbody id="action-rows"></tbody>
               </table>
             </div>
@@ -1432,6 +1433,47 @@
     <div class="foot">
       <button class="btn" data-act="global-run">Search</button>
       <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="action-modal">
+  <div class="dialog" style="min-width:640px">
+    <h3 id="action-modal-title">Action</h3>
+    <div class="body">
+      <div class="row"><label for="ae-title">Title</label><input id="ae-title" style="flex:1"></div>
+      <div class="row"><label for="ae-status">Status</label>
+        <select id="ae-status">
+          <option value="todo">To do</option><option value="in_progress">In progress</option>
+          <option value="waiting_client">Waiting for the client</option><option value="waiting_us">Waiting on our side</option>
+          <option value="blocked">Blocked</option><option value="done">Done</option><option value="cancelled">Cancelled</option>
+        </select>
+        <label for="ae-priority">Priority</label>
+        <select id="ae-priority"><option value="low">Low</option><option value="medium">Medium</option>
+          <option value="high">High</option><option value="critical">Critical</option></select>
+      </div>
+      <div class="row"><label for="ae-type">Type</label>
+        <select id="ae-type">
+          <option value="collect">Collection</option><option value="analysis">Analysis</option>
+          <option value="remediation">Remediation</option><option value="coordination">Coordination</option>
+          <option value="meeting">Meeting</option><option value="report">Report</option>
+          <option value="destruction">Destruction</option><option value="legal">Legal</option><option value="other">Other</option>
+        </select>
+        <label for="ae-owner">Owner</label>
+        <select id="ae-owner"><option value="us">Our team</option><option value="client">Client</option>
+          <option value="third_party">Third party</option><option value="vendor">Vendor</option>
+          <option value="unassigned">Unassigned</option></select>
+      </div>
+      <div class="row"><label for="ae-person">Person</label><input id="ae-person" placeholder="Who does it">
+        <label for="ae-machine">Machine</label><input id="ae-machine" placeholder="Optional"></div>
+      <div class="row"><label for="ae-date">Date</label><input type="date" id="ae-date">
+        <label for="ae-due">Due</label><input type="date" id="ae-due">
+        <label for="ae-reference">Reference</label><input id="ae-reference" placeholder="Ticket, mail…"></div>
+      <div class="row"><label for="ae-detail">Details</label><textarea id="ae-detail" rows="4" style="flex:1"></textarea></div>
+    </div>
+    <div class="foot">
+      <button class="btn" data-act="action-save" id="ae-save">Save</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
     </div>
   </div>
 </div>

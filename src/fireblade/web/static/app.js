@@ -4240,7 +4240,21 @@ async function loadActions() {
   if (!state.openCase) return;
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/workspace`);
-    actionState.items = payload.actions;
+    actionState.items = (payload.actions || []).map((item) => ({ ...item, _caseId: state.openCase.id,
+                                                                  _caseName: state.openCase.name }));
+    // "Every case of the library": the actions of each case, each marked with its own case.
+    if ($("action-scope").value === "all") {
+      const others = state.cases.filter((item) => item.id !== state.openCase.id && !item.storage_archive);
+      const lists = await Promise.all(others.map(async (item) => {
+        try {
+          const other = await api(`/api/cases/${item.id}/workspace`);
+          return (other.actions || []).map((action) => ({ ...action, _caseId: item.id, _caseName: item.name }));
+        } catch (_) {
+          return [];
+        }
+      }));
+      actionState.items = actionState.items.concat(...lists);
+    }
     workspaceState.entities = payload.entities || [];
     workspaceState.indicators = payload.iocs || [];
     renderActions();
@@ -4445,17 +4459,21 @@ function actionText(kind, code) {
 function renderActions() {
   const items = shownActions();
   actionState.shown = items;
+  const everywhere = $("action-scope").value === "all";
+  const person = (item) => (item.intervenant || actionText("owner", item.owner))
+    + (everywhere && item._caseName ? ` · ${item._caseName}` : "");
   $("action-rows").innerHTML = items.length ? items.map((item) => `
     <tr data-action="${escapeHtml(item.id)}" class="${actionState.selected === item.id ? "sel" : ""}">
       <td>${escapeHtml(item.date || "")}</td>
+      <td>${escapeHtml(item.due || "")}</td>
       <td>${escapeHtml(actionText("priority", item.priority))}</td>
       <td>${escapeHtml(actionText("status", item.status))}</td>
       <td>${escapeHtml(actionText("type", item.type))}</td>
-      <td>${escapeHtml(item.intervenant || actionText("owner", item.owner))}</td>
+      <td>${escapeHtml(person(item))}</td>
       <td title="${escapeHtml(item.detail || "")}">${escapeHtml(item.title || "")}</td>
       <td><button class="btn" data-action-close="${escapeHtml(item.id)}">${
         item.status === "done" ? "Reopen" : "Done"}</button></td>
-    </tr>`).join("") : '<tr><td colspan="7" class="cellnull">No action recorded in this scope.</td></tr>';
+    </tr>`).join("") : '<tr><td colspan="8" class="cellnull">No action recorded in this scope.</td></tr>';
   $("action-rows").querySelectorAll("tr[data-action]").forEach((row) => {
     row.addEventListener("click", (event) => {
       const button = event.target.closest("[data-action-close]");
@@ -4463,6 +4481,7 @@ function renderActions() {
       actionState.selected = row.dataset.action;
       renderActions();
     });
+    row.addEventListener("dblclick", () => openActionEditor(row.dataset.action));
   });
   const open = actionState.items.filter((item) => item.status !== "done" && item.status !== "cancelled").length;
   const overdue = actionState.items.filter((item) => {
@@ -4481,7 +4500,7 @@ async function removeActionRow(actionId) {
   if (!window.confirm(`Remove "${title}" from the case?`)) return;
   try {
     const response = await fetch(url(
-      `/api/cases/${state.openCase.id}/actions/${encodeURIComponent(actionId)}`),
+      `/api/cases/${(item && item._caseId) || state.openCase.id}/actions/${encodeURIComponent(actionId)}`),
       { method: "DELETE" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.detail || response.statusText);
@@ -4508,11 +4527,54 @@ async function addAction() {
   }
 }
 
+/* Every field of an action, as the desktop's action window has them. */
+let editingAction = null;
+
+function openActionEditor(actionId) {
+  const item = actionState.items.find((entry) => entry.id === (actionId || actionState.selected));
+  if (!item) { say("Select an action first", true); return; }
+  editingAction = item;
+  $("action-modal-title").textContent = `Action — ${item.title || ""}`;
+  $("ae-title").value = item.title || "";
+  $("ae-status").value = item.status || "todo";
+  $("ae-priority").value = item.priority || "medium";
+  $("ae-type").value = item.type || "other";
+  $("ae-owner").value = item.owner || "unassigned";
+  $("ae-person").value = item.intervenant || "";
+  $("ae-machine").value = item.machine || "";
+  $("ae-date").value = item.date || "";
+  $("ae-due").value = item.due || "";
+  $("ae-reference").value = item.reference || "";
+  $("ae-detail").value = item.detail || "";
+  $("action-modal").classList.add("show");
+}
+
+async function saveActionEditor() {
+  if (!editingAction) return;
+  const title = $("ae-title").value.trim();
+  if (!title) { say("An action needs a title", true); return; }
+  const fields = {
+    title, status: $("ae-status").value, priority: $("ae-priority").value, type: $("ae-type").value,
+    owner: $("ae-owner").value, intervenant: $("ae-person").value.trim(),
+    machine: $("ae-machine").value.trim(), date: $("ae-date").value, due: $("ae-due").value,
+    reference: $("ae-reference").value.trim(), detail: $("ae-detail").value,
+  };
+  const target = editingAction;
+  try {
+    await apiPatch(`/api/cases/${target._caseId || state.openCase.id}/actions/${target.id}`, fields);
+    closeModals();
+    await loadActions();
+    say(`Action saved: ${title}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 async function toggleAction(actionId) {
   const item = actionState.items.find((entry) => entry.id === actionId);
   if (!item) return;
   try {
-    await apiPatch(`/api/cases/${state.openCase.id}/actions/${actionId}`,
+    await apiPatch(`/api/cases/${item._caseId || state.openCase.id}/actions/${actionId}`,
       { status: item.status === "done" ? "todo" : "done" });
     await loadActions();
   } catch (error) {
@@ -6317,7 +6379,8 @@ function wire() {
   });
   $("action-search").addEventListener("input", renderActions);
   $("action-open-only").addEventListener("change", renderActions);
-  $("action-scope").addEventListener("change", renderActions);
+  $("action-scope").addEventListener("change", loadActions);
+  $("action-edit").addEventListener("click", () => openActionEditor(actionState.selected));
   $("action-refresh").addEventListener("click", () => loadActions());
   $("action-delete").addEventListener("click", () => {
     if (actionState.selected) removeActionRow(actionState.selected);
@@ -6608,6 +6671,7 @@ async function act(name, node) {
     case "restore-case": await restoreCaseFromArchive(); break;
     case "case-save": await saveCase(); break;
     case "case-confirm": await confirmCaseDialog(); break;
+    case "action-save": await saveActionEditor(); break;
     case "destroy-case": openDestroyDialog(); break;
     case "destroy-run": await runDestroy(); break;
     case "report": $("report-modal").classList.add("show"); break;

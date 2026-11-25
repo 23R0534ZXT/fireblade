@@ -54,7 +54,10 @@ body{
 .menu .key{position:absolute;right:10px;color:var(--muted)}
 
 /* toolbar */
-.toolbar{display:flex;align-items:center;padding:2px 4px;border-bottom:1px solid var(--toolbar-sep);height:26px;flex:0 0 26px}
+.toolbar{display:flex;align-items:center;padding:2px 4px;border-bottom:1px solid var(--toolbar-sep);min-height:26px;flex:0 0 auto;
+  /* a narrow window scrolls the bar instead of cutting off the case selector and Close case */
+  overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.toolbar>*{flex-shrink:0}
 .tb{display:flex;align-items:center;gap:4px;padding:1px 5px;height:22px;cursor:default;white-space:nowrap}
 .tb:hover{background:var(--sel)}
 .tb.off{color:var(--disabled)}

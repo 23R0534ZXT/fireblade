@@ -57,6 +57,9 @@ def test_a_case_is_created_saved_imported_renamed_and_erased(page, host):
     page.fill("#case-name", "Lifecycle")
     page.select_option("#case-environment", "linux")
     page.click("#case-confirm")
+    # The new case opens at once, as in the desktop; the library still lists it.
+    page.wait_for_function("document.getElementById('casecombo-label').innerText === 'Lifecycle'")
+    page.click('.tabs .tab:text-is("Cases")')
     page.wait_for_selector('tr:has(td:text-is("Lifecycle"))')
     assert len([p for p in root.iterdir() if p.is_dir() and len(p.name) == 32]) == 1
 

@@ -205,6 +205,15 @@ def test_an_ioc_scan_matches_the_pasted_indicator(service):
         library.ioc_scan(identifier, 0, "")
 
 
+def test_a_rejected_ioc_line_is_named_with_its_reason_in_english(service):
+    library, identifier = service
+    payload = library.ioc_scan(identifier, 0, "192.0.2.20\nbackdoor")
+    assert payload["indicators"] == 1 and payload["rejected"] == 1
+    assert payload["rejected_lines"] == [
+        {"line": 2, "value": "backdoor", "reason": "Invalid domain name"}
+    ]
+
+
 def test_an_ioc_hunt_is_saved_and_replayed(service):
     library, identifier = service
     first = library.ioc_scan(identifier, 0, "192.0.2.20")

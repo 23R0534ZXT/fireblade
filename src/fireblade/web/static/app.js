@@ -1061,8 +1061,10 @@ async function confirmImport() {
     try {
       const job = await startImportJob(source, layout, options, chosenSheet(item.payload));
       const outcome = await followImportJob(job);
-      if (outcome.status === "complete" && outcome.result && outcome.result.analyses) imported += 1;
-      else if (outcome.status === "cancelled") {
+      // A folder is one source holding several files: say how many were read, not "1".
+      if (outcome.status === "complete" && outcome.result && outcome.result.analyses) {
+        imported += Math.max(1, Number((item.payload && item.payload.count) || 0));
+      } else if (outcome.status === "cancelled") {
         stopped = true;
         kept = (outcome.result && outcome.result.analyses) || 0;
         break;
@@ -1131,7 +1133,11 @@ async function confirmCaseDialog() {
     } else {
       const created = await apiPost("/api/cases", { name, description: $("case-description").value,
                                                      environment: $("case-environment").value });
+      await loadCases();
+      // Like the desktop, a case that has just been created is the one being worked on.
+      await openCase(created.id);
       say(`Case created: ${created.name}`);
+      return;
     }
     await loadCases();
     showTab("cases");
@@ -4561,6 +4567,11 @@ async function runGlobalSearch() {
   }
 }
 
+// Enter in the box searches, as the field's own Search button does.
+$("global-text").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") { event.preventDefault(); runGlobalSearch(); }
+});
+
 /* ---------- actions and tracking ---------- */
 
 const actionState = { items: [], shown: [], selected: null };
@@ -4915,7 +4926,7 @@ async function toggleAction(actionId) {
 
 /* ---------- IOC hunting ---------- */
 
-const iocState = { hits: [], summary: "" };
+const iocState = { hits: [], summary: "", rejected: [] };
 
 /* What the grid shows, for the commands that "respect the filter": the page keeps the search,
    the column filters and the advanced filter, so it tells the server which they are. */
@@ -4956,6 +4967,7 @@ async function runIocScan() {
     const payload = await runTask("scan", { text, ...iocOptions() }, "IOC hunting");
     if (!payload) return;
     iocState.hits = payload.hits;
+    iocState.rejected = payload.rejected_lines || [];
     loadHuntHistory();
     const summary = iocSummary(payload);
     $("ioc-summary").textContent = summary;
@@ -4983,6 +4995,7 @@ async function runIocFile(file) {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || response.statusText);
     iocState.hits = payload.hits;
+    iocState.rejected = payload.rejected_lines || [];
     $("ioc-input").value = "";
     loadHuntHistory();
     const summary = iocSummary(payload);
@@ -5009,6 +5022,7 @@ async function openHunt(name) {
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/hunts/${encodeURIComponent(name)}`);
     iocState.hits = payload.hits || [];
+    iocState.rejected = [];
     $("ioc-input").value = payload.text || "";
     $("ioc-summary").textContent = `${payload.indicators} indicator(s) · ${payload.scanned} row(s) scanned — ${iocState.hits.length} hit(s) (replayed hunt)`;
     renderIoc();
@@ -5054,6 +5068,13 @@ function renderIoc() {
   const lines = iocLines();
   $("ioc-list-rows").innerHTML = lines.length ? lines.map((line) => {
     const found = counts.get(line.value) || 0;
+    const refused = iocState.rejected.find((item) => item.value === line.value);
+    if (refused) {
+      return `<tr><td>—</td>
+      <td title="${escapeHtml(line.value)}">${escapeHtml(line.value)}</td>
+      <td></td><td>${escapeHtml(line.label || "")}</td><td>0</td>
+      <td title="${escapeHtml(refused.reason)}">not searched: ${escapeHtml(refused.reason)}</td></tr>`;
+    }
     return `<tr><td>${escapeHtml(line.kind || iocKind(line.value))}</td>
       <td title="${escapeHtml(line.value)}">${escapeHtml(line.value)}</td>
       <td title="${escapeHtml(line.value)}">${escapeHtml(line.value)}</td>
@@ -5073,7 +5094,8 @@ function renderIoc() {
      <td title="${escapeHtml(hit.observed)}">${escapeHtml(hit.observed)}</td>
      <td>${escapeHtml(hit.rule)}</td></tr>`).join("")
     || '<tr><td colspan="7" class="cellnull">No hit.</td></tr>';
-  $("ioc-status").textContent = `${iocState.hits.length} match(es) for ${lines.length} indicator(s)`;
+  const searched = lines.filter((line) => !iocState.rejected.some((item) => item.value === line.value)).length;
+  $("ioc-status").textContent = `${iocState.hits.length} match(es) for ${searched} indicator(s)`;
 }
 
 /* ---------- timeline ---------- */

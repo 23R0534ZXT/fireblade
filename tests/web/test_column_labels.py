@@ -217,3 +217,24 @@ def test_the_reasons_an_engine_gives_read_in_english_sentence_by_sentence():
     )
     # a template that ends in a value must not swallow the sentences that follow it
     assert english_text("Moteur terminé avec le code 3") == "Engine exited with code 3"
+
+
+def test_a_linux_log_table_is_told_apart_in_english():
+    from fireblade.web.service import Library
+
+    def entry():
+        return {
+            "label": "auth.log",
+            "source_info": {
+                "working_path": "/r/Linux \u2014 journaux.csv",
+                "path": "/e/var/log/auth.log",
+                "parser": "LinuxLogs",
+            },
+        }
+
+    entries = [entry(), entry()]
+    Library._tell_apart(entries)
+    assert [e["label"] for e in entries] == [
+        "auth.log \u2014 Linux \u2014 logs",
+        "auth.log \u2014 Linux \u2014 logs (2)",
+    ]

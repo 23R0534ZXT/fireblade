@@ -1030,15 +1030,17 @@ let caseDialogMode = "create";
 
 function openCaseDialog(mode) {
   caseDialogMode = mode;
-  const current = state.openCase && mode === "rename" ? state.openCase : null;
-  if (mode === "rename" && !current) { say("Open a case first", true); return; }
-  $("case-modal-title").textContent = mode === "rename" ? "Rename the case" : "New case";
+  const current = mode === "rename" ? targetCase() : null;
+  if (mode === "rename" && !current) { say("Select or open a case first", true); return; }
+  $("case-modal-title").textContent = mode === "rename" ? "Edit the case" : "New case";
   $("case-name").value = current ? current.name : "";
   $("case-description").value = current ? current.description || "" : "";
   $("case-environment").value = current ? current.environment || "unspecified" : "unspecified";
-  $("case-environment").disabled = mode === "rename";
+  $("case-status").value = current ? current.status || "open" : "open";
+  $("case-status-row").style.display = mode === "rename" ? "flex" : "none";
   $("case-name").closest(".row").style.display = "flex";
-  $("case-confirm").textContent = mode === "rename" ? "Rename" : "Create";
+  $("case-confirm").textContent = mode === "rename" ? "Save" : "Create";
+  $("case-modal").dataset.target = current ? current.id : "";
   $("case-modal").classList.add("show");
 }
 
@@ -1060,12 +1062,15 @@ async function saveCase() {
 async function confirmCaseDialog() {
   const name = $("case-name").value.trim();
   if (!name) { say("A name is required", true); return; }
+  const target = $("case-modal").dataset.target;
   closeModals();
   try {
     if (caseDialogMode === "rename") {
-      await apiPatch(`/api/cases/${state.openCase.id}`, { name, description: $("case-description").value });
-      await openCase(state.openCase.id);
-      say(`Case renamed to ${name}`);
+      await apiPatch(`/api/cases/${target}`, {
+        name, description: $("case-description").value,
+        environment: $("case-environment").value, status: $("case-status").value });
+      if (state.openCase && state.openCase.id === target) await openCase(target);
+      say(`Case saved: ${name}`);
     } else {
       const created = await apiPost("/api/cases", { name, description: $("case-description").value,
                                                      environment: $("case-environment").value });
@@ -1078,7 +1083,56 @@ async function confirmCaseDialog() {
   }
 }
 
+/* Archive / Reactivate: the status of the case, as the desktop's Archive button sets it. */
+async function toggleArchive() {
+  const target = targetCase();
+  if (!target) { say("Select or open a case first", true); return; }
+  const status = target.status === "archived" ? "open" : "archived";
+  try {
+    await apiPatch(`/api/cases/${target.id}`, { status });
+    await loadCases();
+    say(status === "archived"
+      ? `${target.name} is archived: it leaves the list unless “Include archived” is ticked`
+      : `${target.name} is back in progress`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+/* Archive and free the space: the case is packed outside its folder, the folder is emptied, and
+   the catalogue keeps the entry, which Restore brings back as a working case. */
+async function freeCaseSpace() {
+  const target = targetCase();
+  if (!target) { say("Select or open a case first", true); return; }
+  if (!window.confirm(`Pack “${target.name}” into an archive outside its folder and free the folder?\n`
+    + "The case stays in the list; Restore brings it back.")) return;
+  try {
+    if (state.openCase && state.openCase.id === target.id) closeCase();
+    const result = await apiPost(`/api/cases/${target.id}/archive`, {});
+    await loadCases();
+    say(`Archived: ${Math.round(result.removed_bytes / 1024)} kB freed, archive of ${Math.round(result.bytes / 1024)} kB at ${result.archive}`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function restoreCaseFromArchive() {
+  const target = targetCase();
+  if (!target || !target.storage_archive) { say("Select a case kept in an archive first", true); return; }
+  try {
+    const result = await apiPost(`/api/cases/${target.id}/restore`, {});
+    await loadCases();
+    state.selectedCase = result.id;
+    renderCases();
+    say(`Restored as “${result.name}”: ${result.analyses} analysis(es)`);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
 async function openDestroyDialog() {
+  const chosen = targetCaseId();
+  if (chosen && (!state.openCase || state.openCase.id !== chosen)) await openCase(chosen);
   if (!state.openCase) { say("Open the case you want to erase", true); return; }
   const caseId = state.openCase.id;
   const name = state.openCase.name;
@@ -1223,6 +1277,19 @@ async function loadCases() {
   }
 }
 
+const CASE_STATUS = { open: "In progress", closed: "Finished", archived: "Archived" };
+
+/* The case the Cases tab's buttons act on: the one selected in the table, else the one open. */
+function targetCaseId() {
+  if (state.selectedCase && state.cases.some((item) => item.id === state.selectedCase)) return state.selectedCase;
+  return state.openCase ? state.openCase.id : null;
+}
+
+function targetCase() {
+  const id = targetCaseId();
+  return id ? state.cases.find((item) => item.id === id) || null : null;
+}
+
 function renderCases() {
   const term = ($("case-search").value || "").toLowerCase();
   const archived = $("case-archived").checked;
@@ -1239,25 +1306,44 @@ function renderCases() {
        state.selectedCase === item.id ? "selected" : ""].filter(Boolean).join(" ")}">
       <td title="${escapeHtml(item.description || "")}">${escapeHtml(item.name || "(unnamed)")}</td>
       <td>${escapeHtml(String(item.collection_count ?? (item.collections || []).length ?? 0))}</td>
-      <td>${escapeHtml(item.status || "—")}</td>
+      <td>${escapeHtml(CASE_STATUS[item.status] || item.status || "—")}${item.storage_archive ? " · kept in an archive" : ""}</td>
       <td>${escapeHtml(String(item.analysis_count ?? 0))}</td>
       <td>${escapeHtml(when(item.created))}</td>
       <td>${escapeHtml(when(item.updated))}</td>
       <td>${escapeHtml(when(item.opened || item.updated))}</td>
     </tr>`).join("");
   $("case-count").textContent = `${matches.length} case(s) displayed`;
-  const selected = matches.find((item) => state.openCase && item.id === state.openCase.id);
-  $("case-footer-description").textContent = selected
-    ? (selected.description || "No description for this case.")
-    : "Select a case to read its description.";
+  renderCaseSelection();
   $("cases-empty").hidden = matches.length > 0;
   $("cases-empty").textContent = state.cases.length
     ? "No case matches this filter."
     : "The library is empty. A case written by the Windows edition opens here as soon as its folder is in the library.";
 }
 
+/* What depends on the selected case, without rebuilding the table: a click must not replace the
+   rows, or the second click of a double click lands on a row that is no longer there. */
+function renderCaseSelection() {
+  const target = targetCase();
+  $("cases-body").querySelectorAll("tr[data-case]").forEach((row) => {
+    row.classList.toggle("selected", row.dataset.case === state.selectedCase);
+    row.classList.toggle("sel", Boolean(state.openCase) && row.dataset.case === state.openCase.id);
+  });
+  $("case-footer-description").textContent = target
+    ? (target.description || "No description for this case.")
+    : "Select a case to read its description.";
+  $("archive-case").textContent = target && target.status === "archived" ? "Reactivate" : "Archive";
+  $("restore-case").hidden = !(target && target.storage_archive);
+}
+
 async function openCase(identifier) {
   try {
+    const kept = state.cases.find((item) => item.id === identifier);
+    if (kept && kept.storage_archive) {
+      state.selectedCase = identifier;
+      renderCaseSelection();
+      say("This case is kept in an archive: press Restore… to bring it back", true);
+      return;
+    }
     const detail = await api(`/api/cases/${identifier}`);
     state.openCase = detail;
     // The analyses closed and kept: the tree lists them, and they open again.
@@ -5834,13 +5920,9 @@ function wire() {
 
   $("cases-body").addEventListener("click", (event) => {
     const row = event.target.closest("tr[data-case]");
-    if (row) openCase(row.dataset.case);
-  });
-  $("cases-body").addEventListener("click", (event) => {
-    const row = event.target.closest("tr[data-case]");
     if (!row) return;
     state.selectedCase = row.dataset.case;
-    renderCases();
+    renderCaseSelection();
   });
   $("cases-body").addEventListener("dblclick", (event) => {
     const row = event.target.closest("tr[data-case]");
@@ -6516,6 +6598,9 @@ async function act(name, node) {
       else say("Select a case first", true);
       break;
     case "rename-case": openCaseDialog("rename"); break;
+    case "archive-case": await toggleArchive(); break;
+    case "free-space": await freeCaseSpace(); break;
+    case "restore-case": await restoreCaseFromArchive(); break;
     case "case-save": await saveCase(); break;
     case "case-confirm": await confirmCaseDialog(); break;
     case "destroy-case": openDestroyDialog(); break;

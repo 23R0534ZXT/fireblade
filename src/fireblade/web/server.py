@@ -152,7 +152,13 @@ def create_app(
     def update_case(identifier: str, payload: dict):
         payload = payload or {}
         try:
-            return library.update_case(identifier, payload.get("name"), payload.get("description"))
+            return library.update_case(
+                identifier,
+                payload.get("name"),
+                payload.get("description"),
+                payload.get("environment"),
+                payload.get("status"),
+            )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

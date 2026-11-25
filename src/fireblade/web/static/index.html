@@ -638,6 +638,9 @@
           <button class="btn" data-act="new-case">New case…</button>
           <button class="btn" data-act="open-selected-case">Open</button>
           <button class="btn" data-act="rename-case">Edit…</button>
+          <button class="btn" data-act="archive-case" id="archive-case">Archive</button>
+          <button class="btn" data-act="free-space" title="Pack the case into an archive outside its folder, then free the folder">Archive and free the space…</button>
+          <button class="btn" data-act="restore-case" id="restore-case" hidden title="Bring the archived case back as a working case">Restore…</button>
           <button class="btn" data-act="destroy-case">Erase the case…</button>
         </div>
         <div class="filterbar">
@@ -1444,11 +1447,17 @@
       <div class="row"><label for="case-description">Description</label><textarea id="case-description" rows="3"></textarea></div>
       <div class="row"><label for="case-environment">Environment</label>
         <select id="case-environment">
+          <option value="unspecified">Unspecified</option>
           <option value="windows">Windows</option>
           <option value="linux">Linux</option>
-          <option value="macos">macOS</option>
-          <option value="network">Network</option>
-          <option value="unspecified">Unspecified</option>
+          <option value="mixed">Mixed</option>
+        </select>
+      </div>
+      <div class="row" id="case-status-row"><label for="case-status">Status</label>
+        <select id="case-status">
+          <option value="open">In progress</option>
+          <option value="closed">Finished</option>
+          <option value="archived">Archived</option>
         </select>
       </div>
     </div>

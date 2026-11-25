@@ -93,7 +93,7 @@ def test_a_case_is_created_saved_imported_renamed_and_erased(page, host):
     page.click('.tabs .tab:text-is("Cases")')
     page.click('button[data-act="rename-case"]')
     page.wait_for_selector("#case-modal.show")
-    assert "Rename" in page.inner_text("#case-confirm")
+    assert "Save" in page.inner_text("#case-confirm")
     page.fill("#case-name", "Lifecycle renamed")
     page.click("#case-confirm")
     page.wait_for_selector('tr:has(td:text-is("Lifecycle renamed"))')

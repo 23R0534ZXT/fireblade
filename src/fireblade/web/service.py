@@ -122,6 +122,8 @@ class Library:
             # catalogue; the list itself is only read when a case is opened.
             "collection_count": len(data.get("collections") or []),
             "recovery_needed": bool(data.get("recovery_needed")),
+            # A case kept in an archive outside its folder: it is listed, and restored to be read.
+            "storage_archive": bool(data.get("storage_archive")),
         }
 
     def case(self, identifier: str) -> dict:
@@ -723,7 +725,7 @@ class Library:
             raise ServiceError("This case is not archived: there is nothing to restore.")
         result = restore_archive(self.library, identifier)
         case = result.get("case") or {}
-        restored = self.library.case(case.get("id")) if case.get("id") else {}
+        restored = self.case(case["id"]) if case.get("id") else {}
         return {
             "id": case.get("id"),
             "name": case.get("name"),
@@ -2286,13 +2288,23 @@ class Library:
         return self._summary(data)
 
     def update_case(
-        self, identifier: str, name: str | None = None, description: str | None = None
+        self,
+        identifier: str,
+        name: str | None = None,
+        description: str | None = None,
+        environment: str | None = None,
+        status: str | None = None,
     ) -> dict:
+        """Name, description, environment and status: the fields the desktop's dialog edits."""
         fields = {}
-        if name is not None:
-            fields["name"] = name
-        if description is not None:
-            fields["description"] = description
+        for key, value in (
+            ("name", name),
+            ("description", description),
+            ("environment", environment),
+            ("status", status),
+        ):
+            if value is not None:
+                fields[key] = value
         if not fields:
             raise ServiceError("Nothing to change.")
         data = self.library.update(identifier, **fields)

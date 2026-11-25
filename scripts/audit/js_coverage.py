@@ -13,6 +13,7 @@ pressed, or dead code: either way it is a line in the audit's to-do list.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -41,16 +42,30 @@ def touched(folder: Path) -> set[str]:
     return keys
 
 
+def _current_hash(name: str) -> str | None:
+    path = STATIC / name
+    return hashlib.sha1(path.read_bytes()).hexdigest() if path.is_file() else None
+
+
 def merge(folder: Path) -> dict[str, dict]:
-    """One merged record per script file name: its source, its ran-mask and its functions."""
+    """One merged record per script file name: its source, its ran-mask and its functions.
+
+    A dump made against another version of a script is skipped (and counted): its offsets point
+    into text that is no longer there, so merging it would name the wrong functions.
+    """
     merged: dict[str, dict] = {}
+    merge.stale = 0
     for path in sorted(folder.glob("*.json")):
         document = json.loads(path.read_text(encoding="utf-8"))
         scripts = document["scripts"] if isinstance(document, dict) else document
+        hashes = document.get("hashes", {}) if isinstance(document, dict) else {}
         for entry in scripts:
             name = entry["url"].rsplit("/static/", 1)[-1]
             source_path = STATIC / name
             if not source_path.is_file():
+                continue
+            if hashes.get(name) not in (None, _current_hash(name)):
+                merge.stale += 1
                 continue
             source = source_path.read_text(encoding="utf-8")
             length = len(source)
@@ -127,6 +142,8 @@ def main(argv=None) -> int:
     parser.add_argument("--show", type=int, default=400, help="functions to list per script")
     args = parser.parse_args(argv)
     merged = merge(Path(args.folder))
+    if merge.stale:
+        print(f"{merge.stale} page dump(s) skipped: they ran another version of a script")
     if not merged:
         print("no coverage found: run the browser tests with FIREBLADE_JS_COVERAGE set")
         return 2

@@ -3610,12 +3610,17 @@ class Library:
         report = collection.parse()
         session = output / "collection.fireblade-session"
         if not session.is_file():
+            stopped = report.get("status") == "cancelled"
             return {
                 "status": report.get("status"),
                 "analyses": 0,
                 "files": len(report.get("files") or []),
                 "collection": str(output),
-                "message": "No analysis produced: the format was not recognised.",
+                "message": (
+                    "Import stopped before anything was written."
+                    if stopped
+                    else "No analysis produced: the format was not recognised."
+                ),
             }
         # The session is the workspace: an import adds its analyses to the ones
         # already loaded, exactly as the desktop does.
@@ -4128,6 +4133,8 @@ class Library:
             cancel = _threading.Event()
             with self._lock:
                 job["cancel"] = cancel
+                if job.get("stop_requested"):
+                    cancel.set()  # the stop came before the worker had its event
             try:
                 with cancellation_scope(cancel):
                     result = self.import_source(
@@ -4142,8 +4149,13 @@ class Library:
                     )
                 with self._lock:
                     job["result"] = result
-                    job["status"] = "complete"
-                    job["message"] = "Import complete."
+                    if result.get("status") == "cancelled":
+                        # The collection caught the stop itself and kept what it had written.
+                        job["status"] = "cancelled"
+                        job["message"] = "Import stopped: what was written stays in the case."
+                    else:
+                        job["status"] = "complete"
+                        job["message"] = "Import complete."
             except OperationCancelled:
                 with self._lock:
                     job["status"] = "cancelled"
@@ -4210,6 +4222,8 @@ class Library:
             cancel = _threading.Event()
             with self._lock:
                 job["cancel"] = cancel
+                if job.get("stop_requested"):
+                    cancel.set()  # the stop came before the worker had its event
             try:
                 pack = (
                     ToolPack(Path(self.tools_root))

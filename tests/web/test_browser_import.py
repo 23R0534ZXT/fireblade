@@ -149,7 +149,7 @@ def test_stopping_an_import_ends_it_and_keeps_what_was_written(empty_page, serve
     page = empty_page
     folder = _case_folder(page, server) / "many"
     folder.mkdir()
-    for number in range(120):
+    for number in range(400):
         (folder / f"f{number:03d}.csv").write_text(
             "Time,Host\n" + "".join(f"2026-11-01T10:{n:02d}:00Z,PC{n}\n" for n in range(40))
         )
@@ -170,7 +170,13 @@ def test_stopping_an_import_ends_it_and_keeps_what_was_written(empty_page, serve
         timeout=60000,
     )
     message = status(page)
-    assert re.search(r"stopped|imported", message), message
+    # said as what it is: a stop, with what stays in the case — never "N file(s) imported"
+    assert message.startswith("Import stopped — "), message
+    assert re.search(
+        r"nothing had been written yet|analysis\(es\) written before the stop kept", message
+    ), message
+    if "nothing had been written yet" in message:
+        return
     # the case still opens and lists whatever was written before the stop
     page.click('.tabs .tab:text-is("Imports")')
     page.wait_for_function("document.getElementById('imports-rows').innerText.length > 0")

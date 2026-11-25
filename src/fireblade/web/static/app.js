@@ -970,11 +970,21 @@ async function stopImportJob() {
   }
 }
 
+/* What a stopped import leaves in the case, said the way the analyst needs it. */
+function importStoppedMessage(files, kept) {
+  const parts = [];
+  if (files) parts.push(`${files} file(s) imported`);
+  if (kept) parts.push(`${kept} analysis(es) written before the stop kept`);
+  return "Import stopped — " + (parts.length ? parts.join(", ") : "nothing had been written yet");
+}
+
 async function confirmImport() {
   if (!previewState.items.length) return;
   const layout = $("import-layout").value;
   const options = csvOptions();
   let imported = 0;
+  let kept = 0;
+  let stopped = false;
   const ready = previewState.items.filter((item) => !item.error && item.payload && item.payload.path);
   // Files chosen together are one collection: the layout (per file, per artifact family, or one
   // grid for everything) is how that collection is laid out, so it is imported in one go. A
@@ -987,14 +997,17 @@ async function confirmImport() {
       const job = await startImportJob(ready.map((item) => item.payload.path), layout, options, "");
       const outcome = await followImportJob(job);
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) imported = ready.length;
-      else say(`${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
+      else if (outcome.status === "cancelled") {
+        stopped = true;
+        kept = (outcome.result && outcome.result.analyses) || 0;
+      } else say(`${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
     } catch (error) {
       say(error.message, true);
       return;
     }
     closeModals();
     await openCase(state.openCase.id);
-    say(`${imported} file(s) imported`);
+    say(stopped ? importStoppedMessage(0, kept) : `${imported} file(s) imported`, stopped);
     return;
   }
   for (const item of previewState.items) {
@@ -1007,7 +1020,8 @@ async function confirmImport() {
       const outcome = await followImportJob(job);
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) imported += 1;
       else if (outcome.status === "cancelled") {
-        say(`${item.name}: import stopped — what was written stays in the case`, true);
+        stopped = true;
+        kept = (outcome.result && outcome.result.analyses) || 0;
         break;
       } else {
         say(`${item.name}: ${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
@@ -1019,7 +1033,7 @@ async function confirmImport() {
   }
   closeModals();
   await openCase(state.openCase.id);
-  say(`${imported} file(s) imported`);
+  say(stopped ? importStoppedMessage(imported, kept) : `${imported} file(s) imported`, stopped);
 }
 
 /* ---------- import ---------- */

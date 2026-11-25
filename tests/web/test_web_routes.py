@@ -942,6 +942,34 @@ def test_an_import_runs_in_the_background_and_can_be_followed(service, tmp_path)
         library.import_job("not-a-job")
 
 
+def test_a_stopped_import_ends_as_stopped_and_never_as_complete(service, tmp_path):
+    """Stop is a request the job honours whenever it comes, even before the first file is read."""
+    import time
+
+    library, identifier = service
+    folder = tmp_path / "many"
+    folder.mkdir()
+    rows = "".join(f"2026-11-01T10:{n:02d}:00Z,PC{n}\n" for n in range(40))
+    for number in range(500):
+        (folder / f"f{number:03d}.csv").write_text("Time,Host\n" + rows)
+    started = library.start_import_job(identifier, folder)
+    assert library.cancel_import_job(started["job"])["cancelled"] is True
+    state = None
+    for _ in range(600):
+        state = library.import_job(started["job"])
+        if state["status"] not in ("running", "cancelling"):
+            break
+        time.sleep(0.1)
+    assert state is not None and state["status"] == "cancelled", state
+    assert state["message"].startswith("Import stopped"), state["message"]
+    result = state.get("result") or {}
+    assert result.get("status", "cancelled") == "cancelled"
+    kept = result.get("analyses", 0)
+    assert kept < 500, "a stop at once must not have read the whole folder"
+    # what was written stays in the case: it opens and lists exactly those analyses
+    assert len(library.case(identifier)["analyses"]) >= kept
+
+
 def test_unread_files_are_listed_with_the_readers_that_can_retry(service):
     library, identifier = service
     listing = library.unread_files(identifier)

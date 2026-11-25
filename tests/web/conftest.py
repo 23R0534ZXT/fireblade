@@ -9,6 +9,7 @@ The same pages also keep the list of controls the test touched (a click, a chang
 right click): ``scripts/audit/controls.py`` compares it with every control the client offers.
 """
 
+import hashlib
 import json
 import os
 import uuid
@@ -18,6 +19,7 @@ import httpx
 import pytest
 
 FOLDER = os.environ.get("FIREBLADE_JS_COVERAGE")
+STATIC = Path(__file__).resolve().parents[2] / "src/fireblade/web/static"
 
 # The control an event reached: its nearest interactive ancestor, named by tag and by id, by
 # data-act (or another data- name) or by its first class. Same naming as the audit's inventory.
@@ -94,8 +96,15 @@ if FOLDER:
                 for entry in entries
                 if "/static/" in entry["url"]
             ]
+            # The offsets V8 reports only mean something against the very file that ran.
+            hashes = {}
+            for entry in kept:
+                name = entry["url"].rsplit("/static/", 1)[-1]
+                source = STATIC / name
+                if source.is_file():
+                    hashes[name] = hashlib.sha1(source.read_bytes()).hexdigest()
             if kept or touched:
-                document = {"scripts": kept, "touched": touched}
+                document = {"scripts": kept, "touched": touched, "hashes": hashes}
                 (out / f"{uuid.uuid4().hex}.json").write_text(
                     json.dumps(document), encoding="utf-8"
                 )

@@ -1666,51 +1666,6 @@ function applyExpression() {
     : "Advanced filter cleared");
 }
 
-/* ---------- EVTX detection ---------- */
-
-/* The event logs of the case, what the engine read of each, and the run that turns
-   them into alerts. The desktop asks for a minimum severity and one button; so here. */
-function renderEvtx() {
-  const analyses = (state.openCase && state.openCase.analyses) || [];
-  const logs = analyses.filter((item) => /\.evtx$/i.test(String(item.source || ""))
-    || /\.evtx/i.test(String(item.label || "")));
-  const box = $("evtx-rows");
-  if (!logs.length) {
-    box.innerHTML = '<tr><td colspan="5" class="cellnull">Import a collection to enable detection.</td></tr>';
-    $("evtx-summary").textContent = "Import a collection to enable detection.";
-    return;
-  }
-  box.innerHTML = logs.map((item) =>
-    `<tr><td title="${escapeHtml(item.source || "")}">${escapeHtml(item.label || "")}</td>
-      <td>${escapeHtml(String((item.source_info && item.source_info.rows) ?? item.rows ?? ""))}</td>
-      <td>${escapeHtml(String((item.source_info && (item.source_info.dated
-        ?? item.source_info.timestamps)) ?? ""))}</td>
-      <td>${escapeHtml(((item.source_info && item.source_info.readers) || []).join(", ")
-        || "the engine")}</td>
-      <td class="cellnull"></td></tr>`).join("");
-  const alerts = analyses.filter((item) => /(alertes hayabusa|hayabusa alerts)/i.test(String(item.label || ""))).length;
-  $("evtx-summary").textContent = `${logs.length} event log(s) read`
-    + (alerts ? ` — ${alerts} alert analysis(es) in the case` : "");
-}
-
-async function runEvtxDetection() {
-  if (!state.openCase) { say("Open a case first", true); return; }
-  const level = $("evtx-level").value;
-  $("evtx-summary").textContent = `Analyzing the event logs at level ${level}…`;
-  say(`Hayabusa: running at level ${level}…`);
-  try {
-    const payload = await runTask("detect", { min_level: level }, "Hayabusa");
-    if (!payload) return;
-    state.openCase = await api(`/api/cases/${state.openCase.id}`);
-    renderTree();
-    renderEvtx();
-    say(`Hayabusa: ${payload.total} finding(s) at level ${level}+`);
-  } catch (error) {
-    $("evtx-summary").textContent = error.message;
-    say(error.message, true);
-  }
-}
-
 /* ---------- the window's own commands, the ones a menu carries ---------- */
 
 /* A row height is a reading comfort, not case data: it lives in the browser. */
@@ -2257,6 +2212,12 @@ async function loadFindings(force) {
   }
 }
 
+/* The event logs the detection will read: the analyses that came from an .evtx file. */
+function eventLogCount() {
+  const analyses = (state.openCase && state.openCase.analyses) || [];
+  return analyses.filter((item) => /\.evtx/i.test(String(item.source || "")) || /\.evtx/i.test(String(item.label || ""))).length;
+}
+
 function renderFindingView() {
   const view = $("finding-view").value;
   $("finding-table").style.display = view === "table" ? "" : "none";
@@ -2265,7 +2226,7 @@ function renderFindingView() {
   $("finding-summary").textContent = findingState.groups.length
     ? `${findingState.groups.length} finding(s), ${hits} alert(s)`
       + (findingState.source ? ` — ${findingState.source}` : "")
-    : "No finding yet: run the detection, or open the alert analysis.";
+    : `${eventLogCount()} event log(s) in the case — no finding yet: run the detection, or open the alert analysis.`;
   if (view === "table") { renderFindingSeverity(shownFindings()); renderFindingTable(); return; }
   drawFindingMap(view);
 }
@@ -5668,14 +5629,9 @@ function showTab(name) {
   $("actions-view").style.display = name === "actions" ? "flex" : "none";
   $("imports-view").style.display = name === "imports" ? "flex" : "none";
   $("hayabusa-view").style.display = name === "hayabusa" ? "flex" : "none";
-  $("evtx-view").style.display = name === "evtx" ? "flex" : "none";
   if (name === "hayabusa" && state.openCase) loadFindings(false);
-  if (name === "evtx" && state.openCase) renderEvtx();
   $("graph-view").style.display = name === "graph" ? "flex" : "none";
   if (name === "graph" && state.openCase) buildGraph();
-  if (name === "evtx") {
-    $("hayabusa-summary").textContent = "EVTX detection: the engine reads the imported event logs of this case.";
-  }
   if (name === "imports" && state.openCase) loadImports();
   if (name === "actions" && state.openCase) loadActions();
   $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";
@@ -6256,6 +6212,19 @@ function wire() {
     event.target.value = "";
     if (files.length) previewFiles(files);
   });
+  // The layout is also a view of what is already in the case: choosing one lays the imports out again.
+  $("import-layout").addEventListener("change", async () => {
+    if (!state.openCase || !(state.openCase.collections || []).length) return;
+    const mode = $("import-layout").value;
+    say("Laying the analyses out again…");
+    try {
+      const done = await apiPost(`/api/cases/${state.openCase.id}/reorganize`, { mode });
+      await openCase(state.openCase.id);
+      say(done.collections ? "Layout changed" : "Already laid out that way");
+    } catch (error) {
+      say(error.message, true);
+    }
+  });
   $("folder-input").addEventListener("change", (event) => {
     const files = [...(event.target.files || [])];
     event.target.value = "";        // the same folder can be picked again
@@ -6388,8 +6357,6 @@ function wire() {
   });
   $("graph-build").addEventListener("click", buildGraph);
   $("graph-level").addEventListener("change", () => renderGraph(graphPayload));
-  $("evtx-run").addEventListener("click", runEvtxDetection);
-  $("evtx-refresh").addEventListener("click", renderEvtx);
   $("graph-navigator").addEventListener("click", exportNavigator);
   $("graph-png").addEventListener("click", exportGraphPng);
   $("graph-node").addEventListener("click", openGraphNode);
@@ -6648,7 +6615,6 @@ async function act(name, node) {
     case "filter-active-cell": filterFromCell("eq"); break;
     case "expression-andor": openExpressionDialog(); break;
     case "show-timeline": showTab("timeline"); break;
-    case "show-evtx": showTab("evtx"); break;
     case "highlight-text": await openHighlight(); break;
     case "rowheight-apply": applyRowHeightPrefs(); break;
     case "derived-check": checkDerivedColumns(); break;

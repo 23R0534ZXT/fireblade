@@ -495,6 +495,13 @@ def create_app(
     def derived_options():
         return library.derived_options()
 
+    @app.post("/api/cases/{identifier}/reorganize")
+    def reorganize(identifier: str, payload: dict):
+        try:
+            return library.reorganize(identifier, str((payload or {}).get("mode") or ""))
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+
     @app.get("/api/cases/{identifier}/imports")
     def imports(identifier: str):
         try:

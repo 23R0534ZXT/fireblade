@@ -17,6 +17,13 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   (size, dates, SHA-256 and, for a PE, machine, compile time, subsystem, signature present). A database
   no SQLECmd map knows is read table by table. The desktop is unchanged.
 
+### Changed
+- **The layout select (one grid per file, per artifact family, one grid for everything) changes the
+  view of the case.** It only applied to the next import and did nothing on what was already
+  imported: it now lays the existing imports out again, without reading them again.
+- The EVTX detection tab is gone: it ran the very detection the Hayabusa findings tab runs. The
+  findings screen says how many event logs the case holds.
+
 ### Fixed
 - **The sort arrow and the "sorted" highlight were drawn on the column to the left of the one clicked**
   (the data was sorted by the right column, the header said otherwise).

@@ -546,14 +546,13 @@ def test_the_timeline_has_its_overview():
     assert ".timeline-overview" in css
 
 
-def test_the_evtx_tab_is_its_own_screen():
+def test_the_detection_has_one_screen_not_two():
+    """The EVTX tab ran the very detection the Hayabusa tab runs: it is gone, and its one useful
+    line, how many event logs the case holds, is on the findings screen."""
     js, html = _read(APP), _read(INDEX)
-    assert 'id="evtx-view"' in html and 'id="evtx-level"' in html
-    assert "Minimum Hayabusa severity" in html and "Analyze with Hayabusa" in html
-    for name in ("renderEvtx", "runEvtxDetection"):
-        assert f"function {name}(" in js, name
-    # The EVTX tab no longer borrows the Hayabusa panel.
-    assert '$("hayabusa-view").style.display = name === "hayabusa"' in js
+    assert 'id="evtx-view"' not in html and 'data-tab="evtx"' not in html
+    assert 'id="hayabusa-run"' in html and "eventLogCount" in js
+    assert "runEvtxDetection" not in js and "show-evtx" not in html
 
 
 def test_the_graph_carries_the_desktop_controls():

@@ -75,22 +75,12 @@ def test_show_opens_the_alerts_and_mark_bookmarks_them(detected, browse):
     assert marks["bookmarks"], "the alerts of the finding are bookmarked"
 
 
-def test_the_evtx_tab_analyses_and_lists_the_logs_it_read(detected, browse):
+def test_the_findings_screen_says_how_many_event_logs_the_case_holds(detected, browse):
     name, _case = detected
     with browse(name) as page:
-        page.click('.tabs .tab:text-is("EVTX detection")')
-        page.wait_for_function("document.getElementById('evtx-rows').innerText.length > 5")
-        assert "event log(s) read" in page.inner_text("#evtx-summary")
-        page.select_option("#evtx-level", "informational")
-        page.click("#evtx-run")
+        page.click('.tabs .tab:text-is("Hayabusa findings")')
         page.wait_for_function(
-            "document.getElementById('status').innerText.startsWith('Hayabusa:') "
-            "&& document.getElementById('status').innerText.includes('finding(s)')",
-            timeout=300000,
-        )
-        page.click("#evtx-refresh")
-        page.wait_for_function(
-            "document.getElementById('evtx-summary').innerText.includes('alert analysis')",
+            "document.getElementById('finding-summary').innerText.includes('event log(s)')",
             timeout=30000,
         )
 

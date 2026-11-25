@@ -40,7 +40,6 @@
       <div class="item" data-act="detect-run">Analyze the collection with Hayabusa</div>
       <div class="item" data-act="alert-context">Show the alert's EVTX context</div>
       <div class="sep"></div>
-      <div class="item" data-act="show-evtx">Open EVTX detection</div>
       <div class="item" data-act="show-ioc">Hunt IOCs</div>
     </div>
 
@@ -187,7 +186,6 @@
     <div class="tab" data-tab="hayabusa">Hayabusa findings</div>
     <div class="tab" data-tab="actions">Actions &amp; tracking</div>
     <div class="tab" data-tab="graph">Attack graph</div>
-    <div class="tab" data-tab="evtx">EVTX detection</div>
     <div class="doctab docempty" id="doctab">Case</div>
   </div>
   <div class="tabbar-line"></div>
@@ -238,35 +236,6 @@
           <button class="btn" id="next">Next</button>
           <div class="spacer"></div>
           <div class="info" id="pageinfo"></div>
-        </div>
-      </div>
-
-      <div id="evtx-view" style="display:none;flex-direction:column;flex:1;min-height:0">
-        <div class="panel-title">
-          <h2>EVTX detection</h2>
-          <p>The engine reads the imported event logs of this case and keeps every alert it raises.</p>
-        </div>
-        <div class="filterbar">
-          <label for="evtx-level">Minimum Hayabusa severity</label>
-          <select class="select" id="evtx-level">
-            <option value="informational">Informational</option>
-            <option value="low">Low</option>
-            <option value="medium" selected>Medium</option>
-            <option value="high">High</option>
-            <option value="critical">Critical</option>
-          </select>
-          <button class="btn" id="evtx-run">Analyze with Hayabusa</button>
-          <button class="btn" id="evtx-refresh">Refresh</button>
-          <div class="info" id="evtx-summary">Import a collection to enable detection.</div>
-        </div>
-        <div class="gridwrap" style="flex:1">
-          <div class="gridbody">
-            <table>
-              <colgroup><col style="width:34%"><col style="width:120px"><col style="width:120px"><col style="width:140px"><col></colgroup>
-              <thead><tr><th>Event log</th><th>Events</th><th>Dated</th><th>Read by</th><th>Note</th></tr></thead>
-              <tbody id="evtx-rows"></tbody>
-            </table>
-          </div>
         </div>
       </div>
 

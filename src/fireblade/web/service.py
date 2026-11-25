@@ -3394,7 +3394,12 @@ class Library:
     # -- importing ---------------------------------------------------------
 
     def _merge_session(
-        self, identifier: str, session_path: Path, collections=None, active_collection=None
+        self,
+        identifier: str,
+        session_path: Path,
+        collections=None,
+        active_collection=None,
+        drop_under: Path | None = None,
     ) -> tuple[int, int]:
         """Add a collection's documents to the case session; return (first index, count).
 
@@ -3414,6 +3419,14 @@ class Library:
                 )
             except (OSError, ValueError):
                 earlier, earlier_closed = [], []
+        if drop_under is not None:
+            # the analyses of a collection being laid out again leave before its new ones arrive
+            folder_text = str(Path(drop_under).resolve())
+            earlier = [
+                item
+                for item in earlier
+                if not str(item.path).replace("\\", "/").startswith(folder_text)
+            ]
         incoming, active = ([], -1)
         if Path(session_path).is_file():
             incoming, active = read_session(Path(session_path))
@@ -3458,6 +3471,41 @@ class Library:
             closed=earlier_closed,
         )
         return len(earlier), len(incoming)
+
+    def reorganize(self, identifier: str, mode: str) -> dict:
+        """Lay the analyses of every import of the case out again: one grid per file, one per
+        artifact family, or one for everything. The files are not read again: each collection
+        keeps the grids it first made, and the new layout is built from them."""
+        from fireblade.core.collection import Collection
+        from fireblade.core.collection_organization import organize
+
+        if mode not in ("files", "artifacts", "combined"):
+            raise ServiceError(f"Unknown layout: {mode}")
+        folder = self.library.folder(identifier)
+        pack = ToolPack(Path(self.tools_root or tempfile.gettempdir()))
+        self.close_case(identifier)  # DuckDB refuses a second connection with another configuration
+        changed = 0
+        for entry in sorted((folder / "collections").glob("import-*")):
+            if not (entry / "collection.json").is_file():
+                continue
+            collection = Collection.reopen(entry, pack)
+            report = collection.report
+            if report.get("organization") == mode or not report.get("documents"):
+                continue
+            raw = report.get("raw_documents") or report["documents"]
+            report["raw_documents"] = raw
+            report["documents"] = list(raw)
+            report["organization"] = mode
+            if mode != "files":
+                organize(collection)
+            collection.save()
+            self._merge_session(
+                identifier,
+                entry / "collection.fireblade-session",
+                drop_under=entry,
+            )
+            changed += 1
+        return {"layout": mode, "collections": changed}
 
     EXCEL_SUFFIXES = (".xlsx", ".xlsm", ".xls")
 

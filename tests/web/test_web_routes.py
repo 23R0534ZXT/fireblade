@@ -760,6 +760,8 @@ def test_the_coverage_check_reads_the_case_and_keeps_its_report(service):
         assert finding["stage"] and finding["severity"] in ("info", "warning", "error")
         assert finding["reason"]
         assert finding["action"] or finding["code"] == "operation"
+    named = [item for item in report["findings"] if item.get("label")]
+    assert named, "a finding names its analysis as the screen does, not by the file holding it"
     kept = library.coverage_report(identifier)
     assert kept["report"]["created"] == report["created"]
     data = library.coverage_export(identifier)

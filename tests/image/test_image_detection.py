@@ -152,6 +152,8 @@ def test_an_alert_gives_its_evtx_context_and_its_source_event(detected, browse):
         page.wait_for_selector("#hayabusa-rows tr button[data-want=show]", timeout=60000)
         page.locator("#hayabusa-rows tr").first.locator('button[data-want="show"]').click()
         page.wait_for_selector("#body tr[data-row]")
+        # the grid of the alerts, not the one that was on screen before it loaded
+        page.wait_for_function("state.columns.includes('Fireblade_EVTX_Source')", timeout=60000)
         page.locator("#body tr[data-row] td[data-cell]").nth(1).click(button="right")
         page.click('#row-menu [data-act="alert-context"]')
         page.wait_for_function(

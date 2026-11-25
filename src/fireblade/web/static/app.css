@@ -229,8 +229,9 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 .columns-list .pin{margin-left:auto;font-size:11px;color:var(--muted)}
 
 .timeline-legend{display:flex;gap:14px;padding:2px 8px;font-size:11px;flex-wrap:wrap}
-.timeline-legend .chip{display:flex;align-items:center;gap:5px}
-.timeline-legend .swatch{width:10px;height:10px;border:1px solid #999;display:inline-block}
+.timeline-legend .chip,#finding-counts .chip{display:flex;align-items:center;gap:5px}
+.timeline-legend .swatch,#finding-counts .swatch{width:10px;height:10px;border:1px solid #999;display:inline-block}
+#finding-counts{display:flex;align-items:center;gap:14px;flex:1}
 .timeline-hist{display:flex;align-items:flex-end;gap:1px;height:66px;margin:2px 6px 4px;
   border:1px solid var(--border);background:var(--base);padding:2px}
 .timeline-hist .bar{flex:1;min-width:1px;background:#2d9cdb;display:flex;flex-direction:column;justify-content:flex-end}

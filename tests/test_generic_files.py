@@ -57,3 +57,37 @@ def test_every_kind_of_unowned_file_is_read_and_accounted_for(tmp_path):
     assert {"Files inventory.csv", "notes.txt", "prefs.json"} <= labels
     assert "unknown.sqlite" in labels, labels  # its tables are the analysis
     library.close()
+
+
+def test_a_catscale_family_is_named_in_english_everywhere_it_shows(tmp_path):
+    """The Artifact cell, the timeline source and the reasons of an engine that is missing."""
+    folder = tmp_path / "node-20261102-1000" / "Process_and_Network"
+    folder.mkdir(parents=True)
+    (folder / "node-20261102-1000-processes-ef.txt").write_text(
+        "UID PID PPID C STIME TTY TIME CMD\nroot 42 1 0 08:00 ? 00:01 /bin/sh -c id\n"
+    )
+    root = tmp_path / "cases"
+    root.mkdir()
+    library = Library(root)
+    identifier = InvestigationLibrary(root).create("Linux", "", "linux")["id"]
+    library.import_source(identifier, tmp_path / "node-20261102-1000", organization="artifacts")
+    analyses = library.case(identifier)["analyses"]
+    users = next(item for item in analyses if item["label"] == "Processes and network")
+    page = library.rows(identifier, users["index"], limit=5)
+    artifact = page["columns"].index("Artifact")
+    assert page["rows"][0][artifact] == "Processes and network", page["rows"][0]
+    names = [item["name"] for item in library.timeline(identifier)["sources"]]
+    assert "Processes and network.csv" in names and not [n for n in names if "Processus" in n], (
+        names
+    )
+    library.close()
+
+
+def test_the_reasons_of_a_file_read_by_two_missing_engines_are_in_english():
+    from fireblade.web.service import _english
+
+    french = (
+        "Moteur intégré absent : A. La construction du pack forensic est nécessaire. ; "
+        "Moteur intégré absent : B. La construction du pack forensic est nécessaire."
+    )
+    assert "intégré" not in _english(french) and _english(french).count("Built-in engine") == 2

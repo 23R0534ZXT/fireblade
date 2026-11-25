@@ -3148,6 +3148,14 @@ class Library:
                 "error",
             )
         }
+        if "/results/organisation-" in str(item.get("original") or item.get("path") or "").replace(
+            "\\", "/"
+        ):
+            # A family Fireblade organised is named in the core's language; a file the analyst
+            # brought is evidence and keeps its name.
+            name = str(source.get("name") or "")
+            stem, dot, extension = name.rpartition(".")
+            source["name"] = (english.english_text(stem) + dot + extension) if dot else name
         source.update(
             headers=headers,
             labels=labels,
@@ -4834,9 +4842,21 @@ class Library:
             page = case.page(view, path=depth, offset=offset, limit=limit)
             rows = [[json_value(value) for value in row] for row in page]
         grouped = len(depth) < len(view.groups)
+        labels = META_COLUMNS + column_labels(case)
+        if not grouped and "/results/organisation-" in str(entry.get("source") or "").replace(
+            "\\", "/"
+        ):
+            # The family a row belongs to is a name Fireblade chose, in the core's language.
+            artifact = next(
+                (i for i, label in enumerate(labels) if label in ("Artifact", "Artefact")), None
+            )
+            if artifact is not None:
+                for row in rows:
+                    if artifact < len(row) and isinstance(row[artifact], str):
+                        row[artifact] = english.english_text(row[artifact])
         styles, rule_set = ({}, []) if grouped else self._painting(identifier, case, view, page)
         return {
-            "columns": META_COLUMNS + column_labels(case),
+            "columns": labels,
             "rows": rows,
             # which colour rule each row of the page answers to, and what each rule paints
             "styles": styles,
@@ -4985,9 +5005,9 @@ def _english(text):
     if not text:
         return ""
     try:
-        from fireblade.core.i18n import english
+        from fireblade.core.i18n import english_text
 
-        return english(str(text))
+        return english_text(str(text))
     except (ImportError, ValueError, AttributeError):
         try:
             from fireblade.core.i18n import translate

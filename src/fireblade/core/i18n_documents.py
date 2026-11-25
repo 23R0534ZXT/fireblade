@@ -14,6 +14,8 @@ Two tables, for the two shapes a sentence takes in a document:
 """
 
 DOCUMENTS = {
+    "Fin (UTC)": "End (UTC)",
+    "Complet": "Complete",
     # Client report
     "1. Synthèse": "1. Summary",
     "2. Périmètre et preuves": "2. Scope and evidence",
@@ -228,6 +230,19 @@ DOCUMENTS = {
 
 # A fragment of a node that also carries values the generator put in: replaced in place.
 PHRASES = {
+    "Périmètre : signets et notes": "Scope: bookmarks and notes",
+    "Périmètre : enregistrements": "Scope: records",
+    " · filtres de chaque analyse appliqués": " · each analysis's filters applied",
+    " · filtres ignorés": " · filters ignored",
+    " · sélection explicite de lignes": " · explicit selection of rows",
+    " constats.": " findings.",
+    " · à actualiser": " · to be refreshed",
+    " · dernier contrôle réalisé": " · last check performed",
+    "Enregistrement source nº ": "Source record no. ",
+    "Analyse non incluse : ": "Analysis not included: ",
+    " constat(s) inclus · ": " finding(s) included · ",
+    " analyse(s) en erreur.": " analysis(es) with an error.",
+    " octets": " bytes",
     " lignes au lieu de ": " rows instead of ",
     "Export incomplet à la relecture : ": "Incomplete export on re-reading: ",
     "Import déclaré : ": "Declared import: ",

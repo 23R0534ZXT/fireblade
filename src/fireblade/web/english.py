@@ -32,12 +32,61 @@ def _cell(plain: str) -> str:
     whole = lookup(plain)
     if whole != plain:
         return whole
+    sized = re.fullmatch(r"([\d\s\u00a0\u202f.,]+) octets?", plain)
+    if sized:  # a size the generator wrote: a number and its unit, nothing the evidence said
+        return f"{sized.group(1)} bytes"
     if ", " in plain:
         parts = plain.split(", ")
         translated = [lookup(part) for part in parts]
         if translated != parts:
             return ", ".join(translated)
     return plain
+
+
+# What a core generator writes inside a <pre>, where nothing is translated because evidence lives
+# there. Each fragment carries the generator's own punctuation or markup, so it is never a value.
+_GENERATED = (
+    ('<pre class="note">Note : ', '<pre class="note">Note: '),
+    (
+        "[Valeur abrégée dans le rapport ; valeur complète dans l’analyse.]",
+        "[Value shortened in the report; the complete value is in the analysis.]",
+    ),
+)
+
+# The "Filters applied" row of the investigation report describes the view the analyst had; its
+# words (and, or, not, the operators) are the generator's, its names and values are not.
+_VIEW_ROW = re.compile(r"(<th>Filters applied</th><td><pre>)(.*?)(</pre>)", re.S)
+_VIEW_WORDS = (
+    ("Signets uniquement", "Bookmarked rows only"),
+    ("Aucun filtre", "No filter"),
+    ("Recherche : ", "Search: "),
+    ("Ligne source", "Source row"),
+    ("Signet", "Bookmark"),
+    (" ET ", " AND "),
+    (" OU ", " OR "),
+    ("NON (", "NOT ("),
+)
+
+
+def _view(match) -> str:
+    body = match.group(2)
+    from fireblade.core.models import OPERATORS
+
+    for label, _code in OPERATORS:
+        english = lookup(label)
+        if english != label:
+            body = body.replace(f" {label} ", f" {english} ")
+    for french, english in _VIEW_WORDS:
+        if french in ("Ligne source", "Signet"):
+            continue  # a column name, which may be the analyst's own
+        body = body.replace(french, english)
+    return match.group(1) + body + match.group(3)
+
+
+def _generated(text: str) -> str:
+    for french, english in _GENERATED:
+        text = text.replace(french, english)
+    return _VIEW_ROW.sub(_view, text)
 
 
 def document(text: str) -> str:
@@ -74,7 +123,7 @@ def document(text: str) -> str:
         else:
             translated = english_text(plain)
         out.append(piece if translated == plain else htmllib.escape(translated, quote=False))
-    return "".join(out)
+    return _generated("".join(out))
 
 
 def _attribute(match):

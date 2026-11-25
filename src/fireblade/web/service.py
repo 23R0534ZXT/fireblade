@@ -3068,6 +3068,8 @@ class Library:
             "coverage.csv" if as_csv else "coverage.json"
         )
         coverage_core.export_report(target, report)
+        if as_csv:
+            _rename_csv_header(target, COVERAGE_HEADER)
         return target.read_bytes()
 
     def _live_view(self, identifier: str, live: dict | None) -> View | None:
@@ -4901,8 +4903,9 @@ TIMELINE_HEADER = {
 }
 
 
-def _timeline_header_in_english(path: Path) -> None:
-    """The first row of an exported timeline, in English; the events themselves are evidence."""
+def _rename_csv_header(path: Path, names: dict[str, str]) -> None:
+    """The first row of an exported CSV with the generator's own column names in English; the rows
+    below it, which carry evidence, are copied as they are."""
     import shutil
 
     temporary = path.with_name(path.name + ".part")
@@ -4912,9 +4915,22 @@ def _timeline_header_in_english(path: Path) -> None:
     ):
         header = next(csv.reader([source.readline()]), None)
         if header is not None:
-            csv.writer(target).writerow([TIMELINE_HEADER.get(name, name) for name in header])
+            csv.writer(target).writerow([names.get(name, name) for name in header])
         shutil.copyfileobj(source, target)
     temporary.replace(path)
+
+
+def _timeline_header_in_english(path: Path) -> None:
+    _rename_csv_header(path, TIMELINE_HEADER)
+
+
+COVERAGE_HEADER = {
+    "Date_du_contrôle": "Check_date",
+    "Étape": "Stage",
+    "Gravité": "Severity",
+    "Chemin": "Path",
+    "Mesures_JSON": "Measures_JSON",
+}
 
 
 def _translate_csv_header(path: Path, case) -> None:

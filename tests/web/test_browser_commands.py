@@ -1212,9 +1212,10 @@ def test_a_rule_can_demand_several_conditions_at_once(page):
         "document.querySelectorAll('#rules-list [data-rule-remove]').length === 1"
     )
     assert _painted_rows(page) == 0
-    assert page.locator("#rule-conditions [data-condition]").count() == 0, (
-        "the next rule starts clean"
-    )
+    page.wait_for_function(
+        "document.querySelectorAll('#rule-conditions [data-condition]').length === 0",
+        timeout=15000,
+    )  # the next rule starts clean
     page.click("[data-rule-remove]")
     page.click("#rule-add-condition")
     page.select_option("#rule-logic", "or")

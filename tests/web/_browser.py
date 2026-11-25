@@ -43,7 +43,7 @@ def serving(root):
 
 
 @contextlib.contextmanager
-def browser_page(url, case_name, width=1400, height=850):
+def browser_page(url, case_name, width=1400, height=850, wait_rows=True):
     """A page on the Host with `case_name` open on its Analyses tab; errors are collected.
 
     FIREBLADE_CHROMIUM points at a browser Playwright did not download itself.
@@ -70,7 +70,15 @@ def browser_page(url, case_name, width=1400, height=850):
         page.wait_for_selector("#menubar")
         page.click('.tabs .tab:text-is("Cases")')
         page.dblclick(f'tr:has(td:text-is("{case_name}")) td >> nth=0')
-        page.wait_for_selector("#body tr[data-row]", timeout=20000)
+        if wait_rows:
+            page.wait_for_selector("#body tr[data-row]", timeout=20000)
+        else:
+            page.wait_for_function(
+                "document.getElementById('casecombo-label').innerText.includes("
+                + repr(case_name)
+                + ")",
+                timeout=20000,
+            )
         page.click('.tabs .tab:text-is("Analyses")')
         yield page
         assert not page.errors, page.errors

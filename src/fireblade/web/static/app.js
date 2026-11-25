@@ -151,8 +151,10 @@ function renderRetryList() {
       node.dataset.reportAside, !node.dataset.ignored));
   });
   $("retry-list").querySelectorAll("[data-report-remove]").forEach((node) => {
-    node.addEventListener("click", () => removeCollectedFile(node.dataset.collection,
-      node.dataset.reportRemove));
+    node.addEventListener("click", async () => {
+      const outcome = await removeCollectedFile(node.dataset.collection, node.dataset.reportRemove);
+      if (outcome) say(outcome.text, Boolean(outcome.error));
+    });
   });
 }
 
@@ -180,14 +182,14 @@ async function setFileAside(collection, path, ignored) {
 async function removeCollectedFile(collection, path) {
   const name = path.split(/[\\/]/).pop();
   if (!window.confirm(`Delete ${name} from the evidence tree? Its hash stays in the report, and the `
-    + `deletion is refused if the file changed since the collection.`)) return;
+    + `deletion is refused if the file changed since the collection.`)) return null;
   try {
     const payload = await apiPost(`/api/cases/${state.openCase.id}/collection-files/remove`,
       { collection, path });
     await loadReports();
-    say(`Deleted: ${name} (${payload.status}, ${String(payload.sha256).slice(0, 12)}…)`);
+    return { text: `Deleted: ${name} (${payload.status}, ${String(payload.sha256).slice(0, 12)}…)` };
   } catch (error) {
-    say(error.message, true);
+    return { text: error.message, error: true };
   }
 }
 
@@ -1777,9 +1779,11 @@ async function parkCollectedFile() {
 async function deleteCollectedFile() {
   const chosen = selectedCollectedFile();
   if (!chosen) { say("Select a file first", true); return; }
-  await removeCollectedFile(chosen.collection.name || chosen.file.collection, chosen.file.path);
+  const outcome = await removeCollectedFile(chosen.collection.name || chosen.file.collection, chosen.file.path);
   importState.selected = null;
   await loadImports();
+  // said after the table is read again: loading the report writes its own summary to the status
+  if (outcome) say(outcome.text, Boolean(outcome.error));
 }
 
 /* The bookmarks and their notes, as a CSV the analyst can keep outside the case. */
@@ -3690,6 +3694,7 @@ async function loadRules() {
     const payload = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/rules`);
     rulesCache = payload.rules || [];
     renderGrid();
+    renderRulesList();  // the list follows the grid at once, not after the shared rules are read
   } catch (_) {
     rulesCache = [];
   }

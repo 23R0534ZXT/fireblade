@@ -9,98 +9,19 @@ Skipped without Playwright and a Chromium; never failed for lack of them.
 
 import httpx
 import pytest
-from _browser import browser_page, serving  # noqa: E402
-
-from fireblade.core.investigations import InvestigationLibrary
-
-USERS = ["alice", "bob", "carol"]
-EVENTS = [4624, 4625, 4688]
-ROWS = 60
-
-
-def _csv():
-    lines = ["Time,Host,User,Event,Path,Src"]
-    for i in range(ROWS):
-        lines.append(
-            f"2026-11-0{1 + i % 5}T1{i % 10}:{i % 60:02d}:00Z,PC0{i % 4 + 1},{USERS[i % 3]},"
-            f"{EVENTS[i % 3]},C:\\Users\\{USERS[i % 3]}\\f{i}.exe,10.0.0.{i % 5}"
-        )
-    return "\n".join(lines) + "\n"
-
-
-@pytest.fixture(scope="module")
-def server(tmp_path_factory):
-    root = tmp_path_factory.mktemp("command-cases")
-    with serving(root) as base:
-        yield base, root, tmp_path_factory.mktemp("command-evidence")
-
-
-@pytest.fixture()
-def page(server, request):
-    """A fresh case for every test: the view an analyst leaves behind (sorts, hidden columns,
-    filters) is saved with the case, and one command's effect must not become the next one's."""
-    base, root, evidence = server
-    name = "Commands " + request.node.name[:40]
-    identifier = InvestigationLibrary(root).create(name, "", "windows")["id"]
-    (evidence / identifier).mkdir()
-    source = evidence / identifier / "events.csv"
-    source.write_text(_csv())
-    started = httpx.post(
-        f"{base}/api/cases/{identifier}/import-jobs",
-        data={"source": str(source), "organization": "files"},
-        timeout=30,
-    )
-    assert started.status_code == 200, started.text
-    job = started.json()["job"]
-    for _ in range(240):
-        state = httpx.get(f"{base}/api/import-jobs/{job}").json()
-        if state.get("status") not in ("running", "pending", "queued"):
-            break
-    assert state.get("status") == "complete", state
-    with browser_page(base, name) as opened:
-        opened.context.grant_permissions(["clipboard-read", "clipboard-write"])
-        yield opened
-
-
-def command(page, act):
-    """Press a command in its menu, with the mouse."""
-    menu = page.evaluate(
-        f"document.querySelector('.menu [data-act=\"{act}\"]').closest('.menu').dataset.for"
-    )
-    page.click(f'.menubar .m[data-menu="{menu}"]')
-    page.click(f'.menu.show [data-act="{act}"]')
-
-
-def rows(page):
-    return page.locator("#body tr[data-row]").count()
-
-
-def total(page):
-    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/')")
-    import re
-
-    return int(re.search(r"/\s*(\d+)\s*(?:group|row)", page.inner_text("#pageinfo")).group(1))
-
-
-def status(page):
-    return page.inner_text("#status")
-
-
-def select(page, *positions):
-    """Click the rows at these positions: the first plainly, the others with Ctrl."""
-    for index, position in enumerate(positions):
-        page.locator("#body tr[data-row]").nth(position).locator("td[data-cell]").first.click(
-            modifiers=["Control"] if index else []
-        )
-
-
-def answer(page, *texts):
-    """Fill the one-line question dialogs, in order."""
-    for text in texts:
-        page.wait_for_selector("#ask-input:visible")
-        page.fill("#ask-input", text)
-        page.click('[data-act="ask-ok"]')
-
+from _audit import (
+    ROWS,
+    answer,
+    command,
+    rows,
+    select,
+    total,
+)
+from _audit import cell as _cell
+from _audit import column_values as _column_values
+from _audit import context as _context
+from _audit import headers as _headers
+from _audit import import_more as _import_more
 
 # -- Edit ------------------------------------------------------------------------------------
 
@@ -207,22 +128,6 @@ def test_ctrl_click_adds_a_row_and_a_second_ctrl_click_takes_it_out(page):
 
 
 # -- View ------------------------------------------------------------------------------------
-
-
-def _headers(page):
-    """The column names as read on screen, without the sort arrow or the sort rank."""
-    return page.eval_on_selector_all(
-        "#head tr:first-child th",
-        "els => els.map(e => e.innerText.replace(/[▲▼]/g, '').replace(/\\d+$/, '').trim())",
-    )
-
-
-def _column_values(page, name):
-    names = _headers(page)
-    at = names.index(name)
-    return page.eval_on_selector_all(
-        f"#body tr[data-row] td:nth-child({at + 1})", "els => els.map(e => e.innerText)"
-    )
 
 
 def test_group_by_lists_the_values_with_their_counts_and_back_returns(page):
@@ -344,15 +249,6 @@ def test_reset_widths_restores_the_default_width_of_a_column(page):
 
 
 # -- The right-click menu of a cell, and the column headers -----------------------------------
-
-
-def _cell(page, row, column):
-    return page.locator("#body tr[data-row]").nth(row).locator(f"td[data-cell='{column}']")
-
-
-def _context(page, row, column, act):
-    _cell(page, row, column).click(button="right")
-    page.click(f'#row-menu [data-act="{act}"]')
 
 
 def test_the_context_menu_copies_the_value_of_the_cell(page):
@@ -837,27 +733,6 @@ def test_the_reason_a_value_matched_is_in_english(page):
     page.wait_for_selector("#ioc-rows tr")
     assert "Normalised IP address" in page.inner_text("#ioc-rows")
     assert "Adresse" not in page.inner_text("#ioc-view")
-
-
-def _import_more(page, server, name, content):
-    """A second analysis in the open case, imported by path the way a collection is."""
-    import time
-
-    base, _root, evidence = server
-    case = page.evaluate("state.openCase.id")
-    source = evidence / case / name
-    source.write_text(content)
-    job = httpx.post(
-        f"{base}/api/cases/{case}/import-jobs",
-        data={"source": str(source), "organization": "files"},
-        timeout=30,
-    ).json()["job"]
-    for _ in range(120):
-        if httpx.get(f"{base}/api/import-jobs/{job}").json().get("status") != "running":
-            break
-        time.sleep(0.25)
-    page.evaluate("openCase(state.openCase.id)")
-    page.wait_for_function(f"state.openCase.analyses.some(a => a.label === '{name}')")
 
 
 def test_a_hunt_over_every_analysis_reads_them_all(page, server):

@@ -1965,6 +1965,14 @@ class Library:
         preview["delimiter"] = {"\t": "tab", ",": "comma", ";": "semicolon", "|": "pipe"}[delimiter]
         preview["encoding"] = chosen
         preview["encoding_detected"] = detected
+        if "\ufffd" in text and chosen.lower().replace("-", "").startswith("utf8"):
+            # An unmarked file is read as UTF-8 and is never guessed at: the analyst says so. The
+            # preview says what the import will do, rather than showing damaged letters in silence.
+            preview["note"] = (
+                (preview.get("note") or "")
+                + " Some bytes are not valid UTF-8 (shown as �): an import under this encoding "
+                "is refused. Choose Windows-1252 or Latin-1 in the CSV options."
+            ).strip()
         preview["columns"] = columns
         preview["rows"] = rows
         preview["mapping"] = mapping
@@ -3941,6 +3949,15 @@ class Library:
         )
         if entry is None:
             raise ServiceError("This file is not in the collection report.")
+        # Evidence is read, never modified: only a file the case itself holds (one sent from the
+        # browser, or copied into its evidence folder) can be deleted from the evidence tree. An
+        # original that was read where it stands is left alone; it can be set aside instead.
+        located = Path(str(entry.get("path", ""))).resolve()
+        if folder.resolve() not in located.parents:
+            raise ServiceError(
+                "This file is an original outside the case: Fireblade never deletes it. "
+                "Set it aside from the report instead."
+            )
         record = report_actions.remove_source(entry)
         entry.update(record)
         self._write_collection_report(file, payload)

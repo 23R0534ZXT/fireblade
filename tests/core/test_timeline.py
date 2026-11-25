@@ -254,3 +254,24 @@ def test_explicit_no_date_choice_is_respected(tmp_path):
     finally:
         store.close()
         case.close()
+
+
+def test_an_event_summary_leaves_out_where_the_evidence_file_sits(tmp_path):
+    source = tmp_path / "events.csv"
+    source.write_text(
+        "TimeCreated,EventId,Description,SourceFile,Fireblade_ArtifactSource\n"
+        "2026-01-01T00:00:00Z,4624,Logon,/srv/cases/abc/evidence/C/Logs/Security.evtx,Security\n",
+        encoding="utf-8",
+    )
+    case = Case(tmp_path / "events.timeline")
+    case.import_csv(source)
+    document = AnalysisSnapshot(str(case.path), case.info, View(), b"")
+    store = TimelineStore(memory_mb=64)
+    try:
+        store.build(WorkspaceReader([document], active=case), {document.path: 0})
+        summary = store.page()["rows"][0][4]
+        assert "4624" in summary and "Logon" in summary
+        assert "/srv/cases" not in summary and "Security" not in summary
+    finally:
+        store.close()
+        case.close()

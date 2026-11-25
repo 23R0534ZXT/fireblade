@@ -1,6 +1,7 @@
 """The HTTP service reads a real case written the way the desktop writes it."""
 
 import csv
+import json
 
 import pytest
 
@@ -311,5 +312,26 @@ def test_a_disk_walk_speaks_english_and_a_missing_source_is_refused_plainly(tmp_
         identifier = InvestigationLibrary(root).create("Disks", "", "windows")["id"]
         with pytest.raises(ServiceError, match="does not exist on the server"):
             service.start_disk_job(identifier, str(tmp_path / "nothing"), "image")
+    finally:
+        service.close()
+
+
+def test_a_history_entry_says_what_state_it_holds(case_with_analysis):
+    root, identifier = case_with_analysis
+    service = Library(root)
+    try:
+        folder = service.library.folder(identifier) / "History"
+        folder.mkdir(exist_ok=True)
+        (folder / "c4659be8d603482bba721c8c06a51784.json").write_text(
+            json.dumps({"format": "fireblade-case", "analysis_count": 3, "status": "open"}),
+            encoding="utf-8",
+        )
+        entry = next(
+            item
+            for item in service.history(identifier)["entries"]
+            if item["name"].startswith("c4659be8")
+        )
+        assert entry["label"] == "Case state — 3 analysis(es), status open"
+        assert entry["name"].endswith(".json")
     finally:
         service.close()

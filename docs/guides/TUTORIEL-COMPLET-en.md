@@ -61,7 +61,7 @@ the reports. The correlations remain leads to verify.
 
 ## Getting started
 
-Download `Fireblade.exe` from a [**Fireblade - Windows prototype** release](https://github.com/23R0534ZXT/fireblade/releases), then double-click it. The **test-pack-v1** and **test-data-3gib** releases contain the datasets; they do not replace downloading the program. The automatic **Source code** archives contain the sources to build. Python, Excel and a library folder next to the program are not required. The guide and the licences are accessible in the **Help** menu, even without an open analysis.
+Download `Fireblade.exe` from a [**Fireblade - Windows prototype** release](https://github.com/23R0534ZXT/kagarasu/releases), then double-click it. The **test-pack-v1** and **test-data-3gib** releases contain the datasets; they do not replace downloading the program. The automatic **Source code** archives contain the sources to build. Python, Excel and a library folder next to the program are not required. The guide and the licences are accessible in the **Help** menu, even without an open analysis.
 
 The program prepares its libraries in the Windows temporary folder at startup. This step may take a few seconds. This folder is normally deleted on exit. The analyses are saved separately to preserve the work.
 
@@ -88,7 +88,7 @@ The EXE is a single program file; the analyses, artifacts and results are not in
 
 ### Download and choose your path
 
-Download the [**forensic ZIP v1 — about 5.1 MB**](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip), then extract it entirely. The paths below start from the `Fireblade-Test-Pack-v1` folder. Keep its structure and the registry logs next to their hive. The pack contains `LIRE-MOI.md`, `RESULTATS-ATTENDUS.json`, `MANIFEST.json` and the licences in `NOTICES`.
+Download the [**forensic ZIP v1 — about 5.1 MB**](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip), then extract it entirely. The paths below start from the `Fireblade-Test-Pack-v1` folder. Keep its structure and the registry logs next to their hive. The pack contains `LIRE-MOI.md`, `RESULTATS-ATTENDUS.json`, `MANIFEST.json` and the licences in `NOTICES`.
 
 | Your goal | Entry to choose | Command |
 |---|---|---|
@@ -114,7 +114,7 @@ Start with a precise sub-folder rather than the root of the ZIP. You will be abl
 6. Select an alert and click **See the context of this alert**, with **5 min** before and after. In the side panel, distinguish the alert reference from the temporal neighbours. Open **the source EVTX event**, then **Back to alerts**. Use **Keep this context as a tab** if you want to find it in the saved session.
 7. Save the case and its session with **Ctrl+Alt+S**.
 
-An alert is not proof of compromise; the neighbouring events do not become suspicious because they are close. The expected counts concern the pinned files and engines of the pack. Another version of the rules may change the detections: see the [published Windows report](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1) to compare the versions.
+An alert is not proof of compromise; the neighbouring events do not become suspicious because they are close. The expected counts concern the pinned files and engines of the pack. Another version of the rules may change the detections: see the [published Windows report](https://github.com/23R0534ZXT/kagarasu/releases/tag/test-pack-v1) to compare the versions.
 
 ### Step 2 — Add Shellbags and WebCache to the same case
 
@@ -1095,7 +1095,7 @@ This tutorial describes the user commands and the settings present in the code o
 - [Architecture](../development/ARCHITECTURE.md): layers, storage, concurrency and modification points.
 - [Contribution](../development/CONTRIBUER.md): development environment, checking and build.
 - [Qualification](../validation/QUALIFICATION.md): Windows course and validation conditions.
-- [Forensic pack v1](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1): ZIP, fingerprints, sources and Windows report.
+- [Forensic pack v1](https://github.com/23R0534ZXT/kagarasu/releases/tag/test-pack-v1): ZIP, fingerprints, sources and Windows report.
 - [CatScale validation](../validation/CATSCALE.md), [case/CatScale reliability](../validation/FIABILITE-CASES-CATSCALE.md) and [Shellbags/WebCache](../validation/SHELLBAGS-WEBCACHE.md): checks and limits of the readers.
 - [3 GiB trial](TESTER-3GIB.md): published file, checks and expected results.
 

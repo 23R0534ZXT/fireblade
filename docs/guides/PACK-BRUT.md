@@ -1,6 +1,6 @@
 # Grand pack brut Fireblade — exercice de parsing
 
-**[Télécharger le ZIP brut (~521 Mo, 3,44 Go de données brutes extraites)](https://github.com/23R0534ZXT/fireblade/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip)** · [Rapport et SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/raw-artifacts-v1)
+**[Télécharger le ZIP brut (~521 Mo, 3,44 Go de données brutes extraites)](https://github.com/23R0534ZXT/kagarasu/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip)** · [Rapport et SHA-256](https://github.com/23R0534ZXT/kagarasu/releases/tag/raw-artifacts-v1)
 
 Ce pack est destiné à **importer et parser des fichiers bruts**, pas à ouvrir des CSV déjà calculés. Il vise au moins **3 Gio de données d’entrée après extraction**. La taille du ZIP est différente et peut être nettement inférieure, notamment pour les journaux texte et les zones compressibles des artefacts natifs.
 

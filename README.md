@@ -1,6 +1,6 @@
 # Fireblade
 
-[![Windows validation](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
+[![Windows validation](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml)
 
 **A local DFIR workspace for Windows artifacts, Linux logs and tabular evidence.**
 
@@ -38,7 +38,7 @@ specified but not started — see [Roadmap](#roadmap).
 One line; Docker downloads the image the first time, and creates the cases folder if it is missing:
 
 ```bash
-docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/fireblade-cases:/data/cases" ghcr.io/23r0534zxt/fireblade:latest && echo "Fireblade is starting: open http://localhost:8080 in a few seconds"
+docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/fireblade-cases:/data/cases" ghcr.io/23r0534zxt/kagarasu:latest && echo "Fireblade is starting: open http://localhost:8080 in a few seconds"
 ```
 
 Prefix the command with `sudo` if your user is not in the `docker` group. Then open <http://localhost:8080>. `/data/cases` is the path inside the container; your cases are in
@@ -48,7 +48,7 @@ folder is there. On Windows PowerShell, write the folder as `"$HOME\fireblade-ca
 | | |
 | --- | --- |
 | Stop / start | `docker stop fireblade` · `docker start fireblade` |
-| Upgrade | `docker pull ghcr.io/23r0534zxt/fireblade:latest && docker rm -f fireblade`, then run the line above again (the cases stay in their folder) |
+| Upgrade | `docker pull ghcr.io/23r0534zxt/kagarasu:latest && docker rm -f fireblade`, then run the line above again (the cases stay in their folder) |
 | Pin a version | replace `:latest` with `:0.8.8` · `:edge` follows `main` |
 | Remove | `docker rm -f fireblade` (your cases are not touched) |
 
@@ -65,7 +65,7 @@ To find out, the container asks GitHub's public releases API at most once every 
 request carries no information about you or your cases, and it is the only one the Host makes.
 On an isolated network, or if you prefer it that way, switch it off with
 `-e FIREBLADE_UPDATE_CHECK=off`: the band never appears, and you follow the
-[releases](https://github.com/23R0534ZXT/fireblade/releases) yourself.
+[releases](https://github.com/23R0534ZXT/kagarasu/releases) yourself.
 
 The image carries the .NET 10 runtime and the thirteen pinned readers, so it reads the same
 artifacts as the Desktop.
@@ -92,9 +92,9 @@ docker run -d --name fireblade-driver -p 127.0.0.1:8080:8080 --network fireblade
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /srv/fireblade/volumes:/data/volumes \
     -v /srv/fireblade/certificates:/data/certificates \
-    ghcr.io/23r0534zxt/fireblade-driver:latest \
+    ghcr.io/23r0534zxt/kagarasu-driver:latest \
     python -m fireblade.web.agency serve \
-      --image ghcr.io/23r0534zxt/fireblade:latest \
+      --image ghcr.io/23r0534zxt/kagarasu:latest \
       --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
       --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
       --host 0.0.0.0 --port 8080
@@ -144,7 +144,7 @@ Reader by reader, with the rows each wrote: [docs/host/LINUX-READERS.md](docs/ho
 
 The Windows edition is frozen: version 0.7.9 is its last build and receives no changes.
 
-**[Download Fireblade 0.7.9 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.7.9)
+**[Download Fireblade 0.7.9 — Windows x64](https://github.com/23R0534ZXT/kagarasu/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.7.9)
 
 Unzip and run `Fireblade.exe`; Python, Qt, the parsers and the .NET readers are inside the
 folder. The executable is unsigned: Windows may show a SmartScreen prompt (*More info* →
@@ -154,10 +154,10 @@ against the SHA-256 in the release notes. Documentation: [docs/desktop](docs/des
 ![The Desktop workspace](docs/assets/fireblade-workspace.png)
 
 Sample data: the
-[sample collection](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip)
+[sample collection](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip)
 (a Windows 11 machine: 183 event logs, Amcache, 60 Prefetch entries, 251 scheduled tasks), the
-[discovery pack](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
-and the [raw artifact pack](https://github.com/23R0534ZXT/fireblade/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip).
+[discovery pack](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
+and the [raw artifact pack](https://github.com/23R0534ZXT/kagarasu/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip).
 
 ## Roadmap
 

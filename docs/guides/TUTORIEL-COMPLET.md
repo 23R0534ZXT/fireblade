@@ -61,7 +61,7 @@ rapports. Les corrélations restent des pistes à vérifier.
 
 ## Démarrage
 
-Téléchargez `Fireblade.exe` dans une [release **Fireblade - prototype Windows**](https://github.com/23R0534ZXT/fireblade/releases), puis double-cliquez dessus. Les releases **test-pack-v1** et **test-data-3gib** contiennent les jeux de données ; elles ne remplacent pas le téléchargement du programme. Les archives automatiques **Source code** contiennent les sources à construire. Python, Excel et un dossier de bibliothèques à côté du programme ne sont pas nécessaires. Le guide et les licences sont accessibles dans le menu **Aide**, même sans analyse ouverte.
+Téléchargez `Fireblade.exe` dans une [release **Fireblade - prototype Windows**](https://github.com/23R0534ZXT/kagarasu/releases), puis double-cliquez dessus. Les releases **test-pack-v1** et **test-data-3gib** contiennent les jeux de données ; elles ne remplacent pas le téléchargement du programme. Les archives automatiques **Source code** contiennent les sources à construire. Python, Excel et un dossier de bibliothèques à côté du programme ne sont pas nécessaires. Le guide et les licences sont accessibles dans le menu **Aide**, même sans analyse ouverte.
 
 Le programme prépare ses bibliothèques dans le dossier temporaire de Windows au démarrage. Cette étape peut prendre quelques secondes. Ce dossier est normalement supprimé à la fermeture. Les analyses sont enregistrées séparément pour conserver le travail.
 
@@ -88,7 +88,7 @@ L’EXE est un seul fichier de programme ; les analyses, artefacts et résultats
 
 ### Télécharger et choisir son parcours
 
-Téléchargez le [**ZIP forensic v1 — environ 5,1 Mo**](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip), puis extrayez-le entièrement. Les chemins ci-dessous partent du dossier `Fireblade-Test-Pack-v1`. Gardez sa structure et les journaux de registre à côté de leur ruche. Le pack contient `LIRE-MOI.md`, `RESULTATS-ATTENDUS.json`, `MANIFEST.json` et les licences dans `NOTICES`.
+Téléchargez le [**ZIP forensic v1 — environ 5,1 Mo**](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip), puis extrayez-le entièrement. Les chemins ci-dessous partent du dossier `Fireblade-Test-Pack-v1`. Gardez sa structure et les journaux de registre à côté de leur ruche. Le pack contient `LIRE-MOI.md`, `RESULTATS-ATTENDUS.json`, `MANIFEST.json` et les licences dans `NOTICES`.
 
 | Votre objectif | Entrée à choisir | Commande |
 |---|---|---|
@@ -114,7 +114,7 @@ Commencez par un sous-dossier précis plutôt que par la racine du ZIP. Vous pou
 6. Sélectionnez une alerte et cliquez **Voir le contexte de cette alerte**, avec **5 min** avant et après. Dans le panneau latéral, distinguez la référence de l’alerte des voisins temporels. Ouvrez **l’événement EVTX source**, puis **Revenir aux alertes**. Utilisez **Conserver ce contexte en onglet** si vous voulez le retrouver dans la session sauvegardée.
 7. Enregistrez le case et sa session avec **Ctrl+Alt+S**.
 
-Une alerte n’est pas une preuve de compromission ; les événements voisins ne deviennent pas suspects parce qu’ils sont proches. Les comptes attendus concernent les fichiers et moteurs épinglés du pack. Une autre version des règles peut changer les détections : consultez le [rapport Windows publié](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1) pour comparer les versions.
+Une alerte n’est pas une preuve de compromission ; les événements voisins ne deviennent pas suspects parce qu’ils sont proches. Les comptes attendus concernent les fichiers et moteurs épinglés du pack. Une autre version des règles peut changer les détections : consultez le [rapport Windows publié](https://github.com/23R0534ZXT/kagarasu/releases/tag/test-pack-v1) pour comparer les versions.
 
 ### Étape 2 — Ajouter Shellbags et WebCache au même case
 
@@ -1094,7 +1094,7 @@ Ce tutoriel décrit les commandes utilisateur et les réglages présents dans le
 - [Architecture](../development/ARCHITECTURE.md) : couches, stockage, concurrence et points de modification.
 - [Contribution](../development/CONTRIBUER.md) : environnement de développement, vérification et construction.
 - [Qualification](../validation/QUALIFICATION.md) : parcours Windows et conditions de validation.
-- [Pack forensic v1](https://github.com/23R0534ZXT/fireblade/releases/tag/test-pack-v1) : ZIP, empreintes, sources et rapport Windows.
+- [Pack forensic v1](https://github.com/23R0534ZXT/kagarasu/releases/tag/test-pack-v1) : ZIP, empreintes, sources et rapport Windows.
 - [Validation CatScale](../validation/CATSCALE.md), [fiabilité cases/CatScale](../validation/FIABILITE-CASES-CATSCALE.md) et [Shellbags/WebCache](../validation/SHELLBAGS-WEBCACHE.md) : contrôles et limites des lecteurs.
 - [Essai de 3 GiB](TESTER-3GIB.md) : fichier publié, vérifications et résultats attendus.
 

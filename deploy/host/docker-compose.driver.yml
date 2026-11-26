@@ -12,7 +12,7 @@
 # edition will run the driver on the host instead of in a container.
 services:
   fireblade-driver:
-    image: ghcr.io/23r0534zxt/fireblade-driver:${FIREBLADE_TAG:-latest}
+    image: ghcr.io/23r0534zxt/kagarasu-driver:${FIREBLADE_TAG:-latest}
     build:
       context: ../..
       dockerfile: deploy/host/Dockerfile.driver
@@ -38,7 +38,7 @@ services:
       - --host-volumes
       - "${FIREBLADE_VOLUMES:-/srv/fireblade/volumes}"
       - --image
-      - "ghcr.io/23r0534zxt/fireblade:${FIREBLADE_TAG:-latest}"
+      - "ghcr.io/23r0534zxt/kagarasu:${FIREBLADE_TAG:-latest}"
       - --certificates
       - /data/certificates
       - --host-certificates

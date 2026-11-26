@@ -17,7 +17,7 @@ ARCHIVE = ROOT + ".zip"
 APP_COMMIT = "ad1991921b615a209636f0d2c972db0002fb4fe8"
 APP_RELEASE = "prototype-ad1991921b615a209636f0d2c972db0002fb4fe8"
 APP_SHA256 = "828b67897f0ec2971576e99728c6b03b48c344abdda84debf7f36e3f41ec7202"
-DOWNLOAD = "https://github.com/23R0534ZXT/fireblade/releases/download/" + TAG + "/" + ARCHIVE
+DOWNLOAD = "https://github.com/23R0534ZXT/kagarasu/releases/download/" + TAG + "/" + ARCHIVE
 ROWS = [
     [
         "EVTX",
@@ -232,7 +232,7 @@ sans analyses chargées avant votre ouverture explicite. Testez aussi recherche,
 sont dans `NOTICES`. Les fichiers d’analyse et résultats restent en dehors de cette collecte source.
 Le pack fournit des exemples représentatifs des moteurs, pas chaque variante possible d’artefact.
 Le CSV de plus de 3 Gio est distribué séparément :
-https://github.com/23R0534ZXT/fireblade/releases/tag/test-data-3gib
+https://github.com/23R0534ZXT/kagarasu/releases/tag/test-data-3gib
 """,
         encoding="utf-8",
     )

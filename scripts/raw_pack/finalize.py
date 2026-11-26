@@ -114,7 +114,7 @@ def finalize(directory, publish=False):
         f"Les corpus publics ont produit **{len(report['errors'])} refus/erreurs** et **{len(report['warnings'])} diagnostics d’avertissement ou de sortie vide** : ils sont conservés dans `validation-windows.json` et `RESULTATS-ATTENDUS.md`, sans les présenter comme des réussites.\n\n"
         "Télécharger le ZIP, lire `LIRE-MOI.md`, puis commencer par un sous-dossier de collecte. Prévoir de l’espace supplémentaire pour les sorties des parseurs et les analyses. Les sources, licences, manifestes et résultats attendus sont inclus.\n\n"
         f"Application de référence : `{APP_COMMIT}`.\n\n"
-        f"Workflow : https://github.com/23R0534ZXT/fireblade/actions/runs/{os.environ.get('GITHUB_RUN_ID', '')}\n"
+        f"Workflow : https://github.com/23R0534ZXT/kagarasu/actions/runs/{os.environ.get('GITHUB_RUN_ID', '')}\n"
     )
     (directory / "release-notes.md").write_text(notes, encoding="utf-8")
     if publish:

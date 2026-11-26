@@ -96,7 +96,7 @@ class CaseContainer:
         identifier: str,
         *,
         volume,
-        image: str = "ghcr.io/23r0534zxt/fireblade:latest",
+        image: str = "ghcr.io/23r0534zxt/kagarasu:latest",
         network: str = "fireblade-cases",
         port: int = 8080,
         name: str = "",
@@ -348,7 +348,7 @@ class Agency:
         certificates="",
         docker=None,
         *,
-        image: str = "ghcr.io/23r0534zxt/fireblade:latest",
+        image: str = "ghcr.io/23r0534zxt/kagarasu:latest",
         network: str = "fireblade-cases",
         max_open: int = 3,
         host_volumes="",
@@ -626,7 +626,7 @@ def create_app(
     volumes_root,
     certificates_root="",
     *,
-    image: str = "ghcr.io/23r0534zxt/fireblade:latest",
+    image: str = "ghcr.io/23r0534zxt/kagarasu:latest",
     network: str = "fireblade-cases",
     max_open: int = 3,
     version: str = "",
@@ -869,7 +869,7 @@ def main(argv=None) -> int:
     p_serve.add_argument("--case-gid", type=int, default=10001)
     p_serve.add_argument(
         "--image",
-        default="ghcr.io/23r0534zxt/fireblade:latest",
+        default="ghcr.io/23r0534zxt/kagarasu:latest",
         help="the case image; every case container is built from it",
     )
     p_serve.add_argument("--network", default="fireblade-cases")

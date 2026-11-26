@@ -59,10 +59,10 @@ def test_same_version_is_not_an_update():
 
 def test_the_command_names_the_editions_own_image():
     driver = updates.command("driver", "0.9.0")
-    assert driver[0] == "docker pull ghcr.io/23r0534zxt/fireblade-driver:0.9.0"
-    assert any("fireblade:0.9.0" in line for line in driver)
+    assert driver[0] == "docker pull ghcr.io/23r0534zxt/kagarasu-driver:0.9.0"
+    assert any("kagarasu:0.9.0" in line for line in driver)
     case = updates.command("case", "0.9.0")
-    assert case == ["docker pull ghcr.io/23r0534zxt/fireblade:0.9.0"]
+    assert case == ["docker pull ghcr.io/23r0534zxt/kagarasu:0.9.0"]
     assert "driver" in updates.guidance("case")
 
 
@@ -70,7 +70,7 @@ def test_the_host_update_is_one_line_a_shell_can_run():
     host = updates.command("host", "0.8.8")
     assert len(host) == 1
     line = host[0]
-    image = "ghcr.io/23r0534zxt/fireblade:0.8.8"
+    image = "ghcr.io/23r0534zxt/kagarasu:0.8.8"
     assert line.startswith(f"docker pull {image} && docker rm -f fireblade && docker run -d ")
     assert f"{image} && echo" in line and "-p 127.0.0.1:8080:8080" in line
     assert "README" in updates.guidance("host")

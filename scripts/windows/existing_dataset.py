@@ -11,7 +11,7 @@ import time
 import zipfile
 from pathlib import Path
 
-REPOSITORY = "23R0534ZXT/fireblade"
+REPOSITORY = "23R0534ZXT/kagarasu"
 TAG = "test-data-3gib"
 ROOT = Path(__file__).resolve().parents[2]
 

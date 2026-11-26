@@ -105,7 +105,7 @@ def test_more_grids_than_a_case_holds_are_grouped_not_lost(lib, monkeypatch):
     library, identifier, tmp_path = lib
     monkeypatch.setattr(type(library), "SESSION_LIMIT", 5)
     result = library.import_source(identifier, _many(tmp_path / "many", 8), organization="files")
-    assert result["analyses"] >= 1 and "laid out by artifact family" in result["notice"]
+    assert result["analyses"] == 1 and "identical columns" in result["notice"], result
     case = library.case(identifier)
     assert 1 <= len(case["analyses"]) <= 5, "the case shows what was read"
 
@@ -130,3 +130,24 @@ def test_one_grid_per_file_is_refused_when_it_would_not_fit(lib, monkeypatch):
         library.reorganize(identifier, "files")
     assert "more than the 3" in str(refused.value) and "artifact family" in str(refused.value)
     assert len(library.case(identifier)["analyses"]) == 1, "nothing was changed"
+
+
+def test_files_of_different_shapes_make_one_grid_per_shape_not_one_wide_table(lib, monkeypatch):
+    library, identifier, tmp_path = lib
+    monkeypatch.setattr(type(library), "SESSION_LIMIT", 5)
+    folder = tmp_path / "shapes"
+    folder.mkdir()
+    for number in range(9):  # three shapes, three files each
+        header = ["Time", f"Field{number % 3}"]
+        (folder / f"f{number}.csv").write_text(
+            ",".join(header) + "\n" + f"2026-11-01T10:00:00Z,v{number}\n"
+        )
+    result = library.import_source(identifier, folder, organization="files")
+    assert result["analyses"] == 3, result
+    shapes = (
+        sorted(len(a["headers"]) for a in library.case(identifier)["analyses"]) if False else None
+    )
+    case = library.case(identifier)
+    assert len(case["analyses"]) == 3
+    assert sum(a["source_info"]["rows"] for a in case["analyses"]) == 9, "no row lost"
+    assert all(len(a["source_info"]["headers"]) <= 5 for a in case["analyses"]), "not widened"

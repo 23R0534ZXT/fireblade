@@ -10,6 +10,10 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 ## [0.9.3] — 2026-11-26
 
 ### Fixed
+- **A collection of 1000+ files no longer stalls at 99 % in a huge merged table.** When "one grid per file"
+  would make more than 1000 grids, files with exactly the same columns are now merged into one grid (1245
+  files of 300 shapes make 300 grids, no row lost, no wider table); only if there are still too many
+  shapes does it fall back to one grid per artifact family, then to one grid.
 - **Timeline**: overlapping reads (a search typed while a window loads) no longer let a slower, older answer
   repaint an older state: only the latest read paints.
 

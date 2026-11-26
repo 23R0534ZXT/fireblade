@@ -64,6 +64,28 @@ def column_keys(headers):
     return keys
 
 
+def _named_schemas(groups):
+    """Give each (family, columns) group a unique, file-safe name: the family and its first columns."""
+    per_family = {}
+    for family, _columns in groups:
+        per_family[family] = per_family.get(family, 0) + 1
+    named, used = {}, set()
+    for (family, columns), sources in groups.items():
+        title = family
+        if per_family[family] > 1:
+            first = ", ".join(columns[:3]) + (f" +{len(columns) - 3}" if len(columns) > 3 else "")
+            title = f"{family} · {first}"
+        title = "".join(c if c.isalnum() or c in " ._+,-·" else "_" for c in title)[:100].strip()
+        base, number = title or family, 2
+        title = base
+        while title.casefold() in used:
+            title = f"{base} ({number})"
+            number += 1
+        used.add(title.casefold())
+        named[title] = sources
+    return named
+
+
 def organize(collection):
     mode = collection.report.get("organization", "files")
     if mode == "files" or not collection.report["documents"]:
@@ -86,8 +108,17 @@ def organize(collection):
         origin = origins.get(document["path"])
         if origin is None:
             raise ValueError("Provenance de résultat absente ; organisation refusée")
-        key = origin[0] if mode == "artifacts" else "Collecte complète"
+        if mode == "schemas":
+            # Files of one family with exactly the same columns make one grid, whatever their
+            # number: the table does not get wider, and a thousand files rarely have a thousand
+            # different shapes.
+            columns = tuple((document.get("source") or {}).get("headers") or ())
+            key = (origin[0], columns)
+        else:
+            key = origin[0] if mode == "artifacts" else "Collecte complète"
         groups.setdefault(key, []).append((document, origin))
+    if mode == "schemas":
+        groups = _named_schemas(groups)
     folder = collection.output / "results" / ("organisation-" + uuid.uuid4().hex)
     folder.mkdir()
     documents = []

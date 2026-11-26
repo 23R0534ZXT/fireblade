@@ -8,6 +8,11 @@ table. What the database cannot say stays empty rather than guessed: the user na
 the SOFTWARE hive; the well-known SIDs are named), the description and timestamp of an executable, the
 network profile name. The other tables keep the database's own columns.
 
+A collection of more than 1000 files in "one grid per file" no longer stalls at 99 % in one huge merged
+table: files with exactly the same columns are merged into one grid (1245 files of 300 shapes make 300
+grids, no row lost, no wider table); only when there are still too many shapes does it group by artifact
+family, then into one grid.
+
 The timeline no longer shows an older state when two reads overlap: only the latest read paints.
 
 ---

@@ -4015,7 +4015,11 @@ class Library:
         if count <= self.SESSION_LIMIT or report.get("organization") != "files":
             return ""
         raw = report.get("raw_documents") or report["documents"]
-        for mode, label in (("artifacts", "artifact family"), ("combined", "a single grid")):
+        for mode, label in (
+            ("schemas", "identical columns"),
+            ("artifacts", "artifact family"),
+            ("combined", "a single grid"),
+        ):
             if progress:
                 progress(f"{count} grids are more than a case holds: laying them out by {label}…")
             report["raw_documents"] = raw
@@ -4028,7 +4032,7 @@ class Library:
                 return (
                     f"{count} files made {count} grids, more than the {self.SESSION_LIMIT} a case "
                     f"can open at once: they are laid out by "
-                    f"{'artifact family' if mode == 'artifacts' else 'a single grid'} "
+                    f"{dict(schemas='files with identical columns', artifacts='artifact family', combined='a single grid')[mode]} "
                     f"({grouped} grid(s)). The layout selector in the toolbar changes it."
                 )
         raise ServiceError(

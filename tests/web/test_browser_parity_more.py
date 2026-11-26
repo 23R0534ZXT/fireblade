@@ -117,3 +117,105 @@ def test_the_date_format_preference_rewrites_the_date_columns_the_profile_names(
     page.wait_for_function(f"{cell}.innerText === '02/11/2026 10:00'")
     page.evaluate("copyPrefs.dateFormat = 'source'; void loadRows(false)")
     page.wait_for_function(f"{cell}.innerText === '2026-11-02T10:00:00Z'")
+
+
+def test_the_columns_can_be_reordered_and_widened_and_the_order_is_kept(page):
+    page.evaluate("void openColumnManager()")
+    page.wait_for_selector("#columns-modal.show")
+    before = page.evaluate("visibleColumns().map(c => c.name)")
+    assert before[:3] == ["__row_id", "Time", "Host"], before
+    page.click('#columns-list button[data-move="1"][data-dir="1"]')  # Host moves after User
+    page.wait_for_function(
+        "visibleColumns().map(c => c.name).indexOf('Host') > visibleColumns().map(c => c.name).indexOf('User')"
+    )
+    head = page.eval_on_selector_all("#head th[data-column]", "els => els.map(e => e.title)")
+    assert head.index("Host") > head.index("User"), head
+    page.fill('#columns-list input[data-width="1"]', "333")
+    page.press('#columns-list input[data-width="1"]', "Tab")
+    page.wait_for_function("state.widths[1] === 333")
+    page.wait_for_timeout(900)  # the layout is saved a moment after the last change
+    base = page.evaluate("location.origin")
+    case, analysis = page.evaluate("[state.openCase.id, state.analysis]")
+    saved = httpx.get(f"{base}/api/cases/{case}/analyses/{analysis}/display", timeout=30).json()
+    assert saved["order"][:3] == [0, 2, 1] and saved["widths"]["1"] == 333, saved
+    page.reload()
+    page.wait_for_selector("#menubar")
+
+
+def test_a_rule_can_set_the_font_and_choose_which_parts_it_applies(page):
+    css = page.evaluate(
+        """() => ruleCss({background: '#ff0000', foreground: '#00ff00', bold: true, italic: true,
+                           underline: true, strikeout: true, font_family: 'Georgia', font_size: 12,
+                           use_background: true, use_foreground: false, use_font: true})"""
+    )
+    assert "background:#ff0000" in css and "color:" not in css.replace("background", "")
+    assert "font-weight:600" in css and "font-style:italic" in css
+    assert "text-decoration:underline line-through" in css
+    assert "font-family:Georgia" in css and "font-size:12pt" in css
+    plain = page.evaluate(
+        "ruleCss({background: '#fff', foreground: '#000', use_font: false, bold: true})"
+    )
+    assert "font-weight" not in plain
+
+
+def test_the_extra_rule_fields_are_kept_by_the_server(page):
+    import httpx
+
+    base = page.evaluate("location.origin")
+    case, analysis = page.evaluate("[state.openCase.id, state.analysis]")
+    rule = {
+        "column": 2,
+        "operator": "eq",
+        "value": "alice",
+        "background": "#fce2e2",
+        "foreground": "#202020",
+        "italic": True,
+        "underline": True,
+        "strikeout": True,
+        "font_family": "Georgia",
+        "font_size": 11,
+        "stop_if_true": False,
+        "use_font": False,
+        "stat_percent": True,
+        "all_source_rows": True,
+    }
+    answer = httpx.post(
+        f"{base}/api/cases/{case}/analyses/{analysis}/rules", json={"rules": [rule]}, timeout=30
+    )
+    assert answer.status_code == 200, answer.text
+    kept = httpx.get(f"{base}/api/cases/{case}/analyses/{analysis}/rules", timeout=30).json()[
+        "rules"
+    ][0]
+    for key in ("italic", "underline", "strikeout", "stat_percent", "all_source_rows"):
+        assert kept[key] is True, (key, kept)
+    assert kept["stop_if_true"] is False and kept["use_font"] is False
+    assert kept["font_family"] == "Georgia" and kept["font_size"] == 11
+
+
+def test_the_tree_groups_by_collection_and_family_and_can_be_folded(page):
+    tree = page.locator("#tree")
+    groups = page.locator("#tree .node.grp")
+    assert groups.count() >= 2  # the collection, then the family
+    assert "(1)" in groups.first.inner_text()
+    assert page.locator("#tree .node.child").count() == 1
+    page.click("#tree-collapse")
+    assert page.locator("#tree .node.child").count() == 0
+    page.click("#tree-expand")
+    assert page.locator("#tree .node.child").count() == 1
+    page.select_option("#tree-mode", "flat")
+    assert page.locator("#tree .node.grp").count() == 1  # the collection only
+    assert page.locator("#tree .node.child").count() == 1
+    page.select_option("#tree-mode", "families")
+    assert tree.inner_text().count("events") >= 1
+
+
+def test_the_tree_can_sit_on_the_left_or_the_right(page):
+    page.evaluate("void openPreferences()")
+    pane = page.locator(".pane").bounding_box()
+    assert page.locator("#artifacts").bounding_box()["x"] > pane["x"]  # on the right, as it starts
+    page.select_option("#prefs-tree", "left")
+    assert "tree-left" in page.get_attribute(".work", "class")
+    assert (
+        page.locator("#artifacts").bounding_box()["x"] < page.locator(".pane").bounding_box()["x"]
+    )
+    page.select_option("#prefs-tree", "right")

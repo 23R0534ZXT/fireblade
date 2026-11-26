@@ -521,3 +521,8 @@ tr.gtotal td{background:var(--header);border-top:2px solid var(--border-strong)}
 #analysis-view.details-right>.gridwrap{grid-column:1;grid-row:3}
 #analysis-view.details-right>.group-chart{grid-column:1;grid-row:4}
 #analysis-view.details-right>.details{grid-column:2;grid-row:3 / span 2;flex:none;margin:0 6px 0 0}
+
+.artifacts .select{margin:2px 4px;width:calc(100% - 8px)}
+.tree-tools{display:flex;gap:4px;margin:0 4px 2px}
+.tree-tools .btn{flex:1;height:20px;font-size:11px;padding:0 6px}
+.work.tree-left .artifacts{order:-1;border-left:0;border-right:1px solid var(--border)}

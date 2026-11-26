@@ -1,0 +1,385 @@
+{
+  "format": "fireblade-desktop-menu-map",
+  "note": "Every command of the desktop window's menus (read from the real window, 126 entries), and where the Host has it. `act` is a data-act of the Host's page, `id` an element id; `na` says why a command has no meaning in a browser.",
+  "commands": {
+    "Case > New case…": {
+      "act": "new-case"
+    },
+    "Case > Cases…": {
+      "act": "cases-list"
+    },
+    "Case > Save case": {
+      "act": "case-save"
+    },
+    "Case > Close case": {
+      "act": "close-case"
+    },
+    "Case > Import evidence…": {
+      "act": "import-file"
+    },
+    "Case > Client report…": {
+      "act": "report"
+    },
+    "Case > Destroy evidence…": {
+      "act": "destroy-case"
+    },
+    "Case > Delete the case…": {
+      "act": "destroy-case"
+    },
+    "Case > Case history and recovery…": {
+      "act": "case-history"
+    },
+    "Case > Import a portable case…": {
+      "id": "package-input"
+    },
+    "Case > Case autosave (2 min)": {
+      "act": "case-autosave"
+    },
+    "Case > Sessions and compatibility > Open a session…": {
+      "act": "session-open"
+    },
+    "Case > Sessions and compatibility > Save the session…": {
+      "act": "session-save"
+    },
+    "Case > Sessions and compatibility > Timeline Explorer compatibility > Import with a TLE plugin (.NET)…": {
+      "na": "runs a third-party .NET reader inside the service: it needs the plugin host, which the image does not carry"
+    },
+    "Case > Sessions and compatibility > Timeline Explorer compatibility > Import Timeline Explorer preferences…": {
+      "act": "layout-import"
+    },
+    "Case > Sessions and compatibility > Timeline Explorer compatibility > Import a Timeline Explorer session…": {
+      "act": "session-open"
+    },
+    "Case > Sessions and compatibility > Timeline Explorer compatibility > Export a TLE session (sources and bookmarks)…": {
+      "act": "layout-export"
+    },
+    "Case > Quit": {
+      "na": "a browser tab is closed by the browser"
+    },
+    "Analysis > Import a file…": {
+      "act": "import-file"
+    },
+    "Analysis > Parse a folder…": {
+      "act": "import-folder"
+    },
+    "Analysis > Open an analysis…": {
+      "act": "open-analyses"
+    },
+    "Analysis > Calculations and conversions > Load .NET functions…": {
+      "na": "a .NET function library cannot be loaded by the service (same reason as the .NET plugins)"
+    },
+    "Analysis > Calculations and conversions > Convert a date…": {
+      "act": "derived"
+    },
+    "Analysis > Calculations and conversions > Add a computed column…": {
+      "act": "derived"
+    },
+    "Analysis > Calculations and conversions > Check derived columns…": {
+      "act": "derived-check"
+    },
+    "Analysis > Show cell / JSON…": {
+      "act": "cell-json"
+    },
+    "Analysis > Provenance and SHA-256…": {
+      "act": "integrity"
+    },
+    "Analysis > Stop the query": {
+      "act": "stop-query"
+    },
+    "Analysis > Timeline  correlations": {
+      "act": "show-timeline"
+    },
+    "Analysis > Manage open analyses > Clear the open queue": {
+      "na": "imports run as jobs with their own progress and Stop; there is no queue of files waiting to open"
+    },
+    "Analysis > Manage open analyses > Close the tab": {
+      "id": "close-analysis",
+      "dynamic": true
+    },
+    "Analysis > Manage open analyses > Reopen the last closed tab": {
+      "act": "open-analyses"
+    },
+    "Analysis > Imports": {
+      "act": "show-imports"
+    },
+    "Detection > Analyze the collection with Hayabusa": {
+      "act": "detect-run"
+    },
+    "Detection > Show the alert’s EVTX context": {
+      "act": "alert-context"
+    },
+    "Detection > Open EVTX detection": {
+      "act": "detect-run"
+    },
+    "Detection > Hunt IOCs": {
+      "act": "show-ioc"
+    },
+    "Edit > Copy rows": {
+      "act": "copy-row"
+    },
+    "Edit > Bookmark / note…": {
+      "act": "bookmark-note"
+    },
+    "Edit > Mark the selection": {
+      "act": "mark-selection"
+    },
+    "Edit > Add a note to the selection…": {
+      "act": "note-selection"
+    },
+    "Edit > Replace the selection’s notes…": {
+      "act": "note-replace"
+    },
+    "Edit > Remove bookmarks from the selection": {
+      "act": "unmark-selection"
+    },
+    "View > Command palette…": {
+      "act": "palette"
+    },
+    "View > Messages…": {
+      "act": "messages"
+    },
+    "View > Preferences…": {
+      "act": "preferences"
+    },
+    "View > Profiles and compatibility > Profiles and plugins…": {
+      "act": "profiles-plugins"
+    },
+    "View > Profiles and compatibility > Supertimeline legend…": {
+      "act": "legend"
+    },
+    "View > Organize the workspace > Group the tree by > Disk → partition → folders": {
+      "id": "tree-mode"
+    },
+    "View > Organize the workspace > Group the tree by > Collection → artifact type": {
+      "id": "tree-mode"
+    },
+    "View > Organize the workspace > Group the tree by > Analysis list by collection": {
+      "id": "tree-mode"
+    },
+    "View > Organize the workspace > Tree position > Left": {
+      "id": "prefs-tree"
+    },
+    "View > Organize the workspace > Tree position > Right": {
+      "id": "prefs-tree"
+    },
+    "View > Organize the workspace > Analysis navigation": {
+      "act": "toggle-artifacts"
+    },
+    "View > Organize the workspace > Row details": {
+      "act": "details-toggle"
+    },
+    "View > Organize the workspace > Row details position > Bottom": {
+      "id": "prefs-details"
+    },
+    "View > Organize the workspace > Row details position > Right": {
+      "id": "prefs-details"
+    },
+    "View > Organize the workspace > Row details position > Top": {
+      "id": "prefs-details"
+    },
+    "View > Organize the workspace > Expand the whole tree": {
+      "id": "tree-expand"
+    },
+    "View > Organize the workspace > Collapse the whole tree": {
+      "id": "tree-collapse"
+    },
+    "View > Organize the workspace > Toolbars > File": {
+      "na": "the browser has no dockable toolbars: the toolbar is fixed and always visible"
+    },
+    "View > Organize the workspace > Toolbars > Add data": {
+      "na": "the browser has no dockable toolbars: the toolbar is fixed and always visible"
+    },
+    "View > Organize the workspace > Startup animation": {
+      "na": "a browser tab has no splash screen"
+    },
+    "View > Columns and sorting > Columns…": {
+      "act": "columns"
+    },
+    "View > Columns and sorting > Row height…": {
+      "act": "row-height"
+    },
+    "View > Columns and sorting > Reset widths": {
+      "act": "reset-widths"
+    },
+    "View > Columns and sorting > Multi-column sort…": {
+      "act": "sort-priority"
+    },
+    "View > Columns and sorting > Sort options": {
+      "id": "sort-header-type"
+    },
+    "View > Groups > Group…": {
+      "act": "group-column"
+    },
+    "View > Groups > Group summaries and sorting…": {
+      "act": "summaries"
+    },
+    "View > Groups > Expand all groups (paged view)": {
+      "act": "expand-groups"
+    },
+    "View > Groups > Collapse all groups": {
+      "act": "collapse-groups"
+    },
+    "View > Views and layouts > Save the view…": {
+      "act": "views"
+    },
+    "View > Views and layouts > Load a view…": {
+      "act": "views"
+    },
+    "View > Views and layouts > Grid layouts > Export the layout…": {
+      "act": "layout-export"
+    },
+    "View > Views and layouts > Grid layouts > Import a layout…": {
+      "act": "layout-import"
+    },
+    "View > Views and layouts > Apply the detected profile": {
+      "act": "profile-apply"
+    },
+    "View > Views and layouts > Reset the view": {
+      "act": "reset-view"
+    },
+    "View > Colours and rules > Colour rules…": {
+      "act": "rules"
+    },
+    "View > Colours and rules > Global rules > Edit…": {
+      "act": "rules"
+    },
+    "View > Colours and rules > Global rules > Reload from disk": {
+      "na": "the shared rule book is the server's own file, read on every request"
+    },
+    "View > Colours and rules > Global rules > Import and replace…": {
+      "id": "rule-global-import"
+    },
+    "View > Colours and rules > Global rules > Export…": {
+      "id": "rule-global-export"
+    },
+    "View > Colours and rules > Global rules > Apply to this view": {
+      "id": "rule-global-enabled"
+    },
+    "View > Colours and rules > Highlight text…": {
+      "act": "highlight-text"
+    },
+    "View > Navigation > Open analyses…": {
+      "act": "open-analyses"
+    },
+    "View > Navigation > Next tab": {
+      "act": "next-tab"
+    },
+    "View > Navigation > Previous tab": {
+      "act": "previous-tab"
+    },
+    "View > Navigation > Analysis navigation": {
+      "act": "toggle-artifacts"
+    },
+    "View > Navigation > Row details": {
+      "act": "details-toggle"
+    },
+    "View > Workspace > Analysis": {
+      "na": "the Host shows one panel per tab; there are no dockable panels to arrange"
+    },
+    "View > Workspace > Timeline only": {
+      "na": "the Host shows one panel per tab; there are no dockable panels to arrange"
+    },
+    "View > Workspace > Analysis + timeline": {
+      "na": "the Host shows one panel per tab; there are no dockable panels to arrange"
+    },
+    "View > Workspace > Restore the panels": {
+      "na": "the Host shows one panel per tab; there are no dockable panels to arrange"
+    },
+    "View > Workspace > Save the layout": {
+      "na": "the Host keeps each analysis' layout (widths, order, pins) with the analysis"
+    },
+    "View > Workspace > Detach / show a panel > Analyses": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Detach / show a panel > Imports": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Detach / show a panel > Cases": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Detach / show a panel > Timeline  correlations": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Detach / show a panel > IOC hunting": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Detach / show a panel > Hayabusa + AI": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Detach / show a panel > Actions  tracking": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Detach / show a panel > Attack graph": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Detach / show a panel > EVTX detection": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Detach / show a panel > Artifacts": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Detach / show a panel > Row details": {
+      "na": "window management does not exist in a browser tab"
+    },
+    "View > Workspace > Workspace guide": {
+      "act": "workspace-guide"
+    },
+    "Filters > Text expression…": {
+      "act": "expression-text"
+    },
+    "Filters > AND / OR / NOT editor…": {
+      "act": "expression-andor"
+    },
+    "Filters > Filter on the active cell": {
+      "act": "filter-active-cell"
+    },
+    "Filters > Add a filter…": {
+      "act": "add-filter"
+    },
+    "Filters > Clear the filters": {
+      "act": "clear-filters"
+    },
+    "Filters > Search all analyses…": {
+      "act": "global-search"
+    },
+    "Exporter > Export…": {
+      "act": "export-csv"
+    },
+    "Exporter > Export bookmarks and notes…": {
+      "act": "export-annotations"
+    },
+    "Exporter > Export the portable case…": {
+      "act": "export-portable"
+    },
+    "Exporter > Create an HTML / PDF report…": {
+      "act": "report"
+    },
+    "Help > Full tutorial — all features": {
+      "act": "help-tutorial"
+    },
+    "Help > Collection coverage and diagnostics": {
+      "act": "help-coverage"
+    },
+    "Help > Bulk IOC hunting": {
+      "act": "help-ioc"
+    },
+    "Help > Timeline, backups and reports": {
+      "act": "help-timeline"
+    },
+    "Help > User guide": {
+      "act": "help-guide"
+    },
+    "Help > Licences": {
+      "act": "help-licenses"
+    },
+    "Help > About Fireblade": {
+      "act": "about"
+    },
+    "Help > Export the Hayabusa sources…": {
+      "act": "help-hayabusa-source"
+    },
+    "Help > Check the imports and diagnostics…": {
+      "act": "coverage-open"
+    }
+  }
+}

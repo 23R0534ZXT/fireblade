@@ -41,6 +41,7 @@ const state = {
   hidden: new Set(),    // column indexes hidden by the analyst
   pinned: new Set(),    // column indexes frozen on the left
   pinnedRight: new Set(), // column indexes frozen on the right
+  colOrder: [],         // the order the analyst gave the columns (header indexes; the row id stays first)
   selection: new Set(), // row ids selected on this page (Shift extends, Ctrl toggles)
   anchor: null,         // the row a Shift-click extends from
   summaries: [],        // [{column, operation, kind, footer}] shown beside each group
@@ -129,6 +130,8 @@ function renderRetryList() {
   const files = retryState.files.filter((item) => {
     if (filter === "all") return true;
     if (filter === "aside") return item.ignored;
+    if (filter === "imported") return item.status === "complete" && !item.ignored;
+    if (filter === "duplicate") return item.status === "duplicate";
     if (item.ignored) return false;
     // A file only the generic reader read stays here: a reader the analyst names may read it better.
     const generic = (item.tools || []).length === 1 && ["Files", "Inventory"].includes(item.tools[0]);
@@ -139,6 +142,7 @@ function renderRetryList() {
     + (aside ? `, ${aside} set aside` : "");
   $("retry-list").innerHTML = files.length
     ? files.map((item) => `<div class="retry-line${item.ignored ? " aside" : ""}">
+        <input type="checkbox" data-retry-tick="${escapeHtml(item.path)}" title="Tick to read it with the reader chosen above">
         <span class="retry-path" title="${escapeHtml(item.path)}">${escapeHtml(item.path.split(/[\\/]/).pop())}
           <em>${escapeHtml(["Files", "Inventory"].includes((item.tools || []).join()) && item.status === "complete" ? "read generically" : item.status)}${item.ignored ? " · set aside" : ""}${item.reason ? " — " + escapeHtml(item.reason) : ""}</em></span>
         <span class="pin">
@@ -152,6 +156,7 @@ function renderRetryList() {
             data-collection="${escapeHtml(item.collection)}">Remove</button>
         </span></div>`).join("")
     : '<div class="emptygrid">Nothing matches this filter in the collection reports.</div>';
+  $("retry-bulk-reader").innerHTML = retryState.readers.map((reader) => `<option value="${reader}">${reader}</option>`).join("");
   $("retry-list").querySelectorAll("[data-retry-run]").forEach((node) => {
     node.addEventListener("click", () => runRetry(node.dataset.retryRun,
       node.parentElement.querySelector("[data-retry-reader]").value));
@@ -215,6 +220,27 @@ async function openRetry() {
   }
 }
 
+/* Tick all / none, and one reader for every ticked file, as the desktop's import history does. */
+async function runRetryTicked() {
+  const ticked = [...$("retry-list").querySelectorAll("input[data-retry-tick]:checked")].map((box) => box.dataset.retryTick);
+  if (!ticked.length) { say("Tick at least one file first", true); return; }
+  const reader = $("retry-bulk-reader").value;
+  let done = 0;
+  for (const path of ticked) {
+    const item = retryState.files.find((entry) => entry.path === path);
+    if (!item) continue;
+    try {
+      await apiPost(`/api/cases/${state.openCase.id}/collections/${encodeURIComponent(item.collection)}/retry`, { path, reader });
+      done += 1;
+    } catch (error) {
+      say(`${path.split(/[\\/]/).pop()}: ${error.message}`, true);
+    }
+  }
+  closeModals();
+  await openCase(state.openCase.id);
+  say(`${done} of ${ticked.length} file(s) read with ${reader}`);
+}
+
 async function runRetry(path, reader) {
   const item = retryState.files.find((entry) => entry.path === path);
   if (!item) return;
@@ -237,7 +263,7 @@ async function runRetry(path, reader) {
 
 /* Kept in the browser: they say how this analyst reads the data, not what the
    case contains. The desktop stores the same three choices in its profile. */
-const copyPrefs = { headers: true, dateFormat: "source", pattern: "", rightCopy: false, details: "bottom", pins: [] };
+const copyPrefs = { headers: true, dateFormat: "source", pattern: "", rightCopy: false, details: "bottom", tree: "right", pins: [] };
 
 function loadCopyPrefs() {
   try {
@@ -247,8 +273,14 @@ function loadCopyPrefs() {
     if (typeof stored.pattern === "string") copyPrefs.pattern = stored.pattern.slice(0, 120);
     if (typeof stored.rightCopy === "boolean") copyPrefs.rightCopy = stored.rightCopy;
     if (["bottom", "right", "top"].includes(stored.details)) copyPrefs.details = stored.details;
+    if (["left", "right"].includes(stored.tree)) copyPrefs.tree = stored.tree;
     if (Array.isArray(stored.pins)) copyPrefs.pins = stored.pins.filter((name) => typeof name === "string").slice(0, 32);
   } catch (_) { /* a first visit, or storage disabled */ }
+}
+
+function applyTreePosition() {
+  const work = document.querySelector(".work");
+  if (work) work.classList.toggle("tree-left", copyPrefs.tree === "left");
 }
 
 function applyDetailsPosition() {
@@ -1486,6 +1518,7 @@ async function loadLayout() {
     state.hidden = new Set(payload.hidden || []);
     state.pinned = new Set(payload.pinned || []);
     state.pinnedRight = new Set(payload.pinned_right || []);
+    state.colOrder = Array.isArray(payload.order) ? payload.order : [];
     if (!state.pinned.size && !state.pinnedRight.size && copyPrefs.pins.length) {
       // Preferences > default pinning: the named columns start frozen on the left of an analysis nobody has laid out.
       state.columns.slice(1).forEach((name, index) => { if (copyPrefs.pins.includes(name)) state.pinned.add(index); });
@@ -1501,7 +1534,8 @@ function saveLayoutSoon() {
     try {
       await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`,
         { widths: state.widths, hidden: [...state.hidden], pinned: [...state.pinned],
-          pinned_right: [...state.pinnedRight] });
+          pinned_right: [...state.pinnedRight],
+    order: state.colOrder, order: state.colOrder });
     } catch (_) { /* a layout that cannot be saved must not interrupt the work */ }
   }, 600);
 }
@@ -1554,6 +1588,7 @@ async function importLayout(file) {
   state.hidden = new Set(document_.hidden || []);
   state.pinned = new Set(document_.pinned || []);
   state.pinnedRight = new Set(document_.pinned_right || []);
+  state.colOrder = Array.isArray(document_.order) ? document_.order.filter(Number.isInteger) : [];
   if (Number.isInteger(document_.sort)) state.sort = document_.sort;
   state.descending = Boolean(document_.descending);
   state.multiSort = Array.isArray(document_.multiSort) ? document_.multiSort : [];
@@ -1777,7 +1812,7 @@ function resetView() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
   state.filters = []; state.search = ""; state.expression = null; state.bookmarksOnly = false;
   state.sort = null; state.multiSort = []; state.groups = []; state.path = []; state.summaries = []; state.totalSummaries = []; state.order = "";
-  state.hidden = new Set(); state.pinned = new Set(); state.pinnedRight = new Set(); state.widths = {};
+  state.hidden = new Set(); state.pinned = new Set(); state.pinnedRight = new Set(); state.widths = {}; state.colOrder = [];
   state.offset = 0;
   $("search").value = "";
   $("bookmarks-only").classList.remove("active");
@@ -3988,6 +4023,7 @@ async function openPreferences() {
   $("prefs-date-pattern").value = copyPrefs.pattern;
   $("prefs-right-copy").checked = copyPrefs.rightCopy;
   $("prefs-details").value = copyPrefs.details;
+  $("prefs-tree").value = copyPrefs.tree;
   $("prefs-pins").value = copyPrefs.pins.join("\n");
   loadResourcePrefs();
   $("prefs-runtime").innerHTML = '<div class="emptygrid">Reading the runtime…</div>';
@@ -4473,6 +4509,20 @@ async function addRule() {
     background: $("rule-colour").value,
     foreground: $("rule-ink").value,
     bold: $("rule-bold").checked,
+    italic: $("rule-italic").checked,
+    underline: $("rule-underline").checked,
+    strikeout: $("rule-strikeout").checked,
+    font_family: $("rule-font-family").value.trim(),
+    font_size: Number($("rule-font-size").value) || 0,
+    use_background: $("rule-use-background").checked,
+    use_foreground: $("rule-use-foreground").checked,
+    use_font: $("rule-use-font").checked,
+    stop_if_true: $("rule-stop").checked,
+    stat_percent: $("rule-stat-percent").checked,
+    stat_include_null: $("rule-stat-null").checked,
+    all_source_rows: $("rule-stat-all").checked,
+    draw_axis: $("rule-axis").checked,
+    axis_color: $("rule-axis-colour").value,
     // "This cell only" is the column of the rule, by name for a shared rule and by index here.
     target: $("rule-target").value !== "cell" ? null
       : (rulesScope === "global" ? columnValue : Number(columnValue)),
@@ -5800,6 +5850,63 @@ function timelineDrag(box, hist) {
 
 /* ---------- artifacts tree ---------- */
 
+/* The Artifacts tree, as the desktop groups it: the collections, then (by family) what each analysis is.
+   "families": Collection → artifact family → analyses; "flat": Collection → analyses;
+   "folders": Collection → partition → folders, for the evidence that carries its origin. */
+const treeState = { mode: "families", collapsed: new Set() };
+
+function loadTreeMode() {
+  try {
+    const stored = localStorage.getItem("fireblade.treeMode");
+    if (["families", "flat", "folders"].includes(stored)) treeState.mode = stored;
+  } catch (_) { /* a first visit */ }
+}
+
+function treeLeaf(item, depth) {
+  return `<div class="node child ${item.index === state.analysis ? "sel" : ""}" data-analysis="${item.index}"
+       style="padding-left:${20 + depth * 12}px" title="${escapeHtml(item.source || item.path)}">
+      <span class="caret"></span><span class="nlabel">${escapeHtml(item.label)}</span></div>`;
+}
+
+function treeGroup(key, label, depth, open) {
+  return `<div class="node grp" data-group-key="${escapeHtml(key)}" style="padding-left:${6 + depth * 12}px">
+      <span class="caret">${open ? "▼" : "▷"}</span><span class="nlabel">${escapeHtml(label)}</span></div>`;
+}
+
+function treeHtml(analyses) {
+  const collections = new Map();
+  for (const item of analyses) {
+    const owner = item.collection || { key: "", name: "Analyses outside a collection" };
+    if (!collections.has(owner.key)) collections.set(owner.key, { name: owner.name, members: [] });
+    collections.get(owner.key).members.push(item);
+  }
+  const html = [];
+  const searching = Boolean(($("tree-search").value || "").trim());
+  for (const [key, owner] of collections) {
+    const rootKey = `c|${key}`;
+    const open = searching || !treeState.collapsed.has(rootKey);
+    html.push(treeGroup(rootKey, `${owner.name} (${owner.members.length})`, 0, open));
+    if (!open) continue;
+    if (treeState.mode === "flat" || treeState.mode === "folders") {
+      for (const item of owner.members) html.push(treeLeaf(item, 1));
+      continue;
+    }
+    const families = new Map();
+    for (const item of owner.members) {
+      const family = item.family || "Other artifacts";
+      if (!families.has(family)) families.set(family, []);
+      families.get(family).push(item);
+    }
+    for (const [family, members] of families) {
+      const familyKey = `f|${key}|${family}`;
+      const familyOpen = searching || !treeState.collapsed.has(familyKey);
+      html.push(treeGroup(familyKey, `${family} (${members.length})`, 1, familyOpen));
+      if (familyOpen) for (const item of members) html.push(treeLeaf(item, 2));
+    }
+  }
+  return html.join("");
+}
+
 function renderTree() {
   const tree = $("tree");
   if (!state.openCase) {
@@ -5814,12 +5921,7 @@ function renderTree() {
     return;
   }
   const closed = (state.openCase && state.openCase.closed) || [];
-  tree.innerHTML = '<div class="node grp"><span class="caret">▼</span>Analyses</div>' +
-    analyses.map((item) => `
-      <div class="node child ${item.index === state.analysis ? "sel" : ""}" data-analysis="${item.index}"
-           title="${escapeHtml(item.source || item.path)}">
-        <span class="caret"></span><span class="nlabel">${escapeHtml(item.label)}</span>
-      </div>`).join("") +
+  tree.innerHTML = treeHtml(analyses) +
     (closed.length ? '<div class="node grp closed-group"><span class="caret">▷</span>Closed (kept in the case)</div>'
       + closed.map((item) => `
       <div class="node child closed" data-reopen="${item.index}"
@@ -5829,6 +5931,19 @@ function renderTree() {
   tree.querySelectorAll("[data-reopen]").forEach((node) => {
     node.addEventListener("click", () => reopenAnalysis(Number(node.dataset.reopen)));
   });
+}
+
+/* "Expand the whole tree" / "Collapse the whole tree". */
+function treeExpandAll(open) {
+  treeState.collapsed.clear();
+  if (!open && state.openCase) {
+    for (const item of state.openCase.analyses) {
+      const owner = item.collection || { key: "" };
+      treeState.collapsed.add(`c|${owner.key}`);
+      treeState.collapsed.add(`f|${owner.key}|${item.family || "Other artifacts"}`);
+    }
+  }
+  renderTree();
 }
 
 async function reopenAnalysis(position) {
@@ -5986,8 +6101,36 @@ function clearGrid(message) {
   $("pageinfo").textContent = "";
 }
 
+/* Every column in the order the analyst gave them: the row id first, then the order kept with the analysis,
+   the columns it does not name following in their own order. */
+function orderedColumns() {
+  const all = state.columns.map((name, index) => ({ name, index }));
+  if (!state.colOrder.length) return all;
+  const rank = new Map(state.colOrder.map((header, position) => [header + 1, position]));
+  return all.sort((a, b) => {
+    if (a.index === 0 || b.index === 0) return a.index === 0 ? -1 : 1;
+    return (rank.has(a.index) ? rank.get(a.index) : 1e6 + a.index) - (rank.has(b.index) ? rank.get(b.index) : 1e6 + b.index);
+  });
+}
+
+/* What a rule paints, as the desktop's rule says it: the colours it applies, the font it sets. */
+function ruleCss(rule) {
+  const parts = [];
+  if (rule.use_background !== false) parts.push(`background:${rule.background}`);
+  if (rule.use_foreground !== false) parts.push(`color:${rule.foreground}`);
+  if (rule.use_font !== false) {
+    if (rule.bold) parts.push("font-weight:600");
+    if (rule.italic) parts.push("font-style:italic");
+    const lines = [rule.underline ? "underline" : "", rule.strikeout ? "line-through" : ""].filter(Boolean);
+    if (lines.length) parts.push(`text-decoration:${lines.join(" ")}`);
+    if (rule.font_family) parts.push(`font-family:${String(rule.font_family).replace(/[^\w ,'"-]/g, "")}`);
+    if (Number(rule.font_size) > 0) parts.push(`font-size:${Number(rule.font_size)}pt`);
+  }
+  return parts.join(";");
+}
+
 function visibleColumns() {
-  return state.columns.map((name, index) => ({ name, index })).filter((item) => !state.hidden.has(item.index));
+  return orderedColumns().filter((item) => !state.hidden.has(item.index));
 }
 
 /* "Highlight matches (empty = disable)", the desktop's own control: the text is cut
@@ -6103,7 +6246,7 @@ function renderGrid() {
       const cellRule = rule && rule.target !== null && rule.target !== undefined
         && (!rule.visual || rule.visual === "none") && Number(rule.target) === index - 1;
       const painted = visual ? ` style="${visual.style}"`
-        : (cellRule ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"` : "");
+        : (cellRule ? ` style="${ruleCss(rule)}"` : "");
       // Wrapped but not fitted: the text lives in a box as tall as the row.
       const [open, close] = clipped ? ['<div class="clip">', "</div>"] : ["", ""];
       return `<td class="${cls}${visual ? ` ${visual.cls}` : ""}"${title}${painted} data-cell="${index - 1}">${open}`
@@ -6118,7 +6261,7 @@ function renderGrid() {
     const plain = rule && (!rule.visual || rule.visual === "none")
       && (rule.target === null || rule.target === undefined);
     const style = plain
-      ? ` style="background:${rule.background};color:${rule.foreground}${rule.bold ? ";font-weight:600" : ""}"`
+      ? ` style="${ruleCss(rule)}"`
       : "";
     return `<tr data-row="${escapeHtml(String(id))}" class="${rowSelected(id) ? "sel" : ""}"${style}>
       <td class="markcell"><span class="cb ${marked}" title="${marked ? escapeHtml(String(state.bookmarks.get(String(id)) || "Bookmarked")) : "Bookmark this row"}"></span></td>${cells}</tr>`;
@@ -6311,17 +6454,44 @@ function openGroupPicker() {
   $("group-modal").classList.add("show");
 }
 
+function moveColumn(header, direction) {
+  const order = orderedColumns().filter((item) => item.index > 0).map((item) => item.index - 1);
+  const at = order.indexOf(header);
+  const to = at + direction;
+  if (at < 0 || to < 0 || to >= order.length) return;
+  [order[at], order[to]] = [order[to], order[at]];
+  state.colOrder = order;
+  renderGrid();
+  saveLayoutSoon();
+  openColumnManager();
+}
+
 function openColumnManager() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
   const list = $("columns-list");
-  list.innerHTML = state.columns.map((name, index) => `
+  list.innerHTML = orderedColumns().map(({ name, index }) => `
     <label>
       <input type="checkbox" data-col="${index}" ${state.hidden.has(index) ? "" : "checked"}>
       <span>${escapeHtml(index === 0 ? "Row number" : name)}</span>
-      ${index ? `<span class="pin"><input type="checkbox" data-bool="${index - 1}" ${booleanColumns().has(index - 1) ? "checked" : ""}> boolean
+      ${index ? `<span class="pin"><button class="btn" data-move="${index - 1}" data-dir="-1" title="Move this column earlier">↑</button>
+        <button class="btn" data-move="${index - 1}" data-dir="1" title="Move this column later">↓</button>
+        width <input type="number" data-width="${index}" min="30" max="1200" style="width:64px" value="${state.widths[index] || ""}" placeholder="auto">
+        <input type="checkbox" data-bool="${index - 1}" ${booleanColumns().has(index - 1) ? "checked" : ""}> boolean
         <input type="checkbox" data-pin="${index - 1}" ${state.pinned.has(index - 1) ? "checked" : ""}> pin left
         <input type="checkbox" data-pinright="${index - 1}" ${state.pinnedRight.has(index - 1) ? "checked" : ""}> pin right</span>` : ""}
     </label>`).join("");
+  list.querySelectorAll("button[data-move]").forEach((button) => {
+    button.addEventListener("click", (event) => { event.preventDefault(); moveColumn(Number(button.dataset.move), Number(button.dataset.dir)); });
+  });
+  list.querySelectorAll("input[data-width]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const index = Number(input.dataset.width);
+      const width = Math.round(Number(input.value));
+      if (width >= 30) state.widths[index] = width; else delete state.widths[index];
+      renderGrid();
+      saveLayoutSoon();
+    });
+  });
   list.querySelectorAll("input[data-col]").forEach((box) => {
     box.addEventListener("change", () => {
       const index = Number(box.dataset.col);
@@ -6662,6 +6832,13 @@ function wire() {
   $("package-input").addEventListener("change", uploadPortableCase);
 
   $("tree").addEventListener("click", (event) => {
+    const group = event.target.closest("[data-group-key]");
+    if (group) {
+      const key = group.dataset.groupKey;
+      if (treeState.collapsed.has(key)) treeState.collapsed.delete(key); else treeState.collapsed.add(key);
+      renderTree();
+      return;
+    }
     const node = event.target.closest("[data-analysis]");
     if (!node) return;
     state.analysis = Number(node.dataset.analysis);
@@ -6672,6 +6849,17 @@ function wire() {
     loadRows(true);
   });
   $("tree-search").addEventListener("input", renderTree);
+  $("tree-mode").value = treeState.mode;
+  $("tree-mode").addEventListener("change", (event) => {
+    treeState.mode = event.target.value;
+    try { localStorage.setItem("fireblade.treeMode", treeState.mode); } catch (_) { /* kept for this page */ }
+    renderTree();
+  });
+  $("retry-tick-all").addEventListener("click", () => $("retry-list").querySelectorAll("input[data-retry-tick]").forEach((box) => { box.checked = true; }));
+  $("retry-tick-none").addEventListener("click", () => $("retry-list").querySelectorAll("input[data-retry-tick]").forEach((box) => { box.checked = false; }));
+  $("retry-bulk-run").addEventListener("click", runRetryTicked);
+  $("tree-expand").addEventListener("click", () => treeExpandAll(true));
+  $("tree-collapse").addEventListener("click", () => treeExpandAll(false));
 
   $("search").addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -6793,6 +6981,15 @@ function wire() {
       const item = menu.querySelector(`[data-act="${action}"]`);
       if (item) item.hidden = !alerts;
     }
+    // As the desktop's menu: a selection that already has a note offers to edit it, else to add one.
+    const noted = selectedIds().some((id) => {
+      const note = state.bookmarks.get(String(id));
+      return note && note !== "bookmarked";
+    });
+    const add = menu.querySelector('[data-act="note-selection"]');
+    const edit = menu.querySelector('[data-act="note-replace"]');
+    if (add) add.hidden = noted;
+    if (edit) edit.hidden = !noted;
     menu.style.left = `${event.clientX}px`;
     menu.style.top = `${event.clientY}px`;
     menu.hidden = false;
@@ -7148,6 +7345,7 @@ function wire() {
     if (state.openCase && state.columns.length) loadRows(false);
   });
   $("prefs-right-copy").addEventListener("change", (event) => { copyPrefs.rightCopy = event.target.checked; saveCopyPrefs(); });
+  $("prefs-tree").addEventListener("change", (event) => { copyPrefs.tree = event.target.value; saveCopyPrefs(); applyTreePosition(); });
   $("prefs-details").addEventListener("change", (event) => { copyPrefs.details = event.target.value; saveCopyPrefs(); applyDetailsPosition(); });
   $("prefs-pins").addEventListener("change", (event) => {
     copyPrefs.pins = event.target.value.split(/\r?\n/).map((name) => name.trim()).filter(Boolean).slice(0, 32);
@@ -7615,7 +7813,9 @@ async function checkForUpdate() {
 
 async function boot() {
   loadCopyPrefs();
+  loadTreeMode();
   applyDetailsPosition();
+  applyTreePosition();
   loadPalette();
   applyScale();
   applyRowHeight();

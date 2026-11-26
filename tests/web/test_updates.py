@@ -67,10 +67,10 @@ def test_the_command_names_the_editions_own_image():
 
 
 def test_the_host_update_is_one_line_a_shell_can_run():
-    host = updates.command("host", "0.8.7")
+    host = updates.command("host", "0.8.8")
     assert len(host) == 1
     line = host[0]
-    image = "ghcr.io/23r0534zxt/fireblade:0.8.7"
+    image = "ghcr.io/23r0534zxt/fireblade:0.8.8"
     assert line.startswith(f"docker pull {image} && docker rm -f fireblade && docker run -d ")
     assert f"{image} && echo" in line and "-p 127.0.0.1:8080:8080" in line
     assert "README" in updates.guidance("host")

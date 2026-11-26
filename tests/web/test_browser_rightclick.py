@@ -136,3 +136,17 @@ def test_the_timeline_compares_a_whole_value_or_only_the_bookmarks_like_the_desk
             break
         page.wait_for_timeout(500)
     assert _timeline_total(page, bookmarks="true") == 1
+
+
+def test_the_menu_offers_to_edit_the_note_of_a_selection_that_has_one(page):
+    cell = page.locator("#body tr[data-row]").first.locator("td[data-cell='1']")
+    cell.click()
+    cell.click(button="right")
+    assert page.locator('#row-menu [data-act="note-selection"]').is_visible()
+    assert page.locator('#row-menu [data-act="note-replace"]').is_hidden()
+    page.evaluate("document.getElementById('row-menu').hidden = true")
+    row = page.locator("#body tr[data-row]").first.get_attribute("data-row")
+    page.evaluate(f"state.bookmarks.set('{row}', 'a note')")
+    cell.click(button="right")
+    assert page.locator('#row-menu [data-act="note-replace"]').is_visible()
+    assert page.locator('#row-menu [data-act="note-selection"]').is_hidden()

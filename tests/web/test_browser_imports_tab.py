@@ -187,3 +187,28 @@ def test_refresh_reloads_the_report_and_the_other_buttons_of_the_tab_open_their_
     page.keyboard.press("Escape")
     with page.expect_file_chooser():
         page.click('#imports-view [data-act="import-folder"]')
+
+
+def test_several_files_are_ticked_and_read_with_one_reader(empty_page, server):
+    page = empty_page
+    _mixed(page, server)
+    page.click("#retry-open")
+    page.wait_for_selector("#retry-modal.show")
+    page.wait_for_function(
+        "document.querySelectorAll('#retry-list input[data-retry-tick]').length >= 2"
+    )
+    page.click("#retry-tick-all")
+    assert page.locator("#retry-list input[data-retry-tick]:checked").count() >= 2
+    page.click("#retry-tick-none")
+    assert page.locator("#retry-list input[data-retry-tick]:checked").count() == 0
+    page.locator(".retry-line", has_text="notes.txt").locator("input[data-retry-tick]").check()
+    page.locator(".retry-line", has_text="disguised.txt").locator("input[data-retry-tick]").check()
+    page.select_option("#retry-bulk-reader", "text")
+    page.click("#retry-bulk-run")
+    page.wait_for_function(
+        "document.getElementById('status').innerText.includes('file(s) read with text')",
+        timeout=60000,
+    )
+    page.select_option("#report-filter", "duplicate") if page.locator(
+        "#retry-modal.show"
+    ).count() else None

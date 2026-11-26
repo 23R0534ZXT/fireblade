@@ -7,6 +7,8 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.8.8] — 2026-11-26
+
 ### Added — parity with the desktop (found by replaying its commands on the Host)
 - **Sorts compare as the type they are given** (text, number, ISO date), per key, as the desktop's sort type does:
   100 now comes after 9 when the column is sorted as numbers. A saved view keeps the type.
@@ -28,6 +30,16 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 - **Preferences**: custom date format, row-details position (bottom / right / top), copy on right-click (Shift opens
   the menu), default pinning, auto-profile, memory and threads. The date columns are written by the core's own
   functions, and the recognised profile (with its derived columns) is applied when a table is imported.
+- **Columns**: reorder them (earlier / later), give each a width, and the order is kept with the analysis and in the
+  layout file. **The Artifacts tree** groups by collection and artifact family, or lists by collection, folds and
+  unfolds, and sits on the right or on the left.
+- **Colour rules** carry the rest of the desktop's rule: italic, underline, strike-out, font and size, which parts
+  they apply (background, text colour, font), stop at the first match, the statistic's options, the axis.
+- **Import report**: tick files (all / none) and read them with one reader; filters for the files imported and the
+  duplicates. The cell menu offers to edit the note of a selection that already has one.
+- **Every command of the desktop's menus is accounted for**: `docs/host/desktop-menu-map.json` lists the 126
+  commands read from the real window against the Host's page (or the reason a browser has none), and a test keeps
+  the map and the window in step.
 - The files read only by the generic reader stay on the retry list, so a reader the analyst names can read them
   better.
 

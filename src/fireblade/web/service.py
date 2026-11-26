@@ -189,7 +189,63 @@ class Library:
             for entry in data.get("collections") or []
             if isinstance(entry, dict)
         ]
+        # What the Artifacts tree groups by: the collection an analysis came from and its family.
+        folder = self.library.folder(identifier)
+        for item in summary["analyses"]:
+            item["collection"] = self._tree_collection(folder, item)
+            item["family"] = self._family_of(item)
         return summary
+
+    @staticmethod
+    def _tree_collection(folder: Path, item: dict) -> dict:
+        """The collection folder an analysis lives under, named after its evidence."""
+        path = Path(str(item.get("path") or ""))
+        base = folder / "collections"
+        try:
+            key = path.relative_to(base).parts[0]
+        except (ValueError, IndexError):
+            return {"key": "", "name": "Analyses outside a collection"}
+        name = key
+        report = base / key / "collection.json"
+        try:
+            source = json.loads(report.read_text(encoding="utf-8")).get("source")
+            if source:
+                name = Path(str(source).replace("\\", "/")).name or key
+        except (OSError, ValueError, AttributeError):
+            pass
+        return {"key": key, "name": name}
+
+    def _family_of(self, item: dict) -> str:
+        """What an analysis is, as the desktop's tree names it: a recognised profile, else a family by name."""
+        from fireblade.core.profiles import detect_profile
+
+        info = item.get("source_info") or {}
+        source = Path(str(info.get("path") or item.get("source") or "").replace("\\", "/"))
+        raw = str(item.get("source") or "").replace("\\", "/")
+        stem = source.stem
+        if "/results/organisation-" in raw:
+            return str(item.get("label") or stem)  # a family Fireblade organised is its own group
+        if "hayabusa" in stem.casefold():
+            return "Hayabusa detection"
+        if stem == "Contexte EVTX":
+            return "EVTX context"
+        profile = detect_profile(info.get("headers") or [])
+        if profile is not None:
+            return profile.name
+        import re
+
+        name = re.sub(r"^\d{8,14}[_ -]*", "", stem)
+        for family, needles in (
+            ("Windows logs", ("evtx", "eventlog")),
+            ("Registry", ("registry", "regcmd", "system", "software", "ntuser")),
+            ("File system", ("mft", "usn", "file", "recycle")),
+            ("Execution", ("prefetch", "amcache", "shimcache", "appcompat", "pecmd")),
+            ("Browsers", ("webcache", "chrome", "firefox", "history")),
+            ("Linux logs", ("linux", "syslog", "auth.log", "journal")),
+        ):
+            if any(word in name.casefold() for word in needles):
+                return family
+        return name or "Other artifacts"
 
     def _analyses(self, data: dict) -> list[dict]:
         """The session's analyses, with the recorded path repaired when the case moved.
@@ -1207,12 +1263,13 @@ class Library:
         with case.lock:
             stored = case.views().get(self.DISPLAY_VIEW)
         if stored is None or not stored.header_state:
-            return {"widths": {}, "hidden": [], "pinned": [], "pinned_right": []}
+            return {"widths": {}, "hidden": [], "pinned": [], "pinned_right": [], "order": []}
         try:
             layout = json.loads(stored.header_state)
         except ValueError:
-            return {"widths": {}, "hidden": [], "pinned": [], "pinned_right": []}
+            return {"widths": {}, "hidden": [], "pinned": [], "pinned_right": [], "order": []}
         layout.setdefault("pinned_right", [])
+        layout.setdefault("order", [])
         return layout
 
     def save_display(self, identifier: str, index: int, layout: dict) -> dict:
@@ -1227,6 +1284,10 @@ class Library:
             "pinned_right": [
                 int(value) for value in layout.get("pinned_right") or [] if int(value) >= 0
             ],
+            # the order the analyst gave the columns (the desktop's "drag to reorder")
+            "order": list(
+                dict.fromkeys(int(value) for value in layout.get("order") or [] if int(value) >= 0)
+            ),
         }
         case = self._case_for(identifier, index)
         view = View(header_state=json.dumps(clean))
@@ -1383,6 +1444,21 @@ class Library:
             "icon_colors": list(getattr(rule, "icon_colors", []) or []),
             "icon_set": getattr(rule, "icon_set", "circles") or "circles",
             "show_values": bool(getattr(rule, "show_values", True)),
+            # The rest of the desktop's rule: the font, which parts apply, the statistic's options.
+            "italic": bool(getattr(rule, "italic", False)),
+            "underline": bool(getattr(rule, "underline", False)),
+            "strikeout": bool(getattr(rule, "strikeout", False)),
+            "font_family": str(getattr(rule, "font_family", "") or ""),
+            "font_size": float(getattr(rule, "font_size", 0.0) or 0.0),
+            "use_background": bool(getattr(rule, "use_background", True)),
+            "use_foreground": bool(getattr(rule, "use_foreground", True)),
+            "use_font": bool(getattr(rule, "use_font", True)),
+            "stop_if_true": bool(getattr(rule, "stop_if_true", True)),
+            "draw_axis": bool(getattr(rule, "draw_axis", True)),
+            "axis_color": str(getattr(rule, "axis_color", "#777777") or "#777777"),
+            "stat_percent": bool(getattr(rule, "stat_percent", False)),
+            "stat_include_null": bool(getattr(rule, "stat_include_null", False)),
+            "all_source_rows": bool(getattr(rule, "all_source_rows", False)),
         }
 
     def rules(self, identifier: str, index: int) -> dict:
@@ -1697,6 +1773,20 @@ class Library:
             icon_threshold_mode=threshold_mode,
             icon_set=str(item.get("icon_set") or "circles"),
             show_values=bool(item.get("show_values", True)),
+            italic=bool(item.get("italic")),
+            underline=bool(item.get("underline")),
+            strikeout=bool(item.get("strikeout")),
+            font_family=str(item.get("font_family") or "")[:120],
+            font_size=max(0.0, min(72.0, float(item.get("font_size") or 0.0))),
+            use_background=item.get("use_background", True) is not False,
+            use_foreground=item.get("use_foreground", True) is not False,
+            use_font=item.get("use_font", True) is not False,
+            stop_if_true=item.get("stop_if_true", True) is not False,
+            draw_axis=item.get("draw_axis", True) is not False,
+            axis_color=str(item.get("axis_color") or "#777777"),
+            stat_percent=bool(item.get("stat_percent")),
+            stat_include_null=bool(item.get("stat_include_null")),
+            all_source_rows=bool(item.get("all_source_rows")),
             **icons,
         )
 

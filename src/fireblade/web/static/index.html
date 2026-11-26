@@ -197,7 +197,13 @@
   <div class="work">
     <div class="artifacts" id="artifacts">
       <div class="head"><span>Artifacts</span><span class="x">✕</span></div>
-      <div class="combo">By artifact <span class="arrow">▼</span></div>
+      <select class="select" id="tree-mode" title="How the tree groups the analyses">
+        <option value="families">Collection → artifact family</option>
+        <option value="flat">Analysis list by collection</option>
+        <option value="folders">Disk → partition → folders</option>
+      </select>
+      <div class="tree-tools"><button class="btn" id="tree-expand" title="Expand the whole tree">Expand</button>
+        <button class="btn" id="tree-collapse" title="Collapse the whole tree">Collapse</button></div>
       <input class="tree-search" id="tree-search" placeholder="Filter artifact names…">
       <div class="tree" id="tree"></div>
     </div>
@@ -730,6 +736,7 @@
   <div class="item" data-act="cell-note">Add / edit the note of this cell…</div>
   <div class="item" data-act="bookmark-note">Bookmark / note…</div>
   <div class="item" data-act="note-selection">Add a note to the selection…</div>
+  <div class="item" data-act="note-replace" hidden>Edit the note of the selection…</div>
   <div class="item" data-act="bookmark-row">Mark the selection</div>
   <div class="item" data-act="unmark-selection">Remove marks from the selection</div>
   <div class="item" data-act="rule-from-cell">Colour rule for this value…</div>
@@ -840,7 +847,13 @@
           <option value="unread">the files that could not be read</option>
           <option value="all">every collected file</option>
           <option value="aside">the files set aside</option>
+          <option value="imported">the files imported</option>
+          <option value="duplicate">the duplicates</option>
         </select>
+        <button class="btn" id="retry-tick-all">Tick all</button>
+        <button class="btn" id="retry-tick-none">Tick none</button>
+        <select class="select" id="retry-bulk-reader" title="The reader the ticked files are read with"></select>
+        <button class="btn" id="retry-bulk-run">Read the ticked files with this reader</button>
         <span class="info" id="report-summary"></span>
       </div>
       <div class="columns-list" id="retry-list" style="max-height:340px"></div>
@@ -1198,6 +1211,9 @@
         <input id="prefs-date-pattern" placeholder="yyyy-MM-dd HH:mm:ss" maxlength="120">
         <span class="note" style="max-width:none">used when "Custom pattern" is chosen</span>
       </div>
+      <div class="row"><label for="prefs-tree">Artifacts tree</label>
+        <select id="prefs-tree"><option value="right">On the right</option><option value="left">On the left</option></select>
+      </div>
       <div class="row"><label for="prefs-details">Row details</label>
         <select id="prefs-details"><option value="bottom">At the bottom</option><option value="right">On the right</option><option value="top">At the top</option></select>
       </div>
@@ -1337,6 +1353,17 @@
         <label for="rule-target">Applies to</label>
         <select id="rule-target"><option value="">the whole row</option>
           <option value="cell">this cell only</option></select></div>
+      <div class="row"><label>Font</label>
+        <label><input type="checkbox" id="rule-italic"> Italic</label>
+        <label><input type="checkbox" id="rule-underline"> Underline</label>
+        <label><input type="checkbox" id="rule-strikeout"> Strike out</label>
+        <input id="rule-font-family" placeholder="Font family (optional)" style="width:150px">
+        <input id="rule-font-size" type="number" min="0" max="72" step="0.5" placeholder="Size" style="width:70px"></div>
+      <div class="row"><label>Apply</label>
+        <label><input type="checkbox" id="rule-use-background" checked> the background</label>
+        <label><input type="checkbox" id="rule-use-foreground" checked> the text colour</label>
+        <label><input type="checkbox" id="rule-use-font" checked> the font</label>
+        <label><input type="checkbox" id="rule-stop" checked> Stop at the first rule that matches</label></div>
       <div class="row"><label for="rule-visual">Visual</label>
         <select id="rule-visual">
           <option value="none">the colours only</option>
@@ -1381,6 +1408,11 @@
         </select>
         <label for="rule-stat-rank">Rank</label>
         <input id="rule-stat-rank" type="number" min="1" max="1000" value="10" style="width:80px">
+        <label><input type="checkbox" id="rule-stat-percent"> Rank in percent</label>
+        <label><input type="checkbox" id="rule-stat-null"> Count the empty values</label>
+        <label><input type="checkbox" id="rule-stat-all"> Over every source row (not only the filtered ones)</label>
+        <label><input type="checkbox" id="rule-axis" checked> Draw the axis</label>
+        <input id="rule-axis-colour" type="color" value="#777777" title="Axis colour">
       </div>
       <div class="row"><button class="btn" data-act="rule-add">Add the rule</button></div>
       <div class="note" id="rule-values-note">Values of the chosen column: click one to use it.</div>

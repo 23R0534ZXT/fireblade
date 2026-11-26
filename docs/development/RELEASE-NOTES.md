@@ -1,3 +1,17 @@
+# Fireblade 0.8.8 — the Host replays the desktop, command by command
+
+The same commands were run on the desktop window and on the Host, on the same tables, and what differed is
+fixed: sorts compare as text, numbers or dates; the export is the desktop's export (visible columns, group counts,
+bookmarks with their notes); group footers and totals; the IOC hunt is the core's own (normalised indicators,
+counters, source dates, excerpts, pages, Interrupt, replay of saved hunts); the timeline's exact value, bookmarks
+and presets; the report's options (filters, selection, chart, limit, coverage); client and mission; the
+preferences (date format, details and tree position, copy on right-click, default pinning, resources); column
+order and width; the rest of the colour rule; the Artifacts tree by collection and family. Filtering on a cell
+appends, as the desktop does. All 126 commands of the desktop menus are mapped to the Host or to the reason a
+browser has none.
+
+---
+
 # Fireblade 0.8.7 — the Host, walked end to end with its real readers
 
 The Host was driven in a browser from case creation to erasure, on a Windows 11 collection (496 files,

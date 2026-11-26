@@ -503,6 +503,7 @@ def test_group_summaries_totals_and_footers_carry_the_desktop_values(desktop_num
     assert [_plain(value) for value in grouped["totals"]] == [_plain(value) for value in totals]
     assert grouped["summary_footers"] == [-1, 2]
     assert [_plain(value) for value in leaf_payload["footer"]] == [_plain(value) for value in leaf]
+    host_numbers.wait_for_selector("#body tr.gfooter", timeout=15000)
     assert host_numbers.locator("#body tr.gfooter").count() == 1
     assert host_numbers.locator("#body tr.gtotal").count() == 1
 

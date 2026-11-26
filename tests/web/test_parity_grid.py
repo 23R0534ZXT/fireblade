@@ -77,8 +77,7 @@ def host(server, request):
 
 
 def _host_ids(page):
-    page.wait_for_function("!state.busy", timeout=30000) if False else None
-    page.wait_for_timeout(400)
+    page.wait_for_function("rowsRequest === null")
     return [int(row[0]) for row in page.evaluate("state.rows")]
 
 
@@ -123,16 +122,14 @@ def test_two_filters_on_values_of_one_column_are_both_kept(desktop, host):
     window.filter_value(HEADERS.index("User"), "bob")
     expected = _ids(window, app)
     _context(host, "User", "alice", "filter-value")
-    host.wait_for_timeout(400)
-    bob = host.evaluate("state.total")
+    bob = _host_ids(host)
     assert expected == []
-    assert bob > 0  # the first filter applied; bob rows are gone, so a second on bob is empty:
-    host.evaluate("state.filters.length")  # keep the filter list readable in a failure report
-    host.evaluate("state.rows.length")
+    assert bob  # the first filter applied; bob rows are gone, so a second on bob is empty:
     # the second filter needs a bob cell: put the first filter away, filter bob, then alice again
     host.evaluate("void act('clear-filters')")
+    _host_ids(host)
     _context(host, "User", "bob", "filter-value")
-    host.wait_for_timeout(400)
+    _host_ids(host)
     host.evaluate(
         "state.filters.push({column: 2, operator: 'eq', value: 'alice'}); void loadRows(true)"
     )
@@ -204,6 +201,9 @@ def test_a_text_expression(desktop, host):
     host.wait_for_selector("#ask-modal.show")
     host.fill("#ask-input", "Contains([User], 'ali')")
     host.click('#ask-modal [data-act="ask-ok"]')
+    host.wait_for_function(
+        "document.getElementById('status').textContent.startsWith('Text expression applied:')"
+    )
     assert _host_ids(host) == expected
 
 
@@ -273,9 +273,8 @@ def test_a_bookmarked_row_is_the_only_one_shown_with_bookmarks_only(desktop, hos
     assert sorted(expected) == [5, 9]
     for row in (5, 9):
         host.evaluate(
-            f"void apiPost(`/api/cases/${{state.openCase.id}}/analyses/${{state.analysis}}/bookmark`, {{row_id: {row}, note: 'bookmarked'}})"
+            f"apiPost(`/api/cases/${{state.openCase.id}}/analyses/${{state.analysis}}/bookmark`, {{row_id: {row}, note: 'bookmarked'}})"
         )
-    host.wait_for_timeout(500)
     host.evaluate("void document.getElementById('bookmarks-only').click()")
     assert sorted(_host_ids(host)) == sorted(expected)
     window.only_notes.setChecked(False)
@@ -294,8 +293,7 @@ def test_grouping_by_a_column_makes_the_same_groups_with_the_same_counts(desktop
         (str(row[0]), int(row[1])) for row in window.case.page(window.view, offset=0, limit=50)
     ]
     assert expected
-    host.evaluate(f"state.groups = [{HEADERS.index('User')}]; state.path = []; void loadRows(true)")
-    host.wait_for_timeout(700)
+    host.evaluate(f"state.groups = [{HEADERS.index('User')}]; state.path = []; loadRows(true)")
     shown = [(str(row[0]), int(row[1])) for row in host.evaluate("state.rows")]
     assert shown == expected, (shown, expected)
 
@@ -449,9 +447,8 @@ def test_the_bookmarks_and_notes_export_is_the_desktop_one(desktop_numbers, host
     window.case.bookmark(5, None)
     for row, note in ((2, "first lead"), (5, "second lead")):
         host_numbers.evaluate(
-            f"void apiPost(`/api/cases/${{state.openCase.id}}/analyses/${{state.analysis}}/bookmark`, {{row_id: {row}, note: '{note}'}})"
+            f"apiPost(`/api/cases/${{state.openCase.id}}/analyses/${{state.analysis}}/bookmark`, {{row_id: {row}, note: '{note}'}})"
         )
-    host_numbers.wait_for_timeout(600)
     body = _export_via_host(host_numbers, annotations="true")
     assert body.replace(b"\r\n", b"\n") == expected.replace(b"\r\n", b"\n")
 

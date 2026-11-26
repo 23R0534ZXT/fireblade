@@ -128,6 +128,15 @@ body{
 .groupbar{display:flex;align-items:center;gap:6px;padding:0 6px 3px;flex:0 0 auto}
 .hint{color:var(--text);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .groupbar .grow{flex:1}
+.chips{display:flex;align-items:center;gap:3px;min-width:0;overflow:hidden}
+.gchip{display:inline-flex;align-items:center;gap:4px;background:var(--header);border:1px solid var(--border);border-radius:3px;padding:1px 3px 1px 7px;font-size:11px;white-space:nowrap;color:var(--text)}
+.gchip .gnum{opacity:.55;font-weight:600}
+.gchip .gname{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx{border:0;background:none;color:var(--text);cursor:pointer;font-size:13px;line-height:1;padding:0 3px;opacity:.65;font-family:inherit}
+.gx:hover{opacity:1;color:var(--accent-dark)}
+.gsep{color:var(--text);opacity:.4;font-size:12px;padding:0 1px;cursor:default}
+.groupbar.dropready{outline:1px dashed var(--accent);outline-offset:1px}
+#group-clear{font-size:11px;padding:2px 8px}
 
 .gridwrap{flex:1;min-height:0;margin:0 6px;border:1px solid var(--border);background:var(--base);display:flex;flex-direction:column}
 .gridbody{flex:1;overflow:auto;position:relative}

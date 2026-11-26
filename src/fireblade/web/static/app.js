@@ -3214,10 +3214,11 @@ function sortFromCell(descending) {
 function groupFromCell() {
   const column = contextColumnIndex();
   if (column === null) { say("Right-click a cell first", true); return; }
-  state.groups = [column];
+  if (state.groups.includes(column)) { say("This column is already grouped", true); return; }
+  state.groups.push(column);
   state.interval = "";
   state.path = [];
-  $("group-label").textContent = `Grouped by ${state.columns[column + 1]}`;
+  renderGroupBar();
   loadRows(true);
 }
 
@@ -6173,8 +6174,101 @@ async function openHighlight() {
   say(state.highlight ? `Highlighting “${state.highlight}”` : "Highlight off");
 }
 
+/* ---------- the grouping bar (desktop parity: drag a header, numbered levels, × per level) ---------- */
+const GROUP_MIME = "application/x-fireblade-column";
+
+function renderGroupBar() {
+  const chips = $("group-chips");
+  const hint = $("group-label");
+  const clear = $("group-clear");
+  if (!chips) return;
+  chips.innerHTML = "";
+  if (!state.groups.length) {
+    hint.hidden = false;
+    hint.textContent = "Drag a header here to group the results";
+    clear.hidden = true;
+    return;
+  }
+  hint.hidden = true;
+  clear.hidden = false;
+  state.groups.forEach((column, level) => {
+    if (level) chips.appendChild(groupSeparator(level));
+    chips.appendChild(groupChip(level, column));
+  });
+  chips.appendChild(groupSeparator(state.groups.length));
+}
+
+function groupChip(level, column) {
+  const chip = document.createElement("span");
+  chip.className = "gchip";
+  chip.dataset.level = String(level);
+  chip.innerHTML = `<span class="gnum">${level + 1}</span><span class="gname">${escapeHtml(state.columns[column + 1] || `column ${column + 1}`)}</span>`;
+  const close = document.createElement("button");
+  close.className = "gx";
+  close.title = "Remove this grouping level";
+  close.textContent = "×";
+  close.addEventListener("click", () => removeGroupLevel(level));
+  chip.appendChild(close);
+  return chip;
+}
+
+function groupSeparator(position) {
+  const sep = document.createElement("span");
+  sep.className = "gsep";
+  sep.dataset.position = String(position);
+  sep.textContent = position === state.groups.length ? "+" : "›";
+  sep.title = position === state.groups.length
+    ? "Drop a header here to add a level at the end"
+    : "Drop a header here to insert a level at this position";
+  return sep;
+}
+
+function addGroupColumn(groupIndex, position) {
+  if (!Number.isInteger(groupIndex) || groupIndex < 0 || groupIndex >= state.columns.length - 1) return;
+  if (state.groups.includes(groupIndex)) { say("This column is already grouped", true); return; }
+  const at = position === undefined || position === null ? state.groups.length : Math.min(position, state.groups.length);
+  state.groups.splice(at, 0, groupIndex);
+  state.path = [];
+  renderGroupBar();
+  loadRows(true);
+}
+
+function removeGroupLevel(level) {
+  if (level < 0 || level >= state.groups.length) return;
+  state.groups.splice(level, 1);
+  state.path = [];
+  renderGroupBar();
+  loadRows(true);
+}
+
+function clearGrouping() {
+  state.groups = [];
+  state.path = [];
+  state.interval = "";
+  renderGroupBar();
+  loadRows(true);
+}
+
+/* ---------- column auto-fit: double-click the grip to size the column to its content ---------- */
+function fitColumnToContent(column) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.font = getComputedStyle(document.body).font || "13px sans-serif";
+  let max = ctx.measureText(String(state.columns[column] || "")).width + 48;
+  for (const row of state.rows) {
+    const value = row[column];
+    if (value === null || value === undefined || value === "") continue;
+    const width = ctx.measureText(String(value)).width;
+    if (width > max) max = width;
+  }
+  state.widths[column] = Math.max(24, Math.min(1200, Math.ceil(max + 16)));
+  renderGrid();
+  saveLayoutSoon();
+}
+
 function renderGrid() {
   const empty = $("grid-empty");
+  renderGroupBar();
   if (!state.grouped) $("group-chart").hidden = true;
   if (state.grouped) { renderGroupedGrid(); return; }
   const shown = visibleColumns();
@@ -6200,7 +6294,7 @@ function renderGrid() {
     const sorted = state.sort === index - 1 || multi >= 0;
     const flag = state.sort === index - 1 ? state.descending : (multi >= 0 ? state.multiSort[multi].descending : false);
     const arrow = sorted ? (flag ? "▼" : "▲") + (multi >= 0 ? String(multi + 1) : "") : "▲▼";
-    head.push(`<th class="${sorted ? "sorted" : ""}" data-column="${index}" title="${escapeHtml(name)}">
+    head.push(`<th class="${sorted ? "sorted" : ""}" data-column="${index}" draggable="${index === 0 ? "false" : "true"}" title="${escapeHtml(name)}">
       ${index === 0 ? "Ro…" : escapeHtml(name)}<span class="sort">${arrow}</span>
       <span class="grip" data-grip="${index}"></span></th>`);
   });
@@ -6450,7 +6544,6 @@ function openGroupPicker() {
   const select = $("group-select");
   select.innerHTML = state.columns.slice(1).map((name, index) =>
     `<option value="${index}">${escapeHtml(name)}</option>`).join("");
-  if (state.groups.length) select.value = String(state.groups[0]);
   $("group-modal").classList.add("show");
 }
 
@@ -6583,11 +6676,11 @@ function applyPinning() {
 
 function applyGrouping() {
   const column = Number($("group-select").value);
-  state.groups = [column];
+  if (!state.groups.includes(column)) state.groups.push(column);
   state.interval = $("group-interval").value;
   state.path = [];
-  $("group-label").textContent = `Grouped by ${state.columns[column + 1]}`;
   closeModals();
+  renderGroupBar();
   loadRows(true);
 }
 
@@ -6922,6 +7015,48 @@ function wire() {
     loadRows(true);
   });
 
+  // Drag a header onto the grouping bar; double-click the grip to fit the column.
+  $("head").addEventListener("dragstart", (event) => {
+    const th = event.target.closest("th[data-column]");
+    if (!th) return;
+    const index = Number(th.dataset.column);
+    if (index < 1) return;
+    event.dataTransfer.setData(GROUP_MIME, String(index - 1));
+    event.dataTransfer.effectAllowed = "copy";
+  });
+
+  $("head").addEventListener("dblclick", (event) => {
+    const grip = event.target.closest("[data-grip]");
+    if (!grip) return;
+    event.preventDefault();
+    fitColumnToContent(Number(grip.dataset.grip));
+  });
+
+  const groupbar = $("groupbar");
+  if (groupbar) {
+    groupbar.addEventListener("dragover", (event) => {
+      if (![...(event.dataTransfer?.types || [])].includes(GROUP_MIME)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      groupbar.classList.add("dropready");
+    });
+    groupbar.addEventListener("dragleave", (event) => {
+      if (!groupbar.contains(event.relatedTarget)) groupbar.classList.remove("dropready");
+    });
+    groupbar.addEventListener("drop", (event) => {
+      const value = event.dataTransfer.getData(GROUP_MIME);
+      if (value === "") return;
+      event.preventDefault();
+      event.stopPropagation();
+      groupbar.classList.remove("dropready");
+      const sep = event.target.closest(".gsep");
+      const position = sep ? Number(sep.dataset.position) : state.groups.length;
+      addGroupColumn(Number(value), position);
+    });
+  }
+  const clearButton = $("group-clear");
+  if (clearButton) clearButton.addEventListener("click", clearGrouping);
+
   $("head").addEventListener("keydown", (event) => {
     const input = event.target.closest("input[data-filter]");
     if (!input) return;
@@ -7102,6 +7237,7 @@ function wire() {
 
   document.addEventListener("dragover", (event) => {
     if (!state.openCase) return;
+    if (![...(event.dataTransfer?.types || [])].includes("Files")) return;
     event.preventDefault();
     document.body.classList.add("dropping");
   });
@@ -7754,12 +7890,12 @@ async function act(name, node) {
     case "columns-reset": state.hidden.clear(); renderGrid(); openColumnManager(); break;
     case "group-apply": applyGrouping(); break;
     case "group-remove":
-      state.groups = []; state.path = []; state.interval = "";
-      $("group-label").textContent = "Filters apply to the whole analysis, not just the page on screen.";
-      loadRows(true); break;
+      clearGrouping();
+      say("Grouping removed");
+      break;
     case "group-none":
-      state.groups = []; state.path = []; $("group-label").textContent = "Drag a header here to group the results";
-      loadRows(true); break;
+      clearGrouping();
+      break;
     case "display-settings": $("settings-modal").classList.add("show"); break;
     case "settings-close": closeModals(); break;
     case "ask-ok": answerAsk($("ask-input").value); break;

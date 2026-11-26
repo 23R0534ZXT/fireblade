@@ -217,10 +217,12 @@
           <button class="btn" id="clear">Clear the filters</button>
           <button class="btn" id="bookmarks-only" title="Show bookmarked rows only">Bookmarks</button>
         </div>
-        <div class="groupbar">
+        <div class="groupbar" id="groupbar">
           <div class="hint" id="group-label">Drag a header here to group the results</div>
+          <div class="chips" id="group-chips"></div>
           <div class="grow"></div>
-          <button class="btn" data-act="group-column">Group…</button>
+          <button class="btn" id="group-clear" hidden title="Remove every grouping level">Clear</button>
+          <button class="btn" data-act="group-column" title="Grouping options and date interval">Group…</button>
           <button class="btn" data-act="open-view-menu" title="Columns, rules, views, filters, summaries">More…</button>
           <button class="btn" id="details-toggle">Row details</button>
         </div>
@@ -1685,7 +1687,7 @@
     <h3>Group the results</h3>
     <div class="body">
       <div class="row">
-        <label for="group-select">Group by</label>
+        <label for="group-select">Add a level</label>
         <select id="group-select"></select>
       </div>
       <div class="row">
@@ -1698,10 +1700,10 @@
           <option value="minute">minute</option><option value="second">second</option>
         </select>
       </div>
-      <div class="note">Grouping counts every row of the analysis, not just the page on screen. Click a group to drill down, Root to come back.</div>
+      <div class="note">Drag a header onto the bar to add a level; each level has its own ×. Grouping counts every row of the analysis. Click a group to drill down, Root to come back.</div>
     </div>
     <div class="foot">
-      <button class="btn" data-act="group-apply">Group</button>
+      <button class="btn" data-act="group-apply">Add level</button>
       <button class="btn" data-act="group-remove">Remove grouping</button>
       <button class="btn" data-act="settings-close">Cancel</button>
     </div>

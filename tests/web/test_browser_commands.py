@@ -147,6 +147,24 @@ def test_group_by_lists_the_values_with_their_counts_and_back_returns(page):
     page.wait_for_function(f"document.querySelectorAll('#body tr[data-row]').length === {ROWS}")
 
 
+def test_grouping_stacks_levels_and_a_level_can_be_removed(page):
+    command(page, "group-column")
+    page.select_option("#group-select", label="User")
+    page.click('[data-act="group-apply"]')
+    page.wait_for_selector("#body tr[data-group]")
+    command(page, "group-column")
+    page.select_option("#group-select", label="Host")
+    page.click('[data-act="group-apply"]')
+    page.wait_for_function("document.querySelectorAll('#group-chips .gchip').length === 2")
+    assert page.locator("#group-chips .gchip").count() == 2
+    page.click("#group-chips .gchip >> nth=0 >> .gx")
+    page.wait_for_function("document.querySelectorAll('#group-chips .gchip').length === 1")
+    assert page.locator("#group-chips .gchip").count() == 1
+    command(page, "group-column")
+    page.click('[data-act="group-remove"]')
+    page.wait_for_function(f"document.querySelectorAll('#body tr[data-row]').length === {ROWS}")
+
+
 def test_group_summaries_add_a_column_of_counts_per_group(page):
     command(page, "group-column")
     page.select_option("#group-select", label="Host")

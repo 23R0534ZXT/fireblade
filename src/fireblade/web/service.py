@@ -4114,6 +4114,77 @@ class Library:
             "label": label or f"{path.stem} — {chosen}",
         }
 
+    # What an import needs on disk, against the size of what is read: the analyses are DuckDB
+    # files, written next to the source's own bytes, with temporary chunks while they are read.
+    SPACE_REFUSE = 1.5  # below this many times the source (plus the margin) it cannot fit
+    SPACE_WARN = 3.0  # below this it may stop: said before it starts
+    SPACE_MARGIN = 256 * 1024 * 1024
+
+    @staticmethod
+    def _source_bytes(source: Path) -> tuple[int, int]:
+        """Total size and number of files of what is about to be read."""
+        if source.is_file():
+            return source.stat().st_size, 1
+        total = count = 0
+        for root, _dirs, names in os.walk(source):
+            for name in names:
+                try:
+                    total += os.stat(os.path.join(root, name)).st_size
+                    count += 1
+                except OSError:
+                    continue
+        return total, count
+
+    @staticmethod
+    def _size_text(value: float) -> str:
+        for unit in ("B", "KB", "MB", "GB", "TB"):
+            if value < 1024 or unit == "TB":
+                return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
+            value /= 1024
+        return f"{value:.1f} TB"
+
+    def check_room(self, identifier: str, source: str | Path) -> dict:
+        """Refuse an import that cannot fit, before it writes anything.
+
+        The case folder is where the analyses go: its free space is compared with the size of
+        the source. Below the floor the import is refused with the figures; below the comfort
+        level it starts, and says in its log that it may stop for lack of room.
+        """
+        folder = self.library.folder(identifier)
+        source = Path(str(source)).expanduser()
+        if not source.exists():
+            return {"free": None, "size": 0, "files": 0, "status": "unknown"}
+        size, files = self._source_bytes(source)
+        try:
+            free = shutil.disk_usage(folder).free
+        except OSError:
+            return {"free": None, "size": size, "files": files, "status": "unknown"}
+        floor = int(size * self.SPACE_REFUSE) + self.SPACE_MARGIN
+        comfort = int(size * self.SPACE_WARN) + self.SPACE_MARGIN
+        info = {"free": free, "size": size, "files": files, "needed": floor, "status": "ok"}
+        if free < floor:
+            raise ServiceError(
+                f"Not enough free disk space to import: the source is {self._size_text(size)} "
+                f"({files} file(s)), the import needs at least {self._size_text(floor)} and only "
+                f"{self._size_text(free)} are free where the case is stored. Free some space or "
+                "import a smaller part. Nothing was imported."
+            )
+        if free < comfort:
+            info["status"] = "tight"
+        return info
+
+    @staticmethod
+    def _disk_full(exc: BaseException) -> bool:
+        import errno
+
+        text = str(exc).lower()
+        return (
+            isinstance(exc, OSError) and getattr(exc, "errno", None) in (errno.ENOSPC, errno.EDQUOT)
+        ) or any(
+            phrase in text
+            for phrase in ("no space left", "disk full", "not enough space", "out of disk")
+        )
+
     def import_source(
         self,
         identifier: str,
@@ -4162,9 +4233,28 @@ class Library:
             # A running import can be interrupted from outside; the collection is the
             # object that knows how.
             on_collection(collection)
-        report = collection.parse()
+        failure = None
+        try:
+            report = collection.parse()
+        except OperationCancelled:
+            raise
+        except Exception as exc:  # noqa: BLE001 — what was written before the failure is kept
+            failure, report = exc, dict(collection.report or {})
         session = output / "collection.fireblade-session"
+        if failure is not None:
+            reason = (
+                "the disk is full"
+                if self._disk_full(failure)
+                else (str(failure) or failure.__class__.__name__)[:200]
+            )
+            report["status"] = "interrupted"
+            report["reason"] = reason
         if not session.is_file():
+            if failure is not None:
+                raise ServiceError(
+                    f"Import failed: {reason}. Nothing was imported: no analysis had been "
+                    "written yet."
+                ) from failure
             files = report.get("files") or []
             unreadable = sum(1 for item in files if item.get("status") in ("attention", "error"))
             if report.get("status") == "cancelled":
@@ -4195,9 +4285,17 @@ class Library:
                 "imported": datetime.now(UTC).isoformat(),
             }
         )
-        first, added = self._merge_session(
-            identifier, session, collections=collections, active_collection=str(output)
-        )
+        try:
+            first, added = self._merge_session(
+                identifier, session, collections=collections, active_collection=str(output)
+            )
+        except Exception as exc:  # noqa: BLE001
+            if failure is None:
+                raise
+            raise ServiceError(
+                f"Import interrupted: {reason}. What was written is kept in {output.name} but "
+                "could not be added to the case: free some space, then import that folder again."
+            ) from exc
         if organization == "files" and self.preferences_auto_profiles():
             # The desktop applies the recognised profile when a table is imported (its
             # "auto profiles" preference is on by default): the dates, the sort, the colours.
@@ -4206,13 +4304,19 @@ class Library:
                     self.apply_profile(identifier, position)
                 except (ServiceError, ValueError, OSError, KeyError):
                     continue  # no profile matches this table: it stays a plain table
-        return {
+        result = {
             "status": report.get("status", "complete"),
             "analyses": added,
             "first_analysis": first,
             "files": len(report.get("files") or []),
             "collection": str(output),
         }
+        if failure is not None:
+            result["message"] = (
+                f"Import interrupted: {reason}. The {added} analysis(es) written before the "
+                "stop are in the case; the rest was not imported."
+            )
+        return result
 
     # -- one analysis ------------------------------------------------------
 
@@ -4657,6 +4761,7 @@ class Library:
         can be stopped: a collection of a few hundred files takes minutes."""
         if isinstance(source, list):
             source = source[0] if len(source) == 1 else self._stage(identifier, source)
+        room = self.check_room(identifier, source)  # refuses an import that cannot fit
         job_id = uuid.uuid4().hex
         job = {
             "id": job_id,
@@ -4671,6 +4776,12 @@ class Library:
         }
         with self._lock:
             self._jobs[job_id] = job
+            if room.get("status") == "tight":
+                job["log"].append(
+                    f"Low disk space: {self._size_text(room['free'])} free for a source of "
+                    f"{self._size_text(room['size'])}. The import may stop; what is written "
+                    "before is kept."
+                )
 
         def progress(text):
             with self._lock:
@@ -4739,6 +4850,11 @@ class Library:
                         # The collection caught the stop itself and kept what it had written.
                         job["status"] = "cancelled"
                         job["message"] = "Import stopped: what was written stays in the case."
+                    elif result.get("status") == "interrupted":
+                        # Not a stop of the analyst's: the disk, a crash. What had been written
+                        # is in the case, and the message says why the rest is not.
+                        job["status"] = "interrupted"
+                        job["message"] = result.get("message") or "Import interrupted."
                     else:
                         job["status"] = "complete"
                         job["message"] = "Import complete."

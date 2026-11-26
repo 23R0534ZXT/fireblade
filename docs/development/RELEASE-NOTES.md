@@ -1,4 +1,4 @@
-# Kagarasu 0.9.2 — an import of a very wide file no longer spins
+# Kagarasu 0.9.2 — a wide import no longer spins, and the disk is checked first
 
 A collection organised by artifact (or combined) merges the analyses of a family into one table; with
 a thousand files of different shapes that table has thousands of columns. The reader ran out of its
@@ -6,6 +6,11 @@ memory budget on it and fell back to inserting row by row, which took hours and 
 N records written…" at 99 %, going nowhere. The wide file is now read natively with the room its
 columns need (one thread, a budget that follows the width, never more than three times the configured
 one), in seconds. The layout step also says how far it is, and a stop is honoured between analyses.
+
+Two safeguards come with it. The disk is checked before an import starts — the source's size against
+the free space where the case lives — and an import that cannot fit is refused with the figures instead
+of dying at 80 %. And an import cut short (disk full, crash) keeps what it had written: those analyses
+are in the case and the message says why the rest is not, or says that nothing was imported.
 
 ---
 

@@ -1078,6 +1078,7 @@ async function confirmImport() {
   let imported = 0;
   let kept = 0;
   let stopped = false;
+  let interruption = "";
   const ready = previewState.items.filter((item) => !item.error && item.payload && item.payload.path);
   // Files chosen together are one collection: the layout (per file, per artifact family, or one
   // grid for everything) is how that collection is laid out, so it is imported in one go. A
@@ -1090,9 +1091,10 @@ async function confirmImport() {
       const job = await startImportJob(ready.map((item) => item.payload.path), layout, options, "");
       const outcome = await followImportJob(job);
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) imported = ready.length;
-      else if (outcome.status === "cancelled") {
+      else if (outcome.status === "cancelled" || outcome.status === "interrupted") {
         stopped = true;
         kept = (outcome.result && outcome.result.analyses) || 0;
+        if (outcome.status === "interrupted") interruption = outcome.message || "";
       } else say(`${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
     } catch (error) {
       say(error.message, true);
@@ -1100,7 +1102,7 @@ async function confirmImport() {
     }
     closeModals();
     await openCase(state.openCase.id);
-    say(stopped ? importStoppedMessage(0, kept) : `${imported} file(s) imported`, stopped);
+    say(interruption || (stopped ? importStoppedMessage(0, kept) : `${imported} file(s) imported`), stopped);
     return;
   }
   for (const item of previewState.items) {
@@ -1114,9 +1116,10 @@ async function confirmImport() {
       // A folder is one source holding several files: say how many were read, not "1".
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) {
         imported += Math.max(1, Number((item.payload && item.payload.count) || 0));
-      } else if (outcome.status === "cancelled") {
+      } else if (outcome.status === "cancelled" || outcome.status === "interrupted") {
         stopped = true;
         kept = (outcome.result && outcome.result.analyses) || 0;
+        if (outcome.status === "interrupted") interruption = outcome.message || "";
         break;
       } else {
         say(`${item.name}: ${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
@@ -1128,7 +1131,7 @@ async function confirmImport() {
   }
   closeModals();
   await openCase(state.openCase.id);
-  say(stopped ? importStoppedMessage(imported, kept) : `${imported} file(s) imported`, stopped);
+  say(interruption || (stopped ? importStoppedMessage(imported, kept) : `${imported} file(s) imported`), stopped);
 }
 
 /* ---------- import ---------- */

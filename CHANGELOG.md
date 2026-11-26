@@ -9,6 +9,14 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [0.9.2] — 2026-11-26
 
+### Added
+- **The disk is checked before an import starts**: the size and file count of the source against the free
+  space where the case is stored. An import that cannot fit is refused with the figures (nothing is written);
+  a tight disk starts and says so in the log.
+- **An import cut short keeps what it wrote.** If the disk fills (or the run crashes) after some analyses
+  were written, they are added to the case and the message says why the rest is missing; if none was
+  written, the message says "Nothing was imported".
+
 ### Fixed
 - **An import of a very wide file no longer spins at 99 %.** Merging a family of a big collection
   gives thousands of columns; the native CSV reader exceeded its memory budget and the import fell

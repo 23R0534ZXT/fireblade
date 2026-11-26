@@ -184,6 +184,26 @@ def test_the_timeline_counts_the_dated_rows(service):
     assert payload["histogram"]["bins"] > 0
 
 
+def test_the_timeline_indexes_an_analysis_while_the_grid_keeps_it_open(service, monkeypatch):
+    from fireblade.core.timeline import TimelineStore
+
+    library, identifier = service
+    grid = library._case_for(identifier, 0)
+    build = TimelineStore.build
+
+    def build_with_open_grid(store, *args, **kwargs):
+        # This is the order when the browser requests rows as the timeline starts.
+        assert library.rows(identifier, 0)["total"] == 3
+        return build(store, *args, **kwargs)
+
+    monkeypatch.setattr(TimelineStore, "build", build_with_open_grid)
+    payload = library.timeline(identifier)
+    assert payload["count"] == 3
+    assert not payload["sources"][0]["error"]
+    assert library._case_for(identifier, 0) is grid
+    assert library.rows(identifier, 0)["total"] == 3
+
+
 def test_a_global_search_finds_the_value_and_names_its_analysis(service):
     library, identifier = service
     payload = library.search(identifier, "alice")

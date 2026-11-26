@@ -1,4 +1,4 @@
-"""HTTP-facing, read-only access to a Fireblade case library.
+"""HTTP-facing, read-only access to a Kagarasu case library.
 
 Nothing here imports Qt: this module is what the container runs. The desktop
 keeps its own window and its own copy of the same core calls.
@@ -224,7 +224,7 @@ class Library:
         raw = str(item.get("source") or "").replace("\\", "/")
         stem = source.stem
         if "/results/organisation-" in raw:
-            return str(item.get("label") or stem)  # a family Fireblade organised is its own group
+            return str(item.get("label") or stem)  # a family Kagarasu organised is its own group
         if "hayabusa" in stem.casefold():
             return "Hayabusa detection"
         if stem == "Contexte EVTX":
@@ -263,10 +263,10 @@ class Library:
             raise ServiceError("The session file is too large.")
         payload = json.loads(Path(session).read_text(encoding="utf-8"))
         if payload.get("format") != "fireblade-session" or payload.get("version") != 1:
-            raise ServiceError("Unknown Fireblade session format.")
+            raise ServiceError("Unknown Kagarasu session format.")
         documents = payload.get("documents") or []
         if not isinstance(documents, list) or len(documents) > 1000:
-            raise ServiceError("Invalid Fireblade session.")
+            raise ServiceError("Invalid Kagarasu session.")
         active = payload.get("active", 0)
         entries = []
         for index, document in enumerate(documents):
@@ -374,13 +374,13 @@ class Library:
             if raw:
                 name = Path(raw.replace("\\", "/")).name
                 sheet = str(source.get("sheet", "") or "")
-                if name in GENERATED_NAMES:  # a file Fireblade wrote, named in its source language
+                if name in GENERATED_NAMES:  # a file Kagarasu wrote, named in its source language
                     return GENERATED_NAMES[name]
                 if name and "/results/organisation-" in raw.replace("\\", "/"):
-                    # An analysis Fireblade organised (a CatScale family): its name is the
+                    # An analysis Kagarasu organised (a CatScale family): its name is the
                     # core's, in its source language. The name of a file the analyst brought
                     # is evidence and is never translated.
-                    # It is a name Fireblade chose, not a file the analyst brought: the
+                    # It is a name Kagarasu chose, not a file the analyst brought: the
                     # extension of the table it was written to says nothing, so it is dropped.
                     stem = name.rpartition(".")[0]
                     name = english.english_text(stem or name)
@@ -441,7 +441,7 @@ class Library:
         if navigator:
             layer = ag.navigator_layer(
                 graph,
-                name=data.get("name") or "Fireblade",
+                name=data.get("name") or "Kagarasu",
                 description=data.get("description") or "",
                 case=data.get("name") or "",
             )
@@ -933,7 +933,7 @@ class Library:
 
         pack = ToolPack(self.tools_root) if self.tools_root else None
         readers = {}
-        # The thirteen Zimmerman tools, then Fireblade's own: the Shellbags host (a .NET dll beside
+        # The thirteen Zimmerman tools, then Kagarasu's own: the Shellbags host (a .NET dll beside
         # the others) and the WebCache reader (Python, so it is there when its library is).
         for name in (*PARSERS, *ADDITIONAL_PARSERS, "SRUM"):
             try:
@@ -2774,7 +2774,7 @@ class Library:
         try:
             raw = base64.b64decode(content or "")
         except (ValueError, TypeError) as exc:
-            raise ServiceError("This is not a Fireblade session file.") from exc
+            raise ServiceError("This is not a Kagarasu session file.") from exc
         handle, path = tempfile.mkstemp(suffix=".fireblade-session")
         os.write(handle, raw)
         os.close(handle)
@@ -3639,7 +3639,7 @@ class Library:
         if "/results/organisation-" in str(item.get("original") or item.get("path") or "").replace(
             "\\", "/"
         ):
-            # A family Fireblade organised is named in the core's language; a file the analyst
+            # A family Kagarasu organised is named in the core's language; a file the analyst
             # brought is evidence and keeps its name.
             name = str(source.get("name") or "")
             stem, dot, extension = name.rpartition(".")
@@ -4562,7 +4562,7 @@ class Library:
         located = Path(str(entry.get("path", ""))).resolve()
         if folder.resolve() not in located.parents:
             raise ServiceError(
-                "This file is an original outside the case: Fireblade never deletes it. "
+                "This file is an original outside the case: Kagarasu never deletes it. "
                 "Set it aside from the report instead."
             )
         record = report_actions.remove_source(entry)
@@ -5534,7 +5534,7 @@ class Library:
         if not grouped and "/results/organisation-" in str(entry.get("source") or "").replace(
             "\\", "/"
         ):
-            # The family a row belongs to is a name Fireblade chose, in the core's language.
+            # The family a row belongs to is a name Kagarasu chose, in the core's language.
             artifact = next(
                 (i for i, label in enumerate(labels) if label in ("Artifact", "Artefact")), None
             )
@@ -5894,7 +5894,7 @@ def _raw_condition(case, node):
 def column_labels(case) -> list[str]:
     """Column names as the analyst reads them.
 
-    The core writes the names of the columns a Fireblade reader generates (the Linux log
+    The core writes the names of the columns a Kagarasu reader generates (the Linux log
     reader, for one) in the source language of the table, and the desktop translates them
     when it draws a header. The Host does the same on the way out. Two rules keep that honest:
     only the *display* changes, never the stored names, so a colour rule, a filter or a

@@ -1026,7 +1026,7 @@ def test_a_report_can_leave_as_a_pdf(service):
     assert data.startswith(b"%PDF-1.4")
     assert data.rstrip().endswith(b"%%EOF")
     assert b"/Type /Catalog" in data and b"/Type /Pages" in data
-    assert b"Fireblade Host" in data
+    assert b"Kagarasu Host" in data
     # The text of the report is in the content streams, not just a header.
     assert b"test report" in data or b"A test report" in data
     with pytest.raises(ServiceError):

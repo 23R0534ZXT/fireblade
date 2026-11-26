@@ -1,4 +1,4 @@
-"""Is there a newer Fireblade? The check, and the words that tell the analyst what to run.
+"""Is there a newer Kagarasu? The check, and the words that tell the analyst what to run.
 
 A container cannot replace itself, and it should not pretend to: a tool that produces
 destruction certificates changes version when someone decides to, not between two queries.
@@ -48,10 +48,10 @@ def parse(payload: dict) -> dict:
     }
 
 
-STARTED = 'echo "Fireblade is starting: open http://localhost:8080 in a few seconds"'
+STARTED = 'echo "Kagarasu is starting: open http://localhost:8080 in a few seconds"'
 RUN_LINE = (
-    "docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 "
-    '-v "$HOME/fireblade-cases:/data/cases"'
+    "docker run -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 "
+    '-v "$HOME/kagarasu-cases:/data/cases"'
 )
 
 
@@ -66,10 +66,10 @@ def command(edition: str, tag: str) -> list:
     case = f"{REGISTRY}/kagarasu:{tag}"
     driver = f"{REGISTRY}/kagarasu-driver:{tag}"
     if edition == "driver":
-        return [f"docker pull {driver}", f"docker pull {case}", "docker rm -f fireblade-driver"]
+        return [f"docker pull {driver}", f"docker pull {case}", "docker rm -f kagarasu-driver"]
     if edition == "case":
         return [f"docker pull {case}"]
-    return [f"docker pull {case} && docker rm -f fireblade && {RUN_LINE} {case} && {STARTED}"]
+    return [f"docker pull {case} && docker rm -f kagarasu && {RUN_LINE} {case} && {STARTED}"]
 
 
 def guidance(edition: str) -> str:
@@ -82,7 +82,7 @@ def guidance(edition: str) -> str:
     if edition == "case":
         return "the driver restarts the case containers on the new image; open the case again"
     return (
-        "this is the line from the README: use it as it stands if you started Fireblade that way, "
+        "this is the line from the README: use it as it stands if you started Kagarasu that way, "
         "otherwise see deploy/host/README.md (Upgrade). Your cases stay in their folder"
     )
 

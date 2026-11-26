@@ -17,13 +17,13 @@ def test_the_release_payload_is_reduced_to_what_a_banner_needs():
         {
             "tag_name": "v0.9.0",
             "html_url": "https://example/rel",
-            "name": "Fireblade 0.9.0 — x",
+            "name": "Kagarasu 0.9.0 — x",
             "published_at": "2026-12-01T00:00:00Z",
         }
     )
     assert release["version"] == "0.9.0"
     assert release["url"] == "https://example/rel"
-    assert release["name"].startswith("Fireblade 0.9.0")
+    assert release["name"].startswith("Kagarasu 0.9.0")
 
 
 def test_the_answer_is_cached_and_a_failure_keeps_the_last_good_one():
@@ -71,7 +71,7 @@ def test_the_host_update_is_one_line_a_shell_can_run():
     assert len(host) == 1
     line = host[0]
     image = "ghcr.io/23r0534zxt/kagarasu:0.8.8"
-    assert line.startswith(f"docker pull {image} && docker rm -f fireblade && docker run -d ")
+    assert line.startswith(f"docker pull {image} && docker rm -f kagarasu && docker run -d ")
     assert f"{image} && echo" in line and "-p 127.0.0.1:8080:8080" in line
     assert "README" in updates.guidance("host")
 

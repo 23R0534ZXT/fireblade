@@ -1,4 +1,4 @@
-/* Fireblade Host — grid client. Palette and density live in app.css. */
+/* Kagarasu Host — grid client. Palette and density live in app.css. */
 "use strict";
 
 const PAGE = 200;
@@ -1581,7 +1581,7 @@ async function importLayout(file) {
     return;
   }
   if (!document_ || document_.format !== "fireblade-layout") {
-    say("This file is not a Fireblade layout", true);
+    say("This file is not a Kagarasu layout", true);
     return;
   }
   state.widths = document_.widths || {};
@@ -2201,7 +2201,7 @@ async function openIntegrity() {
 
 function showHelp(name) {
   const pages = {
-    guide: ["Fireblade Host — user guide", [
+    guide: ["Kagarasu Host — user guide", [
       "A case holds the evidence of one investigation: imported files, the analyses the",
       "readers produced, the indicators, the machines and the actions taken.",
       "Case > Import evidence… reads a file or a folder; the same dialog shows the columns",
@@ -2233,7 +2233,7 @@ function showHelp(name) {
       "to a case — an import, a bookmark, a rule, a note, a tab closed — is written at once,",
       "and History and recovery keeps the state it replaced.",
     ]],
-    tutorial: ["Fireblade Host — full tutorial", [
+    tutorial: ["Kagarasu Host — full tutorial", [
       "1. A case. Case > New case… creates one; History and recovery keeps a state of it",
       "each time it changes. Case > Import evidence… reads a file or a folder.",
       "2. The grid. Click a header to sort, type in the filter row to filter, right-click a",
@@ -2274,7 +2274,7 @@ function showHelp(name) {
       "travels as a file through Analysis > Export the layout….",
     ]],
     licenses: ["Licences", [
-      "Fireblade Host — internal edition. Python, FastAPI, DuckDB, openpyxl and PySide6",
+      "Kagarasu Host — internal edition. Python, FastAPI, DuckDB, openpyxl and PySide6",
       "(the desktop edition only) are distributed under their own licences; the case data",
       "never leaves the machine that serves it.",
     ]],
@@ -3383,7 +3383,7 @@ async function exportGraphPng() {
     }
     context.fillStyle = "#6b7a8a";
     context.font = "10px 'Segoe UI', Arial, sans-serif";
-    context.fillText(`Fireblade — ${state.openCase.name || "case"} — every node rests on rows of the alert analysis; open the graph to see them.`,
+    context.fillText(`Kagarasu — ${state.openCase.name || "case"} — every node rests on rows of the alert analysis; open the graph to see them.`,
       GRAPH_LEFT, layout.height + 14);
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
@@ -3680,7 +3680,7 @@ function renderGraphEvidence() {
   box.innerHTML = `<button class="gclose" data-act="graph-close" title="Close the evidence">✕</button><h3>${escapeHtml(title)}</h3>
     <p><span class="gk">${escapeHtml(kind)}</span>${evidence.level ? `<span class="gk" style="border-color:${findingLevelColour(evidence.level)}">worst: ${escapeHtml(evidence.level)}</span>` : ""}</p>
     <h4>What this is</h4><p>${escapeHtml(evidence.what || "")}</p>
-    <h4>How Fireblade got it</h4><p>${escapeHtml(evidence.how || "")}</p>
+    <h4>How Kagarasu got it</h4><p>${escapeHtml(evidence.how || "")}</p>
     ${stats ? `<div class="gstats">${stats}</div>` : ""}${span}${declared}
     ${items ? `<h4>Evidence — ${evidence.items_total} alert group(s)${evidence.items_total > evidence.items.length ? `, ${evidence.items.length} shown` : ""}</h4>${items}` : ""}`;
 }
@@ -7906,7 +7906,7 @@ async function act(name, node) {
     case "profile-create": await createProfileFromAnalysis(); break;
     case "about":
       $("about-text").textContent =
-        `Fireblade Host ${$("version").textContent.replace("Fireblade ", "")} — the same core as the Windows edition, ` +
+        `Kagarasu Host ${$("version").textContent.replace("Kagarasu ", "")} — the same core as the Windows edition, ` +
         "served over HTTP. The palette, the density and the grid behaviour are carried over from the desktop window. " +
         "Everything stays on this machine: nothing is uploaded, and the only outbound request is the " +
         "optional check for a newer release.";
@@ -7931,7 +7931,7 @@ async function checkForUpdate() {
     if (!info || !info.available) return;
     if (localStorage.getItem("fb-update-dismissed") === info.latest) return;
     const commands = info.command || [];
-    $("update-text").textContent = `Fireblade ${info.latest} is available — you run ${info.current}.`;
+    $("update-text").textContent = `Kagarasu ${info.latest} is available — you run ${info.current}.`;
     $("update-command").textContent = commands[0] || "";
     $("update-command").title = info.note || "";
     $("update-copy").onclick = async () => {
@@ -7960,7 +7960,7 @@ async function boot() {
   fillActionTypes();
   try {
     const health = await api("/health");
-    $("version").textContent = `Fireblade ${health.version} · Host`;
+    $("version").textContent = `Kagarasu ${health.version} · Host`;
   } catch (_) { /* the version is cosmetic */ }
   await loadCases();
   // A first start can be slow (a case container is starting): do not take the analyst

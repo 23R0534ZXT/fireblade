@@ -345,7 +345,7 @@ def _layout(blocks):
     return pages
 
 
-def text_pdf(markup: str, target: Path, title: str = "Fireblade", subject: str = "") -> Path:
+def text_pdf(markup: str, target: Path, title: str = "Kagarasu", subject: str = "") -> Path:
     """Write `markup` (the report's own HTML) as a PDF at `target`.
 
     Headings are bold, a table keeps its columns (the header's own widths when it declares
@@ -392,7 +392,7 @@ def text_pdf(markup: str, target: Path, title: str = "Fireblade", subject: str =
     info_id = add(
         f"<< /Title ({_escape_pdf(title).decode('latin-1')}) "
         f"/Subject ({_escape_pdf(subject).decode('latin-1')}) "
-        f"/Producer (Fireblade Host) >>".encode()
+        f"/Producer (Kagarasu Host) >>".encode()
     )
 
     buffer = bytearray(b"%PDF-1.4\n")

@@ -182,22 +182,27 @@ def organize(collection):
                 check_cancel()
                 if position % 20 == 0 or position == len(sources):
                     collection.progress(f"Organisation : {title} — {position}/{len(sources)}")
-                case = Case(document["path"], settings=collection.settings, read_only=True)
-                try:
-                    for key in column_keys(case.headers):
-                        if key in positions:
-                            continue
-                        label = key[0]
-                        number = 2
-                        while label.casefold() in used:
-                            label = key[0] + " (" + str(number) + ")"
-                            number += 1
-                        used.add(label.casefold())
-                        positions[key] = len(union)
-                        union.append(key)
-                        headers.append(label)
-                finally:
-                    case.close()
+                # The analysis states its own columns: opening it (about 35 ms) only to read them
+                # doubled the time of this step on a collection of a thousand files.
+                known = list((document.get("source") or {}).get("headers") or [])
+                if not known:
+                    case = Case(document["path"], settings=collection.settings, read_only=True)
+                    try:
+                        known = list(case.headers)
+                    finally:
+                        case.close()
+                for key in column_keys(known):
+                    if key in positions:
+                        continue
+                    label = key[0]
+                    number = 2
+                    while label.casefold() in used:
+                        label = key[0] + " (" + str(number) + ")"
+                        number += 1
+                    used.add(label.casefold())
+                    positions[key] = len(union)
+                    union.append(key)
+                    headers.append(label)
             metadata = []
             for base in ("Artefact", "Fichier source", "Parseur"):
                 label, number = base, 2

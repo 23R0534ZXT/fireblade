@@ -16,6 +16,8 @@ family, then into one grid.
 "One grid per artifact family" no longer stalls at 99 % either: a family whose merged table would pass
 3000 columns is laid out as one grid per shape (files with exactly the same columns), and the import says so.
 
+The layout step is faster: it no longer opens each analysis twice (1245 files: 121 s to 80 s).
+
 The timeline no longer shows an older state when two reads overlap: only the latest read paints.
 
 ---

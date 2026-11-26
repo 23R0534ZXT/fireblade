@@ -9,6 +9,10 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [0.9.3] — 2026-11-26
 
+### Changed
+- **Faster layout step**: merging a collection by family no longer opens each analysis twice (the columns are
+  read from what the import already recorded): 1245 files, 121 s → 80 s in the same test.
+
 ### Fixed
 - **A collection of 1000+ files no longer stalls at 99 % in a huge merged table.** When "one grid per file"
   would make more than 1000 grids, files with exactly the same columns are now merged into one grid (1245

@@ -132,13 +132,14 @@ body{
 .groupbar{display:flex;align-items:center;gap:6px;padding:0 6px 3px;flex:0 0 auto}
 .hint{color:var(--text);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .groupbar .grow{flex:1}
-.chips{display:flex;align-items:center;gap:3px;min-width:0;overflow:hidden}
+.chips{display:flex;align-items:center;gap:3px;min-width:0;overflow-x:auto}
 .gchip{display:inline-flex;align-items:center;gap:4px;background:var(--header);border:1px solid var(--border);border-radius:3px;padding:1px 3px 1px 7px;font-size:11px;white-space:nowrap;color:var(--text)}
 .gchip .gnum{opacity:.55;font-weight:600}
 .gchip .gname{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gx{border:0;background:none;color:var(--text);cursor:pointer;font-size:13px;line-height:1;padding:0 3px;opacity:.65;font-family:inherit}
 .gx:hover{opacity:1;color:var(--accent-dark)}
-.gsep{color:var(--text);opacity:.4;font-size:12px;padding:0 1px;cursor:default}
+.gsep{flex:none;color:var(--text);opacity:.4;font-size:12px;padding:0 3px;cursor:default}
+.gsep.drop-target{color:var(--accent-dark);background:var(--sel);box-shadow:inset 2px 0 var(--accent);opacity:1}
 .outline-group td{background:var(--header);font-size:11px;color:var(--text)}
 .groupbar.dropready{outline:1px dashed var(--accent);outline-offset:1px}
 #group-clear{font-size:11px;padding:2px 8px}
@@ -246,8 +247,11 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 .columns-list label:hover{background:var(--row-hover)}
 .columns-list input[type=checkbox]{margin:0}
 .columns-list .pin{margin-left:auto;font-size:11px;color:var(--muted)}
-#group-levels .row{padding:0 5px}
+#group-levels .row{padding:0 5px;cursor:grab}
 #group-levels label{flex:1;min-width:0;border:0}
+#group-levels .dragging{opacity:.55}
+#group-levels .drop-before{box-shadow:inset 0 2px var(--accent)}
+#group-levels .drop-after{box-shadow:inset 0 -2px var(--accent)}
 
 .timeline-legend{display:flex;gap:4px 14px;padding:2px 8px;font-size:11px;flex-wrap:wrap;max-height:64px;overflow-y:auto}
 .timeline-legend .chip,#finding-counts .chip{display:flex;align-items:center;gap:5px}

@@ -207,6 +207,19 @@ def test_grouping_orders_multiple_levels_and_shows_each_branch(page):
     page.wait_for_function("document.querySelectorAll('#body tr[data-group]').length === 3")
 
 
+def test_grouping_dialog_reorders_checked_columns_by_dragging(page):
+    command(page, "group-column")
+    levels = page.locator("#group-levels")
+    host = levels.get_by_role("checkbox", name="Host", exact=True)
+    user = levels.get_by_role("checkbox", name="User", exact=True)
+    host.check()
+    user.check()
+    user.locator("../..").drag_to(host.locator("../.."), target_position={"x": 12, "y": 3})
+    page.locator('[data-act="group-apply"]').click()
+    assert page.locator("#group-chips .gname").all_text_contents() == ["User", "Host"]
+    page.locator('#body tr[data-group="bob"]').wait_for()
+
+
 def test_dragging_the_bookmark_header_groups_rows_and_updates_when_a_mark_changes(page):
     select(page, 0, 1)
     command(page, "mark-selection")

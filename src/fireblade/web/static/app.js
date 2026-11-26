@@ -6276,6 +6276,7 @@ async function openHighlight() {
 
 /* ---------- the grouping bar (desktop parity: drag a header, numbered levels, × per level) ---------- */
 const GROUP_MIME = "application/x-fireblade-column";
+const GROUP_LEVEL_MIME = "application/x-fireblade-group-level";
 const BOOKMARK_GROUP_COLUMN = -2;
 const BOOKMARK_GROUP_LABEL = "Bookmark status";
 const BOOKMARK_GROUP_HEADER = `<th draggable="true" data-bookmark-group
@@ -6688,7 +6689,7 @@ function openGroupPicker() {
   const order = [...state.groups, ...columns
     .filter((column) => !state.groups.includes(column))];
   list.innerHTML = order.map((column) => `
-    <div class="row">
+    <div class="row" draggable="true" data-group-choice>
       <label><input type="checkbox" data-group-level="${column}" ${state.groups.includes(column) ? "checked" : ""}>
         ${escapeHtml(groupColumnName(column))}</label>
       <button type="button" class="btn" data-group-up aria-label="Move ${escapeHtml(groupColumnName(column))} up">↑</button>
@@ -7215,26 +7216,72 @@ function wire() {
 
   const groupbar = $("groupbar");
   if (groupbar) {
+    const clearDrop = () => {
+      groupbar.classList.remove("dropready");
+      groupbar.querySelector(".drop-target")?.classList.remove("drop-target");
+    };
+    const dropTarget = (event) => event.target.closest(".gsep") || groupbar.querySelector(".gsep:last-child");
     groupbar.addEventListener("dragover", (event) => {
       if (![...(event.dataTransfer?.types || [])].includes(GROUP_MIME)) return;
       event.preventDefault();
       event.stopPropagation();
+      clearDrop();
       groupbar.classList.add("dropready");
+      dropTarget(event)?.classList.add("drop-target");
     });
     groupbar.addEventListener("dragleave", (event) => {
-      if (!groupbar.contains(event.relatedTarget)) groupbar.classList.remove("dropready");
+      if (!groupbar.contains(event.relatedTarget)) clearDrop();
     });
+    $("head").addEventListener("dragend", clearDrop);
     groupbar.addEventListener("drop", (event) => {
       const value = event.dataTransfer.getData(GROUP_MIME);
       if (value === "") return;
       event.preventDefault();
       event.stopPropagation();
-      groupbar.classList.remove("dropready");
-      const sep = event.target.closest(".gsep");
+      const sep = dropTarget(event);
+      clearDrop();
       const position = sep ? Number(sep.dataset.position) : state.groups.length;
       addGroupColumn(Number(value), position);
     });
   }
+  const groupLevels = $("group-levels");
+  const clearLevelTarget = () => groupLevels.querySelector(".drop-before, .drop-after")
+    ?.classList.remove("drop-before", "drop-after");
+  const beforeLevel = (row, y) => {
+    const bounds = row.getBoundingClientRect();
+    return y < bounds.top + bounds.height / 2;
+  };
+  groupLevels.addEventListener("dragstart", (event) => {
+    const row = event.target.closest("[data-group-choice]");
+    if (!row) return;
+    row.classList.add("dragging");
+    event.dataTransfer.setData(GROUP_LEVEL_MIME, "reorder");
+    event.dataTransfer.effectAllowed = "move";
+  });
+  groupLevels.addEventListener("dragover", (event) => {
+    if (!event.dataTransfer.types.includes(GROUP_LEVEL_MIME)) return;
+    clearLevelTarget();
+    const row = event.target.closest("[data-group-choice]:not(.dragging)");
+    if (!row) return;
+    event.preventDefault();
+    row.classList.add(beforeLevel(row, event.clientY) ? "drop-before" : "drop-after");
+  });
+  groupLevels.addEventListener("dragleave", (event) => {
+    if (!groupLevels.contains(event.relatedTarget)) clearLevelTarget();
+  });
+  groupLevels.addEventListener("drop", (event) => {
+    const source = groupLevels.querySelector(".dragging");
+    const target = event.target.closest("[data-group-choice]:not(.dragging)");
+    if (!source || !target) return;
+    event.preventDefault();
+    if (beforeLevel(target, event.clientY)) target.before(source);
+    else target.after(source);
+    clearLevelTarget();
+  });
+  groupLevels.addEventListener("dragend", () => {
+    groupLevels.querySelector(".dragging")?.classList.remove("dragging");
+    clearLevelTarget();
+  });
   const clearButton = $("group-clear");
   if (clearButton) clearButton.addEventListener("click", clearGrouping);
 

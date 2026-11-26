@@ -955,9 +955,14 @@ def create_app(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/api/cases/{identifier}/save")
-    def save_case(identifier: str):
+    def save_case(identifier: str, payload: dict | None = None):
         try:
-            return library.save_case(identifier)
+            body = payload or {}
+            display = body.get("display")
+            index = _whole(body.get("analysis"), "analysis") if display is not None else None
+            if display is not None and not isinstance(display, dict):
+                raise ValueError("Display must be an object.")
+            return library.save_case(identifier, index, display)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

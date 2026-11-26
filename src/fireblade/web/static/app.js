@@ -504,11 +504,14 @@ async function openCaseHistory() {
 async function restoreHistory(name) {
   if (!state.openCase) return;
   if (!window.confirm(`Restore the state ${name}? The present state is kept in the same folder first.`)) return;
+  const identifier = state.openCase.id;
+  clearTimeout(layoutTimer);
   try {
+    await layoutWrite;
     const payload = await apiPost(
-      `/api/cases/${state.openCase.id}/history/${encodeURIComponent(name)}/restore`, {});
+      `/api/cases/${identifier}/history/${encodeURIComponent(name)}/restore`, {});
     closeModals();
-    await openCase(state.openCase.id);
+    await openCase(identifier);
     say(`State restored: ${payload.analyses} analysis(es), updated ${payload.updated}`);
   } catch (error) {
     say(error.message, true);
@@ -1165,9 +1168,13 @@ async function saveCase() {
   // Save case: everything the case holds is written as it changes; what is still only on
   // screen is the layout of the analysis in view, so that is written now, and said.
   if (!state.openCase) { say("No case is open", true); return; }
-  await saveDisplayNow();
+  const identifier = state.openCase.id;
+  const payload = state.openCase.analyses.length
+    ? { analysis: state.analysis, display: currentDisplay() } : {};
+  clearTimeout(layoutTimer);
   try {
-    const saved = await apiPost(`/api/cases/${state.openCase.id}/save`, {});
+    await layoutWrite;
+    const saved = await apiPost(`/api/cases/${identifier}/save`, payload);
     const now = new Date();
     say(`Case saved at ${now.toLocaleTimeString([], { hour12: false })} — `
       + `${saved.recovery_points} recovery point(s) in History`);
@@ -1519,6 +1526,14 @@ function closeCase() {
 /* ---------- column layout ---------- */
 
 let layoutTimer = null;
+let layoutWrite = Promise.resolve();
+
+function currentDisplay() {
+  return {
+    widths: { ...state.widths }, hidden: [...state.hidden], pinned: [...state.pinned],
+    pinned_right: [...state.pinnedRight], order: [...state.colOrder],
+  };
+}
 
 async function loadLayout() {
   if (!state.openCase) return;
@@ -1539,14 +1554,11 @@ async function loadLayout() {
 
 function saveLayoutSoon() {
   clearTimeout(layoutTimer);
-  layoutTimer = setTimeout(async () => {
-    if (!state.openCase) return;
-    try {
-      await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`,
-        { widths: state.widths, hidden: [...state.hidden], pinned: [...state.pinned],
-          pinned_right: [...state.pinnedRight],
-    order: state.colOrder, order: state.colOrder });
-    } catch (_) { /* a layout that cannot be saved must not interrupt the work */ }
+  if (!state.openCase) return;
+  const path = `/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`;
+  const display = currentDisplay();
+  layoutTimer = setTimeout(() => {
+    layoutWrite = layoutWrite.then(() => apiPost(path, display)).catch(() => {});
   }, 600);
 }
 
@@ -1612,10 +1624,12 @@ async function importLayout(file) {
 }
 
 async function saveDisplayNow() {
+  const path = `/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`;
+  const display = currentDisplay();
+  clearTimeout(layoutTimer);
   try {
-    await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`,
-      { widths: state.widths, hidden: [...state.hidden], pinned: [...state.pinned],
-        pinned_right: [...state.pinnedRight] });
+    await layoutWrite;
+    await apiPost(path, display);
   } catch (_) { /* a layout that cannot be saved must not interrupt the work */ }
 }
 

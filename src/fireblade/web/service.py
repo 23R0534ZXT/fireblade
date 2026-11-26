@@ -288,6 +288,7 @@ class Library:
                     "found": resolved is not None,
                     "source": str(source.get("path", "")) if isinstance(source, dict) else "",
                     "view": document.get("view") if isinstance(document.get("view"), dict) else {},
+                    "web_display": document.get("web_display"),
                     "active": index == active,
                 }
             )
@@ -5346,7 +5347,9 @@ class Library:
             "labels": [self._label(item.source_info, item.path) for item in ordered],
         }
 
-    def save_case(self, identifier: str) -> dict:
+    def save_case(
+        self, identifier: str, index: int | None = None, display: dict | None = None
+    ) -> dict:
         """Write the case's session again, which leaves a state to recover in its History.
 
         Every command that changes the tabs already does this; Save case is the analyst
@@ -5355,12 +5358,16 @@ class Library:
         """
         data = self.library.read(identifier)
         snapshots, active, closed = self._session_snapshots(identifier, with_closed=True)
+        if display is not None:
+            if index is None or not 0 <= index < len(snapshots):
+                raise ServiceError("This analysis does not exist in the case.")
+            snapshots[index].web_display = self.save_display(identifier, index, display)
         if snapshots:
             collections = [
                 entry for entry in (data.get("collections") or []) if isinstance(entry, dict)
             ]
             self.close_case(identifier)
-            self.library.save(
+            data = self.library.save(
                 identifier,
                 snapshots,
                 active,
@@ -5370,25 +5377,30 @@ class Library:
                 closed=list(closed),
             )
         # A case with no analysis has no session to write: it is saved, and says so.
-        return {"analyses": len(snapshots), "recovery_points": self.history(identifier)["count"]}
+        return {
+            "analyses": len(snapshots),
+            "recovery_points": self.history(identifier)["count"],
+            "revision": data["revision"],
+        }
 
     def history(self, identifier: str) -> dict:
         """The case's History folder: the states the desktop lets the analyst recover."""
         folder = self.library.folder(identifier) / "History"
         entries = []
         if folder.is_dir():
-            for path in sorted(folder.glob("*.json"), reverse=True)[:200]:
+            files = []
+            for path in folder.glob("*.json"):
                 try:
-                    size = path.stat().st_size
+                    stat = path.stat()
                 except OSError:
-                    size = 0
-                when = datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat(
-                    timespec="seconds"
-                )
+                    continue
+                files.append((stat.st_mtime_ns, path, stat))
+            for _, path, stat in sorted(files, reverse=True)[:200]:
+                when = datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(timespec="seconds")
                 entries.append(
                     {
                         "name": path.name,
-                        "bytes": size,
+                        "bytes": stat.st_size,
                         "when": when,
                         "label": self._state_label(path),
                     }
@@ -5446,6 +5458,13 @@ class Library:
         session = str(recorded.get("session") or "")
         if session and not (folder / session).is_file():
             raise ServiceError("The session this state points to is no longer in the case.")
+        layouts = []
+        for entry in self._analyses(recorded):
+            display = entry["web_display"]
+            if display is not None:
+                if not entry["found"] or not isinstance(display, dict):
+                    raise ServiceError("A column layout in this state cannot be recovered.")
+                layouts.append((entry["index"], display))
         current = folder / "case.json"
         if current.is_file():
             data = json.loads(current.read_text(encoding="utf-8"))
@@ -5460,6 +5479,8 @@ class Library:
         temporary = current.with_suffix(".partial")
         temporary.write_text(json.dumps(recorded, ensure_ascii=False, indent=2), encoding="utf-8")
         temporary.replace(current)
+        for index, display in layouts:
+            self.save_display(identifier, index, display)
         return {
             "restored": name,
             "revision": recorded.get("revision"),

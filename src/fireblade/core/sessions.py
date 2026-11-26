@@ -13,12 +13,15 @@ MAX_SESSION_DOCUMENTS = 1000
 
 
 def _entry(snapshot):
-    return dict(
+    entry = dict(
         path=snapshot.path,
         source=snapshot.source_info,
         view=json.loads(snapshot.view.to_json()),
         header=base64.b64encode(snapshot.header_state).decode("ascii"),
     )
+    if snapshot.web_display is not None:
+        entry["web_display"] = snapshot.web_display
+    return entry
 
 
 def write_session(path, snapshots, active, closed=()):
@@ -97,9 +100,16 @@ def _snapshots(path, documents, seen):
             raise ValueError(f"Analyse absente ou dupliquée : {target}")
         seen.add(target)
         view = View.from_json(json.dumps(doc["view"]))
+        web_display = doc.get("web_display")
+        if web_display is not None and not isinstance(web_display, dict):
+            raise ValueError("Disposition web invalide")
         snapshots.append(
             AnalysisSnapshot(
-                str(target), doc["source"], view, base64.b64decode(doc["header"], validate=True)
+                str(target),
+                doc["source"],
+                view,
+                base64.b64decode(doc["header"], validate=True),
+                web_display,
             )
         )
     return snapshots, seen

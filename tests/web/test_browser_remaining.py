@@ -47,8 +47,10 @@ def test_the_history_restores_the_state_the_case_was_saved_in(page):
     page.wait_for_function(
         "![...document.querySelectorAll('#head tr:first-child th')].some(t => t.innerText.trim().startsWith('Path'))"
     )
-    command(page, "case-save")
-    page.wait_for_function("document.getElementById('status').innerText.length > 0")
+    with page.expect_response(lambda response: response.url.endswith("/save")) as saved:
+        command(page, "case-save")
+    assert saved.value.ok
+    revision = saved.value.json()["revision"]
     command(page, "columns")
     page.click('.modal.show [data-act="columns-reset"]')
     page.click('.modal.show [data-act="settings-close"]')
@@ -56,7 +58,7 @@ def test_the_history_restores_the_state_the_case_was_saved_in(page):
     command(page, "case-history")
     page.wait_for_selector("#history-list [data-history-restore]")
     page.once("dialog", lambda dialog: dialog.accept())
-    page.locator("#history-list [data-history-restore]").last.click()
+    page.locator(f'#history-list [data-history-restore="{revision}.json"]').click()
     page.wait_for_function(
         "document.getElementById('status').innerText.startsWith('State restored')"
     )

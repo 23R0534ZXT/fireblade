@@ -96,7 +96,7 @@ class CaseContainer:
         identifier: str,
         *,
         volume,
-        image: str = "ghcr.io/23r0534zxt/fireblade:latest",
+        image: str = "ghcr.io/23r0534zxt/kagarasu:latest",
         network: str = "fireblade-cases",
         port: int = 8080,
         name: str = "",
@@ -348,7 +348,7 @@ class Agency:
         certificates="",
         docker=None,
         *,
-        image: str = "ghcr.io/23r0534zxt/fireblade:latest",
+        image: str = "ghcr.io/23r0534zxt/kagarasu:latest",
         network: str = "fireblade-cases",
         max_open: int = 3,
         host_volumes="",
@@ -578,7 +578,7 @@ def page(catalogue: dict, *, version: str = "", error: str = "", update: dict | 
     problems = " ".join(escape(item) for item in catalogue["errors"])
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-        "<title>Fireblade — Host</title>"
+        "<title>Kagarasu — Host</title>"
         '<link rel="stylesheet" href="/static/app.css"><style>'
         ".wrap{display:flex;flex-direction:column;height:100vh}"
         ".topline{display:flex;align-items:center;gap:10px;padding:3px 7px;"
@@ -594,7 +594,7 @@ def page(catalogue: dict, *, version: str = "", error: str = "", update: dict | 
         ".caseswrap td:first-child{line-height:13px;height:30px}"
         "a{color:var(--text);text-decoration:none}a:hover{text-decoration:underline}"
         '</style></head><body><div class="wrap">'
-        '<div class="topline"><span class="brand">Fireblade <small>Host — one container per case'
+        '<div class="topline"><span class="brand">Kagarasu <small>Host — one container per case'
         '</small></span><span class="grow"></span>'
         '<form class="rowform" method="post" action="/new">'
         '<input class="search" name="name" placeholder="New case name…" required>'
@@ -626,7 +626,7 @@ def create_app(
     volumes_root,
     certificates_root="",
     *,
-    image: str = "ghcr.io/23r0534zxt/fireblade:latest",
+    image: str = "ghcr.io/23r0534zxt/kagarasu:latest",
     network: str = "fireblade-cases",
     max_open: int = 3,
     version: str = "",
@@ -664,7 +664,7 @@ def create_app(
         finally:
             await client.aclose()
 
-    app = FastAPI(title="Fireblade Host driver", version=version or "0", lifespan=lifespan)
+    app = FastAPI(title="Kagarasu Host driver", version=version or "0", lifespan=lifespan)
     app.state.agency = agency
     if STATIC.is_dir():
         # The driver ships the client's stylesheet: one palette, carried from the desktop.
@@ -824,7 +824,7 @@ def serve(args) -> int:
         case_gid=args.case_gid,
     )
     print(
-        f"Fireblade Host driver {_version()} on {args.host}:{args.port} — volumes in {args.volumes}",
+        f"Kagarasu Host driver {_version()} on {args.host}:{args.port} — volumes in {args.volumes}",
         flush=True,
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level)
@@ -869,7 +869,7 @@ def main(argv=None) -> int:
     p_serve.add_argument("--case-gid", type=int, default=10001)
     p_serve.add_argument(
         "--image",
-        default="ghcr.io/23r0534zxt/fireblade:latest",
+        default="ghcr.io/23r0534zxt/kagarasu:latest",
         help="the case image; every case container is built from it",
     )
     p_serve.add_argument("--network", default="fireblade-cases")

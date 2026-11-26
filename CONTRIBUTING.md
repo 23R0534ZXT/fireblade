@@ -73,5 +73,5 @@ the compatibility promise, the HTTP API is not one yet.
 
 ## Reporting a problem
 
-Bugs and requests: the [issue forms](https://github.com/23R0534ZXT/fireblade/issues/new/choose).
+Bugs and requests: the [issue forms](https://github.com/23R0534ZXT/kagarasu/issues/new/choose).
 Security problems: [SECURITY.md](SECURITY.md), not a public issue.

@@ -147,7 +147,7 @@ def test_grouping_by_a_column_lists_its_values_and_drills_down(page):
     )
     assert "Status" in labels
     page.select_option("#group-modal select >> nth=0", label="Status")
-    page.click("#group-modal button:has-text('Group')")
+    page.click("#group-modal button:has-text('Add level')")
     page.wait_for_selector("#body tr[data-group]")
     assert page.locator("#body tr[data-group]").count() >= 5
     page.locator("#body tr[data-group]").first.click()

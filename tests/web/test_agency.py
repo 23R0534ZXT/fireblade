@@ -208,7 +208,7 @@ def test_an_upgrade_rebuilds_the_case_container_and_keeps_its_volume(driver, tmp
     driver.open(identifier)
     before = driver.container(identifier).current_image_id()
     assert before, "the fake records the image it was built from"
-    driver.image = "ghcr.io/23r0534zxt/fireblade:0.9.0"
+    driver.image = "ghcr.io/23r0534zxt/kagarasu:0.9.0"
     driver.open(identifier)
     after = driver.container(identifier).current_image_id()
     assert after and after != before
@@ -220,7 +220,7 @@ def test_reconcile_drops_a_case_container_built_from_another_image(driver):
     """At start-up the stale containers go; a case nobody opens is still up to date."""
     identifier = driver.create("Stale case")["id"]
     driver.open(identifier)
-    driver.image = "ghcr.io/23r0534zxt/fireblade:0.9.0"
+    driver.image = "ghcr.io/23r0534zxt/kagarasu:0.9.0"
     assert driver.reconcile() == [identifier]
     assert not driver.container(identifier).exists()
     assert driver.volumes.has(identifier), "an upgrade never touches the case itself"

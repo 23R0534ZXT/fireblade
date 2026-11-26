@@ -1,17 +1,17 @@
-# Fireblade
+# Kagarasu
 
-[![Windows validation](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/fireblade/actions/workflows/windows.yml)
+[![Windows validation](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml)
 
 **A local DFIR workspace for Windows artifacts, Linux logs and tabular evidence.**
 
-Fireblade reads a collected folder, keeps every file accounted for, and puts the results in
+Kagarasu reads a collected folder, keeps every file accounted for, and puts the results in
 one workspace: filterable tables, a cross-analysis timeline, indicator hunting, detections
 grouped into findings, an attack graph, and a case that can be saved, moved and erased
 verifiably. Everything runs on the analyst's own machine: no upload, no cloud account, no
 API key, no telemetry. The Host's one outbound request is the optional check for a newer
 release (see [Updates](#updates)).
 
-![The Fireblade Host workspace: a case of Linux logs](docs/assets/host/host-workspace.png)
+![The Kagarasu Host workspace: a case of Linux logs](docs/assets/host/host-workspace.png)
 
 ## Editions
 
@@ -38,21 +38,21 @@ specified but not started — see [Roadmap](#roadmap).
 One line; Docker downloads the image the first time, and creates the cases folder if it is missing:
 
 ```bash
-docker run -d --name fireblade --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/fireblade-cases:/data/cases" ghcr.io/23r0534zxt/fireblade:latest && echo "Fireblade is starting: open http://localhost:8080 in a few seconds"
+docker run -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" ghcr.io/23r0534zxt/kagarasu:latest && echo "Kagarasu is starting: open http://localhost:8080 in a few seconds"
 ```
 
 Prefix the command with `sudo` if your user is not in the `docker` group. Then open <http://localhost:8080>. `/data/cases` is the path inside the container; your cases are in
-`~/fireblade-cases` on your machine, and a case written by the Desktop opens as soon as its
-folder is there. On Windows PowerShell, write the folder as `"$HOME\fireblade-cases"`.
+`~/kagarasu-cases` on your machine, and a case written by the Desktop opens as soon as its
+folder is there. On Windows PowerShell, write the folder as `"$HOME\kagarasu-cases"`.
 
 | | |
 | --- | --- |
-| Stop / start | `docker stop fireblade` · `docker start fireblade` |
-| Upgrade | `docker pull ghcr.io/23r0534zxt/fireblade:latest && docker rm -f fireblade`, then run the line above again (the cases stay in their folder) |
-| Pin a version | replace `:latest` with `:0.8.8` · `:edge` follows `main` |
-| Remove | `docker rm -f fireblade` (your cases are not touched) |
+| Stop / start | `docker stop kagarasu` · `docker start kagarasu` |
+| Upgrade | `docker pull ghcr.io/23r0534zxt/kagarasu:latest && docker rm -f kagarasu`, then run the line above again (the cases stay in their folder) |
+| Pin a version | replace `:latest` with `:0.9.1` · `:edge` follows `main` |
+| Remove | `docker rm -f kagarasu` (your cases are not touched) |
 
-To build from a clone instead: `docker build -t fireblade:host .`.
+To build from a clone instead: `docker build -t kagarasu:host .`.
 
 ### Updates
 
@@ -65,7 +65,7 @@ To find out, the container asks GitHub's public releases API at most once every 
 request carries no information about you or your cases, and it is the only one the Host makes.
 On an isolated network, or if you prefer it that way, switch it off with
 `-e FIREBLADE_UPDATE_CHECK=off`: the band never appears, and you follow the
-[releases](https://github.com/23R0534ZXT/fireblade/releases) yourself.
+[releases](https://github.com/23R0534ZXT/kagarasu/releases) yourself.
 
 The image carries the .NET 10 runtime and the thirteen pinned readers, so it reads the same
 artifacts as the Desktop.
@@ -87,16 +87,16 @@ flowchart LR
 ```
 
 ```bash
-docker network create fireblade-cases 2>/dev/null || true
-docker run -d --name fireblade-driver -p 127.0.0.1:8080:8080 --network fireblade-cases \
+docker network create kagarasu-cases 2>/dev/null || true
+docker run -d --name kagarasu-driver -p 127.0.0.1:8080:8080 --network kagarasu-cases \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    -v /srv/fireblade/volumes:/data/volumes \
-    -v /srv/fireblade/certificates:/data/certificates \
-    ghcr.io/23r0534zxt/fireblade-driver:latest \
+    -v /srv/kagarasu/volumes:/data/volumes \
+    -v /srv/kagarasu/certificates:/data/certificates \
+    ghcr.io/23r0534zxt/kagarasu-driver:latest \
     python -m fireblade.web.agency serve \
-      --image ghcr.io/23r0534zxt/fireblade:latest \
-      --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
-      --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
+      --image ghcr.io/23r0534zxt/kagarasu:latest \
+      --volumes /data/volumes --host-volumes /srv/kagarasu/volumes \
+      --certificates /data/certificates --host-certificates /srv/kagarasu/certificates \
       --host 0.0.0.0 --port 8080
 ```
 
@@ -130,7 +130,7 @@ bar, the engine's own messages, and a Stop.
 
 | | |
 | --- | --- |
-| `SRUDB.dat` (SRUM) | Read by Fireblade's own reader: the database's own columns, not `SrumECmd`'s names. `SrumECmd` itself needs Windows' ESE libraries; for its exact output, import the CSV the Desktop produced. |
+| `SRUDB.dat` (SRUM) | Read by Kagarasu's own reader: the database's own columns, not `SrumECmd`'s names. `SrumECmd` itself needs Windows' ESE libraries; for its exact output, import the CSV the Desktop produced. |
 | Assistant | The local analyst assistant exists in the Desktop only. |
 | Language | English. |
 | Erasure | Overwriting files cannot be guaranteed on SSDs, copy-on-write or journaled file systems; the certificate states the method used, not a physical guarantee. |
@@ -144,7 +144,7 @@ Reader by reader, with the rows each wrote: [docs/host/LINUX-READERS.md](docs/ho
 
 The Windows edition is frozen: version 0.7.9 is its last build and receives no changes.
 
-**[Download Fireblade 0.7.9 — Windows x64](https://github.com/23R0534ZXT/fireblade/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.7.9)
+**[Download Fireblade 0.7.9 — Windows x64](https://github.com/23R0534ZXT/kagarasu/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.7.9)
 
 Unzip and run `Fireblade.exe`; Python, Qt, the parsers and the .NET readers are inside the
 folder. The executable is unsigned: Windows may show a SmartScreen prompt (*More info* →
@@ -154,10 +154,10 @@ against the SHA-256 in the release notes. Documentation: [docs/desktop](docs/des
 ![The Desktop workspace](docs/assets/fireblade-workspace.png)
 
 Sample data: the
-[sample collection](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip)
+[sample collection](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip)
 (a Windows 11 machine: 183 event logs, Amcache, 60 Prefetch entries, 251 scheduled tasks), the
-[discovery pack](https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
-and the [raw artifact pack](https://github.com/23R0534ZXT/fireblade/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip).
+[discovery pack](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
+and the [raw artifact pack](https://github.com/23R0534ZXT/kagarasu/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip).
 
 ## Roadmap
 

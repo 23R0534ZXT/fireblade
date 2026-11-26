@@ -1479,6 +1479,7 @@ async function openCase(identifier, analysisIndex = null) {
     if (changedCase) {
       resetTimeline();
       resetFindings();
+      resetGraph();
     }
     // The analyses closed and kept: the tree lists them, and they open again.
     try {
@@ -1515,6 +1516,7 @@ function closeCase() {
   state.openCase = null;
   resetTimeline();
   resetFindings();
+  resetGraph();
   resetAnalysisQuery();
   state.columns = [];
   state.rows = [];
@@ -3345,9 +3347,11 @@ async function saveGraphNode() {
 
 async function buildGraph() {
   if (!state.openCase) { say("Open a case first", true); return; }
+  const revision = ++graphReadRevision;
   $("graph-summary").textContent = "Building…";
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/graph`);
+    if (graphReadRevision !== revision) return;
     if (payload.empty) {
       // Nothing to draw yet: say what to do, as a hint rather than an error.
       renderGraph({ nodes: [], edges: [] });
@@ -3356,6 +3360,7 @@ async function buildGraph() {
     }
     renderGraph(payload);
   } catch (error) {
+    if (graphReadRevision !== revision) return;
     $("graph-summary").textContent = error.message;
     say(error.message, true);
   }
@@ -3465,6 +3470,14 @@ async function exportNavigator() {
 
 let graphPayload = { nodes: [], edges: [] };
 let graphSelection = null;
+let graphReadRevision = 0;
+
+function resetGraph() {
+  graphReadRevision += 1;
+  graphSelection = null;
+  renderGraph({ nodes: [], edges: [] });
+  $("graph-summary").textContent = "";
+}
 
 const GRAPH_CARD_W = 200;
 const GRAPH_CARD_H = 58;

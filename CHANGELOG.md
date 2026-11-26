@@ -14,6 +14,9 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   would make more than 1000 grids, files with exactly the same columns are now merged into one grid (1245
   files of 300 shapes make 300 grids, no row lost, no wider table); only if there are still too many
   shapes does it fall back to one grid per artifact family, then to one grid.
+- **"One grid per artifact family" on a family with thousands of columns no longer stalls at 99 %.** A family
+  whose merged table would pass 3000 columns (a thousand files of many shapes) is laid out as one grid per
+  shape — files with exactly the same columns — and the import says so.
 - **Timeline**: overlapping reads (a search typed while a window loads) no longer let a slower, older answer
   repaint an older state: only the latest read paints.
 

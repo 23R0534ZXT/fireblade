@@ -64,6 +64,52 @@ def column_keys(headers):
     return keys
 
 
+# A merged table keeps the union of its files' columns. Past this many the native reader needs more
+# memory than a machine can give, and the row-by-row path takes hours: the family is laid out as one
+# grid per shape instead (files with exactly the same columns), and the import says so.
+MAX_COLUMNS = 3000
+MAX_SPLIT_GRIDS = 400  # a family with more shapes than this is merged, not split
+
+
+def _union_width(sources):
+    keys = set()
+    for document, _origin in sources:
+        keys.update(column_keys(list((document.get("source") or {}).get("headers") or ())))
+    return len(keys)
+
+
+def _split_too_wide(groups, mode, notes):
+    result, used = {}, set()
+    for title, sources in groups.items():
+        width = _union_width(sources)
+        if width <= MAX_COLUMNS:
+            result[title] = sources
+            used.add(title.casefold())
+            continue
+        shapes = {}
+        for document, origin in sources:
+            columns = tuple((document.get("source") or {}).get("headers") or ())
+            shapes.setdefault((origin[0], columns), []).append((document, origin))
+        if len(shapes) > MAX_SPLIT_GRIDS:
+            # Hundreds of shapes would fill the case with grids: the merge stays, as wide as it is.
+            result[title] = sources
+            used.add(title.casefold())
+            continue
+        parts = _named_schemas(shapes)
+        for name, members in parts.items():
+            base, number = name, 2
+            while name.casefold() in used or name in groups:
+                name = f"{base} ({number})"
+                number += 1
+            used.add(name.casefold())
+            result[name] = members
+        notes.append(
+            f"{title}: {width} columns together, laid out as {len(parts)} grid(s) of files "
+            "with identical columns"
+        )
+    return result
+
+
 def _named_schemas(groups):
     """Give each (family, columns) group a unique, file-safe name: the family and its first columns."""
     per_family = {}
@@ -119,6 +165,9 @@ def organize(collection):
         groups.setdefault(key, []).append((document, origin))
     if mode == "schemas":
         groups = _named_schemas(groups)
+    notes = []
+    if mode in ("artifacts", "combined"):
+        groups = _split_too_wide(groups, mode, notes)
     folder = collection.output / "results" / ("organisation-" + uuid.uuid4().hex)
     folder.mkdir()
     documents = []
@@ -208,6 +257,8 @@ def organize(collection):
             documents.append(document)
         collection.report["raw_documents"] = originals
         collection.report["documents"] = documents
+        if notes:
+            collection.report["organization_notes"] = notes
         if failures:
             collection.report["organization_failures"] = failures
     except BaseException:

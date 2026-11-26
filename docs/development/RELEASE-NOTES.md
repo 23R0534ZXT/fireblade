@@ -13,6 +13,9 @@ table: files with exactly the same columns are merged into one grid (1245 files 
 grids, no row lost, no wider table); only when there are still too many shapes does it group by artifact
 family, then into one grid.
 
+"One grid per artifact family" no longer stalls at 99 % either: a family whose merged table would pass
+3000 columns is laid out as one grid per shape (files with exactly the same columns), and the import says so.
+
 The timeline no longer shows an older state when two reads overlap: only the latest read paints.
 
 ---

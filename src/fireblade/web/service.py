@@ -4314,6 +4314,14 @@ class Library:
         notice = ""
         if failure is None and report.get("status") == "complete":
             notice = self._fit_session_limit(output, pack, progress)
+        notes = list(report.get("organization_notes") or [])
+        if notes:
+            notice = (
+                (notice + " " if notice else "")
+                + "Too many columns to merge: "
+                + "; ".join(notes)
+                + "."
+            )
         if failure is not None:
             reason = (
                 "the disk is full"

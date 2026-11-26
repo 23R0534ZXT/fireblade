@@ -151,3 +151,23 @@ def test_files_of_different_shapes_make_one_grid_per_shape_not_one_wide_table(li
     assert len(case["analyses"]) == 3
     assert sum(a["source_info"]["rows"] for a in case["analyses"]) == 9, "no row lost"
     assert all(len(a["source_info"]["headers"]) <= 5 for a in case["analyses"]), "not widened"
+
+
+def test_a_family_too_wide_to_merge_is_split_by_shape_and_says_so(lib, monkeypatch):
+    """'One grid per artifact family' on files of many shapes must not build one huge table."""
+    from fireblade.core import collection_organization
+
+    library, identifier, tmp_path = lib
+    monkeypatch.setattr(collection_organization, "MAX_COLUMNS", 6)
+    folder = tmp_path / "shapes"
+    folder.mkdir()
+    for number in range(8):  # four shapes of three columns, two files each: 4 x 2 + shared = wide
+        (folder / f"f{number}.csv").write_text(
+            f"Time,Shape{number % 4}a,Shape{number % 4}b\n2026-11-01T10:00:00Z,x,y{number}\n"
+        )
+    result = library.import_source(identifier, folder, organization="artifacts")
+    assert result["analyses"] == 4, result
+    assert "Too many columns to merge" in result["notice"], result
+    case = library.case(identifier)
+    assert sum(a["source_info"]["rows"] for a in case["analyses"]) == 8, "no row lost"
+    assert all(len(a["source_info"]["headers"]) <= 6 for a in case["analyses"])

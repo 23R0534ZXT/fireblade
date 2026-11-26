@@ -82,6 +82,9 @@ class Library:
         self.library = InvestigationLibrary(self.root)
         self._open: dict[tuple[str, int], Case] = {}
         self._timelines: dict[tuple[str, str | None], TimelineStore] = {}
+        # One request at a time reads or replaces a timeline store: a build closes the stores it
+        # replaces, and a request still reading one of them would meet a closed connection.
+        self._timeline_lock = threading.RLock()
         self._hunters: dict = {}  # the reader of the hunt running on a case, for Interrupt
         self._timeline_dir = tempfile.mkdtemp(prefix="fireblade-timelines-")
         self._lock = threading.RLock()
@@ -3698,7 +3701,12 @@ class Library:
                 options[path] = match
         return options
 
-    def timeline(
+    def timeline(self, *args, **kwargs) -> dict:
+        """Counts the case's rows over time (see `_timeline`), one request at a time."""
+        with self._timeline_lock:
+            return self._timeline(*args, **kwargs)
+
+    def _timeline(
         self,
         identifier: str,
         start: int | None = None,
@@ -3865,7 +3873,12 @@ class Library:
             "values": values,
         }
 
-    def timeline_export(
+    def timeline_export(self, *args, **kwargs) -> tuple[bytes, dict]:
+        """The timeline as a verified CSV (see `_timeline_export`), one request at a time."""
+        with self._timeline_lock:
+            return self._timeline_export(*args, **kwargs)
+
+    def _timeline_export(
         self,
         identifier: str,
         start: int | None = None,

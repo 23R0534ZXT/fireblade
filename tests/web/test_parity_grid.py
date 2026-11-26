@@ -471,15 +471,23 @@ def test_group_summaries_totals_and_footers_carry_the_desktop_values(desktop_num
     totals = list(window.case.total_summary(view))[1:]
     key = groups[0][0]
     where, args = window.case.where(view, (key,))
-    leaf = list(
-        window.case.db.execute(
-            "SELECT count(*)"
-            + "".join(", " + value for value in summary_expressions(window.case, view))
-            + " FROM events"
-            + where,
-            args,
-        ).fetchone()
-    )[1:]
+    sql = (
+        "SELECT count(*)"
+        + "".join(", " + value for value in summary_expressions(window.case, view))
+        + " FROM events"
+        + where
+    )
+    # The window's own grid may still be cancelling a fetch of the previous test on this very
+    # connection: an interrupted aggregate comes back empty, and asking again gets the answer.
+    row = None
+    for _ in range(20):
+        app.processEvents()
+        row = window.case.db.execute(sql, args).fetchone()
+        if row is not None:
+            break
+        time.sleep(0.1)
+    assert row is not None, "the leaf aggregate never answered"
+    leaf = list(row)[1:]
     state = host_numbers.evaluate(
         """async () => {
           state.groups = [1];

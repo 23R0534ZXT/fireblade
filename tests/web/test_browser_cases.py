@@ -158,6 +158,7 @@ def test_archive_hides_a_case_until_archived_ones_are_included_and_reactivate_br
     page.wait_for_selector('#cases-body tr:has(td:text-is("To archive"))')
     _row(page, "To archive").click()
     assert page.inner_text("#archive-case") == "Archive"
+    assert page.locator("#restore-case").is_hidden()
     page.click('#cases-view [data-act="archive-case"]')
     page.wait_for_function("document.querySelectorAll('#cases-body tr:has(td)').length > 0")
     page.wait_for_function(

@@ -16,8 +16,8 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 ### Fixed
 - Host refreshes open grids when the import layout changes, persists restored column visibility,
   opens the retried analysis, and retains column settings when recovering an earlier session.
-- Timeline CSV exports apply the active filters, and timeline and Hayabusa results follow the
-  open case.
+- Timeline CSV exports apply the active filters. Timeline, Hayabusa, and graph results follow the
+  open case even when an older request finishes late.
 - The container ships PDF text extraction, the per-case driver forwards grid query parameters,
   and key controls stay accessible in narrower browser windows.
 

@@ -84,6 +84,18 @@ def test_the_last_workspace_tab_is_reachable_in_a_narrow_window(page):
     export.click(trial=True)
 
 
+def test_a_narrow_toolbar_keeps_case_controls_and_the_view_menu_keeps_workspace(page):
+    page.set_viewport_size({"width": 680, "height": 580})
+    toolbar = page.locator(".toolbar")
+    assert toolbar.evaluate("el => el.scrollWidth === el.clientWidth")
+    for control in ("#import-layout", "#casecombo", '[data-act="close-case"]'):
+        assert toolbar.locator(control).is_visible()
+    assert toolbar.locator('[data-act="display-settings"]').is_hidden()
+    page.locator('#groupbar [data-act="open-view-menu"]').click()
+    page.locator('.menu.show [data-act="display-settings"]').click()
+    assert page.locator("#settings-modal").is_visible()
+
+
 def test_row_details_scroll_without_covering_cell_note_buttons(page):
     page.locator("#body tr[data-row] td[data-cell]").first.click()
     fields = page.locator(".detail-fields")

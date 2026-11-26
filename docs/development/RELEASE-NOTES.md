@@ -1,4 +1,11 @@
-# Fireblade 0.9.0 — renamed to Kagarasu, and the Host groups like the desktop
+# Kagarasu 0.9.1 — the visible name is Kagarasu everywhere
+
+The README, the Host's pages and its messages now say Kagarasu. The frozen Desktop edition, the
+Python package and the technical column/header names keep the old name.
+
+---
+
+# Kagarasu 0.9.0 — renamed to Kagarasu, and the Host groups like the desktop
 
 The repository and its container images are now Kagarasu: `23R0534ZXT/kagarasu`,
 `ghcr.io/23r0534zxt/kagarasu`, `-host`, `-driver`. The product is still Fireblade; the install line

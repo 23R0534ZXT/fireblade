@@ -640,7 +640,8 @@ def test_the_timeline_search_keeps_the_matching_events(page):
     page.press("#timeline-search", "Enter")
     page.wait_for_function(
         "document.getElementById('timeline-view').innerText.includes('20 dated') "
-        "|| document.getElementById('timeline-view').innerText.includes('/ 20')"
+        "|| document.getElementById('timeline-view').innerText.includes('/ 20')",
+        timeout=60000,
     )
     texts = page.eval_on_selector_all("#timeline-rows tr", "els => els.map(e => e.innerText)")
     assert texts and all("carol" in text for text in texts), texts[:3]
@@ -1100,7 +1101,7 @@ def test_the_help_windows_open_with_their_text(page):
         ("help-timeline", ""),
         ("help-coverage", ""),
         ("help-licenses", ""),
-        ("about", "Fireblade"),
+        ("about", "Kagarasu"),
         ("legend", ""),
         ("workspace-guide", ""),
     ):

@@ -66,7 +66,7 @@ def test_a_card_says_what_it_is_how_it_was_read_and_which_alerts_it_rests_on(gra
     panel = page.locator("#graph-evidence")
     panel.wait_for(state="visible")
     text = panel.inner_text()
-    assert "what this is" in text.lower() and "how fireblade got it" in text.lower()
+    assert "what this is" in text.lower() and "how kagarasu got it" in text.lower()
     assert "Computer column" in text and "Hayabusa alerts" in text
     assert "Suspicious Logon" in text  # the rule behind PC-2's alerts
     assert "2 alert" in text

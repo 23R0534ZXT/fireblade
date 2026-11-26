@@ -7,6 +7,8 @@ its bookmarks and its notes. History and recovery keeps a state each time the ca
 Skipped without Playwright and a Chromium; never failed for lack of them.
 """
 
+import time
+
 import httpx
 import pytest
 from _browser import browser_page, serving  # noqa: E402
@@ -32,10 +34,11 @@ def host(tmp_path):
             timeout=30,
         )
         job = started.json()["job"]
-        for _ in range(120):
+        for _ in range(240):
             state = httpx.get(f"{base}/api/import-jobs/{job}").json()
             if state.get("status") not in ("running", "pending", "queued"):
                 break
+            time.sleep(0.25)
         assert state.get("status") == "complete", state
         yield base, identifier, tmp_path
 

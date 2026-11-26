@@ -75,7 +75,13 @@ def test_the_last_workspace_tab_is_reachable_in_a_narrow_window(page):
     box = graph_tab.bounding_box()
     assert 0 <= box["x"] and box["x"] + box["width"] <= 680
     page.keyboard.press("Enter")
-    assert page.locator("#graph-view").is_visible()
+    graph = page.locator("#graph-view")
+    assert graph.is_visible()
+    export = graph.get_by_role("button", name="Export PNG")
+    export_box = export.bounding_box()
+    graph_box = graph.bounding_box()
+    assert export_box["x"] + export_box["width"] <= graph_box["x"] + graph_box["width"]
+    export.click(trial=True)
 
 
 def test_row_details_scroll_without_covering_cell_note_buttons(page):

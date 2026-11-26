@@ -117,6 +117,8 @@ body{
 .ptab.active{background:var(--base);font-size:12px}
 
 .filterbar{display:flex;align-items:center;gap:6px;padding:3px 6px;flex:0 0 auto}
+#graph-view>.filterbar{flex-wrap:wrap}
+#graph-view>.filterbar>.note{white-space:nowrap}
 .search{flex:1;height:21px;border:1px solid var(--border);background:var(--base);padding:0 5px;font-size:11px;outline:none;color:var(--text);min-width:80px}
 .search::placeholder{color:var(--disabled)}
 .btn{

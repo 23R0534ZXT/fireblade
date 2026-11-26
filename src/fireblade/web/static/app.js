@@ -1985,8 +1985,7 @@ async function deleteCollectedFile() {
 async function exportAnnotations() {
   if (!state.openCase) { say("Open a case first", true); return; }
   // The desktop's own export: the bookmarked rows of the filtered view, with their notes in columns.
-  exportRows({ annotations: true });
-  say("Bookmarks and notes exported");
+  if (await exportRows({ annotations: true })) say("Bookmarks and notes exported");
 }
 
 /* The desktop's export: the view as the grid shows it (filters, sorts and their types, groups),
@@ -2008,7 +2007,7 @@ function exportRows(options) {
   }
   if (options.annotations) params.set("annotations", "true");
   if (options.format) params.set("format", options.format);
-  downloadFrom(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/export?${params.toString()}`);
+  return downloadFrom(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/export?${params.toString()}`);
 }
 
 /* A file the server writes: fetched, so a refusal is said in the status line instead of replacing the page. */
@@ -2027,8 +2026,10 @@ async function downloadFrom(path) {
     link.download = named ? decodeURIComponent(named[1]) : "fireblade-export";
     link.click();
     URL.revokeObjectURL(link.href);
+    return true;
   } catch (error) {
     say(error.message, true);
+    return false;
   }
 }
 

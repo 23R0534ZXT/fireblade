@@ -578,6 +578,20 @@ def test_export_annotations_lists_the_bookmarks_and_the_notes(page, tmp_path):
     assert text.count("check this one") == 1 and text.count("bookmarked") == 2, text[:600]
 
 
+def test_an_empty_bookmark_export_never_reports_success(page):
+    page.evaluate("""() => {
+      window.exportMessages = [];
+      const status = document.getElementById("status");
+      new MutationObserver(() => exportMessages.push(status.textContent))
+        .observe(status, { childList: true, characterData: true, subtree: true });
+    }""")
+    command(page, "export-annotations")
+    page.wait_for_function(
+        "document.getElementById('status').innerText.includes('Nothing to export')"
+    )
+    assert not any("exported" in message for message in page.evaluate("exportMessages"))
+
+
 def test_a_session_is_saved_and_opened_again(page, tmp_path):
     saved = _download(page, "session-save", tmp_path, "case.fireblade-session")
     import json

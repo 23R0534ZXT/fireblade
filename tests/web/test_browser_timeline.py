@@ -140,7 +140,7 @@ def test_the_timeline_export_matches_the_selected_duration(timeline):
 
 def test_switching_cases_resets_timeline_filters_and_sources(timeline, server):
     page = timeline
-    make_case(server, "Other timeline", "Time,User\n2026-12-01T12:00:00Z,new-user\n")
+    other = make_case(server, "Other timeline", "Time,User\n2026-12-01T12:00:00Z,new-user\n")
     page.fill("#timeline-search", "alice")
     page.press("#timeline-search", "Enter")
     page.wait_for_function("!document.getElementById('timeline-info').innerText.includes('/ 704')")
@@ -150,13 +150,41 @@ def test_switching_cases_resets_timeline_filters_and_sources(timeline, server):
     page.wait_for_function(
         "document.getElementById('casecombo-label').innerText === 'Other timeline'"
     )
-    page.click('.tabs .tab:text-is("Timeline & correlations")')
+    with page.expect_response(f"**/api/cases/{other}/tasks") as started:
+        page.click('.tabs .tab:text-is("Timeline & correlations")')
+    assert started.value.ok
     assert page.input_value("#timeline-search") == ""
     page.wait_for_function(
         "document.getElementById('timeline-info').innerText.includes('/ 1 event(s)')"
     )
     assert page.locator("#timeline-lane option").all_text_contents() == ["All lanes", "events.csv"]
     assert "new-user" in _first_row(page)
+
+
+def test_an_old_task_poll_cannot_clear_the_new_timeline_task(timeline):
+    page = timeline
+    task_start = "**/api/cases/*/tasks"
+    held = []
+    page.route(
+        "**/api/tasks/*", lambda route: held.append(route) if not held else route.continue_()
+    )
+    with page.expect_request("**/api/tasks/*") as polled:
+        page.evaluate("void loadTimeline(true, true)")
+    first_poll = polled.value.url
+
+    with page.expect_response(task_start) as started:
+        page.evaluate("void loadTimeline(true, true)")
+    second = started.value.json()["job"]
+    page.wait_for_function("job => taskState.job === job", arg=second)
+    with page.expect_response(first_poll) as response:
+        held[0].fulfill(json={"status": "done", "result": {}})
+    response.value.finished()
+    page.evaluate(
+        "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+    )
+    assert page.evaluate("taskState.job") == second
+    page.wait_for_function("taskState.job === null")
+    assert not page.failed, page.failed
 
 
 def test_a_duration_that_is_not_one_is_refused(timeline):

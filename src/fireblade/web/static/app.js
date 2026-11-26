@@ -691,22 +691,26 @@ function progressPaint(payload) {
 async function runTask(kind, params, title) {
   if (!state.openCase) { say("Open a case first", true); return null; }
   const token = ++taskState.seq;
+  taskState.job = null;
   progressOpen(title);
   let started;
   try {
     started = await apiPost(`/api/cases/${state.openCase.id}/tasks`, { kind, params: params || {} });
   } catch (error) {
+    if (token !== taskState.seq) return null;
     $("import-progress-modal").classList.remove("show");
     say(error.message, true);
     throw error;
   }
+  if (token !== taskState.seq) return null;
   taskState.job = started.job;
   for (;;) {
     await new Promise((resolve) => setTimeout(resolve, 500));
     if (token !== taskState.seq) return null;      // another command took the window
     let payload;
-    try { payload = await api(`/api/tasks/${taskState.job}`); }
+    try { payload = await api(`/api/tasks/${started.job}`); }
     catch (error) {
+      if (token !== taskState.seq) return null;
       // A job the service no longer knows cannot finish: stop asking.
       $("import-progress-message").textContent = error.message;
       $("import-progress-modal").classList.remove("show");
@@ -714,6 +718,7 @@ async function runTask(kind, params, title) {
       say(error.message, true);
       return null;
     }
+    if (token !== taskState.seq) return null;
     progressPaint(payload);
     if (payload.status === "done") {
       $("import-progress-modal").classList.remove("show");

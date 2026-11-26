@@ -16,8 +16,8 @@ the root — this folder only keeps the entry point and the instructions.
 ## Published images
 
 ```bash
-ghcr.io/23r0534zxt/fireblade-host     # the case image
-ghcr.io/23r0534zxt/fireblade-driver   # the driver: one container per case
+ghcr.io/23r0534zxt/kagarasu-host     # the case image
+ghcr.io/23r0534zxt/kagarasu-driver   # the driver: one container per case
 ```
 
 `:edge` follows `main`; `:X.Y.Z`, `:X.Y` and `:latest` come from a version tag. The
@@ -58,9 +58,9 @@ docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /srv/fireblade/volumes:/data/volumes \
     -v /srv/fireblade/certificates:/data/certificates \
-    ghcr.io/23r0534zxt/fireblade-driver:latest \
+    ghcr.io/23r0534zxt/kagarasu-driver:latest \
     python -m fireblade.web.agency serve \
-      --image ghcr.io/23r0534zxt/fireblade:latest \
+      --image ghcr.io/23r0534zxt/kagarasu:latest \
       --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
       --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
       --host 0.0.0.0 --port 8080
@@ -78,16 +78,16 @@ which is why an erasure can take the whole volume with it.
 ## Upgrade to a new release
 
 ```bash
-docker pull ghcr.io/23r0534zxt/fireblade:0.8.8
-docker pull ghcr.io/23r0534zxt/fireblade-driver:0.8.8
+docker pull ghcr.io/23r0534zxt/kagarasu:0.8.8
+docker pull ghcr.io/23r0534zxt/kagarasu-driver:0.8.8
 docker rm -f fireblade-driver
 docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /srv/fireblade/volumes:/data/volumes \
     -v /srv/fireblade/certificates:/data/certificates \
-    ghcr.io/23r0534zxt/fireblade-driver:0.8.8 \
+    ghcr.io/23r0534zxt/kagarasu-driver:0.8.8 \
     python -m fireblade.web.agency serve \
-      --image ghcr.io/23r0534zxt/fireblade:0.8.8 \
+      --image ghcr.io/23r0534zxt/kagarasu:0.8.8 \
       --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
       --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
       --host 0.0.0.0 --port 8080
@@ -99,7 +99,7 @@ with — a container built from another image is stopped, removed and rebuilt on
 open, and the stale ones are swept at start-up. A case nobody opens is upgraded the day it
 is opened, not before.
 
-Without `--image`, the driver uses the published `ghcr.io/23r0534zxt/fireblade:latest`;
+Without `--image`, the driver uses the published `ghcr.io/23r0534zxt/kagarasu:latest`;
 pinning the same tag as the driver is what makes an upgrade reproducible.
 
 The client says when a newer release exists: a band across the window, the version you

@@ -5,8 +5,8 @@ keeps every file accounted for, and puts the results in one workspace — filter
 tables, a cross-analysis timeline, IOC hunting, Hayabusa detections grouped into
 findings, an attack graph, and a case that can be saved, archived and reopened.
 
-**Current release: 0.7.9** — [download](https://github.com/23R0534ZXT/fireblade/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip) ·
-[notes and SHA-256](https://github.com/23R0534ZXT/fireblade/blob/main/docs/development/RELEASE-NOTES.md)
+**Current release: 0.7.9** — [download](https://github.com/23R0534ZXT/kagarasu/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip) ·
+[notes and SHA-256](https://github.com/23R0534ZXT/kagarasu/blob/main/docs/development/RELEASE-NOTES.md)
 
 Windows x64, a folder to unzip, no installation: Python, Qt, the parsers and the .NET
 readers are inside. The assistant is optional and downloaded separately, once.

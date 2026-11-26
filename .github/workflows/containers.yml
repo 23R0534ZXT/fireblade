@@ -1,8 +1,8 @@
 name: Host containers
 
 # The two images of the Host edition, published where `docker run` can reach them:
-#   ghcr.io/<owner>/fireblade-host    the case image (readers, .NET, no Qt)
-#   ghcr.io/<owner>/fireblade-driver  the driver that gives each case its container
+#   ghcr.io/<owner>/kagarasu-host    the case image (readers, .NET, no Qt)
+#   ghcr.io/<owner>/kagarasu-driver  the driver that gives each case its container
 #
 # main publishes `edge`; a version tag vX.Y.Z publishes X.Y.Z, X.Y and latest.
 
@@ -47,8 +47,8 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          # Two names, one image: `fireblade` is the short one the README promises —
-          # `docker run -p 8080:8080 ghcr.io/<owner>/fireblade` — and `fireblade-host`
+          # Two names, one image: `kagarasu` is the short one the README promises —
+          # `docker run -p 8080:8080 ghcr.io/<owner>/kagarasu` — and `kagarasu-host`
           # keeps the name the deploy notes have always used.
           images: |
             ghcr.io/${{ github.repository }}

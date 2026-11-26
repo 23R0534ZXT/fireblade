@@ -61,7 +61,7 @@ def package(directory, target_bytes=3 * 1024**3, source_commit=None):
         archive_name=archive.name,
         archive_bytes=archive.stat().st_size,
         archive_sha256=archive_hash,
-        download_url="https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/"
+        download_url="https://github.com/23R0534ZXT/kagarasu/releases/download/test-data-3gib/"
         + archive.name,
     )
     (directory / "publication.json").write_text(

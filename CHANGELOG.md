@@ -224,8 +224,8 @@ Update band, folders sent from the browser, certificate folder chosen by the ana
 ## [0.8.0] — 2026-11-23
 One container per case, driven by a small driver; erasing a case removes its container and volume.
 
-[Unreleased]: https://github.com/23R0534ZXT/fireblade/compare/v0.8.3...HEAD
-[0.8.3]: https://github.com/23R0534ZXT/fireblade/compare/v0.8.2...v0.8.3
-[0.8.2]: https://github.com/23R0534ZXT/fireblade/compare/v0.8.1...v0.8.2
-[0.8.1]: https://github.com/23R0534ZXT/fireblade/compare/v0.8.0...v0.8.1
-[0.8.0]: https://github.com/23R0534ZXT/fireblade/releases/tag/v0.8.0
+[Unreleased]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.3...HEAD
+[0.8.3]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.8.0

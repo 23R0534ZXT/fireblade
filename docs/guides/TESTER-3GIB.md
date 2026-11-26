@@ -1,11 +1,11 @@
 # Tester Fireblade avec le CSV de 3 Go
 
-Le jeu est téléchargeable dans la [Release dédiée aux données](https://github.com/23R0534ZXT/fireblade/releases/tag/test-data-3gib). Le générateur est [scripts/windows/dataset.py](../../scripts/windows/dataset.py). Le code de l’application, du générateur et des tests est sur `main`.
+Le jeu est téléchargeable dans la [Release dédiée aux données](https://github.com/23R0534ZXT/kagarasu/releases/tag/test-data-3gib). Le générateur est [scripts/windows/dataset.py](../../scripts/windows/dataset.py). Le code de l’application, du générateur et des tests est sur `main`.
 
 ## Télécharger et ouvrir
 
-1. Télécharger [Fireblade-test-3GiB.zip](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/Fireblade-test-3GiB.zip), puis l’extraire avec Windows.
-2. Lancer `Fireblade.exe`. La [construction déjà qualifiée avec ce jeu](https://github.com/23R0534ZXT/fireblade/releases/tag/prototype-fcb1390f818b36699acba67b229fb45215e4f62f) est disponible séparément ; le programme reste un fichier unique.
+1. Télécharger [Fireblade-test-3GiB.zip](https://github.com/23R0534ZXT/kagarasu/releases/download/test-data-3gib/Fireblade-test-3GiB.zip), puis l’extraire avec Windows.
+2. Lancer `Fireblade.exe`. La [construction déjà qualifiée avec ce jeu](https://github.com/23R0534ZXT/kagarasu/releases/tag/prototype-fcb1390f818b36699acba67b229fb45215e4f62f) est disponible séparément ; le programme reste un fichier unique.
 3. Cliquer sur **Ouvrir un fichier**, choisir `Fireblade-test-3GiB.csv`, puis confirmer la destination de l’analyse `.timeline`.
 
 Prévoir au moins **12 GiB libres** pour conserver le CSV extrait, l’analyse, les temporaires de tri et un export complet. Le ZIP n’est pas un CSV réduit : après extraction, le fichier mesure **3 222 648 632 octets** et contient **2 441 216 enregistrements** sur **18 colonnes**. Certains champs sont multilignes, donc compter les lignes physiques du fichier ne donne pas le nombre d’enregistrements.
@@ -31,7 +31,7 @@ Le champ `reference` du manifeste `dataset.json` fournit d’autres comptages in
 
 ## Vérifier le téléchargement
 
-Le fichier [SHA256SUMS.txt](https://github.com/23R0534ZXT/fireblade/releases/download/test-data-3gib/SHA256SUMS.txt) contient les empreintes du ZIP et du CSV extrait. Pour le CSV, PowerShell peut calculer l’empreinte ainsi :
+Le fichier [SHA256SUMS.txt](https://github.com/23R0534ZXT/kagarasu/releases/download/test-data-3gib/SHA256SUMS.txt) contient les empreintes du ZIP et du CSV extrait. Pour le CSV, PowerShell peut calculer l’empreinte ainsi :
 
 ```powershell
 Get-FileHash ".\Fireblade-test-3GiB.csv" -Algorithm SHA256
@@ -43,4 +43,4 @@ Empreinte attendue du CSV :
 2382777d3917a973a1e5104b3bc404d02d3901aeff8104d34fc30e4264776cf0
 ```
 
-Le contenu correspond au fichier utilisé dans [la qualification Windows réussie](https://github.com/23R0534ZXT/fireblade/actions/runs/41091670266). Les limites et les commandes de reproduction du parcours automatisé sont décrites dans [QUALIFICATION.md](../validation/QUALIFICATION.md).
+Le contenu correspond au fichier utilisé dans [la qualification Windows réussie](https://github.com/23R0534ZXT/kagarasu/actions/runs/41091670266). Les limites et les commandes de reproduction du parcours automatisé sont décrites dans [QUALIFICATION.md](../validation/QUALIFICATION.md).

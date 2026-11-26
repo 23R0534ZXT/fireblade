@@ -19,7 +19,7 @@ import urllib.error
 import urllib.request
 from datetime import UTC, datetime
 
-RELEASES = "https://api.github.com/repos/23R0534ZXT/fireblade/releases/latest"
+RELEASES = "https://api.github.com/repos/23R0534ZXT/kagarasu/releases/latest"
 REGISTRY = "ghcr.io/23r0534zxt"
 TTL = 6 * 3600
 RETRY = 30 * 60
@@ -63,8 +63,8 @@ def command(edition: str, tag: str) -> list:
     case's need the options they were started with, so they stop at what is unambiguous.
     """
     tag = tag or "latest"
-    case = f"{REGISTRY}/fireblade:{tag}"
-    driver = f"{REGISTRY}/fireblade-driver:{tag}"
+    case = f"{REGISTRY}/kagarasu:{tag}"
+    driver = f"{REGISTRY}/kagarasu-driver:{tag}"
     if edition == "driver":
         return [f"docker pull {driver}", f"docker pull {case}", "docker rm -f fireblade-driver"]
     if edition == "case":

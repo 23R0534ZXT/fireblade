@@ -87,10 +87,10 @@ Published images, so a Host starts without a clone:
 ```bash
 docker run -d --name fireblade-host -p 8080:8080 \
     -v /srv/fireblade/cases:/data/cases \
-    ghcr.io/23r0534zxt/fireblade-host:latest
+    ghcr.io/23r0534zxt/kagarasu-host:latest
 ```
 
-One container per case, through the driver (`ghcr.io/23r0534zxt/fireblade-driver`):
+One container per case, through the driver (`ghcr.io/23r0534zxt/kagarasu-driver`):
 
 ```bash
 docker network create fireblade-cases 2>/dev/null || true
@@ -98,9 +98,9 @@ docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /srv/fireblade/volumes:/data/volumes \
     -v /srv/fireblade/certificates:/data/certificates \
-    ghcr.io/23r0534zxt/fireblade-driver:latest \
+    ghcr.io/23r0534zxt/kagarasu-driver:latest \
     python -m fireblade.web.agency serve \
-      --image ghcr.io/23r0534zxt/fireblade:latest \
+      --image ghcr.io/23r0534zxt/kagarasu:latest \
       --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
       --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
       --host 0.0.0.0 --port 8080

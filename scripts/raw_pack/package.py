@@ -17,7 +17,7 @@ from pathlib import Path, PurePosixPath
 TAG = "raw-artifacts-v1"
 ROOT = "Fireblade-Raw-Artifacts-v1"
 ARCHIVE = ROOT + ".zip"
-SMALL_URL = "https://github.com/23R0534ZXT/fireblade/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip"
+SMALL_URL = "https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip"
 SMALL_SHA256 = "a546e3eac159f6e9a9e9c90360f4f89bec5d9bd1ebe7d86bf7fc23a6d2dccb9f"
 GIB = 1024**3
 MIB = 1024**2

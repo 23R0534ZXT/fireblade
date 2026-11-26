@@ -1,7 +1,7 @@
 # Fireblade 0.2.0 — parcours case et analyse de disque
 
-Ces fonctionnalités sont disponibles dans la [release Windows 0.2.0](https://github.com/23R0534ZXT/fireblade/releases/tag/v0.2.0).
-Le binaire publié est celui qui a [passé les qualifications Windows](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489).
+Ces fonctionnalités sont disponibles dans la [release Windows 0.2.0](https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.2.0).
+Le binaire publié est celui qui a [passé les qualifications Windows](https://github.com/23R0534ZXT/kagarasu/actions/runs/41673982489).
 Les limites propres aux formats et périphériques restent détaillées ci-dessous.
 
 ## Commencer
@@ -100,6 +100,6 @@ valide de test, disque RAW MBR à deux partitions, publication progressive, inte
 pendant le traitement, annulation et conservation des résultats, réouverture du
 case et restauration de l’arbre. Les tests de sources ont aussi passé sous Windows (Python 3.11/3.12/3.13),
 puis l’EXE a passé les contrôles de programme autonome, d’affichage, de charge
-supérieure à 3 Gio et de 320 analyses. [Exécution de référence](https://github.com/23R0534ZXT/fireblade/actions/runs/41673982489).
+supérieure à 3 Gio et de 320 analyses. [Exécution de référence](https://github.com/23R0534ZXT/kagarasu/actions/runs/41673982489).
 Ces tests ne qualifient pas NTFS, ext, E01, tous les disques physiques ni les
 supports endommagés.

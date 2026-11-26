@@ -7,6 +7,15 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.9.2] — 2026-11-26
+
+### Fixed
+- **An import of a very wide file no longer spins at 99 %.** Merging a family of a big collection
+  gives thousands of columns; the native CSV reader exceeded its memory budget and the import fell
+  back to row-by-row inserts (hours). It is now read natively with a budget that follows the width
+  (one thread, at most three times the configured memory), in seconds; the fallback stays as the last
+  resort. The layout step reports its progress and honours a stop between analyses.
+
 ## [0.8.8] — 2026-11-26
 
 ### Added — parity with the desktop (found by replaying its commands on the Host)

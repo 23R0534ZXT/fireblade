@@ -98,7 +98,10 @@ def organize(collection):
             collection.progress("Organisation : " + title)
             union, positions, headers = [], {}, []
             used = set()
-            for document, _ in sources:
+            for position, (document, _) in enumerate(sources, 1):
+                check_cancel()
+                if position % 20 == 0 or position == len(sources):
+                    collection.progress(f"Organisation : {title} — {position}/{len(sources)}")
                 case = Case(document["path"], settings=collection.settings, read_only=True)
                 try:
                     for key in column_keys(case.headers):
@@ -129,8 +132,10 @@ def organize(collection):
             with temporary.open("x", encoding="utf-8", newline="") as stream:
                 writer = csv.writer(stream)
                 writer.writerow(metadata + headers)
-                for document, origin in sources:
+                for position, (document, origin) in enumerate(sources, 1):
                     check_cancel()
+                    if position % 20 == 0 or position == len(sources):
+                        collection.progress(f"Organisation : {title} — {position}/{len(sources)}")
                     case = Case(document["path"], settings=collection.settings, read_only=True)
                     with collection._case_lock:
                         collection._active_case = case

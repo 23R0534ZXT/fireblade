@@ -377,52 +377,67 @@ class Case:
                                 )
                     except (duckdb.OutOfMemoryException, MemoryError):
                         # Wide parser exports can exhaust native CSV vectors even
-                        # for small files. Retry using bounded, parameter-bound rows.
-                        if not headers:
-                            with input_path.open(encoding="utf-8-sig", newline="") as probe:
-                                if not delimiter:
-                                    sample = probe.read(65536)
-                                    probe.seek(0)
-                                    try:
-                                        delimiter = (
-                                            csv.Sniffer()
-                                            .sniff(sample, delimiters=",;\t|")
-                                            .delimiter
-                                        )
-                                    except csv.Error:
-                                        delimiter = ","
-                                headers = next(
-                                    (
-                                        row
-                                        for row in csv.reader(
-                                            probe, delimiter=delimiter, strict=True
-                                        )
-                                        if row
-                                    ),
-                                    None,
-                                )
-                            # Avoid guessing native renaming for ambiguous headers.
-                            if (
-                                not headers
-                                or any(not h for h in headers)
-                                or len({h.casefold() for h in headers}) != len(headers)
-                            ):
-                                raise
+                        # for small files. A merged family of a big collection can have
+                        # thousands of columns: the native reader then needs room for them,
+                        # and given it (one thread, a budget that follows the width) it reads
+                        # the file in seconds where the row-by-row path below needs hours.
                         relation = None
                         self.db.execute("ROLLBACK")
                         self.check_cancelled()
                         self.db.execute("BEGIN")
-                        progress("Import à mémoire réduite…")
-                        self._import_csv_rows(
-                            input_path,
-                            headers,
-                            delimiter,
-                            progress,
-                            [
-                                (name, str(provenance.get(key, "")))
-                                for key, name in zip(("artifact", "parser"), extra_names)
-                            ],
+                        wide_done = bool(
+                            headers
+                            and self._import_wide(input_path, headers, options, extras, progress)
                         )
+                        if not wide_done:
+                            self.db.execute("ROLLBACK")
+                            self.check_cancelled()
+                            self.db.execute("BEGIN")
+                            if not headers:
+                                with input_path.open(encoding="utf-8-sig", newline="") as probe:
+                                    if not delimiter:
+                                        sample = probe.read(65536)
+                                        probe.seek(0)
+                                        try:
+                                            delimiter = (
+                                                csv.Sniffer()
+                                                .sniff(sample, delimiters=",;\t|")
+                                                .delimiter
+                                            )
+                                        except csv.Error:
+                                            delimiter = ","
+                                    headers = next(
+                                        (
+                                            row
+                                            for row in csv.reader(
+                                                probe, delimiter=delimiter, strict=True
+                                            )
+                                            if row
+                                        ),
+                                        None,
+                                    )
+                                # Avoid guessing native renaming for ambiguous headers.
+                                if (
+                                    not headers
+                                    or any(not h for h in headers)
+                                    or len({h.casefold() for h in headers}) != len(headers)
+                                ):
+                                    raise
+                            relation = None
+                            self.db.execute("ROLLBACK")
+                            self.check_cancelled()
+                            self.db.execute("BEGIN")
+                            progress("Import à mémoire réduite…")
+                            self._import_csv_rows(
+                                input_path,
+                                headers,
+                                delimiter,
+                                progress,
+                                [
+                                    (name, str(provenance.get(key, "")))
+                                    for key, name in zip(("artifact", "parser"), extra_names)
+                                ],
+                            )
                 headers = list(headers) + extra_names
                 count = self.db.execute("SELECT count(*) FROM events").fetchone()[0]
                 if count == 0 and not source.read_bytes().strip(b"\xef\xbb\xbf \t\r\n"):
@@ -522,6 +537,40 @@ class Case:
             self.check_cancelled()
             self.db.execute("BEGIN")
             return False
+
+    def _import_wide(self, input_path, headers, options, extras, progress):
+        """Read a very wide file natively, with the room its columns need.
+
+        DuckDB reads a CSV in vectors of 2048 values per column: at several thousand columns
+        that is hundreds of megabytes before a single row is stored, and the ordinary budget
+        runs out on a file of a few megabytes. The alternative path inserts row by row and
+        takes hours on the same file. Here the budget follows the width (bounded by what the
+        machine has), one thread reads, and the previous limits come back afterwards.
+        Returns False, leaving the transaction to be restarted, when even that is not enough.
+        """
+        from fireblade.core.settings import physical_memory_mb
+
+        # About a third of a MiB per column held by the reader, plus a margin for the rest.
+        wanted = max(self.settings.memory_mb, int((len(headers) + len(extras)) * 0.35) + 512)
+        ceiling = max(self.settings.memory_mb, int(physical_memory_mb() * 0.7))
+        # Never more than three times what the analyst configured: the setting stays a budget.
+        budget = min(wanted, ceiling, 3 * self.settings.memory_mb)
+        if budget <= self.settings.memory_mb and self.settings.effective_threads <= 1:
+            return False
+        progress("Import sur disque · fichier très large, lecture native…")
+        try:
+            self.db.execute(f"SET memory_limit='{budget}MB'")
+            self.db.execute("SET threads=1")
+            return bool(
+                self._import_single_pass(
+                    input_path, headers, options, input_path.stat().st_size, progress, extras
+                )
+            )
+        except (duckdb.OutOfMemoryException, MemoryError):
+            return False
+        finally:
+            self.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
+            self.db.execute(f"SET threads={self.settings.effective_threads}")
 
     def _import_chunks(
         self,

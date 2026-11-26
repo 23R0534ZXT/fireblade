@@ -1482,6 +1482,7 @@ EN = {
     "Action proposée": "Suggested action",
     "Mesures et références :": "Measurements and references:",
     "Organisation : {}": "Layout: {}",
+    "Import sur disque · fichier très large, lecture native…": "Disk import · very wide file, native read…",
     "Bilan : {}": "Report: {}",
     "Hayabusa : {}": "Hayabusa: {}",
     "Moteurs Windows disponibles : {}": "Windows engines available: {}",

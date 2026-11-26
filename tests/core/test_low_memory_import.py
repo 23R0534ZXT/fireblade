@@ -21,7 +21,9 @@ def wide_source(path, rows=24):
     return [[None if value == "" else value for value in row] for row in expected]
 
 
-def test_wide_parser_csv_retries_under_64mb_and_preserves_every_cell(tmp_path):
+def test_wide_parser_csv_retries_under_64mb_and_preserves_every_cell(tmp_path, monkeypatch):
+    # The row-by-row path is the last resort: it is exercised on its own here.
+    monkeypatch.setattr(Case, "_import_wide", lambda *_args, **_kwargs: False)
     source = tmp_path / "wide.csv"
     expected = wide_source(source)
     digest = hashlib.sha256(source.read_bytes()).hexdigest()
@@ -42,7 +44,8 @@ def test_wide_parser_csv_retries_under_64mb_and_preserves_every_cell(tmp_path):
         case.close()
 
 
-def test_cancelling_fallback_rolls_back_every_insert(tmp_path):
+def test_cancelling_fallback_rolls_back_every_insert(tmp_path, monkeypatch):
+    monkeypatch.setattr(Case, "_import_wide", lambda *_args, **_kwargs: False)
     source = tmp_path / "wide.csv"
     wide_source(source, 150)
     case = Case(tmp_path / "wide.timeline", settings=Settings(memory_mb=64, threads=1))
@@ -84,5 +87,28 @@ def test_fallback_also_handles_schema_probe_memory_exhaustion(tmp_path):
     try:
         case.import_csv(source)
         assert case.page(View()) == [(1, "alice", "001"), (2, "bob", "002")]
+    finally:
+        case.close()
+
+
+def test_a_very_wide_file_is_read_natively_not_row_by_row(tmp_path):
+    """A merged family can have thousands of columns: it must not take the slow path."""
+    columns, rows = 3200, 400
+    source = tmp_path / "family.csv"
+    with source.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow([f"H{i}" for i in range(columns)])
+        for row in range(rows):
+            writer.writerow([f"v{row}" if i % 40 == 0 else "" for i in range(columns)])
+    progress = []
+    case = Case(tmp_path / "family.timeline", settings=Settings(memory_mb=512, threads=4))
+    try:
+        info = case.import_csv(source, delimiter=",", progress=progress.append)
+        assert info["rows"] == rows and len(info["headers"]) == columns
+        assert "Import à mémoire réduite…" not in progress
+        assert case.db.execute("SELECT c40 FROM events WHERE __row_id = 7").fetchone() == ("v6",)
+        assert (
+            case.db.execute("SELECT current_setting('memory_limit')").fetchone()[0] == "488.2 MiB"
+        )
     finally:
         case.close()

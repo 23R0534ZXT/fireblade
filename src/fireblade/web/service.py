@@ -5072,11 +5072,11 @@ class Library:
             return {
                 "job": job_id,
                 "status": job["status"],
-                "message": english.english_text(job.get("message", "")),
+                "message": _english_progress(job.get("message", "")),
                 "started": job.get("started"),
                 "finished": job.get("finished"),
                 "error": english.english_text(job["error"]) if job.get("error") else None,
-                "log": [english.english_text(line) for line in list(job.get("log") or [])[-40:]],
+                "log": [_english_progress(line) for line in list(job.get("log") or [])[-40:]],
                 "progress": snapshot,
                 "result": job.get("result"),
             }
@@ -5943,6 +5943,16 @@ def _english(text):
             return translate(str(text))
         except (ImportError, ValueError):
             return str(text)
+
+
+def _english_progress(text) -> str:
+    """A progress line, in English. "[3/40] Registre — Import sur disque …" names its family and then
+    carries a message of its own: the two are read separately, the family name is left as it is."""
+    text = str(text or "")
+    if text.startswith("[") and " — " in text:
+        head, _, rest = text.partition(" — ")
+        return head + " — " + english.english_text(rest)
+    return english.english_text(text)
 
 
 def _english_disk_message(text: str) -> str:

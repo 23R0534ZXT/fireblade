@@ -172,16 +172,24 @@ def organize(collection):
     folder.mkdir()
     documents = []
     failures = []
+    state = getattr(collection, "progress_state", None)
+    if state is not None:
+        state.organize_start(len(groups))
+    reporter = collection.progress
     try:
-        for title, sources in groups.items():
+        for family_number, (title, sources) in enumerate(groups.items(), 1):
             check_cancel()
-            collection.progress("Organisation : " + title)
+            # Every message of this family says which one it is: without it the counters of the
+            # import (records written) start again for each family and look like a loop.
+            collection.progress = lambda text, n=family_number, t=title: reporter(
+                f"[{n}/{len(groups)}] {t} — {text}"
+            )
             union, positions, headers = [], {}, []
             used = set()
             for position, (document, _) in enumerate(sources, 1):
                 check_cancel()
                 if position % 20 == 0 or position == len(sources):
-                    collection.progress(f"Organisation : {title} — {position}/{len(sources)}")
+                    collection.progress(f"{position}/{len(sources)}")
                 # The analysis states its own columns: opening it (about 35 ms) only to read them
                 # doubled the time of this step on a collection of a thousand files.
                 known = list((document.get("source") or {}).get("headers") or [])
@@ -220,7 +228,7 @@ def organize(collection):
                 for position, (document, origin) in enumerate(sources, 1):
                     check_cancel()
                     if position % 20 == 0 or position == len(sources):
-                        collection.progress(f"Organisation : {title} — {position}/{len(sources)}")
+                        collection.progress(f"{position}/{len(sources)}")
                     case = Case(document["path"], settings=collection.settings, read_only=True)
                     with collection._case_lock:
                         collection._active_case = case
@@ -258,15 +266,21 @@ def organize(collection):
                 target.unlink(missing_ok=True)
                 failures.append(dict(artifact=title, reason=str(exc)))
                 documents.extend(document for document, _origin in sources)
+                if state is not None:
+                    state.organize_step()
                 continue
             documents.append(document)
+            if state is not None:
+                state.organize_step()
         collection.report["raw_documents"] = originals
         collection.report["documents"] = documents
         if notes:
             collection.report["organization_notes"] = notes
+        collection.progress = reporter
         if failures:
             collection.report["organization_failures"] = failures
     except BaseException:
+        collection.progress = reporter
         # Originals remain the active session until the complete organization succeeds.
         for document in documents:
             Path(document["path"]).unlink(missing_ok=True)

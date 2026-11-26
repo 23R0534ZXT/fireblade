@@ -144,9 +144,6 @@ def test_files_of_different_shapes_make_one_grid_per_shape_not_one_wide_table(li
         )
     result = library.import_source(identifier, folder, organization="files")
     assert result["analyses"] == 3, result
-    shapes = (
-        sorted(len(a["headers"]) for a in library.case(identifier)["analyses"]) if False else None
-    )
     case = library.case(identifier)
     assert len(case["analyses"]) == 3
     assert sum(a["source_info"]["rows"] for a in case["analyses"]) == 9, "no row lost"
@@ -171,3 +168,40 @@ def test_a_family_too_wide_to_merge_is_split_by_shape_and_says_so(lib, monkeypat
     case = library.case(identifier)
     assert sum(a["source_info"]["rows"] for a in case["analyses"]) == 8, "no row lost"
     assert all(len(a["source_info"]["headers"]) <= 6 for a in case["analyses"])
+
+
+def test_the_layout_step_counts_its_families_and_names_the_one_it_is_on(lib):
+    """Counters that restart for each family looked like a loop: say 'family n of m'."""
+    library, identifier, tmp_path = lib
+    folder = tmp_path / "families"
+    folder.mkdir()
+    (folder / "a.csv").write_text("Time,Host\n2026-11-01T10:00:00Z,PC1\n")
+    (folder / "b.csv").write_text("Time,User\n2026-11-01T10:00:00Z,bob\n")
+    seen = []
+
+    def progress(text):
+        seen.append(str(text))
+
+    library.import_source(identifier, folder, organization="combined", progress=progress)
+    layout = [text for text in seen if text.startswith("[1/1]")]
+    assert layout, seen
+    assert any("records" in text or "enregistrements" in text for text in layout), layout
+
+
+def test_a_family_progress_line_is_in_english_after_its_name():
+    from fireblade.web.service import _english_progress
+
+    line = "[3/40] Registre — Import sur disque · 5 247 enregistrements écrits…"
+    assert _english_progress(line) == "[3/40] Registre — Disk import · 5 247 records written…"
+    assert _english_progress("Import à mémoire réduite…").startswith("Low-memory")
+
+
+def test_the_progress_counts_families_while_the_layout_step_runs():
+    from fireblade.core.collection import CollectionProgress
+
+    progress = CollectionProgress()
+    progress.inventory([1, 1, 1])
+    progress.organize_start(5)
+    progress.organize_step()
+    shown = progress.snapshot()
+    assert (shown["done"], shown["total"], shown["phase"]) == (1, 5, "organize")

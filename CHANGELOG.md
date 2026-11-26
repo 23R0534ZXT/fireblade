@@ -10,6 +10,9 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 ## [0.9.3] — 2026-11-26
 
 ### Changed
+- **The layout step says where it is**: the progress shows the family being merged ("[3/40] Registre — Disk
+  import · 5,247 records written…") and counts families (3/40) instead of staying on "1236/1236" while the
+  record counters start again for each family, which looked like a loop.
 - **Faster layout step**: merging a collection by family no longer opens each analysis twice (the columns are
   read from what the import already recorded): 1245 files, 121 s → 80 s in the same test.
 

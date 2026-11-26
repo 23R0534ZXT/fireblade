@@ -449,6 +449,8 @@ class CollectionProgress:
             self.started_current = None
             self.stage = "inventory"
             self.finished = False
+            self.organize_total = 0
+            self.organize_done = 0
 
     def inventory(self, weights):
         """The plan is known: weights are bytes, or one each when a size is missing."""
@@ -492,6 +494,17 @@ class CollectionProgress:
             self.stage = "organize"
             self.started_current = None
 
+    def organize_start(self, total):
+        """The layout step has its own count: families to merge, shown instead of files read."""
+        with self._lock:
+            self.organize_total = int(total)
+            self.organize_done = 0
+            self.stage = "organize"
+
+    def organize_step(self):
+        with self._lock:
+            self.organize_done += 1
+
     def done_all(self):
         with self._lock:
             self.finished = True
@@ -514,9 +527,10 @@ class CollectionProgress:
             remaining = 0.0
             if fraction > 0.02 and not self.finished:
                 remaining = max(0.0, elapsed * (1.0 - fraction) / fraction)
+            organizing = self.stage == "organize" and self.organize_total > 0
             return dict(
-                total=self.total,
-                done=self.done,
+                total=self.organize_total if organizing else self.total,
+                done=self.organize_done if organizing else self.done,
                 current=self.current,
                 rows=self.rows,
                 percent=round(percent, 1),

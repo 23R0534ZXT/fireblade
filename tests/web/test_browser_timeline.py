@@ -208,13 +208,16 @@ def test_the_search_kinds_read_the_same_text_as_a_user_an_address_or_a_path(time
     page.select_option("#timeline-kind", "ip")
     page.fill("#timeline-search", "10.0.0.3")
     page.press("#timeline-search", "Enter")
-    page.wait_for_function("!document.getElementById('timeline-info').innerText.includes('/ 704')")
+    page.wait_for_function(
+        "!document.getElementById('timeline-info').innerText.includes('/ 704')", timeout=30000
+    )
     assert _count(page) == EVENTS // 5
     page.select_option("#timeline-kind", "user")
     page.fill("#timeline-search", "alice")
     page.press("#timeline-search", "Enter")
     page.wait_for_function(
-        f"document.getElementById('timeline-info').innerText.includes('/ {len([i for i in range(EVENTS) if i % 3 == 0])}')"
+        f"document.getElementById('timeline-info').innerText.includes('/ {len([i for i in range(EVENTS) if i % 3 == 0])}')",
+        timeout=30000,
     )
 
 

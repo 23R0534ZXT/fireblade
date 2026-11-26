@@ -7,6 +7,20 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+### Added
+- Host analysts can nest grouping levels by dragging column headers, reorder them in the grouping
+  dialog, and use the bookmark column to group marked and unmarked rows.
+- The Host column manager can find columns by name, count hidden columns, and hide columns that
+  are empty across the entire analysis.
+
+### Fixed
+- Host refreshes open grids when the import layout changes, persists restored column visibility,
+  opens the retried analysis, and retains column settings when recovering an earlier session.
+- Timeline CSV exports apply the active filters, and timeline and Hayabusa results follow the
+  open case.
+- The container ships PDF text extraction, the per-case driver forwards grid query parameters,
+  and key controls stay accessible in narrower browser windows.
+
 ## [0.9.4] — 2026-11-26
 
 ### Changed

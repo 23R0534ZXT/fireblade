@@ -7,6 +7,8 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.8.7] — 2026-11-26
+
 ### Fixed
 - **A new case opens at once**, as in the desktop, instead of waiting in the Cases list.
 - **The attack graph places techniques on the kill chain.** Hayabusa 4 writes tactics in short form

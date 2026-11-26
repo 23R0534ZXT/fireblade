@@ -36,13 +36,14 @@ API. This page says which is which, so that nobody relies on more than has been 
 
 | | |
 | --- | --- |
-| Imports | 13 readers exercised on real artifacts; SRUM cannot run on Linux and says why ([LINUX-READERS.md](LINUX-READERS.md)) |
+| Imports | every reader exercised on real artifacts, through the page, from the raw reference pack and the Windows 11 sample collection; `SrumECmd` cannot run on Linux, and `SRUDB.dat` is read by Fireblade's own reader instead ([LINUX-READERS.md](LINUX-READERS.md)) |
 | Screens | the nine tabs and about fifty dialogs compared with the Desktop ([HOST-AUDIT.md](HOST-AUDIT.md)) |
 | Engine and service | the suite shared with the Desktop plus the Host's own tests: about 1 600 tests |
 | Client | `tests/web/test_browser*.py` drive the page with a real mouse: every menu command and every shortcut, every dialog's buttons kept on screen, dialogs moved and resized, splitters, filters, grouping, bookmarks, views, colour rules, derived columns, global search, indicator hunt, timeline, actions, reports, export, portable round trip, case creation to erasure |
 | One container per case | the driver's decisions are tested against a fake Docker; the page behind the driver (prefix, reports, export, erasure) is tested in a browser with the real case service. A real Docker daemon is not part of the automated tests |
 | Language | English everywhere the Host speaks; a test fails on any report sentence, refusal or column name left in French |
-| Not exercised | the readers that need a sample the repository does not have (MFT, `$Recycle.Bin`, shellbags, SQLECmd, RecentFileCache, WebCache), and Hayabusa detection, which needs the .NET runtime of the image |
+| Detection | Hayabusa 4.3.1 run through the page on the Windows 11 sample (183 event logs, 613 alerts), with the attack graph, the alert context and both reports built from it |
+| Not exercised | a real Docker daemon, and any collection larger than the ones named in the README's limits |
 
 ## Why it exists
 

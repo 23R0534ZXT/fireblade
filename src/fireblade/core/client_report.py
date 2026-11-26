@@ -248,7 +248,8 @@ def build(
                         evidence_name(document.source_info.get("path", "")),
                         document.source_info.get("sha256", "indisponible"),
                         document.source_info.get("rows", ""),
-                        document.path,
+                        # the analysis file's own name: its folder is the machine's, not the client's
+                        Path(str(document.path).replace("\\", "/")).name,
                     )
                     for document in documents
                 ],

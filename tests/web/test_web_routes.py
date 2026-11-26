@@ -205,6 +205,15 @@ def test_an_ioc_scan_matches_the_pasted_indicator(service):
         library.ioc_scan(identifier, 0, "")
 
 
+def test_a_rejected_ioc_line_is_named_with_its_reason_in_english(service):
+    library, identifier = service
+    payload = library.ioc_scan(identifier, 0, "192.0.2.20\nbackdoor")
+    assert payload["indicators"] == 1 and payload["rejected"] == 1
+    assert payload["rejected_lines"] == [
+        {"line": 2, "value": "backdoor", "reason": "Invalid domain name"}
+    ]
+
+
 def test_an_ioc_hunt_is_saved_and_replayed(service):
     library, identifier = service
     first = library.ioc_scan(identifier, 0, "192.0.2.20")
@@ -751,6 +760,8 @@ def test_the_coverage_check_reads_the_case_and_keeps_its_report(service):
         assert finding["stage"] and finding["severity"] in ("info", "warning", "error")
         assert finding["reason"]
         assert finding["action"] or finding["code"] == "operation"
+    named = [item for item in report["findings"] if item.get("label")]
+    assert named, "a finding names its analysis as the screen does, not by the file holding it"
     kept = library.coverage_report(identifier)
     assert kept["report"]["created"] == report["created"]
     data = library.coverage_export(identifier)

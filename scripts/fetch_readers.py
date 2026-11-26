@@ -136,7 +136,7 @@ def main(argv=None) -> int:
     if args.hayabusa:
         target = install_hayabusa(args.dest)
         print(
-            f"Hayabusa: {target} ({len(list((target / 'rules').glob('*.yml')))} rule file(s))",
+            f"Hayabusa: {target} ({len(list((target / 'rules').rglob('*.yml')))} rule file(s))",
             flush=True,
         )
 

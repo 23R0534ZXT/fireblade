@@ -253,8 +253,25 @@ class Library:
                 continue
             info = entry["source_info"]
             name = Library._output_name(info)
+            # the reader's own word for a table is not what an analyst reads
+            name = OUTPUT_NAMES.get(name, english.english_text(name))
             if name and name.casefold() not in entry["label"].casefold():
                 entry["label"] = f"{entry['label']} — {name}"
+        # Still alike: two files of one name in different folders (two scheduled tasks called
+        # WiFiTask) are told apart by the folder that holds them, before any number.
+        groups: dict[str, list[dict]] = {}
+        for entry in entries:
+            groups.setdefault(entry["label"], []).append(entry)
+        for label, same in groups.items():
+            if len(same) < 2:
+                continue
+            parents = [
+                Path(str((e["source_info"] or {}).get("path", "")).replace("\\", "/")).parent.name
+                for e in same
+            ]
+            if all(parents) and len(set(parents)) == len(parents):
+                for entry, parent in zip(same, parents, strict=True):
+                    entry["label"] = f"{label} ({parent})"
         seen: dict[str, int] = {}
         for entry in entries:
             seen[entry["label"]] = seen.get(entry["label"], 0) + 1
@@ -1757,7 +1774,7 @@ class Library:
         for entry in self._analyses(self.library.read(identifier)):
             if not entry["found"]:
                 continue
-            other = self._case_for(identifier, entry["index"])
+            other = self._case_for(identifier, entry["index"], entry)
             with other.lock:
                 columns = list(other.headers)
                 process_index = next(
@@ -2017,21 +2034,24 @@ class Library:
             raise ServiceError("The file to preview does not exist.")
         if path.is_dir():
             entries = []
+            total = 0
             for item in sorted(path.rglob("*")):
-                if len(entries) >= 200:
-                    break
-                if item.is_file():
-                    try:
-                        tools = identify(item)
-                    except (OSError, ValueError):
-                        tools = []
-                    entries.append({"name": str(item.relative_to(path)), "readers": tools})
+                if not item.is_file():
+                    continue
+                total += 1
+                if len(entries) >= 200:  # only the list shown is bounded, never the count
+                    continue
+                try:
+                    tools = identify(item)
+                except (OSError, ValueError):
+                    tools = []
+                entries.append({"name": str(item.relative_to(path)), "readers": tools})
             return {
                 "kind": "folder",
                 "name": path.name,
                 "path": str(path),
                 "files": entries,
-                "count": len(entries),
+                "count": total,
                 "note": "A folder is inventoried file by file: each format is read by its own reader.",
             }
 
@@ -2165,17 +2185,18 @@ class Library:
 
     # -- global search -----------------------------------------------------
 
-    def search(self, identifier: str, text: str, limit: int = 50) -> dict:
+    def search(self, identifier: str, text: str, limit: int = 50, progress=None) -> dict:
         """Search every analysis of the case, and say where the hits are."""
         needle = (text or "").strip()
         if not needle:
             raise ServiceError("Type some text to search for.")
         results = []
         total = 0
-        for entry in self._analyses(self.library.read(identifier)):
-            if not entry["found"]:
-                continue
-            case = self._case_for(identifier, entry["index"])
+        entries = [item for item in self._analyses(self.library.read(identifier)) if item["found"]]
+        for position, entry in enumerate(entries, start=1):
+            if progress:
+                progress(f"Searching · analysis {position}/{len(entries)} — {entry['label']}")
+            case = self._case_for(identifier, entry["index"], entry)
             with case.lock:
                 view = View(search=needle)
                 count = int(case.count(view))
@@ -3228,6 +3249,14 @@ class Library:
             "started": meta.get("started", ""),
             "truncated": bool(meta.get("truncated")),
             "rejected": meta.get("rejected", 0),
+            "rejected_lines": [
+                {
+                    "line": item.get("line"),
+                    "value": item.get("value", ""),
+                    "reason": english.english_text(str(item.get("reason", ""))),
+                }
+                for item in store.batch().rejected
+            ],
             "duplicates": meta.get("duplicates", 0),
             "respect_filters": bool(meta.get("respect_filters")),
             "include_subdomains": bool(meta.get("include_subdomains", True)),
@@ -3374,13 +3403,32 @@ class Library:
         except (OSError, ValueError):
             saved = False
         return {
-            "report": english.data(report),
+            "report": self._name_findings(identifier, english.data(report)),
             "counts": report.get("counts") or {},
             "profiles": list(coverage_core.EXPECTED),
             "families": list(coverage_core.EXPECTED.get(expected) or []),
             "analyses": len(snapshots),
             "saved": saved,
         }
+
+    def _name_findings(self, identifier: str, report: dict) -> dict:
+        """The findings of a coverage report, each with the name its analysis has on screen:
+        the audit knows an analysis by the file that holds it, which means nothing to read."""
+        try:
+            names = {
+                str(Path(entry["path"]).resolve()): entry["label"]
+                for entry in self._analyses(self.library.read(identifier))
+            }
+        except (ServiceError, ValueError, OSError, KeyError):
+            return report
+        for item in report.get("findings") or []:
+            try:
+                label = names.get(str(Path(str(item.get("path", ""))).resolve()))
+            except (OSError, ValueError):
+                label = None
+            if label:
+                item["label"] = label
+        return report
 
     def coverage_report(self, identifier: str) -> dict:
         """The last check kept with the case, for reading without running one again."""
@@ -3391,7 +3439,7 @@ class Library:
             raise ServiceError("No coverage check has been kept for this case yet.")
         report = coverage_core.load_report(path)
         return {
-            "report": english.data(report),
+            "report": self._name_findings(identifier, english.data(report)),
             "counts": report.get("counts") or {},
             "profiles": list(coverage_core.EXPECTED),
             "saved": True,
@@ -4634,9 +4682,11 @@ class Library:
         """
         if kind not in self.DISK_KINDS:
             raise ServiceError(f"Unknown disk source: {kind}")
+        if kind != "physical" and not Path(str(source or "")).expanduser().exists():
+            raise ServiceError(f"This path does not exist on the server: {source}")
         folder = self.library.folder(identifier)
         stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-        workspace = folder / "Disques" / (stamp + "-" + uuid.uuid4().hex[:8])
+        workspace = folder / "Disks" / (stamp + "-" + uuid.uuid4().hex[:8])
         job_id = uuid.uuid4().hex
         job = {
             "id": job_id,
@@ -4655,9 +4705,10 @@ class Library:
             self._jobs[job_id] = job
 
         def progress(text):
+            text = _english_disk_message(str(text))
             with self._lock:
-                job["message"] = str(text)[:300]
-                job["log"].append(str(text)[:300])
+                job["message"] = text[:300]
+                job["log"].append(text[:300])
                 if len(job["log"]) > 200:
                     del job["log"][:-200]
 
@@ -4848,6 +4899,8 @@ class Library:
 
     def _task_work(self, identifier: str, kind: str, payload: dict):
         """The callable a task runs, bound to the method the window already knows."""
+        if kind == "search":
+            return lambda note: self.search(identifier, payload.get("text", ""), progress=note)
         if kind == "scan":
             return lambda note: self.ioc_scan(
                 identifier,
@@ -5041,8 +5094,35 @@ class Library:
                 when = datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat(
                     timespec="seconds"
                 )
-                entries.append({"name": path.name, "bytes": size, "when": when})
+                entries.append(
+                    {
+                        "name": path.name,
+                        "bytes": size,
+                        "when": when,
+                        "label": self._state_label(path),
+                    }
+                )
         return {"entries": entries, "folder": str(folder), "count": len(entries)}
+
+    @staticmethod
+    def _state_label(path: Path) -> str:
+        """What a recorded state holds, in words: a file named by a hash tells nothing."""
+        try:
+            if path.stat().st_size > 1024 * 1024:
+                return ""
+            recorded = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return ""
+        if not isinstance(recorded, dict):
+            return ""
+        count = recorded.get("analysis_count")
+        parts = [f"{count} analysis(es)" if isinstance(count, int) else ""]
+        status = str(recorded.get("status") or "")
+        if status:
+            parts.append(f"status {status}")
+        return "Case state" + (
+            " — " + ", ".join(part for part in parts if part) if any(parts) else ""
+        )
 
     def history_file(self, identifier: str, name: str) -> dict:
         """One recorded state, as JSON, for reading before a recovery."""
@@ -5108,17 +5188,20 @@ class Library:
             case.condition(expression)
         return {"expression": expression}
 
-    def _case_for(self, identifier: str, index: int) -> Case:
+    def _case_for(self, identifier: str, index: int, entry: dict | None = None) -> Case:
+        """The open analysis. A caller that walks every analysis already holds each `entry`:
+        passing it spares re-reading the whole session (and testing every file) per analysis."""
         key = (identifier, index)
         with self._lock:
             existing = self._open.get(key)
             if existing is not None:
                 return existing
-            data = self.library.read(identifier)
-            analyses = self._analyses(data)
-            if not 0 <= index < len(analyses):
-                raise ServiceError("This analysis does not exist in the case.")
-            entry = analyses[index]
+            if entry is None:
+                data = self.library.read(identifier)
+                analyses = self._analyses(data)
+                if not 0 <= index < len(analyses):
+                    raise ServiceError("This analysis does not exist in the case.")
+                entry = analyses[index]
             if not entry["found"]:
                 raise ServiceError(
                     "The analysis file is missing from the case "
@@ -5476,6 +5559,26 @@ class Library:
             case.bookmark(int(row_id), clean or None, None if column is None else int(column))
         return {"row_id": int(row_id), "column": column, "note": clean}
 
+    def export_name(self, identifier: str, index: int, extension: str) -> str:
+        """The file an export is saved as: the case and the analysis it holds, not ids."""
+        try:
+            data = self.library.read(identifier)
+            entry = next((e for e in self._analyses(data) if e["index"] == int(index)), {})
+            case_name = str(data.get("name") or "")
+            label = str(entry.get("label") or "")
+        except (ServiceError, ValueError, OSError, KeyError):
+            case_name = label = ""
+
+        def slug(text: str) -> str:
+            return re.sub(r"[^\w.-]+", "-", text, flags=re.UNICODE).strip("-.")[:60]
+
+        parts = [slug(case_name), slug(label)]
+        stem = (
+            "_".join(part for part in parts if part)
+            or f"fireblade-{identifier[:8]}-analysis-{index}"
+        )
+        return f"{stem}.{extension}"
+
     def export(
         self,
         identifier: str,
@@ -5552,6 +5655,23 @@ def _english(text):
         except (ImportError, ValueError):
             return str(text)
 
+
+def _english_disk_message(text: str) -> str:
+    """A disk walk's progress, in English: the core words the ones that carry a path or a count
+    in its source language, so they cannot be looked up whole."""
+    text = english.english_text(text)
+    text = text.replace("Extraction en lecture seule : ", "Read-only extraction: ")
+    match = re.match(r"Découverte : (\d+) fichiers · (\d+) artefacts copiés · (.*)$", text, re.S)
+    if match:
+        return f"Discovery: {match[1]} files · {match[2]} artifacts copied · {match[3]}"
+    return text
+
+
+OUTPUT_NAMES = {
+    "PECmd_Output": "Prefetch",
+    "PECmd_Output_Timeline": "Prefetch timeline",
+    "lines": "",  # the generic text reader's table: it says nothing the file name does not
+}
 
 GENERATED_NAMES = {
     "Alertes Hayabusa.csv": "Hayabusa alerts",

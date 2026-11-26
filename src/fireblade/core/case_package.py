@@ -45,6 +45,18 @@ def safe_member(value):
     return str(path)
 
 
+def source_member(number, source):
+    """Where a source travels in the package. It keeps the analyst's file name, which is what
+    every analysis is called on screen; a name Windows would refuse falls back to its number."""
+    named = f"sources/{number:04}/{source.name}"
+    try:
+        return safe_member(named)
+    except ValueError:
+        # the fallback must itself be a name every system accepts
+        extension = re.sub(r"[^a-z0-9]", "", source.suffix.lower())
+        return f"sources/{number:04}" + (f".{extension}" if extension else "")
+
+
 def relocate(value, mapping, key=None):
     """Only rewrite known filesystem references, never imported evidence rows."""
     if key in ("view", "headers", "filters", "notes"):
@@ -232,7 +244,7 @@ def export_package(
                         add(
                             archive,
                             source,
-                            f"sources/{number:04}{source.suffix.lower()}",
+                            source_member(number, source),
                             document.source_info.get("sha256"),
                         )
                 else:

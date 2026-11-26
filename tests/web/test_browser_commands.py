@@ -745,6 +745,7 @@ def test_a_hunt_over_every_analysis_reads_them_all(page, server):
     )
     page.click('.tabs .tab:text-is("IOC hunting")')
     page.fill("#ioc-input", "evil.example\n10.0.0.1")
+    page.uncheck("#ioc-all")  # the whole case is the default, as in the desktop
     page.click("#ioc-scan")
     page.wait_for_function("iocState.payload !== null", timeout=60000)
     assert page.evaluate("iocState.payload.per_analysis.length") == 1
@@ -1056,7 +1057,7 @@ def test_history_lists_the_states_of_the_case_and_restores_one(page):
     page.wait_for_function("document.getElementById('status').innerText.startsWith('Case saved')")
     command(page, "case-history")
     page.wait_for_function(
-        "document.querySelector('.modal.show .dialog').innerText.includes('.json')"
+        "document.querySelector('.modal.show .dialog').innerText.includes('Case state')"
     )
     assert page.locator('.modal.show .dialog button:text-is("Restore")').count() >= 1
 

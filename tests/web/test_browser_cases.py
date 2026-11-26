@@ -91,6 +91,12 @@ def test_a_case_is_created_with_each_environment_the_engine_knows(page, server, 
     page.fill("#case-description", "described")
     page.select_option("#case-environment", environment)
     page.click("#case-confirm")
+    # A new case is the one being worked on, as in the desktop: it opens at once.
+    page.wait_for_function(
+        "name => document.getElementById('casecombo-label').innerText === name",
+        arg=f"Env {environment}",
+    )
+    _cases_tab(page)
     page.wait_for_selector(f'#cases-body tr:has(td:text-is("Env {environment}"))')
     created = next(
         item for item in _api(server, "/api/cases")["cases"] if item["name"] == f"Env {environment}"

@@ -35,6 +35,45 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 - Filtering or excluding on a cell **appends** to the column's filters, as the desktop does.
 - The search text is highlighted with the highlight text.
 
+## [0.8.7] — 2026-11-26
+
+### Fixed
+- **A new case opens at once**, as in the desktop, instead of waiting in the Cases list.
+- **The attack graph places techniques on the kill chain.** Hayabusa 4 writes tactics in short form
+  (`Exec ¦ DefImpair`); only the full names were recognised, so no technique ever had a tactic.
+- **The PDF keeps the report's structure.** Bold headings, real table columns with the header
+  repeated on every page, summary tiles in reading order, page numbers, and `→` is no longer a `?`.
+  The client report names each analysis by its file instead of a path on the server.
+- **IOC hunt:** a line the parser rejects (`backdoor` is not a domain) is listed as "not searched"
+  with its reason, not shown as "no hit"; the hunt covers the whole case by default, like the desktop.
+- **Folder import:** the preview counts every file (it stopped at 200), and the message says how many
+  files were imported rather than "1".
+- **Names:** "Linux — journaux" is "Linux — logs"; Prefetch tables are "Prefetch" and "Prefetch
+  timeline" rather than "PECmd_Output"; two files of one name are told apart by their folder, not "(2)".
+  Exported files are named after the case and the analysis.
+- **Global search** runs on Enter, and on a case of hundreds of analyses it is a job with progress and
+  a Stop (it was one silent request, quadratic in the number of analyses).
+- **Detection:** reopening a case no longer says "No detection run yet" above its findings.
+- **Imports:** transaction logs beside a hive are no longer counted as "not read"; the failure reason
+  of an engine says "log", not "journal".
+- The toolbar scrolls in a narrow window, long names in the artifacts tree are cut with an ellipsis,
+  and "Collection coverage" no longer causes a 400 when no check has been kept yet.
+- **A portable case keeps the names of its files.** The package renamed every source `0000.pf`,
+  `0003.db`…, so the imported case showed those numbers as analysis names; sources now travel under
+  their own name (a name Windows would refuse falls back to its number), and the download is named
+  after the case.
+- **Disk analysis** speaks English while it works, and a path that does not exist is refused with a
+  plain message instead of an internal "RawLoader" one.
+- **Coverage check** names each finding by its analysis (it showed internal file names), and the
+  About box no longer says the import "is not wired yet".
+- **History** lists each recorded state by what it holds ("Case state — 482 analyses, status open")
+  rather than by a hash file name; the file name is in the tooltip.
+- **Detection rules** no longer lists the engine's 13 field-mapping files (no level, not rules).
+- **The timeline's event summary** leaves out the path of the evidence file and Fireblade's own
+  columns, and reads the payload and provider of an event.
+- The disk workspace folder is `Disks`, not `Disques`.
+- `scripts/fetch_readers.py` counted the Hayabusa rules without looking in sub-folders ("0 rule(s)").
+
 ## [0.8.6] — 2026-11-25
 
 ### Added

@@ -54,7 +54,10 @@ body{
 .menu .key{position:absolute;right:10px;color:var(--muted)}
 
 /* toolbar */
-.toolbar{display:flex;align-items:center;padding:2px 4px;border-bottom:1px solid var(--toolbar-sep);height:26px;flex:0 0 26px}
+.toolbar{display:flex;align-items:center;padding:2px 4px;border-bottom:1px solid var(--toolbar-sep);min-height:26px;flex:0 0 auto;
+  /* a narrow window scrolls the bar instead of cutting off the case selector and Close case */
+  overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.toolbar>*{flex-shrink:0}
 .tb{display:flex;align-items:center;gap:4px;padding:1px 5px;height:22px;cursor:default;white-space:nowrap}
 .tb:hover{background:var(--sel)}
 .tb.off{color:var(--disabled)}
@@ -95,12 +98,13 @@ body{
 .combo .arrow{margin-left:auto;font-size:9px;color:var(--muted)}
 .tree-search{margin:2px 4px 4px;height:20px;border:1px solid var(--border);background:var(--base);padding:0 5px;font-size:11px;width:calc(100% - 8px);outline:none;color:var(--text)}
 .tree-search::placeholder{color:var(--disabled)}
-.tree{flex:1;overflow:auto;border-top:1px solid var(--border);padding:2px 0}
+.tree{flex:1;overflow-x:hidden;overflow-y:auto;border-top:1px solid var(--border);padding:2px 0}
 .tree .node{display:flex;align-items:center;gap:4px;height:19px;padding:0 6px;white-space:nowrap;cursor:default;font-size:11px}
 .tree .node.sel{background:var(--sel);color:var(--sel-text)}
 .tree .node:hover:not(.sel){background:var(--row-hover)}
 .tree .grp{font-weight:400;color:var(--text)}
 .tree .child{padding-left:20px}
+.tree .nlabel{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .tree .caret{font-size:9px;color:var(--muted);width:9px;display:inline-block}
 .tree .empty{padding:6px 10px;color:var(--disabled);font-size:11px;white-space:normal;line-height:1.5}
 
@@ -228,7 +232,7 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 .columns-list input[type=checkbox]{margin:0}
 .columns-list .pin{margin-left:auto;font-size:11px;color:var(--muted)}
 
-.timeline-legend{display:flex;gap:14px;padding:2px 8px;font-size:11px;flex-wrap:wrap}
+.timeline-legend{display:flex;gap:4px 14px;padding:2px 8px;font-size:11px;flex-wrap:wrap;max-height:64px;overflow-y:auto}
 .timeline-legend .chip,#finding-counts .chip{display:flex;align-items:center;gap:5px}
 .timeline-legend .swatch,#finding-counts .swatch{width:10px;height:10px;border:1px solid #999;display:inline-block}
 #finding-counts{display:flex;align-items:center;gap:14px;flex:1}
@@ -257,6 +261,9 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 /* How each analysis is read on the timeline: detected, a named column, two
    columns, or none — the desktop's three readings. */
 .timeline-dates{display:flex;flex-wrap:wrap;gap:6px 14px;padding:4px 10px;border-bottom:1px solid var(--border)}
+.timeline-dates .tdates-all{width:100%;font-size:11px}
+.timeline-dates .tdates-all summary{cursor:pointer;color:var(--muted)}
+.timeline-dates .tdates-grid{display:flex;flex-wrap:wrap;gap:6px 14px;max-height:170px;overflow:auto;padding:4px 0}
 .timeline-dates .tsrc{display:flex;align-items:center;gap:6px;font-size:11px}
 .timeline-dates .tname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 

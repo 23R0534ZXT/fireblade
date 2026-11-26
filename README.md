@@ -49,7 +49,7 @@ folder is there. On Windows PowerShell, write the folder as `"$HOME\fireblade-ca
 | --- | --- |
 | Stop / start | `docker stop fireblade` · `docker start fireblade` |
 | Upgrade | `docker pull ghcr.io/23r0534zxt/fireblade:latest && docker rm -f fireblade`, then run the line above again (the cases stay in their folder) |
-| Pin a version | replace `:latest` with `:0.8.6` · `:edge` follows `main` |
+| Pin a version | replace `:latest` with `:0.8.7` · `:edge` follows `main` |
 | Remove | `docker rm -f fireblade` (your cases are not touched) |
 
 To build from a clone instead: `docker build -t fireblade:host .`.
@@ -118,7 +118,8 @@ Deployment notes and the upgrade recipe: [deploy/host](deploy/host/README.md).
 - **Detect**: Hayabusa rules run locally over parsed EVTX; findings are grouped, mapped to
   ATT&CK and drawn as an attack graph.
 - **Track the work**: actions, machines and accounts, indicators.
-- **Report**: an investigation report and a client report, as HTML or PDF.
+- **Report**: an investigation report and a client report, as HTML or PDF (the PDF keeps the
+  report's headings and table columns, repeats table headers across pages and numbers its pages).
 - **Keep or move a case**: portable `.fireblade` packages with verified hashes, history and
   recovery, and a verified erasure with a certificate.
 
@@ -129,12 +130,12 @@ bar, the engine's own messages, and a Stop.
 
 | | |
 | --- | --- |
-| `SRUDB.dat` (SRUM) | `SrumECmd` needs Windows' ESE libraries. The Host says so; import the CSV the Desktop produced. |
+| `SRUDB.dat` (SRUM) | Read by Fireblade's own reader: the database's own columns, not `SrumECmd`'s names. `SrumECmd` itself needs Windows' ESE libraries; for its exact output, import the CSV the Desktop produced. |
 | Assistant | The local analyst assistant exists in the Desktop only. |
 | Language | English. |
 | Erasure | Overwriting files cannot be guaranteed on SSDs, copy-on-write or journaled file systems; the certificate states the method used, not a physical guarantee. |
 | Access control | None. Do not expose the Host to a network. |
-| Tested at scale | A 31 574-row EVTX and a 333-file collection. No claim is made beyond that. |
+| Tested at scale | A 31 574-row EVTX; a 333-file collection; a Windows 11 collection of 496 files read into 482 analyses (183 event logs, 60 Prefetch entries), with 613 Hayabusa alerts and a 68 095-event timeline. On that case a search across every analysis takes about half a minute. No claim is made beyond that. |
 
 The full statement of what is and is not verified: [docs/host/STATUS.md](docs/host/STATUS.md).
 Reader by reader, with the rows each wrote: [docs/host/LINUX-READERS.md](docs/host/LINUX-READERS.md).

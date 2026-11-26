@@ -456,7 +456,7 @@ async function openCaseHistory() {
     const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/history`);
     $("history-list").innerHTML = (payload.entries || []).length
       ? payload.entries.map((item) => `<div class="analysis-line">
-          <span class="analysis-name" title="${escapeHtml(payload.folder)}">${escapeHtml(item.when)} — ${escapeHtml(item.name)}</span>
+          <span class="analysis-name" title="${escapeHtml(payload.folder + "/" + item.name)}">${escapeHtml(item.when)} — ${escapeHtml(item.label || item.name)}</span>
           <span class="pin"><button class="btn" data-history-restore="${escapeHtml(item.name)}">Restore</button></span>
         </div>`).join("")
       : '<div class="emptygrid">No recorded state for this case yet.</div>';
@@ -1079,8 +1079,10 @@ async function confirmImport() {
     try {
       const job = await startImportJob(source, layout, options, chosenSheet(item.payload));
       const outcome = await followImportJob(job);
-      if (outcome.status === "complete" && outcome.result && outcome.result.analyses) imported += 1;
-      else if (outcome.status === "cancelled") {
+      // A folder is one source holding several files: say how many were read, not "1".
+      if (outcome.status === "complete" && outcome.result && outcome.result.analyses) {
+        imported += Math.max(1, Number((item.payload && item.payload.count) || 0));
+      } else if (outcome.status === "cancelled") {
         stopped = true;
         kept = (outcome.result && outcome.result.analyses) || 0;
         break;
@@ -1149,7 +1151,11 @@ async function confirmCaseDialog() {
     } else {
       const created = await apiPost("/api/cases", { name, description: $("case-description").value,
                                                      environment: $("case-environment").value });
+      await loadCases();
+      // Like the desktop, a case that has just been created is the one being worked on.
+      await openCase(created.id);
       say(`Case created: ${created.name}`);
+      return;
     }
     await loadCases();
     showTab("cases");
@@ -2294,6 +2300,11 @@ function renderFindingView() {
     ? `${findingState.groups.length} finding(s), ${hits} alert(s)`
       + (findingState.source ? ` — ${findingState.source}` : "")
     : `${eventLogCount()} event log(s) in the case — no finding yet: run the detection, or open the alert analysis.`;
+  // Findings kept in the case from an earlier run are not "no detection yet".
+  const ran = $("hayabusa-summary");
+  if (findingState.groups.length && ran.textContent.startsWith("No detection run yet")) {
+    ran.textContent = `${hits} alert(s) kept from the last detection: run it again to refresh them.`;
+  }
   if (view === "table") { renderFindingSeverity(shownFindings()); renderFindingTable(); return; }
   drawFindingMap(view);
 }
@@ -3746,6 +3757,11 @@ async function openCoverage() {
   $("coverage-note").textContent = "Reading the last check kept with this case…";
   try {
     const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/coverage?run=false`);
+    if (!payload.report) {
+      $("coverage-note").textContent = "No check kept yet: press \"Check the coverage\".";
+      $("coverage-summary").textContent = "";
+      return;
+    }
     showCoverage(payload);
   } catch (_) {
     $("coverage-note").textContent = "No check kept yet: press \"Check the coverage\".";
@@ -3778,7 +3794,7 @@ function renderCoverage() {
     ? shown.slice(0, 800).map((item) => `<tr class="sev-${escapeHtml(item.severity)}">
         <td>${escapeHtml(item.stage || "")}</td>
         <td>${escapeHtml(item.severity || "")}</td>
-        <td title="${escapeHtml(item.path || "")}">${escapeHtml(String(item.path || "").split(/[\\/]/).pop())}</td>
+        <td title="${escapeHtml(item.path || "")}">${escapeHtml(item.label || String(item.path || "").split(/[\\/]/).pop())}</td>
         <td title="${escapeHtml(item.reason || "")}">${escapeHtml(item.reason || "")}</td>
         <td title="${escapeHtml(item.impact || "")}">${escapeHtml(item.impact || "")}</td>
         <td title="${escapeHtml(item.action || "")}">${escapeHtml(item.action || "")}</td></tr>`).join("")
@@ -4667,11 +4683,13 @@ function renderImports() {
     if (analysis.source) outputs.set(analysis.source, analysis.label);
   }
   const rows = [];
-  let imported = 0, failed = 0;
+  let imported = 0, failed = 0, companions = 0;
   for (const collection of importState.collections) {
     for (const file of collection.files || []) {
       const ok = ["complete", "attention", "duplicate"].includes(file.status);
-      if (ok) imported += 1; else failed += 1;
+      // A transaction log kept beside its hive is read with it: it is not a file left unread.
+      if (file.status === "companion") companions += 1;
+      else if (ok) imported += 1; else failed += 1;
       if (wanted === "ignored" ? !file.ignored : (wanted && file.status !== wanted)) continue;
       if (!wanted && file.ignored) continue;
       if (term && !`${file.name} ${file.path} ${file.reason} ${(file.tools || []).join(" ")}`
@@ -4695,7 +4713,8 @@ function renderImports() {
     });
   });
   $("imports-summary").textContent =
-    `${importState.collections.length} import(s) — ${imported} file(s) read, ${failed} not read`;
+    `${importState.collections.length} import(s) — ${imported} file(s) read, ${failed} not read`
+    + (companions ? `, ${companions} companion file(s) read with their hive` : "");
   say($("imports-summary").textContent);
 }
 
@@ -4707,7 +4726,11 @@ async function runGlobalSearch() {
   if (!text) { say("Type something to search", true); return; }
   $("global-summary").textContent = "Searching…";
   try {
-    const payload = await api(`/api/cases/${state.openCase.id}/search?text=${encodeURIComponent(text)}`);
+    // A case of hundreds of analyses takes a while: it runs as a job, with progress and a Stop.
+    const payload = (state.openCase.analyses || []).length > 40
+      ? await runTask("search", { text }, "Global search")
+      : await api(`/api/cases/${state.openCase.id}/search?text=${encodeURIComponent(text)}`);
+    if (!payload) { $("global-summary").textContent = "Search stopped"; return; }
     $("global-summary").textContent = `${payload.total} hit(s) in ${payload.analyses.filter((a) => a.count).length} analysis(es)`;
     $("global-results").innerHTML = payload.analyses.map((analysis) => {
       if (!analysis.count) return "";
@@ -4719,6 +4742,11 @@ async function runGlobalSearch() {
     $("global-summary").textContent = error.message;
   }
 }
+
+// Enter in the box searches, as the field's own Search button does.
+$("global-text").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") { event.preventDefault(); runGlobalSearch(); }
+});
 
 /* ---------- actions and tracking ---------- */
 
@@ -5074,7 +5102,7 @@ async function toggleAction(actionId) {
 
 /* ---------- IOC hunting ---------- */
 
-const iocState = { hits: [], summary: "", hunt: null, list: [], count: 0, offset: 0, pageSize: 250, selected: null, payload: null };
+const iocState = { hits: [], summary: "", rejected: [], hunt: null, list: [], count: 0, offset: 0, pageSize: 250, selected: null, payload: null };
 
 /* What the grid shows, for the commands that "respect the filter": the page keeps the search,
    the column filters and the advanced filter, so it tells the server which they are. */
@@ -5110,6 +5138,7 @@ function iocSummary(payload) {
 /* A hunt, as the desktop shows it: the indicators with their counters, then one page of details. */
 function applyHunt(payload) {
   iocState.payload = payload;
+  iocState.rejected = payload.rejected_lines || [];
   iocState.hunt = payload.hunt;
   iocState.list = payload.list || [];
   iocState.hits = payload.hits || [];
@@ -5250,6 +5279,10 @@ function renderIoc() {
       <td>${escapeHtml(item.label || "")}</td>
       <td>${item.fields}</td><td>${item.rows}</td><td>${item.details}</td></tr>`).join("")
     : '<tr><td colspan="7" class="cellnull">Paste a list above, then Hunt.</td></tr>';
+  // A line the parser refused is told apart from a line with no hit: it was not searched.
+  $("ioc-list-rows").innerHTML += iocState.rejected.map((item) =>
+    `<tr title="${escapeHtml(item.reason)}"><td>—</td><td>${escapeHtml(item.value)}</td><td></td><td></td>
+      <td>0</td><td>0</td><td>not searched: ${escapeHtml(item.reason)}</td></tr>`).join("");
 
   $("ioc-rows").innerHTML = iocState.hits.map((hit, position) =>
     `<tr data-hit="${position}" title="Double-click to open the source row">
@@ -5289,7 +5322,8 @@ function timelineDatesParam() {
 
 function renderTimelineDates(payload) {
   const box = $("timeline-dates");
-  box.innerHTML = (payload.sources || []).map((source) => {
+  const sources = payload.sources || [];
+  const items = sources.map((source) => {
     const chosen = timelineState.dates[String(source.id)] || "auto";
     const options = [
       `<option value="auto" ${chosen === "auto" ? "selected" : ""}>detected${source.column_name ? ": " + escapeHtml(source.column_label || source.column_name) : ""}</option>`,
@@ -5305,6 +5339,13 @@ function renderTimelineDates(payload) {
     return `<div class="tsrc"><span class="tname" title="${escapeHtml(source.original || source.name)}">${escapeHtml(source.name)}</span>
       <select class="select" data-source="${source.id}">${options.join("")}</select></div>`;
   }).join("");
+  // A collection of hundreds of analyses has hundreds of selectors: folded, they would push the
+  // chart and the rows off the screen. The choice stays one click away, and still travels.
+  const wasOpen = !!box.querySelector("details[open]");
+  box.innerHTML = sources.length > 6
+    ? `<details class="tdates-all"${wasOpen ? " open" : ""}><summary>How the dates of ${sources.length} analyses are read
+         — detected automatically; open to change one</summary><div class="tdates-grid">${items}</div></details>`
+    : items;
 }
 
 function applyTimelineDates() {
@@ -5777,13 +5818,13 @@ function renderTree() {
     analyses.map((item) => `
       <div class="node child ${item.index === state.analysis ? "sel" : ""}" data-analysis="${item.index}"
            title="${escapeHtml(item.source || item.path)}">
-        <span class="caret"></span>${escapeHtml(item.label)}
+        <span class="caret"></span><span class="nlabel">${escapeHtml(item.label)}</span>
       </div>`).join("") +
     (closed.length ? '<div class="node grp closed-group"><span class="caret">▷</span>Closed (kept in the case)</div>'
       + closed.map((item) => `
       <div class="node child closed" data-reopen="${item.index}"
            title="Open this analysis again — ${escapeHtml(item.source || item.path)}">
-        <span class="caret"></span>${escapeHtml(item.label)}
+        <span class="caret"></span><span class="nlabel">${escapeHtml(item.label)}</span>
       </div>`).join("") : "");
   tree.querySelectorAll("[data-reopen]").forEach((node) => {
     node.addEventListener("click", () => reopenAnalysis(Number(node.dataset.reopen)));
@@ -7533,7 +7574,8 @@ async function act(name, node) {
       $("about-text").textContent =
         `Fireblade Host ${$("version").textContent.replace("Fireblade ", "")} — the same core as the Windows edition, ` +
         "served over HTTP. The palette, the density and the grid behaviour are carried over from the desktop window. " +
-        "Importing artifacts and the other tabs are not wired yet in this edition.";
+        "Everything stays on this machine: nothing is uploaded, and the only outbound request is the " +
+        "optional check for a newer release.";
       $("about-modal").classList.add("show");
       break;
     case "about-close": closeModals(); break;

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -749,7 +750,16 @@ def create_app(
             path = library.package_file(identifier)
         except ServiceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
-        return FileResponse(path, media_type="application/zip", filename=path.name)
+        # saved under the case's name, which is what an analyst looks for; the file on the
+        # server keeps its id, so two cases of one name never overwrite each other
+        try:
+            name = str(library.case(identifier).get("name") or "")
+        except (ServiceError, ValueError, OSError, KeyError):
+            name = ""
+        stem = re.sub(r"[^\w.-]+", "-", name, flags=re.UNICODE).strip("-.")[:60]
+        return FileResponse(
+            path, media_type="application/zip", filename=f"{stem}.fireblade" if stem else path.name
+        )
 
     @app.post("/api/cases/import-package")
     def import_package(file: UploadFile = File(...)):
@@ -1177,7 +1187,11 @@ def create_app(
         """Run the coverage audit, or read the last one kept with the case."""
         try:
             if not run:
-                return library.coverage_report(identifier)
+                try:
+                    return library.coverage_report(identifier)
+                except ServiceError:
+                    # Reading what is kept is not a failure when nothing is kept yet.
+                    return {"report": None, "kept": False}
             return library.coverage(
                 identifier,
                 expected=expected,
@@ -1559,8 +1573,7 @@ def create_app(
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=_english(exc)) from exc
-        stem = "bookmarks" if annotations else "analysis"
-        name = f"fireblade-{identifier[:8]}-{stem}-{index}.{wanted}"
+        name = library.export_name(identifier, index, wanted)
         media = (
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             if wanted == "xlsx"

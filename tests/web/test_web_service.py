@@ -1,6 +1,7 @@
 """The HTTP service reads a real case written the way the desktop writes it."""
 
 import csv
+import json
 
 import pytest
 
@@ -263,5 +264,74 @@ def test_closing_an_analysis_leaves_the_others_and_its_file(case_with_analysis, 
         assert _Path(path).is_file(), "closing an analysis must not delete its file"
         # The one left is the imported analysis, not a stale copy of the closed one.
         assert remaining[0]["path"] != path
+    finally:
+        service.close()
+
+
+def test_an_export_is_named_after_the_case_and_the_analysis(case_with_analysis):
+    root, identifier = case_with_analysis
+    service = Library(root)
+    try:
+        name = service.export_name(identifier, 0, "csv")
+        assert name.startswith("Test-case_") and name.endswith(".csv"), name
+        assert "analysis-0" not in name and identifier[:8] not in name
+        assert service.export_name("missing", 3, "xlsx").endswith("analysis-3.xlsx")
+    finally:
+        service.close()
+
+
+def test_a_folder_preview_counts_every_file_and_lists_a_bounded_number(tmp_path):
+    root = tmp_path / "cases"
+    root.mkdir()
+    folder = tmp_path / "collection"
+    folder.mkdir()
+    for number in range(230):
+        (folder / f"log-{number:03}.txt").write_text("x\n", encoding="utf-8")
+    service = Library(root)
+    try:
+        preview = service.preview_source(str(folder))
+        assert preview["kind"] == "folder"
+        assert preview["count"] == 230 and len(preview["files"]) == 200
+    finally:
+        service.close()
+
+
+def test_a_disk_walk_speaks_english_and_a_missing_source_is_refused_plainly(tmp_path):
+    from fireblade.web.service import _english_disk_message
+
+    assert _english_disk_message("Extraction en lecture seule : /$MFT") == (
+        "Read-only extraction: /$MFT"
+    )
+    assert _english_disk_message("Découverte : 300 fichiers · 4 artefacts copiés · /x/y") == (
+        "Discovery: 300 files · 4 artifacts copied · /x/y"
+    )
+    root = tmp_path / "cases"
+    root.mkdir()
+    service = Library(root)
+    try:
+        identifier = InvestigationLibrary(root).create("Disks", "", "windows")["id"]
+        with pytest.raises(ServiceError, match="does not exist on the server"):
+            service.start_disk_job(identifier, str(tmp_path / "nothing"), "image")
+    finally:
+        service.close()
+
+
+def test_a_history_entry_says_what_state_it_holds(case_with_analysis):
+    root, identifier = case_with_analysis
+    service = Library(root)
+    try:
+        folder = service.library.folder(identifier) / "History"
+        folder.mkdir(exist_ok=True)
+        (folder / "c4659be8d603482bba721c8c06a51784.json").write_text(
+            json.dumps({"format": "fireblade-case", "analysis_count": 3, "status": "open"}),
+            encoding="utf-8",
+        )
+        entry = next(
+            item
+            for item in service.history(identifier)["entries"]
+            if item["name"].startswith("c4659be8")
+        )
+        assert entry["label"] == "Case state — 3 analysis(es), status open"
+        assert entry["name"].endswith(".json")
     finally:
         service.close()

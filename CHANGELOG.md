@@ -18,6 +18,8 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   opens the retried analysis, and retains column settings when recovering an earlier session.
 - Timeline CSV exports apply the active filters. Timeline, Hayabusa, and graph results follow the
   open case even when an older request finishes late.
+- The timeline can index an analysis while its grid is open. Action results follow the active case
+  and the selected scope, and late progress responses stay with their original task.
 - The container ships PDF text extraction, the per-case driver forwards grid query parameters,
   and key controls stay accessible in narrower browser windows.
 

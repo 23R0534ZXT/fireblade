@@ -36,7 +36,14 @@ class Case:
     PAGE_SIZE = Settings().page_size
 
     def __init__(
-        self, path: str | Path, memory_mb=None, threads=None, settings=None, read_only=False
+        self,
+        path: str | Path,
+        memory_mb=None,
+        threads=None,
+        settings=None,
+        read_only=False,
+        *,
+        shared_read=False,
     ):
         self.settings = settings or Settings()
         overrides = {}
@@ -55,7 +62,7 @@ class Case:
         self._bookmark_revision = 0
         self._outline_key = None
         self._source_index_tried = False
-        self._read_only = read_only
+        self._read_only = read_only or shared_read
         self._plugin_object_session = None
         self._plugin_object_lock = threading.RLock()
         self._operation_depth = 0
@@ -65,12 +72,20 @@ class Case:
         self.plugin_restore_errors = []
         from fireblade.core.analysis_storage import connect_analysis
 
-        self.db = connect_analysis(self.path, read_only=read_only, allow_empty_import=True)
+        self.db = connect_analysis(
+            self.path,
+            read_only=read_only and not shared_read,
+            allow_empty_import=not self._read_only,
+        )
         self.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
         self.db.execute(f"SET threads={self.settings.effective_threads}")
         self.db.execute("SET enable_progress_bar=false")
         self.db.execute("SET TimeZone='UTC'")
         self.db.execute("SET preserve_insertion_order=true")
+        # DuckDB connections sharing a file must agree on its open mode. A read
+        # transaction enforces read-only access while the Host grid can still write.
+        if shared_read:
+            self.db.execute("BEGIN TRANSACTION READ ONLY")
         # DuckDB defaults to <database>.tmp, which remains available after
         # revoking external access on an existing analysis.
         self._plugin_udf = False

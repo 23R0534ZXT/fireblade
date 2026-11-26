@@ -3620,7 +3620,7 @@ class Library:
         if not path or not Path(str(path)).is_file():
             return [], []
         try:
-            case = Case(Path(str(path)), read_only=True)
+            case = Case(Path(str(path)), settings=self._settings(), shared_read=True)
         except (OSError, ValueError):
             return [], []
         try:
@@ -3817,7 +3817,6 @@ class Library:
     ):
         """The built index for this case and these date readings, cached (``rebuild`` reads it again)."""
         options = self._date_options(identifier, dates or {})
-        # Read before the grid's handles are closed below: building the view opens the analysis.
         shown = self._live_view(identifier, live) if respect_filters else None
         key = (
             identifier,
@@ -3826,16 +3825,6 @@ class Library:
             bool(respect_filters),
             json.dumps(live, sort_keys=True) if respect_filters and live else "",
         )
-        # DuckDB refuses a second connection to a file with another configuration:
-        # the grid's handles are closed on every call, cache hit or not, because
-        # the sources' headers are read read-only just after. They reopen on the
-        # next grid request.
-        with self._lock:
-            for open_key in [item for item in self._open if item[0] == identifier]:
-                try:
-                    self._open.pop(open_key).close()
-                except (KeyError, OSError, ValueError):
-                    pass
         store = None if rebuild else self._timelines.get(key)
         if store is not None:
             return store
@@ -3843,7 +3832,7 @@ class Library:
         if not snapshots:
             raise ServiceError("This case holds no analysis.")
         store = TimelineStore(self._timeline_dir)
-        reader = WorkspaceReader(snapshots)
+        reader = WorkspaceReader(snapshots, settings=self._settings(), shared_read=True)
         store.build(
             reader,
             columns={path: spec for path, spec in options.items()},

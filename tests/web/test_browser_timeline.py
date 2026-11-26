@@ -89,9 +89,13 @@ def test_the_pages_of_the_timeline_follow_one_another_and_say_when_there_are_no_
     page.click("#timeline-prev")  # already on the first page: nothing moves, and it says so
     page.wait_for_function("document.getElementById('status').innerText.includes('first page')")
     assert page.inner_text("#timeline-info").startswith("1–250")
-    for _ in range(3):
+    for marker in ("251–500", "501–704"):
         page.click("#timeline-next")
-        page.wait_for_timeout(300)
+        page.wait_for_function(
+            "marker => document.getElementById('timeline-info').innerText.startsWith(marker)",
+            arg=marker,
+        )
+    page.click("#timeline-next")
     page.wait_for_function("document.getElementById('status').innerText.includes('last page')")
 
 

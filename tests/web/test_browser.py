@@ -149,19 +149,24 @@ def test_every_dialog_a_menu_opens_keeps_its_buttons_on_screen(page):
             action = item.get_attribute("data-act")
             item.click()
             page.wait_for_timeout(350)
-            modal = page.locator(".modal.show .dialog")
-            if modal.count() == 1 and action not in seen:
+            geometry = page.locator(".modal.show .dialog").evaluate_all(
+                """dialogs => {
+                  if (dialogs.length !== 1) return null;
+                  const dialog = dialogs[0];
+                  const bounds = dialog.getBoundingClientRect();
+                  return {
+                    top: bounds.top, bottom: bounds.bottom,
+                    buttons: [...dialog.querySelectorAll(".foot button, button.close")]
+                      .filter(button => button.getClientRects().length && getComputedStyle(button).visibility !== "hidden")
+                      .map(button => [button.innerText, button.getBoundingClientRect().bottom])
+                  };
+                }"""
+            )
+            if geometry is not None and action not in seen:
                 seen.add(action)
-                box = modal.bounding_box()
-                assert box["y"] >= 0 and box["y"] + box["height"] <= 760 + 1, (label, box)
-                foot = page.locator(
-                    ".modal.show .dialog .foot button, .modal.show .dialog button.close"
-                )
-                for index in range(foot.count()):
-                    button = foot.nth(index)
-                    if button.is_visible():
-                        edge = button.bounding_box()
-                        assert edge["y"] + edge["height"] <= 760 + 1, (label, button.inner_text())
+                assert geometry["top"] >= 0 and geometry["bottom"] <= 761, (label, geometry)
+                for text, bottom in geometry["buttons"]:
+                    assert bottom <= 761, (label, text)
             page.evaluate(
                 "document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'))"
             )

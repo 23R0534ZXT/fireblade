@@ -166,7 +166,7 @@ INTERVALS = [
 @pytest.mark.parametrize(("interval", "groups", "first"), INTERVALS)
 def test_a_date_is_grouped_by_the_interval_chosen(page, interval, groups, first):
     command(page, "group-column")
-    page.select_option("#group-select", label="Time")
+    page.locator("#group-levels").get_by_role("checkbox", name="Time", exact=True).check()
     page.select_option("#group-interval", interval)
     page.click('[data-act="group-apply"]')
     page.wait_for_function(
@@ -185,7 +185,7 @@ def test_a_date_is_grouped_by_the_interval_chosen(page, interval, groups, first)
 
 def test_the_weeks_of_the_standard_case_hold_the_rows_of_their_days(page):
     command(page, "group-column")
-    page.select_option("#group-select", label="Time")
+    page.locator("#group-levels").get_by_role("checkbox", name="Time", exact=True).check()
     page.select_option("#group-interval", "week")
     page.click('[data-act="group-apply"]')
     page.wait_for_selector("#body tr[data-group]")
@@ -215,7 +215,7 @@ def numbers(server, request):
 
 def _group_by(page, column):
     command(page, "group-column")
-    page.select_option("#group-select", label=column)
+    page.locator("#group-levels").get_by_role("checkbox", name=column, exact=True).check()
     page.click('[data-act="group-apply"]')
     page.wait_for_selector("#body tr[data-group]")
 

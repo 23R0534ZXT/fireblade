@@ -194,13 +194,16 @@ class Library:
         ]
         # What the Artifacts tree groups by: the collection an analysis came from and its family.
         folder = self.library.folder(identifier)
+        collection_cache: dict = {}
         for item in summary["analyses"]:
-            item["collection"] = self._tree_collection(folder, item)
+            item["collection"] = self._tree_collection(folder, item, collection_cache)
             item["family"] = self._family_of(item)
+        layouts = {info["layout"] for info in collection_cache.values()}
+        summary["layout"] = next(iter(layouts)) if len(layouts) == 1 else None
         return summary
 
     @staticmethod
-    def _tree_collection(folder: Path, item: dict) -> dict:
+    def _tree_collection(folder: Path, item: dict, cache: dict) -> dict:
         """The collection folder an analysis lives under, named after its evidence."""
         path = Path(str(item.get("path") or ""))
         base = folder / "collections"
@@ -208,15 +211,23 @@ class Library:
             key = path.relative_to(base).parts[0]
         except (ValueError, IndexError):
             return {"key": "", "name": "Analyses outside a collection"}
+        if key in cache:
+            return cache[key]
         name = key
         report = base / key / "collection.json"
+        layout = None
         try:
-            source = json.loads(report.read_text(encoding="utf-8")).get("source")
+            metadata = json.loads(report.read_text(encoding="utf-8"))
+            source = metadata.get("source")
+            layout = metadata.get("organization")
+            if layout not in ("files", "artifacts", "combined", "schemas"):
+                layout = None
             if source:
                 name = Path(str(source).replace("\\", "/")).name or key
         except (OSError, ValueError, AttributeError):
             pass
-        return {"key": key, "name": name}
+        cache[key] = {"key": key, "name": name, "layout": layout}
+        return cache[key]
 
     def _family_of(self, item: dict) -> str:
         """What an analysis is, as the desktop's tree names it: a recognised profile, else a family by name."""
@@ -3997,7 +4008,7 @@ class Library:
             data.get("revision"),
             closed=earlier_closed,
         )
-        return len(earlier), len(incoming)
+        return len(earlier), len(fresh)
 
     SESSION_LIMIT = 1000  # analyses a case can hold open at once (the desktop's own limit)
 
@@ -4791,11 +4802,10 @@ class Library:
         collection = Collection.reopen(report, pack)
         collection.analyse_single(source, reader)
         entry = collection.entry_for(source)
+        first = None
         merged = 0
         try:
-            _first, merged = self._merge_session(
-                identifier, report / "collection.fireblade-session"
-            )
+            first, merged = self._merge_session(identifier, report / "collection.fireblade-session")
         except (ServiceError, OSError, ValueError):
             merged = 0
         return {
@@ -4805,6 +4815,7 @@ class Library:
             "error": entry.get("error") or "",
             "runs": len(entry.get("runs") or []),
             "analyses_added": merged,
+            "first_analysis": first if merged else None,
         }
 
     def _stage(self, identifier: str, sources: list) -> Path:
@@ -5552,6 +5563,26 @@ class Library:
         case = self._case_for(identifier, index)
         return META_COLUMNS + column_labels(case)
 
+    def empty_columns(self, identifier: str, index: int) -> list[int]:
+        """Grid positions whose source column contains no non-whitespace value."""
+        case = self._case_for(identifier, index)
+        checks = [
+            f"bool_or(trim(CAST({case.column(position)} AS VARCHAR), "
+            "' ' || chr(9) || chr(10) || chr(13)) <> '')"
+            for position in range(len(case.headers))
+        ]
+        if not checks:
+            return []
+        with case.operation():
+            has_rows, *has_values = case.db.execute(
+                "SELECT count(*) > 0, " + ", ".join(checks) + " FROM events"
+            ).fetchone()
+        return (
+            [position for position, has_value in enumerate(has_values, 1) if not has_value]
+            if has_rows
+            else []
+        )
+
     def _view_from(
         self,
         case,
@@ -5668,6 +5699,7 @@ class Library:
         bookmarks_only: bool = False,
         groups: list[int] | None = None,
         path: list[str] | None = None,
+        expanded: bool = False,
         sorts: list[tuple] | None = None,
         interval: str = "",
         expression: dict | None = None,
@@ -5716,15 +5748,26 @@ class Library:
         limit = max(1, min(int(limit), 1000))
         offset = max(0, int(offset))
         depth = tuple(path or ())
+        outline = None
+        outline_total = None
         with case.lock:
             total = case.count(view)
-            page = case.page(view, path=depth, offset=offset, limit=limit)
+            if expanded and view.groups:
+                limit = min(limit, case.settings.page_size)
+                records = case.outline_page(view, offset=offset, limit=limit)
+                page = [record["values"] for record in records if not record["group"]]
+                outline = [json_value(record) if record["group"] else None for record in records]
+                outline_total = case.db.execute(
+                    'SELECT count(*) FROM "__fireblade_outline"'
+                ).fetchone()[0]
+            else:
+                page = case.page(view, path=depth, offset=offset, limit=limit)
             rows = [[json_value(value) for value in row] for row in page]
             totals = footer = None
             if view.total_summaries and view.show_total_footer:
                 values = case.total_summary(view)
                 totals = [json_value(value) for value in values[1:]]
-            leaf = bool(view.groups) and len(depth) == len(view.groups)
+            leaf = outline is None and bool(view.groups) and len(depth) == len(view.groups)
             if leaf and view.summaries and view.group_footer_mode != "hidden":
                 from fireblade.core.summaries import summary_expressions
 
@@ -5738,7 +5781,7 @@ class Library:
                         args,
                     ).fetchone()
                 footer = [json_value(value) for value in found[1:]]
-        grouped = len(depth) < len(view.groups)
+        grouped = outline is None and len(depth) < len(view.groups)
         if not grouped and timestamps and date_format in ("iso", "iso7", "custom"):
             # The desktop reformats the date columns of the view, nothing else: with the core's own functions.
             from fireblade.core.timestamps import display_timestamp, format_timestamp
@@ -5775,6 +5818,8 @@ class Library:
             "offset": offset,
             "limit": limit,
             "grouped": grouped,
+            "outline": outline,
+            "outline_total": outline_total,
             "path": list(depth),
             "timestamps": timestamps,
             "summaries": [

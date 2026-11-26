@@ -132,7 +132,7 @@ def test_ctrl_click_adds_a_row_and_a_second_ctrl_click_takes_it_out(page):
 
 def test_group_by_lists_the_values_with_their_counts_and_back_returns(page):
     command(page, "group-column")
-    page.select_option("#group-select", label="User")
+    page.locator("#group-levels").get_by_role("checkbox", name="User", exact=True).check()
     page.click('[data-act="group-apply"]')
     page.wait_for_selector("#body tr[data-group]")
     groups = page.eval_on_selector_all(
@@ -149,11 +149,11 @@ def test_group_by_lists_the_values_with_their_counts_and_back_returns(page):
 
 def test_grouping_stacks_levels_and_a_level_can_be_removed(page):
     command(page, "group-column")
-    page.select_option("#group-select", label="User")
+    page.locator("#group-levels").get_by_role("checkbox", name="User", exact=True).check()
     page.click('[data-act="group-apply"]')
     page.wait_for_selector("#body tr[data-group]")
     command(page, "group-column")
-    page.select_option("#group-select", label="Host")
+    page.locator("#group-levels").get_by_role("checkbox", name="Host", exact=True).check()
     page.click('[data-act="group-apply"]')
     page.wait_for_function("document.querySelectorAll('#group-chips .gchip').length === 2")
     assert page.locator("#group-chips .gchip").count() == 2
@@ -167,7 +167,7 @@ def test_grouping_stacks_levels_and_a_level_can_be_removed(page):
 
 def test_group_summaries_add_a_column_of_counts_per_group(page):
     command(page, "group-column")
-    page.select_option("#group-select", label="Host")
+    page.locator("#group-levels").get_by_role("checkbox", name="Host", exact=True).check()
     page.click('[data-act="group-apply"]')
     page.wait_for_selector("#body tr[data-group]")
     command(page, "summaries")
@@ -176,6 +176,35 @@ def test_group_summaries_add_a_column_of_counts_per_group(page):
     page.wait_for_function("document.querySelectorAll('#head tr:first-child th').length > 4")
     command(page, "group-column")
     page.click('[data-act="group-remove"]')
+
+
+def test_grouping_orders_multiple_levels_and_shows_each_branch(page):
+    command(page, "group-column")
+    levels = page.locator("#group-levels")
+    levels.get_by_role("checkbox", name="Host", exact=True).check()
+    levels.get_by_role("checkbox", name="User", exact=True).check()
+    levels.get_by_role("button", name="Move User up", exact=True).click()
+    page.click('[data-act="group-apply"]')
+    assert page.locator("#group-chips .gname").all_text_contents() == ["User", "Host"]
+    page.locator('#body tr[data-group="bob"]').click()
+    page.wait_for_function("document.querySelector('#head th:nth-child(3)').textContent === 'Host'")
+    child = page.locator("#body tr[data-group]").first
+    host = child.get_attribute("data-value")
+    child.click()
+    page.wait_for_selector("#body tr[data-row]")
+    assert set(_column_values(page, "User")) == {"bob"}
+    assert set(_column_values(page, "Host")) == {host}
+    assert page.locator("#group-path").inner_text() == f"User: bob › Host: {host}"
+    command(page, "expand-groups")
+    page.wait_for_function(f"document.querySelectorAll('#body tr[data-row]').length === {ROWS}")
+    expanded = page.locator("#body .outline-group").all_text_contents()
+    assert all(
+        any(f"User: {user}" in heading for heading in expanded)
+        for user in ("alice", "bob", "carol")
+    )
+    assert any("Host:" in heading for heading in expanded)
+    command(page, "collapse-groups")
+    page.wait_for_function("document.querySelectorAll('#body tr[data-group]').length === 3")
 
 
 def test_columns_hides_and_shows_a_column(page):
@@ -193,6 +222,32 @@ def test_columns_hides_and_shows_a_column(page):
     page.wait_for_function(
         "[...document.querySelectorAll('#head tr:first-child th')].some(t => t.innerText.trim().startsWith('Path'))"
     )
+
+
+def test_hide_empty_columns_checks_beyond_the_first_page_and_show_all_is_saved(page, server):
+    from conftest import make_case
+
+    csv = "Name,AlwaysEmpty,Later\n" + "".join(f"row {number},   ,\n" for number in range(260))
+    make_case(server, "Sparse columns", csv + "last,,present\n")
+    page.locator('.toolbar [data-act="refresh-cases"]').click()
+    page.locator('[data-tab="cases"]').click()
+    page.locator('#cases-body tr:has(td:text-is("Sparse columns")) td').first.dblclick()
+    page.wait_for_function("document.getElementById('pageinfo').innerText.includes('/ 261')")
+    assert {"AlwaysEmpty", "Later"} <= set(_headers(page))
+    command(page, "columns")
+    page.click("#hide-empty-columns")
+    page.wait_for_function(
+        "document.getElementById('status').innerText === '1 empty column(s) hidden'"
+    )
+    assert "AlwaysEmpty" not in _headers(page) and "Later" in _headers(page)
+    with page.expect_response(
+        lambda response: response.url.endswith("/display")
+        and response.request.method == "POST"
+        and response.request.post_data_json["hidden"] == []
+    ) as saved:
+        page.click('[data-act="columns-reset"]')
+    assert saved.value.ok and saved.value.json()["hidden"] == []
+    assert "AlwaysEmpty" in _headers(page)
 
 
 def test_multi_column_sort_orders_by_each_key_in_turn(page):

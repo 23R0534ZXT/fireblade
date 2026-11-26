@@ -33,6 +33,7 @@ const state = {
   cellNotes: new Map(),
   bookmarksOnly: false,
   groups: [],          // column indexes, outer first
+  expandAll: false,    // paginated outline of group headers and evidence rows
   interval: "",        // date interval applied to the grouped column
   expression: null,    // FilterGroup sent to the core
   path: [],            // drill-down values
@@ -250,7 +251,7 @@ async function runRetry(path, reader) {
       `/api/cases/${state.openCase.id}/collections/${encodeURIComponent(item.collection)}/retry`,
       { path: item.path, reader });
     closeModals();
-    await openCase(state.openCase.id);
+    await openCase(state.openCase.id, payload.first_analysis);
     say(`Read with ${payload.reader}: ${payload.status}`
       + (payload.error ? ` — ${payload.error}` : "")
       + `, ${payload.analyses_added} analysis(es) added`);
@@ -1463,7 +1464,7 @@ function renderCaseSelection() {
   $("restore-case").hidden = !(target && target.storage_archive);
 }
 
-async function openCase(identifier) {
+async function openCase(identifier, analysisIndex = null) {
   try {
     const kept = state.cases.find((item) => item.id === identifier);
     if (kept && kept.storage_archive) {
@@ -1482,14 +1483,13 @@ async function openCase(identifier) {
     } catch (_) {
       state.openCase.closed = [];
     }
-    state.analysis = detail.analyses.length ? detail.analyses[0].index : 0;
-    state.filters = [];
-    state.search = "";
-    state.sort = null;
-    state.descending = false;
-    state.offset = 0;
-    state.selected = null;
-    $("search").value = "";
+    const analysis = detail.analyses.find((item) => item.index === analysisIndex) || detail.analyses[0];
+    state.analysis = analysis?.index ?? 0;
+    resetAnalysisQuery();
+    const layout = $("import-layout");
+    if ([...layout.options].some((option) => option.value === detail.layout)) {
+      layout.value = detail.layout;
+    }
     $("doctab").textContent = detail.name || "Case";
     $("doctab").classList.remove("docempty");
     $("casecombo-label").textContent = detail.name || "Case";
@@ -1499,9 +1499,9 @@ async function openCase(identifier) {
     if (!detail.analyses.length) {
       clearGrid("This case holds no analysis yet. Import a file to begin.");
       say("Case opened: no analysis inside", true);
-      return;
+      return true;
     }
-    await loadRows(true);
+    return await loadRows(true);
   } catch (error) {
     say(error.message, true);
   }
@@ -1510,6 +1510,7 @@ async function openCase(identifier) {
 function closeCase() {
   state.openCase = null;
   resetTimeline();
+  resetAnalysisQuery();
   state.columns = [];
   state.rows = [];
   state.total = 0;
@@ -1537,8 +1538,11 @@ function currentDisplay() {
 
 async function loadLayout() {
   if (!state.openCase) return;
+  const { id } = state.openCase;
+  const analysis = state.analysis;
   try {
-    const payload = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`);
+    const payload = await api(`/api/cases/${id}/analyses/${analysis}/display`);
+    if (state.openCase?.id !== id || state.analysis !== analysis) return;
     state.widths = payload.widths || {};
     state.hidden = new Set(payload.hidden || []);
     state.pinned = new Set(payload.pinned || []);
@@ -1831,15 +1835,25 @@ function applyStoredRowHeight() {
   document.documentElement.classList.toggle("rowclip", prefs.wrap && !prefs.fit);
 }
 
+/* Query indexes only have meaning for the analysis that supplied the columns. */
+function resetAnalysisQuery() {
+  rowsRequest?.abort();
+  state.filters = []; state.search = ""; state.expression = null; state.bookmarksOnly = false;
+  state.sort = null; state.descending = false; state.multiSort = []; state.groups = []; state.path = [];
+  state.expandAll = false;
+  state.interval = ""; state.summaries = []; state.totalSummaries = []; state.order = ""; state.filterOps = {};
+  state.sortType = "text"; state.footerMode = "hidden"; state.showTotal = true;
+  state.offset = 0; state.selected = null;
+  $("search").value = "";
+  $("bookmarks-only").classList.remove("active");
+  renderGroupBar();
+}
+
 /* "Reset the view": the desktop's reset: no filter, no sort, no group, nothing hidden or pinned. */
 function resetView() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
-  state.filters = []; state.search = ""; state.expression = null; state.bookmarksOnly = false;
-  state.sort = null; state.multiSort = []; state.groups = []; state.path = []; state.summaries = []; state.totalSummaries = []; state.order = "";
+  resetAnalysisQuery();
   state.hidden = new Set(); state.pinned = new Set(); state.pinnedRight = new Set(); state.widths = {}; state.colOrder = [];
-  state.offset = 0;
-  $("search").value = "";
-  $("bookmarks-only").classList.remove("active");
   saveLayoutSoon();
   loadRows(true);
   say("View reset");
@@ -2174,24 +2188,18 @@ function stepAnalysis(direction) {
   say(`Analysis: ${next.label}`);
 }
 
-/* The grouped grid drills down one level at a time: collapsing is the root, and
-   expanding walks into the first group of the level on screen. */
 function collapseEveryGroup() {
-  if (!state.grouped) { say("This analysis is not grouped", true); return; }
+  if (!state.groups.length) { say("This analysis is not grouped", true); return; }
+  state.expandAll = false;
   state.path = [];
-  state.offset = 0;
   loadRows(true);
-  say("Every group collapsed: back to the first level");
 }
 
 async function expandEveryGroup() {
-  if (!state.grouped) { say("This analysis is not grouped", true); return; }
-  const first = state.rows[0];
-  if (!first) { say("No group on this page", true); return; }
-  state.path = [...state.path, String(first[0] ?? "")];
-  state.offset = 0;
-  await loadRows(true);
-  say("Opened the first group of this level");
+  if (!state.groups.length) { say("This analysis is not grouped", true); return; }
+  state.expandAll = true;
+  state.path = [];
+  if (await loadRows(true)) say("All group levels expanded in a paginated view");
 }
 
 /* Every analysis is a file the case holds: its source, its hash, its rows. */
@@ -6068,6 +6076,7 @@ function query() {
 function rowsUrl(extra) {
   const base = `/api/cases/${state.openCase.id}/analyses/${state.analysis}/rows`;
   const params = query();
+  if (state.expandAll && state.groups.length) params.set("expanded", "true");
   if (extra) extra(params);
   return `${base}?${params.toString()}`;
 }
@@ -6090,10 +6099,12 @@ async function loadRows(reset) {
   // screen must not survive into "copy the selected rows".
   state.selection.clear();
   state.anchor = null;
+  rowsRequest?.abort();
   const controller = new AbortController();
   rowsRequest = controller;
   try {
     const payload = await apiAbortable(rowsUrl(), controller.signal);
+    if (controller.signal.aborted) return false;
     state.columns = payload.columns;
     state.rows = payload.rows;
     state.total = payload.total;
@@ -6104,13 +6115,18 @@ async function loadRows(reset) {
     state.styles = payload.styles || {};
     state.ruleSet = payload.rule_set || [];
     await loadBookmarks();
+    if (controller.signal.aborted) return false;
     await loadCellNotes();
+    if (controller.signal.aborted) return false;
     await loadRules();
+    if (controller.signal.aborted) return false;
     await loadLayout();
+    if (controller.signal.aborted) return false;
     renderPaneTabs();
+    return true;
   } catch (error) {
-    if (error.name === "AbortError") return;   // the analyst stopped it: not a failure
-    say(error.message, true);
+    if (!controller.signal.aborted && error.name !== "AbortError") say(error.message, true);
+    return false;
   } finally {
     if (rowsRequest === controller) rowsRequest = null;
   }
@@ -6235,6 +6251,10 @@ function renderGroupBar() {
   const hint = $("group-label");
   const clear = $("group-clear");
   if (!chips) return;
+  $("group-path").textContent = state.path.map((value, depth) => {
+    const name = state.columns[state.groups[depth] + 1] || "";
+    return `${name}: ${value ?? "(empty)"}`;
+  }).join(" › ");
   chips.innerHTML = "";
   if (!state.groups.length) {
     hint.hidden = false;
@@ -6296,6 +6316,7 @@ function removeGroupLevel(level) {
 
 function clearGrouping() {
   state.groups = [];
+  state.expandAll = false;
   state.path = [];
   state.interval = "";
   renderGroupBar();
@@ -6329,7 +6350,8 @@ function renderGrid() {
     clearGrid("No analysis open.");
     return;
   }
-  empty.hidden = state.rows.length > 0;
+  const outline = state.payload?.outline;
+  empty.hidden = (outline || state.rows).length > 0;
   empty.textContent = state.total
     ? "No row on this page."
     : (state.search || state.filters.length ? "No row matches these filters." : "This analysis is empty.");
@@ -6368,7 +6390,7 @@ function renderGrid() {
   $("head").innerHTML = head.join("");
 
   const clipped = document.documentElement.classList.contains("rowclip");
-  $("body").innerHTML = state.rows.map((row) => {
+  const dataRows = state.rows.map((row) => {
     const id = row[0];
     // Column 0 is the row identifier: it gets its own cell, after the checkbox one.
     const rowNotes = notesForRow(id);
@@ -6412,13 +6434,32 @@ function renderGrid() {
       : "";
     return `<tr data-row="${escapeHtml(String(id))}" class="${rowSelected(id) ? "sel" : ""}"${style}>
       <td class="markcell"><span class="cb ${marked}" title="${marked ? escapeHtml(String(state.bookmarks.get(String(id)) || "Bookmarked")) : "Bookmark this row"}"></span></td>${cells}</tr>`;
-  }).join("") + footerRowsHtml(shown, 0);
+  });
+  let nextRow = 0;
+  const rendered = outline
+    ? outline.map((record) => record ? outlineRow(record, shown.length + 1) : dataRows[nextRow++])
+    : dataRows;
+  $("body").innerHTML = rendered.join("") + footerRowsHtml(shown, 0);
 
-  const from = state.total ? state.offset + 1 : 0;
-  const to = Math.min(state.offset + state.rows.length, state.total);
-  $("pageinfo").textContent = `${from}–${to} / ${state.total} row(s)`;
+  const total = state.payload?.outline_total ?? state.total;
+  const from = total ? state.offset + 1 : 0;
+  const to = Math.min(state.offset + rendered.length, total);
+  $("pageinfo").textContent = `${from}–${to} / ${total} ${outline ? "entries" : "row(s)"}`;
   say(`${state.total} row(s) in this analysis${state.filters.length ? ` — ${state.filters.length} filter(s)` : ""}`);
   applyPinning();
+}
+
+function outlineRow(record, colspan) {
+  const depth = record.path.length;
+  const name = state.columns[state.groups[depth - 1] + 1];
+  const [value, count, ...summaries] = record.values;
+  const label = `${name}: ${value === null || value === "" ? "(empty)" : value}`;
+  const summary = summaries.length ? ` · ${summaries.map((item, index) =>
+    summaryText(state.payload.summaries[index], item)).join(" · ")}` : "";
+  const path = record.footer ? "" : ` data-outline-path="${escapeHtml(JSON.stringify(record.path))}"`;
+  return `<tr class="${record.footer ? "gfooter" : "outline-group"}"${path}>
+    <td colspan="${colspan}" style="padding-left:${8 + (depth - 1) * 14}px">
+    ${record.footer ? "Total · " : "▾ "}<b>${escapeHtml(label)}</b> — ${count} row(s)${escapeHtml(summary)}</td></tr>`;
 }
 
 /* The desktop charts the grouped counts; this is the same page of groups as the
@@ -6598,9 +6639,26 @@ function showTab(name) {
 
 function openGroupPicker() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
-  const select = $("group-select");
-  select.innerHTML = state.columns.slice(1).map((name, index) =>
-    `<option value="${index}">${escapeHtml(name)}</option>`).join("");
+  const list = $("group-levels");
+  const columns = state.columns.slice(1);
+  const order = [...state.groups, ...columns.map((_, column) => column)
+    .filter((column) => !state.groups.includes(column))];
+  list.innerHTML = order.map((column) => `
+    <div class="row">
+      <label><input type="checkbox" data-group-level="${column}" ${state.groups.includes(column) ? "checked" : ""}>
+        ${escapeHtml(columns[column])}</label>
+      <button type="button" class="btn" data-group-up aria-label="Move ${escapeHtml(columns[column])} up">↑</button>
+      <button type="button" class="btn" data-group-down aria-label="Move ${escapeHtml(columns[column])} down">↓</button>
+    </div>`).join("");
+  list.querySelectorAll("[data-group-up], [data-group-down]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const row = button.parentElement;
+      if (button.hasAttribute("data-group-up")) row.previousElementSibling?.before(row);
+      else row.nextElementSibling?.after(row);
+      button.focus();
+    });
+  });
+  $("group-interval").value = state.interval;
   $("group-modal").classList.add("show");
 }
 
@@ -6682,6 +6740,29 @@ function openColumnManager() {
   $("columns-modal").classList.add("show");
 }
 
+async function hideEmptyColumns() {
+  if (!state.openCase) return;
+  const { id } = state.openCase;
+  const analysis = state.analysis;
+  const button = $("hide-empty-columns");
+  button.disabled = true;
+  say("Checking all rows for empty columns…");
+  try {
+    const { columns } = await api(`/api/cases/${id}/analyses/${analysis}/empty-columns`);
+    if (state.openCase?.id !== id || state.analysis !== analysis) return;
+    const before = state.hidden.size;
+    columns.forEach((column) => state.hidden.add(column));
+    renderGrid();
+    if ($("columns-modal").classList.contains("show")) openColumnManager();
+    saveLayoutSoon();
+    say(`${state.hidden.size - before} empty column(s) hidden`);
+  } catch (error) {
+    if (state.openCase?.id === id && state.analysis === analysis) say(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 /* A pinned column freezes on its edge. The offsets accumulate the real widths, so
    two pinned columns sit side by side instead of on top of each other. */
 function pinOffsets() {
@@ -6732,8 +6813,8 @@ function applyPinning() {
 }
 
 function applyGrouping() {
-  const column = Number($("group-select").value);
-  if (!state.groups.includes(column)) state.groups.push(column);
+  const checked = [...$("group-levels").querySelectorAll("[data-group-level]:checked")];
+  state.groups = checked.map((input) => Number(input.dataset.groupLevel));
   state.interval = $("group-interval").value;
   state.path = [];
   closeModals();
@@ -6992,9 +7073,7 @@ function wire() {
     const node = event.target.closest("[data-analysis]");
     if (!node) return;
     state.analysis = Number(node.dataset.analysis);
-    state.filters = [];
-    state.offset = 0;
-    state.selected = null;
+    resetAnalysisQuery();
     renderTree();
     loadRows(true);
   });
@@ -7189,6 +7268,13 @@ function wire() {
   document.addEventListener("click", () => { $("row-menu").hidden = true; $("filter-operators").hidden = true; });
 
   $("body").addEventListener("click", (event) => {
+    const outline = event.target.closest("tr[data-outline-path]");
+    if (outline) {
+      state.expandAll = false;
+      state.path = JSON.parse(outline.dataset.outlinePath);
+      loadRows(true);
+      return;
+    }
     const group = event.target.closest("tr[data-group]");
     if (group) {
       const raw = group.dataset.value;
@@ -7222,11 +7308,13 @@ function wire() {
   });
   $("prev").addEventListener("click", () => {
     if (state.path.length) { state.path.pop(); state.offset = 0; loadRows(true); return; }
-    state.offset = Math.max(0, state.offset - PAGE);
+    state.offset = Math.max(0, state.offset - (state.payload?.limit ?? PAGE));
     loadRows(false);
   });
   $("next").addEventListener("click", () => {
-    if (state.offset + PAGE < state.total) { state.offset += PAGE; loadRows(false); }
+    const total = state.payload?.outline_total ?? state.total;
+    const step = state.payload?.limit ?? PAGE;
+    if (state.offset + step < total) { state.offset += step; loadRows(false); }
   });
   $("pane-tabs").addEventListener("click", async (event) => {
     if (!event.target.closest("#close-analysis") || !state.openCase) return;
@@ -7271,16 +7359,25 @@ function wire() {
     if (files.length) previewFiles(files);
   });
   // The layout is also a view of what is already in the case: choosing one lays the imports out again.
-  $("import-layout").addEventListener("change", async () => {
+  $("import-layout").addEventListener("change", async (event) => {
     if (!state.openCase || !(state.openCase.collections || []).length) return;
-    const mode = $("import-layout").value;
+    const select = event.currentTarget;
+    const mode = select.value;
+    const { id, layout } = state.openCase;
+    select.disabled = true;
     say("Laying the analyses out again…");
     try {
-      const done = await apiPost(`/api/cases/${state.openCase.id}/reorganize`, { mode });
-      await openCase(state.openCase.id);
-      say(done.collections ? "Layout changed" : "Already laid out that way");
+      const done = await apiPost(`/api/cases/${id}/reorganize`, { mode });
+      if (state.openCase?.id === id && await openCase(id)) {
+        say(done.collections ? "Layout changed" : "Already laid out that way");
+      }
     } catch (error) {
-      say(error.message, true);
+      if (state.openCase?.id === id) {
+        if (layout) select.value = layout;
+        say(error.message, true);
+      }
+    } finally {
+      select.disabled = false;
     }
   });
   $("folder-input").addEventListener("change", (event) => {
@@ -7957,7 +8054,8 @@ async function act(name, node) {
     case "bookmark-row": await markSelection("bookmarked"); break;
     case "derived": openDerivedDialog(); break;
     case "derived-add": await addDerived(); break;
-    case "columns-reset": state.hidden.clear(); renderGrid(); openColumnManager(); break;
+    case "hide-empty-columns": await hideEmptyColumns(); break;
+    case "columns-reset": state.hidden.clear(); renderGrid(); openColumnManager(); saveLayoutSoon(); break;
     case "group-apply": applyGrouping(); break;
     case "group-remove":
       clearGrouping();

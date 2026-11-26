@@ -139,6 +139,7 @@ body{
 .gx{border:0;background:none;color:var(--text);cursor:pointer;font-size:13px;line-height:1;padding:0 3px;opacity:.65;font-family:inherit}
 .gx:hover{opacity:1;color:var(--accent-dark)}
 .gsep{color:var(--text);opacity:.4;font-size:12px;padding:0 1px;cursor:default}
+.outline-group td{background:var(--header);font-size:11px;color:var(--text)}
 .groupbar.dropready{outline:1px dashed var(--accent);outline-offset:1px}
 #group-clear{font-size:11px;padding:2px 8px}
 
@@ -245,6 +246,8 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 .columns-list label:hover{background:var(--row-hover)}
 .columns-list input[type=checkbox]{margin:0}
 .columns-list .pin{margin-left:auto;font-size:11px;color:var(--muted)}
+#group-levels .row{padding:0 5px}
+#group-levels label{flex:1;min-width:0;border:0}
 
 .timeline-legend{display:flex;gap:4px 14px;padding:2px 8px;font-size:11px;flex-wrap:wrap;max-height:64px;overflow-y:auto}
 .timeline-legend .chip,#finding-counts .chip{display:flex;align-items:center;gap:5px}

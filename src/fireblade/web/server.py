@@ -1463,6 +1463,13 @@ def create_app(
     def columns(identifier: str, index: int):
         return {"columns": library.columns(identifier, index)}
 
+    @app.get("/api/cases/{identifier}/analyses/{index}/empty-columns")
+    def empty_columns(identifier: str, index: int):
+        try:
+            return {"columns": library.empty_columns(identifier, index)}
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+
     @app.get("/api/cases/{identifier}/analyses/{index}/rows")
     def rows(
         identifier: str,
@@ -1476,6 +1483,7 @@ def create_app(
         bookmarks_only: bool = False,
         group: list[int] = Query(default=[]),
         path: list[str] = Query(default=[]),
+        expanded: bool = False,
         sortkey: list[str] = Query(default=[]),
         interval: str = "",
         expression_json: str = "",
@@ -1506,6 +1514,7 @@ def create_app(
             bookmarks_only=bookmarks_only,
             groups=group,
             path=path,
+            expanded=expanded,
             sorts=sorts,
             interval=interval,
             expression=expression,

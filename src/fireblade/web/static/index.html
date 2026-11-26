@@ -220,6 +220,7 @@
         <div class="groupbar" id="groupbar">
           <div class="hint" id="group-label">Drag a header here to group the results</div>
           <div class="chips" id="group-chips"></div>
+          <div class="hint" id="group-path" aria-live="polite"></div>
           <div class="grow"></div>
           <button class="btn" id="group-clear" hidden title="Remove every grouping level">Clear</button>
           <button class="btn" data-act="group-column" title="Grouping options and date interval">Group…</button>
@@ -1675,6 +1676,7 @@
       <div id="columns-list" class="columns-list"></div>
     </div>
     <div class="foot">
+      <button class="btn" id="hide-empty-columns" data-act="hide-empty-columns">Hide empty columns</button>
       <button class="btn" data-act="columns-reset">Show all</button>
       <button class="btn" data-act="derived">Add a derived column…</button>
       <button class="btn" data-act="settings-close">Close</button>
@@ -1686,10 +1688,8 @@
   <div class="dialog">
     <h3>Group the results</h3>
     <div class="body">
-      <div class="row">
-        <label for="group-select">Add a level</label>
-        <select id="group-select"></select>
-      </div>
+      <div class="note">Tick the columns to group and order the levels from top to bottom.</div>
+      <div class="columns-list" id="group-levels"></div>
       <div class="row">
         <label for="group-interval">Date interval</label>
         <select id="group-interval">
@@ -1703,7 +1703,7 @@
       <div class="note">Drag a header onto the bar to add a level; each level has its own ×. Grouping counts every row of the analysis. Click a group to drill down, Root to come back.</div>
     </div>
     <div class="foot">
-      <button class="btn" data-act="group-apply">Add level</button>
+      <button class="btn" data-act="group-apply">Apply grouping</button>
       <button class="btn" data-act="group-remove">Remove grouping</button>
       <button class="btn" data-act="settings-close">Cancel</button>
     </div>

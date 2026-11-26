@@ -1,3 +1,23 @@
+# Fireblade 0.8.7 — the Host, walked end to end with its real readers
+
+The Host was driven in a browser from case creation to erasure, on a Windows 11 collection (496 files,
+482 analyses, 613 Hayabusa alerts) with the .NET readers and Hayabusa installed, and on Linux logs, the
+raw reference pack and disk images. What that found is fixed.
+
+- **The attack graph places techniques on the kill chain**: Hayabusa 4 writes tactics in short form and
+  none was recognised.
+- **A usable PDF**: bold headings, real table columns, repeated headers, page numbers; the client report
+  names each analysis by its file, not by a path on the server.
+- **A portable case keeps the names of its files** (they became `0000.pf`, `0003.db`…), and downloads
+  under the case's name. A new case opens at once.
+- **Large cases stay usable**: the timeline no longer lets hundreds of date selectors push the chart off
+  screen, a global search is a job with progress and a Stop, and a folder import counts every file.
+- **Honest results**: an IOC line the parser rejects is "not searched", with its reason; the hunt covers
+  the whole case by default; coverage findings, history entries and analyses carry readable names.
+- English throughout, including the disk walk; plus the smaller fixes listed in the changelog.
+
+---
+
 # Fireblade 0.8.6 — the attack graph proves what it shows
 
 Every card and link of the attack graph opens its evidence: what it represents, how Fireblade got it,

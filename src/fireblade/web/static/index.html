@@ -1672,8 +1672,13 @@
   <div class="dialog">
     <h3>Columns</h3>
     <div class="body">
-      <div class="note">Untick to hide a column, pin the ones you need to keep in sight while scrolling.</div>
+      <div class="row">
+        <label for="column-search">Find a column</label>
+        <input id="column-search" type="search" autocomplete="off">
+        <span id="column-visibility" class="note" role="status"></span>
+      </div>
       <div id="columns-list" class="columns-list"></div>
+      <div id="columns-no-match" class="note" hidden>No column matches this search.</div>
     </div>
     <div class="foot">
       <button class="btn" id="hide-empty-columns" data-act="hide-empty-columns">Hide empty columns</button>

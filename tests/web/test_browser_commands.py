@@ -263,6 +263,25 @@ def test_columns_hides_and_shows_a_column(page):
     )
 
 
+def test_column_search_keeps_hidden_columns_reachable(page):
+    command(page, "columns")
+    search = page.get_by_role("searchbox", name="Find a column")
+    search.fill("PATH")
+    assert page.locator("#columns-list label:visible [data-column-label]").all_text_contents() == [
+        "Path"
+    ]
+    page.locator("#columns-list label:visible input[data-col]").uncheck()
+    assert page.locator("#column-visibility").inner_text() == "1 hidden"
+    search.fill("does not exist")
+    assert page.locator("#columns-no-match").is_visible()
+    search.fill("path")
+    assert not page.locator("#columns-list label:visible input[data-col]").is_checked()
+    page.locator('[data-act="columns-reset"]').click()
+    assert search.input_value() == "path"
+    assert page.locator("#column-visibility").inner_text() == "0 hidden"
+    assert "Path" in _headers(page)
+
+
 def test_hide_empty_columns_checks_beyond_the_first_page_and_show_all_is_saved(page, server):
     from conftest import make_case
 

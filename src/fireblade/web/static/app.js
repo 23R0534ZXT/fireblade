@@ -6721,11 +6721,12 @@ function moveColumn(header, direction) {
 
 function openColumnManager() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
+  if (!$("columns-modal").classList.contains("show")) $("column-search").value = "";
   const list = $("columns-list");
   list.innerHTML = orderedColumns().map(({ name, index }) => `
     <label>
       <input type="checkbox" data-col="${index}" ${state.hidden.has(index) ? "" : "checked"}>
-      <span>${escapeHtml(index === 0 ? "Row number" : name)}</span>
+      <span data-column-label>${escapeHtml(index === 0 ? "Row number" : name)}</span>
       ${index ? `<span class="pin"><button class="btn" data-move="${index - 1}" data-dir="-1" title="Move this column earlier">↑</button>
         <button class="btn" data-move="${index - 1}" data-dir="1" title="Move this column later">↓</button>
         width <input type="number" data-width="${index}" min="30" max="1200" style="width:64px" value="${state.widths[index] || ""}" placeholder="auto">
@@ -6749,6 +6750,7 @@ function openColumnManager() {
     box.addEventListener("change", () => {
       const index = Number(box.dataset.col);
       if (box.checked) state.hidden.delete(index); else state.hidden.add(index);
+      updateColumnList();
       renderGrid();
       saveLayoutSoon();
     });
@@ -6782,7 +6784,20 @@ function openColumnManager() {
       saveLayoutSoon();
     });
   });
+  updateColumnList();
   $("columns-modal").classList.add("show");
+}
+
+function updateColumnList() {
+  const query = $("column-search").value.trim().toLocaleLowerCase();
+  let matched = 0;
+  for (const name of $("columns-list").querySelectorAll("[data-column-label]")) {
+    const visible = name.textContent.toLocaleLowerCase().includes(query);
+    name.parentElement.hidden = !visible;
+    if (visible) matched += 1;
+  }
+  $("columns-no-match").hidden = matched > 0;
+  $("column-visibility").textContent = `${state.hidden.size} hidden`;
 }
 
 async function hideEmptyColumns() {
@@ -7420,6 +7435,7 @@ function wire() {
   });
 
   $("details-toggle").addEventListener("click", toggleDetails);
+  $("column-search").addEventListener("input", updateColumnList);
 
   $("import-input").addEventListener("change", (event) => {
     const files = [...(event.target.files || [])];

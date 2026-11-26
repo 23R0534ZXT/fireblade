@@ -1485,6 +1485,7 @@ async function openCase(identifier, analysisIndex = null) {
       resetTimeline();
       resetFindings();
       resetGraph();
+      resetWorkspace();
     }
     // The analyses closed and kept: the tree lists them, and they open again.
     try {
@@ -1522,6 +1523,7 @@ function closeCase() {
   resetTimeline();
   resetFindings();
   resetGraph();
+  resetWorkspace();
   resetAnalysisQuery();
   state.columns = [];
   state.rows = [];
@@ -4875,19 +4877,31 @@ $("global-text").addEventListener("keydown", (event) => {
 
 /* ---------- actions and tracking ---------- */
 
-const actionState = { items: [], shown: [], selected: null };
+const actionState = { items: [], shown: [], selected: null, revision: 0 };
 
 const workspaceState = { entities: [], indicators: [], selected: null };
 
+function resetWorkspace() {
+  Object.assign(actionState, { items: [], shown: [], selected: null, revision: actionState.revision + 1 });
+  Object.assign(workspaceState, { entities: [], indicators: [], selected: null });
+  stopEditingEntity();
+  renderActions();
+  renderEntities();
+  renderIndicators();
+}
+
 async function loadActions() {
   if (!state.openCase) return;
+  const { id, name } = state.openCase;
+  const everywhere = $("action-scope").value === "all";
+  const revision = ++actionState.revision;
   try {
-    const payload = await api(`/api/cases/${state.openCase.id}/workspace`);
-    actionState.items = (payload.actions || []).map((item) => ({ ...item, _caseId: state.openCase.id,
-                                                                  _caseName: state.openCase.name }));
+    const payload = await api(`/api/cases/${id}/workspace`);
+    if (actionState.revision !== revision) return;
+    let items = (payload.actions || []).map((item) => ({ ...item, _caseId: id, _caseName: name }));
     // "Every case of the library": the actions of each case, each marked with its own case.
-    if ($("action-scope").value === "all") {
-      const others = state.cases.filter((item) => item.id !== state.openCase.id && !item.storage_archive);
+    if (everywhere) {
+      const others = state.cases.filter((item) => item.id !== id && !item.storage_archive);
       const lists = await Promise.all(others.map(async (item) => {
         try {
           const other = await api(`/api/cases/${item.id}/workspace`);
@@ -4896,15 +4910,17 @@ async function loadActions() {
           return [];
         }
       }));
-      actionState.items = actionState.items.concat(...lists);
+      if (actionState.revision !== revision) return;
+      items = items.concat(...lists);
     }
+    actionState.items = items;
     workspaceState.entities = payload.entities || [];
     workspaceState.indicators = payload.iocs || [];
     renderActions();
     renderEntities();
     renderIndicators();
   } catch (error) {
-    say(error.message, true);
+    if (actionState.revision === revision) say(error.message, true);
   }
 }
 

@@ -8035,12 +8035,18 @@ async function boot() {
   await loadCases();
   // A first start can be slow (a case container is starting): do not take the analyst
   // back from the tab they already chose while the list was loading.
+  const linkedCase = CASE_PREFIX.slice("/case/".length);
+  if (!tabChosen && state.cases.some((item) => item.id === linkedCase)) {
+    await openCase(linkedCase);
+  }
   if (!tabChosen) showTab(state.cases.length === 1 ? "analyses" : "cases");
   tabChosen = false;
-  clearGrid(state.cases.length
-    ? "Open a case from the Cases tab."
-    : "The library is empty. A case written by the Windows edition opens here as soon as its folder is in the library.");
-  $("tree").innerHTML = '<div class="empty">No case open.</div>';
+  if (!state.openCase) {
+    clearGrid(state.cases.length
+      ? "Open a case from the Cases tab."
+      : "The library is empty. A case written by the Windows edition opens here as soon as its folder is in the library.");
+    $("tree").innerHTML = '<div class="empty">No case open.</div>';
+  }
   checkForUpdate();
 }
 

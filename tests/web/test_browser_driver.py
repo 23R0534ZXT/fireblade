@@ -21,7 +21,7 @@ import pytest
 from _browser import serving  # noqa: E402
 
 pytest.importorskip("playwright.sync_api")
-from playwright.sync_api import sync_playwright  # noqa: E402
+from playwright.sync_api import expect, sync_playwright  # noqa: E402
 
 from fireblade.web import agency  # noqa: E402
 
@@ -151,6 +151,11 @@ def test_the_driver_forwards_the_grid_page_requested_by_the_browser(driver):
     payload = response.json()
     assert payload["offset"] == 4
     assert len(payload["rows"]) == 3
+
+
+def test_the_driver_link_opens_the_requested_case(page):
+    expect(page.locator("#casecombo-label")).to_have_text("Container case", timeout=5000)
+    assert page.locator("#analysis-view").is_visible()
 
 
 def test_the_page_under_the_prefix_opens_its_case_and_reads_its_evidence(page, driver):

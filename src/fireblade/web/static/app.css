@@ -331,6 +331,7 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 /* The bookmark cell stays on the left, so a column pinned on the left starts
    after it instead of sliding under it. */
 thead th:first-child{position:sticky;left:0;z-index:5;background:var(--header)}
+thead th[data-bookmark-group]{cursor:grab;text-align:center}
 .colfilter th:first-child{position:sticky;left:0;z-index:5;background:var(--header)}
 tbody td.markcell{position:sticky;left:0;z-index:2;background:var(--window)}
 tbody tr:nth-child(even) td.markcell{background:var(--alt)}

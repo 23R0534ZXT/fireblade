@@ -207,6 +207,32 @@ def test_grouping_orders_multiple_levels_and_shows_each_branch(page):
     page.wait_for_function("document.querySelectorAll('#body tr[data-group]').length === 3")
 
 
+def test_dragging_the_bookmark_header_groups_rows_and_updates_when_a_mark_changes(page):
+    select(page, 0, 1)
+    command(page, "mark-selection")
+    page.wait_for_function("document.querySelectorAll('#body .cb.marked').length === 2")
+
+    header = page.get_by_role("columnheader", name="Bookmark status")
+    header.drag_to(page.locator("#groupbar"))
+    marked = page.locator('#body tr[data-group="Marked"]')
+    unmarked = page.locator('#body tr[data-group="Unmarked"]')
+    marked.wait_for()
+    assert marked.locator("td").last.inner_text() == "2"
+    assert unmarked.locator("td").last.inner_text() == str(ROWS - 2)
+
+    marked.click()
+    page.locator("#body tr[data-row] .cb.marked").first.click()
+    page.wait_for_function("document.querySelectorAll('#body tr[data-row]').length === 1")
+    assert page.locator("#group-path").inner_text() == "Bookmark status: Marked"
+    command(page, "expand-groups")
+    page.wait_for_function(f"document.querySelectorAll('#body tr[data-row]').length === {ROWS}")
+    assert page.locator("#body .outline-group b").all_text_contents() == [
+        "Bookmark status: Unmarked",
+        "Bookmark status: Marked",
+    ]
+    assert page.locator("#body tr[data-row] .cb.marked").count() == 1
+
+
 def test_columns_hides_and_shows_a_column(page):
     assert "Path" in _headers(page)
     command(page, "columns")

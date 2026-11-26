@@ -32,6 +32,7 @@ from fireblade.core.investigations import InvestigationLibrary
 from fireblade.core.models import OPERATORS as CORE_OPERATORS
 from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View
 from fireblade.core.sessions import read_session
+from fireblade.core.summaries import BOOKMARK_GROUP_COLUMN
 from fireblade.core.timeline import TimelineStore
 from fireblade.core.workspace_reader import WorkspaceReader
 from fireblade.web import english
@@ -5630,7 +5631,9 @@ class Library:
             view.sorts = [SortKey(int(column), kind, bool(flag)) for column, flag, kind in keys]
         if groups:
             for column in groups:
-                if not 0 <= int(column) < len(case.headers):
+                if int(column) != BOOKMARK_GROUP_COLUMN and not 0 <= int(column) < len(
+                    case.headers
+                ):
                     raise ServiceError("Grouping column outside the analysis.")
             view.groups = [int(column) for column in groups]
             if interval:
@@ -5646,7 +5649,11 @@ class Library:
                     "second",
                 ):
                     raise ServiceError("Unknown grouping interval.")
-                view.group_intervals = {str(column): interval for column in view.groups}
+                view.group_intervals = {
+                    str(column): interval
+                    for column in view.groups
+                    if column != BOOKMARK_GROUP_COLUMN
+                }
         # Group summaries and their order, exactly the view fields the desktop sets.
         from fireblade.core.models import Summary
 

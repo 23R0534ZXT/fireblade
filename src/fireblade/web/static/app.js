@@ -2160,7 +2160,7 @@ async function noteSelection(mode) {
       const note = mode === "append" && before ? `${before}\n${text.trim()}` : text.trim();
       await postBookmark(id, note);
     }
-    renderGrid();
+    await refreshBookmarksView();
     say(`${limited.length} row(s) noted`);
   } catch (error) {
     say(error.message, true);
@@ -3105,11 +3105,11 @@ async function markSelection(note) {
   try {
     for (const id of limited) await postBookmark(id, note ?? "");
   } catch (error) {
+    await refreshBookmarksView();
     say(error.message, true);
-    renderGrid();
     return;
   }
-  renderGrid();
+  await refreshBookmarksView();
   say((note || "").trim()
     ? `${limited.length} row(s) marked`
     : `${limited.length} row(s) unmarked`);
@@ -6182,7 +6182,15 @@ function notesForRow(rowId) {
 
 async function toggleBookmark(rowId, note) {
   await postBookmark(rowId, note);
-  renderGrid();
+  await refreshBookmarksView();
+}
+
+async function refreshBookmarksView() {
+  if (state.bookmarksOnly || state.groups.includes(BOOKMARK_GROUP_COLUMN)) {
+    await loadRows(true);
+  } else {
+    renderGrid();
+  }
 }
 
 function clearGrid(message) {
@@ -6268,6 +6276,14 @@ async function openHighlight() {
 
 /* ---------- the grouping bar (desktop parity: drag a header, numbered levels, × per level) ---------- */
 const GROUP_MIME = "application/x-fireblade-column";
+const BOOKMARK_GROUP_COLUMN = -2;
+const BOOKMARK_GROUP_LABEL = "Bookmark status";
+const BOOKMARK_GROUP_HEADER = `<th draggable="true" data-bookmark-group
+  aria-label="${BOOKMARK_GROUP_LABEL}" title="Drag to group marked and unmarked rows">☆</th>`;
+
+function groupColumnName(column) {
+  return column === BOOKMARK_GROUP_COLUMN ? BOOKMARK_GROUP_LABEL : state.columns[column + 1];
+}
 
 function renderGroupBar() {
   const chips = $("group-chips");
@@ -6275,7 +6291,7 @@ function renderGroupBar() {
   const clear = $("group-clear");
   if (!chips) return;
   $("group-path").textContent = state.path.map((value, depth) => {
-    const name = state.columns[state.groups[depth] + 1] || "";
+    const name = groupColumnName(state.groups[depth]) || "";
     return `${name}: ${value ?? "(empty)"}`;
   }).join(" › ");
   chips.innerHTML = "";
@@ -6298,7 +6314,7 @@ function groupChip(level, column) {
   const chip = document.createElement("span");
   chip.className = "gchip";
   chip.dataset.level = String(level);
-  chip.innerHTML = `<span class="gnum">${level + 1}</span><span class="gname">${escapeHtml(state.columns[column + 1] || `column ${column + 1}`)}</span>`;
+  chip.innerHTML = `<span class="gnum">${level + 1}</span><span class="gname">${escapeHtml(groupColumnName(column) || `column ${column + 1}`)}</span>`;
   const close = document.createElement("button");
   close.className = "gx";
   close.title = "Remove this grouping level";
@@ -6320,7 +6336,8 @@ function groupSeparator(position) {
 }
 
 function addGroupColumn(groupIndex, position) {
-  if (!Number.isInteger(groupIndex) || groupIndex < 0 || groupIndex >= state.columns.length - 1) return;
+  if (groupIndex !== BOOKMARK_GROUP_COLUMN &&
+      (!Number.isInteger(groupIndex) || groupIndex < 0 || groupIndex >= state.columns.length - 1)) return;
   if (state.groups.includes(groupIndex)) { say("This column is already grouped", true); return; }
   const at = position === undefined || position === null ? state.groups.length : Math.min(position, state.groups.length);
   state.groups.splice(at, 0, groupIndex);
@@ -6384,7 +6401,7 @@ function renderGrid() {
   $("cols").innerHTML = '<col style="width:30px">' + shown.map(({ index }) =>
     `<col style="width:${state.widths[index] || defaultWidth(state.columns[index], index)}px">`).join("");
 
-  const head = ['<tr><th></th>'];
+  const head = ['<tr>', BOOKMARK_GROUP_HEADER];
   shown.forEach(({ index }) => {
     const name = state.columns[index];
     const multi = state.multiSort.findIndex((item) => item.column === index - 1);
@@ -6476,7 +6493,7 @@ function renderGrid() {
 
 function outlineRow(record, colspan) {
   const depth = record.path.length;
-  const name = state.columns[state.groups[depth - 1] + 1];
+  const name = groupColumnName(state.groups[depth - 1]);
   const [value, count, ...summaries] = record.values;
   const label = `${name}: ${value === null || value === "" ? "(empty)" : value}`;
   const summary = summaries.length ? ` · ${summaries.map((item, index) =>
@@ -6494,7 +6511,7 @@ const CHART_ROWS = 14;
 function renderGroupChart() {
   const box = $("group-chart");
   if (!state.grouped || !state.rows.length) { box.hidden = true; box.innerHTML = ""; return; }
-  const name = state.columns?.[state.groups[state.path.length] + 1] || "group";
+  const name = groupColumnName(state.groups[state.path.length]) || "group";
   const entries = state.rows.slice(0, CHART_ROWS).map((row) => ({
     label: row[0] === null || row[0] === "" ? "(empty)" : String(row[0]),
     count: Number(row[1]) || 0,
@@ -6513,7 +6530,7 @@ function renderGroupChart() {
 
 function renderGroupedGrid() {
   const column = state.groups[state.path.length];
-  const name = state.columns?.[column + 1] || `column ${column + 1}`;
+  const name = groupColumnName(column) || `column ${column + 1}`;
   const empty = $("grid-empty");
   empty.hidden = state.rows.length > 0;
   empty.textContent = "No group at this level.";
@@ -6521,7 +6538,7 @@ function renderGroupedGrid() {
   const summaries = (state.payload && state.payload.summaries) || [];
   $("cols").innerHTML = '<col style="width:30px"><col style="width:34px"><col><col style="width:90px">'
     + summaries.map(() => '<col style="width:130px">').join("");
-  $("head").innerHTML = `<tr><th></th><th>Ro…</th><th>${escapeHtml(name)}</th><th>Rows</th>`
+  $("head").innerHTML = `<tr>${BOOKMARK_GROUP_HEADER}<th>Ro…</th><th>${escapeHtml(name)}</th><th>Rows</th>`
     + summaries.map((item) => `<th title="${escapeHtml(item.name)}">`
       + `${escapeHtml(item.operation)} ${escapeHtml(item.name)}</th>`).join("") + "</tr>";
 
@@ -6667,15 +6684,15 @@ function showTab(name) {
 function openGroupPicker() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
   const list = $("group-levels");
-  const columns = state.columns.slice(1);
-  const order = [...state.groups, ...columns.map((_, column) => column)
+  const columns = [BOOKMARK_GROUP_COLUMN, ...state.columns.slice(1).map((_, column) => column)];
+  const order = [...state.groups, ...columns
     .filter((column) => !state.groups.includes(column))];
   list.innerHTML = order.map((column) => `
     <div class="row">
       <label><input type="checkbox" data-group-level="${column}" ${state.groups.includes(column) ? "checked" : ""}>
-        ${escapeHtml(columns[column])}</label>
-      <button type="button" class="btn" data-group-up aria-label="Move ${escapeHtml(columns[column])} up">↑</button>
-      <button type="button" class="btn" data-group-down aria-label="Move ${escapeHtml(columns[column])} down">↓</button>
+        ${escapeHtml(groupColumnName(column))}</label>
+      <button type="button" class="btn" data-group-up aria-label="Move ${escapeHtml(groupColumnName(column))} up">↑</button>
+      <button type="button" class="btn" data-group-down aria-label="Move ${escapeHtml(groupColumnName(column))} down">↓</button>
     </div>`).join("");
   list.querySelectorAll("[data-group-up], [data-group-down]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -7180,11 +7197,12 @@ function wire() {
 
   // Drag a header onto the grouping bar; double-click the grip to fit the column.
   $("head").addEventListener("dragstart", (event) => {
-    const th = event.target.closest("th[data-column]");
+    const th = event.target.closest("th[data-column], th[data-bookmark-group]");
     if (!th) return;
-    const index = Number(th.dataset.column);
-    if (index < 1) return;
-    event.dataTransfer.setData(GROUP_MIME, String(index - 1));
+    const column = th.hasAttribute("data-bookmark-group")
+      ? BOOKMARK_GROUP_COLUMN : Number(th.dataset.column) - 1;
+    if (column === -1) return;
+    event.dataTransfer.setData(GROUP_MIME, String(column));
     event.dataTransfer.effectAllowed = "copy";
   });
 

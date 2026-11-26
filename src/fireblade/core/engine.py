@@ -24,7 +24,12 @@ from fireblade.core.conditions import compile_condition, validate_format_rules
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.models import Filter, FilterGroup, SortKey, View
 from fireblade.core.settings import Settings
-from fireblade.core.summaries import group_expression, group_order, summary_expressions
+from fireblade.core.summaries import (
+    BOOKMARK_GROUP_COLUMN,
+    group_expression,
+    group_order,
+    summary_expressions,
+)
 
 
 class Case:
@@ -862,7 +867,7 @@ class Case:
         if len(view.groups) != len(set(view.groups)):
             raise ValueError("Une colonne ne peut apparaître deux fois dans les groupes")
         for column in view.groups:
-            self.column(column)
+            group_expression(self, view, column)
         from fireblade.core.summaries import group_sort_terms
 
         group_sort_terms(view)
@@ -1328,7 +1333,10 @@ class Case:
 
                     sql, args = grouped_export_query(self, view, where, args)
                 headers = (
-                    [self.headers[i] for i in view.groups]
+                    [
+                        "Bookmark status" if i == BOOKMARK_GROUP_COLUMN else self.headers[i]
+                        for i in view.groups
+                    ]
                     + ["Count"]
                     + [f"{s.operation}({self.headers[s.column]})" for s in view.summaries]
                 )

@@ -5364,7 +5364,7 @@ function renderIoc() {
 const TIMELINE_COLORS = ["#2d9cdb", "#e6a23c", "#27ae82", "#bb6bd9", "#eb6577", "#56bfc4", "#9fa8da", "#b4a34a"];
 const timelineState = { offset: 0, text: "", kind: "text", payload: null, dates: {},
                        row: null, source: null,
-                       window: null, history: [], hidden: new Set(), start: null, end: null };
+                       window: null, history: [], hidden: new Set(), start: null, end: null, seq: 0 };
 /* The window is a pair of bucket indices, the selection a pair of times: the chart
    can be zoomed without touching the rows, and a duration is the analyst's filter. */
 
@@ -5472,6 +5472,9 @@ async function loadTimeline(reset, force) {
   }
   const visible = timelineVisibleSources();
   if (visible) params.set("sources", visible.join(","));
+  // Reads overlap (a search typed while a window loads): only the latest one may paint, or a slower
+  // earlier answer would put an older state back on the screen.
+  const mine = ++timelineState.seq;
   try {
     let payload;
     if (heavy) {
@@ -5492,6 +5495,7 @@ async function loadTimeline(reset, force) {
     } else {
       payload = await api(`/api/cases/${state.openCase.id}/timeline?${params}`);
     }
+    if (mine !== timelineState.seq) return;
     timelineState.payload = payload;
     renderTimeline(payload);
   } catch (error) {

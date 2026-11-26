@@ -8,6 +8,8 @@ table. What the database cannot say stays empty rather than guessed: the user na
 the SOFTWARE hive; the well-known SIDs are named), the description and timestamp of an executable, the
 network profile name. The other tables keep the database's own columns.
 
+The timeline no longer shows an older state when two reads overlap: only the latest read paints.
+
 ---
 
 # Kagarasu 0.9.2 — a wide import no longer spins, and the disk is checked first

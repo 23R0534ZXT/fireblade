@@ -9,6 +9,10 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [0.9.3] — 2026-11-26
 
+### Fixed
+- **Timeline**: overlapping reads (a search typed while a window loads) no longer let a slower, older answer
+  repaint an older state: only the latest read paints.
+
 ### Changed
 - **SRUM on Linux reads like SrumECmd**: the providers SrumECmd also writes come out with its columns, its
   order and its names (`Id`, `Timestamp`, `ExeInfo`, `Sid`, `BytesReceived`…), so the profiles and searches

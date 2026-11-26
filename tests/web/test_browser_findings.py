@@ -203,6 +203,8 @@ def test_mark_bookmarks_every_alert_of_the_finding_and_only_those(findings):
         "document.getElementById('status').innerText.includes('alert(s) marked')"
     )
     assert "2 alert(s) marked" in status(page)
+    page.evaluate("renderGrid()")
+    assert "2 alert(s) marked" in status(page)
     marks = httpx.get(f"{page.base}/api/cases/{page.identifier}/analyses/0/bookmarks").json()
     notes = [item["note"] for item in marks["bookmarks"]]
     assert notes == ["Hayabusa: Suspicious Logon"] * 2, notes
@@ -213,3 +215,21 @@ def test_mark_bookmarks_every_alert_of_the_finding_and_only_those(findings):
     )
     marks = httpx.get(f"{page.base}/api/cases/{page.identifier}/analyses/0/bookmarks").json()
     assert len(marks["bookmarks"]) == 3
+
+
+def test_findings_are_reloaded_for_the_new_case(findings, server):
+    page = findings
+    identifier = make_case(server, "Without findings")
+    page.locator('.toolbar [data-act="refresh-cases"]').click()
+    page.locator('[data-tab="cases"]').click()
+    page.locator('#cases-body tr:has(td:text-is("Without findings")) td').first.dblclick()
+    page.wait_for_function(
+        "document.getElementById('casecombo-label').innerText === 'Without findings'"
+    )
+    with page.expect_response(f"**/api/cases/{identifier}/findings") as response:
+        page.locator('[data-tab="hayabusa"]').click()
+    assert response.value.ok
+    page.wait_for_function(
+        "document.getElementById('finding-summary').innerText.includes('no finding yet')"
+    )
+    assert _rows(page).inner_text() == "No finding matches this filter."

@@ -142,12 +142,8 @@ def test_grouping_by_a_column_lists_its_values_and_drills_down(page):
     _open(page, "access.log")
     page.click('.groupbar [data-act="group-column"]')
     page.wait_for_selector("#group-modal.show")
-    labels = page.eval_on_selector_all(
-        "#group-modal select option", "o => o.map(x => x.textContent.trim())"
-    )
-    assert "Status" in labels
-    page.select_option("#group-modal select >> nth=0", label="Status")
-    page.click("#group-modal button:has-text('Add level')")
+    page.locator("#group-levels").get_by_role("checkbox", name="Status", exact=True).check()
+    page.click('#group-modal [data-act="group-apply"]')
     page.wait_for_selector("#body tr[data-group]")
     assert page.locator("#body tr[data-group]").count() >= 5
     page.locator("#body tr[data-group]").first.click()

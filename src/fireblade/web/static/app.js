@@ -1474,8 +1474,12 @@ async function openCase(identifier, analysisIndex = null) {
       return;
     }
     const detail = await api(`/api/cases/${identifier}`);
-    if (state.openCase?.id !== detail.id) resetTimeline();
+    const changedCase = state.openCase?.id !== detail.id;
     state.openCase = detail;
+    if (changedCase) {
+      resetTimeline();
+      resetFindings();
+    }
     // The analyses closed and kept: the tree lists them, and they open again.
     try {
       const closed = await api(`/api/cases/${identifier}/closed`);
@@ -1510,6 +1514,7 @@ async function openCase(identifier, analysisIndex = null) {
 function closeCase() {
   state.openCase = null;
   resetTimeline();
+  resetFindings();
   resetAnalysisQuery();
   state.columns = [];
   state.rows = [];
@@ -2324,6 +2329,13 @@ const LEVEL_COLOURS = { critical: "#8b1c1c", high: "#c05621", medium: "#b7791f",
                         low: "#2b6cb0", informational: "#4a5568" };
 const findingState = { groups: [], incidents: [], source: "", analysis: null, shown: [], loaded: false };
 
+function resetFindings() {
+  Object.assign(findingState, { groups: [], incidents: [], source: "", analysis: null, shown: [], loaded: false });
+  $("finding-search").value = "";
+  $("hayabusa-summary").textContent = "No detection run yet.";
+  renderFindingView();
+}
+
 function findingLevelColour(level) {
   return LEVEL_COLOURS[String(level || "informational").toLowerCase()] || LEVEL_COLOURS.informational;
 }
@@ -2337,8 +2349,10 @@ function findingGroupKey(group) {
 async function loadFindings(force) {
   if (!state.openCase) return;
   if (findingState.loaded && !force) { renderFindingView(); return; }
+  const { id } = state.openCase;
   try {
-    const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/findings`);
+    const payload = await api(`/api/cases/${encodeURIComponent(id)}/findings`);
+    if (state.openCase?.id !== id) return;
     findingState.groups = payload.groups || [];
     findingState.incidents = payload.incidents || [];
     findingState.source = payload.source || "";
@@ -2347,6 +2361,7 @@ async function loadFindings(force) {
     if (payload.error) say(payload.error, true);
     renderFindingView();
   } catch (error) {
+    if (state.openCase?.id !== id) return;
     findingState.groups = [];
     say(error.message, true);
     renderFindingView();
@@ -3751,12 +3766,13 @@ const hayabusaState = { runs: [] };
 
 async function runHayabusa() {
   if (!state.openCase) { say("Open a case first", true); return; }
+  const { id } = state.openCase;
   const level = $("hayabusa-level").value;
   $("hayabusa-summary").textContent = "Running the detection engine — this can take a minute…";
   say("Hayabusa: running…");
   try {
     const payload = await runTask("detect", { min_level: level }, "Hayabusa");
-    if (!payload) return;
+    if (!payload || state.openCase?.id !== id) return;
     hayabusaState.runs = payload.runs || [];
     const runs = hayabusaState.runs.map((run) => `${escapeHtml(run.collection)}: ${run.summary?.detections ?? 0} detection(s)` +
       (run.analysis === null || run.analysis === undefined ? "" :
@@ -3764,11 +3780,15 @@ async function runHayabusa() {
     $("hayabusa-summary").innerHTML = `${payload.total} finding(s) — ${runs}`;
     // The run adds its alert analysis to the case: refresh the tree without
     // leaving the findings the analyst just asked for.
-    state.openCase = await api(`/api/cases/${state.openCase.id}`);
+    const detail = await api(`/api/cases/${id}`);
+    if (state.openCase?.id !== id) return;
+    state.openCase = detail;
     renderTree();
     await loadFindings(true);
+    if (state.openCase?.id !== id) return;
     say(`Hayabusa: ${payload.total} finding(s) at level ${level}+`);
   } catch (error) {
+    if (state.openCase?.id !== id) return;
     $("hayabusa-summary").textContent = error.message;
     say(error.message, true);
   }
@@ -3804,13 +3824,16 @@ async function markFinding(group) {
     say("The alert analysis of this detection is not open in the case", true);
     return;
   }
+  const { id } = state.openCase;
   try {
     const payload = await apiPost(
-      `/api/cases/${state.openCase.id}/analyses/${findingState.analysis}/bookmark-finding`,
+      `/api/cases/${id}/analyses/${findingState.analysis}/bookmark-finding`,
       { finding: { RuleTitle: group.title, Computer: group.host } });
+    if (state.openCase?.id !== id) return;
     const capped = payload.matched > payload.marked ? ` of ${payload.matched}` : "";
     say(`${payload.marked} alert(s) marked${capped}`);
   } catch (error) {
+    if (state.openCase?.id !== id) return;
     say(error.message, true);
   }
 }
@@ -6445,7 +6468,9 @@ function renderGrid() {
   const from = total ? state.offset + 1 : 0;
   const to = Math.min(state.offset + rendered.length, total);
   $("pageinfo").textContent = `${from}–${to} / ${total} ${outline ? "entries" : "row(s)"}`;
-  say(`${state.total} row(s) in this analysis${state.filters.length ? ` — ${state.filters.length} filter(s)` : ""}`);
+  if ($("analysis-view").style.display !== "none") {
+    say(`${state.total} row(s) in this analysis${state.filters.length ? ` — ${state.filters.length} filter(s)` : ""}`);
+  }
   applyPinning();
 }
 
@@ -6519,7 +6544,9 @@ function renderGroupedGrid() {
   const to = Math.min(state.offset + state.rows.length, state.total);
   renderGroupChart();
   $("pageinfo").textContent = `${from}–${to} / ${state.rows.length} group(s) — ${state.total} row(s)`;
-  say(`Grouped by ${name} — ${state.rows.length} group(s) on this page, ${state.total} row(s) in the analysis`);
+  if ($("analysis-view").style.display !== "none") {
+    say(`Grouped by ${name} — ${state.rows.length} group(s) on this page, ${state.total} row(s) in the analysis`);
+  }
 }
 
 /* The summary lines under the rows: a group's own (placed in the column each summary names) and

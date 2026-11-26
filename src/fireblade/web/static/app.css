@@ -142,6 +142,7 @@ body{
 .btn:hover{background:var(--btn-hover);border-color:var(--accent)}
 .btn:active{background:var(--sel)}
 .btn:disabled{color:var(--disabled);background:var(--window);border-color:var(--border)}
+.btn[hidden]{display:none}
 .groupbar{display:flex;align-items:center;gap:6px;padding:0 6px 3px;flex:0 0 auto}
 .hint{color:var(--text);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .groupbar .grow{flex:1}

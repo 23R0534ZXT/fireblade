@@ -208,6 +208,8 @@ def test_grouping_orders_multiple_levels_and_shows_each_branch(page):
 
 
 def test_grouping_dialog_reorders_checked_columns_by_dragging(page):
+    clear = page.locator("#group-clear")
+    assert clear.is_hidden()
     command(page, "group-column")
     levels = page.locator("#group-levels")
     host = levels.get_by_role("checkbox", name="Host", exact=True)
@@ -218,6 +220,8 @@ def test_grouping_dialog_reorders_checked_columns_by_dragging(page):
     page.locator('[data-act="group-apply"]').click()
     assert page.locator("#group-chips .gname").all_text_contents() == ["User", "Host"]
     page.locator('#body tr[data-group="bob"]').wait_for()
+    clear.click()
+    assert clear.is_hidden()
 
 
 def test_dragging_the_bookmark_header_groups_rows_and_updates_when_a_mark_changes(page):

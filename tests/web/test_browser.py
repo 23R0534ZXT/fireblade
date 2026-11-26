@@ -62,6 +62,33 @@ def test_every_menu_opens_and_lists_its_commands(page):
         assert page.locator(".menu.show").count() == 0, name
 
 
+def test_the_last_workspace_tab_is_reachable_in_a_narrow_window(page):
+    page.set_viewport_size({"width": 680, "height": 580})
+    strip = page.locator("#doctabs")
+    tabs = strip.locator("[data-tab]")
+    assert strip.evaluate("(el) => el.scrollWidth > el.clientWidth")
+    tabs.first.focus()
+    for _ in range(tabs.count() - 1):
+        page.keyboard.press("Tab")
+    graph_tab = tabs.last
+    assert graph_tab.evaluate("(el) => el === document.activeElement")
+    box = graph_tab.bounding_box()
+    assert 0 <= box["x"] and box["x"] + box["width"] <= 680
+    page.keyboard.press("Enter")
+    assert page.locator("#graph-view").is_visible()
+
+
+def test_row_details_scroll_without_covering_cell_note_buttons(page):
+    page.locator("#body tr[data-row] td[data-cell]").first.click()
+    fields = page.locator(".detail-fields")
+    editor = page.get_by_role("textbox", name="Bookmark note")
+    assert editor.is_visible()
+    last_note = fields.get_by_role("button", name="Add note for Event")
+    last_note.click()
+    assert page.locator("#ask-modal").is_visible()
+    assert editor.is_visible()
+
+
 def test_a_dialog_is_moved_by_its_title_and_resized_from_its_corner(page):
     page.evaluate("document.getElementById('settings-modal').classList.add('show')")
     dialog = page.locator("#settings-modal .dialog")

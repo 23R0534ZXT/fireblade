@@ -1765,7 +1765,7 @@ function applyExpression() {
 /* A row height is a reading comfort, not case data: it lives in the browser. */
 function toggleDetails() {
   const box = $("details");
-  box.style.display = box.style.display === "none" ? "block" : "none";
+  box.style.display = box.style.display === "none" ? "" : "none";
 }
 
 /* The desktop's RowHeightDialog: two behaviours and three heights, each one kept as
@@ -5424,7 +5424,7 @@ function renderTimelineDates(payload) {
       options.push(`<option value="${escapeHtml(name)}" ${chosen === name ? "selected" : ""}>${escapeHtml(label)}</option>`);
     });
     return `<div class="tsrc"><span class="tname" title="${escapeHtml(source.original || source.name)}">${escapeHtml(source.name)}</span>
-      <select class="select" data-source="${source.id}">${options.join("")}</select></div>`;
+      <select class="select" data-source="${source.id}" aria-label="Date column for ${escapeHtml(source.name)}">${options.join("")}</select></div>`;
   }).join("");
   // A collection of hundreds of analyses has hundreds of selectors: folded, they would push the
   // chart and the rows off the screen. The choice stays one click away, and still travels.
@@ -6509,14 +6509,14 @@ function showDetails(row) {
     const note = rowNotes[String(index - 1)];
     return `<tr><td class="k">${escapeHtml(name)}</td>
       <td>${escapeHtml(String(value))}</td>
-      <td class="k"><button class="btn" data-cellnote="${index - 1}">${note ? "edit note" : "note"}</button>
+      <td class="k"><button class="btn" data-cellnote="${index - 1}" aria-label="${note ? "Edit" : "Add"} note for ${escapeHtml(name)}">${note ? "edit note" : "note"}</button>
       ${note ? `<span class="cellnote">${escapeHtml(note)}</span>` : ""}</td></tr>`;
   }).join("");
   const id = String(row[0]);
   const note = state.bookmarks.get(id) || "";
-  box.innerHTML = `<table>${pairs}</table>
+  box.innerHTML = `<div class="detail-fields"><table>${pairs}</table></div>
     <div class="note-editor">
-      <label>Bookmark note</label>
+      <label for="note-input">Bookmark note</label>
       <input id="note-input" value="${escapeHtml(note)}" placeholder="What to remember about this row…">
       <button class="btn" id="note-save">Save</button>
       <button class="btn" id="note-clear">Remove</button>
@@ -6559,8 +6559,12 @@ let tabChosen = false;
 
 function showTab(name) {
   tabChosen = true;
-  document.querySelectorAll(".tab[data-tab]").forEach((tab) =>
-    tab.classList.toggle("active", tab.dataset.tab === name));
+  document.querySelectorAll(".tab[data-tab]").forEach((tab) => {
+    const active = tab.dataset.tab === name;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-pressed", String(active));
+    if (active) tab.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
   $("analysis-view").style.display = name === "analyses" ? "flex" : "none";
   $("cases-view").style.display = name === "cases" ? "flex" : "none";
   $("timeline-view").style.display = name === "timeline" ? "flex" : "none";

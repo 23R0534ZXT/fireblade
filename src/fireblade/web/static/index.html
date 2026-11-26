@@ -182,14 +182,14 @@
   </div>
 
   <div class="tabs" id="doctabs">
-    <div class="tab active" data-tab="analyses">Analyses</div>
-    <div class="tab" data-tab="imports">Imports</div>
-    <div class="tab" data-tab="cases">Cases</div>
-    <div class="tab" data-tab="timeline">Timeline &amp; correlations</div>
-    <div class="tab" data-tab="ioc">IOC hunting</div>
-    <div class="tab" data-tab="hayabusa">Hayabusa findings</div>
-    <div class="tab" data-tab="actions">Actions &amp; tracking</div>
-    <div class="tab" data-tab="graph">Attack graph</div>
+    <button type="button" class="tab active" data-tab="analyses" aria-pressed="true">Analyses</button>
+    <button type="button" class="tab" data-tab="imports" aria-pressed="false">Imports</button>
+    <button type="button" class="tab" data-tab="cases" aria-pressed="false">Cases</button>
+    <button type="button" class="tab" data-tab="timeline" aria-pressed="false">Timeline &amp; correlations</button>
+    <button type="button" class="tab" data-tab="ioc" aria-pressed="false">IOC hunting</button>
+    <button type="button" class="tab" data-tab="hayabusa" aria-pressed="false">Hayabusa findings</button>
+    <button type="button" class="tab" data-tab="actions" aria-pressed="false">Actions &amp; tracking</button>
+    <button type="button" class="tab" data-tab="graph" aria-pressed="false">Attack graph</button>
     <div class="doctab docempty" id="doctab">Case</div>
   </div>
   <div class="tabbar-line"></div>
@@ -287,7 +287,7 @@
 
       <div id="hayabusa-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="filterbar">
-          <select class="select" id="hayabusa-level">
+          <select class="select" id="hayabusa-level" aria-label="Minimum severity">
             <option value="informational">informational</option>
             <option value="low">low</option>
             <option value="medium" selected>medium</option>
@@ -356,7 +356,7 @@
           <span class="info" id="imports-summary"></span>
         </div>
         <div class="filterbar">
-          <select class="select" id="imports-status">
+          <select class="select" id="imports-status" aria-label="Import status">
             <option value="">All files</option>
             <option value="complete">Imported</option>
             <option value="attention">With warnings</option>
@@ -414,14 +414,14 @@
           </div>
           <div class="filterbar">
             <input class="search" id="action-title" placeholder="New action — what has to be done?">
-            <select class="select" id="action-owner">
+            <select class="select" id="action-owner" aria-label="Action owner">
               <option value="us">Our team</option>
               <option value="client">Client</option>
               <option value="third_party">Third party</option>
               <option value="vendor">Vendor</option>
               <option value="unassigned">Unassigned</option>
             </select>
-            <select class="select" id="action-priority">
+            <select class="select" id="action-priority" aria-label="Action priority">
               <option value="medium">Medium</option>
               <option value="low">Low</option>
               <option value="high">High</option>
@@ -430,7 +430,7 @@
             <!-- The core's own vocabulary (core.case_workspace.ACTION_TYPES).
                  The service also publishes it on /api/settings and the window
                  rebuilds this list from there; these values are the fallback. -->
-            <select class="select" id="action-type">
+            <select class="select" id="action-type" aria-label="Action type">
               <option value="collect">Collection</option>
               <option value="analysis">Analysis</option>
               <option value="remediation">Remediation</option>
@@ -564,7 +564,7 @@
 
       <div id="timeline-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="filterbar">
-          <select class="select" id="timeline-kind">
+          <select class="select" id="timeline-kind" aria-label="Correlation field">
             <option value="text">Any text</option>
             <option value="user">User</option>
             <option value="ip">IP address</option>
@@ -764,8 +764,8 @@
       </div>
       <div class="row">
         <label>CSV options</label>
-        <select class="select" id="preview-delimiter"></select>
-        <select class="select" id="preview-encoding"></select>
+        <select class="select" id="preview-delimiter" aria-label="CSV delimiter"></select>
+        <select class="select" id="preview-encoding" aria-label="CSV encoding"></select>
         <span class="note" style="max-width:none">a native CSV is read with these instead of the detection</span>
       </div>
       <div class="row" id="preview-sheet-row" style="display:none">
@@ -873,7 +873,7 @@
     <h3 id="ask-title">Value</h3>
     <div class="body">
       <div class="note" id="ask-note" style="display:none"></div>
-      <div class="row"><label id="ask-label">Value</label><input id="ask-input"></div>
+      <div class="row"><label id="ask-label" for="ask-input">Value</label><input id="ask-input"></div>
     </div>
     <div class="foot">
       <button class="btn" data-act="ask-ok">OK</button>
@@ -1115,7 +1115,7 @@
           <button class="btn" id="detrules-reset" disabled>Reset to the pack</button>
           <button class="btn" id="detrules-save" disabled>Save</button>
         </div>
-        <textarea id="detrules-text" spellcheck="false"
+        <textarea id="detrules-text" aria-label="Detection rule source" spellcheck="false"
           style="flex:1;min-height:320px;font-family:ui-monospace,Consolas,monospace;font-size:11px"></textarea>
         <div class="note" id="detrules-note">Pick a rule on the left. An edit is kept beside the tool
           pack: the delivered rules are never modified, and a reset brings the original back.</div>
@@ -1176,7 +1176,7 @@
 <div class="modal" id="cell-modal">
   <div class="dialog" style="min-width:720px">
     <h3 id="cell-modal-title">Cell</h3>
-    <div class="body"><textarea id="cell-full" rows="10" style="width:100%"></textarea></div>
+    <div class="body"><textarea id="cell-full" aria-label="Full cell value" rows="10" style="width:100%"></textarea></div>
     <div class="foot">
       <button class="btn" data-act="cell-copy">Copy</button>
       <button class="btn" data-act="settings-close">Close</button>
@@ -1276,7 +1276,7 @@
         <button class="btn" id="coverage-export-csv">Export CSV</button>
       </div>
       <div class="row">
-        <select id="coverage-level">
+        <select id="coverage-level" aria-label="Coverage severity">
           <option value="">Every severity</option>
           <option value="error">Errors</option>
           <option value="warning">To verify</option>

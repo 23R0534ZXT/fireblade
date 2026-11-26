@@ -70,11 +70,13 @@ body{
 .casecombo .arrow{margin-left:auto;font-size:9px;color:var(--muted)}
 
 /* document tabs */
-.tabs{display:flex;align-items:flex-end;gap:2px;padding:2px 4px 0;background:var(--window);height:24px;flex:0 0 24px;overflow:hidden}
+.tabs{display:flex;align-items:flex-end;gap:2px;padding:2px 4px 0;background:var(--window);min-height:24px;flex:0 0 auto;
+  overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
 .tab{
   padding:2px 8px;border:1px solid var(--border);border-bottom:none;background:var(--header);
-  border-radius:2px 2px 0 0;height:21px;line-height:16px;cursor:default;flex:0 0 auto;white-space:nowrap
+  border-radius:2px 2px 0 0;height:21px;font:inherit;color:inherit;line-height:16px;cursor:default;flex:0 0 auto;white-space:nowrap
 }
+.tab:focus-visible{outline:2px solid var(--accent-dark);outline-offset:-3px}
 .tab.active{background:var(--base);position:relative;top:1px;height:22px}
 .tab.off{color:var(--disabled);background:#ececec}
 .doctab{
@@ -177,13 +179,14 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
 .markcell{cursor:default}
 .btn.active{background:var(--btn-active);border-color:var(--accent)}
 .note-editor{display:flex;align-items:center;gap:6px;padding:6px;border-top:1px solid #e0e0e0;
-  position:sticky;bottom:0;background:var(--base)}
+  flex:0 0 auto;background:var(--base)}
 .note-editor label{font-size:11px;color:var(--muted);white-space:nowrap}
-.note-editor input{flex:1;height:20px;border:1px solid var(--border);background:var(--base);font-family:inherit;font-size:11px;padding:0 4px;outline:none}
+.note-editor input{flex:1;min-width:0;height:20px;border:1px solid var(--border);background:var(--base);font-family:inherit;font-size:11px;padding:0 4px;outline:none}
 .rowid{color:#404040}
 .emptygrid{padding:10px 12px;color:var(--disabled);font-size:11px;line-height:1.6}
 
-.details{flex:0 0 116px;margin:4px 6px 0;border:1px solid var(--border);background:var(--base);position:relative;overflow:auto}
+.details{display:flex;flex-direction:column;flex:0 0 116px;min-height:0;margin:4px 6px 0;border:1px solid var(--border);background:var(--base);position:relative;overflow:hidden}
+.detail-fields{flex:1;min-height:0;overflow:auto}
 .details .ph{position:absolute;top:6px;left:6px;color:var(--disabled);font-size:11px}
 .details table{font-size:11px;table-layout:auto;width:auto;min-width:100%}
 .details td{border:none;padding:2px 10px 2px 6px;vertical-align:top;white-space:pre-wrap;word-break:break-word}

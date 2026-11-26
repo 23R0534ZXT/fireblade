@@ -85,3 +85,44 @@ def test_two_files_chosen_together_follow_the_layout(browser_page, host, layout,
         ".then((r) => r.json()).then((c) => c.analyses.find((x) => x.index === a.index).source_info.rows)))"
     )
     assert sum(counts) == rows, counts
+
+
+def test_the_layout_changes_on_the_fly_on_what_is_already_imported(browser_page, host):
+    """Choosing another layout after the import lays the same rows out again, both ways."""
+    _base, tmp = host
+    first, second = tmp / "a.csv", tmp / "b.csv"
+    first.write_text("Time,Host\n2026-11-01T10:00:00Z,PC01\n2026-11-01T10:01:00Z,PC02\n")
+    second.write_text("Time,Host\n2026-11-01T10:02:00Z,PC03\n2026-11-01T10:03:00Z,PC04\n")
+    page = browser_page
+    page.click('.tabs .tab:text-is("Cases")')
+    page.dblclick('tr:has(td:text-is("Layout artifacts")) td >> nth=0')
+    page.wait_for_function(
+        "document.getElementById('casecombo-label').innerText.includes('Layout artifacts')"
+    )
+    page.select_option("#import-layout", "artifacts")
+    page.click('.toolbar .tb[data-act="import-file"]')
+    page.wait_for_selector("#import-modal.show")
+    page.set_input_files("#preview-input", [str(first), str(second)])
+    page.wait_for_function("!document.getElementById('preview-import').disabled", timeout=15000)
+    page.click("#preview-import")
+    page.wait_for_selector("#body tr[data-row]", timeout=60000)
+
+    def grids():
+        return page.eval_on_selector_all(
+            "#tree .node.child", "els => els.map(e => e.innerText.trim())"
+        )
+
+    assert len(grids()) == 1, grids()
+    for layout, expected in (("files", 2), ("combined", 1), ("artifacts", 1), ("files", 2)):
+        page.select_option("#import-layout", layout)
+        page.wait_for_function(
+            "document.getElementById('status').innerText.match(/Layout changed|Already laid out/)",
+            timeout=60000,
+        )
+        page.wait_for_selector("#body tr[data-row]", timeout=60000)
+        assert len(grids()) == expected, (layout, grids())
+        total = page.evaluate(
+            "fetch(url(`/api/cases/${state.openCase.id}`)).then((r) => r.json())"
+            ".then((c) => c.analyses.reduce((n, a) => n + a.source_info.rows, 0))"
+        )
+        assert total == 4, (layout, total)

@@ -1079,6 +1079,7 @@ async function confirmImport() {
   let kept = 0;
   let stopped = false;
   let interruption = "";
+  let notice = "";
   const ready = previewState.items.filter((item) => !item.error && item.payload && item.payload.path);
   // Files chosen together are one collection: the layout (per file, per artifact family, or one
   // grid for everything) is how that collection is laid out, so it is imported in one go. A
@@ -1090,7 +1091,10 @@ async function confirmImport() {
     try {
       const job = await startImportJob(ready.map((item) => item.payload.path), layout, options, "");
       const outcome = await followImportJob(job);
-      if (outcome.status === "complete" && outcome.result && outcome.result.analyses) imported = ready.length;
+      if (outcome.status === "complete" && outcome.result && outcome.result.analyses) {
+        imported = ready.length;
+        notice = outcome.result.notice || notice;
+      }
       else if (outcome.status === "cancelled" || outcome.status === "interrupted") {
         stopped = true;
         kept = (outcome.result && outcome.result.analyses) || 0;
@@ -1102,7 +1106,7 @@ async function confirmImport() {
     }
     closeModals();
     await openCase(state.openCase.id);
-    say(interruption || (stopped ? importStoppedMessage(0, kept) : `${imported} file(s) imported`), stopped);
+    say(interruption || (stopped ? importStoppedMessage(0, kept) : `${imported} file(s) imported${notice ? " — " + notice : ""}`), stopped);
     return;
   }
   for (const item of previewState.items) {
@@ -1115,6 +1119,7 @@ async function confirmImport() {
       const outcome = await followImportJob(job);
       // A folder is one source holding several files: say how many were read, not "1".
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) {
+        notice = outcome.result.notice || notice;
         imported += Math.max(1, Number((item.payload && item.payload.count) || 0));
       } else if (outcome.status === "cancelled" || outcome.status === "interrupted") {
         stopped = true;
@@ -1131,7 +1136,7 @@ async function confirmImport() {
   }
   closeModals();
   await openCase(state.openCase.id);
-  say(interruption || (stopped ? importStoppedMessage(imported, kept) : `${imported} file(s) imported`), stopped);
+  say(interruption || (stopped ? importStoppedMessage(imported, kept) : `${imported} file(s) imported${notice ? " — " + notice : ""}`), stopped);
 }
 
 /* ---------- import ---------- */

@@ -3996,6 +3996,45 @@ class Library:
         )
         return len(earlier), len(incoming)
 
+    SESSION_LIMIT = 1000  # analyses a case can hold open at once (the desktop's own limit)
+
+    def _fit_session_limit(self, output: Path, pack, progress=None) -> str:
+        """A collection that made more grids than a case can open is grouped, not lost.
+
+        "One grid per file" on 1400 files makes 1400 grids; a case holds 1000. Rather than
+        failing after everything was read, the collection is laid out by artifact family (then
+        as one grid if that is still too many) from the grids it already wrote: nothing is read
+        again. The notice says what happened and how to choose another layout.
+        """
+        from fireblade.core.collection import Collection
+        from fireblade.core.collection_organization import organize
+
+        collection = Collection.reopen(output, pack, settings=self._settings("parsing"))
+        report = collection.report
+        count = len(report.get("documents") or [])
+        if count <= self.SESSION_LIMIT or report.get("organization") != "files":
+            return ""
+        raw = report.get("raw_documents") or report["documents"]
+        for mode, label in (("artifacts", "artifact family"), ("combined", "a single grid")):
+            if progress:
+                progress(f"{count} grids are more than a case holds: laying them out by {label}…")
+            report["raw_documents"] = raw
+            report["documents"] = list(raw)
+            report["organization"] = mode
+            organize(collection)
+            if len(report["documents"]) <= self.SESSION_LIMIT:
+                collection.save()
+                grouped = len(report["documents"])
+                return (
+                    f"{count} files made {count} grids, more than the {self.SESSION_LIMIT} a case "
+                    f"can open at once: they are laid out by "
+                    f"{'artifact family' if mode == 'artifacts' else 'a single grid'} "
+                    f"({grouped} grid(s)). The layout selector in the toolbar changes it."
+                )
+        raise ServiceError(
+            f"{count} files cannot be laid out in fewer than {self.SESSION_LIMIT} grids."
+        )
+
     def reorganize(self, identifier: str, mode: str) -> dict:
         """Lay the analyses of every import of the case out again: one grid per file, one per
         artifact family, or one for everything. The files are not read again: each collection
@@ -4007,6 +4046,20 @@ class Library:
             raise ServiceError(f"Unknown layout: {mode}")
         folder = self.library.folder(identifier)
         pack = ToolPack(Path(self.tools_root or tempfile.gettempdir()))
+        if mode == "files":
+            grids = 0
+            for entry in (folder / "collections").glob("import-*"):
+                try:
+                    report = json.loads((entry / "collection.json").read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    continue
+                grids += len(report.get("raw_documents") or report.get("documents") or [])
+            if grids > self.SESSION_LIMIT:
+                raise ServiceError(
+                    f"One grid per file would make {grids} grids, more than the "
+                    f"{self.SESSION_LIMIT} a case can open at once. Choose one grid per "
+                    "artifact family, or one grid for everything."
+                )
         self.close_case(identifier)  # DuckDB refuses a second connection with another configuration
         changed = 0
         for entry in sorted((folder / "collections").glob("import-*")):
@@ -4254,6 +4307,9 @@ class Library:
         except Exception as exc:  # noqa: BLE001 — what was written before the failure is kept
             failure, report = exc, dict(collection.report or {})
         session = output / "collection.fireblade-session"
+        notice = ""
+        if failure is None and report.get("status") == "complete":
+            notice = self._fit_session_limit(output, pack, progress)
         if failure is not None:
             reason = (
                 "the disk is full"
@@ -4324,6 +4380,8 @@ class Library:
             "files": len(report.get("files") or []),
             "collection": str(output),
         }
+        if notice:
+            result["notice"] = notice
         if failure is not None:
             result["message"] = (
                 f"Import interrupted: {reason}. The {added} analysis(es) written before the "

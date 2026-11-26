@@ -89,3 +89,44 @@ def test_a_failure_before_anything_was_written_says_nothing_was_imported(lib, mo
         library.import_source(identifier, source, organization="files")
     assert "the disk is full" in str(failed.value)
     assert "Nothing was imported" in str(failed.value)
+
+
+def _many(folder, files):
+    folder.mkdir()
+    for number in range(files):
+        (folder / f"f{number}.csv").write_text(
+            "Time,Host,User\n" + f"2026-11-01T10:00:00Z,PC{number},u{number}\n"
+        )
+    return folder
+
+
+def test_more_grids_than_a_case_holds_are_grouped_not_lost(lib, monkeypatch):
+    """1400 files in 'one grid per file' used to be read, then refused: nothing was shown."""
+    library, identifier, tmp_path = lib
+    monkeypatch.setattr(type(library), "SESSION_LIMIT", 5)
+    result = library.import_source(identifier, _many(tmp_path / "many", 8), organization="files")
+    assert result["analyses"] >= 1 and "laid out by artifact family" in result["notice"]
+    case = library.case(identifier)
+    assert 1 <= len(case["analyses"]) <= 5, "the case shows what was read"
+
+
+def test_the_layout_can_be_changed_after_the_import_and_back(lib, monkeypatch):
+    library, identifier, tmp_path = lib
+    library.import_source(identifier, _many(tmp_path / "some", 4), organization="files")
+    assert len(library.case(identifier)["analyses"]) == 4
+    assert library.reorganize(identifier, "artifacts")["collections"] == 1
+    assert len(library.case(identifier)["analyses"]) == 1
+    assert library.reorganize(identifier, "combined")["collections"] == 1
+    assert len(library.case(identifier)["analyses"]) == 1
+    assert library.reorganize(identifier, "files")["collections"] == 1
+    assert len(library.case(identifier)["analyses"]) == 4, "one grid per file again"
+
+
+def test_one_grid_per_file_is_refused_when_it_would_not_fit(lib, monkeypatch):
+    library, identifier, tmp_path = lib
+    library.import_source(identifier, _many(tmp_path / "some", 4), organization="artifacts")
+    monkeypatch.setattr(type(library), "SESSION_LIMIT", 3)
+    with pytest.raises(ServiceError) as refused:
+        library.reorganize(identifier, "files")
+    assert "more than the 3" in str(refused.value) and "artifact family" in str(refused.value)
+    assert len(library.case(identifier)["analyses"]) == 1, "nothing was changed"

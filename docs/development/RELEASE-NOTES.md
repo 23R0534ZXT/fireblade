@@ -7,6 +7,11 @@ N records written…" at 99 %, going nowhere. The wide file is now read natively
 columns need (one thread, a budget that follows the width, never more than three times the configured
 one), in seconds. The layout step also says how far it is, and a stop is honoured between analyses.
 
+More than 1000 grids no longer end with an empty Analyses tab: "one grid per file" on 1400 files read
+everything and then the case refused the 1000+ grids. The collection is now laid out by artifact family
+from the grids it already wrote (nothing is read again), the import says so, and the layout selector in
+the toolbar changes the layout of what is already imported — per file, per family, or one grid.
+
 Two safeguards come with it. The disk is checked before an import starts — the source's size against
 the free space where the case lives — and an import that cannot fit is refused with the figures instead
 of dying at 80 %. And an import cut short (disk full, crash) keeps what it had written: those analyses

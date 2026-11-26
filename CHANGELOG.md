@@ -18,6 +18,12 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   written, the message says "Nothing was imported".
 
 ### Fixed
+- **More grids than a case can open no longer ends with an empty Analyses tab.** "One grid per file" on
+  more than 1000 files read everything, then the case refused the 1000+ grids and showed nothing. The
+  collection is now laid out by artifact family (or as a single grid if that is still too many) from the
+  grids it already wrote, and the import says so. "One grid per file" after the fact is refused with the
+  reason when it would not fit; the layout selector changes the layout of what is already imported.
+- **Timeline**: one request at a time reads or replaces the index ("Connection already closed").
 - **An import of a very wide file no longer spins at 99 %.** Merging a family of a big collection
   gives thousands of columns; the native CSV reader exceeded its memory budget and the import fell
   back to row-by-row inserts (hours). It is now read natively with a budget that follows the width

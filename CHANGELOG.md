@@ -7,6 +7,14 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.9.3] — 2026-11-26
+
+### Changed
+- **SRUM on Linux reads like SrumECmd**: the providers SrumECmd also writes come out with its columns, its
+  order and its names (`Id`, `Timestamp`, `ExeInfo`, `Sid`, `BytesReceived`…), so the profiles and searches
+  apply to either reader's tables. The user name behind a SID, the description and timestamp of an
+  executable and the network profile name stay empty rather than guessed. Other tables are unchanged.
+
 ## [0.9.2] — 2026-11-26
 
 ### Added

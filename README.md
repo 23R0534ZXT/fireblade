@@ -49,7 +49,7 @@ folder is there. On Windows PowerShell, write the folder as `"$HOME\kagarasu-cas
 | --- | --- |
 | Stop / start | `docker stop kagarasu` · `docker start kagarasu` |
 | Upgrade | `docker pull ghcr.io/23r0534zxt/kagarasu:latest && docker rm -f kagarasu`, then run the line above again (the cases stay in their folder) |
-| Pin a version | replace `:latest` with `:0.9.2` · `:edge` follows `main` |
+| Pin a version | replace `:latest` with `:0.9.3` · `:edge` follows `main` |
 | Remove | `docker rm -f kagarasu` (your cases are not touched) |
 
 To build from a clone instead: `docker build -t kagarasu:host .`.

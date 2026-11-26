@@ -1,3 +1,15 @@
+# Kagarasu 0.9.3 — the SRUM tables read like SrumECmd's
+
+On Linux, where SrumECmd cannot run, the native reader now writes the providers SrumECmd also writes
+(network usage, network connections, push notifications, application resource use, energy usage) with
+SrumECmd's columns, in its order and under its names — `Id`, `Timestamp`, `ExeInfo`, `Sid`,
+`BytesReceived`… — so the same profiles, dates, colours and searches apply whichever reader produced the
+table. What the database cannot say stays empty rather than guessed: the user name behind a SID (it is in
+the SOFTWARE hive; the well-known SIDs are named), the description and timestamp of an executable, the
+network profile name. The other tables keep the database's own columns.
+
+---
+
 # Kagarasu 0.9.2 — a wide import no longer spins, and the disk is checked first
 
 A collection organised by artifact (or combined) merges the analyses of a family into one table; with

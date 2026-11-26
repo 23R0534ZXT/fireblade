@@ -97,6 +97,7 @@ def test_the_pages_of_the_timeline_follow_one_another_and_say_when_there_are_no_
 
 def test_a_duration_narrows_the_window_and_back_returns_to_the_one_before(timeline):
     page = timeline
+    page.uncheck("#timeline-undated")  # the desktop starts with the undated rows included
     page.click('[data-act="timeline-duration"]')
     page.fill("#ask-input", "2026-11-02T00:30")
     page.click('[data-act="ask-ok"]')
@@ -179,6 +180,7 @@ def test_a_legend_chip_hides_a_source_and_show_all_sources_brings_it_back(timeli
 def test_rows_without_a_date_stay_in_a_duration_only_when_asked(timeline):
     """Without a duration every row is listed; with one, the undated rows follow the checkbox."""
     page = timeline
+    page.uncheck("#timeline-undated")  # the desktop starts with them included
     page.click('[data-act="timeline-duration"]')
     page.fill("#ask-input", "2026-11-02T00:00")
     page.click('[data-act="ask-ok"]')
@@ -256,3 +258,31 @@ def test_the_overview_and_the_chart_answer_the_mouse(timeline):
         "document.getElementById('timeline-window').innerText.includes('whole extent')"
     )
     assert status(page)
+
+
+def test_a_preset_duration_is_centred_and_the_window_slides_with_the_arrows(timeline):
+    page = timeline
+    page.select_option("#timeline-preset", "86400")
+    page.wait_for_function("timelineState.start !== null && timelineState.end !== null")
+    assert page.evaluate("timelineState.end - timelineState.start") == 86400 * 10**9
+    page.click('[data-act="tl-fit"]')
+    page.click('[data-act="tl-zoom-in"]')
+    page.click('[data-act="tl-zoom-in"]')
+    before = page.evaluate("timelineState.window[0]")
+    page.click('[data-act="tl-pan-right"]')
+    assert page.evaluate("timelineState.window[0]") > before
+    page.click('[data-act="tl-pan-left"]')
+    page.click('[data-act="tl-pan-left"]')
+    assert page.evaluate("timelineState.window[0]") < before
+
+
+def test_the_exact_value_and_bookmarks_options_are_offered_and_the_undated_rows_start_included(
+    timeline,
+):
+    page = timeline
+    assert page.is_checked("#timeline-undated")
+    assert not page.is_checked("#timeline-exact") and not page.is_checked("#timeline-bookmarks")
+    page.check("#timeline-bookmarks")
+    page.wait_for_function(
+        "document.getElementById('timeline-info').innerText.includes('/ 0 ')", timeout=30000
+    )

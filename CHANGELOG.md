@@ -7,6 +7,34 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+### Added — parity with the desktop (found by replaying its commands on the Host)
+- **Sorts compare as the type they are given** (text, number, ISO date), per key, as the desktop's sort type does:
+  100 now comes after 9 when the column is sorted as numbers. A saved view keeps the type.
+- **The export is the desktop's export**: the filtered, sorted, visible columns (no provenance columns),
+  the group counts, and the bookmarks-and-notes export with their notes. A refusal is said in the status line.
+- **Group footers and global summaries**: where each summary's footer is shown, the totals line, the group
+  footer mode. **Saved views** keep the whole view: expression, typed sorts, summaries, totals, footers, order,
+  highlight.
+- **The IOC hunt is the core's hunt**: indicators normalised (a defanged address is read as an address) with their
+  fields and rows counts, details with source date and excerpt, pages of 250, "All IOCs", Interrupt, a detail
+  limit, saved hunts replayed from their store, a double-click on a detail opens its source row, an export in
+  English with a verified receipt. Importing a list fills the box; the hunt is a gesture of its own.
+- **Timeline**: Correlate, Exact value, Bookmarks, a preset duration (15 min – 7 days), sliding arrows; Build /
+  refresh reads the analyses again; the rows without a date start included, as in the desktop.
+- **Investigation report options**: the filters each analysis saved, only the selected rows, the timeline's chart,
+  the findings limit, and the last coverage check.
+- **Client and mission** (client, reference, sector, contact, contract, lead, dates, notes), the findings level
+  filter, the expected families of the coverage check (and Interrupt), the text filter expression, Reset the view.
+- **Preferences**: custom date format, row-details position (bottom / right / top), copy on right-click (Shift opens
+  the menu), default pinning, auto-profile, memory and threads. The date columns are written by the core's own
+  functions, and the recognised profile (with its derived columns) is applied when a table is imported.
+- The files read only by the generic reader stay on the retry list, so a reader the analyst names can read them
+  better.
+
+### Fixed
+- Filtering or excluding on a cell **appends** to the column's filters, as the desktop does.
+- The search text is highlighted with the highlight text.
+
 ## [0.8.6] — 2026-11-25
 
 ### Added

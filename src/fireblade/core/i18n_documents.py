@@ -144,6 +144,14 @@ DOCUMENTS = {
     "Journaux Linux": "Linux logs",
     # How an indicator was matched
     "Adresse IP normalisée": "Normalised IP address",
+    # The columns a hunt export writes
+    "Lignes_correspondantes": "Matching_rows",
+    "Champs_correspondants": "Matching_fields",
+    "Chasse_partielle": "Partial_hunt",
+    "Sous_domaines": "Subdomains",
+    "Ligne_source": "Source_row",
+    "Extrait": "Excerpt",
+    "Date_source": "Source_date",
     "Empreinte exacte": "Exact hash",
     "Sous-domaine": "Sub-domain",
     "Domaine exact": "Exact domain",

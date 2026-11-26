@@ -46,6 +46,7 @@
     <div class="menu" data-for="exporter">
       <div class="item" data-act="export-csv">Export…<span class="key">Ctrl+Shift+E</span></div>
       <div class="item" data-act="export-xlsx">Export as Excel (.xlsx)…</div>
+      <div class="item" data-act="export-groups">Export the group counts…</div>
       <div class="item" data-act="export-annotations">Export the bookmarks and notes…</div>
       <div class="item" data-act="session-save">Save the session…</div>
       <div class="item" data-act="session-open">Open a session…</div>
@@ -300,6 +301,11 @@
             <option value="heat">Heat map</option>
             <option value="chain">Chain</option>
           </select>
+          <label for="finding-level">Show</label>
+          <select class="select" id="finding-level" title="Only the findings at this level or above">
+            <option value="">All levels</option><option value="critical">Critical only</option>
+            <option value="high">High and above</option><option value="medium">Medium and above</option>
+          </select>
           <label for="finding-group">Grouped by</label>
           <select class="select" id="finding-group">
             <option value="level">level</option>
@@ -431,6 +437,7 @@
             <button class="btn" id="action-edit" title="Every field of the selected action: status, dates, person, machine, reference, details">Edit…</button>
             <button class="btn" id="action-delete">Delete</button>
             <button class="btn" id="action-export" title="Download the tracking as a spreadsheet">Export CSV</button>
+            <button class="btn" id="client-open" title="Who the case is for, and the engagement: the client report reads them">Client and mission…</button>
           </div>
           <div class="gridwrap" style="flex:1">
             <div class="gridbody">
@@ -509,7 +516,9 @@
           <label><input type="checkbox" id="ioc-subdomains" checked> Include sub-domains</label>
           <label><input type="checkbox" id="ioc-filters"> Respect the analysis filters</label>
           <label><input type="checkbox" id="ioc-all"> Hunt across every open analysis</label>
+          <label title="Details kept at most, as the desktop's limit">Max details <input type="number" id="ioc-limit" min="1" max="5000000" value="250000" style="width:90px"></label>
           <button class="btn" id="ioc-scan">Hunt</button>
+          <button class="btn" id="ioc-stop" title="Interrupt the hunt that is running">Interrupt</button>
           <select class="select" id="ioc-history" title="Saved hunts of this case">
             <option value="">History</option>
           </select>
@@ -519,8 +528,8 @@
         <div class="gridwrap" style="flex:0 0 34%;min-height:90px">
           <div class="gridbody">
             <table>
-              <colgroup><col style="width:80px"><col style="width:24%"><col style="width:24%"><col style="width:24%"><col style="width:80px"><col></colgroup>
-              <thead><tr><th>Type</th><th>IOC original</th><th>Normalised</th><th>Label</th><th>Rows</th><th>Details</th></tr></thead>
+              <colgroup><col style="width:80px"><col style="width:24%"><col style="width:24%"><col style="width:18%"><col style="width:70px"><col style="width:70px"><col></colgroup>
+              <thead><tr><th>Type</th><th>IOC original</th><th>Normalised value</th><th>Label</th><th>Fields</th><th>Rows</th><th>Details</th></tr></thead>
               <tbody id="ioc-list-rows"></tbody>
             </table>
           </div>
@@ -528,13 +537,16 @@
         <div class="gridwrap" style="flex:1">
           <div class="gridbody">
             <table>
-              <colgroup><col style="width:170px"><col style="width:180px"><col style="width:160px"><col style="width:90px"><col style="width:130px"><col><col style="width:170px"></colgroup>
-              <thead><tr><th>Source date</th><th>IOC</th><th>Analysis</th><th>Source row</th><th>Column</th><th>Observed value</th><th>Rule</th></tr></thead>
+              <colgroup><col style="width:150px"><col style="width:150px"><col style="width:140px"><col style="width:80px"><col style="width:110px"><col style="width:20%"><col><col style="width:150px"></colgroup>
+              <thead><tr><th>Source date</th><th>IOC</th><th>Analysis</th><th>Source row</th><th>Column</th><th>Observed value</th><th>Excerpt</th><th>Rule</th></tr></thead>
               <tbody id="ioc-rows"></tbody>
             </table>
           </div>
         </div>
         <div class="filterbar">
+          <button class="btn" id="ioc-all-iocs" title="Show the details of every indicator again">All IOCs</button>
+          <button class="btn" id="ioc-prev">Previous</button>
+          <button class="btn" id="ioc-next">Next</button>
           <button class="btn" data-act="ioc-export-matches">Export the matches</button>
           <button class="btn" data-act="ioc-export-summary">Export the summary</button>
           <div class="grow"></div>
@@ -552,7 +564,10 @@
             <option value="hash">Hash</option>
           </select>
           <input class="search" id="timeline-search" placeholder="Correlate an entity across the case…  Enter to search">
-          <label><input type="checkbox" id="timeline-undated"> Include rows without a date</label>
+          <button class="btn" id="timeline-correlate" title="Look for the entity in every analysis">Correlate</button>
+          <label title="Compare the whole value of the field, case-insensitive; nothing is deduced"><input type="checkbox" id="timeline-exact"> Exact value</label>
+          <label><input type="checkbox" id="timeline-bookmarks"> Bookmarks</label>
+          <label><input type="checkbox" id="timeline-undated" checked> Include rows without a date</label>
           <label><input type="checkbox" id="timeline-filters"
             title="Read each analysis through its own filters, as the desktop does">Respect the analyses' filters</label>
           <button class="btn" id="timeline-build">Build / refresh</button>
@@ -575,7 +590,12 @@
         <div class="filterbar" id="timeline-controls">
           <button class="btn" data-act="tl-zoom-in" title="Zoom in">Zoom +</button>
           <button class="btn" data-act="tl-zoom-out" title="Zoom out">Zoom −</button>
+          <button class="btn" data-act="tl-pan-left" title="Slide the window back by half its width">←</button>
+          <button class="btn" data-act="tl-pan-right" title="Slide the window forward by half its width">→</button>
           <button class="btn" data-act="tl-fit" title="Show the whole extent">Fit</button>
+          <select class="select" id="timeline-preset" title="A duration centred on the selected event (or the middle of the extent)">
+            <option value="0">Duration…</option><option value="900">15 minutes</option><option value="3600">1 hour</option>
+            <option value="86400">24 hours</option><option value="604800">7 days</option></select>
           <button class="btn" data-act="tl-back" title="Back to the previous window">Back</button>
           <button class="btn" data-act="tl-isolate" title="Show every source again">Show all sources</button>
           <span class="info" id="timeline-window"></span>
@@ -948,10 +968,13 @@
       <div class="note">The first key decides; the next ones break ties. Shift-clicking a column header
         adds a key without opening this window.</div>
       <table class="summary-table">
-        <colgroup><col style="width:44%"><col style="width:26%"><col style="width:15%"><col style="width:15%"></colgroup>
-        <thead><tr><th>Column</th><th>Direction</th><th></th><th></th></tr></thead>
+        <colgroup><col style="width:36%"><col style="width:20%"><col style="width:20%"><col style="width:12%"><col style="width:12%"></colgroup>
+        <thead><tr><th>Column</th><th>Direction</th><th>Compare as</th><th></th><th></th></tr></thead>
         <tbody id="sort-rows"></tbody>
       </table>
+      <div class="row"><label for="sort-header-type">A click on a header compares as</label>
+        <select id="sort-header-type"><option value="text">Text</option><option value="number">Number</option>
+          <option value="timestamp">ISO date</option></select></div>
       <button class="btn" id="sort-add">Add a key</button>
     </div>
     <div class="foot">
@@ -968,10 +991,22 @@
       <div class="note">One line per aggregate. The desktop shows them beside the group and can order the
         groups by one of them.</div>
       <table class="summary-table">
-        <colgroup><col style="width:38%"><col style="width:26%"><col style="width:24%"><col style="width:12%"></colgroup>
-        <thead><tr><th>Column</th><th>Aggregate</th><th>Type</th><th></th></tr></thead>
+        <colgroup><col style="width:26%"><col style="width:20%"><col style="width:16%"><col style="width:26%"><col style="width:12%"></colgroup>
+        <thead><tr><th>Column</th><th>Aggregate</th><th>Type</th><th>Footer shown in</th><th></th></tr></thead>
         <tbody id="summary-rows"></tbody>
       </table>
+      <div class="note" style="margin-top:10px">Global summaries: one line under the whole filtered analysis.</div>
+      <table class="summary-table">
+        <colgroup><col style="width:38%"><col style="width:26%"><col style="width:24%"><col style="width:12%"></colgroup>
+        <thead><tr><th>Column</th><th>Aggregate</th><th>Type</th><th></th></tr></thead>
+        <tbody id="total-rows"></tbody>
+      </table>
+      <div class="row"><button class="btn" id="total-add">Add a global summary</button>
+        <div class="grow"></div>
+        <label for="summary-footer-mode">Group footer</label>
+        <select id="summary-footer-mode"><option value="hidden">hidden</option>
+          <option value="expanded">under an expanded group</option><option value="always">always</option></select>
+        <label><input type="checkbox" id="summary-show-total" checked> Show the global summaries</label></div>
       <div class="row">
         <button class="btn" id="summary-add">Add a summary</button>
         <div class="grow"></div>
@@ -1155,9 +1190,25 @@
           <option value="source">As the source wrote them</option>
           <option value="iso">ISO, normalised</option>
           <option value="iso7">ISO with 7 decimals</option>
+          <option value="custom">Custom pattern</option>
         </select>
-        <span class="note" style="max-width:none">applies to the values that read as full timestamps</span>
+        <span class="note" style="max-width:none">applies to the date columns of the analysis; the source values stay in the case</span>
       </div>
+      <div class="row"><label for="prefs-date-pattern">Custom date format</label>
+        <input id="prefs-date-pattern" placeholder="yyyy-MM-dd HH:mm:ss" maxlength="120">
+        <span class="note" style="max-width:none">used when "Custom pattern" is chosen</span>
+      </div>
+      <div class="row"><label for="prefs-details">Row details</label>
+        <select id="prefs-details"><option value="bottom">At the bottom</option><option value="right">On the right</option><option value="top">At the top</option></select>
+      </div>
+      <div class="row"><label><input type="checkbox" id="prefs-right-copy"> Copy the cell on right-click (Shift: menu)</label></div>
+      <div class="row"><label for="prefs-pins">Default pinning</label>
+        <textarea id="prefs-pins" rows="3" placeholder="One column name per line"></textarea></div>
+      <div class="row"><label><input type="checkbox" id="prefs-auto-profile" checked> Apply the recognised forensic profile when a table is imported</label></div>
+      <div class="note">Resources: saved for the next analyses opened; 0 is automatic.</div>
+      <div class="row"><label for="prefs-memory">Memory per analysis (MB)</label><input type="number" id="prefs-memory" min="0" max="16384"></div>
+      <div class="row"><label for="prefs-query-threads">Threads · search and queries</label><input type="number" id="prefs-query-threads" min="0" max="32"></div>
+      <div class="row"><label for="prefs-parsing-threads">Threads · import and parsing</label><input type="number" id="prefs-parsing-threads" min="0" max="32"></div>
       <div class="row"><label for="prefs-scale">Text size</label>
         <select id="prefs-scale">
           <option value="1">100 %</option><option value="1.1">110 %</option>
@@ -1198,6 +1249,7 @@
           <option value="linux">Linux collection expected</option>
           <option value="linux_logs">Linux /var/log expected</option>
         </select>
+        <button class="btn" id="coverage-plan" title="Tick only the families your collection plan expects">Adjust the expected families…</button>
         <label><input type="checkbox" id="coverage-hashes"> Recheck the SHA-256</label>
         <label><input type="checkbox" id="coverage-deep" checked> Empty columns and identifiers</label>
         <button class="btn" id="coverage-run">Check the coverage</button>
@@ -1231,6 +1283,20 @@
         point to verify, never a proof that the machine had nothing.</div>
     </div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
+</div>
+
+<div class="modal" id="coverage-plan-modal">
+  <div class="dialog" style="min-width:440px">
+    <h3>Expected families</h3>
+    <div class="body">
+      <div class="note">Tick only the families your collection plan expects. Their absence is a point to verify, not a proof of absence on the machine.</div>
+      <div id="coverage-plan-list" style="display:flex;flex-direction:column;gap:4px;max-height:340px;overflow:auto"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="coverage-plan-apply">OK</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -1496,6 +1562,28 @@
   </div>
 </div>
 
+<div class="modal" id="client-modal">
+  <div class="dialog" style="min-width:560px">
+    <h3>Client and mission</h3>
+    <div class="body">
+      <div class="row"><label for="cm-name">Client</label><input id="cm-name"></div>
+      <div class="row"><label for="cm-reference">File reference</label><input id="cm-reference"></div>
+      <div class="row"><label for="cm-sector">Sector</label><input id="cm-sector"></div>
+      <div class="row"><label for="cm-contact">Client contact</label><input id="cm-contact"></div>
+      <div class="row"><label for="cm-contract">Contract</label><input id="cm-contract"></div>
+      <div class="row"><label for="cm-lead">Mission lead</label><input id="cm-lead"></div>
+      <div class="row"><label for="cm-start">Start</label><input id="cm-start" placeholder="YYYY-MM-DD"></div>
+      <div class="row"><label for="cm-end">End</label><input id="cm-end" placeholder="YYYY-MM-DD"></div>
+      <div class="row"><label for="cm-notes">Scope and mission notes</label><textarea id="cm-notes" rows="4"></textarea></div>
+      <div class="note" id="cm-result" role="status"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="client-save">Save</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="report-modal">
   <div class="dialog">
     <h3>Reports</h3>
@@ -1515,7 +1603,14 @@
             <option value="false">Every row (bounded)</option>
           </select>
         </div>
-        <div class="note">The report is generated by the desktop's own generator: same escaping, same source hashes, same view description.</div>
+        <div class="row"><label>Scope</label>
+          <label><input type="checkbox" id="report-filters" checked> Respect the filters of each analysis</label>
+          <label><input type="checkbox" id="report-selection"> Only the rows selected in the active grid</label>
+          <label><input type="checkbox" id="report-timeline"> Add the timeline's current chart</label>
+        </div>
+        <div class="row"><label for="report-limit">Maximum findings</label>
+          <input type="number" id="report-limit" min="1" max="10000" value="2000" style="width:100px"></div>
+        <div class="note">The report is generated by the desktop's own generator: same escaping, same source hashes, same view description, and the last coverage check when there is one.</div>
       </div>
       <div id="report-client-fields" style="display:none">
         <div class="row"><label for="client-title">Title</label><input id="client-title" placeholder="Client report — case name"></div>

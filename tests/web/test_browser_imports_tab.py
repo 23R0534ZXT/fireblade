@@ -102,10 +102,13 @@ def test_a_file_is_read_again_with_the_reader_the_analyst_names(
     page.wait_for_function(
         f"[...document.querySelectorAll('#tree .node.child')].some(e => e.innerText.includes({name!r}))"
     )
-    page.click(f'#tree .node:has-text("{name}")')
+    # the generic reader's grid of the same file comes first: the one the analyst asked for is the last
+    page.locator(f'#tree .node.child:has-text("{name}")').last.click()
     page.wait_for_selector("#body tr[data-row]")
+    page.wait_for_function(
+        f"document.getElementById('body').innerText.includes({expect_text!r})", timeout=30000
+    )
     assert rows(page) >= expect_rows
-    assert expect_text in page.inner_text("#body")
 
 
 def test_a_file_is_set_aside_from_the_retry_window(empty_page, server):
@@ -157,11 +160,12 @@ def test_delete_without_a_selection_asks_for_one(empty_page, server):
 def test_copy_unprocessed_files_puts_only_the_unread_paths_on_the_clipboard(empty_page, server):
     page = empty_page
     _mixed(page, server)
+    # every file of the folder is read now (the generic reader takes what no dedicated reader owns):
+    # nothing is left unprocessed, and the command says so
     page.click('[data-act="import-copy-unread"]')
-    page.wait_for_function("document.getElementById('status').innerText.includes('copied')")
-    pasted = page.evaluate("navigator.clipboard.readText()")
-    assert "junk.bin" in pasted and "notes.txt" in pasted
-    assert "good" not in pasted
+    page.wait_for_function(
+        "document.getElementById('status').innerText.includes('Every collected file was read')"
+    )
 
 
 def test_refresh_reloads_the_report_and_the_other_buttons_of_the_tab_open_their_windows(

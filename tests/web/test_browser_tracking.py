@@ -273,8 +273,14 @@ def test_an_indicator_list_is_read_from_a_text_file(page, tmp_path):
         timeout=30000,
     )
     summary = page.inner_text("#ioc-summary")
-    assert "2 indicator(s)" in summary and "24 hit(s)" in summary, summary
+    assert "2 valid IOC(s)" in summary, summary
     assert "1 line(s) rejected" in summary and "1 duplicate(s)" in summary, summary
+    # the import reads the list; the hunt is a gesture of its own
+    page.click("#ioc-scan")
+    page.wait_for_function(
+        "document.getElementById('ioc-summary').innerText.includes('24 details kept')",
+        timeout=60000,
+    )
 
 
 @pytest.mark.parametrize(
@@ -289,8 +295,11 @@ def test_a_csv_or_tsv_list_is_read_by_its_own_format(page, tmp_path, name, conte
     listing.write_text(content)
     page.click('.tabs .tab:text-is("IOC hunting")')
     page.set_input_files("#ioc-file", str(listing))
+    page.wait_for_function("document.getElementById('ioc-input').value.includes('10.0.0.1')")
+    page.click("#ioc-scan")
     page.wait_for_function(
-        "document.getElementById('ioc-summary').innerText.includes('12 hit(s)')", timeout=30000
+        "document.getElementById('ioc-summary').innerText.includes('12 details kept')",
+        timeout=60000,
     )
 
 
@@ -298,14 +307,14 @@ def test_a_saved_hunt_is_listed_and_replayed(page):
     page.click('.tabs .tab:text-is("IOC hunting")')
     page.fill("#ioc-input", "10.0.0.2")
     page.click("#ioc-scan")
-    page.wait_for_function("document.getElementById('ioc-summary').innerText.includes('12 hit(s)')")
+    page.wait_for_function(
+        "document.getElementById('ioc-summary').innerText.includes('12 details kept')"
+    )
     page.fill("#ioc-input", "")
     page.focus("#ioc-history")
     page.wait_for_function("document.querySelectorAll('#ioc-history option').length > 1")
     value = page.eval_on_selector("#ioc-history option:nth-child(2)", "e => e.value")
     page.select_option("#ioc-history", value)
-    page.wait_for_function(
-        "document.getElementById('ioc-summary').innerText.includes('replayed hunt')"
-    )
-    assert page.input_value("#ioc-input") == "10.0.0.2"
+    page.wait_for_function("document.getElementById('ioc-input').value.includes('10.0.0.2')")
+    assert "10.0.0.2" in page.input_value("#ioc-input")
     assert page.locator("#ioc-rows tr").count() >= 1

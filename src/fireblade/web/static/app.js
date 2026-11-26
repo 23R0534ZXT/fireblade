@@ -36,13 +36,17 @@ const state = {
   interval: "",        // date interval applied to the grouped column
   expression: null,    // FilterGroup sent to the core
   path: [],            // drill-down values
-  multiSort: [],       // [{column, descending}] in application order
+  multiSort: [],       // [{column, descending, kind}] in application order
+  sortType: "text",    // how a click on a header compares: text, number or timestamp
   hidden: new Set(),    // column indexes hidden by the analyst
   pinned: new Set(),    // column indexes frozen on the left
   pinnedRight: new Set(), // column indexes frozen on the right
   selection: new Set(), // row ids selected on this page (Shift extends, Ctrl toggles)
   anchor: null,         // the row a Shift-click extends from
-  summaries: [],        // [{column, operation, kind}] shown beside each group
+  summaries: [],        // [{column, operation, kind, footer}] shown beside each group
+  totalSummaries: [],   // the same, over the whole filtered analysis (the totals line)
+  footerMode: "hidden", // a group's summaries under its rows: hidden, expanded or always
+  showTotal: true,      // show the totals line
   order: "",            // how the groups are ordered: count, value or a summary
   orderDesc: true,
   orderSummary: 0,
@@ -125,7 +129,10 @@ function renderRetryList() {
   const files = retryState.files.filter((item) => {
     if (filter === "all") return true;
     if (filter === "aside") return item.ignored;
-    return item.status !== "complete" && item.status !== "companion" && !item.ignored;
+    if (item.ignored) return false;
+    // A file only the generic reader read stays here: a reader the analyst names may read it better.
+    const generic = (item.tools || []).length === 1 && ["Files", "Inventory"].includes(item.tools[0]);
+    return generic || (item.status !== "complete" && item.status !== "companion");
   });
   const aside = retryState.files.filter((item) => item.ignored).length;
   $("report-summary").textContent = `${retryState.files.length} file(s) in the reports`
@@ -133,7 +140,7 @@ function renderRetryList() {
   $("retry-list").innerHTML = files.length
     ? files.map((item) => `<div class="retry-line${item.ignored ? " aside" : ""}">
         <span class="retry-path" title="${escapeHtml(item.path)}">${escapeHtml(item.path.split(/[\\/]/).pop())}
-          <em>${escapeHtml(item.status)}${item.ignored ? " · set aside" : ""}${item.reason ? " — " + escapeHtml(item.reason) : ""}</em></span>
+          <em>${escapeHtml(["Files", "Inventory"].includes((item.tools || []).join()) && item.status === "complete" ? "read generically" : item.status)}${item.ignored ? " · set aside" : ""}${item.reason ? " — " + escapeHtml(item.reason) : ""}</em></span>
         <span class="pin">
           <select data-retry-reader="${escapeHtml(item.path)}">${retryState.readers.map((reader) =>
             `<option value="${reader}">${reader}</option>`).join("")}</select>
@@ -230,14 +237,25 @@ async function runRetry(path, reader) {
 
 /* Kept in the browser: they say how this analyst reads the data, not what the
    case contains. The desktop stores the same three choices in its profile. */
-const copyPrefs = { headers: true, dateFormat: "source" };
+const copyPrefs = { headers: true, dateFormat: "source", pattern: "", rightCopy: false, details: "bottom", pins: [] };
 
 function loadCopyPrefs() {
   try {
     const stored = JSON.parse(localStorage.getItem("fireblade.display") || "{}");
     if (typeof stored.headers === "boolean") copyPrefs.headers = stored.headers;
-    if (["source", "iso", "iso7"].includes(stored.dateFormat)) copyPrefs.dateFormat = stored.dateFormat;
+    if (["source", "iso", "iso7", "custom"].includes(stored.dateFormat)) copyPrefs.dateFormat = stored.dateFormat;
+    if (typeof stored.pattern === "string") copyPrefs.pattern = stored.pattern.slice(0, 120);
+    if (typeof stored.rightCopy === "boolean") copyPrefs.rightCopy = stored.rightCopy;
+    if (["bottom", "right", "top"].includes(stored.details)) copyPrefs.details = stored.details;
+    if (Array.isArray(stored.pins)) copyPrefs.pins = stored.pins.filter((name) => typeof name === "string").slice(0, 32);
   } catch (_) { /* a first visit, or storage disabled */ }
+}
+
+function applyDetailsPosition() {
+  const view = $("analysis-view");
+  if (!view) return;
+  view.classList.toggle("details-right", copyPrefs.details === "right");
+  view.classList.toggle("details-top", copyPrefs.details === "top");
 }
 
 function saveCopyPrefs() {
@@ -1462,6 +1480,10 @@ async function loadLayout() {
     state.hidden = new Set(payload.hidden || []);
     state.pinned = new Set(payload.pinned || []);
     state.pinnedRight = new Set(payload.pinned_right || []);
+    if (!state.pinned.size && !state.pinnedRight.size && copyPrefs.pins.length) {
+      // Preferences > default pinning: the named columns start frozen on the left of an analysis nobody has laid out.
+      state.columns.slice(1).forEach((name, index) => { if (copyPrefs.pins.includes(name)) state.pinned.add(index); });
+    }
     renderGrid();
   } catch (_) { /* no saved layout is not an error */ }
 }
@@ -1492,6 +1514,7 @@ function layoutDocument() {
     sort: state.sort,
     descending: state.descending,
     multiSort: state.multiSort,
+    sortType: state.sortType,
     groups: state.groups,
   };
 }
@@ -1528,6 +1551,7 @@ async function importLayout(file) {
   if (Number.isInteger(document_.sort)) state.sort = document_.sort;
   state.descending = Boolean(document_.descending);
   state.multiSort = Array.isArray(document_.multiSort) ? document_.multiSort : [];
+  state.sortType = ["text", "number", "timestamp"].includes(document_.sortType) ? document_.sortType : "text";
   if (Array.isArray(document_.groups)) state.groups = document_.groups;
   state.path = [];
   await saveDisplayNow();
@@ -1746,7 +1770,7 @@ function applyStoredRowHeight() {
 function resetView() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
   state.filters = []; state.search = ""; state.expression = null; state.bookmarksOnly = false;
-  state.sort = null; state.multiSort = []; state.groups = []; state.path = []; state.summaries = []; state.order = "";
+  state.sort = null; state.multiSort = []; state.groups = []; state.path = []; state.summaries = []; state.totalSummaries = []; state.order = "";
   state.hidden = new Set(); state.pinned = new Set(); state.pinnedRight = new Set(); state.widths = {};
   state.offset = 0;
   $("search").value = "";
@@ -1815,28 +1839,8 @@ function downloadCsv(name, lines) {
   URL.revokeObjectURL(link.href);
 }
 
-function exportIocMatches() {
-  if (!iocState.hits.length) { say("Nothing to export: hunt first", true); return; }
-  const lines = [["indicator", "analysis", "row", "column", "observed", "rule"]];
-  for (const hit of iocState.hits) {
-    lines.push([hit.indicator, hit.analysis_label || "", hit.row_id, hit.column,
-                hit.observed, hit.rule]);
-  }
-  downloadCsv("ioc-matches.csv", lines);
-  say(`${iocState.hits.length} match(es) exported`);
-}
-
-function exportIocSummary() {
-  const counts = new Map();
-  for (const hit of iocState.hits) counts.set(hit.indicator, (counts.get(hit.indicator) || 0) + 1);
-  const lines = [["type", "indicator", "label", "rows"]];
-  for (const line of iocLines()) {
-    lines.push([line.kind || iocKind(line.value), line.value, line.label || "",
-                counts.get(line.value) || 0]);
-  }
-  downloadCsv("ioc-summary.csv", lines);
-  say(`${lines.length - 1} indicator(s) summarised`);
-}
+function exportIocMatches() { exportHunt(false); }
+function exportIocSummary() { exportHunt(true); }
 
 /* ---- the imports table's own commands, one file at a time ---- */
 
@@ -1929,22 +1933,52 @@ async function deleteCollectedFile() {
 /* The bookmarks and their notes, as a CSV the analyst can keep outside the case. */
 async function exportAnnotations() {
   if (!state.openCase) { say("Open a case first", true); return; }
-  const lines = [["row_id", "note", "values"]];
-  const rows = new Map(state.rows.map((row) => [String(row[0]), row]));
-  for (const [rowId, note] of state.bookmarks.entries()) {
-    const row = rows.get(String(rowId));
-    const values = row ? row.slice(1).join(" | ") : "";
-    lines.push([rowId, String(note || ""), values]);
+  // The desktop's own export: the bookmarked rows of the filtered view, with their notes in columns.
+  exportRows({ annotations: true });
+  say("Bookmarks and notes exported");
+}
+
+/* The desktop's export: the view as the grid shows it (filters, sorts and their types, groups),
+   the visible columns only, the rows or the counts per group. */
+function exportRows(options) {
+  if (!state.openCase) { say("No case open", true); return; }
+  const params = query();
+  params.delete("offset"); params.delete("limit"); params.delete("path");
+  if (options.annotations) {
+    params.delete("group");
+  } else {
+    const shown = visibleColumns().map((item) => item.index - 1).filter((index) => index >= 0);
+    if (!shown.length) { say("Choose at least one visible column to export", true); return; }
+    for (const index of shown) params.append("column", String(index));
   }
-  const csv = lines.map((line) => line.map((cell) =>
-    '"' + String(cell).replace(/"/g, '""') + '"').join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `bookmarks-${(state.openCase.name || "case").replace(/[^\w.-]+/g, "-")}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
-  say(`${state.bookmarks.size} bookmark(s) exported`);
+  if (options.grouped) {
+    if (!state.groups.length) { say("Group the analysis first: the counts are per group", true); return; }
+    params.set("grouped", "true");
+  }
+  if (options.annotations) params.set("annotations", "true");
+  if (options.format) params.set("format", options.format);
+  downloadFrom(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/export?${params.toString()}`);
+}
+
+/* A file the server writes: fetched, so a refusal is said in the status line instead of replacing the page. */
+async function downloadFrom(path) {
+  try {
+    const response = await fetch(url(path));
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.detail || response.statusText);
+    }
+    const blob = await response.blob();
+    const disposition = response.headers.get("content-disposition") || "";
+    const named = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = named ? decodeURIComponent(named[1]) : "fireblade-export";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  } catch (error) {
+    say(error.message, true);
+  }
 }
 
 /* A portable case comes in as a file the browser sends: the server verifies every
@@ -2266,10 +2300,16 @@ function renderFindingView() {
 
 /* The findings on screen: the filter reads the rule, the host and the event ids,
    the way the desktop's own field does. */
+const FINDING_RANK = { critical: 4, high: 3, medium: 2, low: 1, informational: 0 };
+
 function shownFindings() {
   const term = ($("finding-search").value || "").trim().toLowerCase();
-  if (!term) return findingState.groups;
-  return findingState.groups.filter((group) =>
+  const floor = $("finding-level").value;
+  const base = floor
+    ? findingState.groups.filter((group) => (FINDING_RANK[String(group.level || "").toLowerCase()] ?? 0) >= FINDING_RANK[floor])
+    : findingState.groups;
+  if (!term) return base;
+  return base.filter((group) =>
     [group.title, group.host, (group.event_ids || []).join(" "), group.tactics,
      group.techniques, group.level].join(" ").toLowerCase().includes(term));
 }
@@ -2635,13 +2675,17 @@ function visualCell(rule, columnIndex, raw) {
 
 /* ---------- sort priority ---------- */
 
-function sortRow(key = { column: 0, descending: false }) {
+const SORT_TYPES = [["text", "Text"], ["number", "Number"], ["timestamp", "ISO date"]];
+
+function sortRow(key = { column: 0, descending: false, kind: "text" }) {
   const row = document.createElement("tr");
   row.innerHTML = `<td><select data-sort-column>${state.columns.slice(1).map((name, index) =>
       `<option value="${index}" ${index === key.column ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></td>
     <td><select data-sort-direction>
       <option value="asc" ${key.descending ? "" : "selected"}>A → Z</option>
       <option value="desc" ${key.descending ? "selected" : ""}>Z → A</option></select></td>
+    <td><select data-sort-kind>${SORT_TYPES.map(([code, label]) =>
+      `<option value="${code}" ${code === (key.kind || state.sortType) ? "selected" : ""}>${label}</option>`).join("")}</select></td>
     <td><button class="btn" data-sort-up title="Move up">↑</button></td>
     <td><button class="btn" data-sort-remove title="Remove this key">✕</button></td>`;
   const table = $("sort-rows");
@@ -2658,7 +2702,8 @@ function openSortPriority() {
   $("sort-rows").innerHTML = "";
   const keys = state.multiSort.length
     ? state.multiSort
-    : (state.sort !== null ? [{ column: state.sort, descending: state.descending }] : []);
+    : (state.sort !== null ? [{ column: state.sort, descending: state.descending, kind: state.sortType }] : []);
+  $("sort-header-type").value = state.sortType;
   for (const key of keys) $("sort-rows").appendChild(sortRow(key));
   $("sort-modal").classList.add("show");
 }
@@ -2667,9 +2712,11 @@ async function applySortPriority() {
   const keys = [];
   $("sort-rows").querySelectorAll("tr").forEach((row) => {
     keys.push({ column: Number(row.querySelector("[data-sort-column]").value),
-                descending: row.querySelector("[data-sort-direction]").value === "desc" });
+                descending: row.querySelector("[data-sort-direction]").value === "desc",
+                kind: row.querySelector("[data-sort-kind]").value });
   });
   state.multiSort = keys;
+  state.sortType = keys.length ? keys[0].kind : $("sort-header-type").value;
   if (keys.length) { state.sort = keys[0].column; state.descending = keys[0].descending; }
   closeModals();
   await loadRows(true);
@@ -2684,15 +2731,23 @@ const SUMMARY_OPERATIONS = [
 ];
 const SUMMARY_KINDS = [["number", "Number"], ["text", "Text"], ["timestamp", "ISO date"]];
 
-function summaryRow(summary = { column: 0, operation: "count", kind: "number" }) {
+function summaryRow(summary = { column: 0, operation: "count", kind: "number", footer: -1 }, withFooter = true) {
   const row = document.createElement("tr");
+  const footer = summary.footer === undefined ? -1 : summary.footer;
+  const footerChoice = withFooter
+    ? `<td><select data-summary-footer>
+        <option value="-1" ${footer === -1 ? "selected" : ""}>In the group header</option>
+        <option value="none" ${footer === null ? "selected" : ""}>In the value column</option>
+        ${state.columns.slice(1).map((name, index) =>
+          `<option value="${index}" ${footer === index ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></td>`
+    : "";
   row.innerHTML = `<td><select data-summary-column>${state.columns.slice(1).map((name, index) =>
       `<option value="${index}" ${index === summary.column ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></td>
     <td><select data-summary-operation>${SUMMARY_OPERATIONS.map(([code, label]) =>
       `<option value="${code}" ${code === summary.operation ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></td>
     <td><select data-summary-kind>${SUMMARY_KINDS.map(([code, label]) =>
       `<option value="${code}" ${code === summary.kind ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></td>
-    <td><button class="btn" data-summary-remove title="Remove this summary">✕</button></td>`;
+    ${footerChoice}<td><button class="btn" data-summary-remove title="Remove this summary">✕</button></td>`;
   row.querySelector("[data-summary-remove]").addEventListener("click", () => {
     row.remove();
     refreshSummaryOrderChoices();
@@ -2706,6 +2761,10 @@ function openSummaries() {
   const chosen = state.summaries.length ? state.summaries
     : (state.groups.length ? [{ column: 0, operation: "count", kind: "number" }] : []);
   for (const summary of chosen) $("summary-rows").appendChild(summaryRow(summary));
+  $("total-rows").innerHTML = "";
+  for (const summary of state.totalSummaries) $("total-rows").appendChild(summaryRow(summary, false));
+  $("summary-footer-mode").value = state.footerMode;
+  $("summary-show-total").checked = state.showTotal;
   $("summary-order").value = state.order || "";
   $("summary-desc").checked = state.orderDesc !== false;
   refreshSummaryOrderChoices();
@@ -2728,9 +2787,18 @@ async function applySummaries() {
       column: Number(row.querySelector("[data-summary-column]").value),
       operation: row.querySelector("[data-summary-operation]").value,
       kind: row.querySelector("[data-summary-kind]").value,
+      footer: (() => { const value = row.querySelector("[data-summary-footer]").value; return value === "none" ? null : Number(value); })(),
     });
   });
   state.summaries = summaries;
+  state.totalSummaries = [...$("total-rows").querySelectorAll("tr")].map((row) => ({
+    column: Number(row.querySelector("[data-summary-column]").value),
+    operation: row.querySelector("[data-summary-operation]").value,
+    kind: row.querySelector("[data-summary-kind]").value,
+    footer: -1,
+  }));
+  state.footerMode = $("summary-footer-mode").value;
+  state.showTotal = $("summary-show-total").checked;
   state.order = $("summary-order").value;
   state.orderDesc = $("summary-desc").checked;
   state.orderSummary = Number($("summary-which").value || 0);
@@ -3064,6 +3132,8 @@ async function correlateValue() {
   $("timeline-search").value = value;
   timelineState.kind = kind;
   timelineState.text = value;
+  // The desktop compares the whole value when the field is an identity, an address, a path or a hash.
+  $("timeline-exact").checked = kind !== "text";
   await loadTimeline(true);
   say(`Correlating ${value} across the case`);
 }
@@ -3718,17 +3788,41 @@ function renderCoverage() {
   }
 }
 
+let coverageTools = null;   // the families the analyst expects, when the plan was adjusted
+
+async function openCoveragePlan() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  try {
+    const plan = await api("/api/coverage-plan");
+    const chosen = new Set(coverageTools || plan.profiles[$("coverage-profile").value] || []);
+    $("coverage-plan-list").innerHTML = plan.families.map((name) =>
+      `<label><input type="checkbox" data-family="${escapeHtml(name)}" ${chosen.has(name) ? "checked" : ""}> ${escapeHtml(name)}</label>`).join("");
+    $("coverage-plan-modal").classList.add("show");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+function applyCoveragePlan() {
+  coverageTools = [...$("coverage-plan-list").querySelectorAll("input[data-family]")]
+    .filter((box) => box.checked).map((box) => box.dataset.family);
+  $("coverage-plan-modal").classList.remove("show");
+  say(`Expected families adjusted: ${coverageTools.length} chosen — a missing one is a point to verify, not a proof of absence`);
+}
+
 async function runCoverage() {
   if (!state.openCase) { say("Open a case first", true); return; }
-  const query = new URLSearchParams({
-    expected: $("coverage-profile").value,
-    verify_hashes: $("coverage-hashes").checked ? "true" : "false",
-    deep_checks: $("coverage-deep").checked ? "true" : "false",
-    run: "true" });
   say("Checking every analysis: this reads them again, it can take a while…");
   $("coverage-note").textContent = "Checking…";
   try {
-    const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/coverage?${query}`);
+    const payload = await runTask("coverage", {
+      expected: $("coverage-profile").value,
+      tools: coverageTools,
+      verify_hashes: $("coverage-hashes").checked,
+      deep_checks: $("coverage-deep").checked,
+    }, "Coverage check");
+    $("coverage-modal").classList.add("show"); // the task's progress window had taken the screen
+    if (!payload) { $("coverage-note").textContent = "The check was stopped: the previous result stays."; return; }
     showCoverage(payload);
   } catch (error) {
     $("coverage-note").textContent = error.message;
@@ -3848,8 +3942,38 @@ async function toggleDetectionRule() {
 
 /* ---------- preferences ---------- */
 
+async function loadResourcePrefs() {
+  try {
+    const payload = await api("/api/preferences");
+    $("prefs-auto-profile").checked = payload.auto_profiles !== false;
+    $("prefs-memory").value = payload.resource_memory_mb;
+    $("prefs-query-threads").value = payload.query_threads;
+    $("prefs-parsing-threads").value = payload.parsing_threads;
+    $("prefs-memory").placeholder = `Automatic · ${payload.automatic_memory_mb} MB`;
+    $("prefs-query-threads").placeholder = $("prefs-parsing-threads").placeholder = `Automatic · ${payload.automatic_threads} threads`;
+  } catch (error) { say(error.message, true); }
+}
+
+async function saveResourcePrefs() {
+  try {
+    await apiPut("/api/preferences", {
+      auto_profiles: $("prefs-auto-profile").checked,
+      resource_memory_mb: Number($("prefs-memory").value) || 0,
+      query_threads: Number($("prefs-query-threads").value) || 0,
+      parsing_threads: Number($("prefs-parsing-threads").value) || 0,
+    });
+    say("Saved for the next analyses opened: the ones running keep their resources");
+  } catch (error) { say(error.message, true); await loadResourcePrefs(); }
+}
+
 async function openPreferences() {
   $("prefs-scale").value = localStorage.getItem("fireblade.scale") || "1";
+  $("prefs-date-format").value = copyPrefs.dateFormat;
+  $("prefs-date-pattern").value = copyPrefs.pattern;
+  $("prefs-right-copy").checked = copyPrefs.rightCopy;
+  $("prefs-details").value = copyPrefs.details;
+  $("prefs-pins").value = copyPrefs.pins.join("\n");
+  loadResourcePrefs();
   $("prefs-runtime").innerHTML = '<div class="emptygrid">Reading the runtime…</div>';
   $("prefs-modal").classList.add("show");
   try {
@@ -3977,14 +4101,7 @@ async function saveCurrentView() {
   try {
     await apiPost(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/views`, {
       name,
-      view: {
-        search: state.search,
-        filters: state.filters,
-        groups: state.groups,
-        sort: state.sort,
-        descending: state.descending,
-        bookmarks_only: state.bookmarksOnly,
-      },
+      view: currentViewFields(),
     });
     say(`View saved: ${name}`);
     $("view-name").value = "";
@@ -3994,18 +4111,60 @@ async function saveCurrentView() {
   }
 }
 
+/* The grid state a saved view keeps: the same fields the desktop's view carries. */
+function currentViewFields() {
+  return {
+    search: state.search,
+    filters: state.filters,
+    expression: state.expression,
+    groups: state.groups,
+    interval: state.interval,
+    sort: state.sort,
+    descending: state.descending,
+    sort_type: state.sortType,
+    sorts: state.multiSort.map((key) => ({ column: key.column, descending: key.descending, kind: key.kind || state.sortType })),
+    bookmarks_only: state.bookmarksOnly,
+    highlight: state.highlight || "",
+    summaries: state.summaries,
+    total_summaries: state.totalSummaries,
+    footer_mode: state.footerMode,
+    show_total: state.showTotal,
+    order: state.order,
+    order_descending: state.orderDesc !== false,
+    order_summary: state.orderSummary || 0,
+  };
+}
+
+function applyViewFields(view) {
+  state.search = view.search || "";
+  $("search").value = state.search;
+  state.filters = (view.filters || []).map((item) => ({ column: item.column, operator: item.operator, value: item.value }));
+  state.expression = view.expression && view.expression.children && view.expression.children.length ? view.expression : null;
+  state.groups = view.groups || [];
+  state.interval = view.interval || "";
+  state.path = [];
+  state.sortType = ["text", "number", "timestamp"].includes(view.sort_type) ? view.sort_type : "text";
+  state.multiSort = (view.sorts || []).length && (view.sorts || []).length > 1
+    ? view.sorts.map((key) => ({ column: key.column, descending: key.descending, kind: key.kind }))
+    : [];
+  state.sort = view.sort === undefined || view.sort === null ? null : view.sort;
+  state.descending = Boolean(view.descending);
+  state.bookmarksOnly = Boolean(view.bookmarks_only);
+  state.highlight = view.highlight || "";
+  state.summaries = (view.summaries || []).map((item) => ({ ...item }));
+  state.totalSummaries = (view.total_summaries || []).map((item) => ({ ...item }));
+  state.footerMode = view.footer_mode || "hidden";
+  state.showTotal = view.show_total !== false;
+  state.order = view.order || "";
+  state.orderDesc = view.order_descending !== false;
+  state.orderSummary = view.order_summary || 0;
+  $("bookmarks-only").classList.toggle("active", state.bookmarksOnly);
+}
+
 async function applyView(name) {
   try {
     const view = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/views/${encodeURIComponent(name)}`);
-    state.search = view.search || "";
-    $("search").value = state.search;
-    state.filters = (view.filters || []).map((item) => ({ column: item.column, operator: item.operator, value: item.value }));
-    state.groups = view.groups || [];
-    state.path = [];
-    state.sort = view.sort === undefined ? null : view.sort;
-    state.descending = Boolean(view.descending);
-    state.bookmarksOnly = Boolean(view.bookmarks_only);
-    $("bookmarks-only").classList.toggle("active", state.bookmarksOnly);
+    applyViewFields(view);
     closeModals();
     await loadRows(true);
     say(`View applied: ${name}`);
@@ -4915,7 +5074,7 @@ async function toggleAction(actionId) {
 
 /* ---------- IOC hunting ---------- */
 
-const iocState = { hits: [], summary: "" };
+const iocState = { hits: [], summary: "", hunt: null, list: [], count: 0, offset: 0, pageSize: 250, selected: null, payload: null };
 
 /* What the grid shows, for the commands that "respect the filter": the page keeps the search,
    the column filters and the advanced filter, so it tells the server which they are. */
@@ -4932,20 +5091,69 @@ function iocOptions() {
     all: $("ioc-all").checked,
     filters: $("ioc-filters").checked,
     subdomains: $("ioc-subdomains").checked,
+    limit: Number($("ioc-limit").value) || 250000,
     index: state.analysis,
     live: liveView(),
   };
 }
 
 function iocSummary(payload) {
-  const kinds = Object.entries(payload.by_kind || {}).map(([k, v]) => `${v} ${k}`).join(", ");
-  const scope = payload.all_analyses ? "every analysis" : "this analysis";
-  return `${payload.indicators} indicator(s) over ${scope}, ${payload.scanned} row(s) scanned — `
-    + `${payload.hits.length} hit(s)${kinds ? " : " + kinds : ""}`
-    + (payload.respect_filters ? " (filters respected)" : "")
-    + (payload.rejected ? ` · ${payload.rejected} line(s) rejected` : "")
-    + (payload.duplicates ? ` · ${payload.duplicates} duplicate(s)` : "")
-    + (payload.truncated ? " (list truncated)" : "");
+  const state_ = { complete: "Complete", partial: "Partial", running: "Unfinished — run it again" }[payload.status] || "Unknown state";
+  let text = `${state_} · ${Number(payload.scanned).toLocaleString("en-US")} rows read · ${Number(payload.matching_fields).toLocaleString("en-US")} matching fields · ${Number(payload.stored_hits).toLocaleString("en-US")} details kept.`;
+  if (payload.truncated) text += " Details limited: the counters cover the whole reading.";
+  text += payload.respect_filters ? " Scope: the saved filters." : " Scope: every row of the analyses read.";
+  text += ` ${payload.rejected || 0} IOC(s) rejected.`;
+  if ((payload.errors || []).length) text += " " + payload.errors.map((item) => `${item.path}: ${item.error}`).join(" ; ");
+  return text;
+}
+
+/* A hunt, as the desktop shows it: the indicators with their counters, then one page of details. */
+function applyHunt(payload) {
+  iocState.payload = payload;
+  iocState.hunt = payload.hunt;
+  iocState.list = payload.list || [];
+  iocState.hits = payload.hits || [];
+  iocState.count = payload.count || 0;
+  iocState.offset = payload.offset || 0;
+  iocState.pageSize = payload.page_size || 250;
+  iocState.selected = payload.selected || null;
+  $("ioc-summary").textContent = iocSummary(payload);
+  say($("ioc-summary").textContent);
+  renderIoc();
+}
+
+async function iocPage(delta, ioc) {
+  if (!iocState.hunt || !state.openCase) { say("Hunt first", true); return; }
+  const selected = ioc === undefined ? iocState.selected : ioc;
+  const offset = ioc === undefined ? Math.max(0, iocState.offset + delta) : 0;
+  const params = new URLSearchParams({ offset: String(offset) });
+  if (selected) params.set("ioc", String(selected));
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/hunts/${iocState.hunt}?${params}`);
+    iocState.hits = payload.hits || [];
+    iocState.count = payload.count;
+    iocState.offset = payload.offset;
+    iocState.selected = selected || null;
+    renderIoc();
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function stopIocHunt() {
+  if (!state.openCase) return;
+  try {
+    const payload = await apiPost(`/api/cases/${state.openCase.id}/ioc-stop`, {});
+    say(payload.stopped ? "Hunt interrupted: the results kept before it stay" : "No hunt is running", !payload.stopped && false);
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+function exportHunt(summary) {
+  if (!iocState.hunt) { say("Nothing to export: hunt first", true); return; }
+  downloadFrom(`/api/cases/${state.openCase.id}/hunts/${iocState.hunt}/export?summary=${summary ? "true" : "false"}`);
+  say(summary ? "Hunt summary exported" : "Hunt details exported");
 }
 
 async function runIocScan() {
@@ -4955,40 +5163,29 @@ async function runIocScan() {
   try {
     const payload = await runTask("scan", { text, ...iocOptions() }, "IOC hunting");
     if (!payload) return;
-    iocState.hits = payload.hits;
+    applyHunt(payload);
     loadHuntHistory();
-    const summary = iocSummary(payload);
-    $("ioc-summary").textContent = summary;
-    say(summary);
-    renderIoc();
   } catch (error) {
     say(error.message, true);
     $("ioc-summary").textContent = error.message;
   }
 }
 
+/* "Import TXT / CSV / TSV": the list is read and put in the box, normalised; the hunt is a separate gesture. */
 async function runIocFile(file) {
   if (!state.openCase || !file) return;
   const body = new FormData();
   body.append("file", file);
-  const options = iocOptions();
-  body.append("all_analyses", options.all ? "true" : "false");
-  body.append("respect_filters", options.filters ? "true" : "false");
-  body.append("live", JSON.stringify(options.live));
-  body.append("subdomains", options.subdomains ? "true" : "false");
-  body.append("index", String(options.index));
   say(`Reading ${file.name}…`);
   try {
-    const response = await fetch(url(`/api/cases/${state.openCase.id}/ioc-file`), { method: "POST", body });
+    const response = await fetch(url(`/api/cases/${state.openCase.id}/ioc-list`), { method: "POST", body });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || response.statusText);
-    iocState.hits = payload.hits;
-    $("ioc-input").value = "";
-    loadHuntHistory();
-    const summary = iocSummary(payload);
-    $("ioc-summary").textContent = summary;
-    say(summary);
-    renderIoc();
+    $("ioc-input").value = payload.text;
+    const refused = (payload.rejected || []).map((item) => `Line ${item.line}: ${item.reason}`).join(" ; ");
+    const message = `${payload.valid} valid IOC(s) · ${payload.duplicates} duplicate(s) · ${payload.rejected_total} line(s) rejected. ${refused}`;
+    $("ioc-summary").textContent = message;
+    say(message);
   } catch (error) {
     say(error.message, true);
     $("ioc-summary").textContent = error.message;
@@ -5008,10 +5205,8 @@ async function openHunt(name) {
   if (!name) return;
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/hunts/${encodeURIComponent(name)}`);
-    iocState.hits = payload.hits || [];
     $("ioc-input").value = payload.text || "";
-    $("ioc-summary").textContent = `${payload.indicators} indicator(s) · ${payload.scanned} row(s) scanned — ${iocState.hits.length} hit(s) (replayed hunt)`;
-    renderIoc();
+    applyHunt(payload);
   } catch (error) {
     say(error.message, true);
   }
@@ -5046,34 +5241,30 @@ function iocKind(value) {
 }
 
 function renderIoc() {
-  // The list above the matches: what was asked, and what it found.
-  const counts = new Map();
-  for (const hit of iocState.hits) {
-    counts.set(hit.indicator, (counts.get(hit.indicator) || 0) + 1);
-  }
-  const lines = iocLines();
-  $("ioc-list-rows").innerHTML = lines.length ? lines.map((line) => {
-    const found = counts.get(line.value) || 0;
-    return `<tr><td>${escapeHtml(line.kind || iocKind(line.value))}</td>
-      <td title="${escapeHtml(line.value)}">${escapeHtml(line.value)}</td>
-      <td title="${escapeHtml(line.value)}">${escapeHtml(line.value)}</td>
-      <td>${escapeHtml(line.label || "")}</td>
-      <td>${found}</td>
-      <td>${found ? "matched" : "no hit"}</td></tr>`;
-  }).join("") : '<tr><td colspan="6" class="cellnull">Paste a list above, then Hunt.</td></tr>';
+  // The list above the matches: what was asked, and what each indicator found.
+  $("ioc-list-rows").innerHTML = iocState.list.length ? iocState.list.map((item) =>
+    `<tr data-ioc="${item.id}" class="${iocState.selected === item.id ? "sel" : ""}" title="Show the details of this indicator">
+      <td>${escapeHtml(item.kind_label || item.kind)}</td>
+      <td title="${escapeHtml(item.original)}">${escapeHtml(item.original)}</td>
+      <td title="${escapeHtml(item.value)}">${escapeHtml(item.value)}</td>
+      <td>${escapeHtml(item.label || "")}</td>
+      <td>${item.fields}</td><td>${item.rows}</td><td>${item.details}</td></tr>`).join("")
+    : '<tr><td colspan="7" class="cellnull">Paste a list above, then Hunt.</td></tr>';
 
-  $("ioc-rows").innerHTML = iocState.hits.map((hit) =>
-    `<tr><td>${escapeHtml(hit.when || hit.date || "")}</td>
-     <td title="${escapeHtml(hit.indicator)}">${escapeHtml(hit.indicator)}</td>
+  $("ioc-rows").innerHTML = iocState.hits.map((hit, position) =>
+    `<tr data-hit="${position}" title="Double-click to open the source row">
+     <td>${escapeHtml(hit.when || "")}</td>
+     <td title="${escapeHtml(hit.original)}">${escapeHtml(hit.original)}</td>
      <td title="${escapeHtml(hit.analysis_label || "")}">${escapeHtml(hit.analysis_label || "this analysis")}</td>
      <td class="rowid">${escapeHtml(String(hit.row_id))}</td>
-     <td>${escapeHtml(hit.analysis === state.analysis
-        ? (state.columns[hit.column + 1] || String(hit.column))
-        : `column ${hit.column + 1}`)}</td>
+     <td>${escapeHtml(hit.column_name || String(hit.column))}</td>
      <td title="${escapeHtml(hit.observed)}">${escapeHtml(hit.observed)}</td>
+     <td title="${escapeHtml(hit.excerpt || "")}">${escapeHtml((hit.excerpt || "").slice(0, 160))}</td>
      <td>${escapeHtml(hit.rule)}</td></tr>`).join("")
-    || '<tr><td colspan="7" class="cellnull">No hit.</td></tr>';
-  $("ioc-status").textContent = `${iocState.hits.length} match(es) for ${lines.length} indicator(s)`;
+    || '<tr><td colspan="8" class="cellnull">No hit.</td></tr>';
+  const first = iocState.count ? iocState.offset + 1 : 0;
+  $("ioc-status").textContent = `${first}–${iocState.offset + iocState.hits.length} / ${iocState.count} details`
+    + (iocState.selected ? " (one indicator)" : "");
 }
 
 /* ---------- timeline ---------- */
@@ -5168,6 +5359,8 @@ async function loadTimeline(reset, force) {
   const heavy = Boolean(force) || !timelineState.payload;
   const params = new URLSearchParams({ offset: String(timelineState.offset) });
   if (timelineState.text) { params.set("text", timelineState.text); params.set("kind", timelineState.kind); }
+  if ($("timeline-exact").checked) params.set("exact", "true");
+  if ($("timeline-bookmarks").checked) params.set("bookmarks", "true");
   const dates = timelineDatesParam();
   if (dates) params.set("dates", dates);
   if (timelineState.start !== null) params.set("start", String(timelineState.start));
@@ -5184,6 +5377,9 @@ async function loadTimeline(reset, force) {
     if (heavy) {
       const wanted = { offset: timelineState.offset };
       if (timelineState.text) Object.assign(wanted, { text: timelineState.text, kind: timelineState.kind });
+      if (force) wanted.rebuild = true; // Build / refresh reads the analyses again, as the desktop's Refresh does
+      wanted.exact = $("timeline-exact").checked;
+      wanted.bookmarks = $("timeline-bookmarks").checked;
       if (dates) wanted.dates = JSON.parse(dates);
       if (timelineState.start !== null) wanted.start = timelineState.start;
       if (timelineState.end !== null) wanted.end = timelineState.end;
@@ -5441,6 +5637,33 @@ function timelineZoom(factor, anchor) {
   renderTimeline(timelineState.payload);
 }
 
+function timelinePan(factor) {
+  const hist = timelineState.payload && timelineState.payload.histogram;
+  if (!hist) return;
+  const { start, end } = timelineRange(hist);
+  const span = end - start + 1;
+  const shift = Math.round(span * factor) || (factor > 0 ? 1 : -1);
+  const low = Math.max(0, Math.min(hist.bins - span, start + shift));
+  if (low === start) return;
+  timelineState.history.push([start, end]);
+  timelineState.window = [low, low + span - 1];
+  renderTimeline(timelineState.payload);
+}
+
+/* "15 minutes", "1 hour"…: a duration centred on the selected event, or on the middle of the extent. */
+function timelinePreset(seconds) {
+  const payload = timelineState.payload;
+  if (!seconds || !payload || !payload.extent || payload.extent.start === null) return;
+  const selected = payload.rows && timelineState.row
+    ? payload.rows.find((row) => row[0] === timelineState.source && row[1] === timelineState.row) : null;
+  const centre = selected && selected[2] !== null ? Number(selected[2]) : Math.round((payload.extent.start + payload.extent.end) / 2);
+  const half = seconds * 1e9 / 2;
+  timelineState.start = Math.round(centre - half);
+  timelineState.end = Math.round(centre + half);
+  loadTimeline(true);
+  say(`Duration: ${utcLabel(timelineState.start).slice(0, 16)} → ${utcLabel(timelineState.end).slice(0, 16)}`);
+}
+
 function timelineFit() {
   if (!timelineState.window) return;
   timelineState.history.push(timelineState.window);
@@ -5603,8 +5826,18 @@ function query() {
   if (state.interval && state.groups.length) params.set("interval", state.interval);
   if (state.expression) params.set("expression_json", JSON.stringify(state.expression));
   for (const summary of state.summaries) {
-    params.append("summary", `${summary.column}:${summary.operation}:${summary.kind}`);
+    const footer = summary.footer === undefined ? -1 : (summary.footer === null ? "none" : summary.footer);
+    params.append("summary", `${summary.column}:${summary.operation}:${summary.kind}:${footer}`);
   }
+  for (const summary of state.totalSummaries) {
+    params.append("total", `${summary.column}:${summary.operation}:${summary.kind}`);
+  }
+  if (state.footerMode !== "hidden") params.set("footer_mode", state.footerMode);
+  if (copyPrefs.dateFormat !== "source") {
+    params.set("date_format", copyPrefs.dateFormat);
+    if (copyPrefs.dateFormat === "custom") params.set("date_pattern", copyPrefs.pattern);
+  }
+  if (!state.showTotal) params.set("show_total", "false");
   if (state.order) {
     params.set("order", state.order);
     params.set("order_descending", state.orderDesc === false ? "false" : "true");
@@ -5612,9 +5845,10 @@ function query() {
   }
   for (const value of state.path) params.append("path", value === null ? "" : String(value));
   if (state.multiSort.length) {
-    for (const key of state.multiSort) params.append("sortkey", `${key.column}:${key.descending ? "desc" : "asc"}`);
+    for (const key of state.multiSort) params.append("sortkey", `${key.column}:${key.descending ? "desc" : "asc"}:${key.kind || state.sortType}`);
   } else if (state.sort !== null) {
     params.set("sort", String(state.sort));
+    params.set("sort_type", state.sortType);
     params.set("descending", state.descending ? "true" : "false");
   }
   for (const item of state.filters) params.append("filter", `${item.column}:${item.operator}:${item.value}`);
@@ -5717,19 +5951,32 @@ function visibleColumns() {
 
 /* "Highlight matches (empty = disable)", the desktop's own control: the text is cut
    around the term, each piece escaped, and only the pieces are marked. */
-function markText(text, term) {
+function markText(text, terms) {
   const raw = String(text === null || text === undefined ? "" : text);
-  if (!term) return escapeHtml(raw);
+  const wanted = [...new Set((Array.isArray(terms) ? terms : [terms]).filter(Boolean).map((term) => String(term).toLowerCase()))];
+  if (!wanted.length) return escapeHtml(raw);
   const lower = raw.toLowerCase();
-  const needle = term.toLowerCase();
-  let from = 0;
-  let out = "";
-  for (;;) {
-    const at = lower.indexOf(needle, from);
-    if (at < 0) { out += escapeHtml(raw.slice(from)); return out; }
-    out += escapeHtml(raw.slice(from, at)) + "<mark>" + escapeHtml(raw.slice(at, at + needle.length)) + "</mark>";
-    from = at + needle.length;
+  // Every occurrence of every term, case-insensitive; overlapping ones are one mark (the desktop paints the union).
+  const spans = [];
+  for (const needle of wanted) {
+    for (let at = lower.indexOf(needle); at >= 0; at = lower.indexOf(needle, at + needle.length)) {
+      spans.push([at, at + needle.length]);
+    }
   }
+  spans.sort((x, y) => x[0] - y[0] || y[1] - x[1]);
+  const merged = [];
+  for (const span of spans) {
+    const last = merged[merged.length - 1];
+    if (last && span[0] <= last[1]) last[1] = Math.max(last[1], span[1]);
+    else merged.push([...span]);
+  }
+  let out = "";
+  let from = 0;
+  for (const [start, end] of merged) {
+    out += escapeHtml(raw.slice(from, start)) + "<mark>" + escapeHtml(raw.slice(start, end)) + "</mark>";
+    from = end;
+  }
+  return out + escapeHtml(raw.slice(from));
 }
 
 async function openHighlight() {
@@ -5805,7 +6052,7 @@ function renderGrid() {
         || DATE_TEXT.test(value === null || value === undefined ? "" : String(value));
       const text = value === null || value === ""
         ? "∅"
-        : String(isDate ? formatTimestamp(value, copyPrefs.dateFormat) : value);
+        : String(value); // the server has already written the date columns the way Preferences asked
       const noted = rowNotes[String(index - 1)];
       const cls = [value === null || value === "" ? "cellnull" : (index === 0 ? "rowid" : ""),
                    noted ? "noted" : ""].filter(Boolean).join(" ");
@@ -5820,7 +6067,7 @@ function renderGrid() {
       const [open, close] = clipped ? ['<div class="clip">', "</div>"] : ["", ""];
       return `<td class="${cls}${visual ? ` ${visual.cls}` : ""}"${title}${painted} data-cell="${index - 1}">${open}`
         + (visual && visual.icon ? `<span class="vicon" style="color:${visual.ink}">${visual.icon}</span>` : "")
-        + `${state.highlight ? markText(text, state.highlight) : renderBoolean(index - 1, text)}`
+        + `${(state.highlight || state.search) ? markText(text, [state.highlight, state.search]) : renderBoolean(index - 1, text)}`
         + `${noted ? '<span class="notemark"></span>' : ""}${close}</td>`;
     }).join("");
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
@@ -5834,7 +6081,7 @@ function renderGrid() {
       : "";
     return `<tr data-row="${escapeHtml(String(id))}" class="${rowSelected(id) ? "sel" : ""}"${style}>
       <td class="markcell"><span class="cb ${marked}" title="${marked ? escapeHtml(String(state.bookmarks.get(String(id)) || "Bookmarked")) : "Bookmark this row"}"></span></td>${cells}</tr>`;
-  }).join("");
+  }).join("") + footerRowsHtml(shown, 0);
 
   const from = state.total ? state.offset + 1 : 0;
   const to = Math.min(state.offset + state.rows.length, state.total);
@@ -5894,13 +6141,42 @@ function renderGroupedGrid() {
         const value = row[2 + offset];
         return `<td>${value === null || value === undefined ? "" : escapeHtml(String(value))}</td>`;
       }).join("")}</tr>`;
-  }).join("");
+  }).join("") + footerRowsHtml([], 3 + summaries.length);
 
   const from = state.total ? state.offset + 1 : 0;
   const to = Math.min(state.offset + state.rows.length, state.total);
   renderGroupChart();
   $("pageinfo").textContent = `${from}–${to} / ${state.rows.length} group(s) — ${state.total} row(s)`;
   say(`Grouped by ${name} — ${state.rows.length} group(s) on this page, ${state.total} row(s) in the analysis`);
+}
+
+/* The summary lines under the rows: a group's own (placed in the column each summary names) and
+   the totals of the whole filtered analysis, as the desktop's grid draws its footers. */
+function summaryText(item, value) {
+  return `${item.operation} ${value === null || value === undefined ? "∅" : value}`;
+}
+
+function footerRowsHtml(columns, leading) {
+  const payload = state.payload || {};
+  let html = "";
+  if (payload.footer && (payload.summaries || []).length && payload.footer_mode !== "hidden") {
+    const placed = new Map();
+    (payload.summaries || []).forEach((item, offset) => {
+      const target = (payload.summary_footers || [])[offset];
+      const column = target === null || target === undefined ? item.column : target;
+      if (column >= 0) placed.set(column, (placed.get(column) ? placed.get(column) + " · " : "") + summaryText(item, payload.footer[offset]));
+    });
+    if (placed.size) {
+      html += `<tr class="gfooter" title="The summaries of this group"><td></td>${columns.map(({ index }) =>
+        `<td>${index === 0 ? "Σ" : escapeHtml(placed.get(index - 1) || "")}</td>`).join("")}</tr>`;
+    }
+  }
+  if (payload.totals && (payload.total_summaries || []).length) {
+    const text = payload.total_summaries.map((item, offset) =>
+      `${escapeHtml(item.name)}: ${escapeHtml(summaryText(item, payload.totals[offset]))}`).join(" · ");
+    html += `<tr class="gtotal" title="The totals of the whole filtered analysis"><td></td><td colspan="${Math.max(1, columns.length + leading)}"><b>Total</b> — ${text}</td></tr>`;
+  }
+  return html;
 }
 
 function showDetails(row) {
@@ -6407,7 +6683,7 @@ function wire() {
     if (event.shiftKey) {
       const existing = state.multiSort.find((item) => item.column === column);
       if (existing) existing.descending = !existing.descending;
-      else state.multiSort.push({ column, descending: false });
+      else state.multiSort.push({ column, descending: false, kind: state.sortType });
       state.sort = null;
     } else {
       state.multiSort = [];
@@ -6464,6 +6740,11 @@ function wire() {
     contextCell = cell ? cell.dataset.cell : null;
     event.preventDefault();
     contextRow = tr;
+    if (copyPrefs.rightCopy && !event.shiftKey && cell) {
+      // Preferences > copy the cell on right-click: Shift opens the menu instead.
+      copyCellValue();
+      return;
+    }
     const menu = $("row-menu");
     // The two EVTX actions only mean something in an alert analysis.
     const alerts = isAlertAnalysis();
@@ -6624,6 +6905,7 @@ function wire() {
     $("summary-rows").appendChild(summaryRow());
     refreshSummaryOrderChoices();
   });
+  $("total-add").addEventListener("click", () => $("total-rows").appendChild(summaryRow(undefined, false)));
   $("summary-order").addEventListener("change", refreshSummaryOrderChoices);
   $("summary-apply").addEventListener("click", applySummaries);
   $("prefs-copy-headers").addEventListener("change", (event) => {
@@ -6661,6 +6943,10 @@ function wire() {
   $("finding-search").addEventListener("input", renderFindingView);
   $("finding-view").addEventListener("change", renderFindingView);
   $("finding-group").addEventListener("change", renderFindingView);
+  $("finding-level").addEventListener("change", renderFindingView);
+  $("coverage-plan").addEventListener("click", openCoveragePlan);
+  $("coverage-plan-apply").addEventListener("click", applyCoveragePlan);
+  $("coverage-profile").addEventListener("change", () => { coverageTools = null; });
   window.addEventListener("resize", () => {
     if ($("finding-view").value !== "table") renderFindingView();
   });
@@ -6675,6 +6961,24 @@ function wire() {
     if (file) await runIocFile(file);
   });
   $("ioc-history").addEventListener("change", (event) => openHunt(event.target.value));
+  $("ioc-stop").addEventListener("click", stopIocHunt);
+  $("ioc-all-iocs").addEventListener("click", () => iocPage(0, null));
+  $("ioc-prev").addEventListener("click", () => iocPage(-iocState.pageSize));
+  $("ioc-next").addEventListener("click", () => iocPage(iocState.pageSize));
+  $("ioc-list-rows").addEventListener("click", (event) => {
+    const row = event.target.closest("tr[data-ioc]");
+    if (row) iocPage(0, Number(row.dataset.ioc));
+  });
+  $("ioc-rows").addEventListener("dblclick", async (event) => {
+    const row = event.target.closest("tr[data-hit]");
+    if (!row) return;
+    const hit = iocState.hits[Number(row.dataset.hit)];
+    if (!hit || hit.analysis === null || hit.analysis === undefined) {
+      say("This analysis is closed or has changed: reopen the original analysis to read this row", true);
+      return;
+    }
+    await openSourceRow(hit.analysis, hit.row_id);
+  });
   $("ioc-history").addEventListener("focus", loadHuntHistory);
   $("derived-operation").addEventListener("change", derivedOperationChanged);
   $("hayabusa-run").addEventListener("click", runHayabusa);
@@ -6740,6 +7044,8 @@ function wire() {
   $("entity-add").addEventListener("click", addEntity);
   $("indicator-add").addEventListener("click", addIndicators);
   $("indicator-remove").addEventListener("click", removeIndicator);
+  $("client-open").addEventListener("click", openClientDialog);
+  $("client-save").addEventListener("click", saveClientDialog);
   $("action-export").addEventListener("click", () => {
     if (!state.openCase) { say("Open a case first", true); return; }
     window.location.href = url(`/api/cases/${state.openCase.id}/actions/export`);
@@ -6755,11 +7061,24 @@ function wire() {
   $("timeline-dates").addEventListener("change", applyTimelineDates);
   $("timeline-build").addEventListener("click", () => loadTimeline(false, true));
   $("timeline-undated").addEventListener("change", () => loadTimeline(true));
+  $("timeline-exact").addEventListener("change", () => { if (timelineState.text) loadTimeline(true); });
+  $("timeline-bookmarks").addEventListener("change", () => loadTimeline(true));
+  $("timeline-preset").addEventListener("change", () => {
+    timelinePreset(Number($("timeline-preset").value));
+    $("timeline-preset").value = "0";
+  });
+  $("timeline-correlate").addEventListener("click", () => {
+    timelineState.text = $("timeline-search").value.trim();
+    timelineState.kind = $("timeline-kind").value;
+    loadTimeline(true);
+  });
   $("timeline-filters").addEventListener("change", () => loadTimeline(true));
   $("timeline-export").addEventListener("click", () => {
     if (!state.openCase) { say("Open a case first", true); return; }
     const params = new URLSearchParams();
     if (timelineState.text) { params.set("text", timelineState.text); params.set("kind", timelineState.kind); }
+    if ($("timeline-exact").checked) params.set("exact", "true");
+    if ($("timeline-bookmarks").checked) params.set("bookmarks", "true");
     const dates = timelineDatesParam();
     if (dates) params.set("dates", dates);
     if ($("timeline-undated").checked) params.set("include_undated", "true");
@@ -6782,6 +7101,20 @@ function wire() {
   $("timeline-prev").addEventListener("click", () => timelinePage(-1));
   $("timeline-next").addEventListener("click", () => timelinePage(1));
 
+  $("prefs-date-pattern").addEventListener("change", (event) => {
+    copyPrefs.pattern = event.target.value.slice(0, 120);
+    saveCopyPrefs();
+    if (state.openCase && state.columns.length) loadRows(false);
+  });
+  $("prefs-right-copy").addEventListener("change", (event) => { copyPrefs.rightCopy = event.target.checked; saveCopyPrefs(); });
+  $("prefs-details").addEventListener("change", (event) => { copyPrefs.details = event.target.value; saveCopyPrefs(); applyDetailsPosition(); });
+  $("prefs-pins").addEventListener("change", (event) => {
+    copyPrefs.pins = event.target.value.split(/\r?\n/).map((name) => name.trim()).filter(Boolean).slice(0, 32);
+    saveCopyPrefs();
+  });
+  for (const id of ["prefs-auto-profile", "prefs-memory", "prefs-query-threads", "prefs-parsing-threads"]) {
+    $(id).addEventListener("change", saveResourcePrefs);
+  }
   $("prefs-scale").addEventListener("change", (event) => {
     localStorage.setItem("fireblade.scale", event.target.value);
     applyScale();
@@ -6869,6 +7202,87 @@ function reportResult(message, links = []) {
   if (box.textContent) $("report-modal").classList.add("show");
 }
 
+/* The timeline's current chart as a PNG, with the caption the desktop writes under it: what was
+   correlated, exactly or not, which window — and what the picture does not show. */
+function timelineChart() {
+  const payload = timelineState.payload;
+  const hist = payload && payload.histogram;
+  if (!hist) return null;
+  const sources = payload.sources || [];
+  const width = 900;
+  const height = 240;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  const { start, end } = timelineRange(hist);
+  const totals = new Map();
+  for (const [sourceIndex, bucket, count] of hist.rows) {
+    if (timelineState.hidden.has(sourceIndex) || bucket < start || bucket > end) continue;
+    if (!totals.has(bucket)) totals.set(bucket, []);
+    totals.get(bucket).push([sourceIndex, count]);
+  }
+  const peak = Math.max(1, ...[...totals.values()].map((segments) => segments.reduce((sum, item) => sum + item[1], 0)));
+  const span = end - start + 1;
+  const bar = (width - 40) / span;
+  for (const [bucket, segments] of totals) {
+    let y = height - 30;
+    for (const [sourceIndex, count] of segments) {
+      const part = (count / peak) * (height - 60);
+      context.fillStyle = TIMELINE_COLORS[sources.findIndex((item) => item.id === sourceIndex) % TIMELINE_COLORS.length] || "#2d9cdb";
+      context.fillRect(20 + (bucket - start) * bar, y - part, Math.max(1, bar - 1), part);
+      y -= part;
+    }
+  }
+  context.fillStyle = "#444";
+  context.font = "11px sans-serif";
+  context.fillText(`${utcLabel(hist.start)} → ${utcLabel(hist.end)}`, 20, height - 10);
+  const kinds = { text: "Any text", user: "User", ip: "IP address", path: "Path", hash: "Hash" };
+  let caption = "Visible view of the timeline, a snapshot after indexing. Correlation: "
+    + (kinds[timelineState.kind] || "Any text") + " · " + (timelineState.text || "none");
+  caption += " · " + ($("timeline-exact").checked ? "exact value" : "contains the text");
+  if ($("timeline-bookmarks").checked) caption += " · bookmarks only";
+  if ($("timeline-filters").checked) caption += " · the analyses' filters applied when the index was built";
+  if (timelineState.start !== null && timelineState.end !== null) {
+    caption += ` · ${utcLabel(timelineState.start)} — ${utcLabel(timelineState.end)}`;
+  }
+  caption += " · The tracks outside the visible view are not drawn in this picture.";
+  return { png: canvas.toDataURL("image/png").split(",")[1], caption };
+}
+
+/* "Client and mission": who the case is for and the engagement; the client report reads them. */
+const CLIENT_FIELDS = [["client", "name", "cm-name"], ["client", "reference", "cm-reference"],
+  ["client", "sector", "cm-sector"], ["client", "contact", "cm-contact"],
+  ["engagement", "contract", "cm-contract"], ["engagement", "lead", "cm-lead"],
+  ["engagement", "start", "cm-start"], ["engagement", "end", "cm-end"], ["engagement", "notes", "cm-notes"]];
+
+async function openClientDialog() {
+  if (!state.openCase) { say("Open a case first", true); return; }
+  try {
+    const payload = await api(`/api/cases/${state.openCase.id}/client`);
+    for (const [group, field, id] of CLIENT_FIELDS) $(id).value = (payload[group] || {})[field] || "";
+    $("cm-result").textContent = "";
+    $("client-modal").classList.add("show");
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+
+async function saveClientDialog() {
+  const body = { client: {}, engagement: {} };
+  for (const [group, field, id] of CLIENT_FIELDS) body[group][field] = $(id).value;
+  try {
+    await apiPut(`/api/cases/${state.openCase.id}/client`, body);
+    closeModals();
+    say("Client and mission saved");
+  } catch (error) {
+    $("cm-result").textContent = error.message;
+    say(error.message, true);
+  }
+}
+
 async function buildReport(asPdf) {
   if (!state.openCase) { say("Open a case first", true); return; }
   const client = $("report-type").value === "client";
@@ -6879,8 +7293,22 @@ async function buildReport(asPdf) {
         pdf: asPdf }
     : { title: $("report-title").value || "Investigation report",
         description: $("report-description").value || "",
-        bookmarks_only: $("report-bookmarks").value === "true" };
+        bookmarks_only: $("report-bookmarks").value === "true",
+        respect_filters: $("report-filters").checked,
+        limit: Math.max(1, Math.min(10000, Number($("report-limit").value) || 2000)),
+        live: liveView() };
   try {
+    if (!client && $("report-selection").checked) {
+      const ids = selectedIds();
+      if (!ids.length) { reportResult("Select rows in the grid first."); say("Select rows in the grid first", true); return; }
+      params.selected = { index: state.analysis, row_ids: ids };
+      params.bookmarks_only = false;
+    }
+    if (!client && $("report-timeline").checked) {
+      const chart = timelineChart();
+      if (!chart) { reportResult("Build the timeline first: its chart is what the report would carry."); say("Build the timeline first", true); return; }
+      params.timeline = chart;
+    }
     if (client) {
       // The client report is one task: it reads the workspace, groups the
       // findings and writes the document, and the bar follows each step.
@@ -6925,11 +7353,14 @@ async function act(name, node) {
     case "reload-analysis": await loadRows(true); break;
     case "export-csv":
       if (!state.openCase) { say("No case open", true); break; }
-      window.location.href = url(rowsUrl().replace("/rows?", "/export?"));
+      exportRows({});
+      break;
+    case "export-groups":
+      exportRows({ grouped: true });
       break;
     case "export-xlsx":
       if (!state.openCase) { say("No case open", true); break; }
-      window.location.href = url(rowsUrl().replace("/rows?", "/export?") + "&format=xlsx");
+      exportRows({ format: "xlsx" });
       say("Excel export: the same rows, as a workbook");
       break;
     case "import-file": openImportDialog(); break;
@@ -6949,6 +7380,8 @@ async function act(name, node) {
     case "tl-zoom-in": timelineZoom(0.6); break;
     case "tl-zoom-out": timelineZoom(1.8); break;
     case "tl-fit": timelineFit(); break;
+    case "tl-pan-left": timelinePan(-0.5); break;
+    case "tl-pan-right": timelinePan(0.5); break;
     case "tl-back": timelineBack(); break;
     case "tl-isolate":
       // Clicking a chip hides one source, the way the desktop isolates one; this
@@ -7140,6 +7573,7 @@ async function checkForUpdate() {
 
 async function boot() {
   loadCopyPrefs();
+  applyDetailsPosition();
   loadPalette();
   applyScale();
   applyRowHeight();

@@ -12,6 +12,7 @@ Windows opens here and the other way round.
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import json
 import os
@@ -81,9 +82,75 @@ class Library:
         self.library = InvestigationLibrary(self.root)
         self._open: dict[tuple[str, int], Case] = {}
         self._timelines: dict[tuple[str, str | None], TimelineStore] = {}
+        self._hunters: dict = {}  # the reader of the hunt running on a case, for Interrupt
         self._timeline_dir = tempfile.mkdtemp(prefix="fireblade-timelines-")
         self._lock = threading.RLock()
         self._jobs: dict[str, dict] = {}
+
+    # -- preferences -------------------------------------------------------
+
+    PREFERENCE_DEFAULTS = {"resource_memory_mb": 0, "query_threads": 0, "parsing_threads": 0}
+
+    def _preferences_path(self) -> Path:
+        return self.root / ".fireblade-host-preferences.json"
+
+    def preferences(self) -> dict:
+        """The machine's resource choices, as the desktop's Preferences keeps them (0 is automatic)."""
+        from fireblade.core import machine
+
+        stored = {}
+        try:
+            stored = json.loads(self._preferences_path().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            stored = {}
+        values = {
+            key: int(stored.get(key, default)) if isinstance(stored.get(key), int) else default
+            for key, default in self.PREFERENCE_DEFAULTS.items()
+        }
+        resolved = machine.from_settings(values["parsing_threads"], values["resource_memory_mb"])
+        return {
+            **values,
+            "auto_profiles": stored.get("auto_profiles", True) is not False,
+            "automatic_memory_mb": resolved.memory_mb,
+            "automatic_threads": resolved.threads,
+        }
+
+    def preferences_auto_profiles(self) -> bool:
+        try:
+            stored = json.loads(self._preferences_path().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return True
+        return stored.get("auto_profiles", True) is not False
+
+    def set_preferences(self, values: dict) -> dict:
+        clean = {}
+        for key, (low, high) in {
+            "resource_memory_mb": (0, 16384),
+            "query_threads": (0, 32),
+            "parsing_threads": (0, 32),
+        }.items():
+            try:
+                value = int((values or {}).get(key, 0))
+            except (TypeError, ValueError) as exc:
+                raise ServiceError(f"{key} must be a whole number.") from exc
+            if not low <= value <= high:
+                raise ServiceError(f"{key} must be between {low} and {high}.")
+            clean[key] = value
+        clean["auto_profiles"] = (values or {}).get("auto_profiles", True) is not False
+        self._preferences_path().write_text(json.dumps(clean), encoding="utf-8")
+        return self.preferences()
+
+    def _settings(self, threads: str = "query"):
+        """The engine settings the saved preferences describe: for the next analyses opened."""
+        from fireblade.core import machine
+        from fireblade.core.settings import Settings
+
+        stored = self.preferences()
+        wanted = stored["parsing_threads" if threads == "parsing" else "query_threads"]
+        if not stored["resource_memory_mb"] and not wanted:
+            return Settings()  # nothing was chosen: the engine's own defaults, as before
+        memory = stored["resource_memory_mb"] or machine.from_settings(0, 0).memory_mb
+        return Settings(memory_mb=max(64, min(16384, int(memory))), threads=int(wanted))
 
     # -- catalogue ---------------------------------------------------------
 
@@ -399,6 +466,36 @@ class Library:
         folder = self.library.folder(identifier)
         node_id = tag_node(folder, clean, kind=kind, tags=cleaned)
         return {"id": node_id, "label": clean, "tags": cleaned, "kind": kind}
+
+    # -- client and mission ------------------------------------------------
+
+    def client_info(self, identifier: str) -> dict:
+        """The client and the engagement of the case, as the desktop's "Client et mission" dialog holds them."""
+        from fireblade.core.case_workspace import load as load_workspace
+
+        data = load_workspace(self.library.folder(identifier))
+        return {"client": data.get("client") or {}, "engagement": data.get("engagement") or {}}
+
+    def set_client_info(self, identifier: str, client: dict, engagement: dict) -> dict:
+        """Write the client record and the engagement, validated by the workspace itself."""
+        from fireblade.core import case_workspace
+
+        folder = self.library.folder(identifier)
+        data = case_workspace.load(folder)
+        data["client"] = {
+            key: str((client or {}).get(key) or "").strip()
+            for key in ("name", "reference", "sector", "contact")
+        }
+        given = engagement or {}
+        data["engagement"] = {
+            "contract": str(given.get("contract") or "").strip(),
+            "lead": str(given.get("lead") or "").strip(),
+            "start": str(given.get("start") or "").strip() or None,
+            "end": str(given.get("end") or "").strip() or None,
+            "notes": str(given.get("notes") or "").strip(),
+        }
+        case_workspace.save(folder, data)
+        return self.client_info(identifier)
 
     # -- Hayabusa ----------------------------------------------------------
 
@@ -1129,23 +1226,55 @@ class Library:
         return {"views": sorted(name for name in stored if not name.startswith("__"))}
 
     def save_view(self, identifier: str, index: int, name: str, view: dict) -> dict:
-        """Keep the grid state under a name, with the core's own View object."""
+        """Keep the grid state under a name, as the core's own View: the whole of what the grid shows.
+
+        Search, filters, the advanced expression, the sorts with their types, groups and their
+        interval, the summaries and totals, the group order and footers, bookmarks only, and the
+        highlighted text — the fields the desktop's "Save the view" keeps.
+        """
         clean = (name or "").strip()
         if not clean or len(clean) > 120:
             raise ServiceError("Invalid view name (1 to 120 characters).")
-        saved = View(
-            search=str(view.get("search") or ""),
-            filters=[
-                Filter(int(item["column"]), str(item["operator"]), str(item.get("value", "")))
-                for item in view.get("filters") or []
-                if str(item.get("operator")) in OPERATORS
-            ],
-            groups=[int(value) for value in view.get("groups") or []],
-            sort_column=(int(view["sort"]) if view.get("sort") is not None else None),
-            descending=bool(view.get("descending")),
-            bookmarks_only=bool(view.get("bookmarks_only")),
-        )
         case = self._case_for(identifier, index)
+        fields = view or {}
+        saved = self._view_from(
+            case,
+            search=str(fields.get("search") or ""),
+            sort=(int(fields["sort"]) if fields.get("sort") is not None else None),
+            descending=bool(fields.get("descending")),
+            sort_type=str(fields.get("sort_type") or "text"),
+            filters=[
+                (int(item["column"]), str(item["operator"]), str(item.get("value", "")))
+                for item in fields.get("filters") or []
+            ],
+            bookmarks_only=bool(fields.get("bookmarks_only")),
+            groups=[int(value) for value in fields.get("groups") or []],
+            sorts=[
+                (int(item["column"]), bool(item.get("descending")), str(item.get("kind") or "text"))
+                for item in fields.get("sorts") or []
+            ],
+            interval=str(fields.get("interval") or ""),
+            expression=fields.get("expression") or None,
+            summaries=[
+                (
+                    int(item["column"]),
+                    str(item["operation"]),
+                    str(item["kind"]),
+                    item.get("footer", -1),
+                )
+                for item in fields.get("summaries") or []
+            ],
+            order=str(fields.get("order") or ""),
+            order_descending=fields.get("order_descending") is not False,
+            order_summary=int(fields.get("order_summary") or 0),
+            total_summaries=[
+                (int(item["column"]), str(item["operation"]), str(item["kind"]))
+                for item in fields.get("total_summaries") or []
+            ],
+            footer_mode=str(fields.get("footer_mode") or "hidden"),
+            show_total=fields.get("show_total") is not False,
+        )
+        saved.highlight = str(fields.get("highlight") or "")
         with case.lock:
             case.save_view(clean, saved)
         return {"name": clean}
@@ -1156,6 +1285,7 @@ class Library:
             stored = case.views().get(name)
         if stored is None:
             raise ServiceError("View not found.")
+        interval = next(iter((stored.group_intervals or {}).values()), "")
         return {
             "name": name,
             "search": stored.search,
@@ -1163,10 +1293,36 @@ class Library:
                 {"column": f.column, "operator": f.operator, "value": f.value}
                 for f in stored.filters
             ],
+            "expression": _condition_payload(stored.expression) if stored.expression else None,
             "groups": list(stored.groups),
+            "interval": interval if interval != "value" else "",
             "sort": stored.sort_column,
             "descending": stored.descending,
+            "sort_type": stored.sort_type,
+            "sorts": [
+                {"column": key.column, "descending": key.descending, "kind": key.kind}
+                for key in stored.sorts
+            ],
             "bookmarks_only": stored.bookmarks_only,
+            "highlight": stored.highlight,
+            "summaries": [
+                {
+                    "column": item.column,
+                    "operation": item.operation,
+                    "kind": item.kind,
+                    "footer": item.footer_column,
+                }
+                for item in stored.summaries
+            ],
+            "total_summaries": [
+                {"column": item.column, "operation": item.operation, "kind": item.kind}
+                for item in stored.total_summaries
+            ],
+            "footer_mode": stored.group_footer_mode,
+            "show_total": stored.show_total_footer,
+            "order": stored.group_order if stored.group_order != "count" else "",
+            "order_descending": stored.group_descending,
+            "order_summary": stored.group_summary,
         }
 
     # -- colour rules ------------------------------------------------------
@@ -2584,29 +2740,67 @@ class Library:
         bookmarks_only: bool = True,
         limit: int = 2000,
         progress=None,
+        respect_filters: bool = True,
+        selected: dict | None = None,
+        timeline: dict | None = None,
+        live: dict | None = None,
     ) -> dict:
-        """Build the client report with the desktop's own generator.
+        """Build the investigation report with the desktop's own generator and its own options.
 
-        Bookmarks are the default selection: a report is a set of explicit
-        findings, not a dump of the grid.
+        Bookmarks are the default selection: a report is a set of explicit findings, not a dump
+        of the grid. The options are the desktop dialog's: the filters each analysis saved, only
+        the rows selected in the active grid, the timeline's chart, the findings limit — and the
+        last coverage check, which the desktop's report carries when there is one.
         """
+        import base64
+
+        from fireblade.core import coverage as coverage_core
         from fireblade.core.investigation_report import build_report, write_report
 
         if progress:
             progress("Report · reading the analyses")
-        snapshots = self._snapshots(identifier)
+        snapshots = self._view_snapshots(identifier, respect_filters, live)
         if not snapshots:
             raise ServiceError("This case holds no analysis.")
-        with self._lock:
-            for open_key in [item for item in self._open if item[0] == identifier]:
-                try:
-                    self._open.pop(open_key).close()
-                except Exception:
-                    pass
+        options: dict = {
+            "bookmarks_only": bool(bookmarks_only),
+            "respect_filters": bool(respect_filters),
+            "limit": int(limit),
+        }
+        if selected:
+            ids = [int(value) for value in selected.get("row_ids") or []]
+            if not ids:
+                raise ServiceError("Select rows in the grid first.")
+            entries = [
+                item for item in self._analyses(self.library.read(identifier)) if item["found"]
+            ]
+            position = next(
+                (i for i, item in enumerate(entries) if item["index"] == int(selected["index"])),
+                None,
+            )
+            if position is None:
+                raise ServiceError("The analysis of the selection is not open in the case.")
+            snapshots = [snapshots[position]]
+            options["row_ids"] = {str(snapshots[0].path): ids}
+            options["bookmarks_only"] = False
+        if timeline and timeline.get("png"):
+            base64.b64decode(
+                str(timeline["png"]), validate=True
+            )  # refuse anything that is not an image payload
+            options["timeline"] = {
+                "png": str(timeline["png"]),
+                "caption": str(timeline.get("caption") or ""),
+            }
+        try:
+            saved_coverage = coverage_core.load_report(self._coverage_path(identifier))
+        except (OSError, ValueError, KeyError):
+            saved_coverage = None
+        if saved_coverage is not None:
+            saved_coverage["stale"] = False
+            options["coverage"] = saved_coverage
+        self._release(identifier)
         reader = WorkspaceReader(snapshots)
-        report = build_report(
-            reader, title, description, bookmarks_only=bookmarks_only, limit=limit
-        )
+        report = build_report(reader, title, description, **options)
         folder = self.library.folder(identifier)
         target = folder / "reports" / (datetime.now(UTC).strftime("report-%Y%m%d-%H%M%S") + ".html")
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -2830,7 +3024,7 @@ class Library:
         identifier: str,
         index: int | None,
         text: str,
-        limit: int = 2000,
+        limit: int = 250000,
         all_analyses: bool = False,
         respect_filters: bool = False,
         include_subdomains: bool = True,
@@ -2838,163 +3032,286 @@ class Library:
         progress=None,
         live: dict | None = None,
     ) -> dict:
-        """Match an indicator list against one analysis, or against the whole case.
+        """Hunt an indicator list over one analysis, or over the whole case: the desktop's own hunt.
 
-        Same parser and same matcher as the desktop: an observation is never a
-        verdict, and the evidence values are left untouched. `respect_filters`
-        reads each analysis through the filter its view carries; `all_analyses`
-        walks every analysis of the case instead of the one on screen.
+        The core's `hunt` reads the analyses through a `WorkspaceReader` and writes a hunt store
+        (indicators with their fields and rows counts, hits with their excerpt and source date)
+        into the case's `IOC-hunts` folder, as the desktop does. An observation is never a
+        verdict, and the evidence values are left untouched. `respect_filters` reads each
+        analysis through the filter its view carries; `all_analyses` walks every analysis of the
+        case instead of the one on screen.
         """
-        from fireblade.core.ioc_hunt import IndicatorMatcher, parse_indicators
+        from fireblade.core.ioc_hunt import parse_indicators
+        from fireblade.core.ioc_results import hunt as core_hunt
+        from fireblade.core.workspace_reader import WorkspaceReader
 
         batch = parse_indicators(text or "", format=declared_format)
-        indicators = batch.indicators if hasattr(batch, "indicators") else list(batch)
-        if not indicators:
-            rejected = getattr(batch, "rejected", None) or []
-            detail = f" ({len(rejected)} line(s) rejected)" if rejected else ""
+        if not batch.indicators:
+            detail = f" ({len(batch.rejected)} line(s) rejected)" if batch.rejected else ""
             raise ServiceError(f"No indicator was recognised in this text{detail}.")
-        matcher = IndicatorMatcher(indicators, include_subdomains=bool(include_subdomains))
-        entries = self._analyses(self.library.read(identifier))
-        if all_analyses:
-            targets = [(entry["index"], entry) for entry in entries if entry["found"]]
-        else:
-            targets = [
-                (
-                    int(index or 0),
-                    next(
-                        (entry for entry in entries if entry["index"] == int(index or 0)),
-                        {"index": 0},
-                    ),
-                )
-            ]
-        hits, scanned = [], 0
-        per_analysis = []
-        for position, (target_index, entry) in enumerate(targets, start=1):
-            if progress:
-                progress(
-                    f"Indicator hunt · analysis {position}/{len(targets)} — "
-                    f"{self._label(entry.get('source_info') or {}, entry.get('path') or '')}"
-                )
-            case = self._case_for(identifier, target_index)
+        found = [item for item in self._analyses(self.library.read(identifier)) if item["found"]]
+        snapshots = self._view_snapshots(identifier, respect_filters, live)
+        if not all_analyses:
+            wanted = [item["index"] for item in found]
+            position = wanted.index(int(index or 0)) if int(index or 0) in wanted else 0
+            snapshots = snapshots[position : position + 1]
+        if not snapshots:
+            raise ServiceError("This case has no analysis to hunt in.")
+        if not 1 <= int(limit) <= 5_000_000:
+            raise ServiceError("The detail limit is between 1 and 5 000 000.")
+        # The grid keeps the analyses it shows open, and DuckDB refuses a second connection with
+        # another configuration: they are released first and reopen on the next request.
+        self._release(identifier)
+        reader = WorkspaceReader(snapshots)
+        self._hunters[identifier] = reader
+        try:
+            store = core_hunt(
+                reader,
+                batch,
+                self._hunt_root(identifier),
+                include_subdomains=bool(include_subdomains),
+                respect_filters=bool(respect_filters),
+                hit_limit=int(limit),
+                progress=progress or (lambda _text: None),
+            )
+        finally:
+            self._hunters.pop(identifier, None)
+        try:
+            return self._hunt_payload(identifier, store, store.path.parent.name)
+        finally:
+            store.close()
+
+    def ioc_list(self, text: str, declared_format: str | None = None) -> dict:
+        """A list read as the desktop reads it: the normalised list for the box, and what was refused."""
+        from fireblade.core.ioc_hunt import parse_indicators
+        from fireblade.core.ioc_results import batch_text
+
+        batch = parse_indicators(text or "", format=declared_format)
+        return {
+            "text": batch_text(batch),
+            "valid": len(batch.indicators),
+            "duplicates": batch.duplicates,
+            "rejected": [
+                {"line": item["line"], "reason": _english(item["reason"])}
+                for item in batch.rejected[:10]
+            ],
+            "rejected_total": len(batch.rejected),
+        }
+
+    def _view_snapshots(self, identifier: str, respect_filters: bool, live: dict | None = None):
+        """The analyses as snapshots, each carrying the filters its view saved (when they apply).
+
+        What the grid shows now (``live``) replaces the saved view of the analysis on screen: the
+        analyst asked about what they see, not about what was last stored.
+        """
+        shown = self._live_view(identifier, live) if respect_filters else None
+        snapshots = []
+        for entry in self._analyses(self.library.read(identifier)):
+            if not entry["found"]:
+                continue
             view = View()
             if respect_filters:
-                stored = entry.get("view") if isinstance(entry, dict) else None
+                stored = entry.get("view")
                 if isinstance(stored, dict) and stored:
                     try:
                         view = View.from_json(json.dumps(stored))
                     except (ValueError, TypeError, KeyError):
                         view = View()
-                shown = self._live_view(identifier, live)
-                if shown is not None and target_index == int(live["index"]):
+                if shown is not None and entry["index"] == int(live["index"]):
                     view = shown
-            local = 0
-            with case.lock:
-                offset = 0
-                while len(hits) < limit:
-                    page = case.page(view, offset=offset, limit=1000)
-                    if not page:
-                        break
-                    for row in page:
-                        scanned += 1
-                        row_id = row[0]
-                        for column, value in enumerate(row[1:], start=1):
-                            if value is None:
-                                continue
-                            cell = str(value)
-                            if len(cell) > 4000:
-                                cell = cell[:4000]
-                            for number, observed, _at, rule in matcher.matches(cell):
-                                item = indicators[number - 1]
-                                hits.append(
-                                    {
-                                        "analysis": target_index,
-                                        "analysis_label": entry.get("label")
-                                        or f"analysis {target_index}",
-                                        "row_id": json_value(row_id),
-                                        "column": column - 1,
-                                        "indicator": item.value,
-                                        "kind": item.kind,
-                                        "observed": observed,
-                                        "rule": english.english_text(rule),
-                                    }
-                                )
-                                local += 1
-                                if len(hits) >= limit:
-                                    break
-                            if len(hits) >= limit:
-                                break
-                        if len(hits) >= limit:
-                            break
-                    if len(hits) >= limit:
-                        break
-                    offset += len(page)
-            per_analysis.append(
-                {
-                    "analysis": target_index,
-                    "label": entry.get("label") or f"analysis {target_index}",
-                    "hits": local,
-                }
+            snapshots.append(
+                AnalysisSnapshot(entry["path"], entry.get("source_info") or {}, view, b"")
             )
-        summary = {}
-        for hit in hits:
-            summary[hit["kind"]] = summary.get(hit["kind"], 0) + 1
-        result = {
-            "indicators": len(indicators),
-            "scanned": scanned,
-            "hits": hits,
-            "by_kind": summary,
-            "per_analysis": per_analysis,
-            "rejected": len(getattr(batch, "rejected", None) or []),
-            "duplicates": int(getattr(batch, "duplicates", 0) or 0),
-            "all_analyses": bool(all_analyses),
-            "respect_filters": bool(respect_filters),
-            "include_subdomains": bool(include_subdomains),
-            "truncated": len(hits) >= limit,
-        }
-        # A hunt leaves a record: the same indicators can be replayed on the case
-        # later, which is what the desktop's saved hunts list is.
-        hunts = self.library.folder(identifier) / "hunts"
-        hunts.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-        record = dict(
-            started=datetime.now(UTC).isoformat(timespec="seconds"),
-            status="complete" if not result["truncated"] else "truncated",
-            text=(text or "")[:20000],
-            **result,
-        )
-        (hunts / f"{stamp}.json").write_text(
-            json.dumps(record, ensure_ascii=False), encoding="utf-8"
-        )
-        result["saved"] = f"{stamp}.json"
-        return result
+        return snapshots
 
-    def hunts(self, identifier: str) -> dict:
-        folder = self.library.folder(identifier) / "hunts"
-        entries = []
-        if folder.is_dir():
-            for path in sorted(folder.glob("*.json"), reverse=True):
+    def ioc_stop(self, identifier: str) -> dict:
+        """The desktop's Interrupt: the running hunt stops, what was kept before it stays."""
+        reader = self._hunters.get(identifier)
+        if reader is None:
+            return {"stopped": False}
+        reader.interrupt()
+        return {"stopped": True}
+
+    def _release(self, identifier: str) -> None:
+        with self._lock:
+            for open_key in [item for item in self._open if item[0] == identifier]:
                 try:
-                    data = json.loads(path.read_text(encoding="utf-8"))
-                except (OSError, ValueError):
-                    continue
-                entries.append(
-                    {
-                        "name": path.name,
-                        "started": data.get("started", ""),
-                        "status": data.get("status", ""),
-                        "indicators": data.get("indicators", 0),
-                        "hits": len(data.get("hits") or []),
-                    }
-                )
-        return {"hunts": entries[:50]}
+                    self._open.pop(open_key).close()
+                except (KeyError, OSError, ValueError):
+                    pass
+        for key in [item for item in self._timelines if item[0] == identifier]:
+            try:
+                self._timelines.pop(key).close()
+            except (KeyError, OSError, ValueError):
+                pass
 
-    def hunt(self, identifier: str, name: str) -> dict:
-        if "/" in name or "\\" in name or not name.endswith(".json"):
+    def _hunt_root(self, identifier: str) -> Path:
+        return self.library.folder(identifier) / "IOC-hunts"
+
+    def _hunt_store(self, identifier: str, name: str):
+        from fireblade.core.ioc_results import HuntStore
+
+        if not re.fullmatch(r"[0-9a-f]{32}", name or ""):
             raise ServiceError("Invalid hunt name.")
-        path = self.library.folder(identifier) / "hunts" / name
+        path = self._hunt_root(identifier) / name / "results.sqlite"
         if not path.is_file():
             raise ServiceError("Hunt not found.")
-        return json.loads(path.read_text(encoding="utf-8"))
+        return HuntStore(path)
+
+    def _hunt_payload(
+        self, identifier: str, store, name: str, offset: int = 0, ioc: int | None = None
+    ) -> dict:
+        """One hunt as the page reads it: the indicators with their counts and a page of details."""
+        from fireblade.core.ioc_hunt import KINDS
+        from fireblade.core.ioc_results import batch_text
+
+        meta = dict(store.metadata)
+        listing = store.indicators()
+        page = store.page(max(0, int(offset)), ioc=ioc)
+        sources = store.sources()
+        entries = {
+            str(Path(str(item["path"])).resolve()): item
+            for item in self._analyses(self.library.read(identifier))
+            if item["found"]
+        }
+
+        def analysis_of(path: str):
+            entry = entries.get(str(Path(path).resolve()))
+            return (entry["index"], entry["label"]) if entry else (None, "")
+
+        hits = []
+        for row in page["rows"]:
+            index, label = analysis_of(row[14])
+            hits.append(
+                {
+                    "id": row[0],
+                    "ioc": row[1],
+                    "source": row[2],
+                    "analysis": index,
+                    "analysis_label": label or Path(row[14]).name,
+                    "row_id": json_value(row[3]),
+                    "column": row[4],
+                    "column_name": row[5],
+                    "observed": row[6],
+                    "excerpt": row[7],
+                    "when": row[8],
+                    "rule": english.english_text(row[9]),
+                    "kind": row[10],
+                    "indicator": row[11],
+                    "original": row[12],
+                }
+            )
+        by_kind: dict[str, int] = {}
+        for row in listing:
+            by_kind[row[1]] = by_kind.get(row[1], 0) + int(row[5] or 0)
+        return {
+            "hunt": name,
+            "indicators": len(listing),
+            "list": [
+                {
+                    "id": row[0],
+                    "kind": row[1],
+                    "kind_label": english.english_text(KINDS.get(row[1], row[1])),
+                    "value": row[2],
+                    "original": row[3],
+                    "label": row[4],
+                    "fields": row[5],
+                    "rows": row[6],
+                    "details": row[7],
+                }
+                for row in listing
+            ],
+            "scanned": meta.get("scanned_rows", 0),
+            "matching_fields": meta.get("matching_fields", 0),
+            "stored_hits": meta.get("stored_hits", 0),
+            "status": meta.get("status", ""),
+            "started": meta.get("started", ""),
+            "truncated": bool(meta.get("truncated")),
+            "rejected": meta.get("rejected", 0),
+            "duplicates": meta.get("duplicates", 0),
+            "respect_filters": bool(meta.get("respect_filters")),
+            "include_subdomains": bool(meta.get("include_subdomains", True)),
+            "hit_limit": meta.get("hit_limit"),
+            "errors": [
+                {"path": Path(item["path"]).name, "error": _english(item["error"])}
+                for item in meta.get("errors") or []
+            ],
+            "count": page["count"],
+            "offset": max(0, int(offset)),
+            "page_size": store.PAGE_SIZE,
+            "selected": ioc,
+            "hits": hits,
+            "by_kind": by_kind,
+            "per_analysis": [
+                {
+                    "analysis": analysis_of(item["path"])[0],
+                    "label": analysis_of(item["path"])[1] or Path(item["path"]).name,
+                    "scanned": item["scanned"],
+                    "total": item["total"],
+                    "complete": item["complete"],
+                    "error": _english(item["error"]) if item["error"] else "",
+                }
+                for item in sources
+            ],
+            "all_analyses": len(sources) > 1,
+            "text": batch_text(store.batch()),
+            "saved": name,
+        }
+
+    def hunts(self, identifier: str) -> dict:
+        """The hunts saved with the case: the desktop's "Chasses enregistrées"."""
+        from fireblade.core.ioc_results import discover_hunts
+
+        found, errors = discover_hunts(self._hunt_root(identifier))
+        return {
+            "hunts": [
+                {
+                    "name": Path(item["path"]).parent.name,
+                    "started": item.get("started", ""),
+                    "status": item.get("status", ""),
+                    "indicators": 0,
+                    "hits": item.get("stored_hits", 0),
+                    "scanned": item.get("scanned_rows", 0),
+                }
+                for item in found[:50]
+            ],
+            "errors": [_english(item) for item in errors],
+        }
+
+    def hunt(self, identifier: str, name: str, offset: int = 0, ioc: int | None = None) -> dict:
+        """A saved hunt replayed from its store: no analysis is read again."""
+        store = self._hunt_store(identifier, name)
+        try:
+            return self._hunt_payload(identifier, store, name, offset=offset, ioc=ioc)
+        finally:
+            store.close()
+
+    def hunt_export(self, identifier: str, name: str, summary: bool = False) -> tuple[Path, dict]:
+        """The hunt as the desktop exports it: the details or the summary, with a verified receipt."""
+        store = self._hunt_store(identifier, name)
+        try:
+            target = Path(tempfile.mkdtemp(prefix="fbhunt-")) / (
+                "hunt-summary.csv" if summary else "hunt-details.csv"
+            )
+            receipt = dict(store.export(target, summary=summary, receipt=True) or {})
+        finally:
+            store.close()
+        # The core writes this file in its source language: the columns and the words of a
+        # verdict are read in English here, and the receipt's file hash follows the rewrite.
+        rows = list(csv.reader(io.StringIO(target.read_text(encoding="utf-8-sig"), newline="")))
+        if rows:
+            words = [i for i, name in enumerate(rows[0]) if name in ("État", "Méthode")]
+            rows[0] = [_english(name) for name in rows[0]]
+            for row in rows[1:]:
+                for position in words:
+                    if position < len(row):
+                        row[position] = _english(row[position])
+            out = io.StringIO(newline="")
+            csv.writer(out, lineterminator="\r\n").writerows(rows)
+            target.write_bytes(out.getvalue().encode("utf-8-sig"))
+            receipt["sha256"] = hashlib.sha256(target.read_bytes()).hexdigest()
+            receipt["translated"] = True
+        return target, receipt
 
     # -- timeline ----------------------------------------------------------
 
@@ -3251,12 +3568,15 @@ class Library:
         offset: int = 0,
         text: str = "",
         kind: str = "text",
+        exact: bool = False,
+        bookmarks: bool = False,
         dates: dict | None = None,
         include_undated: bool = False,
         respect_filters: bool = False,
         progress=None,
         live: dict | None = None,
         sources: list[int] | None = None,
+        rebuild: bool = False,
     ) -> dict:
         """Counts the case's rows over time with the desktop's own TimelineStore.
 
@@ -3265,13 +3585,20 @@ class Library:
         is what the desktop does when the analyst has not chosen a column.
         """
         store = self._timeline_store(
-            identifier, dates, respect_filters=respect_filters, progress=progress, live=live
+            identifier,
+            dates,
+            respect_filters=respect_filters,
+            progress=progress,
+            live=live,
+            rebuild=rebuild,
         )
         filters = {"include_undated": bool(include_undated)}
         if sources is not None:
             filters["sources"] = [int(item) for item in sources]
         if text:
-            filters.update(text=text, kind=kind)
+            filters.update(text=text, kind=kind, exact=bool(exact))
+        if bookmarks:
+            filters["bookmarks"] = True
         # The page and the extent follow the window the analyst is looking at; the
         # histogram gets the window as its own bounds, not as a filter.
         windowed = dict(filters)
@@ -3327,8 +3654,9 @@ class Library:
         respect_filters: bool = False,
         progress=None,
         live: dict | None = None,
+        rebuild: bool = False,
     ):
-        """The built index for this case and these date readings, cached."""
+        """The built index for this case and these date readings, cached (``rebuild`` reads it again)."""
         options = self._date_options(identifier, dates or {})
         # Read before the grid's handles are closed below: building the view opens the analysis.
         shown = self._live_view(identifier, live) if respect_filters else None
@@ -3349,7 +3677,7 @@ class Library:
                     self._open.pop(open_key).close()
                 except (KeyError, OSError, ValueError):
                     pass
-        store = self._timelines.get(key)
+        store = None if rebuild else self._timelines.get(key)
         if store is not None:
             return store
         snapshots = self._snapshots(identifier, shown, int(live["index"]) if shown else None)
@@ -3364,7 +3692,7 @@ class Library:
             progress=(lambda text: progress(text)) if progress else (lambda _text: None),
         )
         for old in list(self._timelines):
-            if old[0] == identifier:
+            if old[0] == identifier or old == key:
                 try:
                     self._timelines.pop(old).close()
                 except Exception:
@@ -3406,6 +3734,8 @@ class Library:
         end: int | None = None,
         text: str = "",
         kind: str = "text",
+        exact: bool = False,
+        bookmarks: bool = False,
         dates: dict | None = None,
         include_undated: bool = False,
         respect_filters: bool = False,
@@ -3422,7 +3752,9 @@ class Library:
         if sources is not None:
             filters["sources"] = [int(item) for item in sources]
         if text:
-            filters.update(text=text, kind=kind)
+            filters.update(text=text, kind=kind, exact=bool(exact))
+        if bookmarks:
+            filters["bookmarks"] = True
         if start is not None:
             filters["start"] = int(start)
         if end is not None:
@@ -3685,6 +4017,7 @@ class Library:
             organization=organization,
             delimiter=delimiter if delimiter in self.CSV_DELIMITERS else None,
             encoding=encoding if encoding in self.CSV_ENCODINGS else "auto",
+            settings=self._settings("parsing"),
         )
         collection.read_everything = True
         if callable(on_collection):
@@ -3727,6 +4060,14 @@ class Library:
         first, added = self._merge_session(
             identifier, session, collections=collections, active_collection=str(output)
         )
+        if organization == "files" and self.preferences_auto_profiles():
+            # The desktop applies the recognised profile when a table is imported (its
+            # "auto profiles" preference is on by default): the dates, the sort, the colours.
+            for position in range(first, first + added):
+                try:
+                    self.apply_profile(identifier, position)
+                except (ServiceError, ValueError, OSError, KeyError):
+                    continue  # no profile matches this table: it stays a plain table
         return {
             "status": report.get("status", "complete"),
             "analyses": added,
@@ -3870,9 +4211,8 @@ class Library:
         """Apply the recognised profile to this analysis' view, as the desktop's command does.
 
         The date columns, the boolean columns and the default sort are written into the
-        analysis' own view, so the grid reads the file the way its profile says. The
-        profile's derived columns are reported, not invented: the Host does not build a
-        derived column behind the analyst's back.
+        analysis' own view, so the grid reads the file the way its profile says; the
+        profile's conversions are added as derived columns (the source values stay intact).
         """
         from fireblade.core.profiles import detect_profile, profile_view
 
@@ -3890,6 +4230,17 @@ class Library:
         profile = detect_profile(headers)
         if profile is None:
             raise ServiceError("No import profile matches this analysis.")
+        # The profile's conversions go into columns of their own, the source values staying intact:
+        # the desktop writes them before it applies the view, and so does the Host.
+        from fireblade.core.profiles import profile_transformations
+
+        definitions = profile_transformations(profile, headers)
+        derived = 0
+        if definitions:
+            with case.lock:
+                case.add_derived_columns(definitions)
+                headers = list(case.headers)
+            derived = len(definitions)
         detected, order = profile_view(profile, headers)
         current = snapshots[index].view
         updated = View(
@@ -3928,6 +4279,7 @@ class Library:
             "booleans": [headers[i] for i in updated.boolean_columns],
             "sort": headers[updated.sort_column] if updated.sort_column is not None else None,
             "rules": len(detected.format_rules),
+            "derived": derived,
         }
 
     RETRY_READERS = ("text", "html", "csv", "pdf")
@@ -3949,13 +4301,19 @@ class Library:
                 if not isinstance(item, dict):
                     continue
                 status = item.get("status")
-                if status in ("complete", "companion"):
+                generic = list(item.get("tools") or []) in (["Files"], ["Inventory"])
+                if status in ("complete", "companion") and not generic:
                     continue
+                # A file only the generic reader read (as text lines, JSON or an inventory line)
+                # stays on the list: a reader the analyst names may read it better (a CSV with a
+                # txt extension, a page, a PDF).
                 entries.append(
                     {
                         "collection": report.name,
                         "path": str(item.get("path") or ""),
-                        "status": status or "unknown",
+                        "status": "generic"
+                        if generic and status == "complete"
+                        else (status or "unknown"),
                         "reason": str(item.get("error") or ""),
                         "tools": list(item.get("tools") or []),
                     }
@@ -4514,12 +4872,15 @@ class Library:
                 offset=int(payload.get("offset") or 0),
                 text=payload.get("text") or "",
                 kind=payload.get("kind") or "text",
+                exact=bool(payload.get("exact")),
+                bookmarks=bool(payload.get("bookmarks")),
                 dates=payload.get("dates") or None,
                 include_undated=bool(payload.get("include_undated")),
                 respect_filters=bool(payload.get("respect_filters")),
                 progress=note,
                 live=payload.get("live") or None,
                 sources=payload.get("sources"),
+                rebuild=bool(payload.get("rebuild")),
             )
         if kind == "detect":
             return lambda note: self.detect(
@@ -4541,7 +4902,20 @@ class Library:
                 payload.get("title") or "Investigation report",
                 payload.get("description") or "",
                 bookmarks_only=bool(payload.get("bookmarks_only")),
+                limit=int(payload.get("limit") or 2000),
+                respect_filters=payload.get("respect_filters", True) is not False,
+                selected=payload.get("selected") or None,
+                timeline=payload.get("timeline") or None,
+                live=payload.get("live") or None,
                 progress=note,
+            )
+        if kind == "coverage":
+            return lambda note: self.coverage(
+                identifier,
+                expected=payload.get("expected") or "observed",
+                expected_tools=payload.get("tools") or None,
+                verify_hashes=bool(payload.get("verify_hashes")),
+                deep_checks=payload.get("deep_checks", True) is not False,
             )
         if kind == "package":
             return lambda note: self.export_package(
@@ -4760,7 +5134,7 @@ class Library:
             # Writable: the analyst books rows and writes notes from the grid, and
             # DuckDB refuses two connections with different configurations on the
             # same file, so one handle serves reads and writes.
-            case = Case(path, read_only=False)
+            case = Case(path, settings=self._settings(), read_only=False)
             self._open[key] = case
             return case
 
@@ -4783,28 +5157,28 @@ class Library:
         case = self._case_for(identifier, index)
         return META_COLUMNS + column_labels(case)
 
-    def rows(
+    def _view_from(
         self,
-        identifier: str,
-        index: int,
-        offset: int = 0,
-        limit: int = 200,
+        case,
         search: str = "",
         sort: int | None = None,
         descending: bool = False,
+        sort_type: str = "text",
         filters: list[tuple[int, str, str]] | None = None,
         bookmarks_only: bool = False,
         groups: list[int] | None = None,
-        path: list[str] | None = None,
-        sorts: list[tuple[int, bool]] | None = None,
+        sorts: list[tuple] | None = None,
         interval: str = "",
         expression: dict | None = None,
         summaries: list[tuple[int, str, str]] | None = None,
         order: str = "",
         order_descending: bool = True,
         order_summary: int = 0,
-    ) -> dict:
-        case = self._case_for(identifier, index)
+        total_summaries: list[tuple] | None = None,
+        footer_mode: str = "hidden",
+        show_total: bool = True,
+    ) -> View:
+        """The desktop's View, from the parameters the page sends: one builder for rows and exports."""
         view = View(search=search or "", filters=[], bookmarks_only=bool(bookmarks_only))
         for column, operator, value in filters or ():
             if operator not in OPERATORS:
@@ -4816,16 +5190,18 @@ class Library:
             from fireblade.core.models import condition_from_dict
 
             view.expression = condition_from_dict(_raw_condition(case, expression))
-        keys = list(sorts or ())
+        keys = [(item[0], item[1], item[2] if len(item) > 2 else sort_type) for item in sorts or ()]
         if not keys and sort is not None:
-            keys = [(sort, bool(descending))]
-        for column, _descending in keys:
+            keys = [(sort, bool(descending), sort_type)]
+        for column, _descending, kind in keys:
             if not 0 <= int(column) < len(case.headers):
                 raise ServiceError("Sort column outside the analysis.")
+            if kind not in ("text", "number", "timestamp"):
+                raise ServiceError("Unknown sort type.")
         if keys:
             view.sort_column, view.descending = int(keys[0][0]), bool(keys[0][1])
-            view.sort_type = "text"
-            view.sorts = [SortKey(int(column), "text", bool(flag)) for column, flag in keys]
+            view.sort_type = keys[0][2]
+            view.sorts = [SortKey(int(column), kind, bool(flag)) for column, flag, kind in keys]
         if groups:
             for column in groups:
                 if not 0 <= int(column) < len(case.headers):
@@ -4848,17 +5224,30 @@ class Library:
         # Group summaries and their order, exactly the view fields the desktop sets.
         from fireblade.core.models import Summary
 
-        cleaned_summaries = []
-        for column, operation, kind in summaries or ():
-            if not 0 <= int(column) < len(case.headers):
-                raise ServiceError("Summary column outside the analysis.")
-            if operation not in ("rows", "count", "distinct", "sum", "avg", "min", "max"):
-                raise ServiceError(f"Unknown summary operation: {operation}")
-            if kind not in ("number", "text", "timestamp"):
-                raise ServiceError(f"Unknown summary kind: {kind}")
-            if operation in ("sum", "avg") and kind != "number":
-                raise ServiceError("Sum and average need a numeric column.")
-            cleaned_summaries.append(Summary(int(column), operation, kind, -1))
+        def clean(entries, what):
+            cleaned = []
+            for entry in entries or ():
+                column, operation, kind = entry[0], entry[1], entry[2]
+                footer = entry[3] if len(entry) > 3 else -1
+                if not 0 <= int(column) < len(case.headers):
+                    raise ServiceError(f"{what} column outside the analysis.")
+                if operation not in ("rows", "count", "distinct", "sum", "avg", "min", "max"):
+                    raise ServiceError(f"Unknown summary operation: {operation}")
+                if kind not in ("number", "text", "timestamp"):
+                    raise ServiceError(f"Unknown summary kind: {kind}")
+                if operation in ("sum", "avg") and kind != "number":
+                    raise ServiceError("Sum and average need a numeric column.")
+                if footer is not None and not -1 <= int(footer) < len(case.headers):
+                    raise ServiceError("Footer column outside the analysis.")
+                cleaned.append(Summary(int(column), operation, kind, footer))
+            return cleaned
+
+        cleaned_summaries = clean(summaries, "Summary")
+        view.total_summaries = clean(total_summaries, "Total")
+        if footer_mode not in ("hidden", "expanded", "always"):
+            raise ServiceError("Unknown group footer mode.")
+        view.group_footer_mode = footer_mode
+        view.show_total_footer = bool(show_total)
         view.summaries = cleaned_summaries
         if order:
             if order not in ("count", "value", "summary"):
@@ -4868,6 +5257,56 @@ class Library:
             view.group_order = order
             view.group_descending = bool(order_descending)
             view.group_summary = max(0, min(int(order_summary), max(0, len(cleaned_summaries) - 1)))
+        return view
+
+    def rows(
+        self,
+        identifier: str,
+        index: int,
+        offset: int = 0,
+        limit: int = 200,
+        search: str = "",
+        sort: int | None = None,
+        descending: bool = False,
+        sort_type: str = "text",
+        filters: list[tuple[int, str, str]] | None = None,
+        bookmarks_only: bool = False,
+        groups: list[int] | None = None,
+        path: list[str] | None = None,
+        sorts: list[tuple] | None = None,
+        interval: str = "",
+        expression: dict | None = None,
+        summaries: list[tuple[int, str, str]] | None = None,
+        order: str = "",
+        order_descending: bool = True,
+        order_summary: int = 0,
+        total_summaries: list[tuple] | None = None,
+        footer_mode: str = "hidden",
+        show_total: bool = True,
+        date_format: str = "source",
+        date_pattern: str = "",
+    ) -> dict:
+        case = self._case_for(identifier, index)
+        view = self._view_from(
+            case,
+            search=search,
+            sort=sort,
+            descending=descending,
+            sort_type=sort_type,
+            filters=filters,
+            bookmarks_only=bookmarks_only,
+            groups=groups,
+            sorts=sorts,
+            interval=interval,
+            expression=expression,
+            summaries=summaries,
+            order=order,
+            order_descending=order_descending,
+            order_summary=order_summary,
+            total_summaries=total_summaries,
+            footer_mode=footer_mode,
+            show_total=show_total,
+        )
         # The session's own view says which columns are dates; the grid reformats
         # those and nothing else.
         entry = next(
@@ -4886,7 +5325,38 @@ class Library:
             total = case.count(view)
             page = case.page(view, path=depth, offset=offset, limit=limit)
             rows = [[json_value(value) for value in row] for row in page]
+            totals = footer = None
+            if view.total_summaries and view.show_total_footer:
+                values = case.total_summary(view)
+                totals = [json_value(value) for value in values[1:]]
+            leaf = bool(view.groups) and len(depth) == len(view.groups)
+            if leaf and view.summaries and view.group_footer_mode != "hidden":
+                from fireblade.core.summaries import summary_expressions
+
+                where, args = case.where(view, depth)
+                with case.operation():
+                    found = case.db.execute(
+                        "SELECT count(*)"
+                        + "".join(", " + value for value in summary_expressions(case, view))
+                        + " FROM events"
+                        + where,
+                        args,
+                    ).fetchone()
+                footer = [json_value(value) for value in found[1:]]
         grouped = len(depth) < len(view.groups)
+        if not grouped and timestamps and date_format in ("iso", "iso7", "custom"):
+            # The desktop reformats the date columns of the view, nothing else: with the core's own functions.
+            from fireblade.core.timestamps import display_timestamp, format_timestamp
+
+            for row in rows:
+                for column in timestamps:
+                    position = int(column) + 1
+                    if position < len(row) and isinstance(row[position], str) and row[position]:
+                        row[position] = (
+                            format_timestamp(row[position], date_pattern)
+                            if date_format == "custom"
+                            else display_timestamp(row[position], date_format)
+                        )
         labels = META_COLUMNS + column_labels(case)
         if not grouped and "/results/organisation-" in str(entry.get("source") or "").replace(
             "\\", "/"
@@ -4919,10 +5389,23 @@ class Library:
                     "operation": item.operation,
                     "kind": item.kind,
                 }
-                for item in cleaned_summaries
+                for item in view.summaries
             ],
             "order": view.group_order,
             "order_descending": view.group_descending,
+            "summary_footers": [item.footer_column for item in view.summaries],
+            "total_summaries": [
+                {
+                    "column": item.column,
+                    "name": column_label(case, item.column),
+                    "operation": item.operation,
+                    "kind": item.kind,
+                }
+                for item in view.total_summaries
+            ],
+            "totals": totals,
+            "footer": footer,
+            "footer_mode": view.group_footer_mode,
         }
 
     def _painting(self, identifier: str, case, view, page) -> tuple[dict, list]:
@@ -4997,29 +5480,37 @@ class Library:
         self,
         identifier: str,
         index: int,
-        search: str = "",
-        sort: int | None = None,
-        descending: bool = False,
-        filters: list[tuple[int, str, str]] | None = None,
         as_xlsx: bool = False,
+        columns: list[int] | None = None,
+        grouped: bool = False,
+        annotations: bool = False,
+        **view_fields,
     ) -> Path:
-        """Write the rows to a temporary file and return its path.
+        """Write the rows to a temporary file and return its path: the desktop's own export.
 
-        The desktop's two export dialogs offer CSV **or** Excel; the portal offers
-        the same choice, so the same arithmetic reads the same file on either side.
+        The view is the one the grid shows (search, filters, advanced expression, sorts with
+        their types, groups, summaries, bookmarks only). The visible columns only are written,
+        as the desktop does; ``grouped`` writes the counts per group instead of the rows;
+        ``annotations`` is the bookmarks-and-notes export (bookmarked rows, notes in columns).
         """
         case = self._case_for(identifier, index)
-        view = View(search=search or "", filters=[])
-        for column, operator, value in filters or ():
-            if operator in OPERATORS and 0 <= column < len(case.headers):
-                view.filters.append(Filter(column, operator, value))
-        if sort is not None and 0 <= sort < len(case.headers):
-            view.sort_column, view.descending = sort, bool(descending)
-            view.sorts = [SortKey(sort, "text", bool(descending))]
+        view = self._view_from(case, **view_fields)
+        chosen = None
+        if columns is not None:
+            chosen = [int(column) for column in columns]
+            if any(not 0 <= column < len(case.headers) for column in chosen):
+                raise ServiceError("Export column outside the analysis.")
+            if not chosen:
+                raise ServiceError("Choose at least one visible column to export.")
+        if annotations:
+            view.bookmarks_only = True
         suffix = ".xlsx" if as_xlsx else ".csv"
         target = Path(tempfile.gettempdir()) / f"fireblade-{uuid.uuid4().hex}{suffix}"
         with case.lock:
-            case.export(str(target), view, include_annotations=True)
+            if annotations:
+                case.export(str(target), view, include_annotations=True)
+            else:
+                case.export(str(target), view, bool(grouped), columns=chosen)
         if not as_xlsx:
             _translate_csv_header(target, case)
         return target

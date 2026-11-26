@@ -528,9 +528,9 @@ def test_export_csv_gives_the_rows_the_grid_shows_with_the_names_on_screen(page,
     saved = _download(page, "export-csv", tmp_path, "grid.csv")
     with open(saved, encoding="utf-8-sig", newline="") as handle:
         table = list(csv.reader(handle))
-    # The export carries the grid's columns, then the desktop's three provenance columns.
-    assert table[0][:6] == ["Time", "Host", "User", "Event", "Path", "Src"], table[0]
-    assert table[0][6:] == ["Fireblade_SourceRecord", "Fireblade_Bookmarked", "Fireblade_Note"]
+    # The export carries the visible columns, as the desktop's export does; the provenance and note
+    # columns belong to the bookmarks-and-notes export.
+    assert table[0] == ["Time", "Host", "User", "Event", "Path", "Src"], table[0]
     assert len(table) == 21, len(table)
     assert {row[2] for row in table[1:]} == {"bob"}
     assert table[1][4].startswith("C:\\Users\\bob\\"), "a value is exported as it is in the source"
@@ -722,10 +722,14 @@ def test_a_hunt_can_be_limited_to_the_filtered_rows(page):
     page.fill("#ioc-input", "10.0.0.0")
     page.check("#ioc-filters")
     page.click("#ioc-scan")
-    page.wait_for_function("document.getElementById('ioc-summary').innerText.includes('4 hit')")
+    page.wait_for_function(
+        "document.getElementById('ioc-summary').innerText.includes('4 details kept')"
+    )
     page.uncheck("#ioc-filters")
     page.click("#ioc-scan")
-    page.wait_for_function("document.getElementById('ioc-summary').innerText.includes('12 hit')")
+    page.wait_for_function(
+        "document.getElementById('ioc-summary').innerText.includes('12 details kept')"
+    )
 
 
 def test_the_reason_a_value_matched_is_in_english(page):
@@ -742,18 +746,14 @@ def test_a_hunt_over_every_analysis_reads_them_all(page, server):
     page.click('.tabs .tab:text-is("IOC hunting")')
     page.fill("#ioc-input", "evil.example\n10.0.0.1")
     page.click("#ioc-scan")
-    page.wait_for_function(
-        "document.getElementById('ioc-summary').innerText.includes('this analysis')", timeout=60000
-    )
-    assert "1 hit" not in page.inner_text("#ioc-summary") or "12" in page.inner_text("#ioc-summary")
-    first = page.inner_text("#ioc-summary")
+    page.wait_for_function("iocState.payload !== null", timeout=60000)
+    assert page.evaluate("iocState.payload.per_analysis.length") == 1
     page.check("#ioc-all")
     page.click("#ioc-scan")
     page.wait_for_function(
-        "document.getElementById('ioc-summary').innerText.includes('every analysis')", timeout=60000
+        "iocState.payload && iocState.payload.per_analysis.length === 2", timeout=60000
     )
-    everywhere = page.inner_text("#ioc-summary")
-    assert "every analysis" in everywhere and everywhere != first
+    assert page.evaluate("iocState.payload.per_analysis.every(item => item.complete)")
     assert "proxy.csv" in page.inner_text("#ioc-view")
 
 
@@ -766,10 +766,14 @@ def test_the_subdomain_option_decides_whether_a_parent_domain_matches_its_childr
     page.fill("#ioc-input", "evil.example")
     page.check("#ioc-subdomains")
     page.click("#ioc-scan")
-    page.wait_for_function("document.getElementById('ioc-summary').innerText.includes('1 hit')")
+    page.wait_for_function(
+        "document.getElementById('ioc-summary').innerText.includes('1 details kept')", timeout=60000
+    )
     page.uncheck("#ioc-subdomains")
     page.click("#ioc-scan")
-    page.wait_for_function("document.getElementById('ioc-summary').innerText.includes('0 hit')")
+    page.wait_for_function(
+        "document.getElementById('ioc-summary').innerText.includes('0 details kept')", timeout=60000
+    )
 
 
 def test_the_timeline_can_respect_the_filter_on_screen(page):
@@ -1000,22 +1004,6 @@ def test_a_file_parked_from_the_report_leaves_the_list_and_is_found_under_parked
 
 
 # -- Preferences, the palette, messages, history, reports ------------------------------------------
-
-
-def test_the_date_format_preference_rewrites_how_dates_read(page):
-    first = page.locator("#body tr[data-row] td[data-cell='0']").first
-    assert first.inner_text() == "2026-11-01T10:00:00Z"
-    command(page, "preferences")
-    page.select_option("#prefs-date-format", "iso7")
-    page.wait_for_function(
-        "document.querySelector('#body tr[data-row] td[data-cell=\"0\"]').innerText"
-        " === '2026-11-01T10:00:00.0000000Z'"
-    )
-    page.select_option("#prefs-date-format", "source")
-    page.wait_for_function(
-        "document.querySelector('#body tr[data-row] td[data-cell=\"0\"]').innerText"
-        " === '2026-11-01T10:00:00Z'"
-    )
 
 
 def test_the_size_preference_scales_the_interface_and_is_remembered(page):

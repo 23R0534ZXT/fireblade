@@ -80,3 +80,59 @@ def test_reset_the_view_puts_back_filters_sorts_groups_and_hidden_columns(page):
     page.wait_for_function(
         f"state.total === {total} && state.filters.length === 0 && state.groups.length === 0 && state.hidden.size === 0"
     )
+
+
+def test_the_search_text_is_highlighted_with_the_highlight_text_like_the_desktop(page):
+    """The desktop paints both terms (its highlight and its search) in the cells."""
+    page.fill("#search", "alice")
+    page.press("#search", "Enter")
+    page.wait_for_function("state.search === 'alice' && document.querySelector('#body mark')")
+    marks = page.eval_on_selector_all(
+        "#body mark", "els => els.map(e => e.textContent.toLowerCase())"
+    )
+    assert marks and set(marks) == {"alice"}
+    page.evaluate("state.highlight = 'PC0'; renderGrid()")
+    marks = page.eval_on_selector_all(
+        "#body mark", "els => els.map(e => e.textContent.toLowerCase())"
+    )
+    assert {"alice", "pc0"} <= set(marks)
+
+
+def _timeline_total(page, **params):
+    import httpx
+
+    case = page.evaluate("state.openCase.id")
+    base = page.evaluate("location.origin")
+    answer = httpx.get(
+        f"{base}/api/cases/{case}/timeline",
+        params={"include_undated": "true", **params},
+        timeout=120,
+    )
+    assert answer.status_code == 200, answer.text
+    return answer.json()["extent"]["rows"]
+
+
+def test_the_timeline_compares_a_whole_value_or_only_the_bookmarks_like_the_desktop(page):
+    everything = _timeline_total(page)
+    part = _timeline_total(page, text="ali", kind="user")
+    assert 0 < part < everything
+    assert _timeline_total(page, text="ali", kind="user", exact="true") == 0
+    whole = _timeline_total(page, text="alice", kind="user", exact="true")
+    assert whole == part
+    assert _timeline_total(page, bookmarks="true") == 0
+    row = page.locator("#body tr[data-row]").first.get_attribute("data-row")
+    case, analysis = page.evaluate("[state.openCase.id, state.analysis]")
+    import httpx
+
+    base = page.evaluate("location.origin")
+    httpx.post(
+        f"{base}/api/cases/{case}/analyses/{analysis}/bookmark",
+        json={"row_id": int(row), "note": "bookmarked"},
+    )
+    # the index is read again by Build / refresh, as the desktop's Refresh does
+    page.evaluate("void loadTimeline(false, true)")
+    for _ in range(60):
+        if _timeline_total(page, bookmarks="true") == 1:
+            break
+        page.wait_for_timeout(500)
+    assert _timeline_total(page, bookmarks="true") == 1

@@ -98,6 +98,52 @@ def _id_list(text: str) -> list[int] | None:
         raise HTTPException(status_code=400, detail="'sources' must be a list of numbers.") from exc
 
 
+def _sort_keys(values) -> list[tuple[int, bool, str]]:
+    """``sortkey=3:desc:number`` — column, direction and type, in the order they are sent."""
+    keys = []
+    for raw in values or ():
+        parts = raw.split(":")
+        try:
+            keys.append(
+                (
+                    int(parts[0]),
+                    len(parts) > 1 and parts[1] == "desc",
+                    parts[2] if len(parts) > 2 else "text",
+                )
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid sort key.") from exc
+    return keys
+
+
+def _summaries(values) -> list[tuple[int, str, str]]:
+    """``summary=4:distinct:text`` — one entry per aggregate, in the order shown."""
+    summaries = []
+    for raw in values or ():
+        parts = raw.split(":")
+        try:
+            summaries.append(
+                (
+                    int(parts[0]),
+                    parts[1] if len(parts) > 1 else "count",
+                    parts[2] if len(parts) > 2 else "number",
+                    (None if parts[3] == "none" else int(parts[3])) if len(parts) > 3 else -1,
+                )
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid summary.") from exc
+    return summaries
+
+
+def _expression(text: str):
+    if not text:
+        return None
+    try:
+        return json.loads(text)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid filter expression.") from exc
+
+
 def create_app(
     root: str | Path,
     version: str = "",
@@ -366,11 +412,25 @@ def create_app(
         return library.hunts(identifier)
 
     @app.get("/api/cases/{identifier}/hunts/{name}")
-    def hunt(identifier: str, name: str):
+    def hunt(identifier: str, name: str, offset: int = 0, ioc: int | None = None):
         try:
-            return library.hunt(identifier, name)
+            return library.hunt(identifier, name, offset=offset, ioc=ioc)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/hunts/{name}/export")
+    def hunt_export(identifier: str, name: str, summary: bool = False):
+        """The hunt's details or summary as a CSV the desktop's export writes, receipt in the headers."""
+        try:
+            target, receipt = library.hunt_export(identifier, name, summary=summary)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+        headers = {f"X-Fireblade-{key}": str(value) for key, value in receipt.items()}
+        return FileResponse(target, media_type="text/csv", filename=target.name, headers=headers)
+
+    @app.post("/api/cases/{identifier}/ioc-stop")
+    def ioc_stop(identifier: str):
+        return library.ioc_stop(identifier)
 
     @app.post("/api/cases/{identifier}/graph/nodes")
     def add_graph_node(identifier: str, payload: dict):
@@ -724,6 +784,10 @@ def create_app(
                 payload.get("description", ""),
                 bookmarks_only=bool(payload.get("bookmarks_only", True)),
                 limit=int(payload.get("limit", 2000)),
+                respect_filters=payload.get("respect_filters", True) is not False,
+                selected=payload.get("selected") or None,
+                timeline=payload.get("timeline") or None,
+                live=payload.get("live") or None,
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -735,6 +799,25 @@ def create_app(
             return library.findings_view(identifier)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/client")
+    def client_info(identifier: str):
+        try:
+            return library.client_info(identifier)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+
+    @app.put("/api/cases/{identifier}/client")
+    def set_client_info(identifier: str, payload: dict):
+        """The desktop's "Client and mission": who the case is for, and the engagement."""
+        try:
+            return library.set_client_info(
+                identifier,
+                (payload or {}).get("client") or {},
+                (payload or {}).get("engagement") or {},
+            )
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
 
     @app.post("/api/cases/{identifier}/client-report")
     def client_report(identifier: str, payload: dict):
@@ -805,6 +888,8 @@ def create_app(
         end: int | None = None,
         text: str = "",
         kind: str = "text",
+        exact: bool = False,
+        bookmarks: bool = False,
         dates: str = "",
         include_undated: bool = False,
         respect_filters: bool = False,
@@ -827,6 +912,8 @@ def create_app(
                 end=end,
                 text=text,
                 kind=kind,
+                exact=exact,
+                bookmarks=bookmarks,
                 dates=options,
                 include_undated=include_undated,
                 respect_filters=respect_filters,
@@ -1049,6 +1136,35 @@ def create_app(
         """Today, Yesterday, ThisWeek… as the core defines them."""
         return library.date_ranges()
 
+    @app.get("/api/preferences")
+    def preferences():
+        return library.preferences()
+
+    @app.put("/api/preferences")
+    def set_preferences(payload: dict):
+        try:
+            return library.set_preferences(payload or {})
+        except (ServiceError, ValueError, OSError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+
+    @app.get("/api/coverage-plan")
+    def coverage_plan():
+        """The families each expected profile lists: the plan the analyst can adjust."""
+        from fireblade.core import coverage as coverage_core
+
+        return {
+            "profiles": {name: list(items) for name, items in coverage_core.EXPECTED.items()},
+            "families": list(
+                dict.fromkeys(
+                    [
+                        *coverage_core.EXPECTED["windows"],
+                        *coverage_core.EXPECTED["linux"],
+                        *coverage_core.EXPECTED["linux_logs"],
+                    ]
+                )
+            ),
+        }
+
     @app.get("/api/cases/{identifier}/coverage")
     def coverage(
         identifier: str,
@@ -1056,13 +1172,18 @@ def create_app(
         verify_hashes: bool = False,
         deep_checks: bool = True,
         run: bool = True,
+        tools: list[str] | None = Query(default=None),
     ):
         """Run the coverage audit, or read the last one kept with the case."""
         try:
             if not run:
                 return library.coverage_report(identifier)
             return library.coverage(
-                identifier, expected=expected, verify_hashes=verify_hashes, deep_checks=deep_checks
+                identifier,
+                expected=expected,
+                expected_tools=tools,
+                verify_hashes=verify_hashes,
+                deep_checks=deep_checks,
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1174,6 +1295,7 @@ def create_app(
             "include_subdomains": payload.get("subdomains", True) is not False,
             "declared_format": (payload.get("format") or None),
             "live": payload.get("live") or None,
+            **({"limit": int(payload["limit"])} if payload.get("limit") else {}),
         }
 
     @app.post("/api/cases/{identifier}/analyses/{index}/ioc")
@@ -1194,6 +1316,28 @@ def create_app(
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/ioc-list")
+    def ioc_list(identifier: str, file: UploadFile = File(...)):
+        """The desktop's "Import TXT / CSV / TSV": the list is read and put in the box, nothing is hunted yet."""
+        raw = file.file.read()
+        if len(raw) > 8 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Indicator lists are limited to 8 MiB.")
+        text = None
+        for encoding in ("utf-8-sig", "cp1252", "latin-1"):
+            try:
+                text = raw.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        if text is None:
+            raise HTTPException(status_code=400, detail="This file cannot be read as text.")
+        name = (file.filename or "").casefold()
+        declared = "tsv" if name.endswith(".tsv") else ("csv" if name.endswith(".csv") else None)
+        try:
+            return library.ioc_list(text, declared)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
 
     @app.post("/api/cases/{identifier}/ioc-file")
     def ioc_file(
@@ -1242,6 +1386,8 @@ def create_app(
         offset: int = 0,
         text: str = "",
         kind: str = "text",
+        exact: bool = False,
+        bookmarks: bool = False,
         dates: str = "",
         include_undated: bool = False,
         respect_filters: bool = False,
@@ -1264,6 +1410,8 @@ def create_app(
                 offset=offset,
                 text=text,
                 kind=kind,
+                exact=exact,
+                bookmarks=bookmarks,
                 dates=options,
                 include_undated=include_undated,
                 respect_filters=respect_filters,
@@ -1305,6 +1453,7 @@ def create_app(
         search: str = "",
         sort: int | None = None,
         descending: bool = False,
+        sort_type: str = "text",
         bookmarks_only: bool = False,
         group: list[int] = Query(default=[]),
         path: list[str] = Query(default=[]),
@@ -1312,39 +1461,20 @@ def create_app(
         interval: str = "",
         expression_json: str = "",
         summary: list[str] = Query(default=[]),
+        total: list[str] = Query(default=[]),
+        footer_mode: str = "hidden",
+        show_total: bool = True,
+        date_format: str = "source",
+        date_pattern: str = "",
         order: str = "",
         order_descending: bool = True,
         order_summary: int = 0,
         filter: list[str] = Query(default=[]),
     ):
         # sortkey=3:desc — several keys, applied in the order they are sent.
-        sorts = []
-        for raw in sortkey:
-            column, _, flag = raw.partition(":")
-            try:
-                sorts.append((int(column), flag == "desc"))
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail="Invalid sort key.") from exc
-        # summary=4:distinct:text — one entry per aggregate, in the order shown.
-        summaries = []
-        for raw in summary:
-            parts = raw.split(":")
-            try:
-                summaries.append(
-                    (
-                        int(parts[0]),
-                        parts[1] if len(parts) > 1 else "count",
-                        parts[2] if len(parts) > 2 else "number",
-                    )
-                )
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail="Invalid summary.") from exc
-        expression = None
-        if expression_json:
-            try:
-                expression = json.loads(expression_json)
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail="Invalid filter expression.") from exc
+        sorts = _sort_keys(sortkey)
+        summaries = _summaries(summary)
+        expression = _expression(expression_json)
         return library.rows(
             identifier,
             index,
@@ -1353,6 +1483,7 @@ def create_app(
             search=search,
             sort=sort,
             descending=descending,
+            sort_type=sort_type,
             bookmarks_only=bookmarks_only,
             groups=group,
             path=path,
@@ -1361,6 +1492,11 @@ def create_app(
             expression=expression,
             filters=parse_filters(filter),
             summaries=summaries,
+            total_summaries=_summaries(total),
+            footer_mode=footer_mode,
+            show_total=show_total,
+            date_format=date_format,
+            date_pattern=date_pattern,
             order=order,
             order_descending=order_descending,
             order_summary=order_summary,
@@ -1373,8 +1509,24 @@ def create_app(
         search: str = "",
         sort: int | None = None,
         descending: bool = False,
-        format: str = "csv",
+        sort_type: str = "text",
+        bookmarks_only: bool = False,
+        group: list[int] = Query(default=[]),
+        sortkey: list[str] = Query(default=[]),
+        interval: str = "",
+        expression_json: str = "",
+        summary: list[str] = Query(default=[]),
+        total: list[str] = Query(default=[]),
+        footer_mode: str = "hidden",
+        show_total: bool = True,
+        order: str = "",
+        order_descending: bool = True,
+        order_summary: int = 0,
         filter: list[str] = Query(default=[]),
+        column: list[int] | None = Query(default=None),
+        grouped: bool = False,
+        annotations: bool = False,
+        format: str = "csv",
     ):
         wanted = (format or "csv").lower()
         if wanted not in ("csv", "xlsx"):
@@ -1383,15 +1535,32 @@ def create_app(
             target = library.export(
                 identifier,
                 index,
+                as_xlsx=wanted == "xlsx",
+                columns=column,
+                grouped=grouped,
+                annotations=annotations,
                 search=search,
                 sort=sort,
                 descending=descending,
+                sort_type=sort_type,
+                bookmarks_only=bookmarks_only,
+                groups=group,
+                sorts=_sort_keys(sortkey),
+                interval=interval,
+                expression=_expression(expression_json),
                 filters=parse_filters(filter),
-                as_xlsx=wanted == "xlsx",
+                summaries=_summaries(summary),
+                total_summaries=_summaries(total),
+                footer_mode=footer_mode,
+                show_total=show_total,
+                order=order,
+                order_descending=order_descending,
+                order_summary=order_summary,
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=_english(exc)) from exc
-        name = f"fireblade-{identifier[:8]}-analysis-{index}.{wanted}"
+        stem = "bookmarks" if annotations else "analysis"
+        name = f"fireblade-{identifier[:8]}-{stem}-{index}.{wanted}"
         media = (
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             if wanted == "xlsx"

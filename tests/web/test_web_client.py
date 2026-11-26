@@ -282,7 +282,7 @@ def test_the_indicator_hunt_covers_the_case_and_reads_a_file():
         assert f"function {name}(" in js, name
     # The scan now runs as a task: the window names the command, the service
     # binds it to ioc_scan(); the file upload keeps its own route.
-    assert 'runTask("scan"' in js and "/ioc-file" in js
+    assert 'runTask("scan"' in js and "/ioc-list" in js
     service = _read(SERVICE)
     assert 'kind == "scan"' in service and "ioc_scan(" in service
     assert "<th>Analysis</th>" in html
@@ -522,7 +522,7 @@ def test_the_row_height_dialog_asks_the_three_heights():
 def test_the_highlight_marks_without_breaking_escaping():
     js = _read(APP)
     assert "function markText(" in js and "function openHighlight(" in js
-    assert '"<mark>"' in js and "escapeHtml(raw.slice(from, at))" in js
+    assert "<mark>" in js and "escapeHtml(raw.slice(from, start))" in js
     assert "state.highlight = answer.trim()" in js
 
 
@@ -572,7 +572,15 @@ def test_the_graph_carries_the_desktop_controls():
 
 def test_the_ioc_panel_lists_indicators_and_matches():
     js, html = _read(APP), _read(INDEX)
-    for column in ("Type", "IOC original", "Normalised", "Label", "Rows"):
+    for column in (
+        "Type",
+        "IOC original",
+        "Normalised value",
+        "Label",
+        "Fields",
+        "Rows",
+        "Details",
+    ):
         assert f"<th>{column}</th>" in html, column
     for column in (
         "Source date",
@@ -581,6 +589,7 @@ def test_the_ioc_panel_lists_indicators_and_matches():
         "Source row",
         "Column",
         "Observed value",
+        "Excerpt",
         "Rule",
     ):
         assert f"<th>{column}</th>" in html, column

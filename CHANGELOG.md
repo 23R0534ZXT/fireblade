@@ -7,6 +7,13 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.9.4] — 2026-11-26
+
+### Changed
+- **The layout step names the family it is merging and counts families** (see 0.9.3 notes below for the
+  related import fixes): "[3/40] Registre — Disk import · 5,247 records written…" instead of counters that
+  restart for each family.
+
 ## [0.9.3] — 2026-11-26
 
 ### Changed

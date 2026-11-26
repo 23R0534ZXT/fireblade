@@ -1,3 +1,12 @@
+# Kagarasu 0.9.4 — the import says which family it is merging
+
+During the layout step of a big import, the bar stayed on "99 % · 1236/1236" while the record counters
+started again for each family, which looked like a loop. The progress now names the family being merged
+("[3/40] Registre — Disk import · 5,247 records written…") and counts families (3/40) instead of files read,
+so a slow family is visible as such. Nothing else changes in how a collection is read.
+
+---
+
 # Kagarasu 0.9.3 — the SRUM tables read like SrumECmd's
 
 On Linux, where SrumECmd cannot run, the native reader now writes the providers SrumECmd also writes

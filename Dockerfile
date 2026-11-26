@@ -55,6 +55,9 @@ COPY --from=shellbags /out/Shellbags /opt/fireblade/tools/Shellbags
 RUN useradd --create-home --uid 10001 fireblade \
     && mkdir -p /data/cases \
     && chown -R fireblade:fireblade /data
+# A local checkout can have a restrictive umask. The application stays root-owned,
+# and the runtime user needs to read the Python package and the browser assets.
+RUN chmod -R a+rX /app/src
 # The pack is downloaded as root: the service reads it as the fireblade user, and a
 # dll it cannot stat is a reader it reports missing.
 RUN chown -R fireblade:fireblade /opt/fireblade/tools \

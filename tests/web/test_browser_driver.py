@@ -139,6 +139,20 @@ def _import_evidence(base, live, identifier):
     assert state.get("status") == "complete", state
 
 
+def test_the_driver_forwards_the_grid_page_requested_by_the_browser(driver):
+    base, live, identifier, _tmp = driver
+    _import_evidence(base, live, identifier)
+    response = httpx.get(
+        f"{base}/case/{identifier}/api/cases/{identifier}/analyses/0/rows",
+        params={"offset": 4, "limit": 3},
+        timeout=30,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    assert payload["offset"] == 4
+    assert len(payload["rows"]) == 3
+
+
 def test_the_page_under_the_prefix_opens_its_case_and_reads_its_evidence(page, driver):
     base, _live, identifier, _tmp = driver
     page.click('.tabs .tab:text-is("Cases")')

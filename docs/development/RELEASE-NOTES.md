@@ -1,3 +1,18 @@
+# Fireblade 0.9.0 — renamed to Kagarasu, and the Host groups like the desktop
+
+The repository and its container images are now Kagarasu: `23R0534ZXT/kagarasu`,
+`ghcr.io/23r0534zxt/kagarasu`, `-host`, `-driver`. The product is still Fireblade; the install line
+is `docker run -p 8080:8080 ghcr.io/23r0534zxt/kagarasu`, and the old image names are no longer
+updated. Living docs and scripts point at the new name; historical reports keep their links, which
+GitHub redirects.
+
+The Host's grouping is rebuilt on the desktop's model: drag a header onto the bar to add a level,
+each level is a numbered chip with its own ×, a separator inserts a level between two others, and
+several levels nest and drill down. Double-click the grip between two columns to fit the column to
+its content.
+
+---
+
 # Fireblade 0.8.8 — the Host replays the desktop, command by command
 
 The same commands were run on the desktop window and on the Host, on the same tables, and what differed is

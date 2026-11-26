@@ -10,6 +10,8 @@ import httpx
 import pytest
 from _audit import rows
 
+from tests.core.pdf_sample import build_pdf
+
 
 def _mixed(page, server, inside_case=False):
     """A folder of files no reader recognises by their name, imported by path.
@@ -28,12 +30,8 @@ def _mixed(page, server, inside_case=False):
     (folder / "page.html").write_text(
         "<html><body><h1>Incident</h1><p>Beacon every 60 seconds to evil.example</p></body></html>"
     )
-    pytest.importorskip("reportlab")
-    from reportlab.pdfgen import canvas
-
-    sheet = canvas.Canvas(str(folder / "memo.pdf"))
-    sheet.drawString(72, 760, "Containment memo: isolate host PC01")
-    sheet.save()
+    pytest.importorskip("pypdf")
+    (folder / "memo.pdf").write_bytes(build_pdf("Containment memo: isolate host PC01"))
     job = httpx.post(
         f"{base}/api/cases/{case}/import-jobs",
         data={"source": str(folder), "organization": "files"},

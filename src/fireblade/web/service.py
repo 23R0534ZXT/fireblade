@@ -3910,10 +3910,12 @@ class Library:
             filters["start"] = int(start)
         if end is not None:
             filters["end"] = int(end)
-        target = Path(tempfile.mkdtemp(prefix="fbtimeline-")) / "timeline.csv"
-        receipt = store.export_csv(target, receipt=True, **filters)
-        _timeline_header_in_english(target)
-        return target.read_bytes(), english.data(receipt if isinstance(receipt, dict) else {})
+        with tempfile.TemporaryDirectory(prefix="fbtimeline-") as folder:
+            target = Path(folder) / "timeline.csv"
+            receipt = store.export_csv(
+                target, receipt=True, header_labels=TIMELINE_HEADER, **filters
+            )
+            return target.read_bytes(), english.data(receipt)
 
     # -- importing ---------------------------------------------------------
 
@@ -6006,10 +6008,6 @@ def _rename_csv_header(path: Path, names: dict[str, str]) -> None:
             csv.writer(target).writerow([names.get(name, name) for name in header])
         shutil.copyfileobj(source, target)
     temporary.replace(path)
-
-
-def _timeline_header_in_english(path: Path) -> None:
-    _rename_csv_header(path, TIMELINE_HEADER)
 
 
 COVERAGE_HEADER = {

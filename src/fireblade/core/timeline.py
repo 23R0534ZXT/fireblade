@@ -537,7 +537,7 @@ class TimelineStore:
             raise ValueError("Date ISO invalide ; indiquez le fuseau (ex. 2026-01-01T12:00:00Z)")
         return int(result)
 
-    def export_csv(self, target, *, receipt=False, **filters):
+    def export_csv(self, target, *, receipt=False, header_labels=None, **filters):
         from fireblade.core.case_package import check_cancelled
         from fireblade.core.paths import protected_destination
 
@@ -577,6 +577,8 @@ class TimelineStore:
                     "Fuseau_UTC_supposé",
                     "SHA256_source_à_l_import",
                 ]
+                if header_labels:
+                    headers = [header_labels.get(name, name) for name in headers]
                 writer.writerow(headers)
                 expected = self.db.execute("SELECT count(*) FROM events" + where, args).fetchone()[
                     0

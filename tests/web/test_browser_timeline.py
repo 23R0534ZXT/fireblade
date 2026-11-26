@@ -113,6 +113,48 @@ def test_a_duration_narrows_the_window_and_back_returns_to_the_one_before(timeli
     assert set(stamps) == {"2026-11-02"}
 
 
+def test_the_timeline_export_matches_the_selected_duration(timeline):
+    import csv
+
+    page = timeline
+    page.uncheck("#timeline-undated")
+    page.click('[data-act="timeline-duration"]')
+    page.fill("#ask-input", "2026-11-02T00:30")
+    page.click('[data-act="ask-ok"]')
+    page.fill("#ask-input", "2026-11-02T23:30")
+    page.click('[data-act="ask-ok"]')
+    page.wait_for_function("!document.getElementById('timeline-info').innerText.includes('/ 704')")
+    count = _count(page)
+    assert 0 < count < 704
+    with page.expect_download() as downloaded:
+        page.click("#timeline-export")
+    with downloaded.value.path().open(encoding="utf-8-sig", newline="") as stream:
+        exported = list(csv.reader(stream))
+    assert len(exported) - 1 == count
+    assert {row[0][:10] for row in exported[1:]} == {"2026-11-02"}
+
+
+def test_switching_cases_resets_timeline_filters_and_sources(timeline, server):
+    page = timeline
+    make_case(server, "Other timeline", "Time,User\n2026-12-01T12:00:00Z,new-user\n")
+    page.fill("#timeline-search", "alice")
+    page.press("#timeline-search", "Enter")
+    page.wait_for_function("!document.getElementById('timeline-info').innerText.includes('/ 704')")
+    page.click('.toolbar [data-act="refresh-cases"]')
+    page.click('.tabs .tab:text-is("Cases")')
+    page.locator('#cases-body tr:has(td:text-is("Other timeline")) td').first.dblclick()
+    page.wait_for_function(
+        "document.getElementById('casecombo-label').innerText === 'Other timeline'"
+    )
+    page.click('.tabs .tab:text-is("Timeline & correlations")')
+    assert page.input_value("#timeline-search") == ""
+    page.wait_for_function(
+        "document.getElementById('timeline-info').innerText.includes('/ 1 event(s)')"
+    )
+    assert page.locator("#timeline-lane option").all_text_contents() == ["All lanes", "events.csv"]
+    assert "new-user" in _first_row(page)
+
+
 def test_a_duration_that_is_not_one_is_refused(timeline):
     page = timeline
     page.click('[data-act="timeline-duration"]')

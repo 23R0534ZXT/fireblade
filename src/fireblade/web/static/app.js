@@ -1466,6 +1466,7 @@ async function openCase(identifier) {
       return;
     }
     const detail = await api(`/api/cases/${identifier}`);
+    if (state.openCase?.id !== detail.id) resetTimeline();
     state.openCase = detail;
     // The analyses closed and kept: the tree lists them, and they open again.
     try {
@@ -1501,6 +1502,7 @@ async function openCase(identifier) {
 
 function closeCase() {
   state.openCase = null;
+  resetTimeline();
   state.columns = [];
   state.rows = [];
   state.total = 0;
@@ -5368,6 +5370,32 @@ const timelineState = { offset: 0, text: "", kind: "text", payload: null, dates:
 /* The window is a pair of bucket indices, the selection a pair of times: the chart
    can be zoomed without touching the rows, and a duration is the analyst's filter. */
 
+function resetTimeline() {
+  Object.assign(timelineState, {
+    offset: 0, text: "", kind: "text", payload: null, dates: {},
+    row: null, source: null, window: null, history: [], start: null, end: null,
+  });
+  timelineState.seq++;
+  timelineState.hidden.clear();
+  $("timeline-search").value = "";
+  $("timeline-kind").value = "text";
+  for (const id of ["timeline-exact", "timeline-bookmarks", "timeline-undated", "timeline-filters"]) {
+    $(id).checked = $(id).defaultChecked;
+  }
+  for (const id of ["timeline-dates", "timeline-rows", "timeline-legend", "timeline-hist",
+                    "timeline-window", "timeline-info", "timeline-info-extra"]) {
+    $(id).textContent = "";
+  }
+  renderTimelineLanes([]);
+  clearTimelineOverview();
+}
+
+function clearTimelineOverview() {
+  const canvas = $("timeline-overview-canvas");
+  canvas.width = canvas.width; // Reset pixels and the drawing context's transform.
+  canvas.onclick = null;
+}
+
 /* The desktop chooses, per analysis, how its dates are read. The choice travels
    with every timeline request, so a rebuild reads the case the same way. */
 function timelineDatesParam() {
@@ -5497,10 +5525,19 @@ async function loadTimeline(reset, force) {
     }
     if (mine !== timelineState.seq) return;
     timelineState.payload = payload;
+    renderTimelineLanes(payload.sources);
     renderTimeline(payload);
   } catch (error) {
-    say(error.message, true);
+    if (mine === timelineState.seq) say(error.message, true);
   }
+}
+
+function renderTimelineLanes(sources) {
+  const lane = $("timeline-lane");
+  const previous = lane.value;
+  lane.innerHTML = '<option value="">All lanes</option>'
+    + sources.map((source) => `<option value="${source.id}">${escapeHtml(source.name)}</option>`).join("");
+  if (sources.some((source) => String(source.id) === previous)) lane.value = previous;
 }
 
 function renderTimeline(payload) {
@@ -5513,21 +5550,6 @@ function renderTimeline(payload) {
       title="${off ? "Show this source again" : "Hide this source"}"
       style="${off ? "opacity:.45" : ""}"><span class="swatch" style="background:${TIMELINE_COLORS[index % 8]}"></span>${escapeHtml(source.name)} — ${source.dated} dated / ${source.rows} row(s)</span>`;
   }).join("");
-  const lane = $("timeline-lane");
-  if (lane && !lane.dataset.filled) {
-    lane.innerHTML = '<option value="">All lanes</option>'
-      + payload.sources.map((source) => `<option value="${source.id}">${escapeHtml(source.name)}</option>`).join("");
-    lane.dataset.filled = "1";
-    lane.addEventListener("change", () => {
-      timelineState.hidden.clear();
-      if (lane.value !== "") {
-        for (const source of payload.sources) {
-          if (String(source.id) !== lane.value) timelineState.hidden.add(source.id);
-        }
-      }
-      loadTimeline(true);
-    });
-  }
   $("timeline-legend").querySelectorAll("[data-tl-source-chip]").forEach((chip) => {
     chip.addEventListener("click", () => {
       const id = Number(chip.dataset.tlSourceChip);
@@ -5542,6 +5564,7 @@ function renderTimeline(payload) {
   if (!hist || !hist.rows.length) {
     box.innerHTML = '<div class="emptygrid">No dated row to chart.</div>';
     $("timeline-window").textContent = "";
+    clearTimelineOverview();
   } else {
     box.innerHTML = timelineBars(hist, shown);
     drawOverview(hist);
@@ -5599,14 +5622,17 @@ async function timelineDuration() {
                          label: `To (UTC, ISO — empty keeps ${band(payload.extent.end)})`,
                          value: band(payload.extent.end) });
   if (to === null) return;
-  const parse = (text, fallback) => {
-    if (!text.trim()) return fallback;
-    const stamp = Date.parse(text.trim().length <= 10 ? `${text.trim()}T00:00:00Z` : text.trim());
-    if (Number.isNaN(stamp)) return NaN;
-    return stamp * 1e6;
+  const parse = (text, fallback, endOfDay = false) => {
+    const iso = text.trim().replace(" ", "T");
+    if (!iso) return fallback;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+      return Date.parse(`${iso}T${endOfDay ? "23:59:59.999" : "00:00:00"}Z`) * 1e6;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso)) return NaN;
+    return Date.parse(/[zZ]$|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`) * 1e6;
   };
   const start = parse(from, payload.extent.start);
-  const end = parse(to, payload.extent.end);
+  const end = parse(to, payload.extent.end, true);
   if (Number.isNaN(start) || Number.isNaN(end) || start >= end) {
     say("Those dates do not make a duration", true);
     return;
@@ -7445,6 +7471,17 @@ function wire() {
     if (actionState.selected) removeActionRow(actionState.selected);
   });
   $("timeline-dates").addEventListener("change", applyTimelineDates);
+  $("timeline-lane").addEventListener("change", (event) => {
+    const selected = event.target.value;
+    const sources = timelineState.payload?.sources || [];
+    timelineState.hidden.clear();
+    if (selected !== "") {
+      for (const source of sources) {
+        if (String(source.id) !== selected) timelineState.hidden.add(source.id);
+      }
+    }
+    loadTimeline(true);
+  });
   $("timeline-build").addEventListener("click", () => loadTimeline(false, true));
   $("timeline-undated").addEventListener("change", () => loadTimeline(true));
   $("timeline-exact").addEventListener("change", () => { if (timelineState.text) loadTimeline(true); });
@@ -7462,6 +7499,8 @@ function wire() {
   $("timeline-export").addEventListener("click", () => {
     if (!state.openCase) { say("Open a case first", true); return; }
     const params = new URLSearchParams();
+    if (timelineState.start !== null) params.set("start", String(timelineState.start));
+    if (timelineState.end !== null) params.set("end", String(timelineState.end));
     if (timelineState.text) { params.set("text", timelineState.text); params.set("kind", timelineState.kind); }
     if ($("timeline-exact").checked) params.set("exact", "true");
     if ($("timeline-bookmarks").checked) params.set("bookmarks", "true");

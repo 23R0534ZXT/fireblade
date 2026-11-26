@@ -7,6 +7,7 @@ writes it, so a route cannot drift into a decorated stub without a red test.
 """
 
 import csv
+import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -783,7 +784,7 @@ def test_the_timeline_exports_a_verified_file(service):
     assert text.splitlines()[0].startswith("Date_UTC")
     assert len(text.strip().splitlines()) == 4, "three rows and the header"
     assert receipt["written"] == receipt["expected"] == 3
-    assert len(receipt["sha256"]) == 64
+    assert receipt["sha256"] == hashlib.sha256(data).hexdigest()
 
 
 def test_rows_without_a_date_join_the_timeline_on_request(tmp_path):

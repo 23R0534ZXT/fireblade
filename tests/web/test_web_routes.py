@@ -1785,3 +1785,35 @@ def test_a_disconnected_download_releases_its_temporary_file(tmp_path):
     with pytest.raises((OSError, ClientDisconnect)):
         asyncio.run(transfer())
     assert not target.exists()
+
+
+def test_case_close_waits_until_a_rows_request_finishes_painting(service, monkeypatch):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    lib, identifier = service
+    entered = threading.Event()
+    release = threading.Event()
+    closed = threading.Event()
+    paint = lib._painting
+
+    def delayed(*args, **kwargs):
+        entered.set()
+        assert release.wait(5)
+        return paint(*args, **kwargs)
+
+    def close():
+        lib.close_case(identifier)
+        closed.set()
+
+    monkeypatch.setattr(lib, "_painting", delayed)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        rows = pool.submit(lib.rows, identifier, 0)
+        assert entered.wait(5)
+        closing = pool.submit(close)
+        try:
+            assert not closed.wait(0.15), "The connection closed before the row styles were read"
+        finally:
+            release.set()
+        assert rows.result(timeout=5)["total"] == 3
+        closing.result(timeout=5)

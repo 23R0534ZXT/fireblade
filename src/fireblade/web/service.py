@@ -24,6 +24,7 @@ import time as clock
 import uuid
 from contextlib import suppress
 from datetime import UTC, date, datetime, time
+from functools import wraps
 from pathlib import Path
 
 from fireblade.core.collection import Collection, ToolPack
@@ -65,6 +66,22 @@ def json_value(value):
     return str(value)
 
 
+def _case_operation(method):
+    """Keep a case's handle alive through grid rendering and lifecycle changes.
+
+    Locks are per case, so a slow layout does not hold the service's job/status lock.
+    """
+
+    @wraps(method)
+    def guarded(self, identifier, *args, **kwargs):
+        with self._lock:
+            gate = self._case_operations.setdefault(identifier, threading.RLock())
+        with gate:
+            return method(self, identifier, *args, **kwargs)
+
+    return guarded
+
+
 class Library:
     """Case catalogue plus one open analysis at a time per (case, index)."""
 
@@ -91,6 +108,7 @@ class Library:
         self._timeline_dir = tempfile.mkdtemp(prefix="fireblade-timelines-")
         self._lock = threading.RLock()
         self._jobs: dict[str, dict] = {}
+        self._case_operations: dict[str, threading.RLock] = {}
 
     # -- preferences -------------------------------------------------------
 
@@ -2846,6 +2864,7 @@ class Library:
             raise ServiceError(str(exc)) from exc
         return {"attachments": stored, "count": len(stored)}
 
+    @_case_operation
     def close_case(self, identifier: str) -> None:
         """Release every handle the service holds on one case."""
         with self._lock:
@@ -3262,6 +3281,7 @@ class Library:
         reader.interrupt()
         return {"stopped": True}
 
+    @_case_operation
     def _release(self, identifier: str) -> None:
         with self._lock:
             for open_key in [item for item in self._open if item[0] == identifier]:
@@ -4046,6 +4066,7 @@ class Library:
             f"{count} files cannot be laid out in fewer than {self.SESSION_LIMIT} grids."
         )
 
+    @_case_operation
     def reorganize(self, identifier: str, mode: str) -> dict:
         """Lay the analyses of every import of the case out again: one grid per file, one per
         artifact family, or one for everything. The files are not read again: each collection
@@ -5700,6 +5721,7 @@ class Library:
             view.group_summary = max(0, min(int(order_summary), max(0, len(cleaned_summaries) - 1)))
         return view
 
+    @_case_operation
     def rows(
         self,
         identifier: str,

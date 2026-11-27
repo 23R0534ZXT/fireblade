@@ -49,7 +49,8 @@ def test_a_case_gets_its_own_volume_with_the_desktop_layout(driver):
 def test_opening_a_case_creates_one_container_over_that_volume(driver, tmp_path):
     identifier = driver.create("One case")["id"]
     case = driver.open(identifier)
-    assert case.name == f"fireblade-case-{identifier[:8]}"
+    assert case.name == f"fireblade-case-{case.driver_id}-{identifier}"
+    assert len(case.name.encode("idna")) <= 63
     assert case.running()
     launched = [call for call in calls(tmp_path) if call[0] == "run"]
     assert len(launched) == 1
@@ -227,3 +228,48 @@ def test_reconcile_drops_a_case_container_built_from_another_image(driver):
     assert driver.reconcile() == [identifier]
     assert not driver.container(identifier).exists()
     assert driver.volumes.has(identifier), "an upgrade never touches the case itself"
+
+
+def test_two_drivers_can_open_copies_of_the_same_case_independently(driver, tmp_path):
+    import shutil
+
+    other = agency.Agency(tmp_path / "second-library", docker=driver.docker)
+    identifier = driver.create("Copied for review")["id"]
+    shutil.copytree(driver.volumes.folder(identifier), other.volumes.folder(identifier))
+    first = driver.open(identifier)
+    second = other.open(identifier)
+    assert first.name != second.name
+    assert len(list(driver.managed_containers())) == len(list(other.managed_containers())) == 1
+    other.volumes.remove(identifier)
+    assert driver.reconcile() == []
+    assert other.reconcile() == [identifier]
+    assert first.running()
+    assert not second.exists()
+
+
+def test_a_legacy_short_name_is_adopted_only_with_its_own_bind_mount(driver, tmp_path):
+    import shutil
+
+    identifier = driver.create("Legacy case")["id"]
+    other = agency.Agency(tmp_path / "second-library", docker=driver.docker)
+    shutil.copytree(driver.volumes.folder(identifier), other.volumes.folder(identifier))
+    legacy_name = f"fireblade-case-{identifier[:8]}"
+    driver.docker.run(
+        "run",
+        "-d",
+        "--name",
+        legacy_name,
+        "--label",
+        f"fireblade.case={identifier}",
+        "--label",
+        "fireblade.role=case",
+        "-v",
+        f"{driver.volumes.folder(identifier)}:/data/library",
+        driver.image,
+    )
+    assert other.reconcile() == []
+    assert other.open(identifier).name != legacy_name
+    assert driver.open(identifier).name == legacy_name
+    driver.volumes.remove(identifier)
+    assert driver.reconcile() == [identifier]
+    assert other.container(identifier).running()

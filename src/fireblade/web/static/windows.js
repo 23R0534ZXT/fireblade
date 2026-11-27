@@ -37,11 +37,10 @@
   function keepInside(dialog) {
     var left = parseFloat(dialog.style.left) || 0;
     var top = parseFloat(dialog.style.top) || 0;
-    var width = dialog.offsetWidth;
-    var height = dialog.offsetHeight;
-    /* Keep the title and footer in view after dragging, restoring, or loading more content. */
-    dialog.style.left = clamp(left, 0, window.innerWidth - width) + "px";
-    dialog.style.top = clamp(top, 0, window.innerHeight - height) + "px";
+    var box = dialog.getBoundingClientRect();
+    /* offsetHeight rounds fractional text metrics and can put the footer outside the viewport. */
+    dialog.style.left = clamp(left, 0, window.innerWidth - Math.ceil(box.width)) + "px";
+    dialog.style.top = clamp(top, 0, window.innerHeight - Math.ceil(box.height)) + "px";
   }
 
   function arrange(modal) {
@@ -67,13 +66,17 @@
     keepInside(dialog);
   }
 
-  function remember(modal) {
+  function remember(modal, resized) {
     var dialog = modal.querySelector(".dialog");
     if (!dialog || !dialog.dataset.free) { return; }
-    layout["dialog:" + modal.id] = {
-      left: parseFloat(dialog.style.left) || 0, top: parseFloat(dialog.style.top) || 0,
-      width: dialog.offsetWidth, height: dialog.offsetHeight
-    };
+    var saved = layout["dialog:" + modal.id] || {};
+    saved.left = parseFloat(dialog.style.left) || 0;
+    saved.top = parseFloat(dialog.style.top) || 0;
+    if (resized) {
+      saved.width = dialog.offsetWidth;
+      saved.height = dialog.offsetHeight;
+    }
+    layout["dialog:" + modal.id] = saved;
     save();
   }
 
@@ -106,7 +109,7 @@
         title.removeEventListener("pointermove", move);
         title.removeEventListener("pointerup", stop);
         title.removeEventListener("pointercancel", stop);
-        remember(modal);
+        if (originX !== dialog.offsetLeft || originY !== dialog.offsetTop) { remember(modal, false); }
       }
       title.addEventListener("pointermove", move);
       title.addEventListener("pointerup", stop);
@@ -115,7 +118,16 @@
     });
 
     /* Resize comes from the browser's own corner handle (CSS `resize`); its end is noticed here. */
-    dialog.addEventListener("pointerup", function () { remember(modal); });
+    var initialSize = null;
+    dialog.addEventListener("pointerdown", function (event) {
+      initialSize = event.target === dialog ? [dialog.offsetWidth, dialog.offsetHeight] : null;
+    });
+    dialog.addEventListener("pointerup", function () {
+      if (initialSize && (dialog.offsetWidth !== initialSize[0] || dialog.offsetHeight !== initialSize[1])) {
+        remember(modal, true);
+      }
+      initialSize = null;
+    });
 
     /* Content that arrives after the dialog opened changes its height: keep it in view. */
     if (window.ResizeObserver) {

@@ -64,7 +64,7 @@ def test_every_menu_opens_and_lists_its_commands(page):
 
 def test_narrow_menus_fit_the_window_and_are_operable_by_keyboard(page):
     page.set_viewport_size({"width": 390, "height": 640})
-    trigger = page.get_by_role("button", name="Exporter", exact=True)
+    trigger = page.locator("#menubar").get_by_role("button", name="Export", exact=True)
     trigger.focus()
     page.keyboard.press("Enter")
     popup = page.locator('.menu[data-for="exporter"]')
@@ -118,11 +118,25 @@ def test_the_last_workspace_tab_is_reachable_in_a_narrow_window(page):
     close_case.focus()
     page.keyboard.press("Tab")
     assert analyses_tab.evaluate("(el) => el === document.activeElement")
+    assert [tab.get_attribute("data-tab") for tab in strip.get_by_role("tab").all()] == [
+        "cases",
+        "imports",
+        "analyses",
+        "timeline",
+        "ioc",
+        "hayabusa",
+        "graph",
+        "actions",
+    ]
     page.keyboard.press("ArrowRight")
-    assert strip.get_by_role("tab", name="Imports").evaluate(
+    assert strip.get_by_role("tab", name="Timeline & correlations").evaluate(
         "(el) => el === document.activeElement"
     )
     page.keyboard.press("End")
+    assert strip.get_by_role("tab", name="Actions & tracking").evaluate(
+        "(el) => el === document.activeElement"
+    )
+    page.keyboard.press("ArrowLeft")
     assert graph_tab.evaluate("(el) => el === document.activeElement")
     assert graph_tab.get_attribute("aria-selected") == "false"
     assert analyses_tab.get_attribute("aria-selected") == "true"
@@ -142,9 +156,13 @@ def test_the_last_workspace_tab_is_reachable_in_a_narrow_window(page):
     assert export_box["x"] + export_box["width"] <= graph_box["x"] + graph_box["width"]
     export.click(trial=True)
     page.keyboard.press("Home")
-    assert analyses_tab.evaluate("(el) => el === document.activeElement")
+    assert strip.get_by_role("tab", name="Cases").evaluate("(el) => el === document.activeElement")
     page.keyboard.press("ArrowLeft")
-    assert graph_tab.evaluate("(el) => el === document.activeElement")
+    assert strip.get_by_role("tab", name="Actions & tracking").evaluate(
+        "(el) => el === document.activeElement"
+    )
+    page.keyboard.press("Home")
+    page.keyboard.press("ArrowRight")
     page.keyboard.press("ArrowRight")
     assert analyses_tab.evaluate("(el) => el === document.activeElement")
     page.keyboard.press("Space")
@@ -160,7 +178,7 @@ def test_workspace_zoom_keeps_the_status_and_uses_the_available_width(page):
     status = page.locator(".statusbar").bounding_box()
     assert abs(status["y"] + status["height"] - 700) < 2
     assert page.locator("#artifacts").is_hidden()
-    trigger = page.get_by_role("button", name="Exporter", exact=True)
+    trigger = page.locator("#menubar").get_by_role("button", name="Export", exact=True)
     trigger.focus()
     page.keyboard.press("Enter")
     bounds = page.locator('.menu[data-for="exporter"]').bounding_box()
@@ -197,11 +215,14 @@ def test_dark_rows_and_errors_keep_readable_contrast(page):
 
 
 def test_a_narrow_toolbar_keeps_case_controls_and_the_view_menu_keeps_workspace(page):
-    page.set_viewport_size({"width": 680, "height": 580})
     toolbar = page.locator(".toolbar")
-    assert toolbar.evaluate("el => el.scrollWidth === el.clientWidth")
-    for control in ("#import-layout", "#casecombo", '[data-act="close-case"]'):
-        assert toolbar.locator(control).is_visible()
+    for width in (1100, 800, 680):
+        page.set_viewport_size({"width": width, "height": 580})
+        assert toolbar.evaluate("el => el.scrollWidth === el.clientWidth")
+        for control in ("#import-layout", "#casecombo", '[data-act="close-case"]'):
+            button = toolbar.locator(control)
+            assert button.is_visible()
+            assert button.bounding_box()["x"] + button.bounding_box()["width"] <= width
     assert toolbar.locator('[data-act="display-settings"]').is_hidden()
     page.locator('#groupbar [data-act="open-view-menu"]').click()
     page.locator('.menu.show [data-act="display-settings"]').click()

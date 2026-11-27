@@ -47,12 +47,29 @@ def test_a_click_selects_a_case_and_the_open_button_or_a_double_click_opens_it(p
     )
 
 
-def test_the_open_button_with_no_case_selected_asks_for_one(empty_page):
-    page = empty_page
-    page.evaluate("state.selectedCase = null; state.openCase = null; renderCases();")
+def test_filtering_out_the_selected_case_disables_library_actions(page, server):
+    other = make_case(server, "Selected investigation", standard_csv())
+    page.evaluate("loadCases()")
     _cases_tab(page)
-    page.click('#cases-view [data-act="open-selected-case"]')
-    page.wait_for_function("document.getElementById('status').innerText.includes('Select a case')")
+    _row(page, "Selected investigation").click()
+    with page.expect_response(lambda r: r.url.endswith(f"/api/cases/{other}/history")) as history:
+        page.click('#cases-view [data-act="case-history"]')
+    assert history.value.ok
+    page.keyboard.press("Escape")
+    with page.expect_request(lambda r: r.method == "POST" and r.url.endswith("/tasks")) as package:
+        with page.expect_download():
+            page.click('#cases-view [data-act="export-portable"]')
+    assert package.value.url.endswith(f"/api/cases/{other}/tasks")
+    page.fill("#case-search", "no cases match")
+    assert page.locator('#cases-view [data-act="destroy-case"]').is_disabled()
+    assert page.locator('#cases-view [data-act="open-selected-case"]').is_disabled()
+    page.fill("#case-search", "Selected investigation")
+    row = _row(page, "Selected investigation")
+    row.focus()
+    row.press("Enter")
+    page.wait_for_function(
+        "document.getElementById('casecombo-label').innerText === 'Selected investigation'"
+    )
 
 
 def test_the_last_case_opened_wins_when_an_older_response_arrives_late(page, server):
@@ -102,7 +119,7 @@ def test_refresh_lists_a_case_another_session_created(page, server):
     _cases_tab(page)
     assert _row(page, "Made elsewhere").count() == 0
     make_case(server, "Made elsewhere")
-    page.click('#cases-view [data-act="refresh-cases"]')
+    page.click('.toolbar [data-act="refresh-cases"]')
     page.wait_for_selector('#cases-body tr:has(td:text-is("Made elsewhere"))')
 
 

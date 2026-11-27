@@ -66,14 +66,10 @@ def test_the_command_names_the_editions_own_image():
     assert "driver" in updates.guidance("case")
 
 
-def test_the_host_update_is_one_line_a_shell_can_run():
-    host = updates.command("host", "0.8.8")
-    assert len(host) == 1
-    line = host[0]
-    image = "ghcr.io/23r0534zxt/kagarasu:0.8.8"
-    assert line.startswith(f"docker pull {image} && docker rm -f kagarasu && docker run -d ")
-    assert f"{image} && echo" in line and "-p 127.0.0.1:8080:8080" in line
-    assert "README" in updates.guidance("host")
+def test_upgrades_pull_images_before_the_operator_recreates_the_deployment():
+    assert updates.command("host", "0.15.0") == ["docker pull ghcr.io/23r0534zxt/kagarasu:0.15.0"]
+    assert all(line.startswith("docker pull ") for line in updates.command("driver", "0.15.0"))
+    assert "mounts" in updates.guidance("host")
 
 
 def test_the_check_can_be_switched_off_and_then_asks_nobody(monkeypatch):

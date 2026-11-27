@@ -204,7 +204,7 @@ def test_refresh_reloads_the_report_and_the_other_buttons_of_the_tab_open_their_
     empty_page, server
 ):
     page = empty_page
-    _mixed(page, server)
+    folder = _mixed(page, server)
     page.click("#imports-refresh")
     page.wait_for_function("document.getElementById('imports-rows').innerText.includes('junk.bin')")
     page.click('.tabs .tab:text-is("Imports") >> xpath=.')  # stays on the tab
@@ -214,11 +214,32 @@ def test_refresh_reloads_the_report_and_the_other_buttons_of_the_tab_open_their_
     page.click('#imports-view [data-act="case-history"]')
     page.wait_for_selector("#history-modal.show, .modal.show .dialog")
     page.keyboard.press("Escape")
-    pick_import_source(page, "import-file", entry="#imports-view")
+    pick_import_source(page, "import-file")
     page.wait_for_selector("#import-modal.show")
     page.keyboard.press("Escape")
-    with page.expect_file_chooser():
-        pick_import_source(page, "import-folder", entry="#imports-view")
+    with page.expect_file_chooser() as chooser:
+        pick_import_source(page, "import-folder")
+        dialog = page.get_by_role("dialog", name="Parse a folder")
+        choose = dialog.get_by_role("button", name="Choose a folder…")
+        assert choose.evaluate("button => button === document.activeElement")
+        page.keyboard.press("Shift+Tab")
+        assert dialog.get_by_role("button", name="Cancel").evaluate(
+            "button => button === document.activeElement"
+        )
+        page.keyboard.press("Tab")
+        assert choose.evaluate("button => button === document.activeElement"), page.evaluate(
+            "document.activeElement.outerHTML"
+        )
+        page.keyboard.press("Enter")
+    chooser.value.set_files(str(folder))
+    page.wait_for_function("document.querySelector('#preview-note').textContent.includes('ready')")
+    assert "junk.bin" in dialog.inner_text()
+    assert page.locator("#preview-body").evaluate("el => el.clientHeight > 40")
+    assert page.locator(".preview-files").evaluate("el => el.clientHeight > 20")
+    page.keyboard.press("Escape")
+    assert page.locator('.toolbar [data-act="import-evidence"]').evaluate(
+        "button => button === document.activeElement"
+    )
 
 
 def test_several_files_are_ticked_and_read_with_one_reader(empty_page, server):

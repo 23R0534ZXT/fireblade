@@ -220,7 +220,9 @@ def test_closing_the_case_leaves_no_case_open(page):
         "document.getElementById('casecombo-label').innerText === 'No case open'"
     )
     assert page.locator("#body tr[data-row]").count() == 0
-    assert "No case open" in page.inner_text("#tree")
+    assert page.locator("#artifacts").is_hidden()
+    page.locator("#grid-empty").get_by_role("button", name="Open case library").click()
+    assert page.get_by_role("tabpanel", name="Cases").is_visible()
 
 
 def test_the_toolbar_closes_the_case_too(page):

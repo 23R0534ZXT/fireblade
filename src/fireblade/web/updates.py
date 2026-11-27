@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 import time
 import urllib.error
@@ -40,6 +41,8 @@ def version_tuple(text: str) -> tuple:
 def parse(payload: dict) -> dict:
     """The release payload, reduced to what a banner needs."""
     tag = (payload.get("tag_name") or "").strip().lstrip("v")
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", tag):
+        raise ValueError("The release does not have a stable version tag.")
     return {
         "version": tag,
         "url": (payload.get("html_url") or "").strip(),
@@ -48,42 +51,24 @@ def parse(payload: dict) -> dict:
     }
 
 
-STARTED = 'echo "Kagarasu is starting: open http://localhost:8080 in a few seconds"'
-RUN_LINE = (
-    "docker run -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 "
-    '-v "$HOME/kagarasu-cases:/data/cases"'
-)
-
-
 def command(edition: str, tag: str) -> list:
-    """What the analyst pastes: lines a shell can run, and nothing else.
-
-    The host edition's is one line, the README's own start command preceded by the pull and
-    the removal of the old container; the cases stay in their folder. The driver's and the
-    case's need the options they were started with, so they stop at what is unambiguous.
-    """
+    """Pull the release images while preserving the operator's running deployment."""
     tag = tag or "latest"
     case = f"{REGISTRY}/kagarasu:{tag}"
-    driver = f"{REGISTRY}/kagarasu-driver:{tag}"
     if edition == "driver":
-        return [f"docker pull {driver}", f"docker pull {case}", "docker rm -f kagarasu-driver"]
-    if edition == "case":
-        return [f"docker pull {case}"]
-    return [f"docker pull {case} && docker rm -f kagarasu && {RUN_LINE} {case} && {STARTED}"]
+        return [f"docker pull {REGISTRY}/kagarasu-driver:{tag}", f"docker pull {case}"]
+    return [f"docker pull {case}"]
 
 
 def guidance(edition: str) -> str:
-    """The sentence that goes with the command: what it assumes, and what comes next."""
-    if edition == "driver":
+    if edition in {"case", "driver"}:
         return (
-            "then start the driver again with the same options (deploy/host/README.md, Upgrade): "
-            "the case containers are rebuilt on the new image when a case is opened"
+            "Recreate the driver with the matching case image, original volume paths, network "
+            "and certificate directory. See the upgrade guide in deploy/host/README.md."
         )
-    if edition == "case":
-        return "the driver restarts the case containers on the new image; open the case again"
     return (
-        "this is the line from the README: use it as it stands if you started Kagarasu that way, "
-        "otherwise see deploy/host/README.md (Upgrade). Your cases stay in their folder"
+        "After the pull, recreate Host with its existing case and plugin mounts, port and settings. "
+        "See the upgrade guide in deploy/host/README.md."
     )
 
 

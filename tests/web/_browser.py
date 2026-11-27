@@ -2,6 +2,7 @@
 
 import contextlib
 import os
+import re
 import socket
 import subprocess
 import threading
@@ -9,6 +10,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from pathlib import Path
 
 import pytest
 
@@ -153,15 +155,18 @@ def browser_page(url, case_name, width=1400, height=850, wait_rows=True):
             )
         page.click('.tabs .tab:text-is("Analyses")')
         yield page
-        snapshots = os.environ.get("FIREBLADE_SCREENSHOTS")
-        if snapshots and not page.is_closed():
-            from pathlib import Path
-
-            destination = Path(snapshots)
-            destination.mkdir(parents=True, exist_ok=True)
-            safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in case_name)
-            page.screenshot(path=str(destination / f"{safe}-{uuid.uuid4().hex[:8]}.png"))
         assert not page.errors, page.errors
     finally:
-        browser.close()
-        playwright.stop()
+        snapshots = os.environ.get("FIREBLADE_SCREENSHOTS")
+        try:
+            if snapshots and not page.is_closed():
+                destination = Path(snapshots)
+                destination.mkdir(parents=True, exist_ok=True)
+                scenario = os.environ.get("PYTEST_CURRENT_TEST", case_name).split(" (")[0]
+                label = re.sub(r"[^a-zA-Z0-9_-]+", "-", scenario)[-160:]
+                page.screenshot(
+                    path=str(destination / f"{label}-{uuid.uuid4().hex[:8]}.png"), timeout=5000
+                )
+        finally:
+            browser.close()
+            playwright.stop()

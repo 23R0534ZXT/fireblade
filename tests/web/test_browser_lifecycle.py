@@ -53,7 +53,11 @@ def _status(page):
 def test_a_case_is_created_saved_imported_renamed_and_erased(page, host):
     _base, root, tmp = host
     # Create -------------------------------------------------------------------------
-    page.click('#cases-view [data-act="new-case"], .work button[data-act="new-case"]')
+    library = page.locator("#cases-view")
+    assert library.get_by_role("heading", name="Your case library is empty").is_visible()
+    assert library.get_by_role("button", name="Import a portable case…").is_visible()
+    assert library.get_by_role("button", name="Erase the case…").count() == 0
+    library.get_by_role("button", name="New case…").click()
     page.wait_for_selector("#case-modal.show")
     page.fill("#case-name", "Lifecycle")
     page.select_option("#case-environment", "linux")

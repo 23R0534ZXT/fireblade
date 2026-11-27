@@ -1056,6 +1056,36 @@ def test_a_report_can_leave_as_a_pdf(service):
         library.report_pdf(identifier, "../case.json")
 
 
+def test_each_report_download_keeps_its_title_audience_and_document_type(case_with_analysis):
+    from io import BytesIO
+
+    from fastapi.testclient import TestClient
+
+    from fireblade.web.server import create_app
+
+    pypdf = pytest.importorskip("pypdf")
+    root, identifier = case_with_analysis
+    reports = f"/api/cases/{identifier}/reports"
+    with TestClient(create_app(root)) as client:
+        for route, subject in (
+            ("report", "Investigation report"),
+            ("client-report", "Client report"),
+        ):
+            title = f"Étude & scope ({subject})"
+            result = client.post(f"/api/cases/{identifier}/{route}", json={"title": title})
+            result.raise_for_status()
+            name = result.json()["name"]
+            assert client.get(f"{reports}/{name}").headers["content-type"].startswith("text/html")
+            pdf = client.post(f"{reports}/{name}/pdf")
+            pdf.raise_for_status()
+            response = client.get(pdf.json()["url"])
+            assert response.headers["content-type"] == "application/pdf"
+            assert "attachment" in response.headers["content-disposition"]
+            reader = pypdf.PdfReader(BytesIO(response.content))
+            assert (reader.metadata.title, reader.metadata.subject) == (title, subject)
+            assert title in reader.pages[0].extract_text()
+
+
 def test_a_disk_is_walked_in_the_background(service, tmp_path):
     """The desktop's "Analyser un disque…": a volume walked, its artifacts read."""
     import time
@@ -1651,6 +1681,47 @@ def test_a_session_travels_to_the_desktop_and_back(service):
 
     with pytest.raises(ServiceError):
         library.open_session(identifier, base64.b64encode(b"not a session").decode())
+
+
+def test_session_restores_registered_data_and_layout_without_trusting_uploaded_sources(service):
+    import base64
+    import json
+
+    library, identifier = service
+    saved = library.save_session(identifier)
+    session = json.loads(base64.b64decode(saved["content"]))
+    original = session["documents"][0]
+    path = original["path"]
+    provenance = original["source"]
+    original.update(source={"label": "wrong evidence"}, web_display={"widths": {"1": 199}})
+    original["view"]["search"] = "example"
+    session["documents"].append({**original, "path": "/outside-case/unregistered.timeline"})
+
+    def encoded():
+        return base64.b64encode(json.dumps(session).encode()).decode()
+
+    result = library.open_session(identifier, encoded())
+    assert result["added"] == saved["documents"]
+    assert result["missing"] == ["unregistered.timeline"]
+    assert result["documents"][0]["source"] == provenance
+    assert library.display(identifier, 0)["widths"] == {"1": 199}
+    assert library.case(identifier)["analyses"][0]["session_view"]["search"] == "example"
+    library.save_display(identifier, 0, {"widths": {"1": 240}})
+    library.close_case(identifier)
+    assert library.display(identifier, 0)["widths"] == {"1": 240}
+    library.open_session(identifier, encoded())
+    assert library.display(identifier, 0)["widths"] == {"1": 199}
+
+    revision = library.library.read(identifier)["revision"]
+    session["documents"].append({**original, "path": path})
+    with pytest.raises(ServiceError, match="twice"):
+        library.open_session(identifier, encoded())
+    assert library.library.read(identifier)["revision"] == revision
+    session["documents"] = [original]
+    original["view"]["groups"] = [99999999]
+    with pytest.raises(ServiceError):
+        library.open_session(identifier, encoded())
+    assert library.library.read(identifier)["revision"] == revision
 
 
 def test_a_null_row_id_is_a_400_not_a_traceback(case_with_analysis):

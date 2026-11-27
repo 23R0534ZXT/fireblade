@@ -99,6 +99,13 @@ def test_the_pages_of_the_timeline_follow_one_another_and_say_when_there_are_no_
     page.wait_for_function("document.getElementById('status').innerText.includes('last page')")
 
 
+def test_switching_views_clears_the_timeline_count(timeline):
+    page = timeline
+    page.wait_for_function("document.getElementById('status').innerText.startsWith('Timeline:')")
+    page.get_by_role("tab", name="Analyses").click()
+    assert not page.locator("#status").inner_text().startswith("Timeline:")
+
+
 def test_a_duration_narrows_the_window_and_back_returns_to_the_one_before(timeline):
     page = timeline
     page.uncheck("#timeline-undated")  # the desktop starts with the undated rows included
@@ -241,14 +248,21 @@ def test_the_lane_shows_one_source_alone_and_all_sources_again(timeline):
 
 def test_a_legend_chip_hides_a_source_and_show_all_sources_brings_it_back(timeline):
     page = timeline
-    chips = page.locator("#timeline-legend > *")
+    chips = page.locator("#timeline-legend button")
     assert chips.count() >= 2
-    chips.first.click()
-    page.wait_for_timeout(500)
-    page.click('[data-act="tl-isolate"]')
+    first = chips.first
+    source = first.get_attribute("data-tl-source-chip")
+    first.focus()
+    first.press("Space")
+    page.locator(f'[data-tl-source-chip="{source}"][aria-pressed="false"]').wait_for()
+    assert first.evaluate("(chip) => chip === document.activeElement")
+    assert page.locator(f'#timeline-rows tr[data-tl-source="{source}"]').count() == 0
+    page.get_by_role("button", name="Show all sources").click()
     page.wait_for_function(
         "document.getElementById('status').innerText.includes('Every source is shown')"
     )
+    assert page.locator('#timeline-legend [aria-pressed="false"]').count() == 0
+    assert page.locator(f'#timeline-rows tr[data-tl-source="{source}"]').count() > 0
 
 
 def test_rows_without_a_date_stay_in_a_duration_only_when_asked(timeline):

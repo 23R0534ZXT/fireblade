@@ -52,7 +52,7 @@ def page(host):
 
 def test_a_bookmarked_row_survives_the_portable_round_trip(page, host):
     base, identifier, tmp = host
-    page.click("#body tr[data-row] >> nth=3 >> .markcell")
+    page.locator("#body tr[data-row] .markcell button").nth(3).click(modifiers=["Shift"])
     page.wait_for_function(
         "document.querySelectorAll('#body .cb.on, #body .cb.checked, #body .cb.marked').length > 0"
     )
@@ -89,7 +89,7 @@ def test_a_bookmarked_row_survives_the_portable_round_trip(page, host):
 def test_history_keeps_a_state_after_a_change_and_restores_it(page, host):
     base, identifier, _tmp = host
     before = httpx.get(f"{base}/api/cases/{identifier}/history").json()["count"]
-    page.click("#body tr[data-row] >> nth=0 >> .markcell")
+    page.locator("#body tr[data-row] .markcell button").nth(0).click(modifiers=["Shift"])
     page.wait_for_function(
         "document.querySelectorAll('#body .cb.on, #body .cb.checked, #body .cb.marked').length > 0"
     )

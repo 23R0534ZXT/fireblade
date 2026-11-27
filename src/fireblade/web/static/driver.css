@@ -1,0 +1,110 @@
+.driver-library {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.driver-library .topline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--toolbar-sep);
+}
+.driver-library .brand {
+  margin-right: auto;
+  font-size: 16px;
+  font-weight: 650;
+}
+.driver-library .brand small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.driver-library .rowform {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+}
+.driver-library .topline .search { width: 160px; }
+.driver-library .topline a { color: var(--text); text-decoration: none; }
+.driver-library .library-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 13px 12px 4px;
+}
+.driver-library h1 { margin: 0; font-size: 16px; line-height: 1.3; }
+.driver-library .library-heading span, .driver-library .when { color: var(--muted); }
+.driver-library .caseswrap { margin: 5px 12px 12px; }
+.driver-library .case-name { width: 48%; }
+.driver-library .case-status { width: 12%; }
+.driver-library .case-updated { width: 20%; }
+.driver-library .case-controls { width: 20%; }
+.driver-library .caseswrap th { padding: 6px 9px; }
+.driver-library .caseswrap td { padding: 7px 9px; height: auto; vertical-align: top; }
+.driver-library .caseswrap a {
+  color: var(--accent-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.driver-library .ref {
+  margin-top: 3px;
+  font: 10px/1.4 monospace;
+  color: var(--muted);
+  user-select: all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.driver-library summary { cursor: pointer; color: var(--muted); }
+.driver-library .erase-form {
+  flex-direction: column;
+  align-items: stretch;
+  white-space: normal;
+  max-width: 240px;
+  margin-top: 6px;
+}
+.driver-library .erase-form label { display: grid; gap: 3px; }
+.driver-library .erase-form .search, .driver-library .erase-form select {
+  width: 100%;
+  min-width: 0;
+}
+.driver-library :focus-visible { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
+.driver-library .statusbar { height: auto; min-height: 22px; flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .driver-library .brand { width: 100%; }
+  .driver-library .caseswrap { margin-inline: 7px; }
+  .driver-library .caseswrap table, .driver-library .caseswrap tbody { display: block; }
+  .driver-library .caseswrap colgroup { display: none; }
+  .driver-library .caseswrap thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .driver-library .caseswrap tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name status" "updated actions";
+    padding: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .driver-library .caseswrap tr:has(details[open]) {
+    grid-template-areas: "name status" "updated updated" "actions actions";
+  }
+  .driver-library .caseswrap td { padding: 3px 5px; border: 0; }
+  .driver-library .caseswrap td:first-child { grid-area: name; }
+  .driver-library .caseswrap td:nth-child(2) { grid-area: status; }
+  .driver-library .when { grid-area: updated; }
+  .driver-library .when::before { content: "Updated "; }
+  .driver-library .case-actions { grid-area: actions; }
+  .driver-library .case-actions:has(details[open]) { border-top: 1px solid var(--border-soft); }
+  .driver-library .erase-form { max-width: none; }
+  .driver-library .erase-form input, .driver-library .erase-form select,
+  .driver-library .erase-form button { min-height: 30px; }
+}

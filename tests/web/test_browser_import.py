@@ -5,6 +5,7 @@ Skipped without Playwright and a Chromium; never failed for lack of them.
 """
 
 import re
+from pathlib import Path
 
 import pytest
 from _audit import pick_import_source, rows, status
@@ -68,6 +69,35 @@ def test_choose_a_file_opens_the_browsers_chooser_and_previews_what_it_hands_ove
     assert chooser.value.is_multiple(), "several files can be chosen at once"
     chooser.value.set_files(str(sample))
     assert "picked.csv" in _preview_card(page)
+
+
+def test_dismissing_a_file_preview_stops_the_batch_and_keeps_the_next_dialog_clean(
+    empty_page, tmp_path
+):
+    page = empty_page
+    files = [tmp_path / name for name in ("first.csv", "second.csv")]
+    for path in files:
+        path.write_text("Time,Host\n2026-11-02T08:00:00Z,PC01\n")
+    held = []
+    page.route("**/preview-upload", lambda route: held.append(route))
+    page.evaluate(
+        """() => {
+            const original = previewFiles;
+            previewFiles = async files => {
+                try { await original(files); } finally { window.previewFinished = true; }
+            };
+        }"""
+    )
+    _open_import(page)
+    with page.expect_request("**/preview-upload"):
+        page.set_input_files("#preview-input", files)
+    page.keyboard.press("Escape")
+    _open_import(page)
+    held[0].fulfill(status=200, json={"kind": "table", "name": "first.csv", "path": "first.csv"})
+    page.wait_for_function("window.previewFinished === true")
+    assert len(held) == 1
+    assert page.locator("#preview-body .preview-card").count() == 0
+    assert page.locator("#preview-import").is_disabled()
 
 
 def test_the_delimiter_and_the_encoding_decide_how_a_file_is_read(empty_page, tmp_path):
@@ -134,6 +164,7 @@ def test_a_folder_sent_from_the_browser_is_rebuilt_in_the_case_and_imported(empt
         "document.getElementById('preview-note').innerText.includes('file(s) ready')", timeout=30000
     )
     assert "2 file(s)" in page.inner_text("#preview-note")
+    first = page.evaluate("previewState.items[0].payload.path")
     page.click("#preview-import")
     page.wait_for_function(
         "document.getElementById('status').innerText.includes('imported')", timeout=60000
@@ -143,6 +174,22 @@ def test_a_folder_sent_from_the_browser_is_rebuilt_in_the_case_and_imported(empt
         "#tree .node.child", "els => els.map(e => e.innerText.trim())"
     )
     assert sorted(labels) == ["a.csv", "b.csv"]
+
+    # Another acquisition can carry the same directory and file names.
+    # Both staged sources must stay available with their respective contents.
+    original = (folder / "a.csv").read_bytes()
+    replacement = b"Time,Host\n2026-11-02T12:00:00Z,PC03\n"
+    (folder / "a.csv").write_bytes(replacement)
+    pick_import_source(page, "import-folder")
+    page.set_input_files("#folder-input", str(folder))
+    page.wait_for_function("document.querySelector('#preview-note').textContent.includes('ready')")
+    second = page.evaluate("previewState.items[0].payload.path")
+    assert first != second
+    assert (Path(first) / "a.csv").read_bytes() == original
+    assert (Path(second) / "a.csv").read_bytes() == replacement
+    assert (Path(second) / "logs" / "b.csv").read_bytes() == (
+        folder / "logs" / "b.csv"
+    ).read_bytes()
 
 
 def test_stopping_an_import_ends_it_and_keeps_what_was_written(empty_page, server):

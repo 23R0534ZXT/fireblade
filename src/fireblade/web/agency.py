@@ -14,6 +14,8 @@ from __future__ import annotations
 import asyncio
 import collections
 import contextlib
+import hashlib
+import json
 import os
 import re
 import shutil
@@ -24,6 +26,7 @@ import uuid
 from datetime import UTC, datetime
 from html import escape
 from pathlib import Path
+from typing import NamedTuple
 from urllib.parse import parse_qs, quote
 
 import httpx
@@ -41,6 +44,7 @@ STATIC = Path(__file__).with_name("static")
 CASE_ID = re.compile(r"^[0-9a-f]{32}$")
 CASE_LABEL = "fireblade.case"
 ROLE_LABEL = "fireblade.role"
+DRIVER_LABEL = "fireblade.driver"
 # Headers that belong to one hop: forwarding them makes httpx recompute the wrong ones.
 HOP_BY_HOP = {
     "host",
@@ -87,6 +91,12 @@ class Docker:
         return completed.stdout.strip()
 
 
+class DockerInstance(NamedTuple):
+    identifier: str
+    state: str
+    image: str
+
+
 class CaseContainer:
     """One case, one container: born when the case is opened, gone when it is destroyed."""
 
@@ -106,11 +116,13 @@ class CaseContainer:
             raise ValueError("A case identifier is 32 hexadecimal characters")
         self.docker = docker
         self.identifier = identifier
-        self.volume = Path(volume)
+        self.volume = Path(volume).absolute()
+        # Leave room for the full case ID in Docker's single DNS label (63 bytes).
+        self.driver_id = hashlib.sha256(os.fsencode(self.volume.parent)).hexdigest()[:12]
         self.image = image
         self.network = network
         self.port = port
-        self.name = name or f"fireblade-case-{identifier[:8]}"
+        self.name = name or f"fireblade-case-{self.driver_id}-{identifier}"
         self.env = dict(env or {})
 
     @property
@@ -118,11 +130,38 @@ class CaseContainer:
         # On the private network the container's name is its address; nothing is published.
         return f"http://{self.name}:{self.port}"
 
+    def inspect_owned(self, reference: str) -> DockerInstance | None:
+        """Return Docker's immutable ID, state and image only for this case's mount."""
+        details = self.docker.run(
+            "container",
+            "inspect",
+            "-f",
+            "{{.Id}}\n{{.State.Status}}\n{{.Image}}\n{{json .Config.Labels}}\n{{json .Mounts}}",
+            reference,
+            check=False,
+        ).splitlines()
+        if len(details) != 5:
+            return None
+        container_id, state, image, labels_json, mounts_json = details
+        labels = json.loads(labels_json) or {}
+        if (
+            labels.get(ROLE_LABEL) != "case"
+            or labels.get(CASE_LABEL) != self.identifier
+            or labels.get(DRIVER_LABEL, self.driver_id) != self.driver_id
+        ):
+            return None
+        library = [m for m in json.loads(mounts_json) if m.get("Destination") == "/data/library"]
+        if (
+            len(library) == 1
+            and library[0].get("Type") == "bind"
+            and library[0].get("Source") == str(self.volume)
+        ):
+            return DockerInstance(container_id, state, image)
+        return None
+
     def state(self) -> str:
-        found = self.docker.run(
-            "ps", "-a", "--filter", f"name=^{self.name}$", "--format", "{{.State}}", check=False
-        ).split()
-        return found[0] if found else ""
+        instance = self.inspect_owned(self.name)
+        return instance.state if instance else ""
 
     def exists(self) -> bool:
         return bool(self.state())
@@ -141,6 +180,8 @@ class CaseContainer:
             f"{CASE_LABEL}={self.identifier}",
             "--label",
             f"{ROLE_LABEL}=case",
+            "--label",
+            f"{DRIVER_LABEL}={self.driver_id}",
             "--network",
             self.network,
             "--restart",
@@ -166,17 +207,24 @@ class CaseContainer:
         )
 
     def start(self) -> None:
-        self.docker.run("start", self.name)
+        instance = self.inspect_owned(self.name)
+        if not instance:
+            raise DockerError(f"case {self.identifier[:8]}: container is unavailable")
+        self.docker.run("start", instance.identifier)
 
     def stop(self) -> None:
-        self.docker.run("stop", self.name, check=False)
+        instance = self.inspect_owned(self.name)
+        if instance:
+            self.docker.run("stop", instance.identifier)
 
     def remove(self) -> None:
-        self.docker.run("rm", "-f", self.name, check=False)
+        instance = self.inspect_owned(self.name)
+        if instance:
+            self.docker.run("rm", "-f", instance.identifier)
 
     def current_image_id(self) -> str:
-        """The image the container was built from, as the daemon sees it."""
-        return self.docker.run("inspect", "-f", "{{.Image}}", self.name, check=False).strip()
+        instance = self.inspect_owned(self.name)
+        return instance.image if instance else ""
 
     def wanted_image_id(self) -> str:
         """The image this driver would build it from now; empty when it is not local."""
@@ -184,7 +232,7 @@ class CaseContainer:
             "image", "inspect", "-f", "{{.Id}}", str(self.image), check=False
         ).strip()
 
-    def follows(self) -> bool:
+    def follows(self, image_id: str | None = None) -> bool:
         """True when the container already runs the image this driver is configured with.
 
         Compared by image id, not by name: `docker pull` moves the tag, and a case that
@@ -193,7 +241,7 @@ class CaseContainer:
         wanted = self.wanted_image_id()
         if not wanted:
             return True  # not pulled locally: docker will fetch it when it creates
-        return self.current_image_id() == wanted
+        return (self.current_image_id() if image_id is None else image_id) == wanted
 
     def wait_healthy(self, timeout: float = 25.0) -> None:
         """A case answers /health in a few seconds; past that, the container is not starting."""
@@ -377,9 +425,9 @@ class Agency:
 
     # -- one case, one container ------------------------------------------
 
-    def container(self, identifier: str) -> CaseContainer:
+    def container(self, identifier: str, *, existing_name: str = "") -> CaseContainer:
         self.volumes.folder(identifier)  # validated here, not in a docker argument
-        return CaseContainer(
+        case = CaseContainer(
             self.docker,
             identifier,
             volume=self.host_volumes / identifier,
@@ -387,6 +435,23 @@ class Agency:
             network=self.network,
             env={"FIREBLADE_CERTIFICATES": str(self.host_certificates)},
         )
+        # Pre-0.15 containers used a short, daemon-wide name. Adopt one only if
+        # its role, full case ID and actual library bind mount all belong here.
+        legacy_name = f"fireblade-case-{identifier[:8]}"
+        if existing_name:
+            if existing_name == legacy_name:
+                case.name = legacy_name
+        elif case.inspect_owned(legacy_name):
+            case.name = legacy_name
+        return case
+
+    def managed_containers(self):
+        for identifier, name in tagged(self.docker):
+            case = self.container(identifier, existing_name=name)
+            if case.name == name:
+                instance = case.inspect_owned(name)
+                if instance:
+                    yield case, instance
 
     def cases(self) -> dict:
         return self.volumes.cases()
@@ -404,15 +469,17 @@ class Agency:
             gate = self.waiting.setdefault(identifier, threading.Lock())
         with gate:
             case = self.container(identifier)
-            if case.exists() and not case.follows():
-                # An upgrade: the volume stays, the container is rebuilt on the new image.
-                case.stop()
-                case.remove()
-            if case.exists():
-                if not case.running():
-                    case.start()
-            else:
+            instance = case.inspect_owned(case.name)
+            if instance and not case.follows(instance.image):
+                # An upgrade stops the service cleanly and retains the library.
+                self.docker.run("stop", instance.identifier)
+                self.docker.run("rm", instance.identifier)
+                case = self.container(identifier)
+                instance = None
+            if not instance:
                 case.create()
+            elif instance.state != "running":
+                self.docker.run("start", instance.identifier)
             case.wait_healthy()
             with self.lock:
                 self.opened[identifier] = self.opened.pop(identifier, time.monotonic())
@@ -439,13 +506,12 @@ class Agency:
     def reconcile(self) -> list:
         """A container whose case is gone is removed; a folder without a case is reported."""
         removed = []
-        for identifier, name in tagged(self.docker):
-            if self.volumes.has(identifier):
-                if self.container(identifier).follows():
-                    continue  # same image, same case: nothing to do
-                # The case survived an upgrade: the container goes, the volume stays.
+        for case, instance in self.managed_containers():
+            identifier = case.identifier
+            if self.volumes.has(identifier) and case.follows(instance.image):
+                continue
             try:
-                self.docker.run("rm", "-f", name)
+                self.docker.run("rm", "-f", instance.identifier)
                 removed.append(identifier)
             except DockerError:
                 continue
@@ -569,23 +635,24 @@ def page(catalogue: dict, *, version: str = "", error: str = "", update: dict | 
             + "</div></td>"
             "<td>" + escape(case["status"] or "—") + "</td>"
             '<td class="when">' + escape((case["updated"] or "")[:19].replace("T", " ")) + "</td>"
-            '<td><form class="rowform erase-form" method="post" action="/destroy/'
+            '<td class="case-actions"><details><summary>Erase…</summary>'
+            '<form class="rowform erase-form" method="post" action="/destroy/'
             + escape(identifier)
             + '"'
             + " onsubmit=\"return confirm('Erase this case, its container and its volume?')\">"
-            + '<input class="search" name="confirmation" placeholder="type the name" required>'
+            + '<label>Confirm case name<input class="search" name="confirmation" required></label>'
             + '<select name="method" aria-label="Erasure method">'
             + '<option value="dod3">DoD — 3 passes</option>'
             + '<option value="dod7">DoD — 7 passes</option>'
             + '<option value="quick">Quick erase (delete only)</option></select>'
-            + '<button class="btn" type="submit">Erase</button></form></td>'
+            + '<button class="btn" type="submit">Erase case</button></form></details></td>'
             "</tr>"
         )
     body = (
         (
-            '<table><colgroup><col style="width:44%"><col style="width:9%">'
-            '<col style="width:19%"><col style="width:28%"></colgroup>'
-            "<thead><tr><th>Name</th><th>Status</th><th>Updated</th><th>Erase</th></tr></thead>"
+            '<table aria-label="Case library"><colgroup><col class="case-name"><col class="case-status">'
+            '<col class="case-updated"><col class="case-controls"></colgroup>'
+            "<thead><tr><th>Case</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead>"
             "<tbody>" + "".join(rows) + "</tbody></table>"
         )
         if rows
@@ -594,33 +661,21 @@ def page(catalogue: dict, *, version: str = "", error: str = "", update: dict | 
     problems = " ".join(escape(item) for item in catalogue["errors"])
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-        "<title>Kagarasu — Host</title>"
-        '<link rel="stylesheet" href="/static/app.css"><style>'
-        ".wrap{display:flex;flex-direction:column;height:100vh}"
-        ".topline{display:flex;align-items:center;gap:10px;padding:3px 7px;"
-        "border-bottom:1px solid var(--toolbar-sep);height:26px;flex:0 0 26px}"
-        ".brand{font-weight:600}.brand small{font-weight:400;color:var(--muted);margin-left:7px}"
-        ".grow{flex:1}.rowform{display:flex;align-items:center;gap:4px;margin:0}"
-        ".filterbar{align-items:center;height:24px}"
-        ".topline a.btn{text-decoration:none}"
-        ".statusbar .note{color:#8a5a00}"
-        ".rowform .search{width:118px;flex:none}"
-        ".erase-form{flex-wrap:wrap}.erase-form select{max-width:100%}"
-        ".caseswrap td .ref{font:9px monospace;color:var(--muted);line-height:10px}"
-        ".caseswrap td.when{color:var(--muted)}"
-        ".caseswrap td:first-child{line-height:13px;height:30px}"
-        "a{color:var(--text);text-decoration:none}a:hover{text-decoration:underline}"
-        '</style></head><body><div class="wrap">'
-        '<div class="topline"><span class="brand">Kagarasu <small>Host — one container per case'
-        '</small></span><span class="grow"></span>'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        "<title>Case library · Kagarasu Host</title>"
+        '<link rel="stylesheet" href="/static/app.css"><link rel="stylesheet" href="/static/driver.css">'
+        '</head><body><main class="driver-library">'
+        '<header class="topline"><span class="brand">Kagarasu <small>Host</small></span>'
         '<form class="rowform" method="post" action="/new">'
-        '<input class="search" name="name" placeholder="New case name…" required>'
-        '<button class="btn" type="submit">New case…</button></form>'
-        '<a class="btn" href="/">Refresh</a></div>'
-        '<div class="filterbar"><span>' + str(len(catalogue["cases"])) + " case(s)</span></div>"
+        '<input class="search" name="name" aria-label="New case name" placeholder="New case name" required>'
+        '<button class="btn" type="submit">Create case</button></form>'
+        '<a class="btn" href="/">Refresh</a></header>'
+        '<div class="library-heading"><h1>Case library</h1><span>'
+        + str(len(rows))
+        + (" case" if len(rows) == 1 else " cases")
+        + "</span></div>"
         '<div class="caseswrap">' + body + "</div>"
-        '<div class="statusbar"><span>Opening a case starts its container; erasing it takes the'
-        " container and the volume.</span>"
+        '<footer class="statusbar"><span>One container per case</span>'
         + ('<span class="err">' + problems + "</span>" if problems else "")
         + ('<span class="err">' + escape(error) + "</span>" if error else "")
         + (
@@ -634,8 +689,8 @@ def page(catalogue: dict, *, version: str = "", error: str = "", update: dict | 
         )
         + '<span class="right"><span>version '
         + escape(version or "0")
-        + "</span></span></div>"
-        "</div></body></html>"
+        + "</span></span></footer>"
+        "</main></body></html>"
     )
 
 
@@ -699,7 +754,7 @@ def create_app(
             "cases": len(catalogue["cases"]),
             "errors": len(catalogue["errors"]),
             "open": len(agency.opened),
-            "containers": len(tagged(agency.docker)),
+            "containers": sum(1 for _ in agency.managed_containers()),
             "update": updates.info(refresh=False),
         }
 

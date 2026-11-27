@@ -22,6 +22,10 @@ def test_a_folder_upload_rebuilds_the_path_inside_evidence(tmp_path):
     target = _store_upload(case, _Sent("a.evtx", b"one"), relative="Collection/C/Windows/a.evtx")
     assert target == case / "evidence" / "Collection" / "C" / "Windows" / "a.evtx"
     assert target.read_bytes() == b"one"
+    with pytest.raises(HTTPException) as duplicate:
+        _store_upload(case, _Sent("a.evtx", b"two"), relative="Collection/C/Windows/a.evtx")
+    assert duplicate.value.status_code == 409
+    assert target.read_bytes() == b"one"
 
 
 def test_a_relative_path_may_not_leave_the_case(tmp_path):

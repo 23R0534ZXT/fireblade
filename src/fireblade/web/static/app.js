@@ -349,66 +349,92 @@ function openMessages() {
 
 /* ---------- commands ---------- */
 
-/* Every command the window carries: menus, the toolbar and the grid's buttons.
-   The palette runs the same element the mouse would click, so the two cannot drift. */
+/* Index the menu commands and the active workspace once per opening. Actions that
+   have several entry points share a result, but retain their alternative search terms. */
 function paletteEntries() {
-  const entries = [];
-  const seen = new Set();
-  const add = (label, node) => {
-    const text = String(label || "").replace(/\s+/g, " ").trim();
-    if (!text || seen.has(text)) return;
-    seen.add(text);
-    entries.push({ label: text, node });
-  };
-  // Everything the window offers without opening a dialog first: menu items, the
-  // toolbars, the grid's own bar, the tabs. A button inside a closed dialog is not
-  // reachable from here, so it is left out rather than run blind.
-  document.querySelectorAll("[data-act]").forEach((node) => {
-    if (node.closest(".modal")) return;
-    add(node.textContent || node.getAttribute("title"), node);
-  });
-  document.querySelectorAll(".app button, .app .tab").forEach((node) => {
-    if (node.closest(".modal") || node.disabled) return;
-    add(node.textContent, node);
-  });
-  document.querySelectorAll(".tab[data-tab]").forEach((node) => add(`Show ${node.textContent}`, node));
-  return entries;
+  const entries = new Map();
+  const views = { "cases-list": "cases", "show-timeline": "timeline", "show-imports": "imports", "show-ioc": "ioc" };
+  function add(key, node, label, context, shortcut = "") {
+    label = label.replace(/\s+/g, " ").trim();
+    if (!label) return;
+    const terms = [label, context, shortcut].join(" ").toLowerCase();
+    const previous = entries.get(key);
+    if (previous) {
+      previous.terms += " " + terms;
+    } else {
+      entries.set(key, { node, label, context, shortcut, terms });
+    }
+  }
+  for (const tab of workspaceTabs()) {
+    add("view-" + tab.dataset.tab, tab, "Show " + tab.textContent, "Workspace");
+  }
+  for (const item of document.querySelectorAll(".menubar .menu [data-act]")) {
+    if (item.hidden || item.matches(".disabled, [aria-disabled=true]") || item.dataset.act === "palette") continue;
+    const key = item.dataset.act;
+    const shortcut = item.querySelector(".key")?.textContent || "";
+    const label = shortcut ? item.textContent.slice(0, -shortcut.length) : item.textContent;
+    const menu = item.closest("[data-for]").dataset.for;
+    const menuLabel = document.querySelector(`.menubar [data-menu="${menu}"]`).textContent.trim();
+    add(views[key] ? "view-" + views[key] : key, item, label, menuLabel, shortcut);
+  }
+  for (const node of document.querySelectorAll(".app button[data-act], .app button[id]")) {
+    if (node.disabled || node.closest(".modal, .menu, #doctabs") || !node.getClientRects().length) continue;
+    const key = node.dataset.act || node.id;
+    const tab = node.closest("[role=tabpanel]")?.getAttribute("aria-labelledby");
+    add(views[key] ? "view-" + views[key] : key, node,
+        node.getAttribute("aria-label") || node.textContent, tab ? $(tab).textContent : "Workspace");
+  }
+  return [...entries.values()];
+}
+
+const commandState = { entries: [], shown: [], active: -1 };
+
+function selectPaletteItem(position) {
+  const list = $("palette-list");
+  list.querySelector('[aria-selected=true]')?.setAttribute("aria-selected", "false");
+  commandState.active = position;
+  const item = list.children[position];
+  const input = $("palette-input");
+  if (!item?.hasAttribute("data-palette")) {
+    input.removeAttribute("aria-activedescendant");
+    return;
+  }
+  item.setAttribute("aria-selected", "true");
+  input.setAttribute("aria-activedescendant", item.id);
+  item.scrollIntoView({ block: "nearest" });
 }
 
 function renderPalette() {
-  const needle = $("palette-input").value.trim().toLowerCase();
-  const entries = paletteEntries();
-  const shown = needle
-    ? entries.filter((item) => item.label.toLowerCase().includes(needle))
-    : entries;
-  commandState.shown = shown;
-  $("palette-list").innerHTML = shown.length
-    ? shown.slice(0, 40).map((item, position) => `<div class="palette-item" data-palette="${position}">
-        ${escapeHtml(item.label)}</div>`).join("")
+  const query = $("palette-input").value.trim().toLowerCase();
+  const words = query.split(/\s+/);
+  commandState.shown = commandState.entries.filter(entry => words.every(word => entry.terms.includes(word)));
+  if (query) {
+    const rank = entry => entry.label.toLowerCase().startsWith(query) ? 0
+      : entry.label.toLowerCase().includes(query) || entry.shortcut.toLowerCase() === query ? 1 : 2;
+    commandState.shown.sort((left, right) => rank(left) - rank(right));
+  }
+  $("palette-list").innerHTML = commandState.shown.length
+    ? commandState.shown.map((item, index) => `<div class="palette-item" role="option" aria-selected="false"
+        id="palette-item-${index}" data-palette="${index}"><span>${escapeHtml(item.label)}</span>
+        <small>${escapeHtml(item.context)}</small>${item.shortcut ? `<kbd>${escapeHtml(item.shortcut)}</kbd>` : ""}</div>`).join("")
     : '<div class="emptygrid">No command matches.</div>';
-  $("palette-list").querySelectorAll("[data-palette]").forEach((node) => {
-    node.addEventListener("click", () => runPalette(Number(node.dataset.palette)));
-  });
+  selectPaletteItem(commandState.shown.length ? 0 : -1);
 }
 
-async function runPalette(position) {
+function runPalette(position) {
   const entry = commandState.shown[position];
   if (!entry) return;
   closeModals();
-  const node = entry.node;
-  if (node.classList && node.classList.contains("item")) node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-  else node.click();
-  say(`Command: ${entry.label}`);
+  entry.node.click();
 }
 
 function openPalette() {
+  commandState.entries = paletteEntries();
   $("palette-input").value = "";
-  renderPalette();
   $("palette-modal").classList.add("show");
-  setTimeout(() => $("palette-input").focus(), 30);
+  renderPalette();
+  $("palette-input").focus();
 }
-
-const commandState = { shown: [] };
 
 /* ---------- open analyses ---------- */
 
@@ -494,12 +520,14 @@ async function saveAnalysesOrder() {
 
 /* ---------- case history ---------- */
 
-async function openCaseHistory() {
-  if (!state.openCase) { say("Open a case first", true); return; }
+async function openCaseHistory(identifier = state.openCase?.id) {
+  if (!identifier) { say("Open a case first", true); return; }
+  $("history-modal").dataset.caseId = identifier;
   $("history-list").innerHTML = '<div class="emptygrid">Reading the history…</div>';
   $("history-modal").classList.add("show");
   try {
-    const payload = await api(`/api/cases/${encodeURIComponent(state.openCase.id)}/history`);
+    const payload = await api(`/api/cases/${encodeURIComponent(identifier)}/history`);
+    if ($("history-modal").dataset.caseId !== identifier) return;
     $("history-list").innerHTML = (payload.entries || []).length
       ? payload.entries.map((item) => `<div class="analysis-line">
           <span class="analysis-name" title="${escapeHtml(payload.folder + "/" + item.name)}">${escapeHtml(item.when)} — ${escapeHtml(item.label || item.name)}</span>
@@ -507,7 +535,7 @@ async function openCaseHistory() {
         </div>`).join("")
       : '<div class="emptygrid">No recorded state for this case yet.</div>';
     $("history-list").querySelectorAll("[data-history-restore]").forEach((node) => {
-      node.addEventListener("click", () => restoreHistory(node.dataset.historyRestore));
+      node.addEventListener("click", () => restoreHistory(identifier, node.dataset.historyRestore));
     });
   } catch (error) {
     $("history-list").innerHTML = "";
@@ -515,10 +543,8 @@ async function openCaseHistory() {
   }
 }
 
-async function restoreHistory(name) {
-  if (!state.openCase) return;
+async function restoreHistory(identifier, name) {
   if (!window.confirm(`Restore the state ${name}? The present state is kept in the same folder first.`)) return;
-  const identifier = state.openCase.id;
   try {
     await flushLayouts();
     const payload = await apiPost(
@@ -559,8 +585,10 @@ async function apiAbortable(path, signal) {
   return response.json();
 }
 
-function say(message, error) {
+function say(message, error, view = "") {
+  if (view && !$(`tab-${view}`).classList.contains("active")) return;
   const node = $("status");
+  node.dataset.view = view;
   node.textContent = message;
   node.title = message;
   node.classList.toggle("err", Boolean(error));
@@ -706,14 +734,14 @@ function progressPaint(payload) {
     .map((line) => `<div>${escapeHtml(line)}</div>`).join("");
 }
 
-async function runTask(kind, params, title) {
-  if (!state.openCase) { say("Open a case first", true); return null; }
+async function runTask(kind, params, title, caseId = state.openCase?.id) {
+  if (!caseId) { say("Open a case first", true); return null; }
   const token = ++taskState.seq;
   taskState.job = null;
   progressOpen(title);
   let started;
   try {
-    started = await apiPost(`/api/cases/${state.openCase.id}/tasks`, { kind, params: params || {} });
+    started = await apiPost(`/api/cases/${caseId}/tasks`, { kind, params: params || {} });
   } catch (error) {
     if (token !== taskState.seq) return null;
     $("import-progress-modal").classList.remove("show");
@@ -762,6 +790,12 @@ async function runTask(kind, params, title) {
 
 const previewState = { items: [], capacity: null, folder: false };
 
+function currentPreview(caseId, items) {
+  return state.openCase?.id === caseId && previewState.items === items &&
+    $("import-modal").classList.contains("show");
+}
+
+
 const DELIMITER_NAMES = { ",": "comma", "\t": "tab", ";": "semicolon", "|": "pipe" };
 
 /* The desktop's import dialog offers a separator and an encoding; the preview must
@@ -806,7 +840,7 @@ async function fillActionTypes() {
 const EXCEL_SUFFIX = /\.(xlsx|xlsm|xls)$/i;
 
 /* The desktop's import asks which sheet; a workbook is a table, not an artefact. */
-async function offerSheets(payload) {
+async function offerSheets(payload, caseId, items) {
   const row = $("preview-sheet-row");
   if (!payload || !EXCEL_SUFFIX.test(String(payload.name || ""))) {
     row.style.display = "none";
@@ -814,7 +848,8 @@ async function offerSheets(payload) {
     return;
   }
   try {
-    const sheets = await apiPost(`/api/cases/${state.openCase.id}/sheets`, { path: payload.path });
+    const sheets = await apiPost(`/api/cases/${caseId}/sheets`, { path: payload.path });
+    if (!currentPreview(caseId, items)) return;
     $("preview-sheet").innerHTML = (sheets.sheets || []).map((name) =>
       `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
     row.style.display = "";
@@ -822,6 +857,7 @@ async function offerSheets(payload) {
       $("preview-note").textContent = `${sheets.sheets.length} sheet(s) in this workbook: the first is chosen.`;
     }
   } catch (error) {
+    if (!currentPreview(caseId, items)) return;
     row.style.display = "none";
     say(error.message, true);
   }
@@ -836,7 +872,6 @@ function openImportSourceChooser() {
   if (!state.openCase) { say("Open a case before importing", true); return; }
   const chooser = $("import-source-modal");
   chooser.classList.add("show");
-  chooser.querySelector('[data-act="import-file"]').focus();
 }
 
 function openImportDialog(folder = false) {
@@ -851,6 +886,8 @@ function openImportDialog(folder = false) {
   $("preview-server").value = "";
   $("preview-delimiter").value = "";
   $("preview-encoding").value = "auto";
+  $("preview-sheet-row").style.display = "none";
+  $("preview-sheet").replaceChildren();
   fillCsvOptions();
   $("preview-note").textContent = folder
     ? "Choose a folder or enter its path on the server to preview its files."
@@ -1011,26 +1048,31 @@ async function importFolder(files) {
   const note = $("preview-note");
   note.classList.remove("err");
   const items = previewState.items;
-  const current = () => state.openCase?.id === identifier && previewState.items === items &&
-    $("import-modal").classList.contains("show");
+  const current = () => currentPreview(identifier, items);
   const size = files.reduce((total, file) => total + file.size, 0);
   note.textContent = `Estimating storage for ${files.length} file(s)…`;
   await refreshImportSpace("import", { kind: "folder", size, files: files.length });
   if (!current()) return;
   let root = "";
+  let batch = "new";
   let index = 0;
   for (const file of files) {
+    if (!current()) return;
     index += 1;
     note.textContent = `Sending ${index}/${files.length} — ${file.webkitRelativePath || file.name}`;
     const body = new FormData();
     body.append("file", file);
     body.append("relative", file.webkitRelativePath || file.name);
+    body.append("batch", batch);
     try {
       const response = await fetch(url(`/api/cases/${identifier}/upload-folder`), { method: "POST", body });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || response.statusText);
-      root = payload.root || root;
+      if (!current()) return;
+      root = payload.root;
+      batch = payload.batch;
     } catch (error) {
+      if (!current()) return;
       previewState.items = [{ name: file.name, error: error.message }];
       note.textContent = error.message;
       note.classList.add("err");
@@ -1046,6 +1088,7 @@ async function importFolder(files) {
     showFolderPreviewSpace(payload);
     note.textContent = `${files.length} file(s) ready. Nothing has been read into the case yet.`;
   } catch (error) {
+    if (!current()) return;
     previewState.items = [{ name: root, error: error.message }];
     note.textContent = error.message;
     note.classList.add("err");
@@ -1057,8 +1100,11 @@ async function previewFiles(files) {
   if (!state.openCase) { say("Open a case before importing", true); return; }
   $("import-modal").classList.add("show");
   renderPreview();
+  const identifier = state.openCase.id;
+  const items = previewState.items;
   let done = 0;
   for (const file of files) {
+    if (!currentPreview(identifier, items)) return;
     done += 1;
     $("preview-note").textContent = `Reading ${file.name} (${done}/${files.length})…`;
     const body = new FormData();
@@ -1067,17 +1113,19 @@ async function previewFiles(files) {
     if (options.delimiter) body.append("delimiter", options.delimiter);
     if (options.encoding) body.append("encoding", options.encoding);
     try {
-      const response = await fetch(url(`/api/cases/${state.openCase.id}/preview-upload`), { method: "POST", body });
+      const response = await fetch(url(`/api/cases/${identifier}/preview-upload`), { method: "POST", body });
       const payload = await response.json().catch(() => ({}));
+      if (!currentPreview(identifier, items)) return;
       if (!response.ok) throw new Error(payload.detail || payload.error || response.statusText);
-      previewState.items.push({ name: file.name, payload });
+      items.push({ name: file.name, payload });
     } catch (error) {
-      previewState.items.push({ name: file.name, error: error.message });
+      if (!currentPreview(identifier, items)) return;
+      items.push({ name: file.name, error: error.message });
     }
   }
   $("preview-note").textContent = `${previewState.items.length} file(s) ready. Nothing has been read into the case yet.`;
   $("preview-note").classList.remove("err");
-  await offerSheets(previewState.items[previewState.items.length - 1].payload);
+  await offerSheets(items.at(-1).payload, identifier, items);
   renderPreview();
 }
 
@@ -1088,15 +1136,15 @@ async function previewServerPath() {
   const items = previewState.items;
   try {
     const payload = await apiPost(`/api/cases/${identifier}/preview`, { source, ...csvOptions() });
-    if (state.openCase?.id !== identifier || previewState.items !== items ||
-        !$("import-modal").classList.contains("show")) return;
+    if (!currentPreview(identifier, items)) return;
     previewState.items.push({ name: payload.name, payload });
     showFolderPreviewSpace(payload);
     $("preview-note").textContent = "Preview ready. Nothing has been read into the case yet.";
     $("preview-note").classList.remove("err");
-    await offerSheets(payload);
+    await offerSheets(payload, identifier, items);
     renderPreview();
   } catch (error) {
+    if (!currentPreview(identifier, items)) return;
     $("preview-note").textContent = error.message;
     $("preview-note").classList.add("err");
   }
@@ -1173,17 +1221,21 @@ function renderPreview() {
    previews already on screen rather than importing under the old reading. */
 async function refreshPreviews() {
   if (!previewState.items.length) return;
+  const identifier = state.openCase?.id;
+  const items = previewState.items;
   const options = csvOptions();
-  for (const item of previewState.items) {
+  for (const item of items) {
+    if (!currentPreview(identifier, items)) return;
     const source = item.payload && item.payload.path;
     if (!source) continue;
     try {
-      item.payload = await apiPost(`/api/cases/${state.openCase.id}/preview`, { source, ...options });
+      item.payload = await apiPost(`/api/cases/${identifier}/preview`, { source, ...options });
       delete item.error;
     } catch (error) {
       item.error = error.message;
     }
   }
+  if (!currentPreview(identifier, items)) return;
   $("preview-note").textContent = `Re-read with the chosen options: ${previewState.items.length} file(s). Nothing has been read into the case yet.`;
   $("preview-note").classList.remove("err");
   renderPreview();
@@ -1453,12 +1505,22 @@ async function restoreCaseFromArchive() {
   }
 }
 
+let destructionDraft = null;
+
 async function openDestroyDialog() {
-  const chosen = targetCaseId();
-  if (chosen && (!state.openCase || state.openCase.id !== chosen)) await openCase(chosen);
-  if (!state.openCase) { say("Open the case you want to erase", true); return; }
-  const caseId = state.openCase.id;
-  const name = state.openCase.name;
+  const target = targetCase();
+  if (!target) { say("Select a case to erase", true); return; }
+  const caseId = target.id;
+  const name = target.name;
+  const dialog = $("destroy-modal");
+  const draft = { caseId, name, attachments: [] };
+  destructionDraft = draft;
+  $("destroy-photos").value = "";
+  $("destroy-photos").disabled = false;
+  dialog.querySelector('[data-act="destroy-run"]').disabled = false;
+  $("destroy-photo-count").textContent = "";
+  $("destroy-certificate").value = "";
+  $("destroy-reason").value = "";
   $("destroy-confirm").value = "";
   $("destroy-method").value = "dod3";
   $("destroy-target").textContent = `Case: ${name} — type that name to confirm.`;
@@ -1467,6 +1529,7 @@ async function openDestroyDialog() {
      was not written. The service gives its own default; the driver's folder cannot move. */
   try {
     const settings = await api("/api/settings");
+    if (destructionDraft !== draft) return;
     const field = $("destroy-certificate");
     field.value = settings.certificate_folder || "";
     field.readOnly = settings.certificate_choice === false;
@@ -1480,7 +1543,7 @@ async function openDestroyDialog() {
     const response = await fetch(url(`/api/cases/${caseId}/residue`));
     if (!response.ok) return;
     const residue = await response.json();
-    if (!state.openCase || state.openCase.id !== caseId) return;
+    if (destructionDraft !== draft) return;
     const names = (residue.items || []).map(item => `${item.folder}/${item.name}`);
     const shown = names.slice(0, 3).join(", ") + (names.length > 3 ? ", …" : "");
     $("destroy-target").textContent = residue.files
@@ -1493,29 +1556,33 @@ async function openDestroyDialog() {
 
 /* The photos go with the case, not with the browser: they are stored beside it and
    fingerprinted, then embedded in the certificate by the core generator. */
-async function uploadDestroyPhotos(files) {
+async function uploadDestroyPhotos(files, draft) {
+  const {caseId} = draft;
   const sources = [];
   for (const file of files) {
     const data = new FormData();
     data.append("file", file);
-    const response = await fetch(url(`/api/cases/${state.openCase.id}/preview-upload`),
+    const response = await fetch(url(`/api/cases/${caseId}/preview-upload`),
                                  { method: "POST", body: data });
     if (!response.ok) throw new Error(await response.text());
     const saved = await response.json();
     sources.push(saved.path || saved.source);
   }
-  const response = await fetch(url(`/api/cases/${state.openCase.id}/destruction/attachments`), {
+  const response = await fetch(url(`/api/cases/${caseId}/destruction/attachments`), {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sources }),
   });
   if (!response.ok) throw new Error(await response.text());
   const kept = await response.json();
-  state.destroyAttachments = kept.attachments || [];
+  if (destructionDraft !== draft) return;
+  draft.attachments = kept.attachments || [];
   $("destroy-photo-count").textContent = `${kept.count} photo(s)`;
   say(`${kept.count} photo(s) for the certificate`);
 }
 
 async function runDestroy() {
+  if (!destructionDraft) return;
+  const {caseId, name, attachments} = destructionDraft;
   const confirmation = $("destroy-confirm").value.trim();
   const body = {
     method: $("destroy-method").value,
@@ -1523,19 +1590,18 @@ async function runDestroy() {
     witness: $("destroy-witness").value,
     reason: $("destroy-reason").value,
     confirmation,
-    attachments: state.destroyAttachments || [],
+    attachments,
     certificate_folder: $("destroy-certificate").value.trim(),
   };
-  if (confirmation !== state.openCase.name) { say("The typed name does not match", true); return; }
+  if (confirmation !== name) { say("The typed name does not match", true); return; }
   closeModals();
   say("Erasing the case — this takes a moment…");
   try {
-    const response = await fetch(url(`/api/cases/${state.openCase.id}/destroy`),
+    const response = await fetch(url(`/api/cases/${caseId}/destroy`),
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || response.statusText);
-    state.openCase = null;
-    resetWorkspace();
+    if (state.openCase?.id === caseId) closeCase();
     await loadCases();
     showTab("cases");
     const outside = payload.outside ? `, ${payload.outside} outside the folder` : "";
@@ -1611,15 +1677,12 @@ async function loadCases() {
 
 const CASE_STATUS = { open: "In progress", closed: "Finished", archived: "Archived" };
 
-/* The case the Cases tab's buttons act on: the one selected in the table, else the one open. */
-function targetCaseId() {
-  if (state.selectedCase && state.cases.some((item) => item.id === state.selectedCase)) return state.selectedCase;
-  return state.openCase ? state.openCase.id : null;
-}
-
+/* Library actions follow the visible selection. Elsewhere the workspace belongs
+   to the open case, even if a different library row was selected earlier. */
 function targetCase() {
-  const id = targetCaseId();
-  return id ? state.cases.find((item) => item.id === id) || null : null;
+  return $("tab-cases").getAttribute("aria-selected") === "true"
+    ? state.cases.find(item => item.id === state.selectedCase)
+    : state.openCase;
 }
 
 function renderCases() {
@@ -1630,10 +1693,11 @@ function renderCases() {
     return !term || [item.name, item.description, item.environment, item.id, item.status]
       .join(" ").toLowerCase().includes(term);
   });
+  if (!matches.some(item => item.id === state.selectedCase)) state.selectedCase = null;
   const body = $("cases-body");
   const when = (value) => (value ? String(value).replace("T", " ").slice(0, 19) : "—");
   body.innerHTML = matches.map((item) => `
-    <tr data-case="${escapeHtml(item.id)}" class="${
+    <tr data-case="${escapeHtml(item.id)}" tabindex="-1" class="${
       [state.openCase && state.openCase.id === item.id ? "sel" : "",
        state.selectedCase === item.id ? "selected" : ""].filter(Boolean).join(" ")}">
       <td title="${escapeHtml([item.name, item.description].filter(Boolean).join(" — "))}">${escapeHtml(item.name || "(unnamed)")}</td>
@@ -1642,24 +1706,31 @@ function renderCases() {
       <td>${escapeHtml(String(item.analysis_count ?? 0))}</td>
       <td>${escapeHtml(when(item.created))}</td>
       <td>${escapeHtml(when(item.updated))}</td>
-      <td>${escapeHtml(when(item.opened || item.updated))}</td>
+      <td>${escapeHtml(item.environment && item.environment !== "unspecified" ? item.environment : "—")}</td>
     </tr>`).join("");
   $("case-count").textContent = `${matches.length} case(s) displayed`;
   renderCaseSelection();
   $("cases-empty").hidden = matches.length > 0;
-  $("cases-empty").textContent = state.cases.length
-    ? "No case matches this filter."
-    : "The library is empty. A case written by the Windows edition opens here as soon as its folder is in the library.";
+  const empty = $("cases-empty");
+  if (state.cases.length) {
+    empty.textContent = "No case matches this filter.";
+  } else {
+    empty.innerHTML = "<h2>Your case library is empty</h2><p>Create a case or import a portable case to begin. Desktop cases appear here when their folders are added to the library.</p>";
+  }
 }
 
 /* What depends on the selected case, without rebuilding the table: a click must not replace the
    rows, or the second click of a double click lands on a row that is no longer there. */
 function renderCaseSelection() {
-  const target = targetCase();
-  $("cases-body").querySelectorAll("tr[data-case]").forEach((row) => {
+  const target = state.cases.find(item => item.id === state.selectedCase);
+  const rows = $("cases-body").querySelectorAll("tr[data-case]");
+  const focusable = target?.id || rows[0]?.dataset.case;
+  rows.forEach((row) => {
+    row.tabIndex = row.dataset.case === focusable ? 0 : -1;
     row.classList.toggle("selected", row.dataset.case === state.selectedCase);
     row.classList.toggle("sel", Boolean(state.openCase) && row.dataset.case === state.openCase.id);
   });
+  for (const button of $("cases-view").querySelectorAll("button[data-case-selection]")) button.disabled = !target;
   $("case-footer-description").textContent = target
     ? (target.description || "No description for this case.")
     : "Select a case to read its description.";
@@ -1685,6 +1756,7 @@ async function openCase(identifier, analysisIndex = null) {
     ]);
     if (revision !== caseOpenRevision) return false;
     detail.closed = closed.closed || [];
+    state.selectedCase = identifier;
     const changedCase = state.openCase?.id !== detail.id;
     if (changedCase) rememberReviewPlace();
     state.openCase = detail;
@@ -1699,9 +1771,11 @@ async function openCase(identifier, analysisIndex = null) {
       // A layout rebuild can assign different grid indices to the same case.
       resetScenario();
     }
-    const analysis = detail.analyses.find((item) => item.index === analysisIndex) || detail.analyses[0];
+    const analysis = detail.analyses.find(item => item.index === analysisIndex)
+      || detail.analyses.find(item => item.active && item.session_view) || detail.analyses[0];
     state.analysis = analysis?.index ?? 0;
     resetAnalysisQuery();
+    if (analysis?.session_view) applyViewFields(analysis.session_view);
     const layout = $("import-layout");
     if ([...layout.options].some((option) => option.value === detail.layout)) {
       layout.value = detail.layout;
@@ -1711,7 +1785,8 @@ async function openCase(identifier, analysisIndex = null) {
     renderTree();
     renderCases();
     if (!detail.analyses.length) {
-      clearGrid("This case has no analyses yet.", [["Import evidence…", "import-evidence"]]);
+      clearGrid("Import the first evidence", [["Import evidence…", "import-evidence"]],
+        "Choose a file, a collection folder or a disk image for this case.");
       say("Case opened");
       return true;
     }
@@ -1739,7 +1814,7 @@ function closeCase() {
   $("casecombo-label").textContent = "No case open";
   $("tree").innerHTML = '<div class="empty">No case open.</div>';
   $("pane-tabs").innerHTML = "";
-  clearGrid("Open a case from the Cases tab.");
+  showCaseStart();
   renderCases();
   say("Case closed");
 }
@@ -2341,7 +2416,9 @@ async function uploadPortableCase(event) {
 async function saveSession() {
   if (!state.openCase) { say("Open a case first", true); return; }
   try {
-    const saved = await api(`/api/cases/${state.openCase.id}/session`);
+    const saved = await apiPost(`/api/cases/${state.openCase.id}/session`, {
+      analysis: state.analysis, view: currentViewFields(), display: currentDisplay(),
+    });
     const bytes = Uint8Array.from(atob(saved.content), (char) => char.charCodeAt(0));
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
@@ -2359,23 +2436,31 @@ function openSessionFile() {
 }
 
 async function readSessionFile(file) {
-  const buffer = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  for (const byte of buffer) binary += String.fromCharCode(byte);
+  const caseId = state.openCase?.id;
+  const revision = caseOpenRevision;
+  if (!caseId) return;
   try {
-    const result = await api(`/api/cases/${state.openCase.id}/session/open`,
-      { method: "POST", body: JSON.stringify({ content: btoa(binary) }) });
-    const missing = (result.missing || []).length
-      ? ` — ${result.missing.length} not in this case` : "";
+    if (file.size > 64 * 1024 * 1024) throw new Error("The session file exceeds 64 MiB.");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const chunks = [];
+    for (let i = 0; i < bytes.length; i += 32768) {
+      chunks.push(String.fromCharCode(...bytes.subarray(i, i + 32768)));
+    }
+    await flushLayouts();
+    if (caseOpenRevision !== revision) return;
+    const result = await apiPost(`/api/cases/${caseId}/session/open`, { content: btoa(chunks.join("")) });
+    if (caseOpenRevision !== revision || !(await openCase(caseId, result.active))) return;
+    const missing = result.missing.length ? ` — ${result.missing.length} missing from this case` : "";
     say(`Session opened: ${result.added} analysis(es)${missing}`);
-    await loadAnalyses();
-  } catch (error) { say(`The session was not opened: ${error.message}`, true); }
+  } catch (error) {
+    if (state.openCase?.id === caseId) say(`The session was not opened: ${error.message}`, true);
+  }
 }
 
-async function exportPortable() {
-  if (!state.openCase) { say("Open a case first", true); return; }
+async function exportPortable(caseId = state.openCase?.id) {
+  if (!caseId) { say("Open a case first", true); return; }
   try {
-    const payload = await runTask("package", { include_sources: true }, "Portable case");
+    const payload = await runTask("package", { include_sources: true }, "Portable case", caseId);
     if (!payload) return;
     const refreshed = (payload.repaired || []).length
       ? ` — ${payload.repaired.length} analysis fingerprint(s) refreshed from their file`
@@ -2393,6 +2478,8 @@ async function noteSelection(mode) {
   const ids = selectedIds();
   if (!ids.length) { say("Select a row first", true); return; }
   const limited = ids.slice(0, 200);
+  const path = activeAnalysisPath();
+  const bookmarks = state.bookmarks;
   const text = await ask({
     title: mode === "replace" ? "Replace the selection's notes" : "Add a note to the selection",
     label: mode === "replace"
@@ -2404,27 +2491,22 @@ async function noteSelection(mode) {
   // marked, a note is added after the existing one or replaces it, and the export of the
   // bookmarks and notes carries it. A plain mark's own text is not a note.
   const plain = (note) => (note === "bookmarked" ? "" : note || "");
-  try {
-    for (const id of limited) {
-      const before = plain(state.bookmarks.get(String(id)));
-      const note = mode === "append" && before ? `${before}\n${text.trim()}` : text.trim();
-      await postBookmark(id, note);
-    }
-    await refreshBookmarksView();
-    say(`${limited.length} row(s) noted`);
-  } catch (error) {
-    say(error.message, true);
-  }
+  const edits = limited.map(id => {
+    const before = plain(bookmarks.get(String(id)));
+    return [id, mode === "append" && before ? `${before}\n${text.trim()}` : text.trim()];
+  });
+  await saveBookmarkEdits(path, edits, "noted");
 }
 
 async function bookmarkNote() {
   const ids = selectedIds();
   if (!ids.length) { say("Select a row first", true); return; }
+  const path = activeAnalysisPath();
   const text = await ask({ title: "Bookmark / note",
                            label: "Note for this bookmark",
                            note: "Empty keeps a plain mark." });
   if (text === null) return;
-  await markSelection(text.trim());
+  await markSelection(text.trim() || "bookmarked", ids, path);
 }
 
 /* Next and previous analysis, the way the desktop walks its tabs. */
@@ -3337,34 +3419,41 @@ async function copySelectedRows() {
   }
 }
 
-async function postBookmark(rowId, note) {
-  const body = JSON.stringify({ row_id: Number(rowId), note: note ?? "" });
-  const response = await fetch(url(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/bookmark`),
-    { method: "POST", headers: { "Content-Type": "application/json" }, body });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.detail || response.statusText);
-  if ((note || "").trim()) state.bookmarks.set(String(rowId), note);
-  else state.bookmarks.delete(String(rowId));
-  return payload;
+function activeAnalysisPath() {
+  return state.openCase && `/api/cases/${state.openCase.id}/analyses/${state.analysis}`;
 }
 
-/* A mark is a note: the core removes it when the note is empty. One call per row,
-   capped so a selection of a whole page cannot hang the window. */
-async function markSelection(note) {
-  const ids = selectedIds();
-  if (!ids.length) { say("Select a row first", true); return; }
-  const limited = ids.slice(0, 200);
+async function postBookmark(path, rowId, note) {
+  await apiPost(`${path}/bookmark`, { row_id: Number(rowId), note });
+  if (path !== activeAnalysisPath()) return;
+  if (note.trim()) state.bookmarks.set(String(rowId), note);
+  else state.bookmarks.delete(String(rowId));
+}
+
+/* A selection belongs to the analysis in which the analyst made it, even if
+   they open another grid while the writes are in flight. */
+async function saveBookmarkEdits(path, edits, action) {
+  let written = 0;
+  let failure = "";
   try {
-    for (const id of limited) await postBookmark(id, note ?? "");
+    for (const [id, note] of edits) {
+      await postBookmark(path, id, note);
+      written++;
+    }
   } catch (error) {
-    await refreshBookmarksView();
-    say(error.message, true);
-    return;
+    failure = error.message;
   }
-  await refreshBookmarksView();
-  say((note || "").trim()
-    ? `${limited.length} row(s) marked`
-    : `${limited.length} row(s) unmarked`);
+  const message = failure ? `${written} of ${edits.length} row(s) ${action}. ${failure}`
+    : `${written} row(s) ${action}`;
+  if (path === activeAnalysisPath()) await refreshBookmarksView();
+  if (path === activeAnalysisPath()) say(message, Boolean(failure));
+  else rememberMessage(message, Boolean(failure));
+}
+
+async function markSelection(note, ids = selectedIds(), path = activeAnalysisPath()) {
+  if (!ids.length) { say("Select a row first", true); return; }
+  const edits = ids.slice(0, 200).map(id => [id, note]);
+  await saveBookmarkEdits(path, edits, note.trim() ? "marked" : "unmarked");
 }
 
 /* An alert analysis carries the EVTX reference of the event it came from: only
@@ -5998,13 +6087,16 @@ function renderTimeline(payload) {
   renderTimelineDates(payload);
   const shown = payload.sources.map((source, index) => ({ source, index }))
     .filter(({ source }) => !timelineState.hidden.has(source.id));
-  $("timeline-legend").innerHTML = payload.sources.map((source, index) => {
+  const legend = $("timeline-legend");
+  const focusedSource = document.activeElement?.dataset.tlSourceChip;
+  legend.innerHTML = payload.sources.map((source, index) => {
     const off = timelineState.hidden.has(source.id);
     return `<button type="button" class="chip${off ? " off" : ""}" data-tl-source-chip="${source.id}"
       aria-pressed="${!off}" title="${off ? "Show this source again" : "Hide this source"}"
       style="${off ? "opacity:.55" : ""}"><span class="swatch" style="background:${TIMELINE_COLORS[index % TIMELINE_COLORS.length]}"></span>${escapeHtml(source.name)} · ${source.dated} dated / ${source.rows} row(s)</button>`;
   }).join("");
-  $("timeline-legend").querySelectorAll("[data-tl-source-chip]").forEach((chip) => {
+  legend.querySelectorAll("[data-tl-source-chip]").forEach((chip) => {
+    if (chip.dataset.tlSourceChip === focusedSource) chip.focus({ preventScroll: true });
     chip.addEventListener("click", () => {
       const id = Number(chip.dataset.tlSourceChip);
       if (timelineState.hidden.has(id)) timelineState.hidden.delete(id);
@@ -6067,7 +6159,7 @@ function renderTimeline(payload) {
   const from = payload.count ? timelineState.offset + 1 : 0;
   const to = Math.min(timelineState.offset + payload.rows.length, payload.count);
   $("timeline-info").textContent = `${from}\u2013${to} / ${payload.count} event(s) — ${payload.extent.dated} dated`;
-  say(`Timeline: ${payload.extent.rows} row(s), ${payload.extent.dated} dated`);
+  say(`Timeline: ${payload.extent.rows} row(s), ${payload.extent.dated} dated`, false, "timeline");
 }
 
 /* ---------- the timeline chart, by hand ----------
@@ -6625,7 +6717,7 @@ async function loadRows(reset, preserveSelection = false, viewport = false) {
       renderGrid();
       return true;
     }
-    await loadBookmarks();
+    await loadBookmarks(controller.signal);
     if (controller.signal.aborted) return false;
     await loadCellNotes();
     if (controller.signal.aborted) return false;
@@ -6643,12 +6735,10 @@ async function loadRows(reset, preserveSelection = false, viewport = false) {
   }
 }
 
-async function loadBookmarks() {
-  try {
-    const payload = await api(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/bookmarks`);
-    state.bookmarks = new Map(payload.bookmarks.map((item) => [String(item.row_id), item.note]));
-  } catch (_) {
-    state.bookmarks = new Map();
+async function loadBookmarks(signal) {
+  const payload = await apiAbortable(`${activeAnalysisPath()}/bookmarks`, signal);
+  if (!signal.aborted) {
+    state.bookmarks = new Map(payload.bookmarks.map(item => [String(item.row_id), item.note]));
   }
 }
 
@@ -6669,8 +6759,9 @@ function notesForRow(rowId) {
 }
 
 async function toggleBookmark(rowId, note) {
-  await postBookmark(rowId, note);
-  await refreshBookmarksView();
+  const path = activeAnalysisPath();
+  await postBookmark(path, rowId, note);
+  if (path === activeAnalysisPath()) await refreshBookmarksView();
 }
 
 async function refreshBookmarksView() {
@@ -6681,7 +6772,17 @@ async function refreshBookmarksView() {
   }
 }
 
-function clearGrid(message, actions = []) {
+function showCaseStart() {
+  if (state.cases.length) {
+    clearGrid("Open an investigation", [["Open case library", "cases-list"], ["New case…", "new-case"]],
+      "Select a case to review its evidence, findings and investigation history.");
+  } else {
+    clearGrid("Start an investigation", [["New case…", "new-case"], ["Import portable case…", "import-portable"]],
+      "Create a case for your evidence or open a portable Kagarasu case.");
+  }
+}
+
+function clearGrid(message, actions = [], description = "") {
   $("head").innerHTML = "";
   $("body").innerHTML = "";
   $("cols").innerHTML = "";
@@ -6689,6 +6790,11 @@ function clearGrid(message, actions = []) {
   const empty = $("grid-empty");
   empty.textContent = message;
   if (actions.length) {
+    const title = document.createElement("h2");
+    title.textContent = message;
+    const detail = document.createElement("p");
+    detail.textContent = description;
+    empty.replaceChildren(title, detail);
     const controls = document.createElement("div");
     controls.className = "empty-grid-actions";
     for (const [label, action] of actions) {
@@ -6970,9 +7076,11 @@ function renderGrid(deferColumns = false) {
     // state.sort names a column by its position without the row-id column, like multiSort does
     const sorted = state.sort === index - 1 || multi >= 0;
     const flag = state.sort === index - 1 ? state.descending : (multi >= 0 ? state.multiSort[multi].descending : false);
-    const arrow = sorted ? (flag ? "▼" : "▲") + (multi >= 0 ? String(multi + 1) : "") : "▲▼";
-    head.push(`<th class="${sorted ? "sorted" : ""}" data-column="${index}" draggable="${index === 0 ? "false" : "true"}" title="${escapeHtml(name)}">
-      <span class="column-name">${index === 0 ? "Ro…" : escapeHtml(name)}</span><span class="sort">${arrow}</span>
+    const arrow = sorted ? (flag ? "▼" : "▲") + (multi >= 0 ? String(multi + 1) : "") : "";
+    const sortOrder = sorted && multi <= 0 ? ` aria-sort="${flag ? "descending" : "ascending"}"` : "";
+    const label = escapeHtml(name);
+    head.push(`<th scope="col" class="${sorted ? "sorted" : ""}"${sortOrder} data-column="${index}" draggable="${index === 0 ? "false" : "true"}" title="${label}">
+      ${index ? `<button type="button" class="column-sort" aria-label="Sort by ${label}" title="Sort by ${label}"><span class="column-name">${label}</span><span class="sort" aria-hidden="true">${arrow}</span></button>` : '<span class="column-name">Row</span>'}
       ${index ? `<button type="button" class="column-values" data-column-values="${index - 1}" aria-label="Values in ${escapeHtml(name)}" title="View values or hide this column"></button>` : ""}
       <span class="grip" data-grip="${index}"></span></th>`);
   });
@@ -6988,8 +7096,8 @@ function renderGrid(deferColumns = false) {
     const operator = current ? current.operator : (state.filterOps[index - 1] || "contains");
     const meaning = (FILTER_OPERATORS.find(([code]) => code === operator) || [])[2] || operator;
     const valueFilter = operator === "one_of" ? JSON.parse(current.value).length + " selected" : null;
-    head.push(`<th data-filter-column="${index}"><div class="fcell"><button class="fop" data-fop="${index - 1}" title="Comparison: ${escapeHtml(meaning)}">${FILTER_GLYPHS[operator] || "≈"}</button>`
-      + `<input data-filter="${index - 1}" placeholder="${valueFilter || "Filter…"}" value="${escapeHtml(current && !valueFilter ? current.value : "")}"></div></th>`);
+    head.push(`<th data-filter-column="${index}"><div class="fcell"><button class="fop" data-fop="${index - 1}" aria-label="Filter comparison for ${escapeHtml(state.columns[index])}: ${escapeHtml(meaning)}" title="Comparison: ${escapeHtml(meaning)}">${FILTER_GLYPHS[operator] || "≈"}</button>`
+      + `<input data-filter="${index - 1}" aria-label="Filter ${escapeHtml(state.columns[index])}" placeholder="${valueFilter || "Filter…"}" value="${escapeHtml(current && !valueFilter ? current.value : "")}"></div></th>`);
   });
   head.push("</tr>");
   $("head").innerHTML = head.join("");
@@ -7029,7 +7137,7 @@ function renderGrid(deferColumns = false) {
         + `${(state.highlight || state.search) ? markText(text, [state.highlight, state.search]) : renderBoolean(index - 1, text)}`
         + `${noted ? '<span class="notemark"></span>' : ""}${close}</td>`;
     }).join("");
-    const marked = state.bookmarks.has(String(id)) ? "marked" : "";
+    const bookmark = state.bookmarks.get(String(id));
     const quick = state.payload?.row_marks?.[id];
     // "none" is a string, and a string is true: a rule without a visual format must
     // still paint its row. (This cost a silent regression: every plain colour rule
@@ -7040,9 +7148,9 @@ function renderGrid(deferColumns = false) {
       ? ` style="${ruleCss(rule)}"`
       : "";
     return `<tr data-row="${escapeHtml(String(id))}" class="${rowSelected(id) ? "sel" : ""}"${style}>
-      <td class="markcell"><button class="cb ${quick ? "quick-mark" : marked}" type="button"
-        title="${quick ? escapeHtml(quick.label) : marked ? escapeHtml(String(state.bookmarks.get(String(id)) || "Bookmarked")) : "Mark this row"}"
-        aria-label="Mark row ${id}${quick ? `, ${escapeHtml(quick.label)}` : ""}">${quick ? escapeHtml(quick.code) : ""}</button></td>${cells}</tr>`;
+      <td class="markcell"><button class="cb${quick ? " quick-mark" : ""}${bookmark ? " marked" : ""}" type="button"
+        title="${escapeHtml(bookmark || quick?.label || ROW_MARK_HELP)}"
+        aria-label="${escapeHtml(rowMarkLabel(id, quick, bookmark))}" aria-description="${ROW_MARK_HELP}">${quick ? escapeHtml(quick.code) : ""}</button></td>${cells}</tr>`;
   });
   let nextRow = 0;
   const rendered = outline
@@ -7265,8 +7373,7 @@ function syncArtifacts() {
   const scale = Number(getComputedStyle(app).zoom) || 1;
   const compact = document.documentElement.clientWidth / scale <= 560;
   app.classList.toggle("compact-workspace", compact);
-  const caseList = document.querySelector('.tab[data-tab="cases"].active');
-  const available = Boolean(state.openCase) || !caseList;
+  const available = Boolean(state.openCase);
   const visible = available && (artifactsVisible ?? !compact);
   $("artifacts").hidden = !visible;
   $("artifacts-toggle").disabled = !available;
@@ -7298,7 +7405,14 @@ function showTab(name) {
   const selected = tabs.find(tab => tab.dataset.tab === name);
   if (!selected) return;
   if (!selected.classList.contains("active")) rememberReviewPlace();
+  const status = $("status");
+  if (status.dataset.view && status.dataset.view !== name) {
+    status.textContent = status.title = "";
+    status.dataset.view = "";
+    status.classList.remove("err");
+  }
   const focused = document.activeElement;
+  $("pane-tabs").hidden = name !== "analyses";
   const previousPanel = focused?.closest('[role="tabpanel"]');
   tabChosen = true;
   for (const tab of tabs) {
@@ -7731,13 +7845,28 @@ function wireDialogAccessibility() {
     const current = open.at(-1);
     if (current === previous) return;
     if (current && !current.dialog.contains(document.activeElement)) {
-      current.dialog.focus({ preventScroll: true });
+      const first = current.dialog.querySelector("[data-initial-focus]") || current.dialog;
+      first.focus({ preventScroll: true });
     } else if (!current && (document.activeElement === document.body ||
         previous?.dialog.contains(document.activeElement))) {
       const opener = previous?.opener;
       if (opener?.isConnected && opener.getClientRects().length) {
         opener.focus({ preventScroll: true });
       }
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const dialog = open.at(-1)?.dialog;
+    if (event.key !== "Tab" || !dialog) return;
+    const controls = [...dialog.querySelectorAll("button, input, select, textarea, a[href], [tabindex]")]
+      .filter(el => el.tabIndex >= 0 && !el.matches(":disabled") && el.getClientRects().length);
+    const first = controls[0] || dialog;
+    const last = controls.at(-1) || dialog;
+    const active = document.activeElement;
+    if (event.shiftKey ? (active === first || active === dialog) : active === last) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
     }
   });
 
@@ -7748,6 +7877,7 @@ function wireDialogAccessibility() {
     if (!title.id) title.id = `${modal.id}-title`;
     dialog.setAttribute("role", "dialog");
     dialog.setAttribute("aria-labelledby", title.id);
+    dialog.setAttribute("aria-modal", "true");
     dialog.tabIndex = -1;
     dialogs.set(modal, { dialog, opener: null });
     visibility.observe(modal, { attributes: true, attributeFilter: ["class"] });
@@ -7874,6 +8004,23 @@ function wire() {
     state.selectedCase = row.dataset.case;
     renderCaseSelection();
   });
+  $("cases-body").addEventListener("keydown", (event) => {
+    const row = event.target.closest("tr[data-case]");
+    if (!row) return;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      openCase(row.dataset.case);
+      return;
+    }
+    const move = { ArrowDown: row.nextElementSibling, ArrowUp: row.previousElementSibling,
+                   Home: row.parentElement.firstElementChild, End: row.parentElement.lastElementChild };
+    if (!(event.key in move)) return;
+    event.preventDefault();
+    const next = move[event.key] || row;
+    state.selectedCase = next.dataset.case;
+    renderCaseSelection();
+    next.focus();
+  });
   $("cases-body").addEventListener("dblclick", (event) => {
     const row = event.target.closest("tr[data-case]");
     if (row) openCase(row.dataset.case);
@@ -7946,7 +8093,7 @@ function wire() {
     saveLayoutSoon();
   });
 
-  $("head").addEventListener("click", (event) => {
+  $("head").addEventListener("click", async (event) => {
     const th = event.target.closest("th[data-column]");
     if (!th || event.target.closest("[data-grip], [data-column-values]")) return;
     const index = Number(th.dataset.column);
@@ -7962,7 +8109,10 @@ function wire() {
       if (state.sort === column) state.descending = !state.descending;
       else { state.sort = column; state.descending = false; }
     }
-    loadRows(true);
+    const keyboardSort = event.detail === 0 && event.target.closest(".column-sort");
+    if (await loadRows(true) && keyboardSort && document.activeElement === document.body) {
+      $("head").querySelector(`th[data-column="${index}"] .column-sort`)?.focus({ preventScroll: true });
+    }
   });
 
   // Drag a header onto the grouping bar; double-click the grip to fit the column.
@@ -8282,10 +8432,19 @@ function wire() {
     if (event.target.id === "ask-modal") answerAsk(null);
   });
 
+  $("palette-list").addEventListener("click", (event) => {
+    const row = event.target.closest("[data-palette]");
+    if (row) runPalette(Number(row.dataset.palette));
+  });
   $("palette-input").addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    runPalette(0);
+    if (event.key === "Enter") {
+      event.preventDefault();
+      runPalette(commandState.active);
+    } else if (["ArrowDown", "ArrowUp"].includes(event.key) && commandState.shown.length) {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      selectPaletteItem(Math.max(0, Math.min(commandState.active + step, commandState.shown.length - 1)));
+    }
   });
   $("messages-clear").addEventListener("click", () => {
     messageLog.length = 0;
@@ -8321,9 +8480,17 @@ function wire() {
     if (file) readSessionFile(file);
   });
   $("destroy-photos").addEventListener("change", async (event) => {
-    if (!state.openCase) return;
-    try { await uploadDestroyPhotos([...event.target.files]); }
-    catch (error) { say(`The photos were not kept: ${error.message}`, true); }
+    const input = event.currentTarget;
+    const draft = destructionDraft;
+    if (!draft || !input.files.length) return;
+    const submit = $("destroy-modal").querySelector('[data-act="destroy-run"]');
+    input.disabled = submit.disabled = true;
+    try { await uploadDestroyPhotos([...input.files], draft); }
+    catch (error) {
+      if (destructionDraft === draft) say(`The photos were not kept: ${error.message}`, true);
+    } finally {
+      if (destructionDraft === draft) input.disabled = submit.disabled = false;
+    }
   });
   $("rule-add-condition").addEventListener("click", () => {
     addConditionRow();
@@ -8582,7 +8749,9 @@ function wire() {
       $("filter-operators").hidden = true;
       trigger?.focus();
     }
-    if (event.key === "/" && document.activeElement.tagName !== "INPUT") {
+    if (event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey &&
+        !document.querySelector(".modal.show") && $("search").getClientRects().length &&
+        !event.target.closest?.("input, textarea, select, [contenteditable]")) {
       event.preventDefault();
       $("search").focus();
     }
@@ -8769,7 +8938,10 @@ async function act(name, node) {
     $("import-source-modal").classList.remove("show");
   }
   switch (name) {
-    case "refresh-cases": await loadCases(); if (state.openCase) await loadRows(true); break;
+    case "refresh-cases":
+      await loadCases();
+      if (state.openCase && $("tab-analyses").getAttribute("aria-selected") === "true") await loadRows(true);
+      break;
     case "close-case": closeCase(); break;
     case "reload-analysis": await loadRows(true); break;
     case "export-csv":
@@ -8815,8 +8987,7 @@ async function act(name, node) {
       // brings them all back without rebuilding anything.
       timelineState.hidden.clear();
       $("timeline-lane").value = "";
-      loadTimeline(true);
-      say("Every source is shown again");
+      if (await loadTimeline(true)) say("Every source is shown again");
       break;
     case "preview-import": await confirmImport(); break;
     case "copy-value": await copyCellValue(); break;
@@ -8865,7 +9036,7 @@ async function act(name, node) {
     case "show-ioc": showTab("ioc"); break;
     case "detect-run": await runHayabusa(); break;
     case "export-annotations": await exportAnnotations(); break;
-    case "export-portable": await exportPortable(); break;
+    case "export-portable": await exportPortable(node?.closest("#cases-view") ? state.selectedCase : state.openCase?.id); break;
     case "import-portable": $("package-input").click(); break;
     case "show-imports": showTab("imports"); break;
     case "stop-query": stopQuery(); break;
@@ -8935,7 +9106,7 @@ async function act(name, node) {
     case "disk-open": openDiskDialog(); break;
     case "disk-explorer": await openDiskExplorer(); break;
     case "profile-apply": await applyDetectedProfile(); break;
-    case "case-history": await openCaseHistory(); break;
+    case "case-history": await openCaseHistory(node?.closest("#cases-view") ? state.selectedCase : state.openCase?.id); break;
     case "rule-add": await addRule(); break;
     case "pivot": await runPivot(); break;
     case "copy-row": await copySelectedRows(); break;
@@ -9032,9 +9203,7 @@ async function boot() {
   if (!tabChosen) showTab(state.cases.length === 1 ? "analyses" : "cases");
   tabChosen = false;
   if (!state.openCase) {
-    clearGrid(state.cases.length
-      ? "Open a case from the Cases tab."
-      : "Create or import a case to start an investigation.");
+    showCaseStart();
     $("tree").innerHTML = '<div class="empty">No case open.</div>';
   }
   checkForUpdate();

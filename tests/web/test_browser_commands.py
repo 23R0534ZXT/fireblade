@@ -23,6 +23,7 @@ from _audit import column_values as _column_values
 from _audit import context as _context
 from _audit import headers as _headers
 from _audit import import_more as _import_more
+from conftest import make_case
 
 # -- Edit ------------------------------------------------------------------------------------
 
@@ -33,6 +34,31 @@ def test_mark_and_unmark_the_selection(page):
     page.wait_for_function("document.querySelectorAll('#body .cb.marked').length === 3")
     command(page, "unmark-selection")
     page.wait_for_function("document.querySelectorAll('#body .cb.marked').length === 0")
+
+
+def test_a_pending_selection_marks_only_the_original_case(page, server):
+    first = page.evaluate("state.openCase.id")
+    name = "Another case with the same row IDs"
+    second = make_case(server, name, "User\nalice\nbob\n")
+    source = f"{server[0]}/api/cases/{first}/analyses/0"
+    held = []
+    page.route(f"{source}/bookmark", lambda route: held.append(route), times=1)
+    select(page, 0, 1)
+    with page.expect_request(f"{source}/bookmark"):
+        command(page, "mark-selection")
+    page.get_by_role("tab", name="Cases", exact=True).click()
+    page.get_by_role("button", name="Refresh", exact=True).click()
+    page.get_by_role("cell", name=name, exact=True).dblclick()
+    page.wait_for_function("id => state.openCase.id === id && rowsRequest === null", arg=second)
+    with page.expect_response(
+        lambda response: response.url.endswith("/bookmark")
+        and response.request.post_data_json["row_id"] == 2
+    ):
+        held[0].continue_()
+    assert len(httpx.get(f"{source}/bookmarks").json()["bookmarks"]) == 2
+    other = httpx.get(f"{server[0]}/api/cases/{second}/analyses/0/bookmarks")
+    assert other.json()["bookmarks"] == []
+    assert page.locator("#body .cb.marked").count() == 0
 
 
 def test_the_bookmarks_button_keeps_only_the_marked_rows(page):
@@ -277,6 +303,11 @@ def test_column_search_keeps_hidden_columns_reachable(page):
     ]
     page.locator("#columns-list label:visible input[data-col]").uncheck()
     assert page.locator("#column-visibility").inner_text() == "1 hidden"
+    search.fill("")
+    page.check("#columns-hidden-only")
+    assert page.locator("#columns-list [data-column-label]").all_text_contents() == ["Path"]
+    page.uncheck("#columns-hidden-only")
+    assert "Host" in page.locator("#columns-list [data-column-label]").all_text_contents()
     search.fill("does not exist")
     assert page.locator("#columns-no-match").is_visible()
     search.fill("path")
@@ -710,18 +741,41 @@ def test_an_empty_bookmark_export_never_reports_success(page):
     assert not any("exported" in message for message in page.evaluate("exportMessages"))
 
 
-def test_a_session_is_saved_and_opened_again(page, tmp_path):
-    saved = _download(page, "session-save", tmp_path, "case.fireblade-session")
+def test_a_session_is_saved_and_opened_again(page, server, tmp_path):
     import json
 
+    _import_more(page, server, "notes.csv", "User,Note\nalice,First\nbob,Second\n")
+    page.locator("#tree [data-analysis]").filter(has_text="notes.csv").click()
+    page.get_by_role("textbox", name="Filter Note", exact=True).wait_for()
+    field = page.get_by_role("textbox", name="Filter User", exact=True)
+    field.fill("alice")
+    page.wait_for_function("state.total === 1 && rowsRequest === null")
+    saved = _download(page, "session-save", tmp_path, "case.fireblade-session")
     document = json.loads(saved.read_text(encoding="utf-8"))
     assert document["format"] == "fireblade-session"
-    assert document["documents"], "the session names the analyses"
+    assert document["documents"][document["active"]]["view"]["filters"][0]["value"] == "alice"
+
+    command(page, "open-analyses")
+    page.locator("[data-analysis-close]").nth(document["active"]).click()
+    page.wait_for_function("state.openCase.analyses.length === 1 && rowsRequest === null")
     with page.expect_file_chooser() as chooser:
         command(page, "session-open")
     chooser.value.set_files(str(saved))
-    page.wait_for_function("document.getElementById('status').innerText.length > 0")
-    page.wait_for_function(f"document.getElementById('pageinfo').innerText.includes('/ {ROWS}')")
+    page.wait_for_function(
+        "document.getElementById('status').innerText.startsWith('Session opened: 2')"
+    )
+    assert field.input_value() == "alice"
+    assert page.locator("#body tr[data-row]").count() == 1
+    assert page.locator("#body tr[data-row]").first.get_by_text("First", exact=True).is_visible()
+    assert page.locator("#tree [data-reopen]").count() == 0
+    case_name = page.locator("#casecombo-label").inner_text()
+    page.get_by_role("tab", name="Cases", exact=True).click()
+    page.get_by_role("cell", name=case_name, exact=True).dblclick()
+    page.wait_for_function(
+        "state.total === 1 && rowsRequest === null && !document.querySelector('#analysis-view').hidden"
+    )
+    assert field.input_value() == "alice"
+    assert page.locator("#pane-tabs .ptab.active").inner_text().startswith("notes.csv")
 
 
 def test_the_portable_case_is_a_package_the_host_can_import_back(page, server, tmp_path):
@@ -1184,6 +1238,13 @@ def test_copied_rows_carry_the_header_when_the_preference_says_so(page):
 
 def test_the_command_palette_finds_a_command_and_runs_it(page):
     command(page, "palette")
+    page.fill("#palette-input", "import evidence")
+    assert page.locator("#palette-list").get_by_role("option").count() == 1
+    page.fill("#palette-input", "show")
+    page.press("#palette-input", "ArrowDown")
+    assert page.locator("#palette-input").get_attribute("aria-activedescendant") == "palette-item-1"
+    page.press("#palette-input", "ArrowUp")
+    assert page.locator("#palette-input").get_attribute("aria-activedescendant") == "palette-item-0"
     page.fill("#palette-input", "show timeline")
     items = page.eval_on_selector_all(
         "#palette-list > *", "els => els.map(e => e.innerText.trim())"

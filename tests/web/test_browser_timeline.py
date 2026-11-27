@@ -423,3 +423,23 @@ def test_undated_inventory_does_not_offer_a_spurious_1970_range(server):
             "document.getElementById('status').innerText.includes('No dated event')"
         )
         assert not page.locator("#ask-modal.show").count()
+
+
+def test_hiding_every_source_empties_both_events_and_export(timeline):
+    import csv
+
+    page = timeline
+    for source in page.locator("[data-tl-source-chip]").all():
+        with page.expect_response(lambda r: "/timeline?" in r.url and r.request.method == "GET"):
+            source.click()
+        page.wait_for_function("timelineState.seq > 0")
+    page.wait_for_function(
+        "document.querySelectorAll('[data-tl-source-chip]:not(.off)').length === 0"
+    )
+    assert _count(page) == 0
+    with page.expect_download() as downloaded:
+        page.click("#timeline-export")
+    with downloaded.value.path().open(encoding="utf-8-sig", newline="") as stream:
+        assert len(list(csv.reader(stream))) == 1
+    page.click('[data-act="tl-isolate"]')
+    page.wait_for_function("timelineState.payload.count === 704")

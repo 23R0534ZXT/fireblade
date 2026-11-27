@@ -89,9 +89,9 @@ def _json_object(text: str) -> dict | None:
     return value
 
 
-def _id_list(text: str) -> list[int] | None:
-    """Ids sent as ``1,3,4`` (none sent means every one); anything else is refused."""
-    if not text:
+def _id_list(text: str | None) -> list[int] | None:
+    """Ids sent as ``1,3,4``; omitted means all, an empty value means none."""
+    if text is None:
         return None
     try:
         return [int(part) for part in text.split(",") if part.strip() != ""]
@@ -904,7 +904,7 @@ def create_app(
         include_undated: bool = False,
         respect_filters: bool = False,
         live: str = "",
-        sources: str = "",
+        sources: str | None = None,
     ):
         """The timeline as a verified CSV: the receipt rides in the headers."""
         options = None
@@ -1411,7 +1411,7 @@ def create_app(
         include_undated: bool = False,
         respect_filters: bool = False,
         live: str = "",
-        sources: str = "",
+        sources: str | None = None,
     ):
         options = None
         if dates:

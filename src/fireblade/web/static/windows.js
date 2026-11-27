@@ -39,11 +39,9 @@
     var top = parseFloat(dialog.style.top) || 0;
     var width = dialog.offsetWidth;
     var height = dialog.offsetHeight;
-    /* The title bar must stay reachable, and so must the buttons at the foot: a dialog that
-       fills in after it opened (the preferences read the server first) grows downward, and
-       would otherwise leave its Close button below the visible page. */
-    dialog.style.left = clamp(left, 40 - width, window.innerWidth - 40) + "px";
-    dialog.style.top = clamp(top, 0, Math.max(0, window.innerHeight - height - 4)) + "px";
+    /* Keep the title and footer in view after dragging, restoring, or loading more content. */
+    dialog.style.left = clamp(left, 0, window.innerWidth - width) + "px";
+    dialog.style.top = clamp(top, 0, window.innerHeight - height) + "px";
   }
 
   function arrange(modal) {
@@ -135,24 +133,27 @@
 
   /* ---- splitters ----------------------------------------------------------------------- */
 
-  function splitter(kind, before, after, apply, read, limits) {
+  function splitter(kind, panel, apply, read, limits) {
     var bar = document.createElement("div");
     bar.className = "splitter " + kind;
     bar.setAttribute("role", "separator");
     bar.setAttribute("aria-orientation", kind === "vsplit" ? "vertical" : "horizontal");
     bar.title = "Drag to resize · double-click to reset";
-    after.parentNode.insertBefore(bar, after);
+    panel.parentNode.insertBefore(bar, panel);
 
     bar.addEventListener("pointerdown", function (event) {
       if (event.button !== 0) { return; }
-      var start = kind === "vsplit" ? event.clientX : event.clientY;
+      var vertical = kind === "vsplit";
+      var axis = vertical ? "left" : "top";
+      var start = vertical ? event.clientX : event.clientY;
       var origin = read();
+      var direction = panel.getBoundingClientRect()[axis] < bar.getBoundingClientRect()[axis] ? 1 : -1;
       var zoom = parseFloat(window.getComputedStyle(document.querySelector(".app") || document.body).zoom) || 1;
       bar.setPointerCapture(event.pointerId);
       bar.classList.add("drag");
       function move(e) {
-        var delta = ((kind === "vsplit" ? e.clientX : e.clientY) - start) / zoom;
-        apply(clamp(origin + (kind === "vsplit" ? -delta : -delta), limits[0], limits[1]()));
+        var delta = ((vertical ? e.clientX : e.clientY) - start) / zoom;
+        apply(clamp(origin + direction * delta, limits[0], limits[1]()));
       }
       function stop() {
         bar.removeEventListener("pointermove", move);
@@ -179,7 +180,7 @@
         save();
       };
       if (layout.tree) { applyTree(layout.tree); }
-      splitter("vsplit", pane, tree, applyTree, function () { return tree.offsetWidth; },
+      splitter("vsplit", tree, applyTree, function () { return tree.offsetWidth; },
                [120, function () { return Math.max(160, document.body.clientWidth * 0.6); }]);
     }
     var details = document.getElementById("details");
@@ -191,13 +192,16 @@
         save();
       };
       if (layout.details) { applyDetails(layout.details); }
-      splitter("hsplit", grid, details, applyDetails, function () { return details.offsetHeight; },
+      splitter("hsplit", details, applyDetails, function () { return details.offsetHeight; },
                [40, function () { return Math.max(80, document.body.clientHeight * 0.7); }]);
     }
   }
 
   function start() {
     Array.prototype.forEach.call(document.querySelectorAll(".modal"), wireDialog);
+    window.addEventListener("resize", function () {
+      document.querySelectorAll(".modal.show .dialog[data-free]").forEach(keepInside);
+    });
     wireSplitters();
   }
 

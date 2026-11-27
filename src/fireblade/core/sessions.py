@@ -8,17 +8,19 @@ from pathlib import Path
 
 from fireblade.core.models import AnalysisSnapshot, View
 
-MAX_SESSION_BYTES = 4 * 1024 * 1024
-MAX_SESSION_DOCUMENTS = 1000
+MAX_SESSION_BYTES = 64 * 1024 * 1024  # bounded metadata, no fixed analysis-count ceiling
 
 
 def _entry(snapshot):
-    return dict(
+    entry = dict(
         path=snapshot.path,
         source=snapshot.source_info,
         view=json.loads(snapshot.view.to_json()),
         header=base64.b64encode(snapshot.header_state).decode("ascii"),
     )
+    if snapshot.web_display is not None:
+        entry["web_display"] = snapshot.web_display
+    return entry
 
 
 def write_session(path, snapshots, active, closed=()):
@@ -29,10 +31,8 @@ def write_session(path, snapshots, active, closed=()):
     while still describing the case, which is why an empty tab list is allowed when
     closed analyses are present.
     """
-    if len(snapshots) > MAX_SESSION_DOCUMENTS or len(closed) > MAX_SESSION_DOCUMENTS:
-        raise ValueError("Une session doit contenir de 1 à 1000 analyses")
     if not snapshots and not closed:
-        raise ValueError("Une session doit contenir de 1 à 1000 analyses")
+        raise ValueError("Une session doit contenir au moins une analyse")
     if type(active) is not int or not (
         0 <= active < len(snapshots) or (not snapshots and active == -1)
     ):
@@ -51,9 +51,14 @@ def write_session(path, snapshots, active, closed=()):
             "w", encoding="utf-8", dir=path.parent, suffix=".partial", delete=False
         ) as output:
             temporary = Path(output.name)
-            json.dump(payload, output, ensure_ascii=False, indent=2)
+            written = 0
+            for fragment in json.JSONEncoder(ensure_ascii=False, indent=2).iterencode(payload):
+                written += len(fragment.encode("utf-8"))
+                if written > MAX_SESSION_BYTES:
+                    raise ValueError("Session metadata exceeds its memory budget")
+                output.write(fragment)
         if temporary.stat().st_size > MAX_SESSION_BYTES:
-            raise ValueError("Session limitée à 4 Mo")
+            raise ValueError("Session metadata exceeds its memory budget")
         os.replace(temporary, path)
     finally:
         if temporary:
@@ -63,22 +68,22 @@ def write_session(path, snapshots, active, closed=()):
 def read_session(path, with_closed=False):
     path = Path(path)
     if path.stat().st_size > MAX_SESSION_BYTES:
-        raise ValueError("Session limitée à 4 Mo")
+        raise ValueError("Session metadata exceeds its memory budget")
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("format") != "fireblade-session" or payload.get("version") != 1:
         raise ValueError("Format de session Fireblade inconnu")
     documents = payload.get("documents")
-    if not isinstance(documents, list) or not 0 <= len(documents) <= MAX_SESSION_DOCUMENTS:
-        raise ValueError("Une session doit contenir de 0 à 1000 analyses")
+    if not isinstance(documents, list):
+        raise ValueError("Liste des analyses invalide")
     snapshots, seen = _snapshots(path, documents, set())
     closed = []
     if with_closed:
         entries = payload.get("closed") or []
-        if not isinstance(entries, list) or len(entries) > MAX_SESSION_DOCUMENTS:
-            raise ValueError("Une session doit contenir de 0 à 1000 analyses fermées")
+        if not isinstance(entries, list):
+            raise ValueError("Liste des analyses fermées invalide")
         closed, _ = _snapshots(path, entries, seen)
     if not snapshots and not closed:
-        raise ValueError("Une session doit contenir de 1 à 1000 analyses")
+        raise ValueError("Une session doit contenir au moins une analyse")
     active = payload.get("active", 0)
     if type(active) is not int or not (
         0 <= active < len(snapshots) or (not snapshots and active == -1)
@@ -97,9 +102,16 @@ def _snapshots(path, documents, seen):
             raise ValueError(f"Analyse absente ou dupliquée : {target}")
         seen.add(target)
         view = View.from_json(json.dumps(doc["view"]))
+        web_display = doc.get("web_display")
+        if web_display is not None and not isinstance(web_display, dict):
+            raise ValueError("Disposition web invalide")
         snapshots.append(
             AnalysisSnapshot(
-                str(target), doc["source"], view, base64.b64decode(doc["header"], validate=True)
+                str(target),
+                doc["source"],
+                view,
+                base64.b64decode(doc["header"], validate=True),
+                web_display,
             )
         )
     return snapshots, seen

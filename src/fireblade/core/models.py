@@ -300,6 +300,7 @@ class AnalysisSnapshot:
     source_info: dict
     view: View
     header_state: bytes
+    web_display: dict | None = None
 
 
 OPERATORS = [

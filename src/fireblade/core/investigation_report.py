@@ -203,7 +203,10 @@ def build_report(
                     if row[-1] is not None:
                         result.append('<pre class="note">Note : ' + escape(row[-1]) + "</pre>")
                     result.append("<table>")
-                    for name, value in zip(case.headers, row[1:-1]):
+                    from fireblade.core.sparse_union import fields_from_record
+
+                    for column, value in fields_from_record(case, row[:-1]):
+                        name = case.headers[column]
                         value = "∅" if value is None else str(value)
                         if len(value) > 20000:
                             abbreviated += 1

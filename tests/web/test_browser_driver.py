@@ -21,7 +21,7 @@ import pytest
 from _browser import serving  # noqa: E402
 
 pytest.importorskip("playwright.sync_api")
-from playwright.sync_api import sync_playwright  # noqa: E402
+from playwright.sync_api import expect, sync_playwright  # noqa: E402
 
 from fireblade.web import agency  # noqa: E402
 
@@ -137,6 +137,25 @@ def _import_evidence(base, live, identifier):
         if state.get("status") not in ("running", "pending", "queued"):
             break
     assert state.get("status") == "complete", state
+
+
+def test_the_driver_forwards_the_grid_page_requested_by_the_browser(driver):
+    base, live, identifier, _tmp = driver
+    _import_evidence(base, live, identifier)
+    response = httpx.get(
+        f"{base}/case/{identifier}/api/cases/{identifier}/analyses/0/rows",
+        params={"offset": 4, "limit": 3},
+        timeout=30,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    assert payload["offset"] == 4
+    assert len(payload["rows"]) == 3
+
+
+def test_the_driver_link_opens_the_requested_case(page):
+    expect(page.locator("#casecombo-label")).to_have_text("Container case", timeout=5000)
+    assert page.locator("#analysis-view").is_visible()
 
 
 def test_the_page_under_the_prefix_opens_its_case_and_reads_its_evidence(page, driver):

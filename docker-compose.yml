@@ -12,7 +12,7 @@ services:
       context: .
     container_name: fireblade-host
     ports:
-      - "${FIREBLADE_PORT:-8080}:8080"
+      - "127.0.0.1:${FIREBLADE_PORT:-8080}:8080"
     volumes:
       - "${FIREBLADE_CASES:-./cases}:/data/cases"
       # Profiles and presentation plugins: without this mount they die with the container.

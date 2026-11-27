@@ -124,6 +124,7 @@ ERRORS = {
     "Fichier vide : aucune donnée à importer": "Empty file: no data to import",
     "Le fichier source a changé pendant l’import": "The source file changed during the import",
     "Session limitée à 4 Mo": "Session limited to 4 MB",
+    "Disposition web invalide": "Invalid web layout",
     "Une session doit contenir de 0 à 1000 analyses fermées": "A session holds from 0 to 1000 closed analyses",
     "Seule la section [resources] est reconnue": "Only the [resources] section is recognised",
     "[resources] doit être une section TOML": "[resources] must be a TOML section",

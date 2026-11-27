@@ -1,4 +1,8 @@
-# Kagarasu
+# Kagarasu Host
+
+[![Host validation](https://github.com/23R0534ZXT/kagarasu/actions/workflows/host.yml/badge.svg?branch=codex%2Fhost-gui-review)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/host.yml)
+[![Container images](https://github.com/23R0534ZXT/kagarasu/actions/workflows/containers.yml/badge.svg)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/containers.yml)
+[![Release](https://img.shields.io/github/v/release/23R0534ZXT/kagarasu)](https://github.com/23R0534ZXT/kagarasu/releases/latest)
 
 [![Windows validation](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml)
 
@@ -20,11 +24,12 @@ release (see [Updates](#updates)).
 | Status | **maintained** | frozen at 0.7.9 | planned |
 | Runs on | a Linux container, in a browser | Windows x64 | a Linux host with Docker |
 | Users | one analyst, on their own machine | one analyst | several analysts at once, on the same case or on different ones |
-| Cases | one container per case | files on disk | one container per case |
+| Cases | persistent case folders; optional container per case | files on disk | one container per case |
 | Access control | none — local use only | none | accounts, roles, audit log |
 
-All editions share the same engine (`src/fireblade/core`), the same readers and the same case
-format: a case written by one opens in another.
+Host and the historical Desktop share the engine (`src/fireblade/core`) and reader toolchain.
+Host opens Desktop cases; new Host features, including sparse combined analyses, require the
+current Host and are not a compatibility promise for the frozen Desktop.
 
 The **Host** is the Desktop's workspace served to a browser from a container. It is meant to
 run on the analyst's own machine and to listen on it alone; it has no accounts, and nothing in
@@ -49,10 +54,37 @@ folder is there. On Windows PowerShell, write the folder as `"$HOME\kagarasu-cas
 | --- | --- |
 | Stop / start | `docker stop kagarasu` · `docker start kagarasu` |
 | Upgrade | `docker pull ghcr.io/23r0534zxt/kagarasu:latest && docker rm -f kagarasu`, then run the line above again (the cases stay in their folder) |
-| Pin a version | replace `:latest` with `:0.9.4` · `:edge` follows `main` |
+| Pin a version | replace `:latest` with `:0.10.0` · `:edge` follows `main` |
 | Remove | `docker rm -f kagarasu` (your cases are not touched) |
 
 To build from a clone instead: `docker build -t kagarasu:host .`.
+
+### Investigation layouts
+
+Choose **one grid per file**, **one grid per artifact family**, or **one combined grid**
+from the collection settings. A combined grid retains the original fields, with source
+provenance and a common event clock. Wide collections load the visible column window on
+demand; the column manager lets you find, show and reorder fields. Row and cell notes follow
+the source records when the layout changes.
+
+Artifact families keep supporting configuration files collapsed by default. Use grouping,
+filters and saved column layouts to focus a large collection without discarding its fields.
+Changing a layout rebuilds its analyses as a background job and can take several minutes.
+
+### Qualified on a real collection
+
+The Docker GUI qualification for **0.10.0** imported **2,674 source files** into
+**1,386,061 rows and 1,478 source analyses**. The three layouts retained the same total:
+1,478 file grids, 56 family grids, or **one combined grid with 12,559 data columns**.
+
+The review checked source counts and 66,308 original values, independent EVTX counts,
+filtered CSV/Excel exports, IOC matches, the timeline, notes across layouts, and persistence
+after container recreation. These measurements describe this collection and test environment;
+performance depends on the evidence, selected operations and available resources.
+
+Read the [qualification report](docs/validation/reports/20261127-host-gui/REAL_COLLECTION.md)
+and the [0.10.0 release notes](docs/development/RELEASE-NOTES.md) for methods and limits.
+Private evidence and screenshots are not distributed with the source code.
 
 ### Updates
 
@@ -135,7 +167,7 @@ bar, the engine's own messages, and a Stop.
 | Language | English. |
 | Erasure | Overwriting files cannot be guaranteed on SSDs, copy-on-write or journaled file systems; the certificate states the method used, not a physical guarantee. |
 | Access control | None. Do not expose the Host to a network. |
-| Tested at scale | A 31 574-row EVTX; a 333-file collection; a Windows 11 collection of 496 files read into 482 analyses (183 event logs, 60 Prefetch entries), with 613 Hayabusa alerts and a 68 095-event timeline. On that case a search across every analysis takes about half a minute. No claim is made beyond that. |
+| Tested at scale | Docker GUI: 1,386,061 rows, 1,478 source analyses and 12,559 data columns in one combined grid. Rebuilding the layout takes several minutes on the qualified collection. Earlier Windows 11 qualification also covers Hayabusa and attack graphs. See the linked reports for measured coverage. |
 
 The full statement of what is and is not verified: [docs/host/STATUS.md](docs/host/STATUS.md).
 Reader by reader, with the rows each wrote: [docs/host/LINUX-READERS.md](docs/host/LINUX-READERS.md).

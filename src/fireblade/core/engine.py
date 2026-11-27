@@ -24,14 +24,26 @@ from fireblade.core.conditions import compile_condition, validate_format_rules
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.models import Filter, FilterGroup, SortKey, View
 from fireblade.core.settings import Settings
-from fireblade.core.summaries import group_expression, group_order, summary_expressions
+from fireblade.core.summaries import (
+    BOOKMARK_GROUP_COLUMN,
+    group_expression,
+    group_order,
+    summary_expressions,
+)
 
 
 class Case:
     PAGE_SIZE = Settings().page_size
 
     def __init__(
-        self, path: str | Path, memory_mb=None, threads=None, settings=None, read_only=False
+        self,
+        path: str | Path,
+        memory_mb=None,
+        threads=None,
+        settings=None,
+        read_only=False,
+        *,
+        shared_read=False,
     ):
         self.settings = settings or Settings()
         overrides = {}
@@ -50,7 +62,7 @@ class Case:
         self._bookmark_revision = 0
         self._outline_key = None
         self._source_index_tried = False
-        self._read_only = read_only
+        self._read_only = read_only or shared_read
         self._plugin_object_session = None
         self._plugin_object_lock = threading.RLock()
         self._operation_depth = 0
@@ -60,12 +72,20 @@ class Case:
         self.plugin_restore_errors = []
         from fireblade.core.analysis_storage import connect_analysis
 
-        self.db = connect_analysis(self.path, read_only=read_only, allow_empty_import=True)
+        self.db = connect_analysis(
+            self.path,
+            read_only=read_only and not shared_read,
+            allow_empty_import=not self._read_only,
+        )
         self.db.execute(f"SET memory_limit='{self.settings.memory_mb}MB'")
         self.db.execute(f"SET threads={self.settings.effective_threads}")
         self.db.execute("SET enable_progress_bar=false")
         self.db.execute("SET TimeZone='UTC'")
         self.db.execute("SET preserve_insertion_order=true")
+        # DuckDB connections sharing a file must agree on its open mode. A read
+        # transaction enforces read-only access while the Host grid can still write.
+        if shared_read:
+            self.db.execute("BEGIN TRANSACTION READ ONLY")
         # DuckDB defaults to <database>.tmp, which remains available after
         # revoking external access on an existing analysis.
         self._plugin_udf = False
@@ -212,10 +232,21 @@ class Case:
             if temporary:
                 temporary.unlink(missing_ok=True)
 
+    @property
+    def sparse(self):
+        from fireblade.core.sparse_union import sparse
+
+        return sparse(self.info)
+
+    def _storage_column(self, index):
+        from fireblade.core.sparse_union import column_sql
+
+        return column_sql(self.info, index)
+
     def column(self, index):
         if type(index) is not int or not 0 <= index < len(self.headers):
             raise ValueError("Colonne invalide")
-        return f'"c{index}"'
+        return self._storage_column(index)
 
     @staticmethod
     def validate_single_column_header(path):
@@ -250,12 +281,16 @@ class Case:
             # Hash before and after parsing detects source changes during acquisition.
             progress("Calcul SHA-256 de la source…")
 
+            has_quotes = False
+
             def digest():
+                nonlocal has_quotes
                 h = hashlib.sha256()
                 with source.open("rb") as f:
                     while chunk := f.read(4 * 1024 * 1024):
                         self.check_cancelled()
                         h.update(chunk)
+                        has_quotes = has_quotes or b'"' in chunk
                 return h.hexdigest()
 
             before = source.stat()
@@ -294,6 +329,32 @@ class Case:
                     incoming = self.utf8_input(source, encoding)
                 with incoming as input_path:
                     self.check_cancelled()
+                    if has_quotes:
+                        # The native reader can silently drop an unterminated final
+                        # quoted record beyond its sample. Validate quoting before
+                        # accepting its count as the complete evidence.
+                        separator = delimiter
+                        if not separator:
+                            with input_path.open(encoding="utf-8-sig", newline="") as sample:
+                                try:
+                                    separator = (
+                                        csv.Sniffer()
+                                        .sniff(sample.read(65536), delimiters=",;\t|")
+                                        .delimiter
+                                    )
+                                except csv.Error:
+                                    separator = ","
+                        csv.field_size_limit(max(csv.field_size_limit(), 16 * 1024 * 1024))
+                        with input_path.open(encoding="utf-8-sig", newline="") as quoted:
+                            reader = csv.reader(quoted, delimiter=separator, strict=True)
+                            try:
+                                for position, _record in enumerate(reader):
+                                    if position % 1024 == 0:
+                                        self.check_cancelled()
+                            except csv.Error as exc:
+                                raise ValueError(
+                                    f"CSV quoting is invalid near line {reader.line_num}: {exc}"
+                                ) from exc
                     headers = None
                     relation = None
                     # Declared before the read: the memory fallback below runs even
@@ -491,8 +552,7 @@ class Case:
 
     def huge_threshold(self):
         """Above this, one transaction stops being the right promise."""
-        budget = (getattr(self.settings, "memory_mb", None) or 1024) * 1024 * 1024
-        return max(2 * 1024**3, 8 * budget)
+        return csv_chunks.transaction_limit(getattr(self.settings, "memory_mb", None))
 
     def single_pass_limit(self):
         """Above this size the file is read chunk by chunk, not in one pass.
@@ -699,7 +759,7 @@ class Case:
                     raise ValueError(
                         "Une colonne dérivée ne peut référencer que les colonnes précédentes"
                     )
-                return f'"c{index}"'
+                return self._storage_column(index)
 
             column.case = self
             expression = compile_definition(definition, headers, column, self.numeric_expression)
@@ -761,7 +821,14 @@ class Case:
 
     def where(self, view: View, path=()):
         clauses, args = [], []
-        if view.search:
+        if view.search and self.sparse:
+            from fireblade.core.sparse_union import values_sql
+
+            clauses.append(
+                f"list_contains(list_transform({values_sql(self)}, value -> contains(lower(coalesce(value, '')), lower(?))), true)"
+            )
+            args.append(view.search)
+        elif view.search:
             clauses.append(
                 "("
                 + " OR ".join(
@@ -862,7 +929,7 @@ class Case:
         if len(view.groups) != len(set(view.groups)):
             raise ValueError("Une colonne ne peut apparaître deux fois dans les groupes")
         for column in view.groups:
-            self.column(column)
+            group_expression(self, view, column)
         from fireblade.core.summaries import group_sort_terms
 
         group_sort_terms(view)
@@ -1030,6 +1097,13 @@ class Case:
                 ):
                     return self.sorted_page(where, args, order, key, offset, limit)
                 sql = f"SELECT * FROM events{where}{order} LIMIT ? OFFSET ?"
+                if self.sparse:
+                    from fireblade.core.sparse_union import expand_record
+
+                    return [
+                        expand_record(self, row)
+                        for row in self.db.execute(sql, args + [limit, offset]).fetchall()
+                    ]
             if len(path) >= len(view.groups) and getattr(self, "_wide_pages", False):
                 return self._page_columns(view, where, args, offset, limit)
             try:
@@ -1051,7 +1125,13 @@ class Case:
         ]
         if not ids:
             return []
+        rows = self._rows_columns(ids)
+        return [tuple(rows[row_id]) for row_id in ids]
+
+    def _rows_columns(self, ids):
+        """Point reads of very wide ordinary analyses, within the engine budget."""
         rows = {row_id: [row_id] + [None] * len(self.headers) for row_id in ids}
+        found = set()
         placeholders = ",".join("?" for _ in ids)
         for start in range(0, len(self.headers), 32):
             self.check_cancelled()
@@ -1060,8 +1140,9 @@ class Case:
             for record in self.db.execute(
                 f"SELECT __row_id,{columns} FROM events WHERE __row_id IN ({placeholders})", ids
             ).fetchall():
+                found.add(record[0])
                 rows[record[0]][start + 1 : end + 1] = record[1:]
-        return [tuple(rows[row_id]) for row_id in ids]
+        return {row_id: rows[row_id] for row_id in found}
 
     def outline_page(self, view, offset=0, limit=None, progress=lambda _: None):
         from fireblade.core.outline import outline_page
@@ -1094,7 +1175,17 @@ class Case:
             except duckdb.OutOfMemoryException:
                 pass
         query = "SELECT * FROM events WHERE __row_id IN (" + ",".join("?" for _ in ids) + ")"
-        return {row[0]: row for row in self.db.execute(query, ids).fetchall()}
+        try:
+            rows = self.db.execute(query, ids).fetchall()
+        except duckdb.OutOfMemoryException:
+            if self.sparse:
+                raise
+            return {row_id: tuple(row) for row_id, row in self._rows_columns(ids).items()}
+        if self.sparse:
+            from fireblade.core.sparse_union import expand_record
+
+            rows = [expand_record(self, row) for row in rows]
+        return {row[0]: row for row in rows}
 
     def sorted_page(self, where, args, order, key, offset, limit):
         """One temporary order at a time, containing IDs rather than full rows.
@@ -1328,17 +1419,22 @@ class Case:
 
                     sql, args = grouped_export_query(self, view, where, args)
                 headers = (
-                    [self.headers[i] for i in view.groups]
+                    [
+                        "Bookmark status" if i == BOOKMARK_GROUP_COLUMN else self.headers[i]
+                        for i in view.groups
+                    ]
                     + ["Count"]
                     + [f"{s.operation}({self.headers[s.column]})" for s in view.summaries]
                 )
             else:
+                annotations = ""
                 if include_annotations:
                     # Row-level notes only: a row can now carry several cell notes.
-                    cols += (
+                    annotations = (
                         ", __row_id, EXISTS(SELECT 1 FROM bookmarks b WHERE b.row_id=events.__row_id AND b.column_id=-1), "
                         "(SELECT b.note FROM bookmarks b WHERE b.row_id=events.__row_id AND b.column_id=-1)"
                     )
+                    cols += annotations
                     headers = headers.copy()
                     existing = {h.casefold() for h in headers}
                     for name in (
@@ -1353,6 +1449,9 @@ class Case:
                         headers.append(candidate)
                         existing.add(candidate.casefold())
                 sql = f"SELECT {cols} FROM events{where}{self.order(view)}"
+                if self.sparse:
+                    cols = "events.*" + annotations
+                    sql = f"SELECT {cols} FROM events{where}{self.order(view)}"
             owns_temporary = False
             try:
                 expected = self.db.execute(
@@ -1375,6 +1474,10 @@ class Case:
                     from fireblade.core.export_rows import SourceOrderCursor
 
                     native_cursor = SourceOrderCursor(self, cols, where, args)
+                if self.sparse and not (grouped and view.groups):
+                    from fireblade.core.sparse_union import ExportCursor as SparseExportCursor
+
+                    native_cursor = SparseExportCursor(self, native_cursor, selected)
                 cursor = ExportCursor(native_cursor)
                 if target.suffix.lower() == ".xlsx":
                     from fireblade.core.spreadsheets import write_xlsx

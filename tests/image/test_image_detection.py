@@ -161,3 +161,47 @@ def test_an_alert_gives_its_evtx_context_and_its_source_event(detected, browse):
         )
         assert "EVTX context" in " ".join(item["label"] for item in analyses(case))
         page.click('.tabs .tab:text-is("Analyses")')
+
+
+def test_an_edited_detection_rule_is_saved_read_back_and_reset(detected, browse):
+    name, _case = detected
+    with browse(name) as page:
+        page.click('[data-tab="hayabusa"]')
+        page.click("#detrules-open")
+        page.wait_for_function(
+            "document.querySelectorAll('#detrules-rows tr').length > 50", timeout=60000
+        )
+        page.fill("#detrules-filter", "logon")
+        page.locator("#detrules-rows tr").first.click()
+        page.wait_for_function("document.getElementById('detrules-text').value.length > 20")
+        original = page.input_value("#detrules-text")
+        try:
+            page.fill("#detrules-text", "# Qualification comment\n" + original)
+            page.click("#detrules-save")
+            page.wait_for_function("document.getElementById('status').innerText === 'Rule saved'")
+            page.locator("#detrules-rows tr").first.click()
+            page.wait_for_function(
+                "document.getElementById('detrules-text').value.startsWith('# Qualification comment')"
+            )
+        finally:
+            page.click("#detrules-reset")
+            page.wait_for_function(
+                "document.getElementById('status').innerText.includes('Rule reset')"
+            )
+        assert page.input_value("#detrules-text") == original
+
+
+def test_an_alert_context_menu_opens_its_exact_source_event(detected, browse):
+    name, _case = detected
+    with browse(name, wait_rows=False) as page:
+        _run(page)
+        page.wait_for_selector('#hayabusa-rows tr button[data-want="show"]', timeout=60000)
+        page.locator('#hayabusa-rows tr button[data-want="show"]').first.click()
+        page.wait_for_function("state.columns.includes('Fireblade_EVTX_Source')", timeout=60000)
+        page.locator("#body tr[data-row] td[data-cell]").nth(1).click(button="right")
+        page.click('#row-menu [data-act="alert-source"]')
+        page.wait_for_function(
+            "document.getElementById('status').innerText.startsWith('Source event ')", timeout=60000
+        )
+        assert page.locator("#body tr[data-row]").count() == 1
+        assert page.evaluate("state.total") == 1

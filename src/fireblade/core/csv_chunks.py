@@ -7,6 +7,15 @@ from pathlib import Path
 CHUNK_BYTES = 16 * 1024 * 1024
 
 
+def transaction_limit(memory_mb):
+    """Checkpoint multi-gigabyte imports before uncommitted strings dominate RAM."""
+    budget = int(memory_mb or 1024)
+    # Constrained profiles favour a bounded transaction; the normal import path
+    # keeps its throughput when the analyst has not selected a small budget.
+    multiplier = 2 if budget <= 512 else 8
+    return max(2 * 1024**3, multiplier * budget * 1024 * 1024)
+
+
 class _Utf8Writer:
     def __init__(self, output):
         self.output, self.bytes_written = output, 0

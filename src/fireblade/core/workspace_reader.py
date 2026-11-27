@@ -10,9 +10,10 @@ from fireblade.core.errors import OperationCancelled, job_cancelled
 
 
 class WorkspaceReader:
-    def __init__(self, documents, settings=None, active=None):
+    def __init__(self, documents, settings=None, active=None, *, shared_read=False):
         self.documents = copy.deepcopy(documents)
         self.settings, self.active = settings, active
+        self.shared_read = shared_read
         self.cancelled = threading.Event()
         self.lock = threading.Lock()
         self.current = None
@@ -33,7 +34,13 @@ class WorkspaceReader:
         if not Path(document.path).is_file():
             raise FileNotFoundError("Analyse introuvable : " + document.path)
         own = self.active is None or str(self.active.path) != document.path
-        case = Case(document.path, settings=self.settings, read_only=True) if own else self.active
+        case = (
+            Case(
+                document.path, settings=self.settings, read_only=True, shared_read=self.shared_read
+            )
+            if own
+            else self.active
+        )
         try:
             with self.lock:
                 self.current = case

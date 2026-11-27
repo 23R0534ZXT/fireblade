@@ -9,6 +9,9 @@ import time
 import httpx
 import pytest
 from _audit import rows
+from conftest import make_case
+
+from tests.core.pdf_sample import build_pdf
 
 
 def _mixed(page, server, inside_case=False):
@@ -28,12 +31,8 @@ def _mixed(page, server, inside_case=False):
     (folder / "page.html").write_text(
         "<html><body><h1>Incident</h1><p>Beacon every 60 seconds to evil.example</p></body></html>"
     )
-    pytest.importorskip("reportlab")
-    from reportlab.pdfgen import canvas
-
-    sheet = canvas.Canvas(str(folder / "memo.pdf"))
-    sheet.drawString(72, 760, "Containment memo: isolate host PC01")
-    sheet.save()
+    pytest.importorskip("pypdf")
+    (folder / "memo.pdf").write_bytes(build_pdf("Containment memo: isolate host PC01"))
     job = httpx.post(
         f"{base}/api/cases/{case}/import-jobs",
         data={"source": str(folder), "organization": "files"},
@@ -55,15 +54,52 @@ def _lines(page):
     )
 
 
+def test_a_late_import_report_cannot_fill_a_different_case(page, server):
+    base = server[0]
+    original = page.evaluate("state.openCase.id")
+    other = make_case(server, "Case with no imports")
+    delayed_url = f"{base}/api/cases/{original}/collection-files"
+    old = httpx.get(delayed_url).raise_for_status().json()
+    assert old["files"]
+    held = []
+    page.route(delayed_url, lambda route: held.append(route))
+    with page.expect_request(delayed_url):
+        page.locator('[data-tab="imports"]').click()
+
+    page.locator('.toolbar [data-act="refresh-cases"]').click()
+    page.locator('[data-tab="cases"]').click()
+    page.locator('#cases-body tr:has(td:text-is("Case with no imports")) td').first.dblclick()
+    page.wait_for_function("id => state.openCase?.id === id", arg=other)
+    new_url = f"**/api/cases/{other}/collection-files"
+    with page.expect_response(new_url) as fresh:
+        page.locator('[data-tab="imports"]').click()
+    fresh.value.finished()
+
+    with page.expect_response(delayed_url) as delayed:
+        held[0].fulfill(json=old)
+    delayed.value.finished()
+    page.evaluate(
+        "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+    )
+    assert page.locator("#imports-rows tr[data-import]").count() == 0
+
+
 def _retry(page, name, reader):
     page.click("#retry-open")
     page.wait_for_selector("#retry-modal.show")
     line = page.locator(".retry-line", has_text=name)
     line.locator("select").select_option(reader)
-    line.locator("[data-retry-run]").click()
+    with page.expect_response(lambda response: response.url.endswith("/retry")) as retried:
+        line.locator("[data-retry-run]").click()
+    assert retried.value.ok
+    result = retried.value.json()
+    assert result["status"] == "complete" and result["analyses_added"] == 1
     page.wait_for_function(
-        "!document.getElementById('retry-modal').classList.contains('show')", timeout=60000
+        "reader => document.getElementById('status').innerText.startsWith(`Read with ${reader}: complete`)",
+        arg=reader,
+        timeout=60000,
     )
+    return result["first_analysis"]
 
 
 def test_the_retry_window_lists_what_no_reader_recognised_and_the_readers_it_can_try(
@@ -89,7 +125,7 @@ def test_the_retry_window_lists_what_no_reader_recognised_and_the_readers_it_can
     [
         ("disguised.txt", "csv", 2, "alice"),
         ("notes.txt", "text", 3, "second line"),
-        ("page.html", "html", 1, "evil.example"),
+        ("page.html", "html", 2, "evil.example"),
         ("memo.pdf", "pdf", 1, "isolate host PC01"),
     ],
 )
@@ -98,17 +134,13 @@ def test_a_file_is_read_again_with_the_reader_the_analyst_names(
 ):
     page = empty_page
     _mixed(page, server)
-    _retry(page, name, reader)
-    page.wait_for_function(
-        f"[...document.querySelectorAll('#tree .node.child')].some(e => e.innerText.includes({name!r}))"
-    )
-    # the generic reader's grid of the same file comes first: the one the analyst asked for is the last
-    page.locator(f'#tree .node.child:has-text("{name}")').last.click()
+    result = _retry(page, name, reader)
+    assert name in page.locator(f'#tree .node.sel[data-analysis="{result}"]').inner_text()
     page.wait_for_selector("#body tr[data-row]")
     page.wait_for_function(
         f"document.getElementById('body').innerText.includes({expect_text!r})", timeout=30000
     )
-    assert rows(page) >= expect_rows
+    assert rows(page) == expect_rows
 
 
 def test_a_file_is_set_aside_from_the_retry_window(empty_page, server):

@@ -111,3 +111,16 @@ def test_late_invalid_width_rolls_back_all_batches(tmp_path, monkeypatch):
         assert not list(tmp_path.glob(".fireblade-import-*"))
     finally:
         case.close()
+
+
+def test_native_import_rejects_an_unterminated_final_quoted_record(tmp_path):
+    source = tmp_path / "truncated.csv"
+    source.write_text(
+        "Id,Value\n" + "".join(f"{i},ok\n" for i in range(100000)) + '100000,"unfinished\n'
+    )
+    case = Case(tmp_path / "truncated.timeline")
+    try:
+        with pytest.raises(ValueError, match="CSV|quote|end of data"):
+            case.import_csv(source)
+    finally:
+        case.close()

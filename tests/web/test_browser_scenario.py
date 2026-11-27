@@ -142,12 +142,8 @@ def test_grouping_by_a_column_lists_its_values_and_drills_down(page):
     _open(page, "access.log")
     page.click('.groupbar [data-act="group-column"]')
     page.wait_for_selector("#group-modal.show")
-    labels = page.eval_on_selector_all(
-        "#group-modal select option", "o => o.map(x => x.textContent.trim())"
-    )
-    assert "Status" in labels
-    page.select_option("#group-modal select >> nth=0", label="Status")
-    page.click("#group-modal button:has-text('Add level')")
+    page.locator("#group-levels").get_by_role("checkbox", name="Status", exact=True).check()
+    page.click('#group-modal [data-act="group-apply"]')
     page.wait_for_selector("#body tr[data-group]")
     assert page.locator("#body tr[data-group]").count() >= 5
     page.locator("#body tr[data-group]").first.click()
@@ -159,9 +155,10 @@ def test_an_indicator_hunt_reports_its_matches(page):
     page.fill("#ioc-input", "203.0.113.7\nnot-in-the-logs.example")
     page.check("#ioc-all")
     page.click("#ioc-scan")
-    page.wait_for_function("document.querySelectorAll('#ioc-rows tr').length > 0", timeout=20000)
+    page.locator("#ioc-rows tr[data-hit]").filter(has_text="203.0.113.7").first.wait_for(
+        timeout=20000
+    )
     assert "203.0.113.7" in page.inner_text("#ioc-list-rows")
-    assert page.locator("#ioc-rows tr").count() >= 1
 
 
 def test_the_timeline_dates_the_access_log_and_leaves_the_year_less_log_undated(page):

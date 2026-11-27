@@ -92,8 +92,8 @@ def test_oversized_session_and_invalid_selection_do_not_replace_manifest(tmp_pat
     library = InvestigationLibrary(tmp_path / "cases")
     data = library.create("Test")
     entry = snapshot(tmp_path)
-    entry.source_info["padding"] = "x" * (4 * 1024 * 1024)
-    with pytest.raises(ValueError, match="4 Mo"):
+    entry.source_info["padding"] = "x" * (64 * 1024 * 1024)
+    with pytest.raises(ValueError, match="memory budget"):
         library.save(data["id"], [entry], 0, [], None, data["revision"])
     with pytest.raises(ValueError):
         library.save(data["id"], [entry], 2, [], None, data["revision"])

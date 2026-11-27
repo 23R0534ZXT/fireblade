@@ -165,8 +165,7 @@ def test_stopping_an_import_ends_it_and_keeps_what_was_written(empty_page, serve
         timeout=120000,
     )
     page.wait_for_function(
-        "document.getElementById('status').innerText.length > 0 "
-        "&& !document.getElementById('status').innerText.includes('Importing')",
+        "document.getElementById('status').innerText.startsWith('Import stopped — ')",
         timeout=60000,
     )
     message = status(page)
@@ -180,3 +179,80 @@ def test_stopping_an_import_ends_it_and_keeps_what_was_written(empty_page, serve
     # the case still opens and lists whatever was written before the stop
     page.click('.tabs .tab:text-is("Imports")')
     page.wait_for_function("document.getElementById('imports-rows').innerText.length > 0")
+
+
+def test_sqlite_databases_import_with_a_read_only_reader_installation(empty_page, server):
+    import sqlite3
+
+    page = empty_page
+    folder = _case_folder(page, server) / "databases"
+    folder.mkdir()
+    for name, count in [("first.sqlite", 3), ("second.sqlite", 5)]:
+        with sqlite3.connect(folder / name) as connection:
+            connection.execute("CREATE TABLE evidence (Id INTEGER, Marker TEXT)")
+            connection.executemany(
+                "INSERT INTO evidence VALUES (?, ?)",
+                [(index, "synthetic-browser-record") for index in range(count)],
+            )
+    _open_import(page)
+    page.fill("#preview-server", str(folder))
+    page.click('[data-act="preview-path"]')
+    _preview_card(page)
+    page.click("#preview-import")
+    page.wait_for_function(
+        "document.getElementById('status').innerText.includes('file(s) imported')", timeout=30000
+    )
+    assert page.evaluate("state.openCase.analyses.length") == 2
+    observed = []
+    for index in range(2):
+        with page.expect_response(lambda response: "/rows?" in response.url) as loaded:
+            page.locator("#tree .node.child:not(.closed)").nth(index).click()
+        expected = loaded.value.json()["total"]
+        page.wait_for_function(
+            "count => document.getElementById('pageinfo').innerText.includes('/ ' + count + ' row')",
+            arg=expected,
+        )
+        observed.append(rows(page))
+    assert sorted(observed) == [3, 5]
+
+
+def test_committed_sqlite_wal_records_survive_generic_fallback_in_the_gui(
+    empty_page, server, tmp_path
+):
+    import shutil
+    import sqlite3
+
+    folder = _case_folder(empty_page, server) / "wal-collection"
+    folder.mkdir()
+    live = tmp_path / "live.sqlite"
+    connection = sqlite3.connect(live)
+    try:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("CREATE TABLE evidence (Id INTEGER, Marker TEXT)")
+        connection.commit()
+        connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        connection.execute("INSERT INTO evidence VALUES (1, 'committed-only-in-wal')")
+        connection.commit()
+        source = folder / "collected.sqlite"
+        shutil.copyfile(live, source)
+        wal = source.with_name(source.name + "-wal")
+        shutil.copyfile(live.with_name(live.name + "-wal"), wal)
+    finally:
+        connection.close()
+    before = {path: path.read_bytes() for path in [source, wal]}
+    page = empty_page
+    _open_import(page)
+    page.fill("#preview-server", str(folder))
+    page.click('[data-act="preview-path"]')
+    _preview_card(page)
+    page.click("#preview-import")
+    page.wait_for_function(
+        "document.getElementById('status').innerText.includes('file(s) imported')", timeout=30000
+    )
+    page.locator("#tree .node.child", has_text="collected.sqlite").click()
+    page.wait_for_function(
+        "document.getElementById('body').innerText.includes('committed-only-in-wal')"
+    )
+    assert rows(page) == 1
+    assert all(path.read_bytes() == data for path, data in before.items())
+    assert not source.with_name(source.name + "-shm").exists()

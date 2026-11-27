@@ -198,7 +198,7 @@ class CaseContainer:
     def wait_healthy(self, timeout: float = 25.0) -> None:
         """A case answers /health in a few seconds; past that, the container is not starting."""
         deadline = time.monotonic() + timeout
-        with httpx.Client(timeout=1.5) as client:
+        with httpx.Client(timeout=1.5, trust_env=False) as client:
             while time.monotonic() < deadline:
                 try:
                     if client.get(f"{self.url}/health").status_code == 200:
@@ -652,7 +652,9 @@ def create_app(
     )
     updates = Checker(version or "0", "driver")
     client = httpx.AsyncClient(
-        timeout=httpx.Timeout(60.0, connect=5.0, read=None), follow_redirects=False
+        timeout=httpx.Timeout(60.0, connect=5.0, read=None),
+        follow_redirects=False,
+        trust_env=False,  # Case traffic stays on the private Docker network.
     )
 
     @contextlib.asynccontextmanager
@@ -786,7 +788,11 @@ def create_app(
         target = f"{case.url}/{path}"
         try:
             upstream = client.build_request(
-                request.method, target, headers=headers, content=request.stream()
+                request.method,
+                target,
+                params=request.query_params.multi_items(),
+                headers=headers,
+                content=request.stream(),
             )
             answer = await client.send(upstream, stream=True)
         except httpx.HTTPError as exc:

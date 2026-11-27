@@ -132,15 +132,11 @@ def _named_schemas(groups):
     return named
 
 
-def organize(collection):
-    mode = collection.report.get("organization", "files")
-    if mode == "files" or not collection.report["documents"]:
-        return
-    from fireblade.core.collection import check_cancel
-
-    originals = list(collection.report["documents"])
+def source_groups(report, originals):
+    """The deterministic source order, also used to resolve older row references."""
+    mode = report.get("organization", "files")
     origins = {}
-    for entry in collection.report["files"]:
+    for entry in report["files"]:
         for run in entry.get("runs", []):
             for output in run.get("outputs", []):
                 if output.get("analysis"):
@@ -165,6 +161,22 @@ def organize(collection):
         groups.setdefault(key, []).append((document, origin))
     if mode == "schemas":
         groups = _named_schemas(groups)
+    return groups
+
+
+def organize(collection):
+    mode = collection.report.get("organization", "files")
+    if mode == "files" or not collection.report["documents"]:
+        return
+    from fireblade.core.collection import check_cancel
+
+    originals = list(collection.report["documents"])
+    groups = source_groups(collection.report, originals)
+    if mode == "combined" and _union_width(groups["Collecte complète"]) > MAX_COLUMNS:
+        from fireblade.core.sparse_union import organize_sparse
+
+        organize_sparse(collection, groups["Collecte complète"])
+        return
     notes = []
     if mode in ("artifacts", "combined"):
         groups = _split_too_wide(groups, mode, notes)
@@ -269,6 +281,23 @@ def organize(collection):
                 if state is not None:
                     state.organize_step()
                 continue
+            references, first = [], 1
+            for source, _origin in sources:
+                references.append(
+                    dict(path=source["path"], first_row=first, rows=source["source"]["rows"])
+                )
+                first += source["source"]["rows"]
+            document["source"]["row_sources"] = references
+            merged_case = Case(document["path"], settings=collection.settings)
+            try:
+                import json
+
+                merged_case.db.execute(
+                    "UPDATE metadata SET value=? WHERE key='source'",
+                    [json.dumps(document["source"])],
+                )
+            finally:
+                merged_case.close()
             documents.append(document)
             if state is not None:
                 state.organize_step()

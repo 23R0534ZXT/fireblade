@@ -156,6 +156,35 @@ def test_the_scope_every_case_adds_the_actions_of_the_other_cases_and_marks_thei
     )
 
 
+def test_a_late_all_cases_request_cannot_replace_the_current_scope(page, server):
+    import httpx
+
+    other = make_case(server, "Delayed investigation")
+    remote = f"{server[0]}/api/cases/{other}"
+    httpx.post(f"{remote}/actions", json={"title": "Delayed action"}).raise_for_status()
+    old_payload = httpx.get(f"{remote}/workspace").raise_for_status().json()
+    page.evaluate("loadCases()")
+    _tab(page, "actions")
+    _new_action(page, "Current action")
+    held = []
+    page.route(f"{remote}/workspace", lambda route: held.append(route))
+    with page.expect_request(f"{remote}/workspace"):
+        page.select_option("#action-scope", "all")
+    current = page.evaluate("state.openCase.id")
+    with page.expect_response(f"**/api/cases/{current}/workspace") as fresh:
+        page.select_option("#action-scope", "case")
+    fresh.value.finished()
+    _row(page, "Current action").wait_for()
+
+    with page.expect_response(f"{remote}/workspace") as stale:
+        held[0].fulfill(json=old_payload)
+    stale.value.finished()
+    page.evaluate(
+        "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+    )
+    assert _row(page, "Delayed action").count() == 0
+
+
 def test_the_type_priority_and_owner_of_a_new_action_reach_its_row(page):
     _tab(page, "actions")
     for number, (owner, priority, kind, owner_text, priority_text, kind_text) in enumerate(

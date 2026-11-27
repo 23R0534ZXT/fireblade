@@ -100,14 +100,13 @@ def _many(folder, files):
     return folder
 
 
-def test_more_grids_than_a_case_holds_are_grouped_not_lost(lib, monkeypatch):
-    """1400 files in 'one grid per file' used to be read, then refused: nothing was shown."""
+def test_per_file_layout_is_not_automatically_changed_by_an_analysis_count(lib):
+    """The requested per-file layout stays per file; counts no longer trigger regrouping."""
     library, identifier, tmp_path = lib
-    monkeypatch.setattr(type(library), "SESSION_LIMIT", 5)
     result = library.import_source(identifier, _many(tmp_path / "many", 8), organization="files")
-    assert result["analyses"] == 1 and "identical columns" in result["notice"], result
+    assert result["analyses"] == 8 and not result.get("notice"), result
     case = library.case(identifier)
-    assert 1 <= len(case["analyses"]) <= 5, "the case shows what was read"
+    assert len(case["analyses"]) == 8, "the requested per-file layout is retained"
 
 
 def test_the_layout_can_be_changed_after_the_import_and_back(lib, monkeypatch):
@@ -122,19 +121,20 @@ def test_the_layout_can_be_changed_after_the_import_and_back(lib, monkeypatch):
     assert len(library.case(identifier)["analyses"]) == 4, "one grid per file again"
 
 
-def test_one_grid_per_file_is_refused_when_it_would_not_fit(lib, monkeypatch):
+def test_per_file_layout_checks_metadata_resources_before_changing_the_case(lib, monkeypatch):
+    from fireblade.web import service
+
     library, identifier, tmp_path = lib
     library.import_source(identifier, _many(tmp_path / "some", 4), organization="artifacts")
-    monkeypatch.setattr(type(library), "SESSION_LIMIT", 3)
-    with pytest.raises(ServiceError) as refused:
-        library.reorganize(identifier, "files")
-    assert "more than the 3" in str(refused.value) and "artifact family" in str(refused.value)
+    with monkeypatch.context() as limited:
+        limited.setattr(service, "MAX_SESSION_BYTES", 1)
+        with pytest.raises(ServiceError, match="metadata exceeds its memory budget"):
+            library.reorganize(identifier, "files")
     assert len(library.case(identifier)["analyses"]) == 1, "nothing was changed"
 
 
-def test_files_of_different_shapes_make_one_grid_per_shape_not_one_wide_table(lib, monkeypatch):
+def test_per_file_layout_keeps_each_file_without_widening_its_schema(lib):
     library, identifier, tmp_path = lib
-    monkeypatch.setattr(type(library), "SESSION_LIMIT", 5)
     folder = tmp_path / "shapes"
     folder.mkdir()
     for number in range(9):  # three shapes, three files each
@@ -143,9 +143,9 @@ def test_files_of_different_shapes_make_one_grid_per_shape_not_one_wide_table(li
             ",".join(header) + "\n" + f"2026-11-01T10:00:00Z,v{number}\n"
         )
     result = library.import_source(identifier, folder, organization="files")
-    assert result["analyses"] == 3, result
+    assert result["analyses"] == 9, result
     case = library.case(identifier)
-    assert len(case["analyses"]) == 3
+    assert len(case["analyses"]) == 9
     assert sum(a["source_info"]["rows"] for a in case["analyses"]) == 9, "no row lost"
     assert all(len(a["source_info"]["headers"]) <= 5 for a in case["analyses"]), "not widened"
 

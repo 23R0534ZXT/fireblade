@@ -22,16 +22,19 @@ import tempfile
 import threading
 import time as clock
 import uuid
+from contextlib import suppress
 from datetime import UTC, date, datetime, time
+from functools import wraps
 from pathlib import Path
 
-from fireblade.core.collection import Collection, ToolPack
+from fireblade.core.collection import Collection, ToolPack, settle_empty_runs
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled
 from fireblade.core.investigations import InvestigationLibrary
 from fireblade.core.models import OPERATORS as CORE_OPERATORS
 from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View
-from fireblade.core.sessions import read_session
+from fireblade.core.sessions import MAX_SESSION_BYTES, read_session
+from fireblade.core.summaries import BOOKMARK_GROUP_COLUMN
 from fireblade.core.timeline import TimelineStore
 from fireblade.core.workspace_reader import WorkspaceReader
 from fireblade.web import english
@@ -63,6 +66,23 @@ def json_value(value):
     return str(value)
 
 
+def _case_operation(method):
+    """Keep a case's handle alive through grid rendering and lifecycle changes.
+
+    Locks are per case, so a slow layout does not hold the service's job/status lock.
+    """
+
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        identifier = args[0] if args else kwargs.get("identifier")
+        with self._lock:
+            gate = self._case_operations.setdefault(identifier, threading.RLock())
+        with gate:
+            return method(self, *args, **kwargs)
+
+    return guarded
+
+
 class Library:
     """Case catalogue plus one open analysis at a time per (case, index)."""
 
@@ -89,6 +109,7 @@ class Library:
         self._timeline_dir = tempfile.mkdtemp(prefix="fireblade-timelines-")
         self._lock = threading.RLock()
         self._jobs: dict[str, dict] = {}
+        self._case_operations: dict[str, threading.RLock] = {}
 
     # -- preferences -------------------------------------------------------
 
@@ -194,13 +215,18 @@ class Library:
         ]
         # What the Artifacts tree groups by: the collection an analysis came from and its family.
         folder = self.library.folder(identifier)
+        collection_cache: dict = {}
         for item in summary["analyses"]:
-            item["collection"] = self._tree_collection(folder, item)
+            item["collection"] = self._tree_collection(folder, item, collection_cache)
             item["family"] = self._family_of(item)
+            if item["family"] == "Supporting files":
+                self._supporting_tree_name(item, collection_cache)
+        layouts = {info["layout"] for info in collection_cache.values()}
+        summary["layout"] = next(iter(layouts)) if len(layouts) == 1 else None
         return summary
 
     @staticmethod
-    def _tree_collection(folder: Path, item: dict) -> dict:
+    def _tree_collection(folder: Path, item: dict, cache: dict) -> dict:
         """The collection folder an analysis lives under, named after its evidence."""
         path = Path(str(item.get("path") or ""))
         base = folder / "collections"
@@ -208,15 +234,51 @@ class Library:
             key = path.relative_to(base).parts[0]
         except (ValueError, IndexError):
             return {"key": "", "name": "Analyses outside a collection"}
+        if key in cache:
+            return {field: cache[key][field] for field in ("key", "name", "layout")}
         name = key
         report = base / key / "collection.json"
+        layout = None
+        supporting = {}
         try:
-            source = json.loads(report.read_text(encoding="utf-8")).get("source")
+            metadata = json.loads(report.read_text(encoding="utf-8"))
+            for document in metadata.get("raw_documents") or metadata.get("documents") or []:
+                info = document.get("source") or {}
+                if info.get("parser") == "Files":
+                    shape = tuple(info.get("headers") or [])
+                    source_name = str(info.get("label") or info.get("path") or "")
+                    supporting.setdefault(shape, set()).add(source_name)
+            source = metadata.get("source")
+            layout = metadata.get("organization")
+            if layout not in ("files", "artifacts", "combined", "schemas"):
+                layout = None
             if source:
                 name = Path(str(source).replace("\\", "/")).name or key
         except (OSError, ValueError, AttributeError):
             pass
-        return {"key": key, "name": name}
+        cache[key] = {"key": key, "name": name, "layout": layout, "supporting": supporting}
+        return {"key": key, "name": name, "layout": layout}
+
+    @staticmethod
+    def _supporting_tree_name(item: dict, cache: dict) -> None:
+        info = item.get("source_info") or {}
+        headers = list(info.get("headers") or [])
+        organized = "/results/organisation-" in str(item.get("source") or "").replace("\\", "/")
+        if organized:
+            headers = headers[3:]  # the organized grid adds its three provenance columns
+            owner = cache.get((item.get("collection") or {}).get("key"), {})
+            sources = sorted(owner.get("supporting", {}).get(tuple(headers), []))
+        else:
+            sources = [str(info.get("label") or info.get("path") or item.get("source") or "")]
+        if not sources:
+            return
+        names = [Path(source.replace("\\", "/")).name for source in sources]
+        if organized and headers[:2] == ["Line", "Text"]:
+            label = f"Text and collection logs ({len(sources)} files)"
+        else:
+            label = names[0] + (f" +{len(sources) - 1} files" if len(sources) > 1 else "")
+        item["tree_label"] = label
+        item["tree_sources"] = sources
 
     def _family_of(self, item: dict) -> str:
         """What an analysis is, as the desktop's tree names it: a recognised profile, else a family by name."""
@@ -227,7 +289,17 @@ class Library:
         raw = str(item.get("source") or "").replace("\\", "/")
         stem = source.stem
         if "/results/organisation-" in raw:
-            return str(item.get("label") or stem)  # a family Kagarasu organised is its own group
+            family = str(item.get("label") or stem).split(" · ", 1)[0]
+            return "Supporting files" if family == "Files" else family
+        if info.get("parser") == "Files":
+            return "Supporting files"
+        from fireblade.core.collection_organization import ARTIFACTS
+
+        if info.get("parser") == "Inventory":
+            return "Files inventory"
+        family = ARTIFACTS.get(info.get("parser"))
+        if family:
+            return english.english_text(family)
         if "hayabusa" in stem.casefold():
             return "Hayabusa detection"
         if stem == "Contexte EVTX":
@@ -262,13 +334,13 @@ class Library:
         if not session or not Path(session).is_file():
             return []
         folder = Path(session).parent
-        if Path(session).stat().st_size > 4 * 1024 * 1024:
+        if Path(session).stat().st_size > MAX_SESSION_BYTES:
             raise ServiceError("The session file is too large.")
         payload = json.loads(Path(session).read_text(encoding="utf-8"))
         if payload.get("format") != "fireblade-session" or payload.get("version") != 1:
             raise ServiceError("Unknown Kagarasu session format.")
         documents = payload.get("documents") or []
-        if not isinstance(documents, list) or len(documents) > 1000:
+        if not isinstance(documents, list):
             raise ServiceError("Invalid Kagarasu session.")
         active = payload.get("active", 0)
         entries = []
@@ -288,6 +360,7 @@ class Library:
                     "found": resolved is not None,
                     "source": str(source.get("path", "")) if isinstance(source, dict) else "",
                     "view": document.get("view") if isinstance(document.get("view"), dict) else {},
+                    "web_display": document.get("web_display"),
                     "active": index == active,
                 }
             )
@@ -575,6 +648,7 @@ class Library:
 
     # -- Hayabusa ----------------------------------------------------------
 
+    @_case_operation
     def detect(self, identifier: str, min_level: str = "low", progress=None) -> dict:
         """Run the detection engine over the case's verified EVTX copies.
 
@@ -718,6 +792,7 @@ class Library:
                 return position
         return None
 
+    @_case_operation
     def bookmark_finding(
         self, identifier: str, index: int, finding: dict, note: str | None = None
     ) -> dict:
@@ -765,12 +840,10 @@ class Library:
         displayed names beside them: the mapping is positional, never by name.
         """
         with case.lock:
-            cursor = case.db.execute("SELECT * FROM events WHERE __row_id = ?", [int(row_id)])
-            row = cursor.fetchone()
-            names = [item[0] for item in cursor.description]
+            row = case.rows_by_ids([int(row_id)]).get(int(row_id))
         if row is None:
             raise ServiceError("This row does not exist in the analysis.")
-        offset = names.index("__row_id") + 1 if "__row_id" in names else 0
+        offset = 1
         values = {}
         for position, header in enumerate(case.headers):
             index = offset + position
@@ -784,6 +857,7 @@ class Library:
             raise ServiceError("The collection that produced this alert is not beside it.")
         return folder
 
+    @_case_operation
     def alert_context(self, identifier: str, index: int, row_id: int, minutes: int = 5) -> dict:
         """The EVTX events around an alert, built by the core's own builder.
 
@@ -835,6 +909,7 @@ class Library:
         summary["notes"] = list(result.get("notes") or [])
         return summary
 
+    @_case_operation
     def alert_source_event(self, identifier: str, index: int, row_id: int) -> dict:
         """Where the event an alert came from lives, and how to filter on it."""
         case = self._case_for(identifier, index)
@@ -895,6 +970,7 @@ class Library:
 
     # -- archive and release -----------------------------------------------
 
+    @_case_operation
     def archive_case(self, identifier: str) -> dict:
         """Pack the case into an archive outside its folder, then free the folder."""
         from fireblade.core.case_storage import archive_and_release
@@ -1104,6 +1180,7 @@ class Library:
             },
         }
 
+    @_case_operation
     def create_profile(self, identifier: str, index: int, name: str) -> dict:
         """Build a profile from an open analysis, as the desktop's dialog does.
 
@@ -1176,6 +1253,7 @@ class Library:
             snapshots.append(AnalysisSnapshot(path, info, View(), b""))
         return snapshots, repaired
 
+    @_case_operation
     def export_package(self, identifier: str, include_sources: bool = True, progress=None) -> dict:
         """Write the case as a portable .fireblade archive and hand back a URL."""
         from fireblade.core.case_package import export_package
@@ -1239,6 +1317,7 @@ class Library:
 
     # -- cell notes --------------------------------------------------------
 
+    @_case_operation
     def cell_notes(self, identifier: str, index: int, row_ids: list[int] | None = None) -> dict:
         """Cell notes grouped by row, for the page on screen or a single row."""
         case = self._case_for(identifier, index)
@@ -1249,6 +1328,7 @@ class Library:
             grouped.setdefault(str(row), {})[str(column)] = note
         return {"notes": grouped}
 
+    @_case_operation
     def cell_note(self, identifier: str, index: int, row_id: int, column: int, note: str) -> dict:
         case = self._case_for(identifier, index)
         clean = (note or "").strip()
@@ -1260,6 +1340,7 @@ class Library:
 
     DISPLAY_VIEW = "__fireblade_display__"
 
+    @_case_operation
     def display(self, identifier: str, index: int) -> dict:
         """Widths, hidden and pinned columns, kept in the analysis like a view."""
         case = self._case_for(identifier, index)
@@ -1275,6 +1356,7 @@ class Library:
         layout.setdefault("order", [])
         return layout
 
+    @_case_operation
     def save_display(self, identifier: str, index: int, layout: dict) -> dict:
         clean = {
             "widths": {
@@ -1300,12 +1382,14 @@ class Library:
 
     # -- saved views -------------------------------------------------------
 
+    @_case_operation
     def views(self, identifier: str, index: int) -> dict:
         case = self._case_for(identifier, index)
         with case.lock:
             stored = case.views()
         return {"views": sorted(name for name in stored if not name.startswith("__"))}
 
+    @_case_operation
     def save_view(self, identifier: str, index: int, name: str, view: dict) -> dict:
         """Keep the grid state under a name, as the core's own View: the whole of what the grid shows.
 
@@ -1360,6 +1444,7 @@ class Library:
             case.save_view(clean, saved)
         return {"name": clean}
 
+    @_case_operation
     def view(self, identifier: str, index: int, name: str) -> dict:
         case = self._case_for(identifier, index)
         with case.lock:
@@ -1464,6 +1549,7 @@ class Library:
             "all_source_rows": bool(getattr(rule, "all_source_rows", False)),
         }
 
+    @_case_operation
     def rules(self, identifier: str, index: int) -> dict:
         """The colour rules of this analysis, kept in its own views table.
 
@@ -1601,6 +1687,7 @@ class Library:
                 return True
         return True
 
+    @_case_operation
     def global_rules(self, identifier: str | None = None, index: int | None = None) -> dict:
         """The rules that follow the analyst from one analysis to the next."""
         book, error, _store = self._global_rules_book()
@@ -1793,6 +1880,7 @@ class Library:
             **icons,
         )
 
+    @_case_operation
     def save_rules(self, identifier: str, index: int, rules: list) -> dict:
         """Store the rules with the core's own FormatRule/FilterGroup objects."""
         cleaned = []
@@ -1809,6 +1897,7 @@ class Library:
 
     # -- process pivot -----------------------------------------------------
 
+    @_case_operation
     def pivot(self, identifier: str, index: int, row_id: int) -> dict:
         """What launched this process: the anchor the desktop derives from one row,
         then the events around it across the case.
@@ -1905,6 +1994,7 @@ class Library:
 
     # -- derived columns ---------------------------------------------------
 
+    @_case_operation
     def add_derived(self, identifier: str, index: int, definition: dict) -> dict:
         """Add a computed column the way the desktop does: a validated definition,
         compiled to SQL over the raw rows, stored in the analysis itself."""
@@ -1938,6 +2028,7 @@ class Library:
             "zones": ["UTC", "Europe/Paris", *sorted(WINDOWS_ZONES)],
         }
 
+    @_case_operation
     def derived_columns(self, identifier: str, index: int) -> dict:
         case = self._case_for(identifier, index)
         with case.lock:
@@ -1947,6 +2038,20 @@ class Library:
             }
 
     # -- import history ----------------------------------------------------
+
+    @staticmethod
+    def _import_output_info(item: dict) -> dict:
+        analyses = {
+            output["analysis"]
+            for run in item.get("runs") or []
+            for output in run.get("outputs") or []
+            if output.get("analysis")
+        }
+        count = len(analyses)
+        return {
+            "output_count": count,
+            "outputs": ("1 analysis" if count == 1 else f"{count} analyses") if count else "",
+        }
 
     def imports(self, identifier: str) -> dict:
         """Every import of the case, file by file, with its verdict and its reason.
@@ -1968,6 +2073,7 @@ class Library:
                 data = json.loads(report.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
+            settle_empty_runs(data)
             files = []
             for item in data.get("files") or []:
                 files.append(
@@ -1981,6 +2087,7 @@ class Library:
                             str(item.get("reason") or item.get("error") or "")
                         ),
                         "tools": list(item.get("tools") or []),
+                        **self._import_output_info(item),
                     }
                 )
             counts = {}
@@ -2149,6 +2256,8 @@ class Library:
             }
 
         size = path.stat().st_size
+        if not size:
+            raise ServiceError("This file is empty; there is no data to import.")
         if path.suffix.lower() in self.EXCEL_SUFFIXES:
             # A workbook has no reader among the collectors: it is a table, and the
             # question the desktop asks is which sheet to read.
@@ -2278,6 +2387,7 @@ class Library:
 
     # -- global search -----------------------------------------------------
 
+    @_case_operation
     def search(self, identifier: str, text: str, limit: int = 50, progress=None) -> dict:
         """Search every analysis of the case, and say where the hits are."""
         needle = (text or "").strip()
@@ -2607,6 +2717,7 @@ class Library:
         data = self.library.update(identifier, **fields)
         return self._summary(data)
 
+    @_case_operation
     def destroy(
         self,
         identifier: str,
@@ -2830,6 +2941,7 @@ class Library:
             raise ServiceError(str(exc)) from exc
         return {"attachments": stored, "count": len(stored)}
 
+    @_case_operation
     def close_case(self, identifier: str) -> None:
         """Release every handle the service holds on one case."""
         with self._lock:
@@ -2846,6 +2958,7 @@ class Library:
 
     # -- reports -----------------------------------------------------------
 
+    @_case_operation
     def report(
         self,
         identifier: str,
@@ -3032,6 +3145,7 @@ class Library:
             "url": f"/api/cases/{identifier}/reports/{target.name}",
         }
 
+    @_case_operation
     def findings(self, identifier: str) -> tuple[list, list]:
         """The grouped findings of the case's latest detection run, as the desktop groups them."""
         from fireblade.core.findings import group_alerts, group_alerts_sql
@@ -3100,6 +3214,7 @@ class Library:
                     offset += len(page)
                 return group_alerts(rows)
 
+    @_case_operation
     def _rows_of(self, identifier: str, index: int) -> int:
         try:
             case = self._case_for(identifier, index)
@@ -3133,6 +3248,7 @@ class Library:
 
     # -- IOC hunting -------------------------------------------------------
 
+    @_case_operation
     def ioc_scan(
         self,
         identifier: str,
@@ -3246,6 +3362,7 @@ class Library:
         reader.interrupt()
         return {"stopped": True}
 
+    @_case_operation
     def _release(self, identifier: str) -> None:
         with self._lock:
             for open_key in [item for item in self._open if item[0] == identifier]:
@@ -3553,6 +3670,7 @@ class Library:
             _rename_csv_header(target, COVERAGE_HEADER)
         return target.read_bytes()
 
+    @_case_operation
     def _live_view(self, identifier: str, live: dict | None) -> View | None:
         """The filters the analyst has on screen, as the core's View.
 
@@ -3607,7 +3725,7 @@ class Library:
         if not path or not Path(str(path)).is_file():
             return [], []
         try:
-            case = Case(Path(str(path)), read_only=True)
+            case = Case(Path(str(path)), settings=self._settings(), shared_read=True)
         except (OSError, ValueError):
             return [], []
         try:
@@ -3804,7 +3922,6 @@ class Library:
     ):
         """The built index for this case and these date readings, cached (``rebuild`` reads it again)."""
         options = self._date_options(identifier, dates or {})
-        # Read before the grid's handles are closed below: building the view opens the analysis.
         shown = self._live_view(identifier, live) if respect_filters else None
         key = (
             identifier,
@@ -3813,16 +3930,6 @@ class Library:
             bool(respect_filters),
             json.dumps(live, sort_keys=True) if respect_filters and live else "",
         )
-        # DuckDB refuses a second connection to a file with another configuration:
-        # the grid's handles are closed on every call, cache hit or not, because
-        # the sources' headers are read read-only just after. They reopen on the
-        # next grid request.
-        with self._lock:
-            for open_key in [item for item in self._open if item[0] == identifier]:
-                try:
-                    self._open.pop(open_key).close()
-                except (KeyError, OSError, ValueError):
-                    pass
         store = None if rebuild else self._timelines.get(key)
         if store is not None:
             return store
@@ -3830,7 +3937,7 @@ class Library:
         if not snapshots:
             raise ServiceError("This case holds no analysis.")
         store = TimelineStore(self._timeline_dir)
-        reader = WorkspaceReader(snapshots)
+        reader = WorkspaceReader(snapshots, settings=self._settings(), shared_read=True)
         store.build(
             reader,
             columns={path: spec for path, spec in options.items()},
@@ -3846,6 +3953,7 @@ class Library:
         self._timelines[key] = store
         return store
 
+    @_case_operation
     def timeline_source_row(self, identifier: str, index: int, row_id: int) -> dict:
         """The row a timeline entry came from, read in its own analysis."""
         case = self._case_for(identifier, index)
@@ -3910,13 +4018,16 @@ class Library:
             filters["start"] = int(start)
         if end is not None:
             filters["end"] = int(end)
-        target = Path(tempfile.mkdtemp(prefix="fbtimeline-")) / "timeline.csv"
-        receipt = store.export_csv(target, receipt=True, **filters)
-        _timeline_header_in_english(target)
-        return target.read_bytes(), english.data(receipt if isinstance(receipt, dict) else {})
+        with tempfile.TemporaryDirectory(prefix="fbtimeline-") as folder:
+            target = Path(folder) / "timeline.csv"
+            receipt = store.export_csv(
+                target, receipt=True, header_labels=TIMELINE_HEADER, **filters
+            )
+            return target.read_bytes(), english.data(receipt)
 
     # -- importing ---------------------------------------------------------
 
+    @_case_operation
     def _merge_session(
         self,
         identifier: str,
@@ -3994,56 +4105,48 @@ class Library:
             data.get("revision"),
             closed=earlier_closed,
         )
-        return len(earlier), len(incoming)
+        return len(earlier), len(fresh)
 
-    SESSION_LIMIT = 1000  # analyses a case can hold open at once (the desktop's own limit)
+    @staticmethod
+    def _session_metadata_bytes(documents):
+        payload = {"documents": documents}
+        return sum(
+            len(part.encode("utf-8"))
+            for part in json.JSONEncoder(ensure_ascii=False, indent=2).iterencode(payload)
+        )
 
     def _fit_session_limit(self, output: Path, pack, progress=None) -> str:
-        """A collection that made more grids than a case can open is grouped, not lost.
-
-        "One grid per file" on 1400 files makes 1400 grids; a case holds 1000. Rather than
-        failing after everything was read, the collection is laid out by artifact family (then
-        as one grid if that is still too many) from the grids it already wrote: nothing is read
-        again. The notice says what happened and how to choose another layout.
-        """
+        """Only oversized metadata triggers automatic grouping; analysis counts are unrestricted."""
         from fireblade.core.collection import Collection
         from fireblade.core.collection_organization import organize
 
-        collection = Collection.reopen(output, pack, settings=self._settings("parsing"))
+        collection = Collection.reopen(output, pack)
         report = collection.report
-        count = len(report.get("documents") or [])
-        if count <= self.SESSION_LIMIT or report.get("organization") != "files":
-            return ""
-        raw = report.get("raw_documents") or report["documents"]
-        for mode, label in (
-            ("schemas", "identical columns"),
-            ("artifacts", "artifact family"),
-            ("combined", "a single grid"),
+        if (
+            report.get("organization") != "files"
+            or self._session_metadata_bytes(report.get("documents") or []) <= MAX_SESSION_BYTES
         ):
-            if progress:
-                progress(f"{count} grids are more than a case holds: laying them out by {label}…")
-            report["raw_documents"] = raw
+            return ""
+        raw = list(report["documents"])
+        for mode in ("schemas", "artifacts", "combined"):
             report["documents"] = list(raw)
+            report["raw_documents"] = raw
             report["organization"] = mode
             organize(collection)
-            if len(report["documents"]) <= self.SESSION_LIMIT:
+            if self._session_metadata_bytes(report["documents"]) <= MAX_SESSION_BYTES:
                 collection.save()
-                grouped = len(report["documents"])
-                return (
-                    f"{count} files made {count} grids, more than the {self.SESSION_LIMIT} a case "
-                    f"can open at once: they are laid out by "
-                    f"{dict(schemas='files with identical columns', artifacts='artifact family', combined='a single grid')[mode]} "
-                    f"({grouped} grid(s)). The layout selector in the toolbar changes it."
-                )
+                return f"The per-file session metadata exceeds its memory budget; laid out by {mode} ({len(report['documents'])} grids). The layout selector changes it."
         raise ServiceError(
-            f"{count} files cannot be laid out in fewer than {self.SESSION_LIMIT} grids."
+            "The session metadata exceeds its memory budget even after grouping. Import smaller parts."
         )
 
+    @_case_operation
     def reorganize(self, identifier: str, mode: str) -> dict:
         """Lay the analyses of every import of the case out again: one grid per file, one per
         artifact family, or one for everything. The files are not read again: each collection
         keeps the grids it first made, and the new layout is built from them."""
         from fireblade.core.collection import Collection
+        from fireblade.core.collection_annotations import capture, restore
         from fireblade.core.collection_organization import organize
 
         if mode not in ("files", "artifacts", "combined"):
@@ -4051,21 +4154,20 @@ class Library:
         folder = self.library.folder(identifier)
         pack = ToolPack(Path(self.tools_root or tempfile.gettempdir()))
         if mode == "files":
-            grids = 0
+            documents = []
             for entry in (folder / "collections").glob("import-*"):
                 try:
                     report = json.loads((entry / "collection.json").read_text(encoding="utf-8"))
                 except (OSError, ValueError):
                     continue
-                grids += len(report.get("raw_documents") or report.get("documents") or [])
-            if grids > self.SESSION_LIMIT:
+                documents.extend(report.get("raw_documents") or report.get("documents") or [])
+            if self._session_metadata_bytes(documents) > MAX_SESSION_BYTES:
                 raise ServiceError(
-                    f"One grid per file would make {grids} grids, more than the "
-                    f"{self.SESSION_LIMIT} a case can open at once. Choose one grid per "
-                    "artifact family, or one grid for everything."
+                    "The per-file layout's metadata exceeds its memory budget. Choose artifact families or import smaller parts."
                 )
         self.close_case(identifier)  # DuckDB refuses a second connection with another configuration
         changed = 0
+        notices = []
         for entry in sorted((folder / "collections").glob("import-*")):
             if not (entry / "collection.json").is_file():
                 continue
@@ -4073,20 +4175,24 @@ class Library:
             report = collection.report
             if report.get("organization") == mode or not report.get("documents"):
                 continue
+            annotations = capture(collection)
             raw = report.get("raw_documents") or report["documents"]
             report["raw_documents"] = raw
             report["documents"] = list(raw)
             report["organization"] = mode
+            report.pop("organization_notes", None)
             if mode != "files":
                 organize(collection)
+            restore(collection, annotations)
             collection.save()
+            notices.extend(report.get("organization_notes") or [])
             self._merge_session(
                 identifier,
                 entry / "collection.fireblade-session",
                 drop_under=entry,
             )
             changed += 1
-        return {"layout": mode, "collections": changed}
+        return {"layout": mode, "collections": changed, "notices": list(dict.fromkeys(notices))}
 
     EXCEL_SUFFIXES = (".xlsx", ".xlsm", ".xls")
 
@@ -4390,6 +4496,19 @@ class Library:
             "analyses": added,
             "first_analysis": first,
             "files": len(report.get("files") or []),
+            "read_files": sum(
+                any(
+                    output.get("analysis")
+                    for run in item.get("runs") or []
+                    for output in run.get("outputs") or []
+                )
+                for item in report.get("files") or []
+            ),
+            "failed_files": sum(
+                item.get("status") == "error"
+                or any(run.get("status") == "error" for run in item.get("runs") or [])
+                for item in report.get("files") or []
+            ),
             "collection": str(output),
         }
         if notice:
@@ -4403,6 +4522,7 @@ class Library:
 
     # -- one analysis ------------------------------------------------------
 
+    @_case_operation
     def close_analysis(self, identifier: str, index: int) -> dict:
         """Take one analysis out of the workspace; its file stays in the case.
 
@@ -4475,6 +4595,7 @@ class Library:
             ]
         }
 
+    @_case_operation
     def reopen_analysis(self, identifier: str, position: int) -> dict:
         """Open a closed analysis again: it goes back to the end of the tabs."""
         data = self.library.read(identifier)
@@ -4499,6 +4620,7 @@ class Library:
         )
         return {"index": len(opened) - 1, "analyses": len(opened), "closed": len(remaining)}
 
+    @_case_operation
     def profiles_for(self, identifier: str, index: int) -> dict:
         """The profile this analysis matches, and what applying it would set."""
         from fireblade.core.profiles import detect_profile, profile_transformations, profile_view
@@ -4532,6 +4654,7 @@ class Library:
             "headers": len(headers),
         }
 
+    @_case_operation
     def apply_profile(self, identifier: str, index: int) -> dict:
         """Apply the recognised profile to this analysis' view, as the desktop's command does.
 
@@ -4622,6 +4745,7 @@ class Library:
                 payload = json.loads(file.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
+            settle_empty_runs(payload)
             for item in payload.get("files") or []:
                 if not isinstance(item, dict):
                     continue
@@ -4651,7 +4775,9 @@ class Library:
         if not file.is_file():
             raise ServiceError("This collection is not in the case.")
         try:
-            return file, json.loads(file.read_text(encoding="utf-8"))
+            payload = json.loads(file.read_text(encoding="utf-8"))
+            settle_empty_runs(payload)
+            return file, payload
         except (OSError, ValueError) as exc:
             raise ServiceError(f"This collection report cannot be read: {exc}") from exc
 
@@ -4677,6 +4803,7 @@ class Library:
                 payload = json.loads(file.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
+            settle_empty_runs(payload)
             for item in payload.get("files") or []:
                 if not isinstance(item, dict):
                     continue
@@ -4693,6 +4820,7 @@ class Library:
                         "tools": item.get("tools") or [],
                         "sha256": item.get("sha256") or "",
                         "ignored": bool(item.get("ignored")),
+                        **self._import_output_info(item),
                     }
                 )
         return {
@@ -4761,6 +4889,7 @@ class Library:
             "sha256": record.get("sha256", ""),
         }
 
+    @_case_operation
     def retry_file(
         self, identifier: str, collection_name: str, path: str, reader: str = "text"
     ) -> dict:
@@ -4788,11 +4917,10 @@ class Library:
         collection = Collection.reopen(report, pack)
         collection.analyse_single(source, reader)
         entry = collection.entry_for(source)
+        first = None
         merged = 0
         try:
-            _first, merged = self._merge_session(
-                identifier, report / "collection.fireblade-session"
-            )
+            first, merged = self._merge_session(identifier, report / "collection.fireblade-session")
         except (ServiceError, OSError, ValueError):
             merged = 0
         return {
@@ -4802,6 +4930,7 @@ class Library:
             "error": entry.get("error") or "",
             "runs": len(entry.get("runs") or []),
             "analyses_added": merged,
+            "first_analysis": first if merged else None,
         }
 
     def _stage(self, identifier: str, sources: list) -> Path:
@@ -5234,6 +5363,9 @@ class Library:
                     identifier,
                     payload.get("title") or "",
                     payload.get("description") or "",
+                    analyst=payload.get("analyst") or "",
+                    include_findings=payload.get("findings", True) is not False,
+                    include_coverage=bool(payload.get("coverage")),
                     pdf=bool(payload.get("pdf")),
                     progress=note,
                 )
@@ -5301,6 +5433,7 @@ class Library:
                 event.set()
         return {"job": job_id, "status": "cancelling", "cancelled": True}
 
+    @_case_operation
     def reorder_analyses(self, identifier: str, order: list[int]) -> dict:
         """Put the open analyses in the order the analyst wants, as the desktop's dialog does.
 
@@ -5344,7 +5477,10 @@ class Library:
             "labels": [self._label(item.source_info, item.path) for item in ordered],
         }
 
-    def save_case(self, identifier: str) -> dict:
+    @_case_operation
+    def save_case(
+        self, identifier: str, index: int | None = None, display: dict | None = None
+    ) -> dict:
         """Write the case's session again, which leaves a state to recover in its History.
 
         Every command that changes the tabs already does this; Save case is the analyst
@@ -5353,12 +5489,16 @@ class Library:
         """
         data = self.library.read(identifier)
         snapshots, active, closed = self._session_snapshots(identifier, with_closed=True)
+        if display is not None:
+            if index is None or not 0 <= index < len(snapshots):
+                raise ServiceError("This analysis does not exist in the case.")
+            snapshots[index].web_display = self.save_display(identifier, index, display)
         if snapshots:
             collections = [
                 entry for entry in (data.get("collections") or []) if isinstance(entry, dict)
             ]
             self.close_case(identifier)
-            self.library.save(
+            data = self.library.save(
                 identifier,
                 snapshots,
                 active,
@@ -5368,25 +5508,30 @@ class Library:
                 closed=list(closed),
             )
         # A case with no analysis has no session to write: it is saved, and says so.
-        return {"analyses": len(snapshots), "recovery_points": self.history(identifier)["count"]}
+        return {
+            "analyses": len(snapshots),
+            "recovery_points": self.history(identifier)["count"],
+            "revision": data["revision"],
+        }
 
     def history(self, identifier: str) -> dict:
         """The case's History folder: the states the desktop lets the analyst recover."""
         folder = self.library.folder(identifier) / "History"
         entries = []
         if folder.is_dir():
-            for path in sorted(folder.glob("*.json"), reverse=True)[:200]:
+            files = []
+            for path in folder.glob("*.json"):
                 try:
-                    size = path.stat().st_size
+                    stat = path.stat()
                 except OSError:
-                    size = 0
-                when = datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat(
-                    timespec="seconds"
-                )
+                    continue
+                files.append((stat.st_mtime_ns, path, stat))
+            for _, path, stat in sorted(files, reverse=True)[:200]:
+                when = datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(timespec="seconds")
                 entries.append(
                     {
                         "name": path.name,
-                        "bytes": size,
+                        "bytes": stat.st_size,
                         "when": when,
                         "label": self._state_label(path),
                     }
@@ -5424,6 +5569,7 @@ class Library:
         payload = json.loads(path.read_text(encoding="utf-8"))
         return {"name": path.name, "content": payload}
 
+    @_case_operation
     def restore_history(self, identifier: str, name: str) -> dict:
         """Put a recorded state back, after keeping the current one.
 
@@ -5444,6 +5590,13 @@ class Library:
         session = str(recorded.get("session") or "")
         if session and not (folder / session).is_file():
             raise ServiceError("The session this state points to is no longer in the case.")
+        layouts = []
+        for entry in self._analyses(recorded):
+            display = entry["web_display"]
+            if display is not None:
+                if not entry["found"] or not isinstance(display, dict):
+                    raise ServiceError("A column layout in this state cannot be recovered.")
+                layouts.append((entry["index"], display))
         current = folder / "case.json"
         if current.is_file():
             data = json.loads(current.read_text(encoding="utf-8"))
@@ -5458,6 +5611,8 @@ class Library:
         temporary = current.with_suffix(".partial")
         temporary.write_text(json.dumps(recorded, ensure_ascii=False, indent=2), encoding="utf-8")
         temporary.replace(current)
+        for index, display in layouts:
+            self.save_display(identifier, index, display)
         return {
             "restored": name,
             "revision": recorded.get("revision"),
@@ -5465,6 +5620,7 @@ class Library:
             "updated": recorded.get("updated"),
         }
 
+    @_case_operation
     def filter_text(self, identifier: str, index: int, text: str) -> dict:
         """Parse a text filter (``Contains([User], 'a') And [ID] >= 10``) with the desktop's parser."""
         from fireblade.core.filter_text import parse_filter
@@ -5498,11 +5654,21 @@ class Library:
                 )
             path = Path(entry["path"])
             if len(self._open) >= self.MAX_OPEN:
-                oldest = next(iter(self._open))
-                try:
-                    self._open.pop(oldest).close()
-                except Exception:  # a broken handle must not block the new one
-                    pass
+                # A different case may be rendering outside the service lock. Never
+                # close its handle in the middle of that operation, or wait for its
+                # gate while holding the job/status lock. The cache may briefly grow
+                # beyond its target when every other case is busy.
+                for oldest in list(self._open):
+                    gate = self._case_operations.setdefault(oldest[0], threading.RLock())
+                    if not gate.acquire(blocking=False):
+                        continue
+                    try:
+                        self._open.pop(oldest).close()
+                    except Exception:  # a broken handle must not block the new one
+                        pass
+                    finally:
+                        gate.release()
+                    break
             # Writable: the analyst books rows and writes notes from the grid, and
             # DuckDB refuses two connections with different configurations on the
             # same file, so one handle serves reads and writes.
@@ -5525,9 +5691,52 @@ class Library:
                     pass
             self._timelines.clear()
 
+    @_case_operation
     def columns(self, identifier: str, index: int) -> list[str]:
         case = self._case_for(identifier, index)
         return META_COLUMNS + column_labels(case)
+
+    @_case_operation
+    def empty_columns(self, identifier: str, index: int) -> list[int]:
+        """Grid positions whose source column contains no non-whitespace value."""
+        case = self._case_for(identifier, index)
+        if case.sparse:
+            from fireblade.core.sparse_union import FIELD_COLUMN, PREFIX
+
+            whitespace = "' ' || chr(9) || chr(10) || chr(13)"
+            with case.operation():
+                if not case.count(View()):
+                    return []
+                present = {
+                    row[0]
+                    for row in case.db.execute(
+                        f'SELECT DISTINCT unnest(list_transform(list_filter(map_entries("{FIELD_COLUMN}"), '
+                        f"entry -> trim(entry.value, {whitespace}) <> ''), entry -> entry.key)) FROM events"
+                    ).fetchall()
+                }
+                fixed = list(range(PREFIX)) + list(
+                    range(len(case.info["headers"]), len(case.headers))
+                )
+                checks = [f"bool_or(trim({case.column(i)}, {whitespace}) <> '')" for i in fixed]
+                values = case.db.execute("SELECT " + ",".join(checks) + " FROM events").fetchone()
+                present.update(i for i, value in zip(fixed, values) if value)
+            return [i + 1 for i in range(len(case.headers)) if i not in present]
+        checks = [
+            f"bool_or(trim(CAST({case.column(position)} AS VARCHAR), "
+            "' ' || chr(9) || chr(10) || chr(13)) <> '')"
+            for position in range(len(case.headers))
+        ]
+        if not checks:
+            return []
+        with case.operation():
+            has_rows, *has_values = case.db.execute(
+                "SELECT count(*) > 0, " + ", ".join(checks) + " FROM events"
+            ).fetchone()
+        return (
+            [position for position, has_value in enumerate(has_values, 1) if not has_value]
+            if has_rows
+            else []
+        )
 
     def _view_from(
         self,
@@ -5576,7 +5785,9 @@ class Library:
             view.sorts = [SortKey(int(column), kind, bool(flag)) for column, flag, kind in keys]
         if groups:
             for column in groups:
-                if not 0 <= int(column) < len(case.headers):
+                if int(column) != BOOKMARK_GROUP_COLUMN and not 0 <= int(column) < len(
+                    case.headers
+                ):
                     raise ServiceError("Grouping column outside the analysis.")
             view.groups = [int(column) for column in groups]
             if interval:
@@ -5592,7 +5803,11 @@ class Library:
                     "second",
                 ):
                     raise ServiceError("Unknown grouping interval.")
-                view.group_intervals = {str(column): interval for column in view.groups}
+                view.group_intervals = {
+                    str(column): interval
+                    for column in view.groups
+                    if column != BOOKMARK_GROUP_COLUMN
+                }
         # Group summaries and their order, exactly the view fields the desktop sets.
         from fireblade.core.models import Summary
 
@@ -5631,6 +5846,7 @@ class Library:
             view.group_summary = max(0, min(int(order_summary), max(0, len(cleaned_summaries) - 1)))
         return view
 
+    @_case_operation
     def rows(
         self,
         identifier: str,
@@ -5645,6 +5861,7 @@ class Library:
         bookmarks_only: bool = False,
         groups: list[int] | None = None,
         path: list[str] | None = None,
+        expanded: bool = False,
         sorts: list[tuple] | None = None,
         interval: str = "",
         expression: dict | None = None,
@@ -5657,6 +5874,7 @@ class Library:
         show_total: bool = True,
         date_format: str = "source",
         date_pattern: str = "",
+        columns: list[int] | None = None,
     ) -> dict:
         case = self._case_for(identifier, index)
         view = self._view_from(
@@ -5693,15 +5911,26 @@ class Library:
         limit = max(1, min(int(limit), 1000))
         offset = max(0, int(offset))
         depth = tuple(path or ())
+        outline = None
+        outline_total = None
         with case.lock:
             total = case.count(view)
-            page = case.page(view, path=depth, offset=offset, limit=limit)
+            if expanded and view.groups:
+                limit = min(limit, case.settings.page_size)
+                records = case.outline_page(view, offset=offset, limit=limit)
+                page = [record["values"] for record in records if not record["group"]]
+                outline = [json_value(record) if record["group"] else None for record in records]
+                outline_total = case.db.execute(
+                    'SELECT count(*) FROM "__fireblade_outline"'
+                ).fetchone()[0]
+            else:
+                page = case.page(view, path=depth, offset=offset, limit=limit)
             rows = [[json_value(value) for value in row] for row in page]
             totals = footer = None
             if view.total_summaries and view.show_total_footer:
                 values = case.total_summary(view)
                 totals = [json_value(value) for value in values[1:]]
-            leaf = bool(view.groups) and len(depth) == len(view.groups)
+            leaf = outline is None and bool(view.groups) and len(depth) == len(view.groups)
             if leaf and view.summaries and view.group_footer_mode != "hidden":
                 from fireblade.core.summaries import summary_expressions
 
@@ -5715,7 +5944,7 @@ class Library:
                         args,
                     ).fetchone()
                 footer = [json_value(value) for value in found[1:]]
-        grouped = len(depth) < len(view.groups)
+        grouped = outline is None and len(depth) < len(view.groups)
         if not grouped and timestamps and date_format in ("iso", "iso7", "custom"):
             # The desktop reformats the date columns of the view, nothing else: with the core's own functions.
             from fireblade.core.timestamps import display_timestamp, format_timestamp
@@ -5742,9 +5971,19 @@ class Library:
                     if artifact < len(row) and isinstance(row[artifact], str):
                         row[artifact] = english.english_text(row[artifact])
         styles, rule_set = ({}, []) if grouped else self._painting(identifier, case, view, page)
+        projection = None
+        if not grouped and (columns is not None or len(labels) > 128):
+            requested = list(range(min(64, len(labels)))) if columns is None else columns
+            if len(requested) > len(labels) or any(
+                type(i) is not int or not 0 <= i < len(labels) for i in requested
+            ):
+                raise ServiceError("Invalid column window")
+            projection = list(dict.fromkeys([0, *requested]))
+            rows = [[row[i] for i in projection] for row in rows]
         return {
             "columns": labels,
             "rows": rows,
+            "projection": projection,
             # which colour rule each row of the page answers to, and what each rule paints
             "styles": styles,
             "rule_set": rule_set,
@@ -5752,6 +5991,8 @@ class Library:
             "offset": offset,
             "limit": limit,
             "grouped": grouped,
+            "outline": outline,
+            "outline_total": outline_total,
             "path": list(depth),
             "timestamps": timestamps,
             "summaries": [
@@ -5827,6 +6068,7 @@ class Library:
 
         return {"ranges": [{"name": name} for name in RANGES]}
 
+    @_case_operation
     def bookmarks(self, identifier: str, index: int) -> dict:
         case = self._case_for(identifier, index)
         with case.lock:
@@ -5837,6 +6079,7 @@ class Library:
             ]
         }
 
+    @_case_operation
     def bookmark(
         self, identifier: str, index: int, row_id: int, note: str = "", column: int | None = None
     ) -> dict:
@@ -5868,6 +6111,7 @@ class Library:
         )
         return f"{stem}.{extension}"
 
+    @_case_operation
     def export(
         self,
         identifier: str,
@@ -5898,14 +6142,20 @@ class Library:
             view.bookmarks_only = True
         suffix = ".xlsx" if as_xlsx else ".csv"
         target = Path(tempfile.gettempdir()) / f"fireblade-{uuid.uuid4().hex}{suffix}"
-        with case.lock:
-            if annotations:
-                case.export(str(target), view, include_annotations=True)
-            else:
-                case.export(str(target), view, bool(grouped), columns=chosen)
-        if not as_xlsx:
-            _translate_csv_header(target, case)
-        return target
+        try:
+            with case.lock:
+                if annotations:
+                    case.export(str(target), view, include_annotations=True)
+                else:
+                    case.export(str(target), view, bool(grouped), columns=chosen)
+            if not as_xlsx:
+                _translate_csv_header(target, case)
+            return target
+        except BaseException:
+            for unfinished in (target, target.with_name(target.name + ".part")):
+                with suppress(OSError):
+                    unfinished.unlink(missing_ok=True)
+            raise
 
 
 def _condition_payload(condition) -> dict:
@@ -6006,10 +6256,6 @@ def _rename_csv_header(path: Path, names: dict[str, str]) -> None:
             csv.writer(target).writerow([names.get(name, name) for name in header])
         shutil.copyfileobj(source, target)
     temporary.replace(path)
-
-
-def _timeline_header_in_english(path: Path) -> None:
-    _rename_csv_header(path, TIMELINE_HEADER)
 
 
 COVERAGE_HEADER = {

@@ -89,9 +89,13 @@ def test_the_pages_of_the_timeline_follow_one_another_and_say_when_there_are_no_
     page.click("#timeline-prev")  # already on the first page: nothing moves, and it says so
     page.wait_for_function("document.getElementById('status').innerText.includes('first page')")
     assert page.inner_text("#timeline-info").startswith("1–250")
-    for _ in range(3):
+    for marker in ("251–500", "501–704"):
         page.click("#timeline-next")
-        page.wait_for_timeout(300)
+        page.wait_for_function(
+            "marker => document.getElementById('timeline-info').innerText.startsWith(marker)",
+            arg=marker,
+        )
+    page.click("#timeline-next")
     page.wait_for_function("document.getElementById('status').innerText.includes('last page')")
 
 
@@ -111,6 +115,76 @@ def test_a_duration_narrows_the_window_and_back_returns_to_the_one_before(timeli
         "#timeline-rows tr", "els => els.map(e => e.children[0].innerText.slice(0, 10))"
     )
     assert set(stamps) == {"2026-11-02"}
+
+
+def test_the_timeline_export_matches_the_selected_duration(timeline):
+    import csv
+
+    page = timeline
+    page.uncheck("#timeline-undated")
+    page.click('[data-act="timeline-duration"]')
+    page.fill("#ask-input", "2026-11-02T00:30")
+    page.click('[data-act="ask-ok"]')
+    page.fill("#ask-input", "2026-11-02T23:30")
+    page.click('[data-act="ask-ok"]')
+    page.wait_for_function("!document.getElementById('timeline-info').innerText.includes('/ 704')")
+    count = _count(page)
+    assert 0 < count < 704
+    with page.expect_download() as downloaded:
+        page.click("#timeline-export")
+    with downloaded.value.path().open(encoding="utf-8-sig", newline="") as stream:
+        exported = list(csv.reader(stream))
+    assert len(exported) - 1 == count
+    assert {row[0][:10] for row in exported[1:]} == {"2026-11-02"}
+
+
+def test_switching_cases_resets_timeline_filters_and_sources(timeline, server):
+    page = timeline
+    other = make_case(server, "Other timeline", "Time,User\n2026-12-01T12:00:00Z,new-user\n")
+    page.fill("#timeline-search", "alice")
+    page.press("#timeline-search", "Enter")
+    page.wait_for_function("!document.getElementById('timeline-info').innerText.includes('/ 704')")
+    page.click('.toolbar [data-act="refresh-cases"]')
+    page.click('.tabs .tab:text-is("Cases")')
+    page.locator('#cases-body tr:has(td:text-is("Other timeline")) td').first.dblclick()
+    page.wait_for_function(
+        "document.getElementById('casecombo-label').innerText === 'Other timeline'"
+    )
+    with page.expect_response(f"**/api/cases/{other}/tasks") as started:
+        page.click('.tabs .tab:text-is("Timeline & correlations")')
+    assert started.value.ok
+    assert page.input_value("#timeline-search") == ""
+    page.wait_for_function(
+        "document.getElementById('timeline-info').innerText.includes('/ 1 event(s)')"
+    )
+    assert page.locator("#timeline-lane option").all_text_contents() == ["All lanes", "events.csv"]
+    assert "new-user" in _first_row(page)
+
+
+def test_an_old_task_poll_cannot_clear_the_new_timeline_task(timeline):
+    page = timeline
+    task_start = "**/api/cases/*/tasks"
+    held = []
+    page.route(
+        "**/api/tasks/*", lambda route: held.append(route) if not held else route.continue_()
+    )
+    with page.expect_request("**/api/tasks/*") as polled:
+        page.evaluate("void loadTimeline(true, true)")
+    first_poll = polled.value.url
+
+    with page.expect_response(task_start) as started:
+        page.evaluate("void loadTimeline(true, true)")
+    second = started.value.json()["job"]
+    page.wait_for_function("job => taskState.job === job", arg=second)
+    with page.expect_response(first_poll) as response:
+        held[0].fulfill(json={"status": "done", "result": {}})
+    response.value.finished()
+    page.evaluate(
+        "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+    )
+    assert page.evaluate("taskState.job") == second
+    page.wait_for_function("taskState.job === null")
+    assert not page.failed, page.failed
 
 
 def test_a_duration_that_is_not_one_is_refused(timeline):
@@ -289,3 +363,116 @@ def test_the_exact_value_and_bookmarks_options_are_offered_and_the_undated_rows_
     page.wait_for_function(
         "document.getElementById('timeline-info').innerText.includes('/ 0 ')", timeout=30000
     )
+
+
+def test_chart_wheel_zooms_once_after_repeated_refreshes(timeline):
+    page = timeline
+    chart = page.locator("#timeline-hist")
+    chart.hover()
+    page.mouse.wheel(0, -300)
+    page.wait_for_function("timelineState.window !== null")
+    first_span = page.evaluate("timelineState.window[1] - timelineState.window[0]")
+    page.click('[data-act="tl-fit"]')
+    # Chart refreshes must replace their input handlers, not accumulate them.
+    page.click('[data-act="tl-zoom-in"]')
+    page.click('[data-act="tl-fit"]')
+    chart.hover()
+    page.mouse.wheel(0, -300)
+    page.wait_for_function("timelineState.window !== null")
+    assert page.evaluate("timelineState.window[1] - timelineState.window[0]") == first_span
+
+
+def test_timeline_selection_survives_zoom_and_clears_when_filtered_out(timeline):
+    page = timeline
+    page.locator("#timeline-rows tr").first.click()
+    page.click('[data-act="tl-zoom-in"]')
+    assert page.locator("#timeline-rows tr.sel").count() == 1
+    page.check("#timeline-bookmarks")
+    page.wait_for_function("timelineState.payload.count === 0")
+    assert page.evaluate("timelineState.row") is None
+    assert page.locator('[data-act="timeline-open-row"]').is_disabled()
+
+
+def test_time_range_is_distinct_from_chart_zoom_and_can_be_cleared(timeline):
+    page = timeline
+    assert page.inner_text('[data-act="timeline-duration"]') == "Time range…"
+    assert page.locator('[data-act="tl-clear-range"]').is_disabled()
+    page.select_option("#timeline-preset", "86400")
+    page.wait_for_function("timelineState.payload.count < 704")
+    assert not page.locator('[data-act="tl-clear-range"]').is_disabled()
+    narrowed = _count(page)
+    page.click('[data-act="tl-zoom-in"]')
+    page.click('[data-act="tl-fit"]')
+    assert _count(page) == narrowed  # fitting the chart must not clear the filter
+    page.click('[data-act="tl-clear-range"]')
+    page.wait_for_function("timelineState.payload.count === 704")
+    assert page.inner_text("#timeline-selection") == "All dates"
+    assert page.locator('[data-act="tl-clear-range"]').is_disabled()
+
+
+def test_undated_inventory_does_not_offer_a_spurious_1970_range(server):
+    from _browser import browser_page
+
+    make_case(server, "Undated inventory", "Name,Owner\nlaptop,alice\n")
+    with browser_page(server[0], "Undated inventory") as page:
+        page.click('.tabs .tab:text-is("Timeline & correlations")')
+        page.wait_for_function("timelineState.payload !== null")
+        page.wait_for_selector("#import-progress-modal.show", state="hidden")
+        page.click('[data-act="timeline-duration"]')
+        page.wait_for_function(
+            "document.getElementById('status').innerText.includes('No dated event')"
+        )
+        assert not page.locator("#ask-modal.show").count()
+
+
+def test_hiding_every_source_empties_both_events_and_export(timeline):
+    import csv
+
+    page = timeline
+    for source in page.locator("[data-tl-source-chip]").all():
+        with page.expect_response(lambda r: "/timeline?" in r.url and r.request.method == "GET"):
+            source.click()
+        page.wait_for_function("timelineState.seq > 0")
+    page.wait_for_function(
+        "document.querySelectorAll('[data-tl-source-chip]:not(.off)').length === 0"
+    )
+    assert _count(page) == 0
+    with page.expect_download() as downloaded:
+        page.click("#timeline-export")
+    with downloaded.value.path().open(encoding="utf-8-sig", newline="") as stream:
+        assert len(list(csv.reader(stream))) == 1
+    page.click('[data-act="tl-isolate"]')
+    page.wait_for_function("timelineState.payload.count === 704")
+
+
+def test_a_late_source_row_cannot_replace_the_row_opened_after_it(timeline):
+    page = timeline
+    first = page.locator("#timeline-rows tr").first
+    first_id = first.get_attribute("data-tl-row")
+    source = first.get_attribute("data-tl-source")
+    held = []
+    page.route(f"**/timeline/row/{source}/{first_id}", lambda route: held.append(route))
+    with page.expect_request(f"**/timeline/row/{source}/{first_id}"):
+        first.dblclick()
+    page.locator('#source-row-modal [data-act="settings-close"]').click()
+    second = page.locator("#timeline-rows tr").nth(1)
+    second_id = second.get_attribute("data-tl-row")
+    second.dblclick()
+    page.wait_for_function(
+        "id => document.getElementById('source-row-title').innerText.endsWith('row ' + id)",
+        arg=second_id,
+    )
+    wanted = page.inner_text("#source-row-list")
+    with page.expect_response(f"**/timeline/row/{source}/{first_id}") as delayed:
+        held[0].fulfill(
+            json={
+                "label": "Stale source",
+                "row_id": int(first_id),
+                "columns": ["Time"],
+                "values": ["old row"],
+            }
+        )
+    delayed.value.finished()
+    page.wait_for_timeout(100)
+    assert page.inner_text("#source-row-list") == wanted
+    assert page.inner_text("#source-row-title").endswith("row " + second_id)

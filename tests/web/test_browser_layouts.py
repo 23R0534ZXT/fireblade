@@ -113,6 +113,10 @@ def test_the_layout_changes_on_the_fly_on_what_is_already_imported(browser_page,
         )
 
     assert len(grids()) == 1, grids()
+    page.locator("#groupbar [data-act='group-column']").click()
+    page.locator("#group-levels [data-group-level]").last.check()
+    page.click('[data-act="group-apply"]')
+    page.wait_for_selector("#body tr[data-group]")
     for layout, expected in (("files", 2), ("combined", 1), ("artifacts", 1), ("files", 2)):
         page.select_option("#import-layout", layout)
         page.wait_for_function(
@@ -120,6 +124,7 @@ def test_the_layout_changes_on_the_fly_on_what_is_already_imported(browser_page,
             timeout=60000,
         )
         page.wait_for_selector("#body tr[data-row]", timeout=60000)
+        assert page.locator("#group-chips .gchip").count() == 0
         assert len(grids()) == expected, (layout, grids())
         total = page.evaluate(
             "fetch(url(`/api/cases/${state.openCase.id}`)).then((r) => r.json())"

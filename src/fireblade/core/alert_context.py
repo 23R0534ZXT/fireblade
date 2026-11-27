@@ -59,10 +59,6 @@ def build_context(
         raise ValueError("Fenêtre de contexte : 1 à 1440 minutes")
     if type(max_events) is not int or not 1 <= max_events <= 1000:
         raise ValueError("Contexte limité à 1000 événements")
-    if register and len(collection.report["documents"]) >= 1000:
-        raise ValueError(
-            "Limite de 1000 analyses atteinte ; fermez des analyses avant de conserver un contexte"
-        )
     source_value = alert.get("Fireblade_EVTX_Source", "")
     try:
         paths = json.loads(source_value) if source_value.startswith("[") else [source_value]
@@ -427,8 +423,6 @@ def retain_context(collection, result):
     if any(item["path"] == result["analysis"] for item in collection.report["documents"]):
         return {k: v for k, v in result.items() if k != "_document"}
     document = result["_document"]
-    if len(collection.report["documents"]) >= 1000:
-        raise ValueError("Limite de 1000 analyses atteinte ; contexte CSV conservé sur disque")
     metadata = {k: v for k, v in result.items() if k != "_document"}
     collection.report["documents"].append(document)
     collection.report.setdefault("contexts", []).append(metadata)

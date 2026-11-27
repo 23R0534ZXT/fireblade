@@ -424,8 +424,7 @@ def test_the_header_follows_the_visible_columns():
     assert "shown.map(({ index })" in body
     assert "shown.forEach(({ index })" in body
     # The header loop must not iterate every column any more.
-    marker = "const head = [" + "'<tr><th></th>'];"
-    head_block = body[body.index(marker) : body.index('$("head").innerHTML')]
+    head_block = body[body.index("const head = [") : body.index('$("head").innerHTML')]
     assert "state.columns.forEach" not in head_block
     # The absolute index still addresses the filter, the sort and the grip.
     assert 'data-filter="${index - 1}"' in body and 'data-grip="${index}"' in body
@@ -595,7 +594,8 @@ def test_the_ioc_panel_lists_indicators_and_matches():
         assert f"<th>{column}</th>" in html, column
     for name in ("iocLines", "iocKind", "exportIocMatches", "exportIocSummary"):
         assert f"function {name}(" in js, name
-    assert "Bulk IOC hunt" in html
+    assert "<h2>IOC hunting</h2>" in html
+    assert "The search runs locally in the open case." in html
 
 
 def test_the_timeline_table_reads_like_the_desktop():

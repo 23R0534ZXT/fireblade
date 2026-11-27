@@ -1,5 +1,6 @@
 """Validated grouping expressions. Only generated identifiers enter SQL."""
 
+BOOKMARK_GROUP_COLUMN = -2
 OPERATIONS = ("rows", "count", "distinct", "sum", "avg", "min", "max")
 INTERVALS = {
     "year": "%Y",
@@ -13,6 +14,11 @@ INTERVALS = {
 
 
 def group_expression(case, view, column):
+    if column == BOOKMARK_GROUP_COLUMN:
+        return (
+            "CASE WHEN events.__row_id IN (SELECT row_id FROM bookmarks "
+            f"WHERE column_id={case.ROW_NOTE}) THEN 'Marked' ELSE 'Unmarked' END"
+        )
     col = case.column(column)
     interval = view.group_intervals.get(str(column), "value")
     if interval == "value":

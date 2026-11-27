@@ -19,6 +19,8 @@
     <div class="m" data-menu="filters">Fi<span class="mnemonic">l</span>ters</div>
     <div class="m" data-menu="exporter">E<span class="mnemonic">x</span>porter</div>
     <div class="m" data-menu="help"><span class="mnemonic">H</span>elp</div>
+    <button type="button" class="btn" id="artifacts-toggle" data-act="toggle-artifacts"
+      aria-controls="artifacts" aria-expanded="false">Artifacts</button>
 
     <div class="menu" data-for="case">
       <div class="item" data-act="import-file">Import a file…<span class="key">Ctrl+O</span></div>
@@ -85,6 +87,7 @@
       <div class="item" data-act="palette">Commands…<span class="key">Ctrl+K</span></div>
       <div class="item" data-act="next-tab">Next analysis</div>
       <div class="item" data-act="previous-tab">Previous analysis</div>
+      <div class="item" data-act="display-settings">Workspace…</div>
       <div class="item" data-act="workspace-guide">Organize the workspace…</div>
       <div class="item" data-act="profiles-plugins">Profiles and plugins…</div>
       <div class="item" data-act="legend">Supertimeline legend…</div>
@@ -168,35 +171,36 @@
     <select class="select" id="import-layout" title="How the results are laid out">
       <option value="files">one grid per file</option>
       <option value="artifacts">one grid per artifact family</option>
-      <option value="combined">one grid for everything</option>
+      <option value="combined">combined view</option>
     </select>
-    <input type="file" id="import-input" multiple hidden>
     <input type="file" id="folder-input" webkitdirectory directory multiple hidden>
     <input type="file" id="package-input" accept=".fireblade" hidden>
     <input type="file" id="session-file" accept=".fireblade-session" hidden>
     <input type="file" id="layout-file" accept=".json" hidden>
-    <div class="casecombo" id="casecombo"><span id="casecombo-label">No case open</span><span class="arrow">▼</span></div>
+    <button type="button" class="casecombo" id="casecombo" data-act="cases-list" aria-label="Open case list"
+      aria-describedby="casecombo-label"><span id="casecombo-label">No case open</span><span class="arrow" aria-hidden="true">›</span></button>
     <div class="tbsep"></div>
     <div class="tb" data-act="refresh-cases">Refresh</div>
     <div class="tb" data-act="close-case">Close case</div>
   </div>
 
   <div class="tabs" id="doctabs">
-    <div class="tab active" data-tab="analyses">Analyses</div>
-    <div class="tab" data-tab="imports">Imports</div>
-    <div class="tab" data-tab="cases">Cases</div>
-    <div class="tab" data-tab="timeline">Timeline &amp; correlations</div>
-    <div class="tab" data-tab="ioc">IOC hunting</div>
-    <div class="tab" data-tab="hayabusa">Hayabusa findings</div>
-    <div class="tab" data-tab="actions">Actions &amp; tracking</div>
-    <div class="tab" data-tab="graph">Attack graph</div>
+    <button type="button" class="tab active" data-tab="analyses" aria-pressed="true">Analyses</button>
+    <button type="button" class="tab" data-tab="imports" aria-pressed="false">Imports</button>
+    <button type="button" class="tab" data-tab="cases" aria-pressed="false">Cases</button>
+    <button type="button" class="tab" data-tab="timeline" aria-pressed="false">Timeline &amp; correlations</button>
+    <button type="button" class="tab" data-tab="ioc" aria-pressed="false">IOC hunting</button>
+    <button type="button" class="tab" data-tab="hayabusa" aria-pressed="false">Hayabusa findings</button>
+    <button type="button" class="tab" data-tab="actions" aria-pressed="false">Actions &amp; tracking</button>
+    <button type="button" class="tab" data-tab="graph" aria-pressed="false">Attack graph</button>
     <div class="doctab docempty" id="doctab">Case</div>
   </div>
   <div class="tabbar-line"></div>
 
   <div class="work">
     <div class="artifacts" id="artifacts">
-      <div class="head"><span>Artifacts</span><span class="x">✕</span></div>
+      <div class="head"><span>Artifacts</span><button type="button" class="x" id="artifacts-close"
+        data-act="toggle-artifacts" aria-label="Close artifacts panel">✕</button></div>
       <select class="select" id="tree-mode" title="How the tree groups the analyses">
         <option value="families">Collection → artifact family</option>
         <option value="flat">Analysis list by collection</option>
@@ -220,6 +224,7 @@
         <div class="groupbar" id="groupbar">
           <div class="hint" id="group-label">Drag a header here to group the results</div>
           <div class="chips" id="group-chips"></div>
+          <div class="hint" id="group-path" aria-live="polite"></div>
           <div class="grow"></div>
           <button class="btn" id="group-clear" hidden title="Remove every grouping level">Clear</button>
           <button class="btn" data-act="group-column" title="Grouping options and date interval">Group…</button>
@@ -264,7 +269,7 @@
             <option value="technique">Techniques</option>
             <option value="ioc">Indicators</option>
           </select>
-          <span class="note">Zoom :</span>
+          <span class="note">Zoom:</span>
           <button class="btn" data-act="graph-zoom-out">−</button>
           <button class="btn" data-act="graph-zoom-in">+</button>
           <button class="btn" data-act="graph-recentre">Recentre</button>
@@ -287,7 +292,7 @@
 
       <div id="hayabusa-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="filterbar">
-          <select class="select" id="hayabusa-level">
+          <select class="select" id="hayabusa-level" aria-label="Minimum severity">
             <option value="informational">informational</option>
             <option value="low">low</option>
             <option value="medium" selected>medium</option>
@@ -356,7 +361,7 @@
           <span class="info" id="imports-summary"></span>
         </div>
         <div class="filterbar">
-          <select class="select" id="imports-status">
+          <select class="select" id="imports-status" aria-label="Import status">
             <option value="">All files</option>
             <option value="complete">Imported</option>
             <option value="attention">With warnings</option>
@@ -414,14 +419,14 @@
           </div>
           <div class="filterbar">
             <input class="search" id="action-title" placeholder="New action — what has to be done?">
-            <select class="select" id="action-owner">
+            <select class="select" id="action-owner" aria-label="Action owner">
               <option value="us">Our team</option>
               <option value="client">Client</option>
               <option value="third_party">Third party</option>
               <option value="vendor">Vendor</option>
               <option value="unassigned">Unassigned</option>
             </select>
-            <select class="select" id="action-priority">
+            <select class="select" id="action-priority" aria-label="Action priority">
               <option value="medium">Medium</option>
               <option value="low">Low</option>
               <option value="high">High</option>
@@ -430,7 +435,7 @@
             <!-- The core's own vocabulary (core.case_workspace.ACTION_TYPES).
                  The service also publishes it on /api/settings and the window
                  rebuilds this list from there; these values are the fallback. -->
-            <select class="select" id="action-type">
+            <select class="select" id="action-type" aria-label="Action type">
               <option value="collect">Collection</option>
               <option value="analysis">Analysis</option>
               <option value="remediation">Remediation</option>
@@ -512,8 +517,8 @@
 
       <div id="ioc-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="panel-title">
-          <h2>Bulk IOC hunt · IPs, domains, URLs and hashes · no network request</h2>
-          <p>Paste a list or import a file. Outside an investigation folder, results are temporary.</p>
+          <h2>IOC hunting</h2>
+          <p>Paste IP addresses, domains, URLs or hashes, or import a list. The search runs locally in the open case.</p>
         </div>
         <div style="padding:0 8px">
           <textarea id="ioc-input" class="ioc-input" spellcheck="false" rows="4"
@@ -533,7 +538,7 @@
           <input type="file" id="ioc-file" accept=".txt,.csv,.tsv" hidden>
           <div class="info" id="ioc-summary">Nothing scanned yet.</div>
         </div>
-        <div class="gridwrap" style="flex:0 0 34%;min-height:90px">
+        <div class="gridwrap ioc-summary-grid">
           <div class="gridbody">
             <table>
               <colgroup><col style="width:80px"><col style="width:24%"><col style="width:24%"><col style="width:18%"><col style="width:70px"><col style="width:70px"><col></colgroup>
@@ -564,7 +569,7 @@
 
       <div id="timeline-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="filterbar">
-          <select class="select" id="timeline-kind">
+          <select class="select" id="timeline-kind" aria-label="Correlation field">
             <option value="text">Any text</option>
             <option value="user">User</option>
             <option value="ip">IP address</option>
@@ -587,24 +592,20 @@
           <select class="select" id="timeline-lane" title="Show one source alone, or all of them">
             <option value="">All lanes</option>
           </select>
-          <button class="btn" data-act="timeline-duration">Duration…</button>
-          <span class="note">Duration sets the window by two dates; each analysis is read with the date column chosen above.</span>
-        </div>
-        <div class="filterbar" id="timeline-pager">
-          <button class="btn" data-act="timeline-open-row">Open the source row</button>
-          <div class="grow"></div>
-          <span class="info" id="timeline-info-extra"></span>
+          <button class="btn" data-act="timeline-duration" title="Filter events between two UTC dates">Time range…</button>
+          <select class="select" id="timeline-preset" aria-label="Centred time range" title="Filter a duration centred on the selected event, or the middle of the extent">
+            <option value="0">Centred range…</option><option value="900">15 minutes</option><option value="3600">1 hour</option>
+            <option value="86400">24 hours</option><option value="604800">7 days</option></select>
+          <button class="btn" data-act="tl-clear-range" title="Remove the time filter and show events at all dates" disabled>Clear time range</button>
+          <span class="info" id="timeline-selection"></span>
         </div>
         <div class="filterbar" id="timeline-controls">
           <button class="btn" data-act="tl-zoom-in" title="Zoom in">Zoom +</button>
           <button class="btn" data-act="tl-zoom-out" title="Zoom out">Zoom −</button>
           <button class="btn" data-act="tl-pan-left" title="Slide the window back by half its width">←</button>
           <button class="btn" data-act="tl-pan-right" title="Slide the window forward by half its width">→</button>
-          <button class="btn" data-act="tl-fit" title="Show the whole extent">Fit</button>
-          <select class="select" id="timeline-preset" title="A duration centred on the selected event (or the middle of the extent)">
-            <option value="0">Duration…</option><option value="900">15 minutes</option><option value="3600">1 hour</option>
-            <option value="86400">24 hours</option><option value="604800">7 days</option></select>
-          <button class="btn" data-act="tl-back" title="Back to the previous window">Back</button>
+          <button class="btn" data-act="tl-fit" title="Fit the chart to the whole extent; the time filter is kept">Fit chart</button>
+          <button class="btn" data-act="tl-back" title="Back to the previous chart window; the time filter is kept">Back</button>
           <button class="btn" data-act="tl-isolate" title="Show every source again">Show all sources</button>
           <span class="info" id="timeline-window"></span>
           <span class="note">drag on the chart to select a duration · shift-drag to pan · wheel to zoom · double-click to fit · click a legend chip to hide a source</span>
@@ -623,7 +624,9 @@
             </table>
           </div>
         </div>
-        <div class="pager">
+        <div class="pager" id="timeline-pager">
+          <button class="btn" data-act="timeline-open-row" disabled>Open the source row</button>
+          <span class="info" id="timeline-info-extra"></span>
           <button class="btn" id="timeline-prev">Previous</button>
           <button class="btn" id="timeline-next">Next</button>
           <div class="spacer"></div>
@@ -695,12 +698,12 @@
       </div>
       <div class="row" id="palette-colours" hidden>
         <label>Colours</label>
-        <span class="pcol"><input type="color" data-colour="window"> window</span>
-        <span class="pcol"><input type="color" data-colour="text"> text</span>
-        <span class="pcol"><input type="color" data-colour="base"> grid</span>
-        <span class="pcol"><input type="color" data-colour="alternate"> alternate rows</span>
-        <span class="pcol"><input type="color" data-colour="highlight"> selection</span>
-        <span class="pcol"><input type="color" data-colour="selection_text"> selected text</span>
+        <label class="pcol"><input type="color" data-colour="window"> window</label>
+        <label class="pcol"><input type="color" data-colour="text"> text</label>
+        <label class="pcol"><input type="color" data-colour="base"> grid</label>
+        <label class="pcol"><input type="color" data-colour="alternate"> alternate rows</label>
+        <label class="pcol"><input type="color" data-colour="highlight"> selection</label>
+        <label class="pcol"><input type="color" data-colour="selection_text"> selected text</label>
       </div>
       <div class="row">
         <label for="scale">Text size</label>
@@ -764,8 +767,8 @@
       </div>
       <div class="row">
         <label>CSV options</label>
-        <select class="select" id="preview-delimiter"></select>
-        <select class="select" id="preview-encoding"></select>
+        <select class="select" id="preview-delimiter" aria-label="CSV delimiter"></select>
+        <select class="select" id="preview-encoding" aria-label="CSV encoding"></select>
         <span class="note" style="max-width:none">a native CSV is read with these instead of the detection</span>
       </div>
       <div class="row" id="preview-sheet-row" style="display:none">
@@ -784,7 +787,7 @@
 </div>
 
 <div class="modal" id="source-row-modal">
-  <div class="dialog" style="min-width:760px">
+  <div class="dialog" style="--dialog-width:760px">
     <h3 id="source-row-title">The source line</h3>
     <div class="body">
       <div class="note">The row this timeline entry came from, as its own analysis holds it. Nothing is
@@ -796,7 +799,7 @@
 </div>
 
 <div class="modal" id="disk-modal">
-  <div class="dialog" style="min-width:620px">
+  <div class="dialog" style="--dialog-width:620px">
     <h3>Analyse a disk</h3>
     <div class="body">
       <div class="row"><label for="disk-source">Source</label>
@@ -819,7 +822,7 @@
 </div>
 
 <div class="modal" id="import-progress-modal">
-  <div class="dialog" style="min-width:600px">
+  <div class="dialog" style="--dialog-width:600px">
     <h3 id="import-progress-title">Importing</h3>
     <div class="body">
       <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">
@@ -838,7 +841,7 @@
 </div>
 
 <div class="modal" id="retry-modal">
-  <div class="dialog" style="min-width:760px">
+  <div class="dialog" style="--dialog-width:760px">
     <h3>Import report</h3>
     <div class="body">
       <div class="note">A file the collection could not read stays unread until somebody asks. The source is
@@ -869,11 +872,11 @@
 <!-- One text box, asked the way the desktop asks it: a dialog, not the browser's
      own prompt (which blocks the page and cannot be styled). -->
 <div class="modal" id="ask-modal">
-  <div class="dialog" style="min-width:520px">
+  <div class="dialog" style="--dialog-width:520px">
     <h3 id="ask-title">Value</h3>
     <div class="body">
       <div class="note" id="ask-note" style="display:none"></div>
-      <div class="row"><label id="ask-label">Value</label><input id="ask-input"></div>
+      <div class="row"><label id="ask-label" for="ask-input">Value</label><input id="ask-input"></div>
     </div>
     <div class="foot">
       <button class="btn" data-act="ask-ok">OK</button>
@@ -883,7 +886,7 @@
 </div>
 
 <div class="modal" id="rowheight-modal">
-  <div class="dialog" style="min-width:420px">
+  <div class="dialog" style="--dialog-width:420px">
     <h3>Row height</h3>
     <div class="body">
       <label class="row"><input type="checkbox" id="rowheight-wrap"> Wrap the text by default</label>
@@ -904,7 +907,7 @@
 </div>
 
 <div class="modal" id="integrity-modal">
-  <div class="dialog" style="min-width:640px">
+  <div class="dialog" style="--dialog-width:640px">
     <h3>Provenance and SHA-256</h3>
     <div class="body">
       <div class="note">What this analysis came from, and the fingerprint the collection recorded
@@ -916,7 +919,7 @@
 </div>
 
 <div class="modal" id="help-modal">
-  <div class="dialog" style="min-width:620px">
+  <div class="dialog" style="--dialog-width:620px">
     <h3 id="help-title">User guide</h3>
     <div class="body" id="help-body"></div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
@@ -924,7 +927,7 @@
 </div>
 
 <div class="modal" id="palette-modal">
-  <div class="dialog" style="min-width:560px">
+  <div class="dialog" style="--dialog-width:560px">
     <h3>Commands</h3>
     <div class="body">
       <input class="search" id="palette-input" placeholder="Type a command, Enter runs the first one…">
@@ -935,7 +938,7 @@
 </div>
 
 <div class="modal" id="messages-modal">
-  <div class="dialog" style="min-width:640px">
+  <div class="dialog" style="--dialog-width:640px">
     <h3>Messages</h3>
     <div class="body">
       <div class="note">Everything this window reported, newest first. The server's own log stays on the
@@ -950,7 +953,7 @@
 </div>
 
 <div class="modal" id="analyses-modal">
-  <div class="dialog" style="min-width:640px">
+  <div class="dialog" style="--dialog-width:640px">
     <h3>Open analyses</h3>
     <div class="body">
       <div class="note">Closing an analysis takes it out of the workspace; the file stays in the case.
@@ -965,7 +968,7 @@
 </div>
 
 <div class="modal" id="history-modal">
-  <div class="dialog" style="min-width:680px">
+  <div class="dialog" style="--dialog-width:680px">
     <h3>History and recovery</h3>
     <div class="body">
       <div class="note">Each entry is a state the case held. Restoring one keeps the present state in the
@@ -977,7 +980,7 @@
 </div>
 
 <div class="modal" id="sort-modal">
-  <div class="dialog" style="min-width:600px">
+  <div class="dialog" style="--dialog-width:600px">
     <h3>Sort priority</h3>
     <div class="body">
       <div class="note">The first key decides; the next ones break ties. Shift-clicking a column header
@@ -1000,7 +1003,7 @@
 </div>
 
 <div class="modal" id="summaries-modal">
-  <div class="dialog" style="min-width:680px">
+  <div class="dialog" style="--dialog-width:680px">
     <h3>Group summaries</h3>
     <div class="body">
       <div class="note">One line per aggregate. The desktop shows them beside the group and can order the
@@ -1043,7 +1046,7 @@
 </div>
 
 <div class="modal" id="date-modal">
-  <div class="dialog" style="min-width:520px">
+  <div class="dialog" style="--dialog-width:520px">
     <h3>Filter a date</h3>
     <div class="body">
       <div class="row"><label for="date-column">Column</label><select id="date-column"></select></div>
@@ -1115,7 +1118,7 @@
           <button class="btn" id="detrules-reset" disabled>Reset to the pack</button>
           <button class="btn" id="detrules-save" disabled>Save</button>
         </div>
-        <textarea id="detrules-text" spellcheck="false"
+        <textarea id="detrules-text" aria-label="Detection rule source" spellcheck="false"
           style="flex:1;min-height:320px;font-family:ui-monospace,Consolas,monospace;font-size:11px"></textarea>
         <div class="note" id="detrules-note">Pick a rule on the left. An edit is kept beside the tool
           pack: the delivered rules are never modified, and a reset brings the original back.</div>
@@ -1128,7 +1131,7 @@
 </div>
 
 <div class="modal" id="graph-node-modal">
-  <div class="dialog" style="min-width:460px">
+  <div class="dialog" style="--dialog-width:460px">
     <h3>Free node</h3>
     <div class="body">
       <div class="note">A machine or a step the findings do not carry. It joins the graph
@@ -1146,7 +1149,7 @@
 </div>
 
 <div class="modal" id="compat-modal">
-  <div class="dialog" style="min-width:760px">
+  <div class="dialog" style="--dialog-width:760px">
     <h3>Profiles and compatibility</h3>
     <div class="body">
       <div class="note">A presentation plugin declares columns and their types; the source values stay
@@ -1174,9 +1177,9 @@
 </div>
 
 <div class="modal" id="cell-modal">
-  <div class="dialog" style="min-width:720px">
+  <div class="dialog" style="--dialog-width:720px">
     <h3 id="cell-modal-title">Cell</h3>
-    <div class="body"><textarea id="cell-full" rows="10" style="width:100%"></textarea></div>
+    <div class="body"><textarea id="cell-full" aria-label="Full cell value" rows="10" style="width:100%"></textarea></div>
     <div class="foot">
       <button class="btn" data-act="cell-copy">Copy</button>
       <button class="btn" data-act="settings-close">Close</button>
@@ -1185,7 +1188,7 @@
 </div>
 
 <div class="modal" id="prefs-modal">
-  <div class="dialog" style="min-width:640px">
+  <div class="dialog" style="--dialog-width:640px">
     <h3>Preferences</h3>
     <div class="body">
       <div class="note">What this instance runs with. Readers marked as missing are simply absent from the tool pack on this server.</div>
@@ -1240,7 +1243,7 @@
 </div>
 
 <div class="modal" id="views-modal">
-  <div class="dialog" style="min-width:600px">
+  <div class="dialog" style="--dialog-width:600px">
     <h3>Saved views</h3>
     <div class="body">
       <div class="row"><label for="view-name">Save as</label><input id="view-name" placeholder="e.g. Logons on FBVM"></div>
@@ -1276,7 +1279,7 @@
         <button class="btn" id="coverage-export-csv">Export CSV</button>
       </div>
       <div class="row">
-        <select id="coverage-level">
+        <select id="coverage-level" aria-label="Coverage severity">
           <option value="">Every severity</option>
           <option value="error">Errors</option>
           <option value="warning">To verify</option>
@@ -1305,7 +1308,7 @@
 </div>
 
 <div class="modal" id="coverage-plan-modal">
-  <div class="dialog" style="min-width:440px">
+  <div class="dialog" style="--dialog-width:440px">
     <h3>Expected families</h3>
     <div class="body">
       <div class="note">Tick only the families your collection plan expects. Their absence is a point to verify, not a proof of absence on the machine.</div>
@@ -1319,7 +1322,7 @@
 </div>
 
 <div class="modal" id="rules-modal">
-  <div class="dialog" style="min-width:760px">
+  <div class="dialog" style="--dialog-width:760px">
     <h3>Colour rules</h3>
     <div class="subtabs" style="margin-bottom:6px">
       <div class="subtab active" data-scope="analysis">This analysis</div>
@@ -1427,7 +1430,7 @@
 </div>
 
 <div class="modal" id="pivot-modal">
-  <div class="dialog" style="min-width:820px">
+  <div class="dialog" style="--dialog-width:820px">
     <h3>What launched this process?</h3>
     <div class="body">
       <div class="note" id="pivot-anchor"></div>
@@ -1438,7 +1441,7 @@
 </div>
 
 <div class="modal" id="derived-check-modal">
-  <div class="dialog" style="min-width:520px">
+  <div class="dialog" style="--dialog-width:520px">
     <h3>Derived columns</h3>
     <div class="body"><div id="derived-check-list" class="muted">No derived columns.</div></div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
@@ -1480,7 +1483,7 @@
 </div>
 
 <div class="modal" id="search-modal">
-  <div class="dialog" style="min-width:760px">
+  <div class="dialog" style="--dialog-width:760px">
     <h3>Global search</h3>
     <div class="body">
       <div class="row"><label for="global-text">Text</label><input id="global-text" placeholder="Search every analysis of the case"></div>
@@ -1495,7 +1498,7 @@
 </div>
 
 <div class="modal" id="action-modal">
-  <div class="dialog" style="min-width:640px">
+  <div class="dialog" style="--dialog-width:640px">
     <h3 id="action-modal-title">Action</h3>
     <div class="body">
       <div class="row"><label for="ae-title">Title</label><input id="ae-title" style="flex:1"></div>
@@ -1597,7 +1600,7 @@
 </div>
 
 <div class="modal" id="client-modal">
-  <div class="dialog" style="min-width:560px">
+  <div class="dialog" style="--dialog-width:560px">
     <h3>Client and mission</h3>
     <div class="body">
       <div class="row"><label for="cm-name">Client</label><input id="cm-name"></div>
@@ -1671,10 +1674,16 @@
   <div class="dialog">
     <h3>Columns</h3>
     <div class="body">
-      <div class="note">Untick to hide a column, pin the ones you need to keep in sight while scrolling.</div>
+      <div class="row">
+        <label for="column-search">Find a column</label>
+        <input id="column-search" type="search" autocomplete="off">
+        <span id="column-visibility" class="note" role="status"></span>
+      </div>
       <div id="columns-list" class="columns-list"></div>
+      <div id="columns-no-match" class="note" hidden>No column matches this search.</div>
     </div>
     <div class="foot">
+      <button class="btn" id="hide-empty-columns" data-act="hide-empty-columns">Hide empty columns</button>
       <button class="btn" data-act="columns-reset">Show all</button>
       <button class="btn" data-act="derived">Add a derived column…</button>
       <button class="btn" data-act="settings-close">Close</button>
@@ -1686,10 +1695,8 @@
   <div class="dialog">
     <h3>Group the results</h3>
     <div class="body">
-      <div class="row">
-        <label for="group-select">Add a level</label>
-        <select id="group-select"></select>
-      </div>
+      <div class="note">Tick the columns to group. Drag to reorder the levels from top to bottom, or use the arrow buttons.</div>
+      <div class="columns-list" id="group-levels"></div>
       <div class="row">
         <label for="group-interval">Date interval</label>
         <select id="group-interval">
@@ -1703,7 +1710,7 @@
       <div class="note">Drag a header onto the bar to add a level; each level has its own ×. Grouping counts every row of the analysis. Click a group to drill down, Root to come back.</div>
     </div>
     <div class="foot">
-      <button class="btn" data-act="group-apply">Add level</button>
+      <button class="btn" data-act="group-apply">Apply grouping</button>
       <button class="btn" data-act="group-remove">Remove grouping</button>
       <button class="btn" data-act="settings-close">Cancel</button>
     </div>

@@ -7,6 +7,7 @@ writes it, so a route cannot drift into a decorated stub without a red test.
 """
 
 import csv
+import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -181,6 +182,26 @@ def test_the_timeline_counts_the_dated_rows(service):
     assert payload["sources"], "the legend must name the analysis it read"
     assert payload["sources"][0]["dated"] == 3
     assert payload["histogram"]["bins"] > 0
+
+
+def test_the_timeline_indexes_an_analysis_while_the_grid_keeps_it_open(service, monkeypatch):
+    from fireblade.core.timeline import TimelineStore
+
+    library, identifier = service
+    grid = library._case_for(identifier, 0)
+    build = TimelineStore.build
+
+    def build_with_open_grid(store, *args, **kwargs):
+        # This is the order when the browser requests rows as the timeline starts.
+        assert library.rows(identifier, 0)["total"] == 3
+        return build(store, *args, **kwargs)
+
+    monkeypatch.setattr(TimelineStore, "build", build_with_open_grid)
+    payload = library.timeline(identifier)
+    assert payload["count"] == 3
+    assert not payload["sources"][0]["error"]
+    assert library._case_for(identifier, 0) is grid
+    assert library.rows(identifier, 0)["total"] == 3
 
 
 def test_a_global_search_finds_the_value_and_names_its_analysis(service):
@@ -717,6 +738,8 @@ def test_global_rules_reach_every_analysis_that_has_the_column(service, tmp_path
         headers=["User", "SourceIP"],
     )
     assert saved["saved"] == 1
+    assert library.global_rules()["stored"] == 1
+    assert library.global_rules(identifier=identifier, index=0)["applied"] == 1
 
     state = library.global_rules(identifier, 0)
     assert state["stored"] == 1
@@ -783,7 +806,7 @@ def test_the_timeline_exports_a_verified_file(service):
     assert text.splitlines()[0].startswith("Date_UTC")
     assert len(text.strip().splitlines()) == 4, "three rows and the header"
     assert receipt["written"] == receipt["expected"] == 3
-    assert len(receipt["sha256"]) == 64
+    assert receipt["sha256"] == hashlib.sha256(data).hexdigest()
 
 
 def test_rows_without_a_date_join_the_timeline_on_request(tmp_path):
@@ -1700,3 +1723,205 @@ def test_a_profile_folder_the_process_cannot_enter_holds_no_plugin(tmp_path, mon
 
     monkeypatch.setattr(profile_plugins, "Path", lambda *_a: Locked())
     assert profile_plugins.load_plugins(tmp_path) == ([], [])
+
+
+def test_downloaded_exports_do_not_accumulate_in_the_temporary_folder(
+    case_with_analysis, tmp_path, monkeypatch
+):
+    from fastapi.testclient import TestClient
+
+    import fireblade.web.service as host_service
+    from fireblade.web.server import create_app
+
+    root, identifier = case_with_analysis
+    target = tmp_path / "download-temporaries"
+    target.mkdir()
+    app = create_app(root)
+    monkeypatch.setattr(host_service.tempfile, "gettempdir", lambda: str(target))
+    with TestClient(app) as client:
+        result = client.get(f"/api/cases/{identifier}/analyses/0/export")
+        assert result.status_code == 200 and "alice" in result.text
+    assert not list(target.glob("fireblade-*"))
+
+
+def test_a_full_disk_during_export_translation_removes_incomplete_outputs(
+    service, tmp_path, monkeypatch
+):
+    import fireblade.web.service as host_service
+
+    lib, identifier = service
+    target = tmp_path / "download-temporaries"
+    target.mkdir()
+    monkeypatch.setattr(host_service.tempfile, "gettempdir", lambda: str(target))
+
+    def fail(path, case):
+        path.with_name(path.name + ".part").write_text("partial header")
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(host_service, "_translate_csv_header", fail)
+    with pytest.raises(OSError, match="No space left"):
+        lib.export(identifier, 0)
+    assert not list(target.glob("fireblade-*"))
+
+
+def test_a_disconnected_download_releases_its_temporary_file(tmp_path):
+    import asyncio
+
+    from starlette.requests import ClientDisconnect
+
+    from fireblade.web.server import TemporaryDownloadResponse
+
+    target = tmp_path / "download.csv"
+    target.write_text("Id\n1\n")
+
+    async def disconnected_send(message):
+        raise OSError("Disconnected")
+
+    async def transfer():
+        await TemporaryDownloadResponse(target)(
+            {"type": "http", "method": "GET", "headers": [], "asgi": {"spec_version": "2.4"}},
+            None,
+            disconnected_send,
+        )
+
+    # A session-scoped synchronous Playwright fixture may own this thread's loop.
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with pytest.raises((OSError, ClientDisconnect)):
+            pool.submit(lambda: asyncio.run(transfer())).result(timeout=5)
+    assert not target.exists()
+
+
+def test_case_close_waits_until_a_rows_request_finishes_painting(service, monkeypatch):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    lib, identifier = service
+    entered = threading.Event()
+    release = threading.Event()
+    closed = threading.Event()
+    paint = lib._painting
+
+    def delayed(*args, **kwargs):
+        entered.set()
+        assert release.wait(5)
+        return paint(*args, **kwargs)
+
+    def close():
+        lib.close_case(identifier)
+        closed.set()
+
+    monkeypatch.setattr(lib, "_painting", delayed)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        rows = pool.submit(lib.rows, identifier, 0)
+        assert entered.wait(5)
+        closing = pool.submit(close)
+        try:
+            assert not closed.wait(0.15), "The connection closed before the row styles were read"
+        finally:
+            release.set()
+        assert rows.result(timeout=5)["total"] == 3
+        closing.result(timeout=5)
+
+
+@pytest.mark.parametrize("operation", ["bookmarks", "views", "rules", "columns", "empty_columns"])
+def test_analysis_queries_wait_for_a_layout_change(service, monkeypatch, operation):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    lib, identifier = service
+    closed = threading.Event()
+    release = threading.Event()
+    original_close = lib.close_case
+
+    def delayed_close(case_id):
+        original_close(case_id)
+        closed.set()
+        assert release.wait(5)
+
+    monkeypatch.setattr(lib, "close_case", delayed_close)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        layout = pool.submit(lib.reorganize, identifier, "files")
+        assert closed.wait(5)
+        query = pool.submit(getattr(lib, operation), identifier, 0)
+        try:
+            threading.Event().wait(0.1)
+            assert not query.done(), f"{operation} reopened an analysis during a layout change"
+        finally:
+            release.set()
+        layout.result(timeout=5)
+        assert query.result(timeout=5) is not None
+
+
+def test_busy_case_is_not_evicted_and_other_cases_remain_usable(service, monkeypatch):
+    import shutil
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    lib, identifier = service
+    other = lib.library.create("Independent case")
+    source = lib._analyses(lib.library.read(identifier))[0]["path"]
+    target = lib.library.folder(other["id"]) / "other.duckdb"
+    shutil.copyfile(source, target)
+    lib.library.save(
+        other["id"],
+        [AnalysisSnapshot(str(target), {}, View(), b"")],
+        0,
+        [],
+        None,
+        other["revision"],
+    )
+    lib.MAX_OPEN = 1
+    entered = threading.Event()
+    release = threading.Event()
+    paint = lib._painting
+
+    def delayed(*args, **kwargs):
+        if threading.current_thread().name.startswith("busy-case"):
+            entered.set()
+            assert release.wait(5)
+        return paint(*args, **kwargs)
+
+    monkeypatch.setattr(lib, "_painting", delayed)
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="busy-case") as pool:
+        busy = pool.submit(lib.rows, identifier, 0)
+        assert entered.wait(5)
+        try:
+            assert lib.rows(other["id"], 0)["total"] == 3
+        finally:
+            release.set()
+        assert busy.result(timeout=5)["total"] == 3
+
+
+def test_import_file_outputs_distinguish_failed_and_partly_read_sources(service):
+    import json
+
+    lib, identifier = service
+    folder = lib.library.folder(identifier) / "collections" / "import-outcomes"
+    folder.mkdir(parents=True)
+    entries = [
+        {"path": "good.csv", "status": "complete", "runs": [{"outputs": [{"analysis": "a"}]}]},
+        {"path": "failed.csv", "status": "attention", "runs": [{"error": "bad data"}]},
+        {
+            "path": "partial.db",
+            "status": "attention",
+            "runs": [{"outputs": [{"analysis": "b"}]}, {"error": "unread table"}],
+        },
+    ]
+    (folder / "collection.json").write_text(json.dumps({"files": entries}))
+    for files in [
+        lib.collection_files(identifier)["files"],
+        lib.imports(identifier)["collections"][0]["files"],
+    ]:
+        assert [file["output_count"] for file in files] == [1, 0, 1]
+        assert [file["outputs"] for file in files] == ["1 analysis", "", "1 analysis"]
+
+
+@pytest.mark.parametrize(
+    "parser,family",
+    [("EvtxECmd", "EVTX"), ("RECmd", "Registry"), ("PECmd", "Prefetch"), ("SQLECmd", "SQLite")],
+)
+def test_individual_reader_tables_share_their_forensic_family(service, parser, family):
+    lib, _identifier = service
+    assert lib._family_of({"source_info": {"path": "opaque-table.csv", "parser": parser}}) == family

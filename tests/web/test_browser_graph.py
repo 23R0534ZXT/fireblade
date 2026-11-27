@@ -60,6 +60,35 @@ def test_nothing_is_open_until_a_card_or_a_link_is_asked_about(graph):
     assert "Click a card or a link" in page.inner_text("#graph-legend")
 
 
+def test_a_graph_request_for_the_previous_case_cannot_repaint_the_current_case(graph, server):
+    page = graph
+    empty_case = make_case(server, "Empty graph case")
+    old_graph = httpx.get(f"{page.base}/api/cases/{page.identifier}/graph").json()
+    held = []
+    old_url = f"**/api/cases/{page.identifier}/graph"
+    page.route(old_url, lambda route: held.append(route))
+    with page.expect_request(old_url):
+        page.locator("#graph-build").click()
+
+    page.locator('.toolbar [data-act="refresh-cases"]').click()
+    page.locator('[data-tab="cases"]').click()
+    page.locator('#cases-body tr:has(td:text-is("Empty graph case")) td').first.dblclick()
+    page.wait_for_function(
+        "document.getElementById('casecombo-label').innerText === 'Empty graph case'"
+    )
+    with page.expect_response(f"**/api/cases/{empty_case}/graph"):
+        page.locator('[data-tab="graph"]').click()
+    page.wait_for_function("document.querySelectorAll('#graph-nodes .gnode').length === 0")
+
+    with page.expect_response(old_url) as response:
+        held[0].fulfill(json=old_graph)
+    response.value.finished()
+    page.evaluate(
+        "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+    )
+    assert page.locator("#graph-nodes .gnode").count() == 0
+
+
 def test_a_card_says_what_it_is_how_it_was_read_and_which_alerts_it_rests_on(graph):
     page = graph
     _card(page, "PC-2").click()

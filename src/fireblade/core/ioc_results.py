@@ -25,6 +25,7 @@ from fireblade.core.ioc_hunt import (
 )
 from fireblade.core.models import View
 from fireblade.core.paths import evidence_name, protected_destination
+from fireblade.core.sessions import MAX_SESSION_BYTES
 from fireblade.core.timeline import guess_time_column
 
 DEFAULT_HIT_LIMIT = 250_000
@@ -156,7 +157,7 @@ class HuntStore:
                 "SELECT id,path,info,view,total,scanned,complete,error FROM sources ORDER BY id"
             ):
                 size += len(row[2].encode("utf-8")) + len(row[3].encode("utf-8"))
-                if len(result) >= 1000 or size > 16 * 1024**2:
+                if size > MAX_SESSION_BYTES:
                     raise ValueError("Périmètre de chasse trop volumineux")
                 result.append(
                     dict(
@@ -478,8 +479,8 @@ def hunt(
             info = json.dumps(document.source_info, ensure_ascii=False)
             view = (document.view if respect_filters else View()).to_json()
             size += len(info.encode("utf-8")) + len(view.encode("utf-8"))
-            if i >= 1000 or size > 16 * 1024**2:
-                raise ValueError("Périmètre limité à 1000 analyses et 16 Mio de métadonnées")
+            if size > MAX_SESSION_BYTES:
+                raise ValueError("Hunt scope metadata exceeds its memory budget")
             store.db.execute(
                 "INSERT INTO sources(id,path,info,view) VALUES(?,?,?,?)",
                 (i, document.path, info, view),
@@ -526,7 +527,10 @@ def hunt(
                     where, args = case.where(view)
                     time_column = (time_columns or {}).get(
                         document.path,
-                        guess_time_column(case.headers, document.view.timestamp_columns),
+                        guess_time_column(
+                            case.headers,
+                            document.view.timestamp_columns or ([3] if case.sparse else []),
+                        ),
                     )
                     if type(time_column) is not int or not 0 <= time_column < len(case.headers):
                         time_column = None
@@ -537,14 +541,17 @@ def hunt(
                             scanned += 1
                             scanned_total += 1
                             row_matches = set()
+                            from fireblade.core.sparse_union import fields_from_record
+
+                            record_fields = dict(fields_from_record(case, record))
                             date = (
-                                str(record[time_column + 1] or "")
+                                str(record_fields.get(time_column) or "")
                                 if time_column is not None
                                 else ""
                             )
                             if len(date) > 512:
                                 date = date[:512] + " [abrégée]"
-                            for column, value in enumerate(record[1:]):
+                            for column, value in record_fields.items():
                                 reader.check()
                                 if value is None:
                                     continue

@@ -73,7 +73,15 @@ def test_a_case_is_created_saved_imported_renamed_and_erased(page, host):
     page.wait_for_function(
         "document.getElementById('casecombo-label').innerText.includes('Lifecycle')"
     )
-    page.keyboard.press("Control+s")
+    page.wait_for_selector("#analysis-view", state="visible")
+    page.wait_for_function(
+        "document.getElementById('status').innerText === 'Case opened: no analysis inside'"
+    )
+    with page.expect_response(
+        lambda response: response.url.endswith("/save") and response.request.method == "POST"
+    ) as saved:
+        page.keyboard.press("Control+s")
+    assert saved.value.ok
     page.wait_for_function(
         "document.getElementById('status').innerText.startsWith('Case saved at')"
     )

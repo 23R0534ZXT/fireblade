@@ -13,18 +13,19 @@ from pathlib import Path
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.models import AnalysisSnapshot, View
+from fireblade.core.sessions import MAX_SESSION_BYTES
 
 
 def read_tle_session(path):
     path = Path(path).resolve()
-    if path.stat().st_size > 4 * 1024 * 1024:
-        raise ValueError("Session limitée à 4 Mo")
+    if path.stat().st_size > MAX_SESSION_BYTES:
+        raise ValueError("Session metadata exceeds its memory budget")
     data = json.loads(path.read_text(encoding="utf-8-sig"))
     if not isinstance(data, dict):
         raise ValueError("Session TLE invalide")
     files = data.get("SessionFiles")
-    if not isinstance(files, dict) or not 1 <= len(files) <= 1000:
-        raise ValueError("Session TLE : SessionFiles doit référencer de 1 à 1000 fichiers")
+    if not isinstance(files, dict) or not files:
+        raise ValueError("Session TLE: SessionFiles must reference at least one file")
     result = []
     for source, tags in files.items():
         if not isinstance(source, str) or not isinstance(tags, list) or len(tags) > 100000:

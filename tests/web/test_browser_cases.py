@@ -55,6 +55,33 @@ def test_the_open_button_with_no_case_selected_asks_for_one(empty_page):
     page.wait_for_function("document.getElementById('status').innerText.includes('Select a case')")
 
 
+def test_the_last_case_opened_wins_when_an_older_response_arrives_late(page, server):
+    older = make_case(server, "Case opened first")
+    latest = make_case(server, "Case opened last")
+    old_url = f"{server[0]}/api/cases/{older}"
+    payload = httpx.get(old_url).raise_for_status().json()
+    page.evaluate("loadCases()")
+    _cases_tab(page)
+    held = []
+    page.route(old_url, lambda route: held.append(route))
+    with page.expect_request(old_url):
+        _row(page, "Case opened first").dblclick()
+    _row(page, "Case opened last").dblclick()
+    page.wait_for_function(
+        "name => document.getElementById('casecombo-label').textContent === name",
+        arg="Case opened last",
+    )
+
+    with page.expect_response(old_url) as delayed:
+        held[0].fulfill(json=payload)
+    delayed.value.finished()
+    page.evaluate(
+        "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+    )
+    assert page.evaluate("state.openCase.id") == latest
+    assert page.locator("#casecombo-label").inner_text() == "Case opened last"
+
+
 def test_the_search_box_narrows_the_list_and_says_when_nothing_matches(page, server):
     make_case(server, "Phishing at the front desk")
     page.evaluate("loadCases()")
@@ -158,6 +185,7 @@ def test_archive_hides_a_case_until_archived_ones_are_included_and_reactivate_br
     page.wait_for_selector('#cases-body tr:has(td:text-is("To archive"))')
     _row(page, "To archive").click()
     assert page.inner_text("#archive-case") == "Archive"
+    assert page.locator("#restore-case").is_hidden()
     page.click('#cases-view [data-act="archive-case"]')
     page.wait_for_function("document.querySelectorAll('#cases-body tr:has(td)').length > 0")
     page.wait_for_function(

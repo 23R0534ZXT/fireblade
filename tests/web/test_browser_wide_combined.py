@@ -107,8 +107,21 @@ def test_wide_grid_scroll_search_details_and_switch_to_narrow(wide_case):
         page.locator(f"#head input[data-filter='{far - 1}']").press("Enter")
         page.wait_for_function("state.total === 1 && rowsRequest === null")
         assert "value-3-799" in page.inner_text("#body")
+        page.locator(f"#body tr[data-row='4'] td[data-cell='{far - 1}']").click()
+        page.wait_for_selector("#note-input")
+        page.fill("#note-input", "Follow this source record")
+        with page.expect_response(lambda response: response.url.endswith("/bookmark")):
+            page.click("#note-save")
         with page.expect_response(lambda response: response.url.endswith("/reorganize")):
             page.select_option("#import-layout", "files")
         page.wait_for_function("state.openCase.analyses.length === 4 && rowsRequest === null")
         assert len(page.evaluate("state.columns")) == 802
         assert page.evaluate("state.total") == 1
+        assert page.locator("#note-input").count() == 0, (
+            "stale note editors must close with the old grid"
+        )
+        page.locator("#tree [data-analysis]").filter(has_text="source3.csv").click()
+        page.wait_for_function("rowsRequest === null")
+        page.locator("#body tr[data-row='1'] td[data-cell]").first.click()
+        page.wait_for_selector("#note-input")
+        assert page.input_value("#note-input") == "Follow this source record"

@@ -1866,6 +1866,7 @@ function applyStoredRowHeight() {
 /* Query indexes only have meaning for the analysis that supplied the columns. */
 function resetAnalysisQuery() {
   rowsRequest?.abort();
+  showDetails(null);
   state.columnContext = null;
   $("gridbody").scrollLeft = 0;
   state.filters = []; state.search = ""; state.expression = null; state.bookmarksOnly = false;
@@ -6276,6 +6277,8 @@ async function loadRows(reset, preserveSelection = false) {
   if (!preserveSelection) {
     state.selection.clear();
     state.anchor = null;
+    state.selected = null;
+    showDetails(null);
   }
   rowsRequest?.abort();
   const controller = new AbortController();
@@ -7753,6 +7756,9 @@ function wire() {
     say("Laying the analyses out again…");
     try {
       const done = await apiPost(`/api/cases/${id}/reorganize`, { mode });
+      if (state.openCase?.id === id && done.collections) {
+        resetTimeline(); resetFindings(); resetGraph(); resetIoc();
+      }
       if (state.openCase?.id === id && await openCase(id)) {
         const message = done.collections ? "Layout changed" : "Already laid out that way";
         say([message, ...(done.notices || [])].join(" · "));

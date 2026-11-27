@@ -4145,6 +4145,7 @@ class Library:
         artifact family, or one for everything. The files are not read again: each collection
         keeps the grids it first made, and the new layout is built from them."""
         from fireblade.core.collection import Collection
+        from fireblade.core.collection_annotations import capture, restore
         from fireblade.core.collection_organization import organize
 
         if mode not in ("files", "artifacts", "combined"):
@@ -4173,6 +4174,7 @@ class Library:
             report = collection.report
             if report.get("organization") == mode or not report.get("documents"):
                 continue
+            annotations = capture(collection)
             raw = report.get("raw_documents") or report["documents"]
             report["raw_documents"] = raw
             report["documents"] = list(raw)
@@ -4180,6 +4182,7 @@ class Library:
             report.pop("organization_notes", None)
             if mode != "files":
                 organize(collection)
+            restore(collection, annotations)
             collection.save()
             notices.extend(report.get("organization_notes") or [])
             self._merge_session(

@@ -91,6 +91,7 @@ body{
   .toolbar .tb[data-act="profiles-plugins"]{display:none}
 }
 @media (max-width:720px){
+  .toolbar{flex-wrap:wrap}
   .toolbar .tbsep,.toolbar .tb[data-act="display-settings"]{display:none}
   .toolbar .casecombo{flex:1 1 110px;min-width:110px;max-width:145px}
   #casecombo-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

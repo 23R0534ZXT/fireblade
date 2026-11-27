@@ -364,18 +364,17 @@ def test_every_shortcut_a_menu_announces_is_wired(page):
     announced = {act: keys for act, keys in hints}
     # What each combination opens, by the command it is announced beside.
     expected = {
-        "import-file": ("Control+o", "#import-modal.show"),
-        "import-folder": ("Control+Shift+I", None),  # opens the browser's own folder chooser
+        "import-file": ("Control+o", '#import-modal.show #import-title:text-is("Import a file")'),
+        "import-folder": (
+            "Control+Shift+I",
+            '#import-modal.show #import-title:text-is("Parse a folder")',
+        ),
         "global-search": ("Control+f", "#search-modal.show"),
         "palette": ("Control+k", "#palette-modal.show"),
         "help-guide": ("F1", "#help-modal.show"),
     }
     for act, (combination, result) in expected.items():
         assert act in announced, f"{act} no longer announces its shortcut"
-        if result is None:
-            with page.expect_file_chooser(timeout=5000):
-                page.keyboard.press(combination)
-            continue
         page.keyboard.press(combination)
         page.wait_for_selector(result, timeout=5000)
         page.keyboard.press("Escape")

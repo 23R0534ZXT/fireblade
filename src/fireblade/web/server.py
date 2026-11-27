@@ -1510,6 +1510,7 @@ def create_app(
         order_descending: bool = True,
         order_summary: int = 0,
         filter: list[str] = Query(default=[]),
+        column: list[int] | None = Query(default=None),
     ):
         # sortkey=3:desc — several keys, applied in the order they are sent.
         sorts = _sort_keys(sortkey)
@@ -1541,6 +1542,7 @@ def create_app(
             order=order,
             order_descending=order_descending,
             order_summary=order_summary,
+            columns=column,
         )
 
     @app.get("/api/cases/{identifier}/analyses/{index}/export")

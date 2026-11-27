@@ -5847,6 +5847,7 @@ class Library:
         show_total: bool = True,
         date_format: str = "source",
         date_pattern: str = "",
+        columns: list[int] | None = None,
     ) -> dict:
         case = self._case_for(identifier, index)
         view = self._view_from(
@@ -5943,9 +5944,19 @@ class Library:
                     if artifact < len(row) and isinstance(row[artifact], str):
                         row[artifact] = english.english_text(row[artifact])
         styles, rule_set = ({}, []) if grouped else self._painting(identifier, case, view, page)
+        projection = None
+        if not grouped and (columns is not None or len(labels) > 128):
+            requested = list(range(min(64, len(labels)))) if columns is None else columns
+            if len(requested) > 256 or any(
+                type(i) is not int or not 0 <= i < len(labels) for i in requested
+            ):
+                raise ServiceError("Invalid column window")
+            projection = list(dict.fromkeys([0, *requested]))
+            rows = [[row[i] for i in projection] for row in rows]
         return {
             "columns": labels,
             "rows": rows,
+            "projection": projection,
             # which colour rule each row of the page answers to, and what each rule paints
             "styles": styles,
             "rule_set": rule_set,

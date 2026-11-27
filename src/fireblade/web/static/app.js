@@ -1866,6 +1866,8 @@ function applyStoredRowHeight() {
 /* Query indexes only have meaning for the analysis that supplied the columns. */
 function resetAnalysisQuery() {
   rowsRequest?.abort();
+  state.columnContext = null;
+  $("gridbody").scrollLeft = 0;
   state.filters = []; state.search = ""; state.expression = null; state.bookmarksOnly = false;
   state.sort = null; state.descending = false; state.multiSort = []; state.groups = []; state.path = [];
   state.expandAll = false;
@@ -3097,8 +3099,11 @@ async function copySelectedRows() {
   const lines = [];
   if (copyPrefs.headers) lines.push(shown.map((item) => cell(item.name)).join("\t"));
   for (const id of ids) {
-    const row = state.rows.find((item) => String(item[0]) === id);
+    let row = state.rows.find((item) => String(item[0]) === id);
     if (!row) continue;
+    try { row = await completeRow(row); }
+    catch (error) { say(error.message, true); return; }
+    if (!row) return;
     lines.push(shown.map((item) => cell(row[item.index])).join("\t"));
   }
   try {
@@ -5602,6 +5607,7 @@ async function openSourceRow(index, rowId) {
     $("source-row-title").textContent = `${payload.label} — row ${payload.row_id}`;
     $("source-row-list").innerHTML = payload.columns.map((name, position) => {
       const value = payload.values[position];
+      if (payload.columns.length > 128 && (value === null || value === "")) return "";
       const shown = value === null || value === "" ? "(empty)" : String(value).slice(0, 160);
       return `<div class="analysis-line"><span class="analysis-name">${escapeHtml(name)}</span>
         <span class="pin" title="${escapeHtml(value === null ? "" : String(value))}">${escapeHtml(shown)}</span></div>`;
@@ -6231,6 +6237,11 @@ function query() {
 function rowsUrl(extra) {
   const base = `/api/cases/${state.openCase.id}/analyses/${state.analysis}/rows`;
   const params = query();
+  if (state.columns.length > 128 && state.columnContext === `${state.openCase.id}/${state.analysis}`) {
+    for (const item of columnWindow(visibleColumns())) {
+      if (item.index !== undefined) params.append("column", String(item.index));
+    }
+  }
   if (state.expandAll && state.groups.length) params.set("expanded", "true");
   if (extra) extra(params);
   return `${base}?${params.toString()}`;
@@ -6247,13 +6258,15 @@ function stopQuery() {
   say("Query stopped — the page stays as it was");
 }
 
-async function loadRows(reset) {
+async function loadRows(reset, preserveSelection = false) {
   if (!state.openCase) return;
   if (reset) state.offset = 0;
   // A new page is a new set of rows: a selection of ids that are no longer on
   // screen must not survive into "copy the selected rows".
-  state.selection.clear();
-  state.anchor = null;
+  if (!preserveSelection) {
+    state.selection.clear();
+    state.anchor = null;
+  }
   rowsRequest?.abort();
   const controller = new AbortController();
   rowsRequest = controller;
@@ -6261,7 +6274,12 @@ async function loadRows(reset) {
     const payload = await apiAbortable(rowsUrl(), controller.signal);
     if (controller.signal.aborted) return false;
     state.columns = payload.columns;
-    state.rows = payload.rows;
+    state.columnContext = `${state.openCase.id}/${state.analysis}`;
+    state.rows = payload.projection ? payload.rows.map((values) => {
+      const row = new Array(payload.columns.length);
+      payload.projection.forEach((column, position) => { row[column] = values[position]; });
+      return row;
+    }) : payload.rows;
     state.total = payload.total;
     state.offset = payload.offset;
     state.grouped = Boolean(payload.grouped);
@@ -6365,6 +6383,34 @@ function ruleCss(rule) {
 function visibleColumns() {
   return orderedColumns().filter((item) => !state.hidden.has(item.index));
 }
+
+/* Keep the real column order and scroll width, but create cells only around the
+   viewport. Sparse response arrays distinguish an unloaded value from SQL NULL. */
+function columnWindow(columns) {
+  if (state.columns.length <= 128) return columns;
+  const wrap = $("gridbody");
+  const low = Math.max(0, wrap.scrollLeft - 400);
+  const high = wrap.scrollLeft + wrap.clientWidth + 400;
+  let left = 30;
+  const result = [];
+  for (const item of columns) {
+    const width = state.widths[item.index] || defaultWidth(item.name, item.index);
+    const shown = (left + width >= low && left <= high)
+      || state.pinned.has(item.index - 1) || state.pinnedRight.has(item.index - 1);
+    if (shown) result.push({ ...item, width });
+    else if (result.length && result[result.length - 1].index === undefined) result[result.length - 1].width += width;
+    else result.push({ width });
+    left += width;
+  }
+  return result;
+}
+
+let columnWindowTimer;
+$("gridbody").addEventListener("scroll", () => {
+  if (state.columns.length <= 128 || state.grouped) return;
+  clearTimeout(columnWindowTimer);
+  columnWindowTimer = setTimeout(() => renderGrid(), 70);
+}, { passive: true });
 
 /* "Highlight matches (empty = disable)", the desktop's own control: the text is cut
    around the term, each piece escaped, and only the pieces are marked. */
@@ -6518,7 +6564,7 @@ function renderGrid() {
   renderGroupBar();
   if (!state.grouped) $("group-chart").hidden = true;
   if (state.grouped) { renderGroupedGrid(); return; }
-  const shown = visibleColumns();
+  const shown = columnWindow(visibleColumns());
   if (!state.columns.length) {
     clearGrid("No analysis open.");
     return;
@@ -6531,11 +6577,14 @@ function renderGrid() {
 
   // The header follows `shown`, like the body: a hidden column must not leave its
   // title behind. An absolute index keeps the filters, sorts and widths addressed.
-  $("cols").innerHTML = '<col style="width:30px">' + shown.map(({ index }) =>
-    `<col style="width:${state.widths[index] || defaultWidth(state.columns[index], index)}px">`).join("");
+  $("grid").style.width = state.columns.length > 128
+    ? `${30 + shown.reduce((total, item) => total + item.width, 0)}px` : "";
+  $("cols").innerHTML = '<col style="width:30px">' + shown.map(({ index, width }) =>
+    `<col style="width:${width || state.widths[index] || defaultWidth(state.columns[index], index)}px">`).join("");
 
   const head = ['<tr>', BOOKMARK_GROUP_HEADER];
   shown.forEach(({ index }) => {
+    if (index === undefined) { head.push('<th class="column-spacer"></th>'); return; }
     const name = state.columns[index];
     const multi = state.multiSort.findIndex((item) => item.column === index - 1);
     // state.sort names a column by its position without the row-id column, like multiSort does
@@ -6550,13 +6599,14 @@ function renderGrid() {
   // One leading cell for the checkbox column, then one per column.
   head.push('<tr class="colfilter"><th></th>');
   shown.forEach(({ index }) => {
+    if (index === undefined) { head.push('<th class="column-spacer"></th>'); return; }
     if (index === 0) { head.push("<th></th>"); return; }
     const current = state.filters.find((item) => item.column === index - 1);
     // The operator is shown as a small icon on the left of the field and chosen from a list; the
     // field holds the value alone. (Typing a prefix such as "=" or "!=" still works.)
     const operator = current ? current.operator : (state.filterOps[index - 1] || "contains");
     const meaning = (FILTER_OPERATORS.find(([code]) => code === operator) || [])[2] || operator;
-    head.push(`<th><div class="fcell"><button class="fop" data-fop="${index - 1}" title="Comparison: ${escapeHtml(meaning)}">${FILTER_GLYPHS[operator] || "≈"}</button>`
+    head.push(`<th data-filter-column="${index}"><div class="fcell"><button class="fop" data-fop="${index - 1}" title="Comparison: ${escapeHtml(meaning)}">${FILTER_GLYPHS[operator] || "≈"}</button>`
       + `<input data-filter="${index - 1}" placeholder="Filter…" value="${escapeHtml(current ? current.value : "")}"></div></th>`);
   });
   head.push("</tr>");
@@ -6571,12 +6621,13 @@ function renderGrid() {
     const matched = state.styles[String(id)];
     const rule = matched && matched.length ? state.ruleSet[matched[0]] : null;
     const cells = shown.map(({ index }) => {
+      if (index === undefined) return '<td class="column-spacer"></td>';
       const value = row[index];
       // The case names its date columns when it has them; a value that reads as a
       // full timestamp is formatted anyway, so the preference is never a no-op.
       const isDate = (Array.isArray(state.timestamps) && state.timestamps.includes(index - 1))
         || DATE_TEXT.test(value === null || value === undefined ? "" : String(value));
-      const text = value === null || value === ""
+      const text = value === undefined ? "…" : value === null || value === ""
         ? "∅"
         : String(value); // the server has already written the date columns the way Preferences asked
       const noted = rowNotes[String(index - 1)];
@@ -6622,6 +6673,10 @@ function renderGrid() {
     say(`${state.total} row(s) in this analysis${state.filters.length ? ` — ${state.filters.length} filter(s)` : ""}`);
   }
   applyPinning();
+  if (state.payload?.projection && shown.some((item) => item.index !== undefined
+      && !state.payload.projection.includes(item.index))) {
+    loadRows(false, true);
+  }
 }
 
 function outlineRow(record, colspan) {
@@ -6662,6 +6717,7 @@ function renderGroupChart() {
 }
 
 function renderGroupedGrid() {
+  $("grid").style.width = "";
   const column = state.groups[state.path.length];
   const name = groupColumnName(column) || `column ${column + 1}`;
   const empty = $("grid-empty");
@@ -6728,17 +6784,35 @@ function footerRowsHtml(columns, leading) {
   return html;
 }
 
-function showDetails(row) {
+async function completeRow(row) {
+  if (!row || !state.payload?.projection || row._complete) return row;
+  const caseId = state.openCase.id, analysis = state.analysis;
+  const payload = await api(`/api/cases/${caseId}/timeline/row/${analysis}/${row[0]}`);
+  if (state.openCase?.id !== caseId || state.analysis !== analysis) return null;
+  payload.values.forEach((value, index) => { row[index + 1] = value; });
+  row._complete = true;
+  return row;
+}
+
+let detailsRequest = 0;
+async function showDetails(row) {
+  const request = ++detailsRequest;
   const box = $("details");
   if (!row) {
     box.innerHTML = '<div class="ph">Details of the selected row</div>';
     return;
   }
+  if (state.payload?.projection && !row._complete) {
+    box.innerHTML = '<div class="ph">Reading all fields of the selected row…</div>';
+    try { row = await completeRow(row); }
+    catch (error) { if (request === detailsRequest) box.textContent = error.message; return; }
+    if (request !== detailsRequest || !row) return;
+  }
   const rowNotes = notesForRow(row[0]);
   const pairs = visibleColumns().map(({ name, index }) => {
     const value = row[index];
     if (index === 0) return "";
-    if (value === null || value === "") return "";
+    if (value === null || value === undefined || value === "") return "";
     const note = rowNotes[String(index - 1)];
     return `<tr><td class="k">${escapeHtml(name)}</td>
       <td>${escapeHtml(String(value))}</td>
@@ -6866,21 +6940,50 @@ function moveColumn(header, direction) {
   openColumnManager();
 }
 
+let columnManagerOffset = 0;
 function openColumnManager() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
-  if (!$("columns-modal").classList.contains("show")) $("column-search").value = "";
+  if (!$("columns-modal").classList.contains("show")) { $("column-search").value = ""; columnManagerOffset = 0; }
   const list = $("columns-list");
-  list.innerHTML = orderedColumns().map(({ name, index }) => `
+  const query = $("column-search").value.trim().toLocaleLowerCase();
+  const matches = orderedColumns().filter(({ name, index }) => (index === 0 ? "Row number" : name).toLocaleLowerCase().includes(query));
+  columnManagerOffset = Math.min(columnManagerOffset, Math.max(0, Math.floor((matches.length - 1) / 100) * 100));
+  const page = matches.slice(columnManagerOffset, columnManagerOffset + 100);
+  const pager = matches.length > 100 ? `<div class="row"><button class="btn" data-column-page="-1" ${columnManagerOffset ? "" : "disabled"}>Previous</button>
+    <span>${columnManagerOffset + 1}–${columnManagerOffset + page.length} / ${matches.length} columns</span>
+    <button class="btn" data-column-page="1" ${columnManagerOffset + 100 < matches.length ? "" : "disabled"}>Next</button></div>` : "";
+  list.innerHTML = pager + page.map(({ name, index }) => `
     <label>
       <input type="checkbox" data-col="${index}" ${state.hidden.has(index) ? "" : "checked"}>
       <span data-column-label>${escapeHtml(index === 0 ? "Row number" : name)}</span>
-      ${index ? `<span class="pin"><button class="btn" data-move="${index - 1}" data-dir="-1" title="Move this column earlier">↑</button>
+      ${index ? `<span class="pin"><button class="btn" data-jump-column="${index}" title="Show this column in the grid">Go to</button><button class="btn" data-move="${index - 1}" data-dir="-1" title="Move this column earlier">↑</button>
         <button class="btn" data-move="${index - 1}" data-dir="1" title="Move this column later">↓</button>
         width <input type="number" data-width="${index}" min="30" max="1200" style="width:64px" value="${state.widths[index] || ""}" placeholder="auto">
         <input type="checkbox" data-bool="${index - 1}" ${booleanColumns().has(index - 1) ? "checked" : ""}> boolean
         <input type="checkbox" data-pin="${index - 1}" ${state.pinned.has(index - 1) ? "checked" : ""}> pin left
         <input type="checkbox" data-pinright="${index - 1}" ${state.pinnedRight.has(index - 1) ? "checked" : ""}> pin right</span>` : ""}
     </label>`).join("");
+  list.querySelectorAll("[data-column-page]").forEach((button) => button.addEventListener("click", () => {
+    columnManagerOffset += Number(button.dataset.columnPage) * 100;
+    openColumnManager();
+    list.scrollTop = 0;
+  }));
+  list.querySelectorAll("[data-jump-column]").forEach((button) => button.addEventListener("click", async (event) => {
+    event.preventDefault();
+    const index = Number(button.dataset.jumpColumn);
+    state.hidden.delete(index);
+    closeModals();
+    if (state.grouped) { state.groups = []; state.path = []; state.expandAll = false; await loadRows(true); }
+    renderGrid();
+    let left = 30;
+    for (const item of visibleColumns()) {
+      if (item.index === index) break;
+      left += state.widths[item.index] || defaultWidth(item.name, item.index);
+    }
+    $("gridbody").scrollLeft = Math.max(0, left - 30);
+    renderGrid();
+    saveLayoutSoon();
+  }));
   list.querySelectorAll("button[data-move]").forEach((button) => {
     button.addEventListener("click", (event) => { event.preventDefault(); moveColumn(Number(button.dataset.move), Number(button.dataset.dir)); });
   });
@@ -6931,20 +7034,14 @@ function openColumnManager() {
       saveLayoutSoon();
     });
   });
-  updateColumnList();
+  $("columns-no-match").hidden = matches.length > 0;
+  $("column-visibility").textContent = `${state.hidden.size} hidden`;
   $("columns-modal").classList.add("show");
 }
 
 function updateColumnList() {
-  const query = $("column-search").value.trim().toLocaleLowerCase();
-  let matched = 0;
-  for (const name of $("columns-list").querySelectorAll("[data-column-label]")) {
-    const visible = name.textContent.toLocaleLowerCase().includes(query);
-    name.parentElement.hidden = !visible;
-    if (visible) matched += 1;
-  }
-  $("columns-no-match").hidden = matched > 0;
-  $("column-visibility").textContent = `${state.hidden.size} hidden`;
+  columnManagerOffset = 0;
+  openColumnManager();
 }
 
 async function hideEmptyColumns() {
@@ -7008,11 +7105,8 @@ function applyPinning() {
   grid.querySelectorAll("thead th[data-column]").forEach((th) => {
     place(th, Number(th.dataset.column) - 1);
   });
-  const shown = visibleColumns();
-  grid.querySelectorAll(".colfilter th").forEach((th, position) => {
-    if (position === 0) return;
-    const entry = shown[position - 1];
-    if (entry) place(th, entry.index - 1);
+  grid.querySelectorAll(".colfilter th[data-filter-column]").forEach((th) => {
+    place(th, Number(th.dataset.filterColumn) - 1);
   });
   grid.querySelectorAll("tbody td[data-cell]").forEach((td) => {
     place(td, Number(td.dataset.cell));

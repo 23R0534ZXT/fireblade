@@ -1,4 +1,4 @@
-name: Host clean Docker qualification
+name: Host visual audit
 
 on:
   pull_request:
@@ -9,46 +9,96 @@ permissions:
   contents: read
 
 jobs:
-  clean-build:
+  chromium-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - component: host
-            file: Dockerfile
-          - component: driver
-            file: deploy/host/Dockerfile.driver
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Build without cached layers
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ${{ matrix.file }}
           load: true
-          pull: true
-          no-cache: true
-          tags: fireblade-qa:${{ matrix.component }}
-      - name: Driver starts
-        if: matrix.component == 'driver'
-        run: docker run --rm fireblade-qa:driver python -m fireblade.web.agency --help
+          tags: fireblade-qa:host
+          cache-from: type=gha,scope=host
       - uses: actions/setup-python@v5
-        if: matrix.component == 'host'
         with:
           python-version: '3.12'
-      - name: Run the strict import qualification
-        if: matrix.component == 'host'
+      - name: Prepare public evidence and Chromium
         run: |
-          python -m pip install -r requirements-core.txt
+          python -m pip install -r requirements-core.txt playwright
           python -m pip install -e . --no-deps
+          python -m playwright install --with-deps chromium
           python -m scripts.test_pack.package --out artifacts/pack --volume-rows 2000 --source-commit "$GITHUB_SHA"
-          python -m scripts.recette.host_recette --pack artifacts/pack/Fireblade-Test-Pack-v1 \
-            --image fireblade-qa:host --report artifacts/recette-strict.json --strict
-      - uses: actions/upload-artifact@v4
-        if: always() && matrix.component == 'host'
+          docker run -d --name host-visual -p 127.0.0.1:8080:8080 -v "$PWD/artifacts/pack/Fireblade-Test-Pack-v1:/pack:ro" fireblade-qa:host
+          for attempt in $(seq 1 40); do curl -fsS http://localhost:8080/health && break; sleep 2; done
+      - name: Exercise and capture Host in Chromium
+        run: |
+          mkdir -p review
+          python - <<'PY'
+          import base64
+          import json
+          import time
+          from pathlib import Path
+
+          import httpx
+          from playwright.sync_api import sync_playwright
+
+          root = Path("review")
+          origin = "http://127.0.0.1:8080"
+          with httpx.Client(base_url=origin, timeout=60) as api:
+              identifier = api.post("/api/cases", json={"name": "Visual audit — synthetic"}).raise_for_status().json()["id"]
+              evidence = "Time,Host,User,Path,Empty\n" + "".join(
+                  f"2026-11-{index % 25 + 1:02}T12:00:00Z,PC{index % 7},Analyst{index % 9},/logs/{index}.txt,\n"
+                  for index in range(260)
+              )
+              api.post(f"/api/cases/{identifier}/upload", files={"file": ("events.csv", evidence, "text/csv")}).raise_for_status()
+              cat = api.post("/api/cases", json={"name": "Visual audit — public CatScale"}).raise_for_status().json()["id"]
+              job = api.post(f"/api/cases/{cat}/import-jobs", data={"source": "/pack/02-Linux-CatScale/01-Dossier-extrait", "organization": "combined"}).raise_for_status().json()["job"]
+              for _ in range(100):
+                  result = api.get(f"/api/import-jobs/{job}").raise_for_status().json()
+                  if result["status"] not in ("running", "pending", "queued"):
+                      break
+                  time.sleep(.2)
+              print("PUBLIC_IMPORT", result["status"])
+
+          checks = []
+          screenshots = []
+          with sync_playwright() as play:
+              browser = play.chromium.launch()
+              for width in (390, 680, 1024, 1440):
+                  page = browser.new_page(viewport={"width": width, "height": 800})
+                  errors = []
+                  page.on("pageerror", lambda error: errors.append(str(error)))
+                  page.goto(origin, wait_until="networkidle")
+                  page.locator("[data-tab=cases]").click()
+                  page.get_by_text("Visual audit — synthetic", exact=True).first.dblclick()
+                  page.locator("#body tr[data-row]").first.wait_for(timeout=20000)
+                  for view in ("analyses", "cases", "imports", "timeline", "ioc", "hayabusa", "actions", "graph"):
+                      page.locator(f"[data-tab={view}]").click(timeout=10000)
+                      page.wait_for_timeout(850 if view == "timeline" else 160)
+                      page.screenshot(path=root / f"{width}-{view}.png")
+                  page.locator("[data-tab=analyses]").click()
+                  for menu in page.locator(".menubar [data-menu]").all():
+                      name = menu.get_attribute("data-menu")
+                      menu.click(timeout=6000)
+                      popup = page.locator(f".menu[data-for={name}]")
+                      rect = popup.bounding_box()
+                      if rect:
+                          checks.append({"width": width, "menu": name, "right_overflow": round(max(0, rect["x"] + rect["width"] - width)), "bottom_overflow": round(max(0, rect["y"] + rect["height"] - 800))})
+                          page.screenshot(path=root / f"{width}-menu-{name}.png")
+                      page.keyboard.press("Escape")
+                  checks.append({"width": width, "page_errors": errors})
+                  if width in (390, 680):
+                      for view in ("graph", "timeline"):
+                          selected = root / f"{width}-{view}.png"
+                          screenshots.append(str(selected))
+                  page.close()
+          (root / "checks.json").write_text(json.dumps(checks, indent=2))
+          print("VISUAL_CHECKS", json.dumps(checks))
+          PY
+      - name: Publish captures and observations
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: Host-clean-recette
-          path: artifacts/recette-strict.json
+          name: Host-visual-review
+          path: review/

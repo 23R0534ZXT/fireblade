@@ -214,3 +214,45 @@ def test_sqlite_databases_import_with_a_read_only_reader_installation(empty_page
         )
         observed.append(rows(page))
     assert sorted(observed) == [3, 5]
+
+
+def test_committed_sqlite_wal_records_survive_generic_fallback_in_the_gui(
+    empty_page, server, tmp_path
+):
+    import shutil
+    import sqlite3
+
+    folder = _case_folder(empty_page, server) / "wal-collection"
+    folder.mkdir()
+    live = tmp_path / "live.sqlite"
+    connection = sqlite3.connect(live)
+    try:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("CREATE TABLE evidence (Id INTEGER, Marker TEXT)")
+        connection.commit()
+        connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        connection.execute("INSERT INTO evidence VALUES (1, 'committed-only-in-wal')")
+        connection.commit()
+        source = folder / "collected.sqlite"
+        shutil.copyfile(live, source)
+        wal = source.with_name(source.name + "-wal")
+        shutil.copyfile(live.with_name(live.name + "-wal"), wal)
+    finally:
+        connection.close()
+    before = {path: path.read_bytes() for path in [source, wal]}
+    page = empty_page
+    _open_import(page)
+    page.fill("#preview-server", str(folder))
+    page.click('[data-act="preview-path"]')
+    _preview_card(page)
+    page.click("#preview-import")
+    page.wait_for_function(
+        "document.getElementById('status').innerText.includes('file(s) imported')", timeout=30000
+    )
+    page.locator("#tree .node.child", has_text="collected.sqlite").click()
+    page.wait_for_function(
+        "document.getElementById('body').innerText.includes('committed-only-in-wal')"
+    )
+    assert rows(page) == 1
+    assert all(path.read_bytes() == data for path, data in before.items())
+    assert not source.with_name(source.name + "-shm").exists()

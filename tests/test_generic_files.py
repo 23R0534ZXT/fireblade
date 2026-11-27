@@ -91,3 +91,34 @@ def test_the_reasons_of_a_file_read_by_two_missing_engines_are_in_english():
         "Moteur intégré absent : B. La construction du pack forensic est nécessaire."
     )
     assert "intégré" not in _english(french) and _english(french).count("Built-in engine") == 2
+
+
+def test_generic_sqlite_reader_includes_committed_wal_without_changing_evidence(tmp_path):
+    import csv
+    import shutil
+
+    live = tmp_path / "live.sqlite"
+    connection = sqlite3.connect(live)
+    try:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("CREATE TABLE evidence (Id INTEGER, Marker TEXT)")
+        connection.commit()
+        connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        connection.execute("INSERT INTO evidence VALUES (1, 'committed-only-in-wal')")
+        connection.commit()
+        source = tmp_path / "collected.sqlite"
+        shutil.copyfile(live, source)
+        wal = source.with_name(source.name + "-wal")
+        shutil.copyfile(live.with_name(live.name + "-wal"), wal)
+    finally:
+        connection.close()
+    before = {path: path.read_bytes() for path in [source, wal]}
+    output = tmp_path / "output"
+    output.mkdir()
+    result = generic_files.parse(source, output)
+    assert sum(table["rows"] for table in result["outputs"]) == 1
+    with open(result["outputs"][0]["csv"], newline="") as stream:
+        assert list(csv.reader(stream)) == [["Id", "Marker"], ["1", "committed-only-in-wal"]]
+    assert all(path.read_bytes() == data for path, data in before.items())
+    assert not source.with_name(source.name + "-shm").exists()
+    assert not list(output.glob("sqlite-work-*"))

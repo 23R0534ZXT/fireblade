@@ -262,6 +262,11 @@ def test_wide_dialog_resizes_and_restores_inside_a_narrow_viewport(page):
             _press(page, '.menubar .m[data-menu="filters"]')
             page.locator('.menu.show [data-act="global-search"]').click()
             page.wait_for_function("document.querySelector('#search-modal .dialog').dataset.free")
+        page.wait_for_function("""() => {
+          const rect = document.querySelector('#search-modal .dialog').getBoundingClientRect();
+          return rect.width > 0 && rect.left >= 0 && rect.top >= 0
+            && rect.right <= innerWidth && rect.bottom <= innerHeight;
+        }""")
         box = dialog.bounding_box()
         assert 0 <= box["x"] <= box["x"] + box["width"] <= 390
         assert 0 <= box["y"] <= box["y"] + box["height"] <= 480

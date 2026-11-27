@@ -7,6 +7,8 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+- Restored the Desktop Fusion palette, compact toolbar, and classic workspace tabs in Host.
+
 ## [0.10.2] — 2026-11-27
 
 ### Imports and case storage

@@ -9,6 +9,7 @@ import time
 import httpx
 import pytest
 from _audit import rows
+from conftest import make_case
 
 from tests.core.pdf_sample import build_pdf
 
@@ -51,6 +52,36 @@ def _lines(page):
     return page.eval_on_selector_all(
         "#imports-rows tr", "els => els.map(e => e.innerText.replace(/\\s+/g, ' ').trim())"
     )
+
+
+def test_a_late_import_report_cannot_fill_a_different_case(page, server):
+    base = server[0]
+    original = page.evaluate("state.openCase.id")
+    other = make_case(server, "Case with no imports")
+    delayed_url = f"{base}/api/cases/{original}/collection-files"
+    old = httpx.get(delayed_url).raise_for_status().json()
+    assert old["files"]
+    held = []
+    page.route(delayed_url, lambda route: held.append(route))
+    with page.expect_request(delayed_url):
+        page.locator('[data-tab="imports"]').click()
+
+    page.locator('.toolbar [data-act="refresh-cases"]').click()
+    page.locator('[data-tab="cases"]').click()
+    page.locator('#cases-body tr:has(td:text-is("Case with no imports")) td').first.dblclick()
+    page.wait_for_function("id => state.openCase?.id === id", arg=other)
+    new_url = f"**/api/cases/{other}/collection-files"
+    with page.expect_response(new_url) as fresh:
+        page.locator('[data-tab="imports"]').click()
+    fresh.value.finished()
+
+    with page.expect_response(delayed_url) as delayed:
+        held[0].fulfill(json=old)
+    delayed.value.finished()
+    page.evaluate(
+        "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+    )
+    assert page.locator("#imports-rows tr[data-import]").count() == 0
 
 
 def _retry(page, name, reader):

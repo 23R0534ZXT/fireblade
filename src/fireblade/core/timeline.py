@@ -250,7 +250,8 @@ class TimelineStore:
                                 columns[document.path]
                                 if document.path in columns
                                 else guess_time_columns(
-                                    case.headers, document.view.timestamp_columns
+                                    case.headers,
+                                    document.view.timestamp_columns or ([3] if case.sparse else []),
                                 )
                             )
                             if spec == DATE_TIME:
@@ -296,6 +297,14 @@ class TimelineStore:
                             ]
                             all_columns = [case.column(i) for i in range(len(case.headers))]
                             text = "concat_ws(chr(31)," + ",".join(all_columns) + ")"
+                            if case.sparse:
+                                from fireblade.core.sparse_union import values_sql
+
+                                arrays = [
+                                    f"to_json({values_sql(case, [i for i, header in enumerate(case.headers) if field_kind(header) == kind])})"
+                                    for kind in ("user", "ip", "path", "hash")
+                                ]
+                                text = f"array_to_string({values_sql(case)}, chr(31))"
                             summary_columns = [
                                 case.column(i)
                                 for i, h in enumerate(case.headers)

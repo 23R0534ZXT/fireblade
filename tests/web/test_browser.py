@@ -62,6 +62,49 @@ def test_every_menu_opens_and_lists_its_commands(page):
         assert page.locator(".menu.show").count() == 0, name
 
 
+def test_narrow_menus_fit_the_window_and_are_operable_by_keyboard(page):
+    page.set_viewport_size({"width": 390, "height": 640})
+    trigger = page.get_by_role("button", name="Exporter", exact=True)
+    trigger.focus()
+    page.keyboard.press("Enter")
+    popup = page.locator('.menu[data-for="exporter"]')
+    popup.wait_for()
+    bounds = popup.bounding_box()
+    assert 0 <= bounds["x"] and bounds["x"] + bounds["width"] <= 391
+    assert trigger.get_attribute("aria-expanded") == "true"
+    assert popup.locator(":focus").count() == 1
+    page.keyboard.press("Escape")
+    assert popup.is_hidden()
+    assert trigger.evaluate("el => el === document.activeElement")
+    assert trigger.get_attribute("aria-expanded") == "false"
+
+
+def test_narrow_workspaces_keep_their_controls_and_artifact_drawer(page):
+    page.set_viewport_size({"width": 390, "height": 760})
+    drawer = page.locator("#artifacts")
+    toggle = page.get_by_role("button", name="Artifacts", exact=True)
+    drawer.wait_for(state="hidden")
+    details = page.locator("#details")
+    assert details.bounding_box()["height"] < 40
+    page.locator("#body tr[data-row] td[data-cell]").first.click()
+    page.locator(".detail-fields").wait_for()
+    assert details.bounding_box()["height"] > 40
+    toggle.click()
+    assert drawer.is_visible()
+    close = drawer.get_by_role("button", name="Close artifacts panel")
+    close.click()
+    assert drawer.is_hidden()
+
+    page.locator('[data-tab="cases"]').click()
+    assert drawer.is_hidden()
+    page.locator('[data-tab="timeline"]').click()
+    for selector in ("#timeline-build", "#timeline-export", '[data-act="tl-isolate"]'):
+        bounds = page.locator(selector).bounding_box()
+        assert 0 <= bounds["x"] and bounds["x"] + bounds["width"] <= 391
+    page.locator('[data-tab="analyses"]').click()
+    assert drawer.is_hidden()
+
+
 def test_the_last_workspace_tab_is_reachable_in_a_narrow_window(page):
     page.set_viewport_size({"width": 680, "height": 580})
     strip = page.locator("#doctabs")
@@ -84,6 +127,50 @@ def test_the_last_workspace_tab_is_reachable_in_a_narrow_window(page):
     export.click(trial=True)
 
 
+def test_workspace_zoom_keeps_the_status_and_uses_the_available_width(page):
+    page.set_viewport_size({"width": 850, "height": 700})
+    page.locator('.toolbar [data-act="display-settings"]').click()
+    page.locator("#scale").select_option("1.75")
+    page.locator('#settings-modal [data-act="settings-close"]').click()
+    status = page.locator(".statusbar").bounding_box()
+    assert abs(status["y"] + status["height"] - 700) < 2
+    assert page.locator("#artifacts").is_hidden()
+    trigger = page.get_by_role("button", name="Exporter", exact=True)
+    trigger.focus()
+    page.keyboard.press("Enter")
+    bounds = page.locator('.menu[data-for="exporter"]').bounding_box()
+    assert 0 <= bounds["x"] and bounds["x"] + bounds["width"] <= 851
+    assert 0 <= bounds["y"] and bounds["y"] + bounds["height"] <= 701
+
+
+def test_dark_rows_and_errors_keep_readable_contrast(page):
+    page.locator('.toolbar [data-act="display-settings"]').click()
+    page.locator("#palette-theme").select_option("dark")
+    page.locator('#settings-modal [data-act="settings-close"]').click()
+    layout = page.locator("#import-layout")
+    assert layout.evaluate("node => getComputedStyle(node).colorScheme") == "dark"
+    page.evaluate("say('Analysis file missing', true)")
+    ratios = page.evaluate(r"""() => {
+      const luminance = (color) => color.match(/\d+/g).slice(0, 3).map(Number)
+        .map(value => value / 255).map(value => value <= .04045
+          ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
+        .reduce((total, value, index) => total + value * [.2126, .7152, .0722][index], 0);
+      return ['#status', '#body .rowid'].map(selector => {
+        const element = document.querySelector(selector);
+        const foreground = luminance(getComputedStyle(element).color);
+        let surface = element;
+        let background = getComputedStyle(surface).backgroundColor;
+        while (background === 'rgba(0, 0, 0, 0)' && surface.parentElement) {
+          surface = surface.parentElement;
+          background = getComputedStyle(surface).backgroundColor;
+        }
+        const base = luminance(background);
+        return (Math.max(foreground, base) + .05) / (Math.min(foreground, base) + .05);
+      });
+    }""")
+    assert all(ratio >= 4.5 for ratio in ratios), ratios
+
+
 def test_a_narrow_toolbar_keeps_case_controls_and_the_view_menu_keeps_workspace(page):
     page.set_viewport_size({"width": 680, "height": 580})
     toolbar = page.locator(".toolbar")
@@ -94,6 +181,14 @@ def test_a_narrow_toolbar_keeps_case_controls_and_the_view_menu_keeps_workspace(
     page.locator('#groupbar [data-act="open-view-menu"]').click()
     page.locator('.menu.show [data-act="display-settings"]').click()
     assert page.locator("#settings-modal").is_visible()
+
+
+def test_the_case_indicator_opens_the_case_list_by_keyboard(page):
+    button = page.get_by_role("button", name="Open case list")
+    button.focus()
+    page.keyboard.press("Enter")
+    assert page.locator("#cases-view").is_visible()
+    assert page.locator("#cases-body").get_by_text("Browser case", exact=True).is_visible()
 
 
 def test_row_details_scroll_without_covering_cell_note_buttons(page):
@@ -127,6 +222,30 @@ def test_a_dialog_is_moved_by_its_title_and_resized_from_its_corner(page):
     assert resized["width"] > moved["width"] + 50 and resized["height"] > moved["height"] + 30
 
 
+def test_wide_dialog_resizes_and_restores_inside_a_narrow_viewport(page):
+    _press(page, '.menubar .m[data-menu="filters"]')
+    page.locator('.menu.show [data-act="global-search"]').click()
+    dialog = page.locator("#search-modal .dialog")
+    page.wait_for_function("document.querySelector('#search-modal .dialog').dataset.free")
+    assert dialog.bounding_box()["width"] >= 760
+    search = dialog.get_by_role("button", name="Search", exact=True)
+    search.click()
+
+    page.set_viewport_size({"width": 390, "height": 480})
+    for reopen in (False, True):
+        if reopen:
+            _press(page, '.menubar .m[data-menu="filters"]')
+            page.locator('.menu.show [data-act="global-search"]').click()
+            page.wait_for_function("document.querySelector('#search-modal .dialog').dataset.free")
+        box = dialog.bounding_box()
+        assert 0 <= box["x"] <= box["x"] + box["width"] <= 390
+        assert 0 <= box["y"] <= box["y"] + box["height"] <= 480
+        dialog.get_by_role("textbox", name="Text").fill("alice")
+        search.click()
+        dialog.get_by_role("button", name="Close", exact=True).click()
+        assert not dialog.is_visible()
+
+
 def test_the_splitters_resize_the_tree_and_the_details_and_reset_on_double_click(page):
     tree = page.locator("#artifacts")
     before = tree.bounding_box()["width"]
@@ -138,6 +257,32 @@ def test_the_splitters_resize_the_tree_and_the_details_and_reset_on_double_click
     assert tree.bounding_box()["width"] > before + 100
     page.locator(".splitter.vsplit").dblclick()
     assert abs(tree.bounding_box()["width"] - before) < 2
+
+
+def test_splitters_follow_the_tree_on_the_left_and_details_above_the_grid(page):
+    page.evaluate(
+        "copyPrefs.tree = 'left'; applyTreePosition(); "
+        "copyPrefs.details = 'top'; applyDetailsPosition()"
+    )
+    tree = page.locator("#artifacts")
+    details = page.locator("#details")
+    bar = page.locator(".splitter.vsplit").bounding_box()
+    row_bar = page.locator(".splitter.hsplit").bounding_box()
+    grid = page.locator("#analysis-view > .gridwrap").bounding_box()
+    tree_bounds = tree.bounding_box()
+    details_bounds = details.bounding_box()
+    assert tree_bounds["x"] + tree_bounds["width"] <= bar["x"] < grid["x"]
+    assert details_bounds["y"] + details_bounds["height"] <= row_bar["y"] < grid["y"]
+    page.mouse.move(bar["x"] + 2, bar["y"] + 100)
+    page.mouse.down()
+    page.mouse.move(bar["x"] + 42, bar["y"] + 100, steps=5)
+    page.mouse.up()
+    assert tree.bounding_box()["width"] > tree_bounds["width"] + 30
+    page.mouse.move(row_bar["x"] + 300, row_bar["y"] + 2)
+    page.mouse.down()
+    page.mouse.move(row_bar["x"] + 300, row_bar["y"] + 42, steps=5)
+    page.mouse.up()
+    assert details.bounding_box()["height"] > details_bounds["height"] + 30
 
 
 def test_every_dialog_a_menu_opens_keeps_its_buttons_on_screen(page):

@@ -155,9 +155,10 @@ def test_an_indicator_hunt_reports_its_matches(page):
     page.fill("#ioc-input", "203.0.113.7\nnot-in-the-logs.example")
     page.check("#ioc-all")
     page.click("#ioc-scan")
-    page.wait_for_function("document.querySelectorAll('#ioc-rows tr').length > 0", timeout=20000)
+    page.locator("#ioc-rows tr[data-hit]").filter(has_text="203.0.113.7").first.wait_for(
+        timeout=20000
+    )
     assert "203.0.113.7" in page.inner_text("#ioc-list-rows")
-    assert page.locator("#ioc-rows tr").count() >= 1
 
 
 def test_the_timeline_dates_the_access_log_and_leaves_the_year_less_log_undated(page):

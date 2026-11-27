@@ -550,6 +550,7 @@ async function apiAbortable(path, signal) {
 function say(message, error) {
   const node = $("status");
   node.textContent = message;
+  node.title = message;
   node.classList.toggle("err", Boolean(error));
   // The Messages window is the same log, kept: nothing is reported nowhere.
   rememberMessage(message, error);
@@ -600,9 +601,8 @@ function openFilterOperators(button) {
   box.innerHTML = FILTER_OPERATORS.map(([code, glyph, label]) =>
     `<div class="item" data-fop-choose="${code}"><span class="fglyph">${glyph}</span> ${escapeHtml(label)}</div>`).join("");
   const rect = button.getBoundingClientRect();
-  box.style.left = `${rect.left}px`;
-  box.style.top = `${rect.bottom}px`;
   box.hidden = false;
+  placePopup(box, rect.left, rect.bottom);
   box.querySelectorAll("[data-fop-choose]").forEach((item) => {
     item.addEventListener("click", async () => {
       const operator = item.dataset.fopChoose;
@@ -930,7 +930,7 @@ function previewRoleLabel(role) {
 
 function renderPreview() {
   const box = $("preview-body");
-  $("preview-import").disabled = !previewState.items.length;
+  $("preview-import").disabled = !previewState.items.some((item) => !item.error && item.payload?.path);
   if (!previewState.items.length) { box.innerHTML = ""; return; }
   box.innerHTML = previewState.items.map((item, index) => {
     if (item.error) {
@@ -1089,6 +1089,12 @@ async function confirmImport() {
   let stopped = false;
   let interruption = "";
   let notice = "";
+  const failures = [];
+  const finishedMessage = () => interruption || (stopped ? importStoppedMessage(imported, kept)
+    : failures.length ? `${imported ? `Import finished with errors — ${imported} file(s) imported` : "Import failed"} — ${failures.join(" · ")}`
+    : `${imported} file(s) imported${notice ? " — " + notice : ""}`);
+  const failedMessage = (outcome) => outcome.error || outcome.result?.message
+    || "No analysis could be read. See Imports for file diagnostics.";
   const ready = previewState.items.filter((item) => !item.error && item.payload && item.payload.path);
   // Files chosen together are one collection: the layout (per file, per artifact family, or one
   // grid for everything) is how that collection is laid out, so it is imported in one go. A
@@ -1101,25 +1107,25 @@ async function confirmImport() {
       const job = await startImportJob(ready.map((item) => item.payload.path), layout, options, "");
       const outcome = await followImportJob(job);
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) {
-        imported = ready.length;
+        imported = outcome.result.read_files ?? ready.length;
+        if (outcome.result.failed_files) failures.push(`${outcome.result.failed_files} file(s) could not be read; see Imports`);
         notice = outcome.result.notice || notice;
       }
       else if (outcome.status === "cancelled" || outcome.status === "interrupted") {
         stopped = true;
         kept = (outcome.result && outcome.result.analyses) || 0;
         if (outcome.status === "interrupted") interruption = outcome.message || "";
-      } else say(`${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
+      } else failures.push(failedMessage(outcome));
     } catch (error) {
       say(error.message, true);
       return;
     }
     closeModals();
     await openCase(state.openCase.id);
-    say(interruption || (stopped ? importStoppedMessage(0, kept) : `${imported} file(s) imported${notice ? " — " + notice : ""}`), stopped);
+    say(finishedMessage(), stopped || failures.length > 0);
     return;
   }
-  for (const item of previewState.items) {
-    if (item.error) continue;
+  for (const item of ready) {
     const source = item.payload && item.payload.path;
     if (!source) continue;
     say(`Importing ${item.name}…`);
@@ -1129,14 +1135,15 @@ async function confirmImport() {
       // A folder is one source holding several files: say how many were read, not "1".
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) {
         notice = outcome.result.notice || notice;
-        imported += Math.max(1, Number((item.payload && item.payload.count) || 0));
+        imported += outcome.result.read_files ?? Math.max(1, Number((item.payload && item.payload.count) || 0));
+        if (outcome.result.failed_files) failures.push(`${item.name}: ${outcome.result.failed_files} file(s) could not be read; see Imports`);
       } else if (outcome.status === "cancelled" || outcome.status === "interrupted") {
         stopped = true;
         kept = (outcome.result && outcome.result.analyses) || 0;
         if (outcome.status === "interrupted") interruption = outcome.message || "";
         break;
       } else {
-        say(`${item.name}: ${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
+        failures.push(`${item.name}: ${failedMessage(outcome)}`);
       }
     } catch (error) {
       say(`${item.name}: ${error.message}`, true);
@@ -1145,7 +1152,7 @@ async function confirmImport() {
   }
   closeModals();
   await openCase(state.openCase.id);
-  say(interruption || (stopped ? importStoppedMessage(imported, kept) : `${imported} file(s) imported${notice ? " — " + notice : ""}`), stopped);
+  say(finishedMessage(), stopped || failures.length > 0);
 }
 
 /* ---------- import ---------- */
@@ -1438,7 +1445,7 @@ function renderCases() {
     <tr data-case="${escapeHtml(item.id)}" class="${
       [state.openCase && state.openCase.id === item.id ? "sel" : "",
        state.selectedCase === item.id ? "selected" : ""].filter(Boolean).join(" ")}">
-      <td title="${escapeHtml(item.description || "")}">${escapeHtml(item.name || "(unnamed)")}</td>
+      <td title="${escapeHtml([item.name, item.description].filter(Boolean).join(" — "))}">${escapeHtml(item.name || "(unnamed)")}</td>
       <td>${escapeHtml(String(item.collection_count ?? (item.collections || []).length ?? 0))}</td>
       <td>${escapeHtml(CASE_STATUS[item.status] || item.status || "—")}${item.storage_archive ? " · kept in an archive" : ""}</td>
       <td>${escapeHtml(String(item.analysis_count ?? 0))}</td>
@@ -1469,7 +1476,10 @@ function renderCaseSelection() {
   $("restore-case").hidden = !(target && target.storage_archive);
 }
 
+let caseOpenRevision = 0;
+
 async function openCase(identifier, analysisIndex = null) {
+  const revision = ++caseOpenRevision;
   try {
     const kept = state.cases.find((item) => item.id === identifier);
     if (kept && kept.storage_archive) {
@@ -1478,7 +1488,12 @@ async function openCase(identifier, analysisIndex = null) {
       say("This case is kept in an archive: press Restore… to bring it back", true);
       return;
     }
-    const detail = await api(`/api/cases/${identifier}`);
+    const [detail, closed] = await Promise.all([
+      api(`/api/cases/${identifier}`),
+      api(`/api/cases/${identifier}/closed`).catch(() => ({})),
+    ]);
+    if (revision !== caseOpenRevision) return false;
+    detail.closed = closed.closed || [];
     const changedCase = state.openCase?.id !== detail.id;
     state.openCase = detail;
     if (changedCase) {
@@ -1486,13 +1501,8 @@ async function openCase(identifier, analysisIndex = null) {
       resetFindings();
       resetGraph();
       resetWorkspace();
-    }
-    // The analyses closed and kept: the tree lists them, and they open again.
-    try {
-      const closed = await api(`/api/cases/${identifier}/closed`);
-      state.openCase.closed = closed.closed || [];
-    } catch (_) {
-      state.openCase.closed = [];
+      resetIoc();
+      resetImports();
     }
     const analysis = detail.analyses.find((item) => item.index === analysisIndex) || detail.analyses[0];
     state.analysis = analysis?.index ?? 0;
@@ -1514,16 +1524,20 @@ async function openCase(identifier, analysisIndex = null) {
     }
     return await loadRows(true);
   } catch (error) {
-    say(error.message, true);
+    if (revision === caseOpenRevision) say(error.message, true);
   }
 }
 
 function closeCase() {
+  caseOpenRevision += 1;
   state.openCase = null;
+  syncArtifacts();
   resetTimeline();
   resetFindings();
   resetGraph();
   resetWorkspace();
+  resetIoc();
+  resetImports();
   resetAnalysisQuery();
   state.columns = [];
   state.rows = [];
@@ -1670,9 +1684,9 @@ function exprConditionNode(condition = {}) {
   const row = document.createElement("div");
   row.className = "row expr-row";
   row.dataset.kind = "condition";
-  row.innerHTML = `<select data-expr-col>${state.columns.slice(1).map((name, index) =>
+  row.innerHTML = `<select data-expr-col aria-label="Condition column">${state.columns.slice(1).map((name, index) =>
       `<option value="${index}" ${index === (condition.column ?? 0) ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select>
-    <select data-expr-op>${EXPR_OPERATORS.map(([code, label]) =>
+    <select data-expr-op aria-label="Condition operator">${EXPR_OPERATORS.map(([code, label]) =>
       `<option value="${code}" ${code === (condition.operator || "contains") ? "selected" : ""}>${label}</option>`).join("")}</select>
     <input data-expr-value value="${escapeHtml(condition.value ?? "")}" placeholder="value">
     <button class="btn" data-expr-remove title="Remove this condition">✕</button>`;
@@ -1693,7 +1707,7 @@ function exprGroupNode(group = { logic: "and", children: [] }, depth = 0) {
   const head = document.createElement("div");
   head.className = "expr-head";
   head.innerHTML = `<label>${label}</label>
-    <select data-expr-logic>
+    <select data-expr-logic aria-label="${depth === 0 ? "Filter" : "Group"} logic">
       <option value="and">all of them (AND)</option>
       <option value="or">any of them (OR)</option>
       <option value="not">none of them (NOT)</option>
@@ -1852,6 +1866,10 @@ function applyStoredRowHeight() {
 /* Query indexes only have meaning for the analysis that supplied the columns. */
 function resetAnalysisQuery() {
   rowsRequest?.abort();
+  clearTimeout(filterTimer);
+  showDetails(null);
+  state.columnContext = null;
+  $("gridbody").scrollLeft = 0;
   state.filters = []; state.search = ""; state.expression = null; state.bookmarksOnly = false;
   state.sort = null; state.descending = false; state.multiSort = []; state.groups = []; state.path = [];
   state.expandAll = false;
@@ -1974,7 +1992,7 @@ async function copyUnprocessedFiles() {
   const paths = [];
   for (const collection of importState.collections) {
     for (const file of collection.files || []) {
-      if (!["complete", "attention", "duplicate"].includes(file.status)) paths.push(file.path);
+      if (["unread", "partial"].includes(importReadState(file))) paths.push(file.path);
     }
   }
   if (!paths.length) { say("Every collected file was read", true); return; }
@@ -2041,7 +2059,9 @@ function exportRows(options) {
   } else {
     const shown = visibleColumns().map((item) => item.index - 1).filter((index) => index >= 0);
     if (!shown.length) { say("Choose at least one visible column to export", true); return; }
-    for (const index of shown) params.append("column", String(index));
+    if (shown.length !== state.columns.length - 1 || shown.some((column, index) => column !== index)) {
+      for (const index of shown) params.append("column", String(index));
+    }
   }
   if (options.grouped) {
     if (!state.groups.length) { say("Group the analysis first: the counts are per group", true); return; }
@@ -2049,13 +2069,21 @@ function exportRows(options) {
   }
   if (options.annotations) params.set("annotations", "true");
   if (options.format) params.set("format", options.format);
-  return downloadFrom(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/export?${params.toString()}`);
+  const path = `/api/cases/${state.openCase.id}/analyses/${state.analysis}/export`;
+  if (params.toString().length <= 6000) return downloadFrom(`${path}?${params.toString()}`);
+  const body = {};
+  const repeated = new Set(["column", "filter", "group", "sortkey", "summary", "total"]);
+  for (const [key, value] of params) {
+    if (repeated.has(key)) { (body[key] ||= []).push(value); }
+    else body[key] = value;
+  }
+  return downloadFrom(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 }
 
 /* A file the server writes: fetched, so a refusal is said in the status line instead of replacing the page. */
-async function downloadFrom(path) {
+async function downloadFrom(path, options) {
   try {
-    const response = await fetch(url(path));
+    const response = await fetch(url(path), options);
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       throw new Error(body.detail || response.statusText);
@@ -2820,7 +2848,8 @@ async function applySortPriority() {
   });
   state.multiSort = keys;
   state.sortType = keys.length ? keys[0].kind : $("sort-header-type").value;
-  if (keys.length) { state.sort = keys[0].column; state.descending = keys[0].descending; }
+  state.sort = keys.length ? keys[0].column : null;
+  state.descending = keys.length ? keys[0].descending : false;
   closeModals();
   await loadRows(true);
   say(keys.length ? `${keys.length} sort key(s), the first one decides` : "Sorting cleared");
@@ -2838,17 +2867,17 @@ function summaryRow(summary = { column: 0, operation: "count", kind: "number", f
   const row = document.createElement("tr");
   const footer = summary.footer === undefined ? -1 : summary.footer;
   const footerChoice = withFooter
-    ? `<td><select data-summary-footer>
+    ? `<td><select data-summary-footer aria-label="Summary placement">
         <option value="-1" ${footer === -1 ? "selected" : ""}>In the group header</option>
         <option value="none" ${footer === null ? "selected" : ""}>In the value column</option>
         ${state.columns.slice(1).map((name, index) =>
           `<option value="${index}" ${footer === index ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></td>`
     : "";
-  row.innerHTML = `<td><select data-summary-column>${state.columns.slice(1).map((name, index) =>
+  row.innerHTML = `<td><select data-summary-column aria-label="Summary column">${state.columns.slice(1).map((name, index) =>
       `<option value="${index}" ${index === summary.column ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></td>
-    <td><select data-summary-operation>${SUMMARY_OPERATIONS.map(([code, label]) =>
+    <td><select data-summary-operation aria-label="Summary operation">${SUMMARY_OPERATIONS.map(([code, label]) =>
       `<option value="${code}" ${code === summary.operation ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></td>
-    <td><select data-summary-kind>${SUMMARY_KINDS.map(([code, label]) =>
+    <td><select data-summary-kind aria-label="Summary value type">${SUMMARY_KINDS.map(([code, label]) =>
       `<option value="${code}" ${code === summary.kind ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></td>
     ${footerChoice}<td><button class="btn" data-summary-remove title="Remove this summary">✕</button></td>`;
   row.querySelector("[data-summary-remove]").addEventListener("click", () => {
@@ -3082,8 +3111,11 @@ async function copySelectedRows() {
   const lines = [];
   if (copyPrefs.headers) lines.push(shown.map((item) => cell(item.name)).join("\t"));
   for (const id of ids) {
-    const row = state.rows.find((item) => String(item[0]) === id);
+    let row = state.rows.find((item) => String(item[0]) === id);
     if (!row) continue;
+    try { row = await completeRow(row); }
+    catch (error) { say(error.message, true); return; }
+    if (!row) return;
     lines.push(shown.map((item) => cell(row[item.index])).join("\t"));
   }
   try {
@@ -4555,9 +4587,9 @@ function addConditionRow() {
   const row = document.createElement("div");
   row.className = "row";
   row.dataset.condition = "1";
-  row.innerHTML = `<select data-cond-column>${state.columns.slice(1).map((name, index) =>
+  row.innerHTML = `<select data-cond-column aria-label="Additional rule column">${state.columns.slice(1).map((name, index) =>
       `<option value="${index}">${escapeHtml(name)}</option>`).join("")}</select>
-    <select data-cond-operator>${Object.entries(RULE_OPERATORS).map(([value, label]) =>
+    <select data-cond-operator aria-label="Additional rule operator">${Object.entries(RULE_OPERATORS).map(([value, label]) =>
       `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}</select>
     <input data-cond-value placeholder="value">
     <button class="btn" data-condition-remove="1">Remove</button>`;
@@ -4772,15 +4804,25 @@ async function addDerived() {
 
 /* ---------- import history ---------- */
 
-const importState = { collections: [], selected: null, collection: "" };
+const importState = { collections: [], selected: null, collection: "", revision: 0 };
+
+function resetImports() {
+  Object.assign(importState, { collections: [], selected: null, collection: "", revision: importState.revision + 1 });
+  $("imports-status").value = "";
+  $("imports-search").value = "";
+  renderImports();
+}
 
 async function loadImports() {
   if (!state.openCase) return;
+  const { id } = state.openCase;
+  const revision = ++importState.revision;
   try {
     const [collections, files] = await Promise.all([
-      api(`/api/cases/${state.openCase.id}/imports`),
-      api(`/api/cases/${state.openCase.id}/collection-files`),
+      api(`/api/cases/${id}/imports`),
+      api(`/api/cases/${id}/collection-files`),
     ]);
+    if (revision !== importState.revision) return;
     const byCollection = new Map();
     for (const file of files.files || []) {
       if (!byCollection.has(file.collection)) byCollection.set(file.collection, []);
@@ -4795,12 +4837,19 @@ async function loadImports() {
     }
     renderImports();
   } catch (error) {
-    say(error.message, true);
+    if (revision === importState.revision) say(error.message, true);
   }
 }
 
 /* The imports table is the desktop's: one row per collected file, its status, the
    readers that ran, the reason when it did not, and where its output went. */
+function importReadState(file) {
+  if (file.ignored) return "parked";
+  if (file.status === "companion") return "companion";
+  if (["complete", "duplicate"].includes(file.status)) return "read";
+  return file.status === "attention" && Number(file.output_count) > 0 ? "partial" : "unread";
+}
+
 function renderImports() {
   const wanted = $("imports-status").value;
   const term = ($("imports-search").value || "").trim().toLowerCase();
@@ -4810,13 +4859,15 @@ function renderImports() {
     if (analysis.source) outputs.set(analysis.source, analysis.label);
   }
   const rows = [];
-  let imported = 0, failed = 0, companions = 0;
+  let imported = 0, failed = 0, companions = 0, partial = 0, parked = 0;
   for (const collection of importState.collections) {
     for (const file of collection.files || []) {
-      const ok = ["complete", "attention", "duplicate"].includes(file.status);
-      // A transaction log kept beside its hive is read with it: it is not a file left unread.
-      if (file.status === "companion") companions += 1;
-      else if (ok) imported += 1; else failed += 1;
+      const readState = importReadState(file);
+      if (readState === "parked") parked += 1;
+      else if (readState === "companion") companions += 1;
+      else if (readState === "read") imported += 1;
+      else if (readState === "partial") partial += 1;
+      else failed += 1;
       if (wanted === "ignored" ? !file.ignored : (wanted && file.status !== wanted)) continue;
       if (!wanted && file.ignored) continue;
       if (term && !`${file.name} ${file.path} ${file.reason} ${(file.tools || []).join(" ")}`
@@ -4841,8 +4892,10 @@ function renderImports() {
   });
   $("imports-summary").textContent =
     `${importState.collections.length} import(s) — ${imported} file(s) read, ${failed} not read`
-    + (companions ? `, ${companions} companion file(s) read with their hive` : "");
-  say($("imports-summary").textContent);
+    + (partial ? `, ${partial} partially read` : "")
+    + (companions ? `, ${companions} companion file(s) read with their hive` : "")
+    + (parked ? `, ${parked} parked` : "");
+  if ($("imports-view").style.display !== "none") say($("imports-summary").textContent);
 }
 
 /* ---------- global search ---------- */
@@ -5243,7 +5296,16 @@ async function toggleAction(actionId) {
 
 /* ---------- IOC hunting ---------- */
 
-const iocState = { hits: [], summary: "", rejected: [], hunt: null, list: [], count: 0, offset: 0, pageSize: 250, selected: null, payload: null };
+const iocState = { hits: [], summary: "", rejected: [], hunt: null, list: [], count: 0, offset: 0, pageSize: 250, selected: null, payload: null, revision: 0 };
+
+function resetIoc() {
+  Object.assign(iocState, { hits: [], summary: "", rejected: [], hunt: null, list: [], count: 0, offset: 0,
+    pageSize: 250, selected: null, payload: null, revision: iocState.revision + 1 });
+  $("ioc-input").value = "";
+  $("ioc-summary").textContent = "Nothing scanned yet.";
+  $("ioc-history").innerHTML = '<option value="">Saved hunts…</option>';
+  renderIoc();
+}
 
 /* What the grid shows, for the commands that "respect the filter": the page keeps the search,
    the column filters and the advanced filter, so it tells the server which they are. */
@@ -5294,19 +5356,21 @@ function applyHunt(payload) {
 
 async function iocPage(delta, ioc) {
   if (!iocState.hunt || !state.openCase) { say("Hunt first", true); return; }
+  const revision = ++iocState.revision;
   const selected = ioc === undefined ? iocState.selected : ioc;
   const offset = ioc === undefined ? Math.max(0, iocState.offset + delta) : 0;
   const params = new URLSearchParams({ offset: String(offset) });
   if (selected) params.set("ioc", String(selected));
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/hunts/${iocState.hunt}?${params}`);
+    if (revision !== iocState.revision) return;
     iocState.hits = payload.hits || [];
     iocState.count = payload.count;
     iocState.offset = payload.offset;
     iocState.selected = selected || null;
     renderIoc();
   } catch (error) {
-    say(error.message, true);
+    if (revision === iocState.revision) say(error.message, true);
   }
 }
 
@@ -5314,14 +5378,14 @@ async function stopIocHunt() {
   if (!state.openCase) return;
   try {
     const payload = await apiPost(`/api/cases/${state.openCase.id}/ioc-stop`, {});
-    say(payload.stopped ? "Hunt interrupted: the results kept before it stay" : "No hunt is running", !payload.stopped && false);
+    say(payload.stopped ? "Hunt interrupted: incomplete results are discarded; previous saved hunts stay" : "No hunt is running", !payload.stopped && false);
   } catch (error) {
     say(error.message, true);
   }
 }
 
 function exportHunt(summary) {
-  if (!iocState.hunt) { say("Nothing to export: hunt first", true); return; }
+  if (!state.openCase || !iocState.hunt) { say("Nothing to export: hunt first", true); return; }
   downloadFrom(`/api/cases/${state.openCase.id}/hunts/${iocState.hunt}/export?summary=${summary ? "true" : "false"}`);
   say(summary ? "Hunt summary exported" : "Hunt details exported");
 }
@@ -5330,12 +5394,14 @@ async function runIocScan() {
   if (!state.openCase) { say("Open a case first", true); return; }
   const text = $("ioc-input").value;
   if (!text.trim()) { say("Paste at least one indicator", true); return; }
+  const revision = ++iocState.revision;
   try {
     const payload = await runTask("scan", { text, ...iocOptions() }, "IOC hunting");
-    if (!payload) return;
+    if (!payload || revision !== iocState.revision) return;
     applyHunt(payload);
     loadHuntHistory();
   } catch (error) {
+    if (revision !== iocState.revision) return;
     say(error.message, true);
     $("ioc-summary").textContent = error.message;
   }
@@ -5344,12 +5410,14 @@ async function runIocScan() {
 /* "Import TXT / CSV / TSV": the list is read and put in the box, normalised; the hunt is a separate gesture. */
 async function runIocFile(file) {
   if (!state.openCase || !file) return;
+  const { id } = state.openCase;
   const body = new FormData();
   body.append("file", file);
   say(`Reading ${file.name}…`);
   try {
-    const response = await fetch(url(`/api/cases/${state.openCase.id}/ioc-list`), { method: "POST", body });
+    const response = await fetch(url(`/api/cases/${id}/ioc-list`), { method: "POST", body });
     const payload = await response.json();
+    if (state.openCase?.id !== id) return;
     if (!response.ok) throw new Error(payload.detail || response.statusText);
     $("ioc-input").value = payload.text;
     const refused = (payload.rejected || []).map((item) => `Line ${item.line}: ${item.reason}`).join(" ; ");
@@ -5357,6 +5425,7 @@ async function runIocFile(file) {
     $("ioc-summary").textContent = message;
     say(message);
   } catch (error) {
+    if (state.openCase?.id !== id) return;
     say(error.message, true);
     $("ioc-summary").textContent = error.message;
   }
@@ -5364,21 +5433,25 @@ async function runIocFile(file) {
 
 async function loadHuntHistory() {
   if (!state.openCase) return;
+  const { id } = state.openCase;
   try {
-    const payload = await api(`/api/cases/${state.openCase.id}/hunts`);
+    const payload = await api(`/api/cases/${id}/hunts`);
+    if (state.openCase?.id !== id) return;
     $("ioc-history").innerHTML = '<option value="">Saved hunts…</option>' +
       payload.hunts.map((hunt) => `<option value="${escapeHtml(hunt.name)}">${escapeHtml(hunt.started)} · ${hunt.hits} hit(s) · ${escapeHtml(hunt.status)}</option>`).join("");
   } catch (_) { /* an empty list is not an error worth a banner */ }
 }
 
 async function openHunt(name) {
-  if (!name) return;
+  if (!state.openCase || !name) return;
+  const revision = ++iocState.revision;
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/hunts/${encodeURIComponent(name)}`);
+    if (revision !== iocState.revision) return;
     $("ioc-input").value = payload.text || "";
     applyHunt(payload);
   } catch (error) {
-    say(error.message, true);
+    if (revision === iocState.revision) say(error.message, true);
   }
 }
 
@@ -5450,7 +5523,10 @@ const timelineState = { offset: 0, text: "", kind: "text", payload: null, dates:
 /* The window is a pair of bucket indices, the selection a pair of times: the chart
    can be zoomed without touching the rows, and a duration is the analyst's filter. */
 
+let sourceRowRequest = 0;
+
 function resetTimeline() {
+  sourceRowRequest++;
   Object.assign(timelineState, {
     offset: 0, text: "", kind: "text", payload: null, dates: {},
     row: null, source: null, window: null, history: [], start: null, end: null,
@@ -5463,9 +5539,11 @@ function resetTimeline() {
     $(id).checked = $(id).defaultChecked;
   }
   for (const id of ["timeline-dates", "timeline-rows", "timeline-legend", "timeline-hist",
-                    "timeline-window", "timeline-info", "timeline-info-extra"]) {
+                    "timeline-window", "timeline-info", "timeline-info-extra", "timeline-selection"]) {
     $(id).textContent = "";
   }
+  document.querySelector('[data-act="tl-clear-range"]').disabled = true;
+  document.querySelector('[data-act="timeline-open-row"]').disabled = true;
   renderTimelineLanes([]);
   clearTimelineOverview();
 }
@@ -5527,20 +5605,27 @@ function applyTimelineDates() {
 /* One timeline entry, opened in its own analysis: the value the evidence holds. */
 async function openSourceRow(index, rowId) {
   if (!state.openCase) return;
+  const caseId = state.openCase.id;
+  const request = ++sourceRowRequest;
+  const current = () => request === sourceRowRequest && state.openCase?.id === caseId
+    && $("source-row-modal").classList.contains("show");
   $("source-row-title").textContent = "The source line";
   $("source-row-list").innerHTML = '<div class="emptygrid">Reading the row…</div>';
   $("source-row-modal").classList.add("show");
   try {
     const payload = await api(
-      `/api/cases/${state.openCase.id}/timeline/row/${index}/${rowId}`);
+      `/api/cases/${caseId}/timeline/row/${index}/${rowId}`);
+    if (!current()) return;
     $("source-row-title").textContent = `${payload.label} — row ${payload.row_id}`;
     $("source-row-list").innerHTML = payload.columns.map((name, position) => {
       const value = payload.values[position];
+      if (payload.columns.length > 128 && (value === null || value === "")) return "";
       const shown = value === null || value === "" ? "(empty)" : String(value).slice(0, 160);
       return `<div class="analysis-line"><span class="analysis-name">${escapeHtml(name)}</span>
         <span class="pin" title="${escapeHtml(value === null ? "" : String(value))}">${escapeHtml(shown)}</span></div>`;
     }).join("");
   } catch (error) {
+    if (!current()) return;
     $("source-row-list").innerHTML = "";
     say(error.message, true);
   }
@@ -5621,6 +5706,10 @@ function renderTimelineLanes(sources) {
 }
 
 function renderTimeline(payload) {
+  const hasRange = timelineState.start !== null;
+  document.querySelector('[data-act="tl-clear-range"]').disabled = !hasRange;
+  $("timeline-selection").textContent = hasRange
+    ? `${utcLabel(timelineState.start)} → ${utcLabel(timelineState.end)}` : "All dates";
   renderTimelineDates(payload);
   const shown = payload.sources.map((source, index) => ({ source, index }))
     .filter(({ source }) => !timelineState.hidden.has(source.id));
@@ -5652,9 +5741,16 @@ function renderTimeline(payload) {
     timelineDrag(box, hist);
   }
 
+  // Keep the visible selection aligned with the source-row command across redraws.
+  const selected = payload.rows.some((row) =>
+    row[0] === timelineState.source && row[1] === timelineState.row);
+  if (!selected) { timelineState.row = null; timelineState.source = null; }
+  $("timeline-info-extra").textContent = selected
+    ? `row ${timelineState.row} of ${timelineState.source}` : "";
+  document.querySelector('[data-act="timeline-open-row"]').disabled = !selected;
   $("timeline-rows").innerHTML = payload.rows.map((row) => {
     const [source, rowId, timeNs, sourceTime, summary, note, bookmarked] = row;
-    return `<tr data-tl-row="${rowId}" data-tl-source="${source}" title="Open the source line">
+    return `<tr class="${source === timelineState.source && rowId === timelineState.row ? "sel" : ""}" data-tl-row="${rowId}" data-tl-source="${source}" title="Open the source line">
       <td>${timeNs === null ? "(undated)" : escapeHtml(utcLabel(timeNs))}</td>
       <td>${payload.sources[source] ? escapeHtml(payload.sources[source].name) : source}</td>
       <td class="rowid">${escapeHtml(String(rowId))}</td>
@@ -5669,6 +5765,7 @@ function renderTimeline(payload) {
       node.classList.add("sel");
       timelineState.row = Number(node.dataset.tlRow);
       timelineState.source = Number(node.dataset.tlSource);
+      document.querySelector('[data-act="timeline-open-row"]').disabled = false;
       $("timeline-info-extra").textContent =
         `row ${node.dataset.tlRow} of ${node.dataset.tlSource}`;
     });
@@ -5693,12 +5790,13 @@ function renderTimeline(payload) {
 async function timelineDuration() {
   const payload = timelineState.payload;
   if (!payload || !payload.extent) { say("Build the timeline first", true); return; }
+  if (payload.extent.start === null) { say("No dated event; choose a date column first", true); return; }
   const band = (ns) => utcLabel(ns).slice(0, 16).replace(" ", "T").replace("Z", "");
-  const from = await ask({ title: "Show a duration",
+  const from = await ask({ title: "Time range (UTC)",
                            label: `From (UTC, ISO — empty keeps ${band(payload.extent.start)})`,
                            value: band(payload.extent.start) });
   if (from === null) return;
-  const to = await ask({ title: "Show a duration",
+  const to = await ask({ title: "Time range (UTC)",
                          label: `To (UTC, ISO — empty keeps ${band(payload.extent.end)})`,
                          value: band(payload.extent.end) });
   if (to === null) return;
@@ -5960,11 +6058,11 @@ function timelineDrag(box, hist) {
     loadTimeline(true);
   };
   box.ondblclick = () => timelineFit();
-  box.addEventListener("wheel", (event) => {
+  box.onwheel = (event) => {
     if (Math.abs(event.deltaY) < 2) return;
     event.preventDefault();
-    timelineZoom(event.deltaY < 0 ? 0.6 : 1.8, bucketAt(event));
-  }, { passive: false });
+    timelineZoom(event.deltaY < 0 ? 0.6 : 1.8, timelineRange(hist).start + bucketAt(event));
+  };
 }
 
 /* ---------- artifacts tree ---------- */
@@ -5972,7 +6070,7 @@ function timelineDrag(box, hist) {
 /* The Artifacts tree, as the desktop groups it: the collections, then (by family) what each analysis is.
    "families": Collection → artifact family → analyses; "flat": Collection → analyses;
    "folders": Collection → partition → folders, for the evidence that carries its origin. */
-const treeState = { mode: "families", collapsed: new Set() };
+const treeState = { mode: "families", collapsed: new Set(), initialized: new Set(), caseId: null };
 
 function loadTreeMode() {
   try {
@@ -5981,14 +6079,15 @@ function loadTreeMode() {
   } catch (_) { /* a first visit */ }
 }
 
-function treeLeaf(item, depth) {
+function treeLeaf(item, depth, label = item.tree_label || item.label) {
+  const title = [item.label, ...(item.tree_sources || []), item.source || item.path].filter(Boolean).join("\n");
   return `<div class="node child ${item.index === state.analysis ? "sel" : ""}" data-analysis="${item.index}"
-       style="padding-left:${20 + depth * 12}px" title="${escapeHtml(item.source || item.path)}">
-      <span class="caret"></span><span class="nlabel">${escapeHtml(item.label)}</span></div>`;
+       style="padding-left:${20 + depth * 12}px" title="${escapeHtml(title)}">
+      <span class="caret"></span><span class="nlabel">${escapeHtml(label)}</span></div>`;
 }
 
-function treeGroup(key, label, depth, open) {
-  return `<div class="node grp" data-group-key="${escapeHtml(key)}" style="padding-left:${6 + depth * 12}px">
+function treeGroup(key, label, depth, open, active = false) {
+  return `<div class="node grp ${active && !open ? "contains-active" : ""}" data-group-key="${escapeHtml(key)}" style="padding-left:${6 + depth * 12}px" title="${escapeHtml(label)}" aria-expanded="${open}">
       <span class="caret">${open ? "▼" : "▷"}</span><span class="nlabel">${escapeHtml(label)}</span></div>`;
 }
 
@@ -6016,10 +6115,21 @@ function treeHtml(analyses) {
       if (!families.has(family)) families.set(family, []);
       families.get(family).push(item);
     }
-    for (const [family, members] of families) {
+    const rank = (family) => family === "Supporting files" ? 2 : family === "Files inventory" ? 1 : 0;
+    for (const [family, members] of [...families].sort(([a], [b]) => rank(a) - rank(b))) {
+      if (members.length === 1) {
+        const item = members[0];
+        html.push(treeLeaf(item, 1));
+        continue;
+      }
       const familyKey = `f|${key}|${family}`;
+      if (family === "Supporting files" && !treeState.initialized.has(familyKey)) {
+        treeState.initialized.add(familyKey);
+        treeState.collapsed.add(familyKey);
+      }
       const familyOpen = searching || !treeState.collapsed.has(familyKey);
-      html.push(treeGroup(familyKey, `${family} (${members.length})`, 1, familyOpen));
+      html.push(treeGroup(familyKey, `${family} (${members.length})`, 1, familyOpen,
+        members.some((item) => item.index === state.analysis)));
       if (familyOpen) for (const item of members) html.push(treeLeaf(item, 2));
     }
   }
@@ -6032,9 +6142,15 @@ function renderTree() {
     tree.innerHTML = '<div class="empty">No case open.</div>';
     return;
   }
-  const term = ($("tree-search").value || "").toLowerCase();
+  if (treeState.caseId !== state.openCase.id) {
+    treeState.caseId = state.openCase.id;
+    treeState.collapsed.clear();
+    treeState.initialized.clear();
+  }
+  const term = ($("tree-search").value || "").trim().toLowerCase();
   const analyses = state.openCase.analyses.filter((item) =>
-    !term || item.label.toLowerCase().includes(term));
+    !term || [item.label, item.tree_label, item.family, item.source, ...(item.tree_sources || [])]
+      .some((value) => String(value || "").toLowerCase().includes(term)));
   if (!analyses.length) {
     tree.innerHTML = '<div class="empty">' + (state.openCase.analyses.length ? "No analysis matches this filter." : "No analysis in this case.") + "</div>";
     return;
@@ -6133,6 +6249,11 @@ function query() {
 function rowsUrl(extra) {
   const base = `/api/cases/${state.openCase.id}/analyses/${state.analysis}/rows`;
   const params = query();
+  if (state.columns.length > 128 && state.columnContext === `${state.openCase.id}/${state.analysis}`) {
+    for (const item of columnWindow(visibleColumns())) {
+      if (item.index !== undefined) params.append("column", String(item.index));
+    }
+  }
   if (state.expandAll && state.groups.length) params.set("expanded", "true");
   if (extra) extra(params);
   return `${base}?${params.toString()}`;
@@ -6149,13 +6270,18 @@ function stopQuery() {
   say("Query stopped — the page stays as it was");
 }
 
-async function loadRows(reset) {
+async function loadRows(reset, preserveSelection = false) {
   if (!state.openCase) return;
   if (reset) state.offset = 0;
   // A new page is a new set of rows: a selection of ids that are no longer on
   // screen must not survive into "copy the selected rows".
-  state.selection.clear();
-  state.anchor = null;
+  if (!preserveSelection) {
+    clearTimeout(filterTimer);
+    state.selection.clear();
+    state.anchor = null;
+    state.selected = null;
+    showDetails(null);
+  }
   rowsRequest?.abort();
   const controller = new AbortController();
   rowsRequest = controller;
@@ -6163,7 +6289,12 @@ async function loadRows(reset) {
     const payload = await apiAbortable(rowsUrl(), controller.signal);
     if (controller.signal.aborted) return false;
     state.columns = payload.columns;
-    state.rows = payload.rows;
+    state.columnContext = `${state.openCase.id}/${state.analysis}`;
+    state.rows = payload.projection ? payload.rows.map((values) => {
+      const row = new Array(payload.columns.length);
+      payload.projection.forEach((column, position) => { row[column] = values[position]; });
+      return row;
+    }) : payload.rows;
     state.total = payload.total;
     state.offset = payload.offset;
     state.grouped = Boolean(payload.grouped);
@@ -6267,6 +6398,58 @@ function ruleCss(rule) {
 function visibleColumns() {
   return orderedColumns().filter((item) => !state.hidden.has(item.index));
 }
+
+/* Keep the real column order and scroll width, but create cells only around the
+   viewport. Sparse response arrays distinguish an unloaded value from SQL NULL. */
+function columnWindow(columns) {
+  if (state.columns.length <= 128) return columns;
+  const wrap = $("gridbody");
+  const low = Math.max(0, wrap.scrollLeft - 400);
+  const high = wrap.scrollLeft + wrap.clientWidth + 400;
+  let left = 30;
+  const result = [];
+  for (const item of columns) {
+    const width = state.widths[item.index] || defaultWidth(item.name, item.index);
+    const shown = (left + width >= low && left <= high)
+      || state.pinned.has(item.index - 1) || state.pinnedRight.has(item.index - 1);
+    if (shown) result.push({ ...item, width });
+    else if (result.length && result[result.length - 1].index === undefined) result[result.length - 1].width += width;
+    else result.push({ width });
+    left += width;
+  }
+  return result;
+}
+
+let columnWindowTimer;
+let columnWindowFrame = null;
+let columnWindowLeft = $("gridbody").scrollLeft;
+let columnWindowWidth = $("gridbody").clientWidth;
+function refreshColumnViewport() {
+  const current = () => state.openCase && state.columns.length > 128 && !state.grouped
+    && $("gridbody").clientWidth > 0
+    && state.columnContext === `${state.openCase.id}/${state.analysis}`;
+  if (!current()) return;
+  if (columnWindowFrame === null) columnWindowFrame = requestAnimationFrame(() => {
+    columnWindowFrame = null;
+    if (current()) renderGrid(true);
+  });
+  clearTimeout(columnWindowTimer);
+  columnWindowTimer = setTimeout(() => {
+    if (current() && !rowsRequest) renderGrid();
+  }, 100);
+}
+$("gridbody").addEventListener("scroll", () => {
+  const left = $("gridbody").scrollLeft;
+  if (left === columnWindowLeft) return;
+  columnWindowLeft = left;
+  refreshColumnViewport();
+}, { passive: true });
+new ResizeObserver(() => {
+  const width = $("gridbody").clientWidth;
+  if (width === columnWindowWidth) return;
+  columnWindowWidth = width;
+  refreshColumnViewport();
+}).observe($("gridbody"));
 
 /* "Highlight matches (empty = disable)", the desktop's own control: the text is cut
    around the term, each piece escaped, and only the pieces are marked. */
@@ -6415,12 +6598,12 @@ function fitColumnToContent(column) {
   saveLayoutSoon();
 }
 
-function renderGrid() {
+function renderGrid(deferColumns = false) {
   const empty = $("grid-empty");
   renderGroupBar();
   if (!state.grouped) $("group-chart").hidden = true;
   if (state.grouped) { renderGroupedGrid(); return; }
-  const shown = visibleColumns();
+  const shown = columnWindow(visibleColumns());
   if (!state.columns.length) {
     clearGrid("No analysis open.");
     return;
@@ -6433,11 +6616,14 @@ function renderGrid() {
 
   // The header follows `shown`, like the body: a hidden column must not leave its
   // title behind. An absolute index keeps the filters, sorts and widths addressed.
-  $("cols").innerHTML = '<col style="width:30px">' + shown.map(({ index }) =>
-    `<col style="width:${state.widths[index] || defaultWidth(state.columns[index], index)}px">`).join("");
+  $("grid").style.width = state.columns.length > 128
+    ? `${30 + shown.reduce((total, item) => total + item.width, 0)}px` : "";
+  $("cols").innerHTML = '<col style="width:30px">' + shown.map(({ index, width }) =>
+    `<col style="width:${width || state.widths[index] || defaultWidth(state.columns[index], index)}px">`).join("");
 
   const head = ['<tr>', BOOKMARK_GROUP_HEADER];
   shown.forEach(({ index }) => {
+    if (index === undefined) { head.push('<th class="column-spacer"></th>'); return; }
     const name = state.columns[index];
     const multi = state.multiSort.findIndex((item) => item.column === index - 1);
     // state.sort names a column by its position without the row-id column, like multiSort does
@@ -6452,13 +6638,14 @@ function renderGrid() {
   // One leading cell for the checkbox column, then one per column.
   head.push('<tr class="colfilter"><th></th>');
   shown.forEach(({ index }) => {
+    if (index === undefined) { head.push('<th class="column-spacer"></th>'); return; }
     if (index === 0) { head.push("<th></th>"); return; }
     const current = state.filters.find((item) => item.column === index - 1);
     // The operator is shown as a small icon on the left of the field and chosen from a list; the
     // field holds the value alone. (Typing a prefix such as "=" or "!=" still works.)
     const operator = current ? current.operator : (state.filterOps[index - 1] || "contains");
     const meaning = (FILTER_OPERATORS.find(([code]) => code === operator) || [])[2] || operator;
-    head.push(`<th><div class="fcell"><button class="fop" data-fop="${index - 1}" title="Comparison: ${escapeHtml(meaning)}">${FILTER_GLYPHS[operator] || "≈"}</button>`
+    head.push(`<th data-filter-column="${index}"><div class="fcell"><button class="fop" data-fop="${index - 1}" title="Comparison: ${escapeHtml(meaning)}">${FILTER_GLYPHS[operator] || "≈"}</button>`
       + `<input data-filter="${index - 1}" placeholder="Filter…" value="${escapeHtml(current ? current.value : "")}"></div></th>`);
   });
   head.push("</tr>");
@@ -6473,12 +6660,13 @@ function renderGrid() {
     const matched = state.styles[String(id)];
     const rule = matched && matched.length ? state.ruleSet[matched[0]] : null;
     const cells = shown.map(({ index }) => {
+      if (index === undefined) return '<td class="column-spacer"></td>';
       const value = row[index];
       // The case names its date columns when it has them; a value that reads as a
       // full timestamp is formatted anyway, so the preference is never a no-op.
       const isDate = (Array.isArray(state.timestamps) && state.timestamps.includes(index - 1))
         || DATE_TEXT.test(value === null || value === undefined ? "" : String(value));
-      const text = value === null || value === ""
+      const text = value === undefined ? "…" : value === null || value === ""
         ? "∅"
         : String(value); // the server has already written the date columns the way Preferences asked
       const noted = rowNotes[String(index - 1)];
@@ -6524,6 +6712,10 @@ function renderGrid() {
     say(`${state.total} row(s) in this analysis${state.filters.length ? ` — ${state.filters.length} filter(s)` : ""}`);
   }
   applyPinning();
+  if (deferColumns !== true && state.payload?.projection && shown.some((item) => item.index !== undefined
+      && !state.payload.projection.includes(item.index))) {
+    loadRows(false, true);
+  }
 }
 
 function outlineRow(record, colspan) {
@@ -6564,6 +6756,7 @@ function renderGroupChart() {
 }
 
 function renderGroupedGrid() {
+  $("grid").style.width = "";
   const column = state.groups[state.path.length];
   const name = groupColumnName(column) || `column ${column + 1}`;
   const empty = $("grid-empty");
@@ -6630,17 +6823,35 @@ function footerRowsHtml(columns, leading) {
   return html;
 }
 
-function showDetails(row) {
+async function completeRow(row) {
+  if (!row || !state.payload?.projection || row._complete) return row;
+  const caseId = state.openCase.id, analysis = state.analysis;
+  const payload = await api(`/api/cases/${caseId}/timeline/row/${analysis}/${row[0]}`);
+  if (state.openCase?.id !== caseId || state.analysis !== analysis) return null;
+  payload.values.forEach((value, index) => { row[index + 1] = value; });
+  row._complete = true;
+  return row;
+}
+
+let detailsRequest = 0;
+async function showDetails(row) {
+  const request = ++detailsRequest;
   const box = $("details");
   if (!row) {
     box.innerHTML = '<div class="ph">Details of the selected row</div>';
     return;
   }
+  if (state.payload?.projection && !row._complete) {
+    box.innerHTML = '<div class="ph">Reading all fields of the selected row…</div>';
+    try { row = await completeRow(row); }
+    catch (error) { if (request === detailsRequest) box.textContent = error.message; return; }
+    if (request !== detailsRequest || !row) return;
+  }
   const rowNotes = notesForRow(row[0]);
   const pairs = visibleColumns().map(({ name, index }) => {
     const value = row[index];
     if (index === 0) return "";
-    if (value === null || value === "") return "";
+    if (value === null || value === undefined || value === "") return "";
     const note = rowNotes[String(index - 1)];
     return `<tr><td class="k">${escapeHtml(name)}</td>
       <td>${escapeHtml(String(value))}</td>
@@ -6691,6 +6902,21 @@ function showDetails(row) {
 /* ---------- tabs and panels ---------- */
 
 let tabChosen = false;
+let artifactsVisible = null;
+
+function syncArtifacts() {
+  const app = document.querySelector(".app");
+  const scale = Number(getComputedStyle(app).zoom) || 1;
+  const compact = document.documentElement.clientWidth / scale <= 560;
+  app.classList.toggle("compact-workspace", compact);
+  const caseList = document.querySelector('.tab[data-tab="cases"].active');
+  const available = Boolean(state.openCase) || !caseList;
+  const visible = available && (artifactsVisible ?? !compact);
+  $("artifacts").hidden = !visible;
+  $("artifacts-toggle").disabled = !available;
+  $("artifacts-toggle").setAttribute("aria-expanded", String(visible));
+  document.querySelector(".work").classList.toggle("artifacts-hidden", !visible);
+}
 
 function showTab(name) {
   tabChosen = true;
@@ -6712,7 +6938,7 @@ function showTab(name) {
   if (name === "graph" && state.openCase) buildGraph();
   if (name === "imports" && state.openCase) loadImports();
   if (name === "actions" && state.openCase) loadActions();
-  $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";
+  syncArtifacts();
   if (name === "timeline" && state.openCase) loadTimeline(!timelineState.payload);
 }
 
@@ -6753,21 +6979,50 @@ function moveColumn(header, direction) {
   openColumnManager();
 }
 
+let columnManagerOffset = 0;
 function openColumnManager() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
-  if (!$("columns-modal").classList.contains("show")) $("column-search").value = "";
+  if (!$("columns-modal").classList.contains("show")) { $("column-search").value = ""; columnManagerOffset = 0; }
   const list = $("columns-list");
-  list.innerHTML = orderedColumns().map(({ name, index }) => `
+  const query = $("column-search").value.trim().toLocaleLowerCase();
+  const matches = orderedColumns().filter(({ name, index }) => (index === 0 ? "Row number" : name).toLocaleLowerCase().includes(query));
+  columnManagerOffset = Math.min(columnManagerOffset, Math.max(0, Math.floor((matches.length - 1) / 100) * 100));
+  const page = matches.slice(columnManagerOffset, columnManagerOffset + 100);
+  const pager = matches.length > 100 ? `<div class="row"><button class="btn" data-column-page="-1" ${columnManagerOffset ? "" : "disabled"}>Previous</button>
+    <span>${columnManagerOffset + 1}–${columnManagerOffset + page.length} / ${matches.length} columns</span>
+    <button class="btn" data-column-page="1" ${columnManagerOffset + 100 < matches.length ? "" : "disabled"}>Next</button></div>` : "";
+  list.innerHTML = pager + page.map(({ name, index }) => `
     <label>
       <input type="checkbox" data-col="${index}" ${state.hidden.has(index) ? "" : "checked"}>
       <span data-column-label>${escapeHtml(index === 0 ? "Row number" : name)}</span>
-      ${index ? `<span class="pin"><button class="btn" data-move="${index - 1}" data-dir="-1" title="Move this column earlier">↑</button>
+      ${index ? `<span class="pin"><button class="btn" data-jump-column="${index}" title="Show this column in the grid">Go to</button><button class="btn" data-move="${index - 1}" data-dir="-1" title="Move this column earlier">↑</button>
         <button class="btn" data-move="${index - 1}" data-dir="1" title="Move this column later">↓</button>
         width <input type="number" data-width="${index}" min="30" max="1200" style="width:64px" value="${state.widths[index] || ""}" placeholder="auto">
         <input type="checkbox" data-bool="${index - 1}" ${booleanColumns().has(index - 1) ? "checked" : ""}> boolean
         <input type="checkbox" data-pin="${index - 1}" ${state.pinned.has(index - 1) ? "checked" : ""}> pin left
         <input type="checkbox" data-pinright="${index - 1}" ${state.pinnedRight.has(index - 1) ? "checked" : ""}> pin right</span>` : ""}
     </label>`).join("");
+  list.querySelectorAll("[data-column-page]").forEach((button) => button.addEventListener("click", () => {
+    columnManagerOffset += Number(button.dataset.columnPage) * 100;
+    openColumnManager();
+    list.scrollTop = 0;
+  }));
+  list.querySelectorAll("[data-jump-column]").forEach((button) => button.addEventListener("click", async (event) => {
+    event.preventDefault();
+    const index = Number(button.dataset.jumpColumn);
+    state.hidden.delete(index);
+    closeModals();
+    if (state.grouped) { state.groups = []; state.path = []; state.expandAll = false; await loadRows(true); }
+    renderGrid();
+    let left = 30;
+    for (const item of visibleColumns()) {
+      if (item.index === index) break;
+      left += state.widths[item.index] || defaultWidth(item.name, item.index);
+    }
+    $("gridbody").scrollLeft = Math.max(0, left - 30);
+    renderGrid();
+    saveLayoutSoon();
+  }));
   list.querySelectorAll("button[data-move]").forEach((button) => {
     button.addEventListener("click", (event) => { event.preventDefault(); moveColumn(Number(button.dataset.move), Number(button.dataset.dir)); });
   });
@@ -6818,20 +7073,14 @@ function openColumnManager() {
       saveLayoutSoon();
     });
   });
-  updateColumnList();
+  $("columns-no-match").hidden = matches.length > 0;
+  $("column-visibility").textContent = `${state.hidden.size} hidden`;
   $("columns-modal").classList.add("show");
 }
 
 function updateColumnList() {
-  const query = $("column-search").value.trim().toLocaleLowerCase();
-  let matched = 0;
-  for (const name of $("columns-list").querySelectorAll("[data-column-label]")) {
-    const visible = name.textContent.toLocaleLowerCase().includes(query);
-    name.parentElement.hidden = !visible;
-    if (visible) matched += 1;
-  }
-  $("columns-no-match").hidden = matched > 0;
-  $("column-visibility").textContent = `${state.hidden.size} hidden`;
+  columnManagerOffset = 0;
+  openColumnManager();
 }
 
 async function hideEmptyColumns() {
@@ -6895,11 +7144,8 @@ function applyPinning() {
   grid.querySelectorAll("thead th[data-column]").forEach((th) => {
     place(th, Number(th.dataset.column) - 1);
   });
-  const shown = visibleColumns();
-  grid.querySelectorAll(".colfilter th").forEach((th, position) => {
-    if (position === 0) return;
-    const entry = shown[position - 1];
-    if (entry) place(th, entry.index - 1);
+  grid.querySelectorAll(".colfilter th[data-filter-column]").forEach((th) => {
+    place(th, Number(th.dataset.filterColumn) - 1);
   });
   grid.querySelectorAll("tbody td[data-cell]").forEach((td) => {
     place(td, Number(td.dataset.cell));
@@ -7036,41 +7282,63 @@ function applyScale() {
   const value = localStorage.getItem("fireblade.scale") || "1";
   document.documentElement.style.setProperty("--ui-scale", value);
   $("scale").value = value;
+  syncArtifacts();
 }
 
 /* ---------- events ---------- */
+
+function placePopup(popup, x, y) {
+  popup.style.left = "0px";
+  popup.style.top = "0px";
+  const origin = popup.getBoundingClientRect();
+  const scale = origin.width / popup.offsetWidth || 1;
+  const width = document.documentElement.clientWidth;
+  const height = document.documentElement.clientHeight;
+  popup.style.setProperty("--popup-max-width", `${width / scale}px`);
+  popup.style.maxHeight = `${height / scale}px`;
+  const bounds = popup.getBoundingClientRect();
+  popup.style.left = `${(Math.max(0, Math.min(x, width - bounds.width)) - bounds.left) / scale}px`;
+  popup.style.top = `${(Math.max(0, Math.min(y, height - bounds.height)) - bounds.top) / scale}px`;
+}
+
+function closeMenus() {
+  document.querySelectorAll(".menu.show").forEach((menu) => menu.classList.remove("show"));
+  document.querySelectorAll(".menubar .m.open").forEach((cell) => {
+    cell.classList.remove("open");
+    cell.setAttribute("aria-expanded", "false");
+  });
+}
 
 function openMenu(name) {
   const cell = document.querySelector(`.menubar .m[data-menu="${name}"]`);
   const menu = document.querySelector(`.menu[data-for="${name}"]`);
   if (!cell || !menu) return;
-  document.querySelectorAll(".menu").forEach((node) => node.classList.remove("show"));
-  menu.style.left = `${cell.getBoundingClientRect().left}px`;
+  closeMenus();
   menu.classList.add("show");
   cell.classList.add("open");
+  cell.setAttribute("aria-expanded", "true");
+  const anchor = cell.getBoundingClientRect();
+  placePopup(menu, anchor.left, anchor.bottom);
+  return menu;
 }
 
 function wire() {
+  window.addEventListener("resize", syncArtifacts);
   document.querySelectorAll('.menubar .m').forEach((node) => {
+    node.tabIndex = 0;
+    node.setAttribute("role", "button");
+    node.setAttribute("aria-expanded", "false");
     node.addEventListener("mousedown", (event) => {
       event.stopPropagation();
-      const name = node.dataset.menu;
-      const menu = document.querySelector(`.menu[data-for="${name}"]`);
-      const open = menu && menu.classList.contains("show");
-      document.querySelectorAll(".menu").forEach((m) => m.classList.remove("show"));
-      document.querySelectorAll(".menubar .m").forEach((m) => m.classList.remove("open"));
-      if (menu && !open) {
-        const left = node.getBoundingClientRect().left;
-        menu.style.left = `${left}px`;
-        menu.classList.add("show");
-        node.classList.add("open");
-      }
+      if (node.classList.contains("open")) closeMenus();
+      else openMenu(node.dataset.menu);
+    });
+    node.addEventListener("keydown", (event) => {
+      if (!["Enter", " ", "ArrowDown"].includes(event.key)) return;
+      event.preventDefault();
+      openMenu(node.dataset.menu)?.querySelector(".item:not(.disabled)")?.focus();
     });
   });
-  function closeMenus() {
-    document.querySelectorAll(".menu").forEach((m) => m.classList.remove("show"));
-    document.querySelectorAll(".menubar .m").forEach((m) => m.classList.remove("open"));
-  }
   // A press inside an open menu must reach its item: closing the menu on mousedown hides
   // the item before the click can land on it, and no menu command would ever run.
   document.addEventListener("mousedown", (event) => {
@@ -7079,6 +7347,16 @@ function wire() {
   });
 
   document.querySelectorAll("[data-act]").forEach((node) => {
+    if (node.matches(".menu .item")) {
+      node.tabIndex = 0;
+      node.setAttribute("role", "button");
+      node.addEventListener("keydown", (event) => {
+        if (!["Enter", " "].includes(event.key) || node.classList.contains("disabled")) return;
+        event.preventDefault();
+        document.querySelector(".menubar .m.open")?.focus();
+        node.click();
+      });
+    }
     node.addEventListener("click", () => {
       // The menu closes first, then the command runs: a command that opens a dialog or
       // reads the page must not find the menu still on screen.
@@ -7338,6 +7616,8 @@ function wire() {
     const input = event.target.closest("input[data-filter]");
     if (!input) return;
     if (event.key !== "Enter") return;
+    event.preventDefault();
+    clearTimeout(filterTimer);
     loadRows(true);
   });
 
@@ -7402,9 +7682,8 @@ function wire() {
     const edit = menu.querySelector('[data-act="note-replace"]');
     if (add) add.hidden = noted;
     if (edit) edit.hidden = !noted;
-    menu.style.left = `${event.clientX}px`;
-    menu.style.top = `${event.clientY}px`;
     menu.hidden = false;
+    placePopup(menu, event.clientX, event.clientY);
   });
   document.addEventListener("click", () => { $("row-menu").hidden = true; $("filter-operators").hidden = true; });
 
@@ -7471,11 +7750,6 @@ function wire() {
   $("details-toggle").addEventListener("click", toggleDetails);
   $("column-search").addEventListener("input", updateColumnList);
 
-  $("import-input").addEventListener("change", (event) => {
-    const files = [...(event.target.files || [])];
-    event.target.value = "";
-    if (files.length) { openImportDialog(); previewFiles(files); }
-  });
   $("palette-theme").addEventListener("change", (event) => choosePalette(event.target.value));
   $("palette-reset").addEventListener("click", () => {
     paletteState.custom = {};
@@ -7510,8 +7784,12 @@ function wire() {
     say("Laying the analyses out again…");
     try {
       const done = await apiPost(`/api/cases/${id}/reorganize`, { mode });
+      if (state.openCase?.id === id && done.collections) {
+        resetTimeline(); resetFindings(); resetGraph(); resetIoc();
+      }
       if (state.openCase?.id === id && await openCase(id)) {
-        say(done.collections ? "Layout changed" : "Already laid out that way");
+        const message = done.collections ? "Layout changed" : "Already laid out that way";
+        say([message, ...(done.notices || [])].join(" · "));
       }
     } catch (error) {
       if (state.openCase?.id === id) {
@@ -7847,7 +8125,13 @@ function wire() {
     }
     if (event.key === "F1") { event.preventDefault(); act("help-guide").catch(() => {}); return; }
     if (event.key === "F5") { event.preventDefault(); loadCases(); }
-    if (event.key === "Escape") closeModals();
+    if (event.key === "Escape") {
+      const trigger = document.querySelector(".menubar .m.open");
+      closeModals();
+      $("row-menu").hidden = true;
+      $("filter-operators").hidden = true;
+      trigger?.focus();
+    }
     if (event.key === "/" && document.activeElement.tagName !== "INPUT") {
       event.preventDefault();
       $("search").focus();
@@ -7858,7 +8142,7 @@ function wire() {
 function closeModals() {
   if (askState.resolve) answerAsk(null);
   document.querySelectorAll(".modal").forEach((node) => node.classList.remove("show"));
-  document.querySelectorAll(".menu").forEach((node) => node.classList.remove("show"));
+  closeMenus();
 }
 
 function showReportType() {
@@ -8064,6 +8348,11 @@ async function act(name, node) {
     case "tl-zoom-in": timelineZoom(0.6); break;
     case "tl-zoom-out": timelineZoom(1.8); break;
     case "tl-fit": timelineFit(); break;
+    case "tl-clear-range":
+      timelineState.start = null;
+      timelineState.end = null;
+      await loadTimeline(true);
+      break;
     case "tl-pan-left": timelinePan(-0.5); break;
     case "tl-pan-right": timelinePan(0.5); break;
     case "tl-back": timelineBack(); break;
@@ -8224,7 +8513,8 @@ async function act(name, node) {
       break;
     case "about-close": closeModals(); break;
     case "toggle-artifacts":
-      $("artifacts").style.display = $("artifacts").style.display === "none" ? "flex" : "none";
+      artifactsVisible = $("artifacts").hidden;
+      syncArtifacts();
       break;
     default: break;
   }

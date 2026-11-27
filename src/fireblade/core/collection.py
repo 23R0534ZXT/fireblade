@@ -19,6 +19,7 @@ from pathlib import Path
 
 import duckdb
 
+from fireblade.core import csv_chunks
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.generic_files import classify as generic_classify
@@ -177,10 +178,23 @@ def identify(path):
         magic = stream.read(32)
     if name.endswith((".log1", ".log2")):
         hive = path.with_name(path.name.rsplit(".", 1)[0])
-        if hive.is_file() and not hive.is_symlink():
-            with hive.open("rb") as stream:
-                if stream.read(4) == b"regf":
-                    return ["companion"]
+        # A Windows collection may pair NTUSER.DAT with ntuser.dat.LOG1.
+        # Linux paths are case-sensitive; do not feed the transaction log to
+        # a full-hive parser simply because the original names differ in case.
+        candidates = (
+            [hive]
+            if hive.is_file()
+            else [
+                sibling
+                for sibling in path.parent.iterdir()
+                if sibling.name.casefold() == hive.name.casefold()
+            ]
+        )
+        for candidate in candidates:
+            if candidate.is_file() and not candidate.is_symlink():
+                with candidate.open("rb") as stream:
+                    if stream.read(4) == b"regf":
+                        return ["companion"]
     if magic.startswith(b"ElfFile\0") or name.endswith(".evtx"):
         return ["EvtxECmd"]
     if name.startswith(("amcache", "inventory")) and (
@@ -275,6 +289,11 @@ class ToolPack:
 
     def arguments(self, name, source, output):
         args = self.command(name) + ["-f", str(source), "--csv", str(output)]
+        if name in ("SQLECmd", "WxTCmd"):
+            # The default is a shared Temp folder beside the installed DLL. That
+            # location may be read-only, and parallel readers can remove each
+            # other's copies. Every invocation already has its own writable output.
+            args += ["--temp", str(Path(output) / "sqlite-temp")]
         if name == "RECmd":
             batch = Path(self.root) / name / "BatchExamples" / "Kroll_Batch.reb"
             if not batch.is_file():
@@ -296,13 +315,20 @@ def fit_budget_to_file(budget, csv, progress=lambda _: None, ceiling_mb=None):
     the retry loop multiplies the budget, and every attempt re-reads the whole file.
     The analyst waits several times longer than the work needs, with one unchanging
     message. Sizing the first attempt from the file replaces those passes with one,
-    still bounded by half the physical memory.
+    still bounded by half the physical memory. Multi-gigabyte imports use
+    checkpointed chunks instead: retain their configured budget so that increasing
+    the budget cannot move the streaming threshold out of reach.
     """
     if budget is None:
         return budget
     try:
-        size_mb = Path(csv).stat().st_size // (1024 * 1024)
+        size_bytes = Path(csv).stat().st_size
+        size_mb = size_bytes // (1024 * 1024)
     except OSError:
+        return budget
+    # The engine checkpoints these imports. Growing the budget from their total
+    # size would also grow the checkpoint threshold and silently disable streaming.
+    if size_bytes > csv_chunks.transaction_limit(getattr(budget, "memory_mb", None)):
         return budget
     needed = size_mb + size_mb // 4 + 64
     current = int(getattr(budget, "memory_mb", 0) or 0)
@@ -416,6 +442,23 @@ def entry_reason(entry):
                 reasons.append(str(warning))
     joined = " ; ".join(dict.fromkeys(reasons))
     return joined[:400]
+
+
+def settle_empty_runs(report):
+    """Repair older completed entries left 'running' after producing no output."""
+    changed = 0
+    for entry in report.get("files") or []:
+        if not isinstance(entry, dict) or entry.get("status") != "attention":
+            continue
+        repaired = False
+        for run in entry.get("runs") or []:
+            if run.get("status") == "running" and not run.get("outputs"):
+                run.update(status="no_output", reason=_no_output_reason(entry.get("path", "")))
+                changed += 1
+                repaired = True
+        if repaired:
+            entry["reason"] = entry_reason(entry)
+    return changed
 
 
 class CollectionProgress:
@@ -628,6 +671,7 @@ class Collection:
     def reopen(cls, output, pack, settings=None, progress=lambda _: None, index_folder=None):
         output = Path(output).resolve()
         data = json.loads((output / "collection.json").read_text(encoding="utf-8"))
+        settle_empty_runs(data)
         if data.get("format") != "fireblade-collection" or data.get("version") != 1:
             raise ValueError("Dossier de travail Fireblade invalide")
         instance = cls(
@@ -664,6 +708,7 @@ class Collection:
 
     def save(self):
         self._last_checkpoint = time.monotonic()
+        settle_empty_runs(self.report)
         self.report["summary"] = self.summary()
         atomic_json(self.output / "collection.json", self.report)
         if self.report["documents"]:
@@ -679,8 +724,6 @@ class Collection:
 
     def import_result(self, csv, kind, view=None, register=True, evidence=None):
         check_cancel()
-        if register and len(self.report["documents"]) >= 1000:
-            raise ValueError("Limite de 1000 analyses atteinte ; résultat conservé sur disque")
         # Fireblade must read a folder whatever the machine: a collection running out
         # of memory is a budget problem, not a reason to fail. Each attempt raises the
         # budget (x4, at least +256 MB) up to half the physical RAM, then leans on the
@@ -1299,7 +1342,8 @@ class Collection:
                             else "complete"
                         )
                     else:
-                        run.setdefault("status", "no_output")
+                        if run["status"] == "running":
+                            run.update(status="no_output", reason=_no_output_reason(source))
                     log = output / "parser.log"
                     if log.is_file():
                         warnings = []

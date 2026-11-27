@@ -2,6 +2,7 @@
 
 import pytest
 from _audit import command  # noqa: F401 - the audit's menu helper keeps the hook of the other tests
+from conftest import make_case
 
 
 @pytest.fixture()
@@ -25,6 +26,24 @@ def test_the_hunt_normalises_each_indicator_and_counts_its_fields_and_rows(hunte
     assert int(by_original["hxxp://nowhere[.]example/x"][4]) == 0
     summary = page.inner_text("#ioc-summary")
     assert "rows read" in summary and "matching fields" in summary and "details kept" in summary
+
+
+def test_opening_a_different_case_clears_ioc_results_and_history(hunted, server):
+    page = hunted
+    other = make_case(server, "Case without IOC hunts")
+    assert page.locator("#ioc-rows tr[data-hit]").count() > 0
+    page.locator('.toolbar [data-act="refresh-cases"]').click()
+    page.locator('[data-tab="cases"]').click()
+    page.locator('#cases-body tr:has(td:text-is("Case without IOC hunts")) td').first.dblclick()
+    page.wait_for_function(
+        "document.getElementById('casecombo-label').textContent === 'Case without IOC hunts'"
+    )
+    page.locator('[data-tab="ioc"]').click()
+    assert page.locator("#ioc-input").input_value() == ""
+    assert page.locator("#ioc-rows tr[data-hit]").count() == 0
+    with page.expect_response(f"**/api/cases/{other}/hunts") as history:
+        page.locator("#ioc-history").focus()
+    assert history.value.ok and history.value.json()["hunts"] == []
 
 
 def test_a_detail_has_its_source_date_its_excerpt_and_its_rule(hunted):
@@ -93,3 +112,17 @@ def test_importing_a_list_fills_the_box_and_hunts_nothing(page, tmp_path):
     assert page.evaluate("iocState.hunt") is None  # nothing was hunted
     assert "valid IOC" in page.inner_text("#ioc-summary")
     assert "rejected" in page.inner_text("#ioc-summary")
+
+
+def test_a_short_indicator_list_leaves_room_for_details_and_a_long_list_scrolls(hunted):
+    page = hunted
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    summary = page.locator(".ioc-summary-grid")
+    details = page.locator("#ioc-rows").locator("xpath=ancestor::div[@class='gridwrap']")
+    assert summary.bounding_box()["height"] < 150
+    assert details.bounding_box()["height"] > summary.bounding_box()["height"] * 2
+    page.fill("#ioc-input", "\n".join(f"10.0.0.{i}" for i in range(1, 121)))
+    page.click("#ioc-scan")
+    page.wait_for_function("iocState.list.length === 120", timeout=60000)
+    assert summary.locator(".gridbody").evaluate("n => n.scrollHeight > n.clientHeight")
+    assert details.bounding_box()["height"] > summary.bounding_box()["height"]

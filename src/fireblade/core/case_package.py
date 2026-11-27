@@ -18,10 +18,11 @@ from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.models import AnalysisSnapshot, View
 from fireblade.core.paths import ensure_export_destination, protected_destination
+from fireblade.core.sessions import MAX_SESSION_BYTES
 
 MAX_FILES = 50_000
 MAX_BYTES = 64 * 1024**3
-MAX_MANIFEST = 16 * 1024**2
+MAX_MANIFEST = MAX_SESSION_BYTES
 
 
 def check_cancelled():
@@ -479,7 +480,7 @@ def import_package(library, source, *, max_bytes=None):
             files = manifest["files"]
             members = {item["path"] for item in files}
             documents = manifest["documents"]
-            if not isinstance(documents, list) or len(documents) > 1000:
+            if not isinstance(documents, list):
                 raise ValueError("Nombre d’analyses invalide")
             if len({doc["database"] for doc in documents}) != len(documents):
                 raise ValueError("Analyses dupliquées dans l’archive")

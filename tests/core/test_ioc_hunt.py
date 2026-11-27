@@ -146,3 +146,28 @@ def test_cancel_during_scan_keeps_previous_hunt_and_export(tmp_path):
     with pytest.raises(ValueError):
         previous.export(docs[0].path)
     previous.close()
+
+
+def test_hunts_preserve_scopes_with_more_than_a_thousand_analysis_views(tmp_path):
+    documents = make_documents(tmp_path)
+    case = Case(documents[0].path)
+    try:
+        reader = WorkspaceReader([documents[0]] * 1101, active=case)
+        store = hunt(
+            reader, parse_indicators("192.0.2.1"), tmp_path / "many-source-hunt", hit_limit=1
+        )
+        try:
+            assert store.metadata["status"] == "complete"
+            assert store.metadata["scanned_rows"] == 2202
+            assert len(store.sources()) == 1101
+            assert store.page()["count"] == 1
+            saved = store.path
+        finally:
+            store.close()
+        reopened = HuntStore(saved)
+        try:
+            assert len(reopened.sources()) == 1101
+        finally:
+            reopened.close()
+    finally:
+        case.close()

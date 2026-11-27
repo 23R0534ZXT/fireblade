@@ -195,7 +195,7 @@ def test_the_extra_rule_fields_are_kept_by_the_server(page):
 def test_the_tree_groups_by_collection_and_family_and_can_be_folded(page):
     tree = page.locator("#tree")
     groups = page.locator("#tree .node.grp")
-    assert groups.count() >= 2  # the collection, then the family
+    assert groups.count() == 1  # one analysis needs no redundant family level
     assert "(1)" in groups.first.inner_text()
     assert page.locator("#tree .node.child").count() == 1
     page.click("#tree-collapse")

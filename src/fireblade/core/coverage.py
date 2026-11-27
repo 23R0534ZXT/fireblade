@@ -227,8 +227,6 @@ def audit(
     families = set()
     checked_files = {}
     reader.check()
-    if len(reader.documents) > 1000:
-        raise ValueError("Contrôle limité à 1000 analyses")
 
     def add(*args, **kwargs):
         nonlocal omitted_findings

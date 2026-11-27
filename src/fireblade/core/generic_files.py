@@ -17,8 +17,11 @@ Nothing is decoded that the file does not state, and the source is only ever rea
 import csv
 import hashlib
 import json
+import shutil
 import sqlite3
 import struct
+import tempfile
+from contextlib import ExitStack, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -203,6 +206,29 @@ def _write_rows(target, header, rows):
     return count
 
 
+@contextmanager
+def _sqlite_connection(source, output):
+    """Read committed WAL data on a private copy without modifying the evidence."""
+    wal = source.with_name(source.name + "-wal")
+    with ExitStack() as resources:
+        working = source
+        immutable = True
+        if wal.is_file() and wal.stat().st_size:
+            directory = resources.enter_context(
+                tempfile.TemporaryDirectory(prefix="sqlite-work-", dir=output)
+            )
+            working = Path(directory) / "database.sqlite"
+            shutil.copyfile(source, working)
+            shutil.copyfile(wal, working.with_name(working.name + "-wal"))
+            # immutable=1 disables WAL reading. The private writable directory lets
+            # SQLite rebuild its WAL index while the database is opened read-only.
+            immutable = False
+        uri = working.resolve().as_uri() + "?mode=ro" + ("&immutable=1" if immutable else "")
+        connection = sqlite3.connect(uri, uri=True)
+        resources.callback(connection.close)
+        yield connection
+
+
 def parse(source, output, progress=lambda _: None, kind=None):
     """Read one file as what it is. Returns {"outputs": [{"csv", "rows", "table"}], "warnings"}."""
     source, output = Path(source), Path(output)
@@ -211,9 +237,8 @@ def parse(source, output, progress=lambda _: None, kind=None):
     name = source.name
 
     if kind == "sqlite":
-        connection = sqlite3.connect(f"file:{source}?mode=ro&immutable=1", uri=True)
-        connection.text_factory = lambda raw: raw.decode("utf-8", errors="replace")
-        try:
+        with _sqlite_connection(source, output) as connection:
+            connection.text_factory = lambda raw: raw.decode("utf-8", errors="replace")
             tables = [
                 row[0]
                 for row in connection.execute(
@@ -236,8 +261,6 @@ def parse(source, output, progress=lambda _: None, kind=None):
                     continue
                 if count:
                     outputs.append(dict(csv=str(target), rows=count, table=table))
-        finally:
-            connection.close()
     elif kind in ("mozlz4", "json"):
         raw = source.read_bytes()
         if kind == "mozlz4":

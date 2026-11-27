@@ -5,7 +5,7 @@
   --window:#f0f0f0; --text:#202020; --base:#ffffff; --alt:#f6f6f6;
   --border:#b5b5b5; --header:#eeeeee; --header-sep:#c5c5c5; --toolbar-sep:#bcbcbc;
   --sel:#cce8ff; --sel-text:#101010; --disabled:#686868; --link:#0645ad;
-  --hint:#ffffe1;
+  --hint:#ffffe1; --status-error:#a02020;
   /* The rest of the surface, named once: a theme or a custom palette only has to
      move these six plus the ones above, never the rules below. */
   --grid-line:#e2e2e2; --row-hover:#eaf5ff; --head-sorted:#e4eef6; --btn-hover:#e4f2fc;
@@ -18,10 +18,11 @@
 
 /* Dark keeps the same layout and density: only the surface changes. */
 :root[data-theme="dark"]{
+  color-scheme:dark;
   --window:#1f1f1f; --text:#e6e6e6; --base:#262626; --alt:#2b2b2b;
   --border:#454545; --header:#2a2a2a; --header-sep:#3d3d3d; --toolbar-sep:#3d3d3d;
   --sel:#2f5d80; --sel-text:#ffffff; --disabled:#8a8a8a; --link:#7fb3e8;
-  --hint:#3a3a2a;
+  --hint:#3a3a2a; --status-error:#ffaaa3;
   --grid-line:#3a3a3a; --row-hover:#333333; --head-sorted:#33414d; --btn-hover:#333333;
   --btn-active:#2f4a5e; --input-focus:#333333; --soft:#2a2a2a; --muted:#a8a8a8;
   --border-strong:#5a5a5a; --menu-border:#555555; --border-soft:#3d3d3d; --accent:#4f8bb5;
@@ -34,19 +35,23 @@ body{
   font:12px/1.35 "Segoe UI",-apple-system,"DejaVu Sans",sans-serif;
   -webkit-font-smoothing:antialiased; overflow:hidden; user-select:none;
 }
-.app{display:flex;flex-direction:column;height:100vh;zoom:var(--ui-scale)}
+.app{display:flex;flex-direction:column;height:calc(100vh / var(--ui-scale));height:calc(100dvh / var(--ui-scale));zoom:var(--ui-scale)}
 
 /* menu bar */
 .menubar{display:flex;align-items:stretch;background:var(--window);height:22px;flex:0 0 22px;position:relative}
 .menubar .m{padding:2px 9px;line-height:18px;cursor:default}
 .menubar .m:hover,.menubar .m.open{background:var(--sel);color:var(--sel-text)}
+.menubar .m:focus-visible,.menu .item:focus-visible{outline:2px solid var(--accent-dark);outline-offset:-2px}
+#artifacts-toggle{display:none}
 .mnemonic{text-decoration:underline;text-underline-offset:1px}
 .menu{
-  position:absolute;top:22px;left:0;z-index:50;min-width:220px;background:var(--window);
+  position:fixed;top:22px;left:0;z-index:50;min-width:min(220px,var(--popup-max-width,100vw));background:var(--window);
   border:1px solid var(--menu-border);box-shadow:2px 2px 3px rgba(0,0,0,.18);padding:3px 0;display:none
 }
 .menu.show{display:block}
-.menu .item{padding:3px 22px 3px 24px;line-height:17px;white-space:nowrap;cursor:default;position:relative}
+.menu,.fmenu,.row-menu{max-width:var(--popup-max-width,100vw);overflow:auto}
+.menu .item{padding:3px 22px 3px 24px;line-height:17px;cursor:default;position:relative}
+.menu .item:has(.key){padding-right:92px}
 .menu .item:hover{background:var(--sel);color:var(--sel-text)}
 .menu .item.disabled{color:var(--disabled)}
 .menu .item.disabled:hover{background:transparent;color:var(--disabled)}
@@ -65,9 +70,10 @@ body{
 .tbsep{width:6px;height:20px;margin:0 5px;border-left:1px dotted #a8a8a8}
 .casecombo{
   height:21px;border:1px solid var(--border);background:var(--base);display:flex;align-items:center;
-  padding:0 4px;min-width:230px;gap:6px
+  padding:0 4px;min-width:230px;gap:6px;font:inherit;color:inherit;text-align:left;cursor:pointer
 }
-.casecombo .arrow{margin-left:auto;font-size:9px;color:var(--muted)}
+.casecombo .arrow{margin-left:auto;color:var(--muted)}
+.casecombo:hover{border-color:var(--accent);background:var(--row-hover)}
 
 @media (max-width:1050px){
   .toolbar .tb[data-act="import-folder"],.toolbar .tb[data-act="disk-open"],
@@ -100,7 +106,7 @@ body{
 .docempty{visibility:hidden}
 .tabbar-line{height:1px;background:var(--border);flex:0 0 1px;margin-top:-1px}
 
-.work{display:flex;flex:1;min-height:0}
+.work{display:flex;flex:1;min-height:0;position:relative}
 
 /* artifacts */
 /* The desktop keeps its artifacts tree on the right, the grid on the left: the
@@ -108,7 +114,9 @@ body{
 .artifacts{width:212px;flex:0 0 212px;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--window);order:3}
 .pane{order:1}
 .artifacts .head{display:flex;align-items:center;height:22px;padding:0 6px}
-.artifacts .head .x{margin-left:auto;color:var(--disabled)}
+.artifacts .head .x{margin-left:auto;border:0;padding:1px 5px;background:none;color:var(--text);cursor:pointer}
+.artifacts .head .x:hover{background:var(--sel)}
+.artifacts[hidden],.work.artifacts-hidden>.vsplit{display:none}
 .combo{margin:2px 4px;height:20px;border:1px solid var(--border);background:var(--base);display:flex;align-items:center;padding:0 4px;font-size:11px;gap:5px}
 .combo .arrow{margin-left:auto;font-size:9px;color:var(--muted)}
 .tree-search{margin:2px 4px 4px;height:20px;border:1px solid var(--border);background:var(--base);padding:0 5px;font-size:11px;width:calc(100% - 8px);outline:none;color:var(--text)}
@@ -118,6 +126,7 @@ body{
 .tree .node.sel{background:var(--sel);color:var(--sel-text)}
 .tree .node:hover:not(.sel){background:var(--row-hover)}
 .tree .grp{font-weight:400;color:var(--text)}
+.tree .grp.contains-active{font-weight:600}
 .tree .child{padding-left:20px}
 .tree .nlabel{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .tree .caret{font-size:9px;color:var(--muted);width:9px;display:inline-block}
@@ -129,7 +138,8 @@ body{
 .ptab{padding:1px 10px;border:1px solid var(--border);border-bottom:none;background:var(--header);border-radius:2px 2px 0 0;height:23px;line-height:20px;font-size:11px;flex:0 0 auto;white-space:nowrap;cursor:default}
 .ptab.active{background:var(--base);font-size:12px}
 
-.filterbar{display:flex;align-items:center;gap:6px;padding:3px 6px;flex:0 0 auto}
+.filterbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:3px 6px;flex:0 0 auto}
+.filterbar>*{max-width:100%}
 #graph-view>.filterbar{flex-wrap:wrap}
 #graph-view>.filterbar>.note{white-space:nowrap}
 .search{flex:1;height:21px;border:1px solid var(--border);background:var(--base);padding:0 5px;font-size:11px;outline:none;color:var(--text);min-width:80px}
@@ -178,7 +188,7 @@ thead th .grip{position:absolute;right:0;top:0;width:4px;height:100%;cursor:col-
 .colfilter .fcell input{flex:1;min-width:0}
 .fop{width:20px;height:19px;padding:0;border:1px solid var(--border);background:var(--base);color:var(--text);font-size:11px;cursor:pointer;line-height:1}
 .fop:hover{border-color:var(--accent)}
-.fmenu{position:fixed;z-index:60;min-width:240px;background:var(--window);border:1px solid var(--menu-border);box-shadow:2px 2px 3px rgba(0,0,0,.18);padding:3px 0}
+.fmenu{position:fixed;z-index:60;min-width:min(240px,var(--popup-max-width,100vw));background:var(--window);border:1px solid var(--menu-border);box-shadow:2px 2px 3px rgba(0,0,0,.18);padding:3px 0}
 .fmenu .item{padding:3px 12px;line-height:17px;white-space:nowrap;cursor:default}
 .fmenu .item:hover{background:var(--sel);color:var(--sel-text)}
 #filter-operators .fglyph{display:inline-block;width:22px;text-align:center;font-weight:600}
@@ -200,7 +210,7 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
   flex:0 0 auto;background:var(--base)}
 .note-editor label{font-size:11px;color:var(--muted);white-space:nowrap}
 .note-editor input{flex:1;min-width:0;height:20px;border:1px solid var(--border);background:var(--base);font-family:inherit;font-size:11px;padding:0 4px;outline:none}
-.rowid{color:#404040}
+.rowid{color:var(--muted)}
 .emptygrid{padding:10px 12px;color:var(--disabled);font-size:11px;line-height:1.6}
 
 .details{display:flex;flex-direction:column;flex:0 0 116px;min-height:0;margin:4px 6px 0;border:1px solid var(--border);background:var(--base);position:relative;overflow:hidden}
@@ -217,10 +227,12 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
 
 .statusbar{height:22px;flex:0 0 22px;display:flex;align-items:center;padding:0 7px;border-top:1px solid var(--border);font-size:11px;gap:14px}
 .statusbar .right{margin-left:auto;display:flex;gap:14px}
-.statusbar .err{color:#a02020}
+#status{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.statusbar .right{flex-shrink:0}
+.statusbar .err{color:var(--status-error)}
 
 /* cases table */
-.caseswrap{flex:1;min-height:0;margin:4px 6px;border:1px solid var(--border);background:var(--base);display:flex;flex-direction:column}
+.caseswrap{flex:1;min-height:0;margin:4px 6px;border:1px solid var(--border);background:var(--base);display:flex;flex-direction:column;overflow:auto}
 .caseswrap table{font-size:11px}
 .caseswrap tbody tr{cursor:default}
 .caseswrap tbody tr.sel td{background:var(--sel)}
@@ -240,7 +252,7 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
 /* dialog */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.18);display:none;align-items:center;justify-content:center;z-index:100}
 .modal.show{display:flex}
-.dialog{background:var(--window);border:1px solid #8f8f8f;box-shadow:3px 3px 8px rgba(0,0,0,.25);min-width:340px;padding:0}
+.dialog{background:var(--window);border:1px solid #8f8f8f;box-shadow:3px 3px 8px rgba(0,0,0,.25);min-width:min(var(--dialog-width,340px),calc(100% - 16px));max-width:calc(100% - 16px);padding:0}
 .dialog h3{margin:0;padding:6px 10px;font-size:12px;font-weight:400;background:var(--header);border-bottom:1px solid var(--border)}
 .dialog .body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
 .dialog .row{display:flex;align-items:center;gap:10px;font-size:12px}
@@ -290,7 +302,7 @@ body.dropping{outline:2px dashed var(--accent);outline-offset:-6px}
 .analysis-hit{padding:6px 8px;border-bottom:1px solid #eee;font-size:11px}
 .analysis-hit .hit{color:#333;padding:1px 0 1px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.row-menu{position:fixed;z-index:120;min-width:240px;background:var(--window);border:1px solid var(--menu-border);
+.row-menu{position:fixed;z-index:120;min-width:min(240px,var(--popup-max-width,100vw));background:var(--window);border:1px solid var(--menu-border);
   box-shadow:2px 2px 3px rgba(0,0,0,.18);padding:3px 0}
 .row-menu .item{padding:3px 18px;line-height:17px;cursor:default;font-size:12px}
 .row-menu .item:hover{background:var(--sel);color:var(--sel-text)}
@@ -484,13 +496,16 @@ td.noted .notemark{position:absolute;top:2px;right:2px;width:0;height:0;
 .expr-actions{gap:6px}
 .preview-card{max-width:100%;overflow:hidden}
 .preview-sample{display:block;overflow-x:auto;max-width:100%}
-.dialog{max-width:96vw}
-
 /* Windows: a dialog is moved by its title bar and resized from its corner, as on the desktop. */
-.dialog.window{display:flex;flex-direction:column;resize:both;overflow:hidden;max-height:96vh;min-width:260px;min-height:110px}
+.dialog.window{display:flex;flex-direction:column;resize:both;overflow:hidden;max-height:calc(100% - 16px);min-width:min(var(--dialog-width,260px),calc(100% - 16px));min-height:110px}
 .dialog.window>.body,.dialog.window>.content{flex:1 1 auto;overflow:auto;min-height:0}
 .dialog.window>h3,.dialog.window>.foot{flex:0 0 auto}
 .dialog h3.grab{cursor:move;user-select:none;touch-action:none}
+@media (max-width:700px){
+  .dialog .row{flex-wrap:wrap;gap:5px 8px}
+  .dialog .row label{min-width:0}
+  .dialog .row :is(input,textarea,select){min-width:0;max-width:100%}
+}
 
 /* Splitters: the two panes the desktop lets you drag apart. */
 .splitter{flex:0 0 5px;background:transparent;position:relative;touch-action:none;z-index:3}
@@ -551,16 +566,50 @@ td.activecell{outline:1px solid var(--accent);outline-offset:-1px}
 tr.gfooter td{font-weight:600;background:var(--alt);border-top:2px solid var(--border)}
 tr.gtotal td{background:var(--header);border-top:2px solid var(--border-strong)}
 
-#analysis-view.details-top>.filterbar{order:-3}
-#analysis-view.details-top>.groupbar{order:-2}
-#analysis-view.details-top>.details{order:-1;margin:4px 6px 0}
+#analysis-view.details-top>.filterbar{order:-4}
+#analysis-view.details-top>.groupbar{order:-3}
+#analysis-view.details-top>.details{order:-2;margin:4px 6px 0}
+#analysis-view.details-top>.hsplit{order:-1}
 #analysis-view.details-right:not([style*="none"]){display:grid!important;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto auto minmax(0,1fr) auto auto}
 #analysis-view.details-right>.filterbar,#analysis-view.details-right>.groupbar,#analysis-view.details-right>.pager{grid-column:1/3}
 #analysis-view.details-right>.gridwrap{grid-column:1;grid-row:3}
 #analysis-view.details-right>.group-chart{grid-column:1;grid-row:4}
 #analysis-view.details-right>.details{grid-column:2;grid-row:3 / span 2;flex:none;margin:0 6px 0 0}
+#analysis-view.details-right>.hsplit{display:none}
 
 .artifacts .select{margin:2px 4px;width:calc(100% - 8px)}
 .tree-tools{display:flex;gap:4px;margin:0 4px 2px}
 .tree-tools .btn{flex:1;height:20px;font-size:11px;padding:0 6px}
 .work.tree-left .artifacts{order:-1;border-left:0;border-right:1px solid var(--border)}
+.work.tree-left>.vsplit{order:0;border-left:0;border-right:1px solid var(--border)}
+
+.compact-workspace{
+  & .menubar{flex:0 0 auto;min-height:22px;height:auto;flex-wrap:wrap}
+  & .menubar .m{padding-inline:7px}
+  & #artifacts-toggle{display:inline-flex;margin:1px 4px 1px auto}
+  & .toolbar{flex-wrap:wrap;overflow:visible}
+  & .toolbar .tbsep,& .toolbar .tb[data-act="case-save"],& .toolbar .tb[data-act="display-settings"]{display:none}
+  & .toolbar .casecombo{flex:1 1 110px;min-width:110px;max-width:145px}
+  & #casecombo-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  & .toolbar #import-layout{max-width:150px;margin:0 4px}
+  & .work>.vsplit{display:none}
+  & .work>.artifacts{
+    position:absolute;inset:0 0 0 auto;z-index:10;width:min(275px,86%);max-width:86%;
+    box-shadow:-3px 0 8px rgba(0,0,0,.18)
+  }
+  & .work.tree-left>.artifacts{right:auto;left:0;box-shadow:3px 0 8px rgba(0,0,0,.18)}
+  & .groupbar,& .pager{flex-wrap:wrap}
+  & .pane>[id$="-view"]{overflow-y:auto}
+  & #analysis-view.details-right:not([style*="none"]){display:flex!important}
+  & #analysis-view.details-right>.details{margin:4px 6px 0}
+  & .details{max-height:calc(40dvh / var(--ui-scale))}
+  & .details:has(>.ph:only-child){flex:0 0 auto!important;height:auto!important}
+  & .details>.ph{position:static;padding:5px 6px}
+  & #analysis-view:has(>.details>.ph:only-child)>.hsplit{display:none}
+  & #timeline-view .gridwrap,& #ioc-view .gridwrap,& #actions-view .gridwrap{min-height:105px}
+  & .statusbar{gap:6px}
+  & #caseroot{display:none}
+}
+
+/* Let a short indicator list give its unused space to the evidence details. */
+.ioc-summary-grid{flex:0 1 auto;max-height:34%;min-height:48px}

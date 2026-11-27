@@ -6,18 +6,59 @@ import json
 import os
 import re
 import tempfile
+from contextlib import suppress
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from fireblade.web import english
 from fireblade.web.service import Library, ServiceError, _english, parse_filters
 from fireblade.web.updates import Checker
 
+
+class TemporaryDownloadResponse(FileResponse):
+    """A generated download owns its temporary file, including interrupted transfers."""
+
+    async def __call__(self, scope, receive, send):
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            with suppress(OSError):
+                Path(self.path).unlink(missing_ok=True)
+
+
 STATIC = Path(__file__).with_name("static")
+
+
+class ExportOptions(BaseModel):
+    """The GET export contract, also accepted as JSON for very wide layouts."""
+
+    model_config = ConfigDict(extra="forbid")
+    search: str = ""
+    sort: int | None = None
+    descending: bool = False
+    sort_type: str = "text"
+    bookmarks_only: bool = False
+    group: list[int] = Field(default_factory=list)
+    sortkey: list[str] = Field(default_factory=list)
+    interval: str = ""
+    expression_json: str = ""
+    summary: list[str] = Field(default_factory=list)
+    total: list[str] = Field(default_factory=list)
+    footer_mode: str = "hidden"
+    show_total: bool = True
+    order: str = ""
+    order_descending: bool = True
+    order_summary: int = 0
+    filter: list[str] = Field(default_factory=list)
+    column: list[int] | None = None
+    grouped: bool = False
+    annotations: bool = False
+    format: str = "csv"
 
 
 def _whole(value, name="value") -> int:
@@ -89,9 +130,9 @@ def _json_object(text: str) -> dict | None:
     return value
 
 
-def _id_list(text: str) -> list[int] | None:
-    """Ids sent as ``1,3,4`` (none sent means every one); anything else is refused."""
-    if not text:
+def _id_list(text: str | None) -> list[int] | None:
+    """Ids sent as ``1,3,4``; omitted means all, an empty value means none."""
+    if text is None:
         return None
     try:
         return [int(part) for part in text.split(",") if part.strip() != ""]
@@ -904,7 +945,7 @@ def create_app(
         include_undated: bool = False,
         respect_filters: bool = False,
         live: str = "",
-        sources: str = "",
+        sources: str | None = None,
     ):
         """The timeline as a verified CSV: the receipt rides in the headers."""
         options = None
@@ -1411,7 +1452,7 @@ def create_app(
         include_undated: bool = False,
         respect_filters: bool = False,
         live: str = "",
-        sources: str = "",
+        sources: str | None = None,
     ):
         options = None
         if dates:
@@ -1497,6 +1538,7 @@ def create_app(
         order_descending: bool = True,
         order_summary: int = 0,
         filter: list[str] = Query(default=[]),
+        column: list[int] | None = Query(default=None),
     ):
         # sortkey=3:desc — several keys, applied in the order they are sent.
         sorts = _sort_keys(sortkey)
@@ -1528,6 +1570,7 @@ def create_app(
             order=order,
             order_descending=order_descending,
             order_summary=order_summary,
+            columns=column,
         )
 
     @app.get("/api/cases/{identifier}/analyses/{index}/export")
@@ -1593,7 +1636,11 @@ def create_app(
             if wanted == "xlsx"
             else "text/csv"
         )
-        return FileResponse(target, media_type=media, filename=name)
+        return TemporaryDownloadResponse(target, media_type=media, filename=name)
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/export")
+    def export_json(identifier: str, index: int, options: ExportOptions):
+        return export(identifier, index, **options.model_dump())
 
     @app.get("/")
     def index():

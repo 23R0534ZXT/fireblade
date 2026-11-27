@@ -594,7 +594,8 @@ def test_the_ioc_panel_lists_indicators_and_matches():
         assert f"<th>{column}</th>" in html, column
     for name in ("iocLines", "iocKind", "exportIocMatches", "exportIocSummary"):
         assert f"function {name}(" in js, name
-    assert "Bulk IOC hunt" in html
+    assert "<h2>IOC hunting</h2>" in html
+    assert "The search runs locally in the open case." in html
 
 
 def test_the_timeline_table_reads_like_the_desktop():

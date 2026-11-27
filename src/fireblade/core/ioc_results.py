@@ -527,7 +527,10 @@ def hunt(
                     where, args = case.where(view)
                     time_column = (time_columns or {}).get(
                         document.path,
-                        guess_time_column(case.headers, document.view.timestamp_columns),
+                        guess_time_column(
+                            case.headers,
+                            document.view.timestamp_columns or ([3] if case.sparse else []),
+                        ),
                     )
                     if type(time_column) is not int or not 0 <= time_column < len(case.headers):
                         time_column = None

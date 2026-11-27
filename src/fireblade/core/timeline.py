@@ -250,7 +250,8 @@ class TimelineStore:
                                 columns[document.path]
                                 if document.path in columns
                                 else guess_time_columns(
-                                    case.headers, document.view.timestamp_columns
+                                    case.headers,
+                                    document.view.timestamp_columns or ([3] if case.sparse else []),
                                 )
                             )
                             if spec == DATE_TIME:

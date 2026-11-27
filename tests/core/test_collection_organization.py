@@ -311,6 +311,70 @@ def test_cancelled_sparse_build_keeps_sources_and_publishes_nothing(tmp_path, mo
     assert before == {doc["path"]: Path(doc["path"]).read_bytes() for doc in documents}
 
 
+def test_combined_timeline_uses_common_time_when_an_original_timestamp_is_not_a_date(
+    tmp_path, monkeypatch
+):
+    from fireblade.core import collection_organization
+    from fireblade.core.models import AnalysisSnapshot
+    from fireblade.core.timeline import TimelineStore
+    from fireblade.core.workspace_reader import WorkspaceReader
+
+    documents, files = evidence(tmp_path)
+    telemetry = analysis(
+        tmp_path, "configuration", ["Timestamp", "Setting"], [["not-a-date", "true"]]
+    )
+    documents.append(telemetry)
+    files.append(
+        dict(
+            path="configuration.csv",
+            runs=[
+                dict(
+                    tool="native",
+                    outputs=[dict(csv="configuration.csv", analysis=telemetry["path"])],
+                )
+            ],
+        )
+    )
+    event_time = "2026-11-17T10:03:00Z"
+    network = analysis(
+        tmp_path, "network", ["TimeCreated", "SourceIP"], [[event_time, "192.0.2.21"]]
+    )
+    documents.append(network)
+    files.append(
+        dict(
+            path="network.csv",
+            runs=[dict(tool="native", outputs=[dict(csv="network.csv", analysis=network["path"])])],
+        )
+    )
+    collection = FakeCollection(tmp_path, documents, files, "combined")
+    collection._cases = set()
+    (collection.output / "analyses").mkdir()
+    monkeypatch.setattr(collection_organization, "MAX_COLUMNS", 3)
+    organize(collection)
+    item = collection.report["documents"][0]
+    # Ignoring grid filters must not make an unrelated Timestamp column the
+    # clock of every file in the combined collection.
+    document = AnalysisSnapshot(item["path"], item["source"], View(), b"")
+    store = TimelineStore(memory_mb=128)
+    try:
+        sources = store.build(WorkspaceReader([document]), {})
+        assert sources[0]["rows"] == 6 and sources[0]["dated"] == 4
+        assert sources[0]["column"] == 3
+        explicit = item["source"]["headers"].index("Timestamp")
+        sources = store.build(WorkspaceReader([document]), {document.path: explicit})
+        assert sources[0]["column"] == explicit and sources[0]["dated"] == 0
+    finally:
+        store.close()
+    from fireblade.core.ioc_hunt import parse_indicators
+    from fireblade.core.ioc_results import hunt
+
+    hunted = hunt(WorkspaceReader([document]), parse_indicators("192.0.2.21"), tmp_path / "hunts")
+    try:
+        assert hunted.page()["rows"][0][8] == event_time
+    finally:
+        hunted.close()
+
+
 @pytest.mark.parametrize("storage_format", ["sparse-union-v1", "unrecognized"])
 def test_received_analysis_cannot_claim_an_incompatible_storage_format(tmp_path, storage_format):
     import json

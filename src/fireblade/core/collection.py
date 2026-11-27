@@ -444,6 +444,23 @@ def entry_reason(entry):
     return joined[:400]
 
 
+def settle_empty_runs(report):
+    """Repair older completed entries left 'running' after producing no output."""
+    changed = 0
+    for entry in report.get("files") or []:
+        if not isinstance(entry, dict) or entry.get("status") != "attention":
+            continue
+        repaired = False
+        for run in entry.get("runs") or []:
+            if run.get("status") == "running" and not run.get("outputs"):
+                run.update(status="no_output", reason=_no_output_reason(entry.get("path", "")))
+                changed += 1
+                repaired = True
+        if repaired:
+            entry["reason"] = entry_reason(entry)
+    return changed
+
+
 class CollectionProgress:
     """Where the import stands, told in one place.
 
@@ -654,6 +671,7 @@ class Collection:
     def reopen(cls, output, pack, settings=None, progress=lambda _: None, index_folder=None):
         output = Path(output).resolve()
         data = json.loads((output / "collection.json").read_text(encoding="utf-8"))
+        settle_empty_runs(data)
         if data.get("format") != "fireblade-collection" or data.get("version") != 1:
             raise ValueError("Dossier de travail Fireblade invalide")
         instance = cls(
@@ -690,6 +708,7 @@ class Collection:
 
     def save(self):
         self._last_checkpoint = time.monotonic()
+        settle_empty_runs(self.report)
         self.report["summary"] = self.summary()
         atomic_json(self.output / "collection.json", self.report)
         if self.report["documents"]:
@@ -1323,7 +1342,8 @@ class Collection:
                             else "complete"
                         )
                     else:
-                        run.setdefault("status", "no_output")
+                        if run["status"] == "running":
+                            run.update(status="no_output", reason=_no_output_reason(source))
                     log = output / "parser.log"
                     if log.is_file():
                         warnings = []

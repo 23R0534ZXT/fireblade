@@ -27,7 +27,7 @@ from datetime import UTC, date, datetime, time
 from functools import wraps
 from pathlib import Path
 
-from fireblade.core.collection import Collection, ToolPack
+from fireblade.core.collection import Collection, ToolPack, settle_empty_runs
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled
 from fireblade.core.investigations import InvestigationLibrary
@@ -2073,6 +2073,7 @@ class Library:
                 data = json.loads(report.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
+            settle_empty_runs(data)
             files = []
             for item in data.get("files") or []:
                 files.append(
@@ -4744,6 +4745,7 @@ class Library:
                 payload = json.loads(file.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
+            settle_empty_runs(payload)
             for item in payload.get("files") or []:
                 if not isinstance(item, dict):
                     continue
@@ -4773,7 +4775,9 @@ class Library:
         if not file.is_file():
             raise ServiceError("This collection is not in the case.")
         try:
-            return file, json.loads(file.read_text(encoding="utf-8"))
+            payload = json.loads(file.read_text(encoding="utf-8"))
+            settle_empty_runs(payload)
+            return file, payload
         except (OSError, ValueError) as exc:
             raise ServiceError(f"This collection report cannot be read: {exc}") from exc
 
@@ -4799,6 +4803,7 @@ class Library:
                 payload = json.loads(file.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
+            settle_empty_runs(payload)
             for item in payload.get("files") or []:
                 if not isinstance(item, dict):
                     continue

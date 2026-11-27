@@ -12,7 +12,17 @@ def auto_threads(cpu=None):
     Eight files at once is where the parsers stop gaining on a shared disk, so the
     value never promises more than that, and never more than the machine has.
     """
-    cpu = cpu or os.cpu_count() or 1
+    if not cpu:
+        try:
+            cpu = len(os.sched_getaffinity(0))
+        except (OSError, AttributeError):
+            cpu = os.cpu_count() or 1
+        try:
+            quota, period = Path("/sys/fs/cgroup/cpu.max").read_text().split()
+            if quota != "max":
+                cpu = min(cpu, max(1, int(quota) // int(period)))
+        except (OSError, ValueError, ZeroDivisionError):
+            pass
     return max(1, min(8, cpu))
 
 

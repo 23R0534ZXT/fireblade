@@ -32,6 +32,20 @@ and UTC marker. An unchanged proposal was rejected. Automated tests also reject 
 proposal that substitutes an identifier and verify that the browser leaves the draft
 intact until the analyst chooses **Use suggestion**.
 
+## Import performance
+
+A synthetic collection of 320 inputs (260 CSV files and 60 opaque binaries) was
+imported into a fresh case on the same machine. Elapsed times cover case registration
+and automatic profiles.
+
+| Layout | Before | 0.10.1 candidate | Rows | Analyses |
+| --- | ---: | ---: | ---: | ---: |
+| One grid per file | 34.8 s | 12.4 s | 46,860 | 261 |
+| Combined | 28.3 s | 24.6 s | 46,860 | 1 |
+
+Both runs retained the file inventory and reported zero broken or unchecked analyses.
+Throughput depends on the readers, available CPU, disk and layout.
+
 ## Boundaries
 
 - Correlation supports compatible structured exports. Evidence that shares a timestamp

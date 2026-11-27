@@ -1580,13 +1580,14 @@ function currentDisplay() {
   };
 }
 
-async function loadLayout() {
+async function loadLayout(signal) {
   if (!state.openCase) return;
   const { id } = state.openCase;
   const analysis = state.analysis;
   try {
-    const payload = await api(`/api/cases/${id}/analyses/${analysis}/display`);
-    if (state.openCase?.id !== id || state.analysis !== analysis) return;
+    const path = `/api/cases/${id}/analyses/${analysis}/display`;
+    const payload = signal ? await apiAbortable(path, signal) : await api(path);
+    if (signal?.aborted || state.openCase?.id !== id || state.analysis !== analysis) return;
     state.widths = payload.widths || {};
     state.hidden = new Set(payload.hidden || []);
     state.pinned = new Set(payload.pinned || []);
@@ -6344,7 +6345,7 @@ async function loadRows(reset, preserveSelection = false) {
     if (controller.signal.aborted) return false;
     await loadRules();
     if (controller.signal.aborted) return false;
-    await loadLayout();
+    await loadLayout(controller.signal);
     if (controller.signal.aborted) return false;
     renderPaneTabs();
     return true;
@@ -7683,6 +7684,9 @@ function wire() {
   $("head").addEventListener("input", (event) => {
     const input = event.target.closest("input[data-filter]");
     if (!input) return;
+    // A sort or page response can replace the header while the analyst types.
+    // Cancel that rendering before waiting to submit the new filter.
+    rowsRequest?.abort();
     const column = Number(input.dataset.filter);
     // A comparison chosen with the icon is taken as it is ("^abc$" is then a pattern); the typed
     // prefixes (=, !=, ^, $…) only speak while no comparison has been chosen for the column.
@@ -7698,7 +7702,7 @@ function wire() {
     const caret = input.selectionStart;
     clearTimeout(filterTimer);
     filterTimer = setTimeout(async () => {
-      await loadRows(true);
+      if (!await loadRows(true)) return;
       const again = document.querySelector(`#head input[data-filter="${column}"]`);
       if (!again) return;
       again.focus();

@@ -11,6 +11,9 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ### Investigation workflow
 
+- Enabled automatic parallel Host imports and applied detected profiles in one case save.
+- Reserved 100% import progress for completed jobs, after verification and case registration.
+
 - Added editable incident intake and destruction records in Word format.
 - Added source-linked correlation between compatible process, network and file records.
 - Added direct E01 explorer access and verified extraction of an NTFS journal stream.

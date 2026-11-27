@@ -615,3 +615,51 @@ def test_rewrite_rejects_a_proposal_that_changes_identifiers(monkeypatch):
         tracking.rewrite(draft)
     with pytest.raises(ValueError, match="original draft"):
         tracking.rewrite(draft)
+
+
+def test_folder_import_applies_profiles_in_one_case_save(tmp_path, monkeypatch):
+    from fireblade.core.sessions import read_session
+
+    root = tmp_path / "cases"
+    library = Library(root)
+    identifier = library.library.create("Profile batch", "", "windows")["id"]
+    source = tmp_path / "inputs"
+    source.mkdir()
+    for name, event in (("event-a.csv", 17), ("event-b.csv", 18)):
+        (source / name).write_text(
+            f"EventId,Provider,Channel,TimeCreated\n{event},Example,Example,2026-11-27T13:00:00Z\n"
+        )
+    (source / "file.csv").write_text("Field,Number\nvalue,12345\n")
+    (source / "timeline.csv").write_text(
+        "date,time,timezone,MACB,sourcetype\n11/27/2026,13:00:00,UTC,MACB,Example\n"
+    )
+
+    calls = []
+    original = library.library.save
+
+    def save(*args, **kwargs):
+        calls.append(args[0])
+        return original(*args, **kwargs)
+
+    def open_analysis(*args, **kwargs):
+        pytest.fail("Profile detection should use the verified headers of the import.")
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(library.library, "save", save)
+            patch.setattr(library, "_case_for", open_analysis)
+            imported = library.import_source(identifier, source)
+        assert imported["analyses"] == 4
+        assert calls == [identifier]
+        data = library.library.read(identifier)
+        snapshots, _active = read_session(library.library.session_path(data))
+        assert [item.view.timestamp_columns for item in snapshots] == [[3], [3], [], []]
+        assert [item.view.sort_type for item in snapshots] == [
+            "timestamp",
+            "timestamp",
+            "text",
+            "text",
+        ]
+        assert "Fireblade_MACBMask" in library.columns(identifier, 3)
+    finally:
+        library.close()

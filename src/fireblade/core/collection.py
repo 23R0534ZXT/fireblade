@@ -14,6 +14,8 @@ import threading
 import time
 import uuid
 import zipfile
+from collections import deque
+from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -645,6 +647,8 @@ class Collection:
         self.ready = lambda documents: None
         self._last_checkpoint = 0
         self._case_lock = threading.Lock()
+        self._parser_pool_lock = threading.Lock()
+        self._file_budget = ContextVar("collection_file_budget", default=None)
         self._active_case = None
         self._cases = set()
         self.journal = ImportJournal(self.output / "journal.jsonl")
@@ -740,7 +744,10 @@ class Collection:
         # of memory is a budget problem, not a reason to fail. Each attempt raises the
         # budget (x4, at least +256 MB) up to half the physical RAM, then leans on the
         # bounded row-by-row path, which survives a file far larger than memory.
-        budget, attempt = fit_budget_to_file(self.settings, csv, self.progress), 0
+        budget, attempt = (
+            fit_budget_to_file(self._file_budget.get() or self.settings, csv, self.progress),
+            0,
+        )
         while True:
             try:
                 return self._import_once(csv, kind, view, register, budget, evidence)
@@ -1016,13 +1023,13 @@ class Collection:
         reader owns (a CatScale collection) stays whole."""
         from fireblade.core import archives
 
-        queue, kept, number = list(pending), [], 0
+        queue, kept, number = deque(pending), [], 0
         extracted = getattr(self, "_extracted", None)
         if extracted is None:
             extracted = self._extracted = {}
         while queue:
             check_cancel()
-            source, entry = queue.pop(0)
+            source, entry = queue.popleft()
             depth = int(entry.get("archive_depth", 0))
             # An archive a reader already owns (a CatScale collection, the Linux log reader's own zips
             # and tars) stays whole: that reader opens it, nested members included.
@@ -1126,7 +1133,13 @@ class Collection:
         of processes) must cost speed, not the collection: the first failure falls
         back on this process for the rest of the run and says so once.
         """
-        pool = self.parser_pool()
+        try:
+            pool = self.parser_pool()
+        except OSError as exc:
+            self.progress("Reading in this process: " + str(exc))
+            with self._parser_pool_lock:
+                self._parse_pool_failed = True
+            pool = None
         if pool is not None:
             try:
                 from fireblade.core.linux_slices import plan, read_in_slices
@@ -1137,22 +1150,24 @@ class Collection:
                 return pool.run(source, output)
             except Exception as exc:  # noqa: BLE001 - a speed path may not fail a collection
                 self.progress("Reading in this process: " + str(exc))
-                pool.close()
-                self._parse_pool = None
-                self._parse_pool_failed = True
+                with self._parser_pool_lock:
+                    # Other file workers may still be using this pool. The main
+                    # collection closes it after all jobs have returned.
+                    self._parse_pool_failed = True
         from fireblade.core.linux_logs import parse
 
         return parse(source, output, self.progress)
 
     def parser_pool(self):
         """The processes that read Linux logs, started on first use."""
-        if getattr(self, "_parse_pool_failed", False):
-            return None
-        if getattr(self, "_parse_pool", None) is None:
-            from fireblade.core.parse_pool import ParsePool
+        with self._parser_pool_lock:
+            if getattr(self, "_parse_pool_failed", False):
+                return None
+            if getattr(self, "_parse_pool", None) is None:
+                from fireblade.core.parse_pool import ParsePool
 
-            self._parse_pool = ParsePool(self.workers()).start()
-        return self._parse_pool
+                self._parse_pool = ParsePool(self.workers()).start()
+            return self._parse_pool
 
     def progress(self, text):
         """One message from a parser or the collection: shown, and counted."""
@@ -1166,9 +1181,10 @@ class Collection:
         of workers the run gets slower, not faster. Eight is the measured knee.
         """
         threads = int(getattr(self.settings, "threads", 0) or 0)
-        if threads <= 0:
-            threads = auto_threads()
-        return max(1, min(threads, 8, os.cpu_count() or 1))
+        if threads > 0:
+            return max(1, min(threads, 8, os.cpu_count() or 1))
+        memory_workers = max(1, getattr(self.settings, "memory_mb", 1024) // 128)
+        return min(auto_threads(), memory_workers)
 
     def _parse_entry(self, source, entry):
         """One file, timed and journalled, whatever it decides.
@@ -1552,6 +1568,15 @@ class Collection:
             import contextvars
 
             context = contextvars.copy_context()
+            budget = self.settings or Settings()
+            context.run(
+                self._file_budget.set,
+                replace(
+                    budget,
+                    threads=1,
+                    memory_mb=max(64, budget.memory_mb // workers),
+                ),
+            )
             futures = [
                 pool.submit(context.copy().run, self._parse_entry, source, entry)
                 for source, entry in pending
@@ -1618,8 +1643,8 @@ class Collection:
                 self.report["files"].append(entry)
                 self.event("file.done", path=entry["path"], status="error", reason=message)
 
-            pending = self.inventorize(walk_error)
             self.progress_state.reset()
+            pending = self.inventorize(walk_error)
             self.progress_state.inventory([self._weight(entry) for _source, entry in pending])
             self.report["progress"] = self.progress_state.snapshot()
             self.event("inventory.done", files=len(self.report["files"]), to_read=len(pending))

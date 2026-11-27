@@ -26,6 +26,7 @@ class ParsePool:
         self._free = []
         self._idle = threading.Semaphore(0)
         self._closed = False
+        self._started = False
 
     def _command(self):
         # A frozen executable re-launches itself and answers the flag in bootstrap;
@@ -66,10 +67,18 @@ class ParsePool:
 
     def start(self):
         with self._mutex:
-            if self._free or self._closed:
+            if self._started or self._closed:
                 return self
-            for _ in range(self.size):
-                self._free.append(self._spawn())
+            try:
+                for _ in range(self.size):
+                    self._free.append(self._spawn())
+            except OSError:
+                for worker in self._free:
+                    self._kill(worker)
+                    worker.wait()
+                self._free.clear()
+                raise
+            self._started = True
             self._idle.release(len(self._free))
         return self
 
@@ -205,6 +214,8 @@ class ParsePool:
                 replacement = None
         if replacement is not None:
             self._release(replacement)
+        else:
+            self._idle.release()  # let waiters see that a worker is unavailable
 
     def close(self):
         with self._mutex:

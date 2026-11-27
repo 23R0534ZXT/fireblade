@@ -32,7 +32,9 @@ See [deployment and per-case isolation](deploy/host/README.md).
 
 1. **Open a case and import evidence.** Use a file or folder import, or analyze a mounted
    volume or disk image. **Imports** shows the files accounted for, their readers and
-   any partial or unread results. Choose a grid per file, per artifact family or one
+   any partial or unread results. Host reads independent files in parallel within the
+   configured resources and applies detected profiles in one session save.
+   Choose a grid per file, per artifact family or one
    combined grid. Changing layouts retains the source records and their annotations.
 2. **Investigate and tag records.** Filter and group the grid, bookmark rows or add notes.
    Right-click a row to tag it with its date, machine, interest, confidence and verdict.

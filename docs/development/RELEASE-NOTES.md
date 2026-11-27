@@ -1,5 +1,7 @@
 # Kagarasu 0.10.1 — investigation workflow and disk explorer
 
+- Accelerate large collections with automatic file workers and a single automatic-profile
+  save. The import progress shows finalization until the case is ready.
 - Build a case chronology from tags and bookmarks, record false positives and export a
   six-sheet tracking workbook or editable investigation report.
 - Draft an incident intake form and produce an editable Word certificate alongside the

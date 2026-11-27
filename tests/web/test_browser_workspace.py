@@ -53,8 +53,23 @@ def test_the_grid_pages_forward_back_and_to_the_start(big_page):
 
 def test_the_pages_follow_a_sort_and_a_filter(big_page):
     page = big_page
+    # Hold the sorted response's layout while entering a filter. A late layout
+    # response must not replace the input being edited.
+    page.evaluate("""() => {
+      const original = window.fetch;
+      window.fetch = async (path, options) => {
+        if (String(path).endsWith("/display") && !window.releaseSortLayout) {
+          window.sortLayoutSignal = options?.signal;
+          await new Promise(resolve => { window.releaseSortLayout = resolve; });
+        }
+        return original(path, options);
+      };
+    }""")
     page.click("#head tr:first-child th >> text=Host")
+    page.wait_for_function("Boolean(window.releaseSortLayout)")
     page.fill('#head input[data-filter="1"]', "PC3")
+    assert page.evaluate("window.sortLayoutSignal.aborted")
+    page.evaluate("window.releaseSortLayout()")
     page.wait_for_function(
         f"document.getElementById('pageinfo').innerText.includes('/ {len([i for i in range(BIG) if i % 7 == 3])}')"
     )

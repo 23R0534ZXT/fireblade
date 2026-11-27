@@ -23,13 +23,14 @@ import threading
 import time as clock
 import uuid
 from contextlib import suppress
+from dataclasses import replace
 from datetime import UTC, date, datetime, time
 from functools import wraps
 from pathlib import Path
 
 from fireblade.core.collection import Collection, ToolPack, settle_empty_runs
 from fireblade.core.engine import Case
-from fireblade.core.errors import OperationCancelled
+from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.investigations import InvestigationLibrary
 from fireblade.core.models import OPERATORS as CORE_OPERATORS
 from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View
@@ -172,7 +173,7 @@ class Library:
         stored = self.preferences()
         wanted = stored["parsing_threads" if threads == "parsing" else "query_threads"]
         if not stored["resource_memory_mb"] and not wanted:
-            return Settings()  # nothing was chosen: the engine's own defaults, as before
+            return Settings(threads=0) if threads == "parsing" else Settings()
         memory = stored["resource_memory_mb"] or machine.from_settings(0, 0).memory_mb
         return Settings(memory_mb=max(64, min(16384, int(memory))), threads=int(wanted))
 
@@ -4051,6 +4052,7 @@ class Library:
         collections=None,
         active_collection=None,
         drop_under: Path | None = None,
+        auto_profiles: bool = False,
     ) -> tuple[int, int]:
         """Add a collection's documents to the case session; return (first index, count).
 
@@ -4111,6 +4113,8 @@ class Library:
         )
         # Indexes shift: no cached handle may survive the rewrite.
         self.close_case(identifier)
+        if auto_profiles:
+            combined[len(earlier) :] = self._profile_imports(combined[len(earlier) :])
         # The closed analyses belong to the case too: an import must not drop them.
         self.library.save(
             identifier,
@@ -4122,6 +4126,29 @@ class Library:
             closed=earlier_closed,
         )
         return len(earlier), len(fresh)
+
+    def _profile_imports(self, snapshots):
+        """Use verified import headers and publish all presentation changes in one save."""
+        from duckdb import Error as DuckDBError
+
+        from fireblade.core.profiles import detect_profile
+
+        profiles = {}
+        for index, snapshot in enumerate(snapshots):
+            if job_cancelled():
+                break
+            headers = tuple(snapshot.source_info.get("headers") or ())
+            try:
+                if headers not in profiles:
+                    profiles[headers] = detect_profile(headers)
+                profile = profiles[headers]
+                if profile is not None:
+                    snapshots[index], _result = self._profile_snapshot(snapshot, profile, headers)
+            except OperationCancelled:
+                break
+            except (ServiceError, ValueError, OSError, KeyError, DuckDBError):
+                continue
+        return snapshots
 
     @staticmethod
     def _session_metadata_bytes(documents):
@@ -4488,9 +4515,15 @@ class Library:
                 "imported": datetime.now(UTC).isoformat(),
             }
         )
+        if progress is not None:
+            progress("Opening the imported analyses…")
         try:
             first, added = self._merge_session(
-                identifier, session, collections=collections, active_collection=str(output)
+                identifier,
+                session,
+                collections=collections,
+                active_collection=str(output),
+                auto_profiles=organization == "files" and self.preferences_auto_profiles(),
             )
         except Exception as exc:  # noqa: BLE001
             if failure is None:
@@ -4499,14 +4532,6 @@ class Library:
                 f"Import interrupted: {reason}. What was written is kept in {output.name} but "
                 "could not be added to the case: free some space, then import that folder again."
             ) from exc
-        if organization == "files" and self.preferences_auto_profiles():
-            # The desktop applies the recognised profile when a table is imported (its
-            # "auto profiles" preference is on by default): the dates, the sort, the colours.
-            for position in range(first, first + added):
-                try:
-                    self.apply_profile(identifier, position)
-                except (ServiceError, ValueError, OSError, KeyError):
-                    continue  # no profile matches this table: it stays a plain table
         result = {
             "status": report.get("status", "complete"),
             "analyses": added,
@@ -4678,14 +4703,14 @@ class Library:
         analysis' own view, so the grid reads the file the way its profile says; the
         profile's conversions are added as derived columns (the source values stay intact).
         """
-        from fireblade.core.profiles import detect_profile, profile_view
+        from fireblade.core.profiles import detect_profile
 
         data = self.library.read(identifier)
         folder = self.library.folder(identifier)
         session = data.get("session")
         if not session:
             raise ServiceError("This case holds no analysis.")
-        snapshots, active = read_session(folder / session)
+        snapshots, active, closed = read_session(folder / session, with_closed=True)
         if not 0 <= index < len(snapshots):
             raise ServiceError("This analysis does not exist in the case.")
         case = self._case_for(identifier, index)
@@ -4694,19 +4719,38 @@ class Library:
         profile = detect_profile(headers)
         if profile is None:
             raise ServiceError("No import profile matches this analysis.")
+        snapshots[index], result = self._profile_snapshot(snapshots[index], profile, headers, case)
+        self.close_case(identifier)
+        self.library.save(
+            identifier,
+            snapshots,
+            active,
+            [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)],
+            data.get("active_collection"),
+            data.get("revision"),
+            closed=closed,
+        )
+        return result
+
+    def _profile_snapshot(self, snapshot, profile, headers, case=None):
         # The profile's conversions go into columns of their own, the source values staying intact:
         # the desktop writes them before it applies the view, and so does the Host.
-        from fireblade.core.profiles import profile_transformations
+        from fireblade.core.profiles import profile_transformations, profile_view
 
         definitions = profile_transformations(profile, headers)
-        derived = 0
         if definitions:
-            with case.lock:
-                case.add_derived_columns(definitions)
-                headers = list(case.headers)
-            derived = len(definitions)
-        detected, order = profile_view(profile, headers)
-        current = snapshots[index].view
+            temporary = case is None
+            if temporary:
+                case = Case(snapshot.path, settings=self._settings())
+            try:
+                with case.lock:
+                    case.add_derived_columns(definitions)
+                    headers = list(case.headers)
+            finally:
+                if temporary:
+                    case.close()
+        detected, _order = profile_view(profile, headers)
+        current = snapshot.view
         updated = View(
             search=getattr(current, "search", ""),
             filters=list(getattr(current, "filters", []) or []),
@@ -4722,28 +4766,13 @@ class Library:
             boolean_columns=list(detected.boolean_columns),
             group_intervals=dict(getattr(current, "group_intervals", {}) or {}),
         )
-        snapshots[index] = AnalysisSnapshot(
-            snapshots[index].path,
-            snapshots[index].source_info,
-            updated,
-            snapshots[index].header_state,
-        )
-        self.close_case(identifier)
-        self.library.save(
-            identifier,
-            snapshots,
-            active,
-            [entry for entry in (data.get("collections") or []) if isinstance(entry, dict)],
-            data.get("active_collection"),
-            data.get("revision"),
-        )
-        return {
+        return replace(snapshot, view=updated), {
             "profile": getattr(profile, "name", "") or "profile",
             "timestamps": [headers[i] for i in updated.timestamp_columns],
             "booleans": [headers[i] for i in updated.boolean_columns],
             "sort": headers[updated.sort_column] if updated.sort_column is not None else None,
             "rules": len(detected.format_rules),
-            "derived": derived,
+            "derived": len(definitions),
         }
 
     RETRY_READERS = ("text", "html", "csv", "pdf")
@@ -5212,6 +5241,8 @@ class Library:
             if state is not None:
                 try:
                     snapshot = state.snapshot()
+                    if snapshot["finished"] and job["status"] in ("running", "cancelling"):
+                        snapshot.update(percent=99.0, phase="finalize", finished=False)
                 except (ValueError, AttributeError):
                     snapshot = None
             return {

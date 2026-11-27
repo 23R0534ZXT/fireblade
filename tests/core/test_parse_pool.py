@@ -53,3 +53,16 @@ def test_a_pool_that_cannot_start_falls_back_on_this_process(tmp_path, monkeypat
     assert report["status"] == "complete"
     assert report["documents"], "the file is still read, in this process"
     assert collection.parser_pool() is None
+
+
+def test_a_busy_pool_does_not_start_extra_workers():
+    pool = ParsePool(2).start()
+    workers = pool._take_all()
+    try:
+        assert len(workers) == 2 and not pool._free
+        assert pool.start() is pool
+        assert not pool._free
+    finally:
+        for worker in workers:
+            pool._release(worker)
+        pool.close()

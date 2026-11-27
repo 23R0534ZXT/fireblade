@@ -87,6 +87,18 @@ def test_process_links_open_source_records(server):
         page.get_by_text("Correlate process, network and file records").click()
         page.get_by_role("button", name="Network connection", exact=False).click()
         page.locator("#scenario-edges .gline").get_by_text("192.0.2.4", exact=True).wait_for()
+        page.select_option("#import-layout", "combined")
+        page.wait_for_function(
+            "document.getElementById('status').innerText.match(/Layout changed|Already laid out/)",
+            timeout=60000,
+        )
+        page.click('[data-tab="actions"]')
+        page.click('[data-sub="tracking"]')
+        assert page.locator("#scenario-panel").get_attribute("open") is None
+        assert page.locator("#scenario-edges").inner_text() == ""
+        page.get_by_text("Correlate process, network and file records").click()
+        page.get_by_role("button", name="Network connection", exact=False).click()
+        page.locator("#scenario-edges .gline").get_by_text("192.0.2.4", exact=True).wait_for()
 
 
 def test_rewrite_suggestion_is_reviewed_before_replacing_the_description(page):

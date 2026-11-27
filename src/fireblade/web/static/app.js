@@ -1514,6 +1514,9 @@ async function openCase(identifier, analysisIndex = null) {
       resetWorkspace();
       resetIoc();
       resetImports();
+    } else {
+      // A layout rebuild can assign different grid indices to the same case.
+      resetScenario();
     }
     const analysis = detail.analyses.find((item) => item.index === analysisIndex) || detail.analyses[0];
     state.analysis = analysis?.index ?? 0;

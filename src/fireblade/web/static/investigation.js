@@ -7,13 +7,17 @@ let displayedEvents = new Map();
 
 function resetTracking() {
   trackingRevision++;
-  scenarioRevision++;
   editedObservation = null;
   $("tracking-tags").replaceChildren();
   $("tracking-rows").replaceChildren();
   $("tracking-network").replaceChildren();
   $("tracking-sequences").replaceChildren();
   displayedEvents.clear();
+  resetScenario();
+}
+
+function resetScenario() {
+  scenarioRevision++;
   $("scenario-panel").open = false;
   $("scenario-edges").replaceChildren();
   $("scenario-status").textContent = "";

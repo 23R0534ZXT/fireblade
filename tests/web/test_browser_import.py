@@ -179,3 +179,38 @@ def test_stopping_an_import_ends_it_and_keeps_what_was_written(empty_page, serve
     # the case still opens and lists whatever was written before the stop
     page.click('.tabs .tab:text-is("Imports")')
     page.wait_for_function("document.getElementById('imports-rows').innerText.length > 0")
+
+
+def test_sqlite_databases_import_with_a_read_only_reader_installation(empty_page, server):
+    import sqlite3
+
+    page = empty_page
+    folder = _case_folder(page, server) / "databases"
+    folder.mkdir()
+    for name, count in [("first.sqlite", 3), ("second.sqlite", 5)]:
+        with sqlite3.connect(folder / name) as connection:
+            connection.execute("CREATE TABLE evidence (Id INTEGER, Marker TEXT)")
+            connection.executemany(
+                "INSERT INTO evidence VALUES (?, ?)",
+                [(index, "synthetic-browser-record") for index in range(count)],
+            )
+    _open_import(page)
+    page.fill("#preview-server", str(folder))
+    page.click('[data-act="preview-path"]')
+    _preview_card(page)
+    page.click("#preview-import")
+    page.wait_for_function(
+        "document.getElementById('status').innerText.includes('file(s) imported')", timeout=30000
+    )
+    assert page.evaluate("state.openCase.analyses.length") == 2
+    observed = []
+    for index in range(2):
+        with page.expect_response(lambda response: "/rows?" in response.url) as loaded:
+            page.locator("#tree .node.child:not(.closed)").nth(index).click()
+        expected = loaded.value.json()["total"]
+        page.wait_for_function(
+            "count => document.getElementById('pageinfo').innerText.includes('/ ' + count + ' row')",
+            arg=expected,
+        )
+        observed.append(rows(page))
+    assert sorted(observed) == [3, 5]

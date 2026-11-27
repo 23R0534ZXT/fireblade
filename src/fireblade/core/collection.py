@@ -276,6 +276,11 @@ class ToolPack:
 
     def arguments(self, name, source, output):
         args = self.command(name) + ["-f", str(source), "--csv", str(output)]
+        if name == "SQLECmd":
+            # The default is a shared Temp folder beside the installed DLL. That
+            # location may be read-only, and parallel readers can remove each
+            # other's copies. Every invocation already has its own writable output.
+            args += ["--temp", str(Path(output) / "sqlite-temp")]
         if name == "RECmd":
             batch = Path(self.root) / name / "BatchExamples" / "Kroll_Batch.reb"
             if not batch.is_file():

@@ -5,6 +5,8 @@ dll files through the distribution runtime. One branch, no change to the command
 line: the tool, its arguments and its CSV stay identical.
 """
 
+from pathlib import Path
+
 import pytest
 
 from fireblade.core import collection
@@ -60,3 +62,19 @@ def test_hayabusa_binary_is_found_with_or_without_extension(tmp_path, monkeypatc
     binary.write_bytes(b"")
     pack = ToolPack(tmp_path)
     assert pack.command("Hayabusa") == [str(binary)]
+
+
+def test_sqlite_temporary_copies_belong_to_each_output_not_the_read_only_tool_pack(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(collection, "WINDOWS", False)
+    pack = _pack(tmp_path / "installed-read-only", "dotnet", tool="SQLECmd")
+    outputs = [tmp_path / "case" / "reader-a", tmp_path / "case" / "reader-b"]
+    temporary = []
+    for output in outputs:
+        args = pack.arguments("SQLECmd", tmp_path / "evidence.sqlite", output)
+        assert "--temp" in args, "SQLECmd defaults to a shared Temp directory beside its DLL"
+        work = Path(args[args.index("--temp") + 1])
+        assert work.parent == output
+        temporary.append(work)
+    assert temporary[0] != temporary[1], "Parallel readers must not delete each other's copies"

@@ -2827,7 +2827,8 @@ async function applySortPriority() {
   });
   state.multiSort = keys;
   state.sortType = keys.length ? keys[0].kind : $("sort-header-type").value;
-  if (keys.length) { state.sort = keys[0].column; state.descending = keys[0].descending; }
+  state.sort = keys.length ? keys[0].column : null;
+  state.descending = keys.length ? keys[0].descending : false;
   closeModals();
   await loadRows(true);
   say(keys.length ? `${keys.length} sort key(s), the first one decides` : "Sorting cleared");

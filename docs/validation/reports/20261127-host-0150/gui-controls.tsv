@@ -55,7 +55,7 @@ menu: case	div[data-act=destroy-case]	Host GUI
 menu: case	div[data-act=import-evidence]	Host GUI, Menu gallery, Targeted browser replay
 menu: case	div[data-act=new-case]	Host GUI, Menu gallery, Targeted browser replay
 menu: case	div[data-act=report]	Host GUI, Menu gallery, Targeted browser replay
-menu: detection	div[data-act=alert-context]	Host GUI, Menu gallery, Docker image browser, Targeted browser replay
+menu: detection	div[data-act=alert-context]	Docker image browser, Host GUI, Menu gallery, Targeted browser replay
 menu: detection	div[data-act=detect-run]	Host GUI, Menu gallery, Targeted browser replay
 menu: detection	div[data-act=show-ioc]	Host GUI, Menu gallery, Targeted browser replay
 menu: edit	div[data-act=bookmark-note]	Host GUI, Menu gallery, Targeted browser replay
@@ -180,11 +180,11 @@ tab: cases	button[data-act=open-selected-case]	Host GUI
 tab: cases	button[data-act=rename-case]	Host GUI
 tab: cases	input#case-archived	Host GUI
 tab: cases	input#case-search	Host GUI
-tab: finding	select#finding-view	Host GUI, Docker image browser
-tab: graph	button#graph-build	Host GUI, Docker image browser
+tab: finding	select#finding-view	Docker image browser, Host GUI
+tab: graph	button#graph-build	Docker image browser, Host GUI
 tab: graph	button#graph-navigator	Docker image browser
 tab: graph	button#graph-node	Host GUI
-tab: graph	button#graph-png	Host GUI, Docker image browser
+tab: graph	button#graph-png	Docker image browser, Host GUI
 tab: graph	button[data-act=graph-recentre]	Host GUI
 tab: graph	button[data-act=graph-zoom-in]	Host GUI
 tab: graph	button[data-act=graph-zoom-out]	Host GUI
@@ -250,10 +250,10 @@ tab: timeline	select#timeline-kind	Host GUI
 tab: timeline	select#timeline-lane	Host GUI
 tab: timeline	select#timeline-preset	Host GUI
 tabs	button#tab-actions	Host GUI, Menu gallery, Targeted browser replay
-tabs	button#tab-analyses	Host GUI, Menu gallery, Docker image browser, Targeted browser replay
-tabs	button#tab-cases	Host GUI, Menu gallery, Docker image browser, Targeted browser replay
-tabs	button#tab-graph	Host GUI, Menu gallery, Docker image browser, Targeted browser replay
-tabs	button#tab-hayabusa	Host GUI, Menu gallery, Docker image browser
+tabs	button#tab-analyses	Docker image browser, Host GUI, Menu gallery, Targeted browser replay
+tabs	button#tab-cases	Docker image browser, Host GUI, Menu gallery, Targeted browser replay
+tabs	button#tab-graph	Docker image browser, Host GUI, Menu gallery, Targeted browser replay
+tabs	button#tab-hayabusa	Docker image browser, Host GUI, Menu gallery
 tabs	button#tab-imports	Host GUI, Menu gallery, Targeted browser replay
 tabs	button#tab-ioc	Host GUI, Menu gallery
 tabs	button#tab-timeline	Host GUI, Menu gallery, Targeted browser replay

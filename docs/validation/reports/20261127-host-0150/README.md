@@ -1,6 +1,6 @@
 # Kagarasu Host 0.15.0 browser qualification
 
-**474 of 474 collected tests passed** on Linux with Python 3.12.14 and Playwright Chromium 159.0.8154.6. The suite comprised 427 Host tests and 47 comparisons with the offscreen Qt grid. Every test has a recorded result, with zero skips. The release sweep ran by module during integration. After the application freeze, 39 regression cases were replayed, including saved-session reopening after an earlier failure. [Test-by-test results](browser-tests.tsv)
+**474 of 474 collected tests passed** on Linux with Python 3.12.14 and Playwright Chromium 159.0.8154.6. The suite comprised 427 Host tests and 47 comparisons with the offscreen Qt grid. Every test has a recorded result, with zero skips. The release sweep ran by module during integration. The first freeze replayed 39 regression cases, including saved-session reopening after an earlier failure. CI subsequently exposed two timing-sensitive workflows. After the keyboard focus fix and the observation-dialog test correction, both affected modules passed on the final client (six cases). [Test-by-test results](browser-tests.tsv)
 
 **516 of 516 distinct static control keys received a browser input event** across the Host tests, Docker tests, menu tour and targeted replays. Keys represent commands, fields, tabs and menu entries identified on the live Host page. Repeated instances can share a key. Workflow tests check outcomes such as saved row values, restored filters, collected file hashes and downloaded document contents. [Control-by-control evidence](gui-controls.tsv)
 
@@ -22,7 +22,7 @@ The final tour captured **101 states at 1500 × 900**, with zero layout findings
 
 The generic CSV tour received five HTTP 400 responses. The rule inventory request required a local Hayabusa tool pack. The row context request required an EVTX event reference. Two tracking requests used a timestamp in place of an IP address. The annotated export requested bookmarks from an unmarked grid. Positive paths for detection rules, event context, IP tracking and annotated exports are covered in the test inventories.
 
-The release client was frozen at `7cdf2d8435ab7779ec945cd8f16a82a76d3ef10b`. The case image tested locally had ID `sha256:cb399bad7de4142a9da75a30949615ce4fba5e56ec43507d9be3702cb08348b5`. The browser runs used temporary investigations and synthetic or documented public fixtures. Rewrite review used a simulated provider response. Other browser engines, external model endpoints and physical disks were outside this run.
+The final application commit was `9cf9c2b0df39c5365ba713ecb104efa3f915e6bb`. The rebuilt case image had local ID `sha256:c0229259b6ba74c61967a577cffa64cc3767cf212ac599d5459f0cf365135fd7`. The driver image had ID `sha256:30135c751cb4bb4fe0f5b334314191db611c78ed52aded5ca168699a366c8b08`. The browser runs used temporary investigations and synthetic or documented public fixtures. Rewrite review used a simulated provider response. Other browser engines, external model endpoints and physical disks were outside this run.
 
 ## Reproduce the Host browser run
 

@@ -9,8 +9,8 @@ Kagarasu Host is a local DFIR workspace for investigating Windows artifacts, Lin
 disk images and tabular evidence. Import a collection, inspect its source records, track
 findings and actions, and produce evidence-backed reports from the same case.
 
-The development image (`:edge`) uses the compact Fusion palette and controls of
-Kagarasu Desktop. The screenshot shows a synthetic Host case.
+Kagarasu Host 0.13.0 restores the compact Fusion palette and controls of Kagarasu
+Desktop. The screenshot shows a synthetic Host case.
 
 ![Kagarasu Host using the Desktop theme in a synthetic workstation investigation](docs/assets/host/host-workspace.png)
 
@@ -34,7 +34,7 @@ Host release. The Server edition is a planned collaboration deployment. See the
 Run the current stable release on a workstation with Docker.
 
 ```bash
-sudo docker run -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" ghcr.io/23r0534zxt/kagarasu:0.10.2 && echo "Kagarasu is starting. Open http://localhost:8080 in a few seconds."
+sudo docker run --pull always -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" ghcr.io/23r0534zxt/kagarasu:latest && echo "Kagarasu is starting. Open http://localhost:8080 in a few seconds."
 ```
 
 Open <http://localhost:8080>. The directory mounted at `/data/cases` contains the persistent
@@ -50,8 +50,8 @@ See [deployment and per-case isolation](deploy/host/README.md).
 | Task | Command |
 | --- | --- |
 | Stop or start | `docker stop kagarasu` or `docker start kagarasu` |
-| Upgrade the pinned release | Pull the new version tag, remove the stopped container with `docker rm kagarasu`, and repeat the run command with the new tag and the same case mount |
-| Track stable releases | Replace the version tag with `:latest` |
+| Upgrade | Stop the container, remove it with `docker rm kagarasu`, and repeat the run command with the same case mount. For a pinned release, set the new version tag |
+| Pin a release | Replace `:latest` with a version tag such as `:0.13.0` |
 | Preview changes on `main` | Replace the version tag with `:edge` |
 | Remove the container | Stop it, then run `docker rm kagarasu`. The case files remain in the mounted directory |
 | Build locally | `docker build -t kagarasu:host .` |

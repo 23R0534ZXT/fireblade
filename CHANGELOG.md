@@ -7,7 +7,12 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-11-27
+
 - Restored the Desktop Fusion palette, compact toolbar, and classic workspace tabs in Host.
+- Kept case commands in view when the toolbar wraps on narrow windows.
+- Merged the original README reference tables with the current Host guide.
+- Updated the one-line Docker quick start to pull the current stable image.
 
 ## [0.10.2] — 2026-11-27
 
@@ -344,7 +349,8 @@ Update band, folders sent from the browser, certificate folder chosen by the ana
 ## [0.8.0] — 2026-11-23
 One container per case, driven by a small driver; erasing a case removes its container and volume.
 
-[Unreleased]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/23R0534ZXT/kagarasu/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.2...v0.13.0
 [0.10.2]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.10.1
 [0.8.3]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.2...v0.8.3

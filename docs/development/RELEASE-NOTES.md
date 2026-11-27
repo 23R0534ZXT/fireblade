@@ -1,3 +1,14 @@
+# Kagarasu 0.13.0 — Desktop appearance restored in Host
+
+- Restored the Kagarasu Desktop Fusion palette, compact controls, classic tabs and
+  neutral import button in Host.
+- Kept keyboard navigation, dialog accessibility and wrapping status messages.
+  The toolbar wraps on narrow windows to keep case commands visible.
+- Merged the original README tables and deployment guide with the current
+  import, E01 and Office export documentation.
+- Updated the one-line Docker quick start to pull the current stable image from
+  `ghcr.io/23r0534zxt/kagarasu:latest`.
+
 # Kagarasu 0.10.2 — import controls, case storage and workspace navigation
 
 ## Import evidence

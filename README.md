@@ -34,14 +34,12 @@ Host release. The Server edition is a planned collaboration deployment. See the
 Run the current stable release on a workstation with Docker.
 
 ```bash
-docker run -d --name kagarasu --restart unless-stopped \
-  -p 127.0.0.1:8080:8080 \
-  -v "$HOME/kagarasu-cases:/data/cases" \
-  ghcr.io/23r0534zxt/kagarasu:0.10.2
+sudo docker run -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" ghcr.io/23r0534zxt/kagarasu:0.10.2 && echo "Kagarasu is starting. Open http://localhost:8080 in a few seconds."
 ```
 
 Open <http://localhost:8080>. The directory mounted at `/data/cases` contains the persistent
-case files. On Windows PowerShell, use `"$HOME\kagarasu-cases:/data/cases"` for the mount.
+case files. On Windows PowerShell, start the command with `docker run` and use
+`"$HOME\kagarasu-cases:/data/cases"` for the mount.
 Host is designed for one local analyst and has no application accounts. Bind the port to
 loopback. For upgrades, stop and recreate the container with the new version and the same
 case mount. The `:latest` tag follows stable releases. The `:edge` tag follows `main`.
@@ -58,7 +56,7 @@ See [deployment and per-case isolation](deploy/host/README.md).
 | Remove the container | Stop it, then run `docker rm kagarasu`. The case files remain in the mounted directory |
 | Build locally | `docker build -t kagarasu:host .` |
 
-Use `sudo docker` on Linux if Docker is configured to require it. The image includes the
+If your account already has Docker access, run the command without `sudo`. The image includes the
 .NET 10 runtime and the pinned readers. See [deployment notes](deploy/host/README.md).
 
 ### Updates

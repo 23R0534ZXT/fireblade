@@ -1677,9 +1677,9 @@ function exprConditionNode(condition = {}) {
   const row = document.createElement("div");
   row.className = "row expr-row";
   row.dataset.kind = "condition";
-  row.innerHTML = `<select data-expr-col>${state.columns.slice(1).map((name, index) =>
+  row.innerHTML = `<select data-expr-col aria-label="Condition column">${state.columns.slice(1).map((name, index) =>
       `<option value="${index}" ${index === (condition.column ?? 0) ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select>
-    <select data-expr-op>${EXPR_OPERATORS.map(([code, label]) =>
+    <select data-expr-op aria-label="Condition operator">${EXPR_OPERATORS.map(([code, label]) =>
       `<option value="${code}" ${code === (condition.operator || "contains") ? "selected" : ""}>${label}</option>`).join("")}</select>
     <input data-expr-value value="${escapeHtml(condition.value ?? "")}" placeholder="value">
     <button class="btn" data-expr-remove title="Remove this condition">✕</button>`;
@@ -1700,7 +1700,7 @@ function exprGroupNode(group = { logic: "and", children: [] }, depth = 0) {
   const head = document.createElement("div");
   head.className = "expr-head";
   head.innerHTML = `<label>${label}</label>
-    <select data-expr-logic>
+    <select data-expr-logic aria-label="${depth === 0 ? "Filter" : "Group"} logic">
       <option value="and">all of them (AND)</option>
       <option value="or">any of them (OR)</option>
       <option value="not">none of them (NOT)</option>
@@ -2846,17 +2846,17 @@ function summaryRow(summary = { column: 0, operation: "count", kind: "number", f
   const row = document.createElement("tr");
   const footer = summary.footer === undefined ? -1 : summary.footer;
   const footerChoice = withFooter
-    ? `<td><select data-summary-footer>
+    ? `<td><select data-summary-footer aria-label="Summary placement">
         <option value="-1" ${footer === -1 ? "selected" : ""}>In the group header</option>
         <option value="none" ${footer === null ? "selected" : ""}>In the value column</option>
         ${state.columns.slice(1).map((name, index) =>
           `<option value="${index}" ${footer === index ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></td>`
     : "";
-  row.innerHTML = `<td><select data-summary-column>${state.columns.slice(1).map((name, index) =>
+  row.innerHTML = `<td><select data-summary-column aria-label="Summary column">${state.columns.slice(1).map((name, index) =>
       `<option value="${index}" ${index === summary.column ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></td>
-    <td><select data-summary-operation>${SUMMARY_OPERATIONS.map(([code, label]) =>
+    <td><select data-summary-operation aria-label="Summary operation">${SUMMARY_OPERATIONS.map(([code, label]) =>
       `<option value="${code}" ${code === summary.operation ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></td>
-    <td><select data-summary-kind>${SUMMARY_KINDS.map(([code, label]) =>
+    <td><select data-summary-kind aria-label="Summary value type">${SUMMARY_KINDS.map(([code, label]) =>
       `<option value="${code}" ${code === summary.kind ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></td>
     ${footerChoice}<td><button class="btn" data-summary-remove title="Remove this summary">✕</button></td>`;
   row.querySelector("[data-summary-remove]").addEventListener("click", () => {
@@ -4563,9 +4563,9 @@ function addConditionRow() {
   const row = document.createElement("div");
   row.className = "row";
   row.dataset.condition = "1";
-  row.innerHTML = `<select data-cond-column>${state.columns.slice(1).map((name, index) =>
+  row.innerHTML = `<select data-cond-column aria-label="Additional rule column">${state.columns.slice(1).map((name, index) =>
       `<option value="${index}">${escapeHtml(name)}</option>`).join("")}</select>
-    <select data-cond-operator>${Object.entries(RULE_OPERATORS).map(([value, label]) =>
+    <select data-cond-operator aria-label="Additional rule operator">${Object.entries(RULE_OPERATORS).map(([value, label]) =>
       `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}</select>
     <input data-cond-value placeholder="value">
     <button class="btn" data-condition-remove="1">Remove</button>`;

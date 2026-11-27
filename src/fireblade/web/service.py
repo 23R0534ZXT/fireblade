@@ -5238,6 +5238,9 @@ class Library:
                     identifier,
                     payload.get("title") or "",
                     payload.get("description") or "",
+                    analyst=payload.get("analyst") or "",
+                    include_findings=payload.get("findings", True) is not False,
+                    include_coverage=bool(payload.get("coverage")),
                     pdf=bool(payload.get("pdf")),
                     progress=note,
                 )

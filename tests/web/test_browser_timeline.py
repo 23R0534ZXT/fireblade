@@ -443,3 +443,36 @@ def test_hiding_every_source_empties_both_events_and_export(timeline):
         assert len(list(csv.reader(stream))) == 1
     page.click('[data-act="tl-isolate"]')
     page.wait_for_function("timelineState.payload.count === 704")
+
+
+def test_a_late_source_row_cannot_replace_the_row_opened_after_it(timeline):
+    page = timeline
+    first = page.locator("#timeline-rows tr").first
+    first_id = first.get_attribute("data-tl-row")
+    source = first.get_attribute("data-tl-source")
+    held = []
+    page.route(f"**/timeline/row/{source}/{first_id}", lambda route: held.append(route))
+    with page.expect_request(f"**/timeline/row/{source}/{first_id}"):
+        first.dblclick()
+    page.locator('#source-row-modal [data-act="settings-close"]').click()
+    second = page.locator("#timeline-rows tr").nth(1)
+    second_id = second.get_attribute("data-tl-row")
+    second.dblclick()
+    page.wait_for_function(
+        "id => document.getElementById('source-row-title').innerText.endsWith('row ' + id)",
+        arg=second_id,
+    )
+    wanted = page.inner_text("#source-row-list")
+    with page.expect_response(f"**/timeline/row/{source}/{first_id}") as delayed:
+        held[0].fulfill(
+            json={
+                "label": "Stale source",
+                "row_id": int(first_id),
+                "columns": ["Time"],
+                "values": ["old row"],
+            }
+        )
+    delayed.value.finished()
+    page.wait_for_timeout(100)
+    assert page.inner_text("#source-row-list") == wanted
+    assert page.inner_text("#source-row-title").endswith("row " + second_id)

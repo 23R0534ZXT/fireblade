@@ -5487,7 +5487,10 @@ const timelineState = { offset: 0, text: "", kind: "text", payload: null, dates:
 /* The window is a pair of bucket indices, the selection a pair of times: the chart
    can be zoomed without touching the rows, and a duration is the analyst's filter. */
 
+let sourceRowRequest = 0;
+
 function resetTimeline() {
+  sourceRowRequest++;
   Object.assign(timelineState, {
     offset: 0, text: "", kind: "text", payload: null, dates: {},
     row: null, source: null, window: null, history: [], start: null, end: null,
@@ -5566,12 +5569,17 @@ function applyTimelineDates() {
 /* One timeline entry, opened in its own analysis: the value the evidence holds. */
 async function openSourceRow(index, rowId) {
   if (!state.openCase) return;
+  const caseId = state.openCase.id;
+  const request = ++sourceRowRequest;
+  const current = () => request === sourceRowRequest && state.openCase?.id === caseId
+    && $("source-row-modal").classList.contains("show");
   $("source-row-title").textContent = "The source line";
   $("source-row-list").innerHTML = '<div class="emptygrid">Reading the row…</div>';
   $("source-row-modal").classList.add("show");
   try {
     const payload = await api(
-      `/api/cases/${state.openCase.id}/timeline/row/${index}/${rowId}`);
+      `/api/cases/${caseId}/timeline/row/${index}/${rowId}`);
+    if (!current()) return;
     $("source-row-title").textContent = `${payload.label} — row ${payload.row_id}`;
     $("source-row-list").innerHTML = payload.columns.map((name, position) => {
       const value = payload.values[position];
@@ -5580,6 +5588,7 @@ async function openSourceRow(index, rowId) {
         <span class="pin" title="${escapeHtml(value === null ? "" : String(value))}">${escapeHtml(shown)}</span></div>`;
     }).join("");
   } catch (error) {
+    if (!current()) return;
     $("source-row-list").innerHTML = "";
     say(error.message, true);
   }

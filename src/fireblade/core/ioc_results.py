@@ -538,14 +538,17 @@ def hunt(
                             scanned += 1
                             scanned_total += 1
                             row_matches = set()
+                            from fireblade.core.sparse_union import fields_from_record
+
+                            record_fields = dict(fields_from_record(case, record))
                             date = (
-                                str(record[time_column + 1] or "")
+                                str(record_fields.get(time_column) or "")
                                 if time_column is not None
                                 else ""
                             )
                             if len(date) > 512:
                                 date = date[:512] + " [abrégée]"
-                            for column, value in enumerate(record[1:]):
+                            for column, value in record_fields.items():
                                 reader.check()
                                 if value is None:
                                     continue

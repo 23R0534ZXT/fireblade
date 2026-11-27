@@ -8,6 +8,8 @@ must give a single grid whose grouping cannot be removed.
 import threading
 from pathlib import Path
 
+import pytest
+
 from fireblade.core.collection_organization import organize
 from fireblade.core.engine import Case
 from fireblade.core.models import View
@@ -123,7 +125,7 @@ def evidence(root):
 def read_rows(path):
     import csv
 
-    with open(path, encoding="utf-8", newline="") as stream:
+    with open(path, encoding="utf-8-sig", newline="") as stream:
         return list(csv.DictReader(stream))
 
 
@@ -160,3 +162,136 @@ def test_the_per_file_layout_organizes_nothing(tmp_path):
     organize(collection)
     assert len(collection.report["documents"]) == 4
     assert "raw_documents" not in collection.report
+
+
+def test_wide_combined_collection_is_one_queryable_portable_grid(tmp_path, monkeypatch):
+    from fireblade.core import collection_organization
+    from fireblade.core.models import Filter
+
+    documents, files = evidence(tmp_path)
+    collection = FakeCollection(tmp_path, documents, files, "combined")
+    collection._cases = set()
+    (collection.output / "analyses").mkdir()
+    monkeypatch.setattr(collection_organization, "MAX_COLUMNS", 3)
+    organize(collection)
+    merged = collection.report["documents"]
+    assert len(merged) == 1
+    assert len(collection.report["raw_documents"]) == 4
+    case = Case(merged[0]["path"])
+    try:
+        assert case.info["rows"] == 4
+        assert case.sparse
+        assert len(case.headers) == 9
+        event = case.headers.index("EventId")
+        rows = case.page(View(filters=[Filter(event, "eq", "4625")]))
+        assert len(rows) == 1
+        assert rows[0][event + 1] == "4625"
+        assert case.page(View(search="update.exe"))[0][-2:] == ("update.exe", "aa")
+        assert case.count(View()) == 4
+        assert merged[0]["view"]["groups"] == [0]
+        from fireblade.core.models import SortKey
+
+        ordered = case.page(View(sorts=[SortKey(event, "number", True)]))
+        assert [row[event + 1] for row in ordered] == ["7045", "4625", "4624", None]
+        assert sorted(case.page(View(groups=[0]))) == [("Amcache", 1), ("EVTX", 3)]
+        case.bookmark(3, "reviewed")
+        assert case.page(View(bookmarks_only=True))[0][0] == 3
+        target = tmp_path / "selected.csv"
+        case.export(target, View(filters=[Filter(event, "eq", "4625")]), columns=[0, event])
+        assert list(read_rows(target)) == [{"Artefact": "EVTX", "EventId": "4625"}]
+        case.export(target, View(bookmarks_only=True), include_annotations=True)
+        exported = list(read_rows(target))
+        assert len(exported) == 1 and exported[0]["EventId"] == "4625"
+        assert exported[0]["Fireblade_Note"] == "reviewed"
+        case.add_derived_columns(
+            [{"name": "Event copy", "operation": "expression", "expression": "[EventId]"}]
+        )
+        assert case.page(View(filters=[Filter(event, "eq", "4625")]))[0][-1] == "4625"
+    finally:
+        case.close()
+    reopened = Case(merged[0]["path"])
+    try:
+        assert reopened.rows_by_ids([3])[3][event + 1] == "4625"
+        assert reopened.page(View(search="update.exe"))[0][-3:] == ("update.exe", "aa", None)
+        assert reopened.bookmarks() == {3: "reviewed"}
+    finally:
+        reopened.close()
+
+
+def test_sparse_combined_chronology_and_ioc_keep_original_fields(tmp_path, monkeypatch):
+    import json
+
+    from fireblade.core import collection_organization
+    from fireblade.core.ioc_hunt import parse_indicators
+    from fireblade.core.ioc_results import hunt
+    from fireblade.core.models import AnalysisSnapshot
+    from fireblade.core.timeline import TimelineStore
+    from fireblade.core.workspace_reader import WorkspaceReader
+
+    documents, files = evidence(tmp_path)
+    collection = FakeCollection(tmp_path, documents, files, "combined")
+    collection._cases = set()
+    (collection.output / "analyses").mkdir()
+    monkeypatch.setattr(collection_organization, "MAX_COLUMNS", 3)
+    organize(collection)
+    item = collection.report["documents"][0]
+    doc = AnalysisSnapshot(
+        item["path"], item["source"], View.from_json(json.dumps(item["view"])), b""
+    )
+    timeline = TimelineStore(memory_mb=128)
+    try:
+        sources = timeline.build(WorkspaceReader([doc]), {})
+        assert [(source["rows"], source["dated"]) for source in sources] == [(4, 3)]
+        assert timeline.page(text="Security")["count"] == 1
+    finally:
+        timeline.close()
+    store = hunt(WorkspaceReader([doc]), parse_indicators("update.exe"), tmp_path / "hunts")
+    try:
+        assert store.metadata["scanned_rows"] == 4
+        assert store.metadata["matching_fields"] == 1
+        assert store.page()["count"] == 1
+    finally:
+        store.close()
+
+
+def test_cancelled_sparse_build_keeps_sources_and_publishes_nothing(tmp_path, monkeypatch):
+    from fireblade.core import collection as collection_module
+    from fireblade.core import collection_organization
+    from fireblade.core.errors import OperationCancelled
+
+    documents, files = evidence(tmp_path)
+    collection = FakeCollection(tmp_path, documents, files, "combined")
+    collection._cases = set()
+    (collection.output / "analyses").mkdir()
+    monkeypatch.setattr(collection_organization, "MAX_COLUMNS", 3)
+    before = {doc["path"]: Path(doc["path"]).read_bytes() for doc in documents}
+    checks = 0
+
+    def cancel_after_copy():
+        nonlocal checks
+        checks += 1
+        if checks == 2:
+            raise OperationCancelled()
+
+    monkeypatch.setattr(collection_module, "check_cancel", cancel_after_copy)
+    with pytest.raises(OperationCancelled):
+        organize(collection)
+    assert collection.report["documents"] == documents
+    assert "raw_documents" not in collection.report
+    assert not collection._cases and collection._active_case is None
+    assert not list((collection.output / "analyses").iterdir())
+    assert not list((collection.output / "results").iterdir())
+    assert before == {doc["path"]: Path(doc["path"]).read_bytes() for doc in documents}
+
+
+@pytest.mark.parametrize("storage_format", ["sparse-union-v1", "unrecognized"])
+def test_received_analysis_cannot_claim_an_incompatible_storage_format(tmp_path, storage_format):
+    import json
+
+    document = analysis(tmp_path, "source", ["Field", "Value"], [["a", "b"]])
+    case = Case(document["path"])
+    info = dict(case.info, storage_format=storage_format)
+    case.db.execute("UPDATE metadata SET value=? WHERE key='source'", [json.dumps(info)])
+    case.close()
+    with pytest.raises(ValueError, match="stockage|Schéma"):
+        Case(document["path"])

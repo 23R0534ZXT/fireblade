@@ -232,10 +232,21 @@ class Case:
             if temporary:
                 temporary.unlink(missing_ok=True)
 
+    @property
+    def sparse(self):
+        from fireblade.core.sparse_union import sparse
+
+        return sparse(self.info)
+
+    def _storage_column(self, index):
+        from fireblade.core.sparse_union import column_sql
+
+        return column_sql(self.info, index)
+
     def column(self, index):
         if type(index) is not int or not 0 <= index < len(self.headers):
             raise ValueError("Colonne invalide")
-        return f'"c{index}"'
+        return self._storage_column(index)
 
     @staticmethod
     def validate_single_column_header(path):
@@ -748,7 +759,7 @@ class Case:
                     raise ValueError(
                         "Une colonne dérivée ne peut référencer que les colonnes précédentes"
                     )
-                return f'"c{index}"'
+                return self._storage_column(index)
 
             column.case = self
             expression = compile_definition(definition, headers, column, self.numeric_expression)
@@ -810,7 +821,14 @@ class Case:
 
     def where(self, view: View, path=()):
         clauses, args = [], []
-        if view.search:
+        if view.search and self.sparse:
+            from fireblade.core.sparse_union import values_sql
+
+            clauses.append(
+                f"list_contains(list_transform({values_sql(self)}, value -> contains(lower(coalesce(value, '')), lower(?))), true)"
+            )
+            args.append(view.search)
+        elif view.search:
             clauses.append(
                 "("
                 + " OR ".join(
@@ -1079,6 +1097,13 @@ class Case:
                 ):
                     return self.sorted_page(where, args, order, key, offset, limit)
                 sql = f"SELECT * FROM events{where}{order} LIMIT ? OFFSET ?"
+                if self.sparse:
+                    from fireblade.core.sparse_union import expand_record
+
+                    return [
+                        expand_record(self, row)
+                        for row in self.db.execute(sql, args + [limit, offset]).fetchall()
+                    ]
             if len(path) >= len(view.groups) and getattr(self, "_wide_pages", False):
                 return self._page_columns(view, where, args, offset, limit)
             try:
@@ -1143,7 +1168,12 @@ class Case:
             except duckdb.OutOfMemoryException:
                 pass
         query = "SELECT * FROM events WHERE __row_id IN (" + ",".join("?" for _ in ids) + ")"
-        return {row[0]: row for row in self.db.execute(query, ids).fetchall()}
+        rows = self.db.execute(query, ids).fetchall()
+        if self.sparse:
+            from fireblade.core.sparse_union import expand_record
+
+            rows = [expand_record(self, row) for row in rows]
+        return {row[0]: row for row in rows}
 
     def sorted_page(self, where, args, order, key, offset, limit):
         """One temporary order at a time, containing IDs rather than full rows.
@@ -1385,12 +1415,14 @@ class Case:
                     + [f"{s.operation}({self.headers[s.column]})" for s in view.summaries]
                 )
             else:
+                annotations = ""
                 if include_annotations:
                     # Row-level notes only: a row can now carry several cell notes.
-                    cols += (
+                    annotations = (
                         ", __row_id, EXISTS(SELECT 1 FROM bookmarks b WHERE b.row_id=events.__row_id AND b.column_id=-1), "
                         "(SELECT b.note FROM bookmarks b WHERE b.row_id=events.__row_id AND b.column_id=-1)"
                     )
+                    cols += annotations
                     headers = headers.copy()
                     existing = {h.casefold() for h in headers}
                     for name in (
@@ -1405,6 +1437,9 @@ class Case:
                         headers.append(candidate)
                         existing.add(candidate.casefold())
                 sql = f"SELECT {cols} FROM events{where}{self.order(view)}"
+                if self.sparse:
+                    cols = "events.*" + annotations
+                    sql = f"SELECT {cols} FROM events{where}{self.order(view)}"
             owns_temporary = False
             try:
                 expected = self.db.execute(
@@ -1427,6 +1462,10 @@ class Case:
                     from fireblade.core.export_rows import SourceOrderCursor
 
                     native_cursor = SourceOrderCursor(self, cols, where, args)
+                if self.sparse and not (grouped and view.groups):
+                    from fireblade.core.sparse_union import ExportCursor as SparseExportCursor
+
+                    native_cursor = SparseExportCursor(self, native_cursor, selected)
                 cursor = ExportCursor(native_cursor)
                 if target.suffix.lower() == ".xlsx":
                     from fireblade.core.spreadsheets import write_xlsx

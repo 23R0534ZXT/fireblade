@@ -89,6 +89,12 @@ def connect_analysis(path, *, read_only=False, allow_empty_import=False):
         ):
             raise ValueError("Analyse contenant des tables ou vues SQL non autorisées")
         expected = [("__row_id", "BIGINT")] + [(f"c{i}", "VARCHAR") for i in range(len(headers))]
+        if "storage_format" in info:
+            from fireblade.core.sparse_union import PREFIX, physical_schema, sparse
+
+            if not sparse(info) or len(headers) < PREFIX:
+                raise ValueError("Format de stockage d’analyse invalide")
+            expected = physical_schema()
         # Analyses written before 0.3.1 keep their row-level notes only; the
         # per-cell table is created when such a file is opened and migrated.
         notes_schemas = (

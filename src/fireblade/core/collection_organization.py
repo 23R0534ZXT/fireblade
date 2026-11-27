@@ -165,6 +165,11 @@ def organize(collection):
         groups.setdefault(key, []).append((document, origin))
     if mode == "schemas":
         groups = _named_schemas(groups)
+    if mode == "combined" and _union_width(groups["Collecte complète"]) > MAX_COLUMNS:
+        from fireblade.core.sparse_union import organize_sparse
+
+        organize_sparse(collection, groups["Collecte complète"])
+        return
     notes = []
     if mode in ("artifacts", "combined"):
         groups = _split_too_wide(groups, mode, notes)

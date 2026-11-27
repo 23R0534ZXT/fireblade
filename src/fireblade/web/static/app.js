@@ -7100,7 +7100,13 @@ function renderGrid(deferColumns = false) {
       + `<input data-filter="${index - 1}" aria-label="Filter ${escapeHtml(state.columns[index])}" placeholder="${valueFilter || "Filter…"}" value="${escapeHtml(current && !valueFilter ? current.value : "")}"></div></th>`);
   });
   head.push("</tr>");
+  const headerButton = document.activeElement?.closest("#head th[data-column] button");
   $("head").innerHTML = head.join("");
+  if (headerButton) {
+    const column = headerButton.closest("th").dataset.column;
+    const control = headerButton.matches(".column-sort") ? ".column-sort" : ".column-values";
+    $("head").querySelector(`th[data-column="${column}"] ${control}`)?.focus({ preventScroll: true });
+  }
 
   const clipped = document.documentElement.classList.contains("rowclip");
   const dataRows = state.rows.map((row) => {
@@ -8093,7 +8099,7 @@ function wire() {
     saveLayoutSoon();
   });
 
-  $("head").addEventListener("click", async (event) => {
+  $("head").addEventListener("click", (event) => {
     const th = event.target.closest("th[data-column]");
     if (!th || event.target.closest("[data-grip], [data-column-values]")) return;
     const index = Number(th.dataset.column);
@@ -8109,10 +8115,7 @@ function wire() {
       if (state.sort === column) state.descending = !state.descending;
       else { state.sort = column; state.descending = false; }
     }
-    const keyboardSort = event.detail === 0 && event.target.closest(".column-sort");
-    if (await loadRows(true) && keyboardSort && document.activeElement === document.body) {
-      $("head").querySelector(`th[data-column="${index}"] .column-sort`)?.focus({ preventScroll: true });
-    }
+    loadRows(true);
   });
 
   // Drag a header onto the grouping bar; double-click the grip to fit the column.

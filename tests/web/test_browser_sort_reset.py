@@ -6,10 +6,21 @@ from conftest import make_case
 
 def test_removing_every_sort_key_restores_source_order(page):
     sort = page.get_by_role("button", name="Sort by User", exact=True)
-    sort.focus()
-    sort.press("Enter")
+    values = page.get_by_role("button", name="Values in User", exact=True)
+    # The sorted rows appear before the rules and column layout finish loading.
+    page.wait_for_function("rowsRequest === null")
+    held = []
+    rules = "**/api/global-rules?*"
+    page.route(rules, lambda route: held.append(route), times=1)
+    with page.expect_request(rules):
+        sort.press("Enter")
     page.locator('#head th[aria-sort="ascending"]').wait_for()
     assert sort.evaluate("(button) => button === document.activeElement")
+    page.keyboard.press("Tab")
+    assert values.evaluate("(button) => button === document.activeElement")
+    held[0].continue_()
+    page.wait_for_function("rowsRequest === null")
+    assert values.evaluate("(button) => button === document.activeElement")
     assert column_values(page, "User") == sorted(column_values(page, "User"))
     command(page, "sort-priority")
     while page.locator("[data-sort-remove]").count():

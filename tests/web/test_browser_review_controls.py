@@ -73,10 +73,12 @@ def test_tagged_connection_can_be_filtered_reopened_and_reported(page):
     assert nodes.get_by_text("Workstation", exact=True).count() == 0
     nodes.get_by_text("DNS", exact=True).click()
     page.locator("#graph-evidence").get_by_role("button", name="Open observation").click()
-    assert page.locator("#track-source-ip").input_value() == "192.0.2.41"
-    assert page.locator("#track-destination-ip").input_value() == "192.0.2.53"
-    assert page.locator("#track-direction").input_value() == "outbound"
-    page.get_by_role("button", name="Cancel", exact=True).click()
+    editor = page.get_by_role("dialog", name="Tag observation")
+    editor.wait_for()
+    assert editor.locator("#track-source-ip").input_value() == "192.0.2.41"
+    assert editor.locator("#track-destination-ip").input_value() == "192.0.2.53"
+    assert editor.locator("#track-direction").input_value() == "outbound"
+    editor.get_by_role("button", name="Cancel", exact=True).click()
     page.select_option("#graph-tag-filter", label="All saved tags")
     nodes.get_by_text("Workstation", exact=True).wait_for()
     page.click("#tab-actions")

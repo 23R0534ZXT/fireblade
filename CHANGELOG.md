@@ -7,6 +7,16 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+### Investigation workflow
+
+- Added a tagged case chronology, including existing bookmarks, false-positive verdicts,
+  and a directed connection view with later tagged events on the same machine.
+- Added source-backed indicator declaration from grid cells and case-wide IP hunting.
+- Added the six-sheet follow-up workbook and the editable investigation report from case data.
+- Added read-only E01 navigation, previews, and hashed collection of selected files.
+- Added a same-client action scope, compromised entity marking and optional private inference
+  for analyst-reviewed rewrites.
+
 ### Added
 - Host analysts can nest grouping levels by dragging column headers, reorder them in the grouping
   dialog, and use the bookmark column to group marked and unmarked rows.

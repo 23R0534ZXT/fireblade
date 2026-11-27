@@ -59,7 +59,11 @@
 
     <div class="menu" data-for="edit">
       <div class="item" data-act="copy-row">Copy the rows<span class="key">Ctrl+C</span></div>
-      <div class="item" data-act="bookmark-note">Bookmark / note…</div>
+      <div class="item" data-act="track-bookmarks">Add this grid’s bookmarks to the investigation log</div>
+  <div class="item" data-act="track-row">Tag this observation…</div>
+  <div class="item" data-act="track-ip">Declare this IP…</div>
+  <div class="item" data-act="hunt-ip">Hunt this IP in the case</div>
+  <div class="item" data-act="bookmark-note">Bookmark / note…</div>
       <div class="sep"></div>
       <div class="item" data-act="mark-selection">Mark the selection<span class="key">Ctrl+Alt+B</span></div>
       <div class="item" data-act="unmark-selection">Remove the marks of the selection</div>
@@ -263,6 +267,7 @@
         </div>
         <div class="filterbar">
           <button class="btn" id="graph-build">Rebuild</button>
+          <button class="btn" data-act="tracking-open">Tagged connections</button>
           <select class="select" id="graph-level" title="Which levels of the chain to show">
             <option value="">All levels</option>
             <option value="host">Hosts</option>
@@ -400,8 +405,24 @@
           <div class="subtab active" data-sub="actions">Actions</div>
           <div class="subtab" data-sub="indicators">Indicators</div>
           <div class="subtab" data-sub="entities">Machines &amp; accounts</div>
+          <div class="subtab" data-sub="tracking">Investigation log</div>
         </div>
 
+        <div class="subview investigation-view" id="sub-tracking" style="display:none">
+          <div class="filterbar">
+            <label>Tags <select id="tracking-tags" multiple size="3" aria-label="Filter by tags"></select></label>
+            <label><input type="checkbox" id="tracking-fp"> False positives</label>
+            <label>Correlation window <input type="number" id="tracking-minutes" min="1" max="1440" value="30"> min</label>
+            <button class="btn" id="tracking-xlsx">Follow-up XLSX</button>
+            <button class="btn" id="tracking-docx">Investigation report (Word)</button>
+          </div>
+          <div class="gridwrap"><div class="gridbody">
+            <table><thead><tr><th>Time</th><th>Observation</th><th>Machine / source</th><th>Tags</th><th>Assessment</th></tr></thead>
+            <tbody id="tracking-rows"></tbody></table>
+          </div></div>
+          <details open><summary>Connection graph</summary><div id="tracking-network"></div></details>
+          <details><summary>Observed sequence by machine</summary><div id="tracking-sequences"></div></details>
+        </div>
         <div class="subview" id="sub-actions" style="display:flex;flex-direction:column;flex:1;min-height:0">
           <div class="panel-title">
             <h2>Actions and tracking</h2>
@@ -411,6 +432,7 @@
             <label for="action-scope">Scope</label>
             <select class="select" id="action-scope">
               <option value="case">the open case</option>
+              <option value="client">cases for the same client</option>
               <option value="all">every case of the library</option>
             </select>
             <input class="search" id="action-search" placeholder="Search the details, the person, the machine…">
@@ -477,8 +499,8 @@
           <div class="gridwrap" style="flex:1">
             <div class="gridbody">
               <table>
-                <colgroup><col style="width:90px"><col><col style="width:200px"><col style="width:110px"></colgroup>
-                <thead><tr><th>Kind</th><th>Indicator</th><th>Label</th><th>Status</th></tr></thead>
+                <colgroup><col style="width:90px"><col><col style="width:200px"><col style="width:110px"><col></colgroup>
+                <thead><tr><th>Kind</th><th>Indicator</th><th>Label</th><th>Status</th><th>Sources</th></tr></thead>
                 <tbody id="indicator-rows"></tbody>
               </table>
             </div>
@@ -498,6 +520,8 @@
             <input id="entity-hostname" placeholder="Hostname (optional)">
             <input id="entity-ip" placeholder="IP (optional)">
             <input id="entity-os" placeholder="OS (optional)">
+            <input id="entity-notes" placeholder="Evidence / notes">
+            <label><input type="checkbox" id="entity-compromised"> Compromised</label>
             <button class="btn" id="entity-add">Add</button>
             <button class="btn" id="entity-cancel" style="display:none">Cancel</button>
             <div class="grow"></div>
@@ -583,6 +607,7 @@
           <label><input type="checkbox" id="timeline-undated" checked> Include rows without a date</label>
           <label><input type="checkbox" id="timeline-filters"
             title="Read each analysis through its own filters, as the desktop does">Respect the analyses' filters</label>
+          <button class="btn" data-act="tracking-open">Tagged observations</button>
           <button class="btn" id="timeline-build">Build / refresh</button>
           <button class="btn" id="timeline-export" title="Verified CSV with a receipt">Export CSV</button>
         </div>
@@ -739,6 +764,10 @@
   <div class="item" data-act="hide-column">Hide this column</div>
   <div class="sep"></div>
   <div class="item" data-act="cell-note">Add / edit the note of this cell…</div>
+  <div class="item" data-act="track-bookmarks">Add this grid’s bookmarks to the investigation log</div>
+  <div class="item" data-act="track-row">Tag this observation…</div>
+  <div class="item" data-act="track-ip">Declare this IP…</div>
+  <div class="item" data-act="hunt-ip">Hunt this IP in the case</div>
   <div class="item" data-act="bookmark-note">Bookmark / note…</div>
   <div class="item" data-act="note-selection">Add a note to the selection…</div>
   <div class="item" data-act="note-replace" hidden>Edit the note of the selection…</div>
@@ -815,9 +844,69 @@
         ordinary collection reads them. The case must live outside the analysed volume.</div>
     </div>
     <div class="foot">
+      <button class="btn" id="disk-browse">Explore disk images…</button>
       <button class="btn" id="disk-start">Start the analysis</button>
       <button class="btn" data-act="settings-close">Cancel</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="disk-explorer-modal">
+  <div class="dialog" style="--dialog-width:1000px">
+    <h3>Disk explorer</h3>
+    <div class="body">
+      <div class="row"><label for="image-source">Image on the Host</label>
+        <input id="image-source" placeholder="/evidence/image.E01">
+        <button class="btn" id="image-open">Open image</button></div>
+      <div class="row"><label for="image-list">Case images</label><select id="image-list"></select></div>
+      <div class="row"><label for="image-partition">File system</label><select id="image-partition"></select></div>
+      <div class="filterbar"><button class="btn" id="image-up">Up</button>
+        <code id="image-path">/</code><button class="btn" id="image-next" hidden>Next page</button>
+        <button class="btn" id="image-prev" hidden>Previous page</button></div>
+      <div class="gridwrap disk-entries"><div class="gridbody">
+        <table><thead><tr><th>Name</th><th>Type</th><th>Bytes</th><th>Created (UTC)</th><th>Modified (UTC)</th><th></th></tr></thead>
+        <tbody id="image-entries"></tbody></table>
+      </div></div>
+      <p class="note" id="image-status" role="status"></p>
+      <pre id="image-preview" hidden></pre>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
+</div>
+
+<div class="modal" id="tracking-modal">
+  <div class="dialog" style="--dialog-width:660px">
+    <h3>Tag observation</h3>
+    <form id="tracking-form">
+      <div class="body">
+        <p class="note" id="tracking-origin"></p>
+        <div class="row"><label for="track-time">Event time (ISO 8601)</label><input name="time" id="track-time" placeholder="2026-11-27T15:00:00Z"></div>
+        <div class="row"><label for="track-machine">Machine</label><input name="machine" id="track-machine" maxlength="200"></div>
+        <div class="row"><label for="track-tags">Tags (comma separated)</label><input name="tags" id="track-tags"></div>
+        <div class="row"><label for="track-description">Description</label><textarea name="description" id="track-description" rows="3" maxlength="4000"></textarea>
+          <button class="btn" type="button" id="track-rewrite" hidden>Suggest rewrite</button></div>
+        <div class="row"><label for="track-level">Interest</label><select name="level" id="track-level">
+          <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
+          <label for="track-confidence">Confidence</label><select name="confidence" id="track-confidence">
+          <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="confirmed">Confirmed</option></select></div>
+        <div class="row"><label for="track-verdict">Verdict</label><select name="verdict" id="track-verdict">
+          <option value="open">Open</option><option value="confirmed">Confirmed</option><option value="false_positive">False positive</option></select></div>
+        <div class="row"><label for="track-kind">Event type</label><select name="kind" id="track-kind">
+          <option value="observation">Observation</option><option value="connection">Network connection</option>
+          <option value="file_creation">File creation</option><option value="process">Process</option><option value="authentication">Authentication</option></select></div>
+        <fieldset id="track-network-fields" hidden>
+          <div class="row"><label for="track-direction">Direction</label><select name="direction" id="track-direction">
+            <option value="unknown">Unknown</option><option value="inbound">Inbound</option><option value="outbound">Outbound</option></select></div>
+          <div class="row"><label for="track-source-ip">Source IP</label><input name="source_ip" id="track-source-ip"></div>
+          <div class="row"><label for="track-destination-ip">Destination IP</label><input name="destination_ip" id="track-destination-ip"></div>
+        </fieldset>
+        <div class="row" id="track-file-row" hidden><label for="track-file">File path</label><input name="file" id="track-file" maxlength="1024"></div>
+        <div class="row"><label for="track-comment">Comments</label><textarea name="comment" id="track-comment" rows="2" maxlength="2000"></textarea></div>
+      </div>
+      <div class="foot"><button class="btn" id="tracking-delete" type="button" hidden>Remove</button>
+        <button class="btn" type="submit">Save observation</button>
+        <button class="btn" type="button" data-act="settings-close">Cancel</button></div>
+    </form>
   </div>
 </div>
 
@@ -1663,6 +1752,7 @@
       <div class="note" id="report-result" role="status" aria-live="polite"></div>
     </div>
     <div class="foot">
+      <button class="btn" data-act="tracking-open">Word report from tagged evidence…</button>
       <button class="btn" data-act="report-build">Generate (HTML)</button>
       <button class="btn" data-act="report-build-pdf">Generate (PDF)</button>
       <button class="btn" data-act="settings-close">Cancel</button>
@@ -1729,5 +1819,6 @@
 
 <script src="static/app.js"></script>
 <script src="static/windows.js"></script>
+<script src="static/investigation.js"></script>
 </body>
 </html>

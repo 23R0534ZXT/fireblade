@@ -613,3 +613,18 @@ tr.gtotal td{background:var(--header);border-top:2px solid var(--border-strong)}
 
 /* Let a short indicator list give its unused space to the evidence details. */
 .ioc-summary-grid{flex:0 1 auto;max-height:34%;min-height:48px}
+
+.investigation-view { flex: 1; min-height: 0; flex-direction: column; overflow-y: auto; }
+.investigation-view > .gridwrap { flex: 1; min-height: 12rem; }
+.investigation-view details { padding: .65rem; max-height: 35%; overflow: auto; }
+.investigation-view .filterbar { flex-wrap: wrap; }
+#tracking-minutes { width: 5em; }
+#tracking-tags { min-width: 9em; }
+#tracking-form { display: flex; min-height: 0; flex-direction: column; }
+.disk-entries { max-height: 45vh; overflow: auto; }
+#image-path { overflow-wrap: anywhere; }
+.connection-edge { margin-block: .35rem; }
+#image-preview { max-height: 12rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.observation-sequence { margin-block: .5rem; }
+.observation-sequence > div { display: flex; align-items: center; gap: .4rem; overflow: auto; }
+.observation-sequence button { display: grid; text-align: left; max-width: 20rem; white-space: normal; }

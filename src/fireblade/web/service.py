@@ -630,20 +630,22 @@ class Library:
         from fireblade.core import case_workspace
 
         folder = self.library.folder(identifier)
-        data = case_workspace.load(folder)
-        data["client"] = {
-            key: str((client or {}).get(key) or "").strip()
-            for key in ("name", "reference", "sector", "contact")
-        }
-        given = engagement or {}
-        data["engagement"] = {
-            "contract": str(given.get("contract") or "").strip(),
-            "lead": str(given.get("lead") or "").strip(),
-            "start": str(given.get("start") or "").strip() or None,
-            "end": str(given.get("end") or "").strip() or None,
-            "notes": str(given.get("notes") or "").strip(),
-        }
-        case_workspace.save(folder, data)
+
+        def change(data):
+            data["client"] = {
+                key: str((client or {}).get(key) or "").strip()
+                for key in ("name", "reference", "sector", "contact")
+            }
+            given = engagement or {}
+            data["engagement"] = {
+                "contract": str(given.get("contract") or "").strip(),
+                "lead": str(given.get("lead") or "").strip(),
+                "start": str(given.get("start") or "").strip() or None,
+                "end": str(given.get("end") or "").strip() or None,
+                "notes": str(given.get("notes") or "").strip(),
+            }
+
+        case_workspace.mutate(folder, change)
         return self.client_info(identifier)
 
     # -- Hayabusa ----------------------------------------------------------
@@ -2467,6 +2469,7 @@ class Library:
         data = load(folder)
         return {
             "revision": data.get("revision"),
+            "client": {"name": data["client"].get("name") or ""},
             "actions": [
                 {
                     key: item.get(key)
@@ -2497,7 +2500,10 @@ class Library:
                 for item in data.get("entities", [])
             ],
             "iocs": [
-                {key: item.get(key) for key in ("id", "value", "kind", "label", "status")}
+                {
+                    key: item.get(key)
+                    for key in ("id", "value", "kind", "label", "status", "observations")
+                }
                 for item in data.get("iocs", [])
             ],
         }

@@ -11,3 +11,13 @@ The payload is a 4 MiB pattern with no partition table and no filesystem: the
 fixture qualifies **container decoding** (EWF headers, chunk table, decompression),
 not the reading of a filesystem inside an E01. A filesystem-bearing image would
 have to be acquired from a real medium to qualify that step.
+
+## Synthetic navigable FAT image
+
+`synthetic-fat.E01` wraps the FAT12 test filesystem produced by
+`tests/core/test_disk.py::fat_image` in EnCase 6 EWF. It contains one synthetic
+authentication log at `/VAR/LOG/AUTH.LOG`.
+
+Generated with libewf's `ewfacquirestream -q -c best -t synthetic-fat < fat.img`.
+SHA-256 of the E01 file
+`32c533946f392a0e0a531be970c445b5f518e7a3e78230f50a4467d7bb26ddad`.

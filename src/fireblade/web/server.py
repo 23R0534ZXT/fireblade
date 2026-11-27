@@ -1650,6 +1650,9 @@ def create_app(
     def favicon():
         return FileResponse(STATIC / "favicon.svg", media_type="image/svg+xml")
 
+    from fireblade.web.investigation import register
+
+    register(app, library)
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
     @app.exception_handler(StarletteHTTPException)

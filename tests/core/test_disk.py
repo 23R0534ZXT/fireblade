@@ -311,3 +311,22 @@ def test_windows_relative_paths_use_portable_separators(tmp_path):
     extracted = collection.copy_artifact(source, "volume", PureWindowsPath("var/log/auth.log"))
     assert extracted == collection.root / "volume/var/log/auth.log"
     assert collection.disk["artifacts"][0]["relative"] == "var/log/auth.log"
+
+
+def test_read_only_image_browser_keeps_paths_and_file_bytes(tmp_path):
+    from fireblade.core.disk_browser import browse, image_entry, open_image
+
+    image = fat_image(tmp_path / "disk.img")
+    digest = hashlib.sha256(image.read_bytes()).digest()
+    result = browse(image)
+    assert result["partitions"] == [{"index": 1, "type": "fat"}]
+    assert browse(image, 1, "/")["entries"][0]["name"] == "VAR"
+    directory = browse(image, 1, "/VAR/LOG")
+    assert directory["entries"][0]["name"] == "AUTH.LOG"
+    assert directory["entries"][0]["size"] == len(LOG)
+    with open_image(image) as target:
+        with pytest.raises(ValueError, match="Invalid image path"):
+            image_entry(target, 1, "/VAR/../LOG")
+        with image_entry(target, 1, "/VAR/LOG/AUTH.LOG").open("rb") as file:
+            assert file.read() == LOG
+    assert hashlib.sha256(image.read_bytes()).digest() == digest

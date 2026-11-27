@@ -11,9 +11,10 @@ regressions and limits. The HTTP API remains an internal interface that may evol
 - **The analysis is the desktop's.** The Host imports and reads evidence through the
   same `src/fireblade/core`: same parser foundation, filters, timeline and reports. Host opens historical Desktop cases;
   sparse combined analyses introduced in Host require the current Host.
-- **Nothing is uploaded.** The container sends nothing about you or your cases. Its only
-  outbound request is the check for a newer release (GitHub's public releases API, at most every
-  six hours), which `FIREBLADE_UPDATE_CHECK=off` removes; otherwise the only peer is your browser.
+- **Local by default.** The default configuration keeps case data on the analyst’s machine. Its
+  outbound release check contacts GitHub at most every
+  six hours. `FIREBLADE_UPDATE_CHECK=off` disables it. An optional private inference service
+  receives the selected draft only when the analyst requests a rewrite.
 - **The evidence is read, never modified.** Sources are copied into the case and
   hashed; the readers only read.
 - **A long command tells you what it is doing** and can be stopped at a checkpoint.
@@ -44,7 +45,7 @@ regressions and limits. The HTTP API remains an internal interface that may evol
 | Engine and service | latest broad qualification: 1,342 passed, 23 skipped; subsequent targeted runs cover time fields, reader diagnostics and viewport regressions. Runs overlap and are not added together. See the report for exact XML receipts. |
 | Client | `tests/web/test_browser*.py` drive the page with a real mouse: every menu command and every shortcut, every dialog's buttons kept on screen, dialogs moved and resized, splitters, filters, grouping, bookmarks, views, colour rules, derived columns, global search, indicator hunt, timeline, actions, reports, export, portable round trip, case creation to erasure |
 | One container per case | the driver's decisions are tested against a fake Docker; the page behind the driver (prefix, reports, export, erasure) is tested in a browser with the real case service. A real Docker daemon is not part of the automated tests |
-| Language | English everywhere the Host speaks; a test fails on any report sentence, refusal or column name left in French |
+| Language | English interface and standard reports. The investigation DOCX and follow-up workbook retain the French headings of their reference models |
 | Detection | Hayabusa 4.3.1 run through the page on the Windows 11 sample (183 event logs, 613 alerts), with the attack graph, the alert context and both reports built from it |
 | Docker qualification | actual container imports, browser workflows, layout rebuilding and persistence after container recreation; the driver's orchestration remains covered separately by simulated-Docker tests |
 

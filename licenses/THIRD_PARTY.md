@@ -18,6 +18,7 @@ Sources et documentation :
 - Qt : https://code.qt.io/
 - xlrd : https://github.com/python-excel/xlrd (licence BSD)
 - openpyxl : https://openpyxl.readthedocs.io/
+- python-docx (Host, licence MIT) : https://github.com/python-openxml/python-docx
 - et-xmlfile : https://et-xmlfile.readthedocs.io/
 - PyInstaller : https://pyinstaller.org/en/stable/license.html
 - idna : https://github.com/kjd/idna (BSD-3-Clause, noms de domaine IDNA/UTS #46 sans requête réseau)

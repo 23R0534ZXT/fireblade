@@ -15,6 +15,7 @@ import time
 import uuid
 import zipfile
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
@@ -29,6 +30,17 @@ from fireblade.core.import_index import update as update_index
 from fireblade.core.import_journal import ImportJournal
 from fireblade.core.models import View
 from fireblade.core.settings import Settings, auto_threads, grown_memory, physical_memory_mb
+
+
+def evidence_times(source):
+    stat = source.stat()
+    birth = getattr(stat, "st_birthtime", None)
+    return dict(
+        collected=datetime.now(UTC).isoformat(),
+        modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+        created=datetime.fromtimestamp(birth, UTC).isoformat() if birth is not None else None,
+    )
+
 
 PARSERS = (
     "EvtxECmd",
@@ -1027,6 +1039,7 @@ class Collection:
             where = self.output / "extracted" / f"{number:04d}"
             self.progress("Opening the archive: " + label)
             try:
+                entry.update(evidence_times(source), sha256=sha256(source))
                 files, problems = archives.extract(source, where, check_cancel)
             except (OSError, ValueError, EOFError, tarfile.TarError, zipfile.BadZipFile) as exc:
                 entry.update(
@@ -1201,6 +1214,7 @@ class Collection:
                     status="skipped", error="Fichier spécial non lu (socket, FIFO ou périphérique)"
                 )
                 return documents
+            entry.update(evidence_times(source))
             tools = identify(source)
             if not tools and self.read_everything:
                 # No dedicated reader: the file is read as what it is (SQLite, JSON, text…).

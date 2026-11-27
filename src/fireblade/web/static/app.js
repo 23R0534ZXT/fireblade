@@ -4935,6 +4935,7 @@ const actionState = { items: [], shown: [], selected: null, revision: 0 };
 const workspaceState = { entities: [], indicators: [], selected: null };
 
 function resetWorkspace() {
+  resetTracking();
   Object.assign(actionState, { items: [], shown: [], selected: null, revision: actionState.revision + 1 });
   Object.assign(workspaceState, { entities: [], indicators: [], selected: null });
   stopEditingEntity();
@@ -4946,18 +4947,22 @@ function resetWorkspace() {
 async function loadActions() {
   if (!state.openCase) return;
   const { id, name } = state.openCase;
-  const everywhere = $("action-scope").value === "all";
+  const scope = $("action-scope").value;
   const revision = ++actionState.revision;
   try {
     const payload = await api(`/api/cases/${id}/workspace`);
     if (actionState.revision !== revision) return;
     let items = (payload.actions || []).map((item) => ({ ...item, _caseId: id, _caseName: name }));
     // "Every case of the library": the actions of each case, each marked with its own case.
-    if (everywhere) {
+    const clientName = (payload.client?.name || "").trim().toLowerCase();
+    if (scope === "all" || (scope === "client" && clientName)) {
       const others = state.cases.filter((item) => item.id !== id && !item.storage_archive);
       const lists = await Promise.all(others.map(async (item) => {
         try {
           const other = await api(`/api/cases/${item.id}/workspace`);
+          if (scope === "client" && (other.client?.name || "").trim().toLowerCase() !== clientName) {
+            return [];
+          }
           return (other.actions || []).map((action) => ({ ...action, _caseId: item.id, _caseName: item.name }));
         } catch (_) {
           return [];
@@ -4980,17 +4985,18 @@ async function loadActions() {
 function showWorkspaceSub(name) {
   document.querySelectorAll(".subtab[data-sub]").forEach((tab) =>
     tab.classList.toggle("active", tab.dataset.sub === name));
-  for (const view of ["actions", "indicators", "entities"]) {
+  for (const view of ["actions", "indicators", "entities", "tracking"]) {
     const box = $(`sub-${view}`);
     if (box) box.style.display = view === name ? "flex" : "none";
   }
+  if (name === "tracking") refreshTracking();
 }
 
 function renderEntities() {
   $("entity-rows").innerHTML = workspaceState.entities.length
     ? workspaceState.entities.map((item) => `<tr data-entity="${escapeHtml(item.id)}">
         <td>${escapeHtml(item.kind || "")}</td>
-        <td>${escapeHtml(item.label || "")}</td>
+        <td title="${escapeHtml(item.notes || "")}">${escapeHtml(item.label || "")}${(item.tags || []).some(tag => tag.toLowerCase() === "compromised") ? " · Compromised" : ""}</td>
         <td>${escapeHtml(item.hostname || "")}</td>
         <td>${escapeHtml(item.ip || "")}</td>
         <td>${escapeHtml(item.os || "")}</td>
@@ -5017,8 +5023,11 @@ function renderIndicators() {
         <td>${escapeHtml(item.kind || "")}</td>
         <td title="${escapeHtml(item.value || "")}">${escapeHtml(item.value || "")}</td>
         <td>${escapeHtml(item.label || "")}</td>
-        <td>${escapeHtml(item.status || "")}</td></tr>`).join("")
-    : '<tr><td colspan="4" class="cellnull">No indicator tracked in this case.</td></tr>';
+        <td>${escapeHtml(item.status || "")}</td>
+        <td>${(item.observations || []).map(origin =>
+          `<div>${escapeHtml([origin.machine, observationSource(origin)].filter(Boolean).join(" · "))}</div>`
+        ).join("")}</td></tr>`).join("")
+    : '<tr><td colspan="5" class="cellnull">No indicator tracked in this case.</td></tr>';
   $("indicator-remove").disabled = !workspaceState.selected;
   $("indicator-summary").textContent = `${workspaceState.indicators.length} indicator(s) tracked`;
   $("indicator-rows").querySelectorAll("tr[data-indicator]").forEach((row) => {
@@ -5043,6 +5052,8 @@ function loadEntityForEdit(entityId) {
   $("entity-hostname").value = item.hostname || "";
   $("entity-ip").value = item.ip || "";
   $("entity-os").value = item.os || "";
+  $("entity-notes").value = item.notes || "";
+  $("entity-compromised").checked = (item.tags || []).some(tag => tag.toLowerCase() === "compromised");
   $("entity-add").textContent = "Save";
   $("entity-cancel").style.display = "";
   $("entity-label").focus();
@@ -5054,6 +5065,8 @@ function stopEditingEntity() {
   $("entity-hostname").value = "";
   $("entity-ip").value = "";
   $("entity-os").value = "";
+  $("entity-notes").value = "";
+  $("entity-compromised").checked = false;
   $("entity-add").textContent = "Add";
   $("entity-cancel").style.display = "none";
 }
@@ -5081,8 +5094,12 @@ async function addEntity() {
   if (!state.openCase) { say("Open a case first", true); return; }
   const label = $("entity-label").value.trim();
   if (!label) { say("Give the machine or the account a name", true); return; }
+  const previous = workspaceState.entities.find(entry => entry.id === editingEntity);
+  const tags = (previous?.tags || []).filter(tag => tag.toLowerCase() !== "compromised");
+  if ($("entity-compromised").checked) tags.push("compromised");
   const fields = {
-    kind: $("entity-kind").value, label,
+    kind: $("entity-kind").value, label, tags,
+    notes: $("entity-notes").value.trim(),
     hostname: $("entity-hostname").value.trim(),
     ip: $("entity-ip").value.trim(),
     os: $("entity-os").value.trim(),
@@ -5171,7 +5188,7 @@ function actionText(kind, code) {
 function renderActions() {
   const items = shownActions();
   actionState.shown = items;
-  const everywhere = $("action-scope").value === "all";
+  const everywhere = $("action-scope").value !== "case";
   const person = (item) => (item.intervenant || actionText("owner", item.owner))
     + (everywhere && item._caseName ? ` · ${item._caseName}` : "");
   $("action-rows").innerHTML = items.length ? items.map((item) => `
@@ -5200,7 +5217,7 @@ function renderActions() {
     if (!item.due || item.status === "done" || item.status === "cancelled") return false;
     return String(item.due) < new Date().toISOString().slice(0, 10);
   }).length;
-  const scope = $("action-scope").value === "all" ? "every case" : "the open case";
+  const scope = { all: "every case", client: "the same client", case: "the open case" }[$("action-scope").value];
   $("action-summary").textContent = `${actionState.items.length} action(s) · ${open} open · `
     + `${overdue} overdue · ${scope}`
     + (items.length ? "" : " · No action recorded in this scope.");
@@ -6937,7 +6954,10 @@ function showTab(name) {
   $("graph-view").style.display = name === "graph" ? "flex" : "none";
   if (name === "graph" && state.openCase) buildGraph();
   if (name === "imports" && state.openCase) loadImports();
-  if (name === "actions" && state.openCase) loadActions();
+  if (name === "actions" && state.openCase) {
+    loadActions();
+    if (document.querySelector('[data-sub="tracking"]').classList.contains("active")) refreshTracking();
+  }
   syncArtifacts();
   if (name === "timeline" && state.openCase) loadTimeline(!timelineState.payload);
 }
@@ -7668,6 +7688,9 @@ function wire() {
     }
     const menu = $("row-menu");
     // The two EVTX actions only mean something in an alert analysis.
+    for (const action of ["track-ip", "hunt-ip"]) {
+      menu.querySelector(`[data-act="${action}"]`).hidden = !cell || !looksLikeIP(cell.textContent);
+    }
     const alerts = isAlertAnalysis();
     for (const action of ["alert-context", "alert-source"]) {
       const item = menu.querySelector(`[data-act="${action}"]`);
@@ -8473,6 +8496,11 @@ async function act(name, node) {
     case "palette": openPalette(); break;
     case "messages": openMessages(); break;
     case "open-analyses": await openAnalysesDialog(); break;
+    case "tracking-open": closeModals(); showTab("actions"); showWorkspaceSub("tracking"); break;
+    case "track-bookmarks": await importGridBookmarks(); break;
+    case "track-row": await openTaggedRow(); break;
+    case "track-ip": await useGridIP(true); break;
+    case "hunt-ip": await useGridIP(false); break;
     case "disk-open": openDiskDialog(); break;
     case "profile-apply": await applyDetectedProfile(); break;
     case "case-history": await openCaseHistory(); break;

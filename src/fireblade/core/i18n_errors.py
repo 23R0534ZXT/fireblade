@@ -7,9 +7,12 @@ puts in); a message added to the core without an entry here is caught by
 """
 
 ERRORS = {
+    "Format de stockage d’analyse invalide": "Invalid analysis storage format",
     # What the coverage audit says of an analysis
     "Import déclaré : {} lignes ; base lue : {} ; vue courante : {}.": "Declared import: {} rows; database read: {}; current view: {}.",
     # Disk images and volumes
+    "Jeu EWF incomplet : le segment {} est absent.": "Incomplete EWF set: segment {} is missing.",
+    "Aucun système de fichiers lisible : image sans partition exploitable.": "No readable file system: the image has no usable partition.",
     "Taille du périphérique indisponible": "The size of the device is not available",
     "Le case doit être stocké hors du volume analysé": "The case must be stored outside the volume being analysed",
     "Copie tronquée : taille différente de la source": "Truncated copy: its size differs from the source",

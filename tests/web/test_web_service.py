@@ -335,3 +335,157 @@ def test_a_history_entry_says_what_state_it_holds(case_with_analysis):
         assert entry["name"].endswith(".json")
     finally:
         service.close()
+
+
+def test_tracking_projects_tagged_records_into_office_exports(case_with_analysis):
+    from io import BytesIO
+
+    from fastapi.testclient import TestClient
+    from openpyxl import load_workbook
+
+    from fireblade.web.server import create_app
+
+    root, identifier = case_with_analysis
+    base = f"/api/cases/{identifier}/tracking"
+    with TestClient(create_app(root)) as client:
+        row = client.get(base + "/row", params={"analysis": 0, "row": 1, "column": 3})
+        assert row.status_code == 200, row.text
+        assert row.json()["selection"] == "192.0.2.10"
+        assert row.json()["time"] == "2026-11-02T10:00:00+00:00"
+        event = client.post(
+            base + "/events",
+            json={
+                "analysis": 0,
+                "row": 1,
+                "column": 3,
+                "machine": "host-a",
+                "tags": ["Network"],
+                "kind": "connection",
+                "direction": "inbound",
+                "source_ip": "192.0.2.10",
+                "destination_ip": "192.0.2.20",
+                "description": "=1+1",
+            },
+        )
+        assert event.status_code == 200, event.text
+        launched = client.post(
+            base + "/events",
+            json={
+                "analysis": 0,
+                "row": 2,
+                "machine": "HOST-A",
+                "tags": ["Network"],
+                "kind": "file_creation",
+                "file": "example.txt",
+                "description": "File created",
+            },
+        )
+        assert launched.status_code == 200, launched.text
+        assert (
+            client.post(
+                base + "/events",
+                json={
+                    "analysis": 0,
+                    "row": 3,
+                    "machine": "host-a",
+                    "tags": ["Other"],
+                    "verdict": "false_positive",
+                },
+            ).status_code
+            == 200
+        )
+        payload = client.get(base, params={"tag": "network"}).json()
+        assert len(payload["events"]) == 2
+        assert payload["connections"][0]["followed_by"] == [launched.json()["id"]]
+        assert len(client.get(base, params={"fp": "true"}).json()["events"]) == 3
+        assert client.get(base, params={"tag": "absent"}).json()["events"] == []
+
+        indicator = {"analysis": 0, "row": 1, "column": 3, "declare": True, "machine": "host-a"}
+        for _ in range(2):
+            response = client.post(base + "/indicator", json=indicator)
+            assert response.status_code == 200, response.text
+        origins = client.get(base.removesuffix("tracking") + "workspace").json()["iocs"][0][
+            "observations"
+        ]
+        assert len(origins) == 1
+        assert origins[0]["column"] == "SourceIP"
+        assert origins[0]["line"] == 1
+
+        xlsx = client.get(base + "/export/xlsx", params={"tag": "Network"})
+        assert xlsx.status_code == 200, xlsx.text
+        workbook = load_workbook(BytesIO(xlsx.content))
+        assert workbook.sheetnames == [
+            "Actions",
+            "Chronologie",
+            "Eléments récoltés",
+            "IoCs",
+            "Postes compromis",
+            "Comptes compromis",
+        ]
+        assert workbook["Chronologie"]["D2"].value == "=1+1 · 192.0.2.10 → 192.0.2.20 (inbound)"
+        assert workbook["Chronologie"]["D2"].data_type == "s"
+        assert "SourceIP" in workbook["IoCs"]["C2"].value
+
+        from docx import Document
+
+        report = client.get(base + "/export/docx", params={"tag": "Network"})
+        assert report.status_code == 200, report.text
+        doc = Document(BytesIO(report.content))
+        assert "Résumé exécutif" in [paragraph.text for paragraph in doc.paragraphs]
+        assert any(
+            cell.text == "File created · example.txt"
+            for table in doc.tables
+            for row in table.rows
+            for cell in row.cells
+        )
+
+
+def test_tracking_keeps_the_original_row_across_layouts(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from fireblade.web.server import create_app
+
+    root = tmp_path / "cases"
+    identifier = InvestigationLibrary(root).create("Layouts", "", "windows")["id"]
+    source = tmp_path / "input"
+    source.mkdir()
+    for name, value in (("a", "first"), ("b", "second")):
+        (source / f"{name}.csv").write_text(
+            f"Timestamp,Host,Event\n2026-11-02T10:00:00Z,PC1,{value}\n"
+        )
+    base = f"/api/cases/{identifier}"
+    with TestClient(create_app(root)) as client:
+        imported = client.post(
+            base + "/import", json={"source": str(source), "organization": "combined"}
+        )
+        assert imported.status_code == 200, imported.text
+        event = client.post(
+            base + "/tracking/events",
+            json={
+                "analysis": 0,
+                "row": 2,
+                "description": "Kept through layout change",
+                "tags": ["Test"],
+            },
+        )
+        assert event.status_code == 200, event.text
+        saved = event.json()
+        assert saved["origin"]["line"] == 1
+        assert saved["origin"]["file"].endswith("b.csv")
+
+        change = client.post(base + "/reorganize", json={"mode": "files"})
+        assert change.status_code == 200, change.text
+        analysis = next(e for e in client.get(base).json()["analyses"] if "b.csv" in e["label"])
+        marked = client.post(
+            base + f"/analyses/{analysis['index']}/bookmark",
+            json={"row_id": 1, "note": "Added note"},
+        )
+        assert marked.status_code == 200, marked.text
+        with_existing = client.post(
+            base + "/tracking/bookmarks", json={"analysis": analysis["index"]}
+        )
+        assert with_existing.status_code == 200, with_existing.text
+        assert with_existing.json() == {"added": 0, "already_tagged": 1}
+        found = client.get(base + "/tracking/row", params={"analysis": analysis["index"], "row": 1})
+        assert found.status_code == 200, found.text
+        assert found.json()["event"]["id"] == saved["id"]

@@ -21,6 +21,20 @@ from functools import lru_cache
 PLACEHOLDER = "{}"
 
 EN = {
+    "<h3>{}</h3><p>Non renseigné.</p>": "<h3>{}</h3><p>No information recorded.</p>",
+    "Annexe B · Éléments compromis": "Appendix B · Compromised assets",
+    "Annexe C · Analyses détaillées par machine": "Appendix C · Detailed analyses by machine",
+    "Date/Heure de compromission": "Compromise date and time",
+    "Eléments récoltés": "Collected evidence",
+    "Informations générales": "General information",
+    "La chronologie repose sur les observations sélectionnées. Les dates sans fuseau sont reprises telles que saisies. Une succession temporelle ne démontre pas de causalité.": "The chronology uses the selected observations. Dates without a time zone are shown as entered. Temporal sequence does not establish causation.",
+    "Machine impactée": "Affected machine",
+    "Niveau de confiance": "Confidence level",
+    "Niveau d’intérêt": "Interest level",
+    "Nom d’hôte": "Host name",
+    "Nom d’utilisateur": "User name",
+    "Résumé exécutif": "Executive summary",
+    "À renseigner par l’analyste.": "For the analyst to complete.",
     "Analyse absente ou dupliquée : {}": "Analysis missing or duplicated: {}",
     "Analyse remplacée : {}": "Analysis replaced: {}",
     "Aucun exécutable dans ce fichier de préchargement": "No executable in this prefetch file",

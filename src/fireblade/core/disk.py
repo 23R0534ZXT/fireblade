@@ -8,6 +8,8 @@ import copy
 import hashlib
 import os
 import re
+from contextlib import ExitStack
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 
 from fireblade.core.collection import Collection, atomic_json, check_cancel
@@ -25,6 +27,8 @@ def candidate(path):
             "$mft",
             "$j",
             "$boot",
+            "$usnjrnl",
+            "$logfile",
             "system",
             "software",
             "sam",
@@ -39,6 +43,7 @@ def candidate(path):
             "web data",
             "login data",
         }
+        or "$extend" in parts[:-1]
         or name.startswith(("ntuser.dat", "usrclass.dat", "amcache", "webcache"))
         or name.endswith(
             (".evtx", ".pf", ".lnk", ".automaticdestinations-ms", ".customdestinations-ms")
@@ -57,31 +62,49 @@ def image_segments(path):
     gap is an error rather than a shorter image.
     """
     path = Path(path)
-    match = re.fullmatch(r"(?i)(.*)\.e(\d{2})", path.name)
+    match = re.fullmatch(r"(?i)(.*)\.(e[0-9]{2})", path.name)
     if not match or not path.is_file():
         return [path]
     base = match.group(1)
+
+    def segment_number(extension):
+        first, second, third = extension.upper()
+        if second.isdigit() and third.isdigit():
+            return int(second + third) if first == "E" else 0
+        return 100 + (ord(first) - ord("E")) * 676 + (ord(second) - 65) * 26 + ord(third) - 65
+
     files = {}
     for item in path.parent.iterdir():
-        if not item.is_file():
-            continue
-        found = re.fullmatch(r"(?i)" + re.escape(base) + r"\.e(\d{2})", item.name)
-        if found:
-            files[int(found.group(1))] = item
-    if not files:
-        return [path]
-    first = 1 if 1 in files else int(match.group(2))
-    segments = []
-    index = first
-    while index in files:
-        segments.append(files[index])
-        index += 1
-    if any(number > index for number in files):
-        raise ValueError(
-            f"Jeu EWF incomplet : le segment {base}.E{index:02d} est absent. "
-            "Fournissez tous les segments de l’acquisition."
+        found = re.fullmatch(
+            r"(?i)" + re.escape(base) + r"\.([e-z](?:[a-z]{2}|[0-9]{2}))", item.name
         )
-    return segments
+        if not found or not item.is_file():
+            continue
+        extension = found.group(1)
+        if extension[1:].isalpha():
+            # Ordinary files sharing the base name (e.g. image.raw) also fit
+            # the rollover naming pattern. Only EWF headers qualify.
+            with item.open("rb") as stream:
+                if stream.read(8) != b"EVF\x09\x0d\x0a\xff\x00":
+                    continue
+        index = segment_number(extension)
+        if index:
+            if index in files:
+                raise ValueError("Duplicate disk image segment: " + item.name)
+            files[index] = item
+    first = segment_number(match.group(2))
+    if first and 1 not in files and first != 1:
+        raise ValueError(f"Jeu EWF incomplet : le segment {base}.E01 est absent.")
+    if 1 not in files:
+        return [path]
+    for expected, index in enumerate(sorted(files), 1):
+        if index != expected:
+            missing = f"{base}.E{expected:02d}" if expected <= 99 else f"{base} (#{expected})"
+            raise ValueError(
+                f"Jeu EWF incomplet : le segment {missing} est absent. "
+                "Fournissez tous les segments de l’acquisition."
+            )
+    return [files[index] for index in sorted(files)]
 
 
 def open_device(path):
@@ -204,7 +227,7 @@ class DiskCollection(Collection):
         if documents:
             self.ready(copy.deepcopy(documents))
 
-    def copy_artifact(self, source, partition, relative):
+    def copy_artifact(self, source, partition, relative, *, original=None):
         check_cancel()
         parts = PurePosixPath(str(relative).replace("\\", "/")).parts
         if not parts or any(p in ("..", "/", "") or ":" in p for p in parts):
@@ -235,10 +258,17 @@ class DiskCollection(Collection):
             dict(
                 source=str(source),
                 partition=partition,
-                relative=PurePosixPath(*parts).as_posix(),
+                relative=original or PurePosixPath(*parts).as_posix(),
                 extracted=str(target),
                 sha256=digest.hexdigest(),
                 size=after.st_size,
+                collected=datetime.now(UTC).isoformat(),
+                modified=datetime.fromtimestamp(before.st_mtime, UTC).isoformat(),
+                created=(
+                    datetime.fromtimestamp(before.st_birthtime, UTC).isoformat()
+                    if getattr(before, "st_birthtime", None) is not None
+                    else None
+                ),
             )
         )
         return target
@@ -303,6 +333,7 @@ class DiskCollection(Collection):
 
     def walk_sources(self, on_error):
         target = None
+        resources = ExitStack()
         try:
             if self.source_kind == "mounted":
                 root = Path(self.disk_source).resolve()
@@ -327,24 +358,24 @@ class DiskCollection(Collection):
                             "administrateur. Relancez Fireblade en tant qu’administrateur, ou analysez une "
                             "image acquise (.raw / .E01) avec les droits courants."
                         ) from exc
-                    try:
-                        target.disks.add(RawContainer(handle))
-                        target.apply()
-                    except BaseException:
-                        handle.close()
-                        raise
+                    resources.callback(handle.close)
+                    disk = RawContainer(handle)
+                    target.disks.add(disk)
+                    target.apply()
                 else:
-                    segments = image_segments(self.disk_source)
-                    if len(segments) > 1:
-                        # EWF splits a large acquisition into E01, E02…; dissect needs
-                        # every handle at once, and Target.open only takes one path.
-                        from dissect.target.container import Container
+                    if Path(self.disk_source).suffix.casefold() == ".e01":
+                        from fireblade.core.disk_browser import open_image
 
-                        target = Target()
-                        target.disks.add(Container.open([str(segment) for segment in segments]))
-                        target.apply()
+                        target = resources.enter_context(
+                            open_image(
+                                self.disk_source,
+                                empty_error="Aucun système de fichiers lisible : image sans partition exploitable.",
+                            )
+                        )
                     else:
                         target = Target.open(self.disk_source)
+                        for disk in target.disks:
+                            resources.callback(disk.close)
                 roots = [
                     (f"partition-{i + 1}", fs.path("/")) for i, fs in enumerate(target.filesystems)
                 ]
@@ -413,6 +444,28 @@ class DiskCollection(Collection):
                                         if stream.read(16) == b"SQLite format 3\0":
                                             continue
                             self.progress("Extraction en lecture seule : " + str(source))
+                            if (
+                                name.casefold() == "$usnjrnl"
+                                and getattr(getattr(root, "_fs", None), "__type__", None) == "ntfs"
+                            ):
+                                from dissect.target.exceptions import (
+                                    FileNotFoundError as NtfsMissing,
+                                )
+
+                                journal = source.with_name(source.name + ":$J")
+                                try:
+                                    journal.stat()
+                                except NtfsMissing:
+                                    pass
+                                else:
+                                    original = f"{source.relative_to(root).as_posix()}:$J"
+                                    staged = (
+                                        source.relative_to(root).parent / "$UsnJrnl-streams" / "$J"
+                                    )
+                                    copied = self.copy_artifact(
+                                        journal, partition, staged, original=original
+                                    )
+                                    yield copied.parent, [], [copied.name]
                             copied = self.copy_artifact_group(source, partition, root)
                             yield copied.parent, [], [copied.name]
                         except Exception as exc:
@@ -423,7 +476,5 @@ class DiskCollection(Collection):
                                 dict(path=str(source), status="error", tools=[], error=str(exc))
                             )
         finally:
-            if target is not None:
-                for disk in target.disks:
-                    disk.close()
+            resources.close()
             atomic_json(self.output / "disk-source.json", self.disk)

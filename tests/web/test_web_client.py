@@ -419,9 +419,10 @@ def test_the_header_follows_the_visible_columns():
     """A hidden column must not leave its title, its width or its filter behind."""
 
     js = _read(APP)
-    body = js[js.index("function renderGrid() {") : js.index("function renderGroupChart()")]
+    body = js[js.index("function renderGrid(") : js.index("function renderGroupChart()")]
     assert '$("cols").innerHTML' in body
-    assert "shown.map(({ index })" in body
+    assert "columnWindow(visibleColumns())" in body
+    assert "shown.map(({ index, width })" in body
     assert "shown.forEach(({ index })" in body
     # The header loop must not iterate every column any more.
     head_block = body[body.index("const head = [") : body.index('$("head").innerHTML')]

@@ -1,6 +1,6 @@
 # Kagarasu Host
 
-[![Host validation](https://github.com/23R0534ZXT/kagarasu/actions/workflows/host.yml/badge.svg?branch=codex%2Fhost-gui-review)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/host.yml)
+[![Host validation](https://github.com/23R0534ZXT/kagarasu/actions/workflows/host.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/host.yml)
 [![Container images](https://github.com/23R0534ZXT/kagarasu/actions/workflows/containers.yml/badge.svg)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/containers.yml)
 [![Release](https://img.shields.io/github/v/release/23R0534ZXT/kagarasu)](https://github.com/23R0534ZXT/kagarasu/releases/latest)
 
@@ -12,8 +12,8 @@ Kagarasu reads a collected folder, keeps every file accounted for, and puts the 
 one workspace: filterable tables, a cross-analysis timeline, indicator hunting, detections
 grouped into findings, an attack graph, and a case that can be saved, moved and erased
 verifiably. Everything runs on the analyst's own machine: no upload, no cloud account, no
-API key, no telemetry. The Host's one outbound request is the optional check for a newer
-release (see [Updates](#updates)).
+API key, no telemetry. The optional release check is the only outbound request in the default configuration.
+An explicitly configured private inference service can suggest rewrites of analyst drafts.
 
 ![The Kagarasu Host workspace: a case of Linux logs](docs/assets/host/host-workspace.png)
 
@@ -70,6 +70,58 @@ the source records when the layout changes.
 Artifact families keep supporting configuration files collapsed by default. Use grouping,
 filters and saved column layouts to focus a large collection without discarding its fields.
 Changing a layout rebuilds its analyses as a background job and can take several minutes.
+
+### Investigation log and follow-up
+
+The investigation log and disk explorer below are part of the development image (`:edge`).
+
+Right-click an analysis row and choose **Tag this observation**. The case keeps the original
+record reference, selected value, event time and machine alongside your tags, interest level,
+confidence and verdict. Use **Add this grid’s bookmarks to the investigation log** to bring in
+existing marks. Open **Actions & tracking → Investigation log** to filter by tags, include false
+positives or export the resulting chronology. The selected tags match any of the chosen labels.
+
+A tagged connection uses a source and destination IP and an inbound, outbound or unknown
+direction. The log shows later tagged file, process and authentication events on the same
+machine in the selected time window when both timestamps include a time zone. These links
+are temporal associations. The observed sequence view groups tagged events by machine. Tabular
+firewall, Sysmon and EDR exports with recognized
+fields can prefill the tags dialog. The analyst confirms the proposed network fields.
+
+Right-click an IP cell to hunt it across the case or declare it as an indicator. Each declaration
+adds its artifact, source row, machine and column to the existing indicator. The Actions table
+can show the current case, cases with the same client name, or every case.
+
+The log produces a six-sheet **follow-up workbook (XLSX)** and an editable **investigation report
+(DOCX)**. The workbook includes actions, chronology, collected evidence, indicators, and the
+machines and accounts marked compromised in the case. The Word report follows the executive
+summary, method, analysis, limits, recommendations and annex structure. Collection times are
+recorded in UTC, with creation and modification times when supplied by the source. The original
+archive name remains available for extracted members. Optional Office templates can be mounted
+privately and selected with `FIREBLADE_TRACKING_TEMPLATE` and `FIREBLADE_REPORT_TEMPLATE`.
+Use an empty six-sheet workbook with the matching headers as the XLSX template. The DOCX
+template supplies styles and page setup. Its example body is replaced with the current case.
+
+For an optional analyst-reviewed rewrite of a draft description, configure a private,
+OpenAI-compatible chat completions service through `FIREBLADE_REWRITE_URL` and
+`FIREBLADE_REWRITE_MODEL`. The selected draft is sent only when the analyst clicks **Suggest
+rewrite** and the result can be reviewed before saving. Without those settings, Host makes no
+inference request.
+
+### Explore an E01 disk image
+
+Mount the directory containing the original and all its segments read-only, for example with
+`-v /path/to/images:/evidence:ro` on the Host container. Open **File → Analyse a disk… →
+Explore disk images…** and enter the path inside the container, such as `/evidence/disk.E01`.
+The explorer lists readable file systems and lets you navigate directories, preview regular
+files and copy selected files into the case. Each copy retains its image, file-system number,
+in-image path, available timestamps and SHA-256. Collection through the explorer is limited
+to 2 GiB per file. Attachments and forensic paths remain case-local.
+
+Use **Start the analysis** to run the artifact readers over the image, including accessible
+NTFS `$Extend` entries. Host reads the image and rejects incomplete EWF segment sets. Case
+erasure operates on the case and its copies. The original remains on its separately mounted
+volume.
 
 ### Qualified on a real collection
 

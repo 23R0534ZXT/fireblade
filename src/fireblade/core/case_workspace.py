@@ -23,6 +23,7 @@ import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import RLock
 
 from fireblade.core.layout import write_json
 
@@ -30,6 +31,7 @@ FORMAT = "fireblade-workspace"
 VERSION = 1
 FILENAME = "workspace.json"
 MAX_BYTES = 8 * 1024 * 1024
+_MUTATION_LOCKS = tuple(RLock() for _ in range(64))
 
 OWNERS = ("us", "client", "third_party", "vendor", "unassigned")
 STATUSES = ("todo", "in_progress", "waiting_client", "waiting_us", "blocked", "done", "cancelled")
@@ -342,11 +344,16 @@ def save(folder, data, expected_revision=None):
 
 def mutate(folder, change, expected_revision=None):
     """Read, apply ``change(data)``, validate and save in one step."""
-    data = load(folder)
-    if expected_revision is not None:
-        data["revision"] = expected_revision
-    change(data)
-    return save(folder, data)
+    with _MUTATION_LOCKS[hash(Path(folder).resolve()) % len(_MUTATION_LOCKS)]:
+        data = load(folder)
+        if (
+            expected_revision is not None
+            and path_of(folder).exists()
+            and data["revision"] != expected_revision
+        ):
+            raise ValueError("This case was changed elsewhere. Reopen it before saving.")
+        change(data)
+        return save(folder, data)
 
 
 # ------------------------------------------------------------------ conveniences

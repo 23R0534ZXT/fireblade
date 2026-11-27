@@ -2162,6 +2162,8 @@ class Library:
             }
 
         size = path.stat().st_size
+        if not size:
+            raise ServiceError("This file is empty; there is no data to import.")
         if path.suffix.lower() in self.EXCEL_SUFFIXES:
             # A workbook has no reader among the collectors: it is a table, and the
             # question the desktop asks is which sheet to read.
@@ -4394,6 +4396,19 @@ class Library:
             "analyses": added,
             "first_analysis": first,
             "files": len(report.get("files") or []),
+            "read_files": sum(
+                any(
+                    output.get("analysis")
+                    for run in item.get("runs") or []
+                    for output in run.get("outputs") or []
+                )
+                for item in report.get("files") or []
+            ),
+            "failed_files": sum(
+                item.get("status") == "error"
+                or any(run.get("status") == "error" for run in item.get("runs") or [])
+                for item in report.get("files") or []
+            ),
             "collection": str(output),
         }
         if notice:

@@ -930,7 +930,7 @@ function previewRoleLabel(role) {
 
 function renderPreview() {
   const box = $("preview-body");
-  $("preview-import").disabled = !previewState.items.length;
+  $("preview-import").disabled = !previewState.items.some((item) => !item.error && item.payload?.path);
   if (!previewState.items.length) { box.innerHTML = ""; return; }
   box.innerHTML = previewState.items.map((item, index) => {
     if (item.error) {
@@ -1089,6 +1089,12 @@ async function confirmImport() {
   let stopped = false;
   let interruption = "";
   let notice = "";
+  const failures = [];
+  const finishedMessage = () => interruption || (stopped ? importStoppedMessage(imported, kept)
+    : failures.length ? `${imported ? `Import finished with errors — ${imported} file(s) imported` : "Import failed"} — ${failures.join(" · ")}`
+    : `${imported} file(s) imported${notice ? " — " + notice : ""}`);
+  const failedMessage = (outcome) => outcome.error || outcome.result?.message
+    || "No analysis could be read. See Imports for file diagnostics.";
   const ready = previewState.items.filter((item) => !item.error && item.payload && item.payload.path);
   // Files chosen together are one collection: the layout (per file, per artifact family, or one
   // grid for everything) is how that collection is laid out, so it is imported in one go. A
@@ -1101,25 +1107,25 @@ async function confirmImport() {
       const job = await startImportJob(ready.map((item) => item.payload.path), layout, options, "");
       const outcome = await followImportJob(job);
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) {
-        imported = ready.length;
+        imported = outcome.result.read_files ?? ready.length;
+        if (outcome.result.failed_files) failures.push(`${outcome.result.failed_files} file(s) could not be read; see Imports`);
         notice = outcome.result.notice || notice;
       }
       else if (outcome.status === "cancelled" || outcome.status === "interrupted") {
         stopped = true;
         kept = (outcome.result && outcome.result.analyses) || 0;
         if (outcome.status === "interrupted") interruption = outcome.message || "";
-      } else say(`${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
+      } else failures.push(failedMessage(outcome));
     } catch (error) {
       say(error.message, true);
       return;
     }
     closeModals();
     await openCase(state.openCase.id);
-    say(interruption || (stopped ? importStoppedMessage(0, kept) : `${imported} file(s) imported${notice ? " — " + notice : ""}`), stopped);
+    say(finishedMessage(), stopped || failures.length > 0);
     return;
   }
-  for (const item of previewState.items) {
-    if (item.error) continue;
+  for (const item of ready) {
     const source = item.payload && item.payload.path;
     if (!source) continue;
     say(`Importing ${item.name}…`);
@@ -1129,14 +1135,15 @@ async function confirmImport() {
       // A folder is one source holding several files: say how many were read, not "1".
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) {
         notice = outcome.result.notice || notice;
-        imported += Math.max(1, Number((item.payload && item.payload.count) || 0));
+        imported += outcome.result.read_files ?? Math.max(1, Number((item.payload && item.payload.count) || 0));
+        if (outcome.result.failed_files) failures.push(`${item.name}: ${outcome.result.failed_files} file(s) could not be read; see Imports`);
       } else if (outcome.status === "cancelled" || outcome.status === "interrupted") {
         stopped = true;
         kept = (outcome.result && outcome.result.analyses) || 0;
         if (outcome.status === "interrupted") interruption = outcome.message || "";
         break;
       } else {
-        say(`${item.name}: ${(outcome.result && outcome.result.message) || outcome.error || outcome.status}`, true);
+        failures.push(`${item.name}: ${failedMessage(outcome)}`);
       }
     } catch (error) {
       say(`${item.name}: ${error.message}`, true);
@@ -1145,7 +1152,7 @@ async function confirmImport() {
   }
   closeModals();
   await openCase(state.openCase.id);
-  say(interruption || (stopped ? importStoppedMessage(imported, kept) : `${imported} file(s) imported${notice ? " — " + notice : ""}`), stopped);
+  say(finishedMessage(), stopped || failures.length > 0);
 }
 
 /* ---------- import ---------- */

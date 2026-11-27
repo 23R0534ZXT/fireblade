@@ -7,7 +7,13 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-11-27
+
 ### Investigation workflow
+
+- Added editable incident intake and destruction records in Word format.
+- Added source-linked correlation between compatible process, network and file records.
+- Added direct E01 explorer access and verified extraction of an NTFS journal stream.
 
 - Added a tagged case chronology, including existing bookmarks, false-positive verdicts,
   and a directed connection view with later tagged events on the same machine.

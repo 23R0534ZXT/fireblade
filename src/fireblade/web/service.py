@@ -2768,6 +2768,9 @@ class Library:
         certificate = certificates / (
             datetime.now(UTC).strftime("pv-%Y%m%d-%H%M%S-") + identifier[:8] + ".html"
         )
+        from fireblade.web.incident_documents import destruction_writer
+
+        write_word = destruction_writer(certificate, certificate, folder)
         self.close_case(identifier)
         # A portable package or an archive of this case is the case: it goes too.
         extras = [str(path) for path in outside_entries(self.root, identifier)]
@@ -2782,6 +2785,7 @@ class Library:
             case_id=identifier,
             attachments=list(attachments or []),
             extras=extras,
+            on_certificate=write_word,
         )
         _in_english(certificate)
         return {
@@ -2791,6 +2795,12 @@ class Library:
             "outside": int(record.get("outside") or 0),
             "residue": extras,
             "certificate": str(certificate),
+            "status": record.get("status"),
+            "verified_files": sum(
+                bool(item.get("verified") and item.get("deleted")) for item in record["files"]
+            ),
+            "certificate_word": record.get("certificate_word"),
+            "certificate_word_error": record.get("certificate_word_error"),
             "bytes": sum(int(item.get("size") or 0) for item in (record.get("files") or [])),
         }
 

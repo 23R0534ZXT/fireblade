@@ -96,7 +96,24 @@ def browse(source, partition=0, path="/", offset=0):
             raise ValueError("Select a directory.")
         # Keep file-system order stable across pages, and bound returned metadata.
         entries = []
-        for node in islice(directory.iterdir(), offset, offset + 201):
+
+        def children():
+            for node in directory.iterdir():
+                yield node
+                if (
+                    partitions[partition - 1]["type"] == "ntfs"
+                    and path.casefold() == "/$extend"
+                    and node.name.casefold() == "$usnjrnl"
+                    and not node.is_symlink()
+                ):
+                    stream = node.with_name(node.name + ":$J")
+                    try:
+                        stream.stat()
+                    except OSError:
+                        continue
+                    yield stream
+
+        for node in islice(children(), offset, offset + 201):
             try:
                 entries.append(entry_info(node))
             except (OSError, ValueError, OverflowError):

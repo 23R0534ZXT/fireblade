@@ -99,6 +99,7 @@ def test_a_verification_failure_keeps_the_file_and_says_so(tmp_path):
     item = record["files"][0]
     assert record["status"] == "partial" and item["state"] == "failed"
     assert path.exists() and path.read_bytes() != original
+    assert path.stat().st_size == len(original)
     assert "could not be verified" in item["error"]
 
 

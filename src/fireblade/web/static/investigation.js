@@ -1,17 +1,22 @@
 /* Observation log and read-only disk explorer. Shares the Host's case and dialog state. */
 
 let trackingRevision = 0;
+let scenarioRevision = 0;
 let editedObservation = null;
 let displayedEvents = new Map();
 
 function resetTracking() {
   trackingRevision++;
+  scenarioRevision++;
   editedObservation = null;
   $("tracking-tags").replaceChildren();
   $("tracking-rows").replaceChildren();
   $("tracking-network").replaceChildren();
   $("tracking-sequences").replaceChildren();
   displayedEvents.clear();
+  $("scenario-panel").open = false;
+  $("scenario-edges").replaceChildren();
+  $("scenario-status").textContent = "";
 }
 
 function trackingParams() {
@@ -89,6 +94,8 @@ function showObservation(context, record) {
   showObservationFields();
   $("tracking-modal").classList.add("show");
   $("track-rewrite").hidden = true;
+  $("track-suggestion-row").hidden = true;
+  $("track-suggestion").value = "";
   const current = editedObservation;
   api(`/api/cases/${current.caseId}/tracking/rewrite`).then(settings => {
     if (editedObservation === current) $("track-rewrite").hidden = !settings.enabled;
@@ -163,7 +170,7 @@ let explorer = { revision: 0, images: [], path: "/", offset: 0 };
 
 async function openDiskExplorer() {
   const id = state.openCase?.id;
-  if (!id) return;
+  if (!id) { say("Open a case first", true); return; }
   try {
     const { images } = await api(`/api/cases/${id}/disk-images`);
     if (state.openCase?.id !== id) return;
@@ -252,11 +259,19 @@ document.addEventListener("DOMContentLoaded", () => {
       const suggestion = await apiPost(`/api/cases/${current.caseId}/tracking/rewrite`, { description });
       if (editedObservation !== current || state.openCase?.id !== current.caseId ||
           !$("tracking-modal").classList.contains("show")) return;
-      if (input.value.trim() === description && window.confirm(suggestion.description + "\n\nUse this rewrite?")) {
-        input.value = suggestion.description;
+      if (input.value.trim() === description) {
+        $("track-suggestion").value = suggestion.description;
+        $("track-suggestion-row").hidden = false;
       }
     } catch (error) { say(error.message, true); }
     finally { button.disabled = false; }
+  });
+  $("track-description").addEventListener("input", () => { $("track-suggestion-row").hidden = true; });
+  $("track-use-suggestion").addEventListener("click", () => {
+    if ($("track-suggestion-row").hidden) return;
+    $("track-description").value = $("track-suggestion").value;
+    $("track-suggestion-row").hidden = true;
+    $("track-description").focus();
   });
   $("tracking-form").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -342,5 +357,72 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (error) { if (explorer.revision === revision) $("image-status").textContent = error.message; }
     finally { file.disabled = false; }
+  });
+});
+
+async function showScenario() {
+  const id = state.openCase?.id;
+  if (!id || !$("scenario-panel").open) return;
+  const revision = ++scenarioRevision;
+  $("scenario-status").textContent = "Reading source records…";
+  $("scenario-edges").replaceChildren();
+  try {
+    const result = await api(`/api/cases/${id}/scenario`);
+    if (state.openCase?.id !== id || revision !== scenarioRevision) return;
+    const nodes = new Map(result.nodes.map(node => [node.id, node]));
+    const card = node => `<div class="gitem"><button class="btn scenario-record" data-analysis="${node.analysis}" data-row="${node.row}">
+      <b>${escapeHtml(node.kind)}</b> ${escapeHtml(node.detail)}
+      <small>${escapeHtml([node.host, node.time, node.source].filter(Boolean).join(" · "))}</small>
+      </button><div class="gslot"></div></div>`;
+    $("scenario-edges").innerHTML = result.edges.map(edge => `<div class="scenario-edge">
+      ${card(nodes.get(edge.source))}<span>${escapeHtml(edge.reason)} →</span>${card(nodes.get(edge.target))}
+    </div>`).join("");
+    $("scenario-status").textContent = `${result.edges.length} link(s) across ${result.scanned} compatible analyses` +
+      (result.limited ? " · scan limit reached" : "");
+  } catch (error) {
+    if (state.openCase?.id === id) $("scenario-status").textContent = error.message;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  $("scenario-panel").addEventListener("toggle", showScenario);
+  $("scenario-edges").addEventListener("click", event => {
+    const button = event.target.closest(".scenario-record");
+    if (button) graphOpenLine(Number(button.dataset.analysis), Number(button.dataset.row), button);
+  });
+  $("incident-open").addEventListener("click", async () => {
+    const id = state.openCase?.id;
+    if (!id) return;
+    try {
+      const result = await api(`/api/cases/${id}/incident-context`);
+      if (state.openCase?.id !== id) return;
+      const form = $("incident-form");
+      form.dataset.case = id;
+      $("incident-fields").replaceChildren(...Object.entries(result.fields).map(([key, label]) => {
+        const row = document.createElement("label");
+        row.className = "row";
+        const name = document.createElement("span");
+        name.textContent = label;
+        const input = document.createElement(["discovered", "severity", "incident_type"].includes(key) ? "input" : "textarea");
+        input.name = key;
+        input.maxLength = key === "discovered" ? 40 : 4000;
+        if (input.tagName === "TEXTAREA") input.rows = 2;
+        input.value = result.values[key] || "";
+        row.append(name, input);
+        return row;
+      }));
+      $("incident-modal").classList.add("show");
+    } catch (error) { say(error.message, true); }
+  });
+  $("incident-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const id = event.target.dataset.case;
+    if (state.openCase?.id !== id) return;
+    try {
+      await apiPut(`/api/cases/${id}/incident-context`, Object.fromEntries(new FormData(event.target)));
+      if (state.openCase?.id !== id) return;
+      closeModals();
+      window.location.assign(url(`/api/cases/${id}/incident-context.docx`));
+    } catch (error) { say(error.message, true); }
   });
 });

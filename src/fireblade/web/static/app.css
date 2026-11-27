@@ -628,3 +628,10 @@ tr.gtotal td{background:var(--header);border-top:2px solid var(--border-strong)}
 .observation-sequence { margin-block: .5rem; }
 .observation-sequence > div { display: flex; align-items: center; gap: .4rem; overflow: auto; }
 .observation-sequence button { display: grid; text-align: left; max-width: 20rem; white-space: normal; }
+
+#incident-form { display: flex; flex-direction: column; min-height: 0; }
+#incident-fields .row { display: grid; grid-template-columns: minmax(9rem, 1fr) 2fr; align-items: start; }
+.scenario-edge { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; margin-block: .4rem; }
+.scenario-record { text-align: left; white-space: normal; }
+.scenario-record small { display: block; }
+.empty-grid-actions { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; margin-top: .6rem; }

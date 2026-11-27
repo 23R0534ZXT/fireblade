@@ -1,3 +1,19 @@
+# Kagarasu 0.10.1 — investigation workflow and disk explorer
+
+- Build a case chronology from tags and bookmarks, record false positives and export a
+  six-sheet tracking workbook or editable investigation report.
+- Draft an incident intake form and produce an editable Word certificate alongside the
+  verified HTML case-erasure record. Mount private Office templates to reuse their styles.
+- Hunt or declare an IP from a source cell. Review its origin and correlate compatible
+  process creation, network and file creation records with links to the source rows.
+- Navigate split E01 or raw disk images read-only, preview files and collect SHA-256-verified
+  copies. Browse and collect the accessible NTFS `$Extend/$UsnJrnl:$J` stream.
+- Track actions across cases for the same client and optionally request draft rewriting
+  from a privately configured inference service.
+
+The correlation view uses explicit process identity on the same host and exposes a scan
+limit. The NTFS qualification verifies extraction of a synthetic file-creation journal record and preserves the original image. See [the qualification report](../validation/reports/20261127-host-0101/README.md).
+
 # Kagarasu 0.10.0 — reliable combined grids and a qualified Host workspace
 
 This Host release brings together the continued GUI review and qualification against a real

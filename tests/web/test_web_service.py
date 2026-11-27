@@ -489,3 +489,129 @@ def test_tracking_keeps_the_original_row_across_layouts(tmp_path):
         found = client.get(base + "/tracking/row", params={"analysis": analysis["index"], "row": 1})
         assert found.status_code == 200, found.text
         assert found.json()["event"]["id"] == saved["id"]
+
+
+def test_incident_context_and_verified_destruction_word_documents(tmp_path):
+    from io import BytesIO
+    from pathlib import Path
+
+    from docx import Document
+    from fastapi.testclient import TestClient
+
+    from fireblade.web.server import create_app
+
+    root = tmp_path / "cases"
+    identifier = InvestigationLibrary(root).create("Synthetic intake", "", "windows")["id"]
+    base = f"/api/cases/{identifier}"
+    with TestClient(create_app(root)) as client:
+        updated = client.put(
+            base + "/incident-context",
+            json={
+                "discovered": "2026-11-27T13:00:00Z",
+                "description": "Synthetic report narrative.",
+            },
+        )
+        assert updated.status_code == 200, updated.text
+        invalid = client.put(base + "/incident-context", json={"discovered": "yesterday"})
+        assert invalid.status_code == 400
+        exported = client.get(base + "/incident-context.docx")
+        assert exported.status_code == 200, exported.text
+        intake = Document(BytesIO(exported.content))
+        assert any(
+            "Synthetic report narrative." in cell.text
+            for table in intake.tables
+            for row in table.rows
+            for cell in row.cells
+        )
+
+        erased = client.post(
+            base + "/destroy",
+            json={
+                "confirmation": "Synthetic intake",
+                "operator": "Examiner",
+                "witness": "Witness",
+                "certificate_folder": str(tmp_path / "certificates"),
+            },
+        )
+        assert erased.status_code == 200, erased.text
+        payload = erased.json()
+        assert Path(payload["certificate"]).exists()
+        word = Document(payload["certificate_word"])
+        assert any(
+            "Vérifié et supprimé" == cell.text
+            for table in word.tables
+            for row in table.rows
+            for cell in row.cells
+        )
+
+
+def test_scenario_links_exact_process_identity_between_artifacts(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from fireblade.web.server import create_app
+
+    root = tmp_path / "cases"
+    identifier = InvestigationLibrary(root).create("Synthetic correlation", "", "windows")["id"]
+    files = tmp_path / "evidence"
+    files.mkdir()
+    (files / "sysmon-process.csv").write_text(
+        "Timestamp,Host,Provider,EventID,ProcessGuid,Image\n"
+        "2026-11-27T13:00:00Z,PC1,Microsoft-Windows-Sysmon,1,{a123},program.exe\n"
+        "2026-11-27T13:00:00Z,PC2,Microsoft-Windows-Sysmon,1,{a123},elsewhere.exe\n"
+    )
+    (files / "edr-network.csv").write_text(
+        "Timestamp,DeviceName,ActionType,ProcessGuid,RemoteIP\n"
+        "2026-11-27T13:01:00Z,PC1,ConnectionSuccess,A123,192.0.2.4\n"
+    )
+    (files / "edr-file.csv").write_text(
+        "Timestamp,DeviceName,ActionType,ProcessGuid,FileName\n"
+        "2026-11-27T13:02:00Z,PC1,FileCreated,A123,note.txt\n"
+        "2026-11-27T12:55:00Z,PC1,FileCreated,A123,older.txt\n"
+    )
+    (files / "unrelated-namespace.csv").write_text(
+        "Timestamp,DeviceName,ActionType,InitiatingProcessUniqueId,FileName\n"
+        "2026-11-27T13:02:00Z,PC1,FileCreated,A123,different-id-space.txt\n"
+    )
+    base = f"/api/cases/{identifier}"
+    with TestClient(create_app(root)) as client:
+        imported = client.post(
+            base + "/import", json={"source": str(files), "organization": "files"}
+        )
+        assert imported.status_code == 200, imported.text
+        response = client.get(base + "/scenario")
+        assert response.status_code == 200, response.text
+        result = response.json()
+        nodes = {node["id"]: node for node in result["nodes"]}
+        assert result["scanned"] == 4
+        assert len(result["edges"]) == 2
+        assert {nodes[e["target"]]["detail"] for e in result["edges"]} == {"192.0.2.4", "note.txt"}
+        assert {nodes[e["source"]]["host"] for e in result["edges"]} == {"PC1"}
+
+
+def test_rewrite_rejects_a_proposal_that_changes_identifiers(monkeypatch):
+    import httpx
+
+    from fireblade.web import tracking
+
+    service = "http://local-model/v1/chat/completions"
+    monkeypatch.setenv("FIREBLADE_REWRITE_URL", service)
+    monkeypatch.setenv("FIREBLADE_REWRITE_MODEL", "example")
+    draft = "A log showed a connection from 192.0.2.17 to SRV-01 at 14:05 UTC."
+    suggestion = "The log recorded a connection from 192.0.2.17 to SRV-01 at 14:05 UTC."
+    output = [suggestion, suggestion.replace("SRV-01", "SRV-02"), draft]
+
+    def infer(url, *, json, **kwargs):
+        assert url == service
+        assert json["messages"][-1]["content"] == draft
+        return httpx.Response(
+            200,
+            request=httpx.Request("POST", service),
+            json={"choices": [{"message": {"content": output.pop(0)}}]},
+        )
+
+    monkeypatch.setattr(httpx, "post", infer)
+    assert tracking.rewrite(draft) == suggestion
+    with pytest.raises(ValueError, match="changed protected"):
+        tracking.rewrite(draft)
+    with pytest.raises(ValueError, match="original draft"):
+        tracking.rewrite(draft)

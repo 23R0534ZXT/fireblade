@@ -470,15 +470,20 @@ class Agency:
         data = InvestigationLibrary(library_root).read(identifier)
         if (payload.get("confirmation") or "").strip() != (data.get("name") or ""):
             raise ValueError("The case name does not match; nothing was destroyed.")
+        from fireblade.web.incident_documents import destruction_writer
+
+        certificate = self.certificates / (
+            datetime.now(UTC).strftime("pv-%Y%m%d-%H%M%S-") + identifier[:8] + ".html"
+        )
+        reported = self.host_certificates / certificate.name
+        folder = self.volumes.case_folder(identifier)
+        write_word = destruction_writer(certificate, reported, folder)
         case = self.container(identifier)
         if case.exists():
             case.stop()
             case.remove()
         with self.lock:
             self.opened.pop(identifier, None)
-        certificate = self.certificates / (
-            datetime.now(UTC).strftime("pv-%Y%m%d-%H%M%S-") + identifier[:8] + ".html"
-        )
         extras = [str(path) for path in outside_entries(library_root, identifier)]
         record = destroy_case(
             self.volumes.case_folder(identifier),
@@ -491,6 +496,7 @@ class Agency:
             case_id=identifier,
             extras=extras,
             attachments=payload.get("attachments") or [],
+            on_certificate=write_word,
         )
         try:
             english.rewrite(certificate)
@@ -498,7 +504,6 @@ class Agency:
             pass
         if record.get("folder_removed"):
             self.volumes.remove(identifier)
-        reported = self.host_certificates / certificate.name
         return {
             "id": record.get("id"),
             "method": record.get("method"),
@@ -506,6 +511,12 @@ class Agency:
             "outside": int(record.get("outside") or 0),
             "residue": extras,
             "certificate": str(reported),
+            "status": record.get("status"),
+            "verified_files": sum(
+                bool(item.get("verified") and item.get("deleted")) for item in record["files"]
+            ),
+            "certificate_word": record.get("certificate_word"),
+            "certificate_word_error": record.get("certificate_word_error"),
             "bytes": sum(int(item.get("size") or 0) for item in (record.get("files") or [])),
         }
 

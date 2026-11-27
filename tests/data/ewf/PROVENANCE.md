@@ -21,3 +21,14 @@ authentication log at `/VAR/LOG/AUTH.LOG`.
 Generated with libewf's `ewfacquirestream -q -c best -t synthetic-fat < fat.img`.
 SHA-256 of the E01 file
 `32c533946f392a0e0a531be970c445b5f518e7a3e78230f50a4467d7bb26ddad`.
+
+## Synthetic NTFS journal stream
+
+`synthetic-ntfs.E01` wraps a 48 MiB volume formatted with `mkntfs -F -Q`.
+`ntfscp` placed a separate synthetic placeholder in `/$Extend/$UsnJrnl` and a
+96-byte USN_RECORD_V2 in its named `$J` stream. The record is a file creation
+(`0x100`) for `synthetic-file.txt`, with file reference 42 and parent 5. The
+image was encoded with `ewfacquirestream -q -c best`.
+
+SHA-256 of the E01 file
+`b20744ec9561e2a5b40541dd395ba6bdd86b0a60bb4715d95725acb0871888fa`.

@@ -63,3 +63,30 @@ def test_a_split_e01_set_is_collected_in_order_and_a_hole_is_refused(tmp_path):
     with pytest.raises(ValueError, match="incomplet"):
         image_segments(tmp_path / "poste.E01")
     assert image_segments(tmp_path / "autre.raw")[0].name == "autre.raw"
+
+
+def test_ntfs_extend_journal_stream_is_browsed_and_extracted(tmp_path):
+    from dissect.ntfs.usnjrnl import UsnJrnl
+
+    from fireblade.core.disk_browser import browse, image_entry, open_image
+
+    image = FIXTURE.with_name("synthetic-ntfs.E01")
+    original = hashlib.sha256(image.read_bytes()).hexdigest()
+    journal = "$Extend/$UsnJrnl:$J"
+    with open_image(image) as target:
+        with image_entry(target, 1, "/" + journal).open("rb") as stream:
+            expected = stream.read()
+    entries = browse(image, 1, "/$Extend")["entries"]
+    assert any(item["name"] == "$UsnJrnl:$J" and item["size"] == len(expected) for item in entries)
+    collection = DiskCollection(
+        image, tmp_path / "case", ToolPack(tmp_path / "tools"), source_kind="image"
+    )
+    report = collection.parse()
+    extracted = next(item for item in report["disk"]["artifacts"] if item["relative"] == journal)
+    assert Path(extracted["extracted"]).read_bytes() == expected
+    with Path(extracted["extracted"]).open("rb") as stream:
+        [record] = UsnJrnl(stream).records()
+        assert record.filename == "synthetic-file.txt"
+        assert int(record.record.Reason) == 0x100
+    assert extracted["sha256"] == hashlib.sha256(expected).hexdigest()
+    assert hashlib.sha256(image.read_bytes()).hexdigest() == original

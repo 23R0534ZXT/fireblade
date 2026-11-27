@@ -614,8 +614,14 @@ function openFilterOperators(button) {
       if (operator === "empty" || operator === "not_empty" || value) {
         state.filters.push({ column, operator, value: operator === "empty" || operator === "not_empty" ? "" : value });
       }
-      await loadRows(true);
-      say(`Column filter: ${(FILTER_OPERATORS.find(([code]) => code === operator) || [])[2]}`);
+      const label = (FILTER_OPERATORS.find(([code]) => code === operator) || [])[2];
+      if (current || operator === "empty" || operator === "not_empty") {
+        await loadRows(true);
+      } else {
+        button.textContent = FILTER_GLYPHS[operator];
+        button.title = `Comparison: ${label}`;
+      }
+      say(`Column filter: ${label}`);
     });
   });
 }
@@ -1352,10 +1358,15 @@ async function runDestroy() {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || response.statusText);
     state.openCase = null;
+    resetWorkspace();
     await loadCases();
     showTab("cases");
     const outside = payload.outside ? `, ${payload.outside} outside the folder` : "";
-    say(`Case erased: ${payload.files} file(s)${outside}, certificate ${payload.certificate}`);
+    const word = payload.certificate_word ? ` · Word: ${payload.certificate_word}` : "";
+    const error = payload.certificate_word_error ? ` · Word export failed: ${payload.certificate_word_error}` : "";
+    const partial = payload.status === "partial";
+    const outcome = partial ? "Erasure incomplete" : "Case erased";
+    say(`${outcome}: ${payload.verified_files ?? payload.files}/${payload.files} file(s) verified and removed${outside}, certificate ${payload.certificate}${word}${error}`, partial || Boolean(error));
   } catch (error) {
     say(error.message, true);
   }
@@ -1518,8 +1529,10 @@ async function openCase(identifier, analysisIndex = null) {
     renderTree();
     renderCases();
     if (!detail.analyses.length) {
-      clearGrid("This case holds no analysis yet. Import a file to begin.");
-      say("Case opened: no analysis inside", true);
+      clearGrid("This case has no analyses yet.", [
+        ["Import evidence…", "import-file"], ["Explore disk image…", "disk-explorer"],
+      ]);
+      say("Case opened");
       return true;
     }
     return await loadRows(true);
@@ -3789,10 +3802,13 @@ function renderGraphEvidence() {
 async function graphOpenLine(analysis, row, button) {
   const target = button && button.closest(".gitem") ? button.closest(".gitem").querySelector(".gslot") : null;
   if (!target || !state.openCase) return;
-  document.querySelectorAll("#graph-evidence .gslot").forEach((slot) => { if (slot !== target) slot.innerHTML = ""; });
+  const caseId = state.openCase.id;
+  const panel = target.closest("#graph-evidence, #scenario-edges");
+  panel.querySelectorAll(".gslot").forEach((slot) => { if (slot !== target) slot.innerHTML = ""; });
   target.innerHTML = '<div class="gm">Reading the row…</div>';
   try {
-    const payload = await api(`/api/cases/${state.openCase.id}/timeline/row/${analysis}/${row}`);
+    const payload = await api(`/api/cases/${caseId}/timeline/row/${analysis}/${row}`);
+    if (state.openCase?.id !== caseId || !target.isConnected) return;
     const lines = payload.columns.map((name, position) => [name, payload.values[position]])
       .filter(([, value]) => value !== null && value !== "");
     const hidden = payload.columns.length - lines.length;
@@ -6375,12 +6391,26 @@ async function refreshBookmarksView() {
   }
 }
 
-function clearGrid(message) {
+function clearGrid(message, actions = []) {
   $("head").innerHTML = "";
   $("body").innerHTML = "";
   $("cols").innerHTML = "";
   $("grid-empty").hidden = false;
-  $("grid-empty").textContent = message;
+  const empty = $("grid-empty");
+  empty.textContent = message;
+  if (actions.length) {
+    const controls = document.createElement("div");
+    controls.className = "empty-grid-actions";
+    for (const [label, action] of actions) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "btn";
+      button.textContent = label;
+      button.addEventListener("click", () => act(action, button));
+      controls.append(button);
+    }
+    empty.append(controls);
+  }
   $("pageinfo").textContent = "";
 }
 
@@ -8502,6 +8532,7 @@ async function act(name, node) {
     case "track-ip": await useGridIP(true); break;
     case "hunt-ip": await useGridIP(false); break;
     case "disk-open": openDiskDialog(); break;
+    case "disk-explorer": await openDiskExplorer(); break;
     case "profile-apply": await applyDetectedProfile(); break;
     case "case-history": await openCaseHistory(); break;
     case "rule-add": await addRule(); break;
@@ -8602,7 +8633,7 @@ async function boot() {
   if (!state.openCase) {
     clearGrid(state.cases.length
       ? "Open a case from the Cases tab."
-      : "The library is empty. A case written by the Windows edition opens here as soon as its folder is in the library.");
+      : "Create or import a case to start an investigation.");
     $("tree").innerHTML = '<div class="empty">No case open.</div>';
   }
   checkForUpdate();

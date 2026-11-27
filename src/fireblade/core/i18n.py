@@ -21,6 +21,13 @@ from functools import lru_cache
 PLACEHOLDER = "{}"
 
 EN = {
+    "Date de découverte": "Discovery date",
+    "Date et heure": "Date and time",
+    "Description, objectifs et périmètre": "Description, objectives and scope",
+    "Récapitulatif et contacts": "Summary and contacts",
+    "Sévérité": "Severity",
+    "Type d’incident": "Incident type",
+    "Éléments à récupérer": "Evidence to collect",
     "<h3>{}</h3><p>Non renseigné.</p>": "<h3>{}</h3><p>No information recorded.</p>",
     "Annexe B · Éléments compromis": "Appendix B · Compromised assets",
     "Annexe C · Analyses détaillées par machine": "Appendix C · Detailed analyses by machine",

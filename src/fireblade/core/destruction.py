@@ -260,9 +260,10 @@ def destroy(
                     _tick(progress, base + entry["size"] * len(scheme), span, entry["path"]),
                 )
                 item["verified"], item["sha256_after"] = verified, digest
-                stream.truncate(0)
-                stream.flush()
-                os.fsync(stream.fileno())
+                if verified:
+                    stream.truncate(0)
+                    stream.flush()
+                    os.fsync(stream.fileno())
             base += entry["size"] * per_byte
             if progress:
                 progress(base, span, entry["path"])

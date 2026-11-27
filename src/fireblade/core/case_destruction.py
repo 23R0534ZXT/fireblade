@@ -164,6 +164,7 @@ def destroy_case(
     case_id="",
     attachments=(),
     extras=(),
+    on_certificate=None,
 ):
     """Overwrite every file of a case, remove the folders, and write the certificate outside.
 
@@ -241,6 +242,8 @@ def destroy_case(
         for item in extra_record["files"]:
             item["outside"] = True
         outside = extra_record["files"]
+        if extra_record["status"] != "complete":
+            record["status"] = "partial"
         # Only a folder this case owns disappears; exports/ and archives/ belong
         # to the library and stay once they are empty.
         for value in extras:
@@ -268,4 +271,6 @@ def destroy_case(
     )
     write_certificate(certificate_path, document, pdf=certificate_path.suffix.casefold() == ".pdf")
     record["certificate"] = str(certificate_path)
+    if on_certificate is not None:
+        on_certificate(record, images)
     return record

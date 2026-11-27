@@ -26,6 +26,7 @@
       <div class="item" data-act="import-file">Import a file…<span class="key">Ctrl+O</span></div>
       <div class="item" data-act="import-folder">Parse a folder…<span class="key">Ctrl+Shift+I</span></div>
       <div class="item" data-act="disk-open">Analyse a disk…</div>
+      <div class="item" data-act="disk-explorer">Explore disk image…</div>
       <div class="sep"></div>
       <div class="item" data-act="new-case">New case…</div>
       <div class="item" data-act="case-save">Save case<span class="key">Ctrl+S</span></div>
@@ -413,6 +414,7 @@
             <label>Tags <select id="tracking-tags" multiple size="3" aria-label="Filter by tags"></select></label>
             <label><input type="checkbox" id="tracking-fp"> False positives</label>
             <label>Correlation window <input type="number" id="tracking-minutes" min="1" max="1440" value="30"> min</label>
+            <button class="btn" id="incident-open">Incident intake…</button>
             <button class="btn" id="tracking-xlsx">Follow-up XLSX</button>
             <button class="btn" id="tracking-docx">Investigation report (Word)</button>
           </div>
@@ -420,6 +422,9 @@
             <table><thead><tr><th>Time</th><th>Observation</th><th>Machine / source</th><th>Tags</th><th>Assessment</th></tr></thead>
             <tbody id="tracking-rows"></tbody></table>
           </div></div>
+          <details id="scenario-panel"><summary>Correlate process, network and file records</summary>
+            <p id="scenario-status" role="status"></p><div id="scenario-edges"></div>
+          </details>
           <details open><summary>Connection graph</summary><div id="tracking-network"></div></details>
           <details><summary>Observed sequence by machine</summary><div id="tracking-sequences"></div></details>
         </div>
@@ -661,8 +666,7 @@
 
       <div id="cases-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="panel-title">
-          <h2>Cases — investigation folders</h2>
-          <p>Find your investigations and their session. Only the case you open loads its analyses.</p>
+          <h2>Cases</h2>
         </div>
         <div class="filterbar">
           <button class="btn" data-act="new-case">New case…</button>
@@ -874,6 +878,19 @@
   </div>
 </div>
 
+<div class="modal" id="incident-modal">
+  <div class="dialog" style="--dialog-width:720px">
+    <h3>Incident intake</h3>
+    <form id="incident-form">
+      <div class="body" id="incident-fields"></div>
+      <div class="foot">
+        <button class="btn" type="submit">Save and download Word</button>
+        <button class="btn" type="button" data-act="settings-close">Close</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="modal" id="tracking-modal">
   <div class="dialog" style="--dialog-width:660px">
     <h3>Tag observation</h3>
@@ -885,6 +902,12 @@
         <div class="row"><label for="track-tags">Tags (comma separated)</label><input name="tags" id="track-tags"></div>
         <div class="row"><label for="track-description">Description</label><textarea name="description" id="track-description" rows="3" maxlength="4000"></textarea>
           <button class="btn" type="button" id="track-rewrite" hidden>Suggest rewrite</button></div>
+        <div id="track-suggestion-row" hidden>
+          <div class="row"><label for="track-suggestion">Suggested description</label>
+            <textarea id="track-suggestion" readonly rows="3"></textarea>
+            <button class="btn" type="button" id="track-use-suggestion">Use suggestion</button>
+          </div>
+        </div>
         <div class="row"><label for="track-level">Interest</label><select name="level" id="track-level">
           <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
           <label for="track-confidence">Confidence</label><select name="confidence" id="track-confidence">

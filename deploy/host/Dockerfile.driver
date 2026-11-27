@@ -36,7 +36,7 @@ COPY src/fireblade/web/__init__.py ./src/fireblade/web/
 COPY src/fireblade/web/agency.py ./src/fireblade/web/
 # What agency.py imports from the web package: the release check behind the update band, and the
 # door that words the destruction certificate in English. Missing, the driver does not start.
-COPY src/fireblade/web/updates.py src/fireblade/web/english.py ./src/fireblade/web/
+COPY src/fireblade/web/updates.py src/fireblade/web/english.py src/fireblade/web/incident_documents.py ./src/fireblade/web/
 # The client's stylesheet: the driver's page wears the same palette, not a bare table.
 COPY src/fireblade/web/static ./src/fireblade/web/static
 

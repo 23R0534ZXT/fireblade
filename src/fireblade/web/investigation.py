@@ -15,7 +15,7 @@ from fireblade.core import case_workspace as ws
 from fireblade.core.disk import image_segments
 from fireblade.core.disk_browser import browse, entry_info, image_entry, open_image
 from fireblade.core.timeline import guess_time_columns
-from fireblade.web import tracking
+from fireblade.web import incident_documents, scenario, tracking
 from fireblade.web.service import ServiceError, _case_operation
 
 
@@ -40,6 +40,45 @@ def register(app, library):
         signature_ = signature(fn)
         call.__signature__ = signature_.replace(parameters=list(signature_.parameters.values())[1:])
         return call
+
+    @app.get(base + "/incident-context")
+    @operation
+    def get_incident_context(library, identifier: str):
+        data = ws.load(library.library.folder(identifier))
+        return {"fields": incident_documents.FIELDS, "values": data.get("incident_context", {})}
+
+    @app.put(base + "/incident-context")
+    @operation
+    def save_incident_context(library, identifier: str, payload: dict):
+        folder = library.library.folder(identifier)
+        if set(payload) - set(incident_documents.FIELDS):
+            raise ValueError("Unknown incident context field.")
+        context = {
+            key: ws._text(value, incident_documents.FIELDS[key], 4000, allow_empty=True)
+            for key, value in payload.items()
+        }
+        if context.get("discovered"):
+            ws._date(context["discovered"], "Incident discovery")
+        ws.mutate(folder, lambda data: data.setdefault("incident_context", {}).update(context))
+        return get_incident_context(identifier)
+
+    @app.get(base + "/incident-context.docx")
+    @operation
+    def export_incident_context(library, identifier: str):
+        data = ws.load(library.library.folder(identifier))
+        content = incident_documents.intake(library.library.read(identifier)["name"], data)
+        return Response(
+            content,
+            media_type=incident_documents.DOCX,
+            headers={
+                "Content-Disposition": f'attachment; filename="incident-{identifier[:8]}.docx"',
+            },
+        )
+
+    @app.get(base + "/scenario")
+    @operation
+    def get_scenario(library, identifier: str):
+        return scenario.correlate(library, identifier)
 
     @app.get(base + "/tracking")
     @operation

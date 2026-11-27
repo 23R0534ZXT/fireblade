@@ -83,6 +83,8 @@ def container_serving(root, image):
             "serve",
             "--root",
             str(root),
+            "--plugins",
+            str(root.parent / "plugins"),
             "--host",
             "0.0.0.0",
             "--port",

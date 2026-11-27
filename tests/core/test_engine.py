@@ -36,6 +36,28 @@ def test_source_preserved(case):
     assert case.info["rows"] == 5
 
 
+def test_point_details_of_a_wide_source_fit_a_small_budget(tmp_path):
+    source = tmp_path / "wide.csv"
+    with source.open("w", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow([f"Field{i}" for i in range(3000)])
+        writer.writerow([f"Value{i}" for i in range(3000)])
+    case = Case(tmp_path / "wide.timeline", memory_mb=512, threads=1)
+    try:
+        case.import_csv(source)
+    finally:
+        case.close()
+    case = Case(tmp_path / "wide.timeline", memory_mb=64, threads=1, read_only=True)
+    try:
+        with pytest.raises(duckdb.OutOfMemoryException):
+            case.db.execute("SELECT * FROM events WHERE __row_id=1").fetchall()
+        rows = case.rows_by_ids([1, 999])
+        assert set(rows) == {1}
+        assert rows[1] == (1, *(f"Value{i}" for i in range(3000)))
+    finally:
+        case.close()
+
+
 def test_filter_and_nested_groups(case):
     v = View(groups=[1, 2])
     assert case.page(v) == [("MFT", 3), ("EVTX", 2)]

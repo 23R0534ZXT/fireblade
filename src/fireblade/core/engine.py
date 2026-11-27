@@ -1125,7 +1125,13 @@ class Case:
         ]
         if not ids:
             return []
+        rows = self._rows_columns(ids)
+        return [tuple(rows[row_id]) for row_id in ids]
+
+    def _rows_columns(self, ids):
+        """Point reads of very wide ordinary analyses, within the engine budget."""
         rows = {row_id: [row_id] + [None] * len(self.headers) for row_id in ids}
+        found = set()
         placeholders = ",".join("?" for _ in ids)
         for start in range(0, len(self.headers), 32):
             self.check_cancelled()
@@ -1134,8 +1140,9 @@ class Case:
             for record in self.db.execute(
                 f"SELECT __row_id,{columns} FROM events WHERE __row_id IN ({placeholders})", ids
             ).fetchall():
+                found.add(record[0])
                 rows[record[0]][start + 1 : end + 1] = record[1:]
-        return [tuple(rows[row_id]) for row_id in ids]
+        return {row_id: rows[row_id] for row_id in found}
 
     def outline_page(self, view, offset=0, limit=None, progress=lambda _: None):
         from fireblade.core.outline import outline_page
@@ -1168,7 +1175,12 @@ class Case:
             except duckdb.OutOfMemoryException:
                 pass
         query = "SELECT * FROM events WHERE __row_id IN (" + ",".join("?" for _ in ids) + ")"
-        rows = self.db.execute(query, ids).fetchall()
+        try:
+            rows = self.db.execute(query, ids).fetchall()
+        except duckdb.OutOfMemoryException:
+            if self.sparse:
+                raise
+            return {row_id: tuple(row) for row_id, row in self._rows_columns(ids).items()}
         if self.sparse:
             from fireblade.core.sparse_union import expand_record
 

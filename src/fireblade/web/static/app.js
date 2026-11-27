@@ -1469,7 +1469,10 @@ function renderCaseSelection() {
   $("restore-case").hidden = !(target && target.storage_archive);
 }
 
+let caseOpenRevision = 0;
+
 async function openCase(identifier, analysisIndex = null) {
+  const revision = ++caseOpenRevision;
   try {
     const kept = state.cases.find((item) => item.id === identifier);
     if (kept && kept.storage_archive) {
@@ -1478,7 +1481,12 @@ async function openCase(identifier, analysisIndex = null) {
       say("This case is kept in an archive: press Restore… to bring it back", true);
       return;
     }
-    const detail = await api(`/api/cases/${identifier}`);
+    const [detail, closed] = await Promise.all([
+      api(`/api/cases/${identifier}`),
+      api(`/api/cases/${identifier}/closed`).catch(() => ({})),
+    ]);
+    if (revision !== caseOpenRevision) return false;
+    detail.closed = closed.closed || [];
     const changedCase = state.openCase?.id !== detail.id;
     state.openCase = detail;
     if (changedCase) {
@@ -1488,13 +1496,6 @@ async function openCase(identifier, analysisIndex = null) {
       resetWorkspace();
       resetIoc();
       resetImports();
-    }
-    // The analyses closed and kept: the tree lists them, and they open again.
-    try {
-      const closed = await api(`/api/cases/${identifier}/closed`);
-      state.openCase.closed = closed.closed || [];
-    } catch (_) {
-      state.openCase.closed = [];
     }
     const analysis = detail.analyses.find((item) => item.index === analysisIndex) || detail.analyses[0];
     state.analysis = analysis?.index ?? 0;
@@ -1516,11 +1517,12 @@ async function openCase(identifier, analysisIndex = null) {
     }
     return await loadRows(true);
   } catch (error) {
-    say(error.message, true);
+    if (revision === caseOpenRevision) say(error.message, true);
   }
 }
 
 function closeCase() {
+  caseOpenRevision += 1;
   state.openCase = null;
   syncArtifacts();
   resetTimeline();

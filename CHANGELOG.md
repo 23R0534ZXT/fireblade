@@ -22,6 +22,11 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
   and the selected scope, and late progress responses stay with their original task.
 - The container ships PDF text extraction, the per-case driver forwards grid query parameters,
   and key controls stay accessible in narrower browser windows.
+- Host menus and context menus stay within the viewport. Compact workspaces put Artifacts in a
+  drawer, keep controls reachable at high interface zoom, and resize relocated panels from their
+  actual dividers.
+- Opening another case clears the previous case’s IOC and import results. Late case and import
+  responses can no longer replace the current selection.
 
 ## [0.9.4] — 2026-11-26
 

@@ -363,3 +363,31 @@ def test_the_exact_value_and_bookmarks_options_are_offered_and_the_undated_rows_
     page.wait_for_function(
         "document.getElementById('timeline-info').innerText.includes('/ 0 ')", timeout=30000
     )
+
+
+def test_chart_wheel_zooms_once_after_repeated_refreshes(timeline):
+    page = timeline
+    chart = page.locator("#timeline-hist")
+    chart.hover()
+    page.mouse.wheel(0, -300)
+    page.wait_for_function("timelineState.window !== null")
+    first_span = page.evaluate("timelineState.window[1] - timelineState.window[0]")
+    page.click('[data-act="tl-fit"]')
+    # Chart refreshes must replace their input handlers, not accumulate them.
+    page.click('[data-act="tl-zoom-in"]')
+    page.click('[data-act="tl-fit"]')
+    chart.hover()
+    page.mouse.wheel(0, -300)
+    page.wait_for_function("timelineState.window !== null")
+    assert page.evaluate("timelineState.window[1] - timelineState.window[0]") == first_span
+
+
+def test_timeline_selection_survives_zoom_and_clears_when_filtered_out(timeline):
+    page = timeline
+    page.locator("#timeline-rows tr").first.click()
+    page.click('[data-act="tl-zoom-in"]')
+    assert page.locator("#timeline-rows tr.sel").count() == 1
+    page.check("#timeline-bookmarks")
+    page.wait_for_function("timelineState.payload.count === 0")
+    assert page.evaluate("timelineState.row") is None
+    assert page.locator('[data-act="timeline-open-row"]').is_disabled()

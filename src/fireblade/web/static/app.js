@@ -5689,9 +5689,16 @@ function renderTimeline(payload) {
     timelineDrag(box, hist);
   }
 
+  // Keep the visible selection aligned with the source-row command across redraws.
+  const selected = payload.rows.some((row) =>
+    row[0] === timelineState.source && row[1] === timelineState.row);
+  if (!selected) { timelineState.row = null; timelineState.source = null; }
+  $("timeline-info-extra").textContent = selected
+    ? `row ${timelineState.row} of ${timelineState.source}` : "";
+  document.querySelector('[data-act="timeline-open-row"]').disabled = !selected;
   $("timeline-rows").innerHTML = payload.rows.map((row) => {
     const [source, rowId, timeNs, sourceTime, summary, note, bookmarked] = row;
-    return `<tr data-tl-row="${rowId}" data-tl-source="${source}" title="Open the source line">
+    return `<tr class="${source === timelineState.source && rowId === timelineState.row ? "sel" : ""}" data-tl-row="${rowId}" data-tl-source="${source}" title="Open the source line">
       <td>${timeNs === null ? "(undated)" : escapeHtml(utcLabel(timeNs))}</td>
       <td>${payload.sources[source] ? escapeHtml(payload.sources[source].name) : source}</td>
       <td class="rowid">${escapeHtml(String(rowId))}</td>
@@ -5706,6 +5713,7 @@ function renderTimeline(payload) {
       node.classList.add("sel");
       timelineState.row = Number(node.dataset.tlRow);
       timelineState.source = Number(node.dataset.tlSource);
+      document.querySelector('[data-act="timeline-open-row"]').disabled = false;
       $("timeline-info-extra").textContent =
         `row ${node.dataset.tlRow} of ${node.dataset.tlSource}`;
     });
@@ -5997,11 +6005,11 @@ function timelineDrag(box, hist) {
     loadTimeline(true);
   };
   box.ondblclick = () => timelineFit();
-  box.addEventListener("wheel", (event) => {
+  box.onwheel = (event) => {
     if (Math.abs(event.deltaY) < 2) return;
     event.preventDefault();
-    timelineZoom(event.deltaY < 0 ? 0.6 : 1.8, bucketAt(event));
-  }, { passive: false });
+    timelineZoom(event.deltaY < 0 ? 0.6 : 1.8, timelineRange(hist).start + bucketAt(event));
+  };
 }
 
 /* ---------- artifacts tree ---------- */

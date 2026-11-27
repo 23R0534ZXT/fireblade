@@ -135,24 +135,27 @@
 
   /* ---- splitters ----------------------------------------------------------------------- */
 
-  function splitter(kind, before, after, apply, read, limits) {
+  function splitter(kind, panel, apply, read, limits) {
     var bar = document.createElement("div");
     bar.className = "splitter " + kind;
     bar.setAttribute("role", "separator");
     bar.setAttribute("aria-orientation", kind === "vsplit" ? "vertical" : "horizontal");
     bar.title = "Drag to resize · double-click to reset";
-    after.parentNode.insertBefore(bar, after);
+    panel.parentNode.insertBefore(bar, panel);
 
     bar.addEventListener("pointerdown", function (event) {
       if (event.button !== 0) { return; }
-      var start = kind === "vsplit" ? event.clientX : event.clientY;
+      var vertical = kind === "vsplit";
+      var axis = vertical ? "left" : "top";
+      var start = vertical ? event.clientX : event.clientY;
       var origin = read();
+      var direction = panel.getBoundingClientRect()[axis] < bar.getBoundingClientRect()[axis] ? 1 : -1;
       var zoom = parseFloat(window.getComputedStyle(document.querySelector(".app") || document.body).zoom) || 1;
       bar.setPointerCapture(event.pointerId);
       bar.classList.add("drag");
       function move(e) {
-        var delta = ((kind === "vsplit" ? e.clientX : e.clientY) - start) / zoom;
-        apply(clamp(origin + (kind === "vsplit" ? -delta : -delta), limits[0], limits[1]()));
+        var delta = ((vertical ? e.clientX : e.clientY) - start) / zoom;
+        apply(clamp(origin + direction * delta, limits[0], limits[1]()));
       }
       function stop() {
         bar.removeEventListener("pointermove", move);
@@ -179,7 +182,7 @@
         save();
       };
       if (layout.tree) { applyTree(layout.tree); }
-      splitter("vsplit", pane, tree, applyTree, function () { return tree.offsetWidth; },
+      splitter("vsplit", tree, applyTree, function () { return tree.offsetWidth; },
                [120, function () { return Math.max(160, document.body.clientWidth * 0.6); }]);
     }
     var details = document.getElementById("details");
@@ -191,7 +194,7 @@
         save();
       };
       if (layout.details) { applyDetails(layout.details); }
-      splitter("hsplit", grid, details, applyDetails, function () { return details.offsetHeight; },
+      splitter("hsplit", details, applyDetails, function () { return details.offsetHeight; },
                [40, function () { return Math.max(80, document.body.clientHeight * 0.7); }]);
     }
   }

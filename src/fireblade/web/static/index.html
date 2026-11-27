@@ -19,6 +19,8 @@
     <div class="m" data-menu="filters">Fi<span class="mnemonic">l</span>ters</div>
     <div class="m" data-menu="exporter">E<span class="mnemonic">x</span>porter</div>
     <div class="m" data-menu="help"><span class="mnemonic">H</span>elp</div>
+    <button type="button" class="btn" id="artifacts-toggle" data-act="toggle-artifacts"
+      aria-controls="artifacts" aria-expanded="false">Artifacts</button>
 
     <div class="menu" data-for="case">
       <div class="item" data-act="import-file">Import a file…<span class="key">Ctrl+O</span></div>
@@ -176,7 +178,8 @@
     <input type="file" id="package-input" accept=".fireblade" hidden>
     <input type="file" id="session-file" accept=".fireblade-session" hidden>
     <input type="file" id="layout-file" accept=".json" hidden>
-    <div class="casecombo" id="casecombo"><span id="casecombo-label">No case open</span><span class="arrow">▼</span></div>
+    <button type="button" class="casecombo" id="casecombo" data-act="cases-list" aria-label="Open case list"
+      aria-describedby="casecombo-label"><span id="casecombo-label">No case open</span><span class="arrow" aria-hidden="true">›</span></button>
     <div class="tbsep"></div>
     <div class="tb" data-act="refresh-cases">Refresh</div>
     <div class="tb" data-act="close-case">Close case</div>
@@ -197,7 +200,8 @@
 
   <div class="work">
     <div class="artifacts" id="artifacts">
-      <div class="head"><span>Artifacts</span><span class="x">✕</span></div>
+      <div class="head"><span>Artifacts</span><button type="button" class="x" id="artifacts-close"
+        data-act="toggle-artifacts" aria-label="Close artifacts panel">✕</button></div>
       <select class="select" id="tree-mode" title="How the tree groups the analyses">
         <option value="families">Collection → artifact family</option>
         <option value="flat">Analysis list by collection</option>
@@ -514,8 +518,8 @@
 
       <div id="ioc-view" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="panel-title">
-          <h2>Bulk IOC hunt · IPs, domains, URLs and hashes · no network request</h2>
-          <p>Paste a list or import a file. Outside an investigation folder, results are temporary.</p>
+          <h2>IOC hunting</h2>
+          <p>Paste IP addresses, domains, URLs or hashes, or import a list. The search runs locally in the open case.</p>
         </div>
         <div style="padding:0 8px">
           <textarea id="ioc-input" class="ioc-input" spellcheck="false" rows="4"

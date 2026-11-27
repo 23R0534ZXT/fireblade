@@ -550,6 +550,7 @@ async function apiAbortable(path, signal) {
 function say(message, error) {
   const node = $("status");
   node.textContent = message;
+  node.title = message;
   node.classList.toggle("err", Boolean(error));
   // The Messages window is the same log, kept: nothing is reported nowhere.
   rememberMessage(message, error);
@@ -600,9 +601,8 @@ function openFilterOperators(button) {
   box.innerHTML = FILTER_OPERATORS.map(([code, glyph, label]) =>
     `<div class="item" data-fop-choose="${code}"><span class="fglyph">${glyph}</span> ${escapeHtml(label)}</div>`).join("");
   const rect = button.getBoundingClientRect();
-  box.style.left = `${rect.left}px`;
-  box.style.top = `${rect.bottom}px`;
   box.hidden = false;
+  placePopup(box, rect.left, rect.bottom);
   box.querySelectorAll("[data-fop-choose]").forEach((item) => {
     item.addEventListener("click", async () => {
       const operator = item.dataset.fopChoose;
@@ -1486,6 +1486,8 @@ async function openCase(identifier, analysisIndex = null) {
       resetFindings();
       resetGraph();
       resetWorkspace();
+      resetIoc();
+      resetImports();
     }
     // The analyses closed and kept: the tree lists them, and they open again.
     try {
@@ -1520,10 +1522,13 @@ async function openCase(identifier, analysisIndex = null) {
 
 function closeCase() {
   state.openCase = null;
+  syncArtifacts();
   resetTimeline();
   resetFindings();
   resetGraph();
   resetWorkspace();
+  resetIoc();
+  resetImports();
   resetAnalysisQuery();
   state.columns = [];
   state.rows = [];
@@ -4772,15 +4777,25 @@ async function addDerived() {
 
 /* ---------- import history ---------- */
 
-const importState = { collections: [], selected: null, collection: "" };
+const importState = { collections: [], selected: null, collection: "", revision: 0 };
+
+function resetImports() {
+  Object.assign(importState, { collections: [], selected: null, collection: "", revision: importState.revision + 1 });
+  $("imports-status").value = "";
+  $("imports-search").value = "";
+  renderImports();
+}
 
 async function loadImports() {
   if (!state.openCase) return;
+  const { id } = state.openCase;
+  const revision = ++importState.revision;
   try {
     const [collections, files] = await Promise.all([
-      api(`/api/cases/${state.openCase.id}/imports`),
-      api(`/api/cases/${state.openCase.id}/collection-files`),
+      api(`/api/cases/${id}/imports`),
+      api(`/api/cases/${id}/collection-files`),
     ]);
+    if (revision !== importState.revision) return;
     const byCollection = new Map();
     for (const file of files.files || []) {
       if (!byCollection.has(file.collection)) byCollection.set(file.collection, []);
@@ -4795,7 +4810,7 @@ async function loadImports() {
     }
     renderImports();
   } catch (error) {
-    say(error.message, true);
+    if (revision === importState.revision) say(error.message, true);
   }
 }
 
@@ -4842,7 +4857,7 @@ function renderImports() {
   $("imports-summary").textContent =
     `${importState.collections.length} import(s) — ${imported} file(s) read, ${failed} not read`
     + (companions ? `, ${companions} companion file(s) read with their hive` : "");
-  say($("imports-summary").textContent);
+  if ($("imports-view").style.display !== "none") say($("imports-summary").textContent);
 }
 
 /* ---------- global search ---------- */
@@ -5243,7 +5258,16 @@ async function toggleAction(actionId) {
 
 /* ---------- IOC hunting ---------- */
 
-const iocState = { hits: [], summary: "", rejected: [], hunt: null, list: [], count: 0, offset: 0, pageSize: 250, selected: null, payload: null };
+const iocState = { hits: [], summary: "", rejected: [], hunt: null, list: [], count: 0, offset: 0, pageSize: 250, selected: null, payload: null, revision: 0 };
+
+function resetIoc() {
+  Object.assign(iocState, { hits: [], summary: "", rejected: [], hunt: null, list: [], count: 0, offset: 0,
+    pageSize: 250, selected: null, payload: null, revision: iocState.revision + 1 });
+  $("ioc-input").value = "";
+  $("ioc-summary").textContent = "Nothing scanned yet.";
+  $("ioc-history").innerHTML = '<option value="">Saved hunts…</option>';
+  renderIoc();
+}
 
 /* What the grid shows, for the commands that "respect the filter": the page keeps the search,
    the column filters and the advanced filter, so it tells the server which they are. */
@@ -5294,19 +5318,21 @@ function applyHunt(payload) {
 
 async function iocPage(delta, ioc) {
   if (!iocState.hunt || !state.openCase) { say("Hunt first", true); return; }
+  const revision = ++iocState.revision;
   const selected = ioc === undefined ? iocState.selected : ioc;
   const offset = ioc === undefined ? Math.max(0, iocState.offset + delta) : 0;
   const params = new URLSearchParams({ offset: String(offset) });
   if (selected) params.set("ioc", String(selected));
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/hunts/${iocState.hunt}?${params}`);
+    if (revision !== iocState.revision) return;
     iocState.hits = payload.hits || [];
     iocState.count = payload.count;
     iocState.offset = payload.offset;
     iocState.selected = selected || null;
     renderIoc();
   } catch (error) {
-    say(error.message, true);
+    if (revision === iocState.revision) say(error.message, true);
   }
 }
 
@@ -5321,7 +5347,7 @@ async function stopIocHunt() {
 }
 
 function exportHunt(summary) {
-  if (!iocState.hunt) { say("Nothing to export: hunt first", true); return; }
+  if (!state.openCase || !iocState.hunt) { say("Nothing to export: hunt first", true); return; }
   downloadFrom(`/api/cases/${state.openCase.id}/hunts/${iocState.hunt}/export?summary=${summary ? "true" : "false"}`);
   say(summary ? "Hunt summary exported" : "Hunt details exported");
 }
@@ -5330,12 +5356,14 @@ async function runIocScan() {
   if (!state.openCase) { say("Open a case first", true); return; }
   const text = $("ioc-input").value;
   if (!text.trim()) { say("Paste at least one indicator", true); return; }
+  const revision = ++iocState.revision;
   try {
     const payload = await runTask("scan", { text, ...iocOptions() }, "IOC hunting");
-    if (!payload) return;
+    if (!payload || revision !== iocState.revision) return;
     applyHunt(payload);
     loadHuntHistory();
   } catch (error) {
+    if (revision !== iocState.revision) return;
     say(error.message, true);
     $("ioc-summary").textContent = error.message;
   }
@@ -5344,12 +5372,14 @@ async function runIocScan() {
 /* "Import TXT / CSV / TSV": the list is read and put in the box, normalised; the hunt is a separate gesture. */
 async function runIocFile(file) {
   if (!state.openCase || !file) return;
+  const { id } = state.openCase;
   const body = new FormData();
   body.append("file", file);
   say(`Reading ${file.name}…`);
   try {
-    const response = await fetch(url(`/api/cases/${state.openCase.id}/ioc-list`), { method: "POST", body });
+    const response = await fetch(url(`/api/cases/${id}/ioc-list`), { method: "POST", body });
     const payload = await response.json();
+    if (state.openCase?.id !== id) return;
     if (!response.ok) throw new Error(payload.detail || response.statusText);
     $("ioc-input").value = payload.text;
     const refused = (payload.rejected || []).map((item) => `Line ${item.line}: ${item.reason}`).join(" ; ");
@@ -5357,6 +5387,7 @@ async function runIocFile(file) {
     $("ioc-summary").textContent = message;
     say(message);
   } catch (error) {
+    if (state.openCase?.id !== id) return;
     say(error.message, true);
     $("ioc-summary").textContent = error.message;
   }
@@ -5364,21 +5395,25 @@ async function runIocFile(file) {
 
 async function loadHuntHistory() {
   if (!state.openCase) return;
+  const { id } = state.openCase;
   try {
-    const payload = await api(`/api/cases/${state.openCase.id}/hunts`);
+    const payload = await api(`/api/cases/${id}/hunts`);
+    if (state.openCase?.id !== id) return;
     $("ioc-history").innerHTML = '<option value="">Saved hunts…</option>' +
       payload.hunts.map((hunt) => `<option value="${escapeHtml(hunt.name)}">${escapeHtml(hunt.started)} · ${hunt.hits} hit(s) · ${escapeHtml(hunt.status)}</option>`).join("");
   } catch (_) { /* an empty list is not an error worth a banner */ }
 }
 
 async function openHunt(name) {
-  if (!name) return;
+  if (!state.openCase || !name) return;
+  const revision = ++iocState.revision;
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/hunts/${encodeURIComponent(name)}`);
+    if (revision !== iocState.revision) return;
     $("ioc-input").value = payload.text || "";
     applyHunt(payload);
   } catch (error) {
-    say(error.message, true);
+    if (revision === iocState.revision) say(error.message, true);
   }
 }
 
@@ -6691,6 +6726,21 @@ function showDetails(row) {
 /* ---------- tabs and panels ---------- */
 
 let tabChosen = false;
+let artifactsVisible = null;
+
+function syncArtifacts() {
+  const app = document.querySelector(".app");
+  const scale = Number(getComputedStyle(app).zoom) || 1;
+  const compact = document.documentElement.clientWidth / scale <= 560;
+  app.classList.toggle("compact-workspace", compact);
+  const caseList = document.querySelector('.tab[data-tab="cases"].active');
+  const available = Boolean(state.openCase) || !caseList;
+  const visible = available && (artifactsVisible ?? !compact);
+  $("artifacts").hidden = !visible;
+  $("artifacts-toggle").disabled = !available;
+  $("artifacts-toggle").setAttribute("aria-expanded", String(visible));
+  document.querySelector(".work").classList.toggle("artifacts-hidden", !visible);
+}
 
 function showTab(name) {
   tabChosen = true;
@@ -6712,7 +6762,7 @@ function showTab(name) {
   if (name === "graph" && state.openCase) buildGraph();
   if (name === "imports" && state.openCase) loadImports();
   if (name === "actions" && state.openCase) loadActions();
-  $("artifacts").style.display = name === "cases" && !state.openCase ? "none" : "flex";
+  syncArtifacts();
   if (name === "timeline" && state.openCase) loadTimeline(!timelineState.payload);
 }
 
@@ -7036,41 +7086,63 @@ function applyScale() {
   const value = localStorage.getItem("fireblade.scale") || "1";
   document.documentElement.style.setProperty("--ui-scale", value);
   $("scale").value = value;
+  syncArtifacts();
 }
 
 /* ---------- events ---------- */
+
+function placePopup(popup, x, y) {
+  popup.style.left = "0px";
+  popup.style.top = "0px";
+  const origin = popup.getBoundingClientRect();
+  const scale = origin.width / popup.offsetWidth || 1;
+  const width = document.documentElement.clientWidth;
+  const height = document.documentElement.clientHeight;
+  popup.style.setProperty("--popup-max-width", `${width / scale}px`);
+  popup.style.maxHeight = `${height / scale}px`;
+  const bounds = popup.getBoundingClientRect();
+  popup.style.left = `${(Math.max(0, Math.min(x, width - bounds.width)) - bounds.left) / scale}px`;
+  popup.style.top = `${(Math.max(0, Math.min(y, height - bounds.height)) - bounds.top) / scale}px`;
+}
+
+function closeMenus() {
+  document.querySelectorAll(".menu.show").forEach((menu) => menu.classList.remove("show"));
+  document.querySelectorAll(".menubar .m.open").forEach((cell) => {
+    cell.classList.remove("open");
+    cell.setAttribute("aria-expanded", "false");
+  });
+}
 
 function openMenu(name) {
   const cell = document.querySelector(`.menubar .m[data-menu="${name}"]`);
   const menu = document.querySelector(`.menu[data-for="${name}"]`);
   if (!cell || !menu) return;
-  document.querySelectorAll(".menu").forEach((node) => node.classList.remove("show"));
-  menu.style.left = `${cell.getBoundingClientRect().left}px`;
+  closeMenus();
   menu.classList.add("show");
   cell.classList.add("open");
+  cell.setAttribute("aria-expanded", "true");
+  const anchor = cell.getBoundingClientRect();
+  placePopup(menu, anchor.left, anchor.bottom);
+  return menu;
 }
 
 function wire() {
+  window.addEventListener("resize", syncArtifacts);
   document.querySelectorAll('.menubar .m').forEach((node) => {
+    node.tabIndex = 0;
+    node.setAttribute("role", "button");
+    node.setAttribute("aria-expanded", "false");
     node.addEventListener("mousedown", (event) => {
       event.stopPropagation();
-      const name = node.dataset.menu;
-      const menu = document.querySelector(`.menu[data-for="${name}"]`);
-      const open = menu && menu.classList.contains("show");
-      document.querySelectorAll(".menu").forEach((m) => m.classList.remove("show"));
-      document.querySelectorAll(".menubar .m").forEach((m) => m.classList.remove("open"));
-      if (menu && !open) {
-        const left = node.getBoundingClientRect().left;
-        menu.style.left = `${left}px`;
-        menu.classList.add("show");
-        node.classList.add("open");
-      }
+      if (node.classList.contains("open")) closeMenus();
+      else openMenu(node.dataset.menu);
+    });
+    node.addEventListener("keydown", (event) => {
+      if (!["Enter", " ", "ArrowDown"].includes(event.key)) return;
+      event.preventDefault();
+      openMenu(node.dataset.menu)?.querySelector(".item:not(.disabled)")?.focus();
     });
   });
-  function closeMenus() {
-    document.querySelectorAll(".menu").forEach((m) => m.classList.remove("show"));
-    document.querySelectorAll(".menubar .m").forEach((m) => m.classList.remove("open"));
-  }
   // A press inside an open menu must reach its item: closing the menu on mousedown hides
   // the item before the click can land on it, and no menu command would ever run.
   document.addEventListener("mousedown", (event) => {
@@ -7079,6 +7151,16 @@ function wire() {
   });
 
   document.querySelectorAll("[data-act]").forEach((node) => {
+    if (node.matches(".menu .item")) {
+      node.tabIndex = 0;
+      node.setAttribute("role", "button");
+      node.addEventListener("keydown", (event) => {
+        if (!["Enter", " "].includes(event.key) || node.classList.contains("disabled")) return;
+        event.preventDefault();
+        document.querySelector(".menubar .m.open")?.focus();
+        node.click();
+      });
+    }
     node.addEventListener("click", () => {
       // The menu closes first, then the command runs: a command that opens a dialog or
       // reads the page must not find the menu still on screen.
@@ -7402,9 +7484,8 @@ function wire() {
     const edit = menu.querySelector('[data-act="note-replace"]');
     if (add) add.hidden = noted;
     if (edit) edit.hidden = !noted;
-    menu.style.left = `${event.clientX}px`;
-    menu.style.top = `${event.clientY}px`;
     menu.hidden = false;
+    placePopup(menu, event.clientX, event.clientY);
   });
   document.addEventListener("click", () => { $("row-menu").hidden = true; $("filter-operators").hidden = true; });
 
@@ -7847,7 +7928,13 @@ function wire() {
     }
     if (event.key === "F1") { event.preventDefault(); act("help-guide").catch(() => {}); return; }
     if (event.key === "F5") { event.preventDefault(); loadCases(); }
-    if (event.key === "Escape") closeModals();
+    if (event.key === "Escape") {
+      const trigger = document.querySelector(".menubar .m.open");
+      closeModals();
+      $("row-menu").hidden = true;
+      $("filter-operators").hidden = true;
+      trigger?.focus();
+    }
     if (event.key === "/" && document.activeElement.tagName !== "INPUT") {
       event.preventDefault();
       $("search").focus();
@@ -7858,7 +7945,7 @@ function wire() {
 function closeModals() {
   if (askState.resolve) answerAsk(null);
   document.querySelectorAll(".modal").forEach((node) => node.classList.remove("show"));
-  document.querySelectorAll(".menu").forEach((node) => node.classList.remove("show"));
+  closeMenus();
 }
 
 function showReportType() {
@@ -8224,7 +8311,8 @@ async function act(name, node) {
       break;
     case "about-close": closeModals(); break;
     case "toggle-artifacts":
-      $("artifacts").style.display = $("artifacts").style.display === "none" ? "flex" : "none";
+      artifactsVisible = $("artifacts").hidden;
+      syncArtifacts();
       break;
     default: break;
   }

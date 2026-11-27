@@ -2,6 +2,7 @@
 
 import pytest
 from _audit import command  # noqa: F401 - the audit's menu helper keeps the hook of the other tests
+from conftest import make_case
 
 
 @pytest.fixture()
@@ -25,6 +26,24 @@ def test_the_hunt_normalises_each_indicator_and_counts_its_fields_and_rows(hunte
     assert int(by_original["hxxp://nowhere[.]example/x"][4]) == 0
     summary = page.inner_text("#ioc-summary")
     assert "rows read" in summary and "matching fields" in summary and "details kept" in summary
+
+
+def test_opening_a_different_case_clears_ioc_results_and_history(hunted, server):
+    page = hunted
+    other = make_case(server, "Case without IOC hunts")
+    assert page.locator("#ioc-rows tr[data-hit]").count() > 0
+    page.locator('.toolbar [data-act="refresh-cases"]').click()
+    page.locator('[data-tab="cases"]').click()
+    page.locator('#cases-body tr:has(td:text-is("Case without IOC hunts")) td').first.dblclick()
+    page.wait_for_function(
+        "document.getElementById('casecombo-label').textContent === 'Case without IOC hunts'"
+    )
+    page.locator('[data-tab="ioc"]').click()
+    assert page.locator("#ioc-input").input_value() == ""
+    assert page.locator("#ioc-rows tr[data-hit]").count() == 0
+    with page.expect_response(f"**/api/cases/{other}/hunts") as history:
+        page.locator("#ioc-history").focus()
+    assert history.value.ok and history.value.json()["hunts"] == []
 
 
 def test_a_detail_has_its_source_date_its_excerpt_and_its_rule(hunted):

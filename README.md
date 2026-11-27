@@ -9,10 +9,11 @@ Kagarasu Host is a local DFIR workspace for investigating Windows artifacts, Lin
 disk images and tabular evidence. Import a collection, inspect its source records, track
 findings and actions, and produce evidence-backed reports from the same case.
 
-Kagarasu Host 0.13.0 restores the compact Fusion palette and controls of Kagarasu
-Desktop. The screenshot shows a synthetic Host case.
+Kagarasu Host 0.14.0 adds source-aware artifact review, RECmd batch grouping, continuous
+grid scrolling and scoped search. Trace timeline events, findings and analyst marks
+back to their source records.
 
-![Kagarasu Host using the Desktop theme in a synthetic workstation investigation](docs/assets/host/host-workspace.png)
+![A synthetic workstation investigation in Kagarasu Host](docs/assets/host/host-workspace.png)
 
 ## Editions
 
@@ -51,7 +52,7 @@ See [deployment and per-case isolation](deploy/host/README.md).
 | --- | --- |
 | Stop or start | `docker stop kagarasu` or `docker start kagarasu` |
 | Upgrade | Stop the container, remove it with `docker rm kagarasu`, and repeat the run command with the same case mount. For a pinned release, set the new version tag |
-| Pin a release | Replace `:latest` with a version tag such as `:0.13.0` |
+| Pin a release | Replace `:latest` with `:0.14.0` |
 | Preview changes on `main` | Replace the version tag with `:edge` |
 | Remove the container | Stop it, then run `docker rm kagarasu`. The case files remain in the mounted directory |
 | Build locally | `docker build -t kagarasu:host .` |
@@ -109,12 +110,15 @@ on both images for a reproducible deployment. See the [Driver deployment and upg
    session save. Choose a grid per file, per artifact family or one combined grid. Changing
    layouts retains the source records and their annotations.
 2. **Investigate and tag records.** Filter and group the grid, bookmark rows or add notes.
-   Right-click a row to tag it with its date, machine, interest, confidence and verdict.
+   Click the leftmost row control to cycle through High, Medium, Low and False positive.
+   The star in the column header lets you customize the cycle. Shift-click toggles the
+   row bookmark. Right-click a row to record an observation with its date, machine,
+   tags, confidence and verdict.
    From an IP cell, hunt across the case or declare an indicator with its source record.
 3. **Reconstruct the sequence.** Use the **Timeline** for cross-analysis chronology,
-   **IOC hunting** for indicator matches, and the **Attack graph** for Hayabusa findings
-   and their ATT&CK mappings. In **Actions & tracking → Investigation log** you can filter
-   tags, inspect timed connections, and correlate process creation, file creation and
+   **IOC hunting** for indicator matches, and the **Attack graph** for Hayabusa findings,
+   ATT&CK mappings, saved tags and row marks. In **Actions & tracking → Investigation log**,
+   filter tags, inspect timed connections, and correlate process creation, file creation and
    network records with an explicit process identity on the same host. The correlation
    view opens the exact source rows and reports its scan cap when reached. Tagged temporal
    associations are leads for review.
@@ -132,21 +136,34 @@ on both images for a reproducible deployment. See the [Driver deployment and upg
 ## Investigation layouts
 
 Choose **one grid per file**, **one grid per artifact family**, or **one combined grid**
-from the collection settings. A combined grid retains the original fields, with source
-provenance and a common event clock. Wide collections load the visible column window on
-demand; the column manager lets you find, show and reorder fields. Row and cell notes follow
-the source records when the layout changes.
+from the collection settings. A combined grid retains the original fields, source provenance
+and a common event clock. **Row details** shows the source file and reader. Right-click a merged
+analysis in **Artifacts** to list its source files and select one to narrow the grid. Row marks
+and notes follow their source records when the layout changes.
 
-Artifact families keep supporting configuration files collapsed by default. Use grouping,
-filters and saved column layouts to focus a large collection without discarding its fields.
-Changing a layout rebuilds its analyses as a background job and can take several minutes.
+- **Columns and scrolling.** Open **Grid preferences** to reorder, pin or hide columns and
+  save the layout for the artifact family. Use **Hide empty** for columns that contain no
+  values or **Hidden columns** to restore individual fields. The button in each column
+  header lists values and counts for checkbox filtering. **Continuous scroll** loads bounded
+  row windows as you scroll. Wide grids also load columns as they enter view.
+- **RECmd.** Use **RECmd…** next to **Group…** to sort by category, group by category,
+  rule and hive, or review results by collected file. Row details distinguish the hive
+  read by RECmd from the imported export and show the batch name when identifiable.
+- **Search and navigation.** In **Analyses**, choose **This grid**, **In this case** or
+  **Across cases** before searching. Case results show matching fields and link to the
+  source row. **Across cases** is available in the single-container deployment.
+  **Back** restores the previous workspace view. Grouped views retain a path back to
+  their parent groups.
+- **Timeline.** The UTC chart legend lets you toggle individual data sources. Shortcut (LNK)
+  details distinguish the timestamps of the shortcut file from target metadata embedded in
+  it. Choose **Use in timeline** next to the timestamp that fits the question you are investigating.
 
 | Workflow | Available controls and output |
 | --- | --- |
-| Review an analysis | Per-column filters, grouping, multi-column sorting, pinned and derived columns, saved views, color rules and visual formats |
-| Record findings | Bookmarks, row and cell notes, tags, confidence and verdicts linked to source records |
-| Build a timeline | Cross-analysis chronology based on analyst-selected date fields, with undated records counted |
-| Hunt indicators | Case-wide matches for IPs, domains, URLs and hashes |
+| Review an analysis | Value checklists, nested grouping, multi-column sorting, pinned and derived columns, saved views, color rules and visual formats |
+| Record findings | Custom row marks, bookmarks, row and cell notes, and observations linked to source records |
+| Build a timeline | Cross-analysis chronology with selected date fields, source lanes, nested groups and undated records counted |
+| Hunt indicators | Case-wide matches for IPs, domains, URLs and hashes, with grouped match review |
 | Run detections | Local Hayabusa analysis of EVTX, findings grouped by rule and mapped to ATT&CK in the attack graph |
 | Follow an investigation | Actions, machines, accounts, indicators, client scope and a tagged chronology |
 | Deliver findings | Analyst and client reports in HTML and PDF, editable Word reports and follow-up workbooks |

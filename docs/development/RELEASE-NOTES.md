@@ -1,3 +1,29 @@
+# Kagarasu 0.14.0 — Source-aware artifact review
+
+## Review artifact grids
+
+- See the source file and reader for each row. Right-click a merged analysis in the artifact
+  tree to list its collected files and focus the grid on one file.
+- Open **RECmd…** to group registry findings by category, rule and hive, review one collected
+  file, or filter results with checkboxes. Row details show the source hive and the batch
+  name when it can be identified.
+- Save column arrangements by artifact family. Hide empty fields, restore selected columns
+  and use each header's value checklist to filter by exact values. Continuous scrolling keeps
+  a bounded window of rows in the browser.
+
+## Search, correlate and track
+
+- Run searches from **Analyses** over the current grid or case. The single-container deployment
+  also searches across cases. Results show the matching fields and open the source records.
+- Use **Back** to restore the previous workspace view. Drill through nested groups and return
+  to the parent in analysis grids, Timeline, Hayabusa findings and IOC matches.
+- Read the timeline on a UTC axis with an interactive source legend. Shortcut details
+  explain the dates of the LNK file and the target metadata it contains. Choose the date
+  column for the timeline from the record.
+- Cycle through customizable row marks and inspect marked records and saved observation tags
+  in the Attack graph. Row marks follow their source records through layout changes and portable
+  case export and import.
+
 # Kagarasu 0.13.0 — Desktop appearance restored in Host
 
 - Restored the Kagarasu Desktop Fusion palette, compact controls, classic tabs and

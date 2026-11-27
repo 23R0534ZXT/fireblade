@@ -7,6 +7,20 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-11-27
+
+- Show source files and readers in row details. Expand collected files from the artifact tree.
+  Group and filter RECmd results by category, rule, hive or collected file, with a quick category sort.
+- Save column layouts by artifact family, hide empty columns, restore fields individually and
+  filter by checked column values. Browse large grids with continuous scrolling.
+- Return to the previous workspace view and drill through nested groups in analysis grids,
+  Timeline, Hayabusa findings and IOC matches.
+- Search the grid, the open case or the library from Analyses. Search hits show their
+  matching fields and open the source row. Library search uses the single-container deployment.
+- Add an interactive timeline legend and UTC axis. Explain shortcut and embedded target dates
+  from LNK exports and allow the analyst to choose the timeline date.
+- Save customizable row marks with the case and open marked source records from the Attack graph.
+
 ## [0.13.0] — 2026-11-27
 
 - Restored the Desktop Fusion palette, compact toolbar, and classic workspace tabs in Host.
@@ -349,7 +363,8 @@ Update band, folders sent from the browser, certificate folder chosen by the ana
 ## [0.8.0] — 2026-11-23
 One container per case, driven by a small driver; erasing a case removes its container and volume.
 
-[Unreleased]: https://github.com/23R0534ZXT/kagarasu/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/23R0534ZXT/kagarasu/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/23R0534ZXT/kagarasu/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.2...v0.13.0
 [0.10.2]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.10.1

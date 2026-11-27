@@ -22,6 +22,7 @@ import tempfile
 import threading
 import time as clock
 import uuid
+from contextlib import suppress
 from datetime import UTC, date, datetime, time
 from pathlib import Path
 
@@ -5980,14 +5981,20 @@ class Library:
             view.bookmarks_only = True
         suffix = ".xlsx" if as_xlsx else ".csv"
         target = Path(tempfile.gettempdir()) / f"fireblade-{uuid.uuid4().hex}{suffix}"
-        with case.lock:
-            if annotations:
-                case.export(str(target), view, include_annotations=True)
-            else:
-                case.export(str(target), view, bool(grouped), columns=chosen)
-        if not as_xlsx:
-            _translate_csv_header(target, case)
-        return target
+        try:
+            with case.lock:
+                if annotations:
+                    case.export(str(target), view, include_annotations=True)
+                else:
+                    case.export(str(target), view, bool(grouped), columns=chosen)
+            if not as_xlsx:
+                _translate_csv_header(target, case)
+            return target
+        except BaseException:
+            for unfinished in (target, target.with_name(target.name + ".part")):
+                with suppress(OSError):
+                    unfinished.unlink(missing_ok=True)
+            raise
 
 
 def _condition_payload(condition) -> dict:

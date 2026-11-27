@@ -1721,3 +1721,67 @@ def test_a_profile_folder_the_process_cannot_enter_holds_no_plugin(tmp_path, mon
 
     monkeypatch.setattr(profile_plugins, "Path", lambda *_a: Locked())
     assert profile_plugins.load_plugins(tmp_path) == ([], [])
+
+
+def test_downloaded_exports_do_not_accumulate_in_the_temporary_folder(
+    case_with_analysis, tmp_path, monkeypatch
+):
+    from fastapi.testclient import TestClient
+
+    import fireblade.web.service as host_service
+    from fireblade.web.server import create_app
+
+    root, identifier = case_with_analysis
+    target = tmp_path / "download-temporaries"
+    target.mkdir()
+    app = create_app(root)
+    monkeypatch.setattr(host_service.tempfile, "gettempdir", lambda: str(target))
+    with TestClient(app) as client:
+        result = client.get(f"/api/cases/{identifier}/analyses/0/export")
+        assert result.status_code == 200 and "alice" in result.text
+    assert not list(target.glob("fireblade-*"))
+
+
+def test_a_full_disk_during_export_translation_removes_incomplete_outputs(
+    service, tmp_path, monkeypatch
+):
+    import fireblade.web.service as host_service
+
+    lib, identifier = service
+    target = tmp_path / "download-temporaries"
+    target.mkdir()
+    monkeypatch.setattr(host_service.tempfile, "gettempdir", lambda: str(target))
+
+    def fail(path, case):
+        path.with_name(path.name + ".part").write_text("partial header")
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(host_service, "_translate_csv_header", fail)
+    with pytest.raises(OSError, match="No space left"):
+        lib.export(identifier, 0)
+    assert not list(target.glob("fireblade-*"))
+
+
+def test_a_disconnected_download_releases_its_temporary_file(tmp_path):
+    import asyncio
+
+    from starlette.requests import ClientDisconnect
+
+    from fireblade.web.server import TemporaryDownloadResponse
+
+    target = tmp_path / "download.csv"
+    target.write_text("Id\n1\n")
+
+    async def disconnected_send(message):
+        raise OSError("Disconnected")
+
+    async def transfer():
+        await TemporaryDownloadResponse(target)(
+            {"type": "http", "method": "GET", "headers": [], "asgi": {"spec_version": "2.4"}},
+            None,
+            disconnected_send,
+        )
+
+    with pytest.raises((OSError, ClientDisconnect)):
+        asyncio.run(transfer())
+    assert not target.exists()

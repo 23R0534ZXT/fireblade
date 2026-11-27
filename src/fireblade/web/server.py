@@ -6,6 +6,7 @@ import json
 import os
 import re
 import tempfile
+from contextlib import suppress
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
@@ -16,6 +17,18 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fireblade.web import english
 from fireblade.web.service import Library, ServiceError, _english, parse_filters
 from fireblade.web.updates import Checker
+
+
+class TemporaryDownloadResponse(FileResponse):
+    """A generated download owns its temporary file, including interrupted transfers."""
+
+    async def __call__(self, scope, receive, send):
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            with suppress(OSError):
+                Path(self.path).unlink(missing_ok=True)
+
 
 STATIC = Path(__file__).with_name("static")
 
@@ -1593,7 +1606,7 @@ def create_app(
             if wanted == "xlsx"
             else "text/csv"
         )
-        return FileResponse(target, media_type=media, filename=name)
+        return TemporaryDownloadResponse(target, media_type=media, filename=name)
 
     @app.get("/")
     def index():

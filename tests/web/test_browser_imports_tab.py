@@ -8,7 +8,7 @@ import time
 
 import httpx
 import pytest
-from _audit import rows
+from _audit import pick_import_source, rows
 from conftest import make_case
 
 from tests.core.pdf_sample import build_pdf
@@ -214,11 +214,11 @@ def test_refresh_reloads_the_report_and_the_other_buttons_of_the_tab_open_their_
     page.click('#imports-view [data-act="case-history"]')
     page.wait_for_selector("#history-modal.show, .modal.show .dialog")
     page.keyboard.press("Escape")
-    page.click('#imports-view [data-act="import-file"]')
+    pick_import_source(page, "import-file", entry="#imports-view")
     page.wait_for_selector("#import-modal.show")
     page.keyboard.press("Escape")
     with page.expect_file_chooser():
-        page.click('#imports-view [data-act="import-folder"]')
+        pick_import_source(page, "import-folder", entry="#imports-view")
 
 
 def test_several_files_are_ticked_and_read_with_one_reader(empty_page, server):

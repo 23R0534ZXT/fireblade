@@ -9,6 +9,7 @@ Skipped without Playwright and a Chromium; never failed for lack of them.
 import os
 
 import pytest
+from _audit import pick_import_source
 from _browser import serving  # noqa: E402
 
 pytest.importorskip("playwright.sync_api")
@@ -85,7 +86,7 @@ def test_a_case_is_created_saved_imported_renamed_and_erased(page, host):
     )
 
     # Import a file through the dialog ------------------------------------------------
-    page.click('.toolbar .tb[data-act="import-file"]')
+    pick_import_source(page, "import-file")
     page.wait_for_selector("#import-modal.show")
     sample = tmp / "events.csv"
     sample.write_text(

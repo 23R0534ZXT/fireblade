@@ -257,6 +257,23 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
 .dialog .body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
 .dialog .row{display:flex;align-items:center;gap:10px;font-size:12px}
 .dialog .row label{min-width:120px}
+.import-source-choices .btn{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left}
+.import-source-choices .key{color:var(--muted);white-space:nowrap}
+.import-capacity{margin:4px 0}
+.import-capacity .note{max-width:none}
+.import-capacity input[type=range]{
+  appearance:none;flex:1;min-width:116px;height:8px;border:0;border-radius:4px;
+  background:linear-gradient(90deg,#2f985f,#d4ab32 58%,#c44945);margin:8px 0
+}
+.import-capacity input[type=range]::-webkit-slider-thumb{
+  appearance:none;width:16px;height:16px;border-radius:50%;border:2px solid var(--text);background:var(--base)
+}
+.import-capacity input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;border:2px solid var(--text);background:var(--base)
+}
+.import-capacity input[type=range]:focus-visible{outline:2px solid var(--link);outline-offset:5px}
+.import-capacity input[type=range]:disabled{opacity:.65}
+.import-capacity output{font-variant-numeric:tabular-nums}
 .dialog select{height:22px;border:1px solid var(--border);background:var(--base);font-family:inherit;font-size:12px;padding:0 4px}
 .dialog .foot{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;padding:8px 10px;border-top:1px solid var(--border-soft)}
 .dialog .note{font-size:11px;color:var(--disabled);line-height:1.5;max-width:380px}

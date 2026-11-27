@@ -35,6 +35,15 @@ def command(page, act):
     page.click(f'.menu.show [data-act="{act}"]')
 
 
+def pick_import_source(page, action, *, entry=".toolbar"):
+    """Open the evidence chooser from the given surface and select its source."""
+    if entry == "menu":
+        command(page, "import-evidence")
+    else:
+        page.click(f'{entry} [data-act="import-evidence"]')
+    page.click(f'#import-source-modal [data-act="{action}"]')
+
+
 def rows(page):
     return page.locator("#body tr[data-row]").count()
 

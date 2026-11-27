@@ -7,6 +7,10 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+- Unified file, folder and disk workflows under **Import evidence**.
+- Added a host-aware worker slider for folder imports and disk analysis, with a
+  recommendation and per-job override based on the resources available to Host.
+
 ## [0.10.1] — 2026-11-27
 
 ### Investigation workflow
@@ -322,7 +326,7 @@ Update band, folders sent from the browser, certificate folder chosen by the ana
 ## [0.8.0] — 2026-11-23
 One container per case, driven by a small driver; erasing a case removes its container and volume.
 
-[Unreleased]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.3...HEAD
+[Unreleased]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.1...HEAD
 [0.8.3]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.0...v0.8.1

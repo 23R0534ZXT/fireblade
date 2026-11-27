@@ -30,7 +30,9 @@ def test_explore_preview_and_collect_an_e01_file(empty_page, server):
     image = server[2] / "synthetic-fat.E01"
     shutil.copyfile(Path(__file__).resolve().parents[1] / "data/ewf/synthetic-fat.E01", image)
     original = hashlib.sha256(image.read_bytes()).digest()
-    page.locator("#grid-empty").get_by_role("button", name="Explore disk image…").click()
+    page.locator("#grid-empty").get_by_role("button", name="Import evidence…").click()
+    page.click('#import-source-modal [data-act="disk-open"]')
+    page.click("#disk-browse")
     page.fill("#image-source", str(image))
     page.click("#image-open")
     page.get_by_role("button", name="VAR/", exact=True).click()

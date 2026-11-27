@@ -54,11 +54,38 @@ See [deployment and per-case isolation](deploy/host/README.md).
    Erasure records the applied method and verification results in HTML and in an editable
    Word certificate written outside the case. See [erasure limits](docs/host/STATUS.md).
 
+## Import source and resources
+
+In the development image (`:edge`), **Import evidence** opens a source chooser for
+files, folders and disks. **Parse a folder** and **Analyse a disk or image** offer a
+slider for the number of workers. The recommendation and upper limit use the resources
+available to Host, including Docker CPU and memory limits. Green shows lighter resource
+use and red shows the upper range. The choice applies to that job. Preferences set the
+default for other imports.
+
+<details>
+<summary>Import workflow screenshots</summary>
+
+![Import evidence chooser with file, folder and disk options](docs/assets/host/host-import-source.png)
+
+![Folder import with the recommended three workers selected](docs/assets/host/host-import-folder-workers.png)
+
+![Disk analysis with the maximum four workers selected](docs/assets/host/host-import-disk-workers.png)
+
+</details>
+
+Imports write analysis databases and can use considerably more space than the
+input files. Host checks the free space visible at the case directory. For a
+VM with a dynamically growing disk, also check the free space on the physical
+volume that stores the virtual disk and snapshots.
+
 ## Explore an E01 image
 
 Mount the directory containing the image and all its segments read-only by adding
 `-v /path/to/images:/evidence:ro` to the Docker command. With a case open, choose
-**File → Explore disk image…** and enter the path inside the container, such as
+**Import evidence**, select **Analyse a disk or image…**, then **Explore disk images…**.
+Enter the path inside
+the container, such as
 `/evidence/disk.E01`. Select a file system, navigate directories, preview bytes and
 collect selected files. The case records the original image, partition, path, available
 timestamps and the SHA-256 of the extracted copy. Interactive collection supports files

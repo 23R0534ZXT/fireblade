@@ -663,3 +663,93 @@ def test_folder_import_applies_profiles_in_one_case_save(tmp_path, monkeypatch):
         assert "Fireblade_MACBMask" in library.columns(identifier, 3)
     finally:
         library.close()
+
+
+def test_folder_and_disk_jobs_use_local_thread_choices(tmp_path, monkeypatch):
+    import time
+
+    from fastapi.testclient import TestClient
+
+    from fireblade.core import settings
+    from fireblade.core.collection import Collection
+    from fireblade.web.server import create_app
+
+    monkeypatch.setattr(settings, "cpu_threads", lambda: 12)
+    monkeypatch.setattr(settings, "available_memory_mb", lambda: 4096)
+    cases = tmp_path / "cases"
+    library = InvestigationLibrary(cases)
+    identifier = library.create("Thread choices", "", "windows")["id"]
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    source = inputs / "records.csv"
+    source.write_text("Host,Message\nHost-A,Record\n")
+    seen = []
+    parse = Collection.parse
+
+    def capture(collection):
+        seen.append(collection.settings.threads)
+        return parse(collection)
+
+    monkeypatch.setattr(Collection, "parse", capture)
+    with TestClient(create_app(cases)) as client:
+        capacity = client.get("/api/import-capacity")
+        assert capacity.json() == {
+            "max_threads": 8,
+            "recommended_threads": 6,
+            "cpu_threads": 12,
+            "memory_mb": 4096,
+        }
+        base = f"/api/cases/{identifier}"
+        prior = client.get("/api/preferences").json()
+
+        def complete(response):
+            assert response.status_code == 200, response.text
+            job = response.json()["job"]
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                state = client.get(f"/api/import-jobs/{job}").json()
+                if state["status"] != "running":
+                    assert state["status"] == "complete", state
+                    return
+                time.sleep(0.02)
+            pytest.fail("The import job did not finish.")
+
+        complete(
+            client.post(
+                base + "/import-jobs",
+                data={"source": str(inputs), "parsing_threads": "5"},
+            )
+        )
+        complete(
+            client.post(
+                base + "/disk-jobs",
+                json={"source": str(inputs), "kind": "mounted", "parsing_threads": 3},
+            )
+        )
+        assert seen == [5, 3]
+        assert client.get("/api/preferences").json() == prior
+
+        capped = client.post(
+            base + "/import-jobs", data={"source": str(inputs), "parsing_threads": "9"}
+        )
+        assert capped.status_code == 400
+        assert "between 1 and 8" in capped.json()["detail"]
+        wrong_source = client.post(
+            base + "/import-jobs",
+            data={"source": str(source), "parsing_threads": "2"},
+        )
+        assert wrong_source.status_code == 400
+        assert "folders only" in wrong_source.json()["detail"]
+        uploaded = client.post(
+            base + "/import-jobs",
+            data={"parsing_threads": "2"},
+            files={"file": ("not-uploaded.csv", b"Host\nHost-A\n", "text/csv")},
+        )
+        assert uploaded.status_code == 400
+        assert not (library.folder(identifier) / "evidence" / "not-uploaded.csv").exists()
+        for value in (True, "3", 1.5, 0, 9):
+            refused = client.post(
+                base + "/disk-jobs",
+                json={"source": str(inputs), "kind": "mounted", "parsing_threads": value},
+            )
+            assert refused.status_code == 400

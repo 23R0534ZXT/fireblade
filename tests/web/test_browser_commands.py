@@ -13,6 +13,7 @@ from _audit import (
     ROWS,
     answer,
     command,
+    pick_import_source,
     rows,
     select,
     total,
@@ -1269,7 +1270,7 @@ def test_an_installed_plugin_names_the_profile_of_the_next_file_previewed(
     page.click('.modal.show [data-act="settings-close"]')
     log = tmp_path / "badges.csv"
     log.write_text("Seen,Badge,Door\n2026-11-02T08:00:00Z,B-17,North\n", encoding="utf-8")
-    page.click('.toolbar .tb[data-act="import-file"]')
+    pick_import_source(page, "import-file")
     page.wait_for_selector("#import-modal.show")
     page.set_input_files("#preview-input", str(log))
     page.wait_for_function(

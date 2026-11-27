@@ -87,22 +87,34 @@ async function applyDetectedProfile() {
 
 /* ---------- analysing a disk ---------- */
 
+let diskCapacity = null;
+
 function openDiskDialog() {
   if (!state.openCase) { say("Open a case first", true); return; }
+  const caseId = state.openCase.id;
+  const capacity = { loading: true };
+  diskCapacity = capacity;
   $("disk-source").value = "";
   $("disk-kind").value = "mounted";
   $("disk-modal").classList.add("show");
+  $("disk-start").disabled = true;
+  const current = () => diskCapacity === capacity && state.openCase?.id === caseId;
+  loadImportCapacity("disk", capacity, current).then(() => {
+    if (current()) $("disk-start").disabled = false;
+  });
 }
 
 async function startDiskAnalysis() {
+  if (diskCapacity?.loading) return;
   const source = $("disk-source").value.trim();
   if (!source) { say("Give the volume or image to analyse", true); return; }
   const kind = $("disk-kind").value;
+  const options = { source, kind };
+  if (diskCapacity?.available) options.parsing_threads = $("disk-threads").valueAsNumber;
   closeModals();
   say("Preparing the disk walk…");
   try {
-    const started = await apiPost(`/api/cases/${state.openCase.id}/disk-jobs`,
-      { source, kind });
+    const started = await apiPost(`/api/cases/${state.openCase.id}/disk-jobs`, options);
     const outcome = await followImportJob(started.job);
     await openCase(state.openCase.id);
     if (outcome.status === "complete") {
@@ -748,7 +760,7 @@ async function runTask(kind, params, title) {
 
 /* ---------- import preview ---------- */
 
-const previewState = { items: [] };
+const previewState = { items: [], capacity: null, folder: false };
 
 const DELIMITER_NAMES = { ",": "comma", "\t": "tab", ";": "semicolon", "|": "pipe" };
 
@@ -820,34 +832,93 @@ function chosenSheet(payload) {
   return $("preview-sheet").value || "";
 }
 
-function openImportDialog() {
+function openImportSourceChooser() {
+  if (!state.openCase) { say("Open a case before importing", true); return; }
+  const chooser = $("import-source-modal");
+  chooser.classList.add("show");
+  chooser.querySelector('[data-act="import-file"]').focus();
+}
+
+function openImportDialog(folder = false) {
   if (!state.openCase) { say("Open a case before importing", true); return; }
   previewState.items = [];
-  $("import-title").textContent = "Import a file";
+  previewState.capacity = null;
+  previewState.folder = folder;
+  $("import-title").textContent = folder ? "Parse a folder" : "Import a file";
+  $("preview-source-label").textContent = folder ? "Folder" : "Files";
+  $("preview-choose").textContent = folder ? "Choose a folder…" : "Choose a file…";
   $("preview-input").value = "";
   $("preview-server").value = "";
   $("preview-delimiter").value = "";
   $("preview-encoding").value = "auto";
   fillCsvOptions();
-  $("preview-note").textContent = "Choose a file, or give a path on the server: the columns and the recognised profile are shown before anything is read.";
+  $("preview-note").textContent = folder
+    ? "Choose a folder or enter its path on the server to preview its files."
+    : "Choose a file or enter its path on the server to preview its columns and recognised profile.";
   $("preview-note").classList.remove("err");
   renderPreview();
   $("import-modal").classList.add("show");
 }
 
+function showImportThreadCount(id) {
+  const slider = $(`${id}-threads`);
+  const count = `${slider.value} of ${slider.max} threads selected`;
+  $(`${id}-thread-count`).textContent = count;
+  slider.setAttribute("aria-valuetext", count);
+}
+
+async function loadImportCapacity(id, capacity, current) {
+  const slider = $(`${id}-threads`);
+  const info = $(`${id}-capacity-info`);
+  slider.disabled = true;
+  $(`${id}-thread-count`).textContent = "";
+  info.textContent = "Checking the server’s import capacity…";
+  try {
+    const settings = await apiAbortable("/api/import-capacity", AbortSignal.timeout(8000));
+    if (!current()) return;
+    const { max_threads, recommended_threads, cpu_threads, memory_mb } = settings;
+    if (!Number.isInteger(max_threads) || max_threads < 1 ||
+        !Number.isInteger(recommended_threads) || recommended_threads < 1 ||
+        recommended_threads > max_threads) throw new Error("Invalid import capacity");
+    capacity.available = true;
+    slider.max = max_threads;
+    slider.value = recommended_threads;
+    slider.disabled = max_threads === 1;
+    const details = [`${recommended_threads} recommended`];
+    if (cpu_threads > 0) details.push(`${cpu_threads} server CPU threads`);
+    if (memory_mb > 0) details.push(`${memory_mb.toLocaleString()} MiB RAM`);
+    info.textContent = details.join(" · ");
+    showImportThreadCount(id);
+  } catch (_) {
+    if (current()) info.textContent = "Capacity unavailable. The server’s default will be used.";
+  } finally {
+    capacity.loading = false;
+  }
+}
+
+function renderFolderCapacity() {
+  const panel = $("import-capacity");
+  const folder = previewState.folder ||
+    previewState.items.some((item) => !item.error && item.payload?.kind === "folder");
+  panel.hidden = !folder;
+  if (!folder || previewState.capacity) return;
+
+  const capacity = { loading: true };
+  previewState.capacity = capacity;
+  const caseId = state.openCase?.id;
+  const current = () => previewState.capacity === capacity && state.openCase?.id === caseId;
+  loadImportCapacity("import", capacity, current).then(() => {
+    if (current()) renderPreview();
+  });
+}
+
 /* A collection is a tree. The browser hands a directory over one file at a time, each
    with its relative path; the case rebuilds that tree under evidence/, then the folder is
    previewed and imported exactly as a folder on the server. */
-function openFolderPicker() {
-  if (!state.openCase) { say("Open a case before importing", true); return; }
-  $("folder-input").click();
-}
-
 async function importFolder(files) {
   if (!state.openCase) { say("Open a case before importing", true); return; }
   const identifier = state.openCase.id;
   $("import-modal").classList.add("show");
-  $("import-title").textContent = "Import a folder";
   previewState.items = [];
   renderPreview();
   const note = $("preview-note");
@@ -936,7 +1007,9 @@ function previewRoleLabel(role) {
 
 function renderPreview() {
   const box = $("preview-body");
-  $("preview-import").disabled = !previewState.items.some((item) => !item.error && item.payload?.path);
+  renderFolderCapacity();
+  $("preview-import").disabled = previewState.capacity?.loading ||
+    !previewState.items.some((item) => !item.error && item.payload?.path);
   if (!previewState.items.length) { box.innerHTML = ""; return; }
   box.innerHTML = previewState.items.map((item, index) => {
     if (item.error) {
@@ -1019,7 +1092,7 @@ const importJobState = { job: null, stopped: false };
 
 /* An import runs on the server, in the background: the window stays usable, the
    progress is visible, and the run can be stopped without losing what was read. */
-async function startImportJob(source, layout, options, sheet) {
+async function startImportJob(source, layout, options, sheet, parsingThreads) {
   const body = new FormData();
   body.append("organization", layout);
   if (Array.isArray(source)) source.forEach((item) => body.append("sources", item));
@@ -1027,6 +1100,7 @@ async function startImportJob(source, layout, options, sheet) {
   if (options.delimiter) body.append("delimiter", options.delimiter);
   if (options.encoding) body.append("encoding", options.encoding);
   if (sheet) body.append("sheet", sheet);
+  if (Number.isInteger(parsingThreads)) body.append("parsing_threads", String(parsingThreads));
   const response = await fetch(url(`/api/cases/${state.openCase.id}/import-jobs`), { method: "POST", body });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || response.statusText);
@@ -1087,7 +1161,8 @@ function importStoppedMessage(files, kept) {
 }
 
 async function confirmImport() {
-  if (!previewState.items.length) return;
+  if (!previewState.items.length || previewState.capacity?.loading) return;
+  const parsingThreads = previewState.capacity?.available ? $("import-threads").valueAsNumber : null;
   const layout = $("import-layout").value;
   const options = csvOptions();
   let imported = 0;
@@ -1106,7 +1181,7 @@ async function confirmImport() {
   // grid for everything) is how that collection is laid out, so it is imported in one go. A
   // workbook is read sheet by sheet and keeps its own import.
   const together = layout !== "files" && ready.length > 1 &&
-    ready.every((item) => !/\.(xlsx|xlsm|xls)$/i.test(item.payload.path));
+    ready.every((item) => item.payload.kind !== "folder" && !/\.(xlsx|xlsm|xls)$/i.test(item.payload.path));
   if (together) {
     say(`Importing ${ready.length} files…`);
     try {
@@ -1136,7 +1211,8 @@ async function confirmImport() {
     if (!source) continue;
     say(`Importing ${item.name}…`);
     try {
-      const job = await startImportJob(source, layout, options, chosenSheet(item.payload));
+      const job = await startImportJob(source, layout, options, chosenSheet(item.payload),
+        item.payload.kind === "folder" ? parsingThreads : null);
       const outcome = await followImportJob(job);
       // A folder is one source holding several files: say how many were read, not "1".
       if (outcome.status === "complete" && outcome.result && outcome.result.analyses) {
@@ -1532,9 +1608,7 @@ async function openCase(identifier, analysisIndex = null) {
     renderTree();
     renderCases();
     if (!detail.analyses.length) {
-      clearGrid("This case has no analyses yet.", [
-        ["Import evidence…", "import-file"], ["Explore disk image…", "disk-explorer"],
-      ]);
+      clearGrid("This case has no analyses yet.", [["Import evidence…", "import-evidence"]]);
       say("Case opened");
       return true;
     }
@@ -7865,6 +7939,9 @@ function wire() {
     event.target.value = "";        // the same folder can be picked again
     if (files.length) importFolder(files);
   });
+  for (const id of ["import", "disk"]) {
+    $(`${id}-threads`).addEventListener("input", () => showImportThreadCount(id));
+  }
   for (const id of ["preview-delimiter", "preview-encoding"]) {
     $(id).addEventListener("change", refreshPreviews);
   }
@@ -8153,7 +8230,7 @@ function wire() {
     if (event.target.id === "about-modal") closeModals();
   });
 
-  // The shortcuts the menus announce, and no others: a hint that does nothing is a lie.
+  // The shortcuts announced next to the commands, and no others.
   // Only combinations a page may own are used; the browser keeps Ctrl+R, Ctrl+L, Ctrl+Tab...
   const SHORTCUTS = [
     { key: "o", act: "import-file" },
@@ -8375,6 +8452,9 @@ async function act(name, node) {
   // A button inside a dialog belongs to that dialog: closing every modal first
   // used to make "Add a condition" dismiss the filter it was editing.
   if (!node || !node.closest(".dialog")) closeModals();
+  if (["import-file", "import-folder", "disk-open"].includes(name)) {
+    $("import-source-modal").classList.remove("show");
+  }
   switch (name) {
     case "refresh-cases": await loadCases(); if (state.openCase) await loadRows(true); break;
     case "close-case": closeCase(); break;
@@ -8391,15 +8471,16 @@ async function act(name, node) {
       exportRows({ format: "xlsx" });
       say("Excel export: the same rows, as a workbook");
       break;
+    case "import-evidence": openImportSourceChooser(); break;
     case "import-file": openImportDialog(); break;
-    case "import-folder": openFolderPicker(); break;
+    case "import-folder": openImportDialog(true); break;
     case "import-view-file": await viewCollectedFile(); break;
     case "import-copy-unread": await copyUnprocessedFiles(); break;
     case "import-export-list": exportCollectedList(); break;
     case "import-park": await parkCollectedFile(); break;
     case "import-delete": await deleteCollectedFile(); break;
     case "open-view-menu": openMenu("view"); break;
-    case "preview-choose": $("preview-input").click(); break;
+    case "preview-choose": $(previewState.folder ? "folder-input" : "preview-input").click(); break;
     case "preview-path": await previewServerPath(); break;
     case "layout-export": exportLayout(); break;
     case "layout-import": $("layout-file").click(); break;

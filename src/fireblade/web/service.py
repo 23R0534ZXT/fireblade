@@ -177,6 +177,36 @@ class Library:
         memory = stored["resource_memory_mb"] or machine.from_settings(0, 0).memory_mb
         return Settings(memory_mb=max(64, min(16384, int(memory))), threads=int(wanted))
 
+    def _import_resources(self):
+        """Describe the resources the Host process can use for its next import."""
+        from fireblade.core.settings import auto_threads, available_memory_mb, cpu_threads
+
+        settings = self._settings("parsing")
+        cpu, memory = cpu_threads(), available_memory_mb()
+        budget = max(64, min(settings.memory_mb, memory))
+        # Each concurrent DuckDB writer needs at least 64 MiB of the chosen
+        # budget. Leave at least as much RAM for its parser and the service.
+        maximum = max(1, min(auto_threads(cpu), budget // 64, memory // 128))
+        return replace(settings, memory_mb=budget), {
+            "max_threads": maximum,
+            "recommended_threads": max(1, min(budget // 128, maximum * 3 // 4)),
+            "cpu_threads": cpu,
+            "memory_mb": memory,
+        }
+
+    def import_capacity(self) -> dict:
+        _settings, capacity = self._import_resources()
+        return capacity
+
+    def _import_settings(self, parsing_threads=None):
+        settings, capacity = self._import_resources()
+        maximum = capacity["max_threads"]
+        if parsing_threads is None:
+            return replace(settings, threads=min(settings.threads, maximum))
+        if type(parsing_threads) is not int or not 1 <= parsing_threads <= maximum:
+            raise ServiceError(f"Choose a whole number of import threads between 1 and {maximum}.")
+        return replace(settings, threads=parsing_threads)
+
     # -- catalogue ---------------------------------------------------------
 
     def cases(self) -> dict:
@@ -4414,6 +4444,7 @@ class Library:
         delimiter: str | None = None,
         encoding: str | None = None,
         on_collection=None,
+        parsing_threads: int | None = None,
     ) -> dict:
         """Read a file or a folder into the case, the way the desktop does it.
 
@@ -4428,6 +4459,9 @@ class Library:
         source = Path(source).resolve()
         if not source.exists():
             raise ServiceError("The source to import is missing.")
+        if parsing_threads is not None and not source.is_dir():
+            raise ServiceError("An import thread override is available for folders only.")
+        settings = self._import_settings(parsing_threads)
         output = folder / "collections" / ("import-" + datetime.now(UTC).strftime("%Y%m%d-%H%M%S"))
         if output.exists():
             output = folder / "collections" / ("import-" + uuid.uuid4().hex[:8])
@@ -4445,7 +4479,7 @@ class Library:
             organization=organization,
             delimiter=delimiter if delimiter in self.CSV_DELIMITERS else None,
             encoding=encoding if encoding in self.CSV_ENCODINGS else "auto",
-            settings=self._settings("parsing"),
+            settings=settings,
         )
         collection.read_everything = True
         if callable(on_collection):
@@ -5013,9 +5047,14 @@ class Library:
         delimiter: str | None = None,
         encoding: str | None = None,
         sheet: str = "",
+        parsing_threads: int | None = None,
     ) -> dict:
         """Run an import in the background, so the window stays usable and the run
         can be stopped: a collection of a few hundred files takes minutes."""
+        if parsing_threads is not None:
+            if isinstance(source, list) or not Path(source).is_dir():
+                raise ServiceError("An import thread override is available for folders only.")
+            self._import_settings(parsing_threads)
         if isinstance(source, list):
             source = source[0] if len(source) == 1 else self._stage(identifier, source)
         room = self.check_room(identifier, source)  # refuses an import that cannot fit
@@ -5100,6 +5139,7 @@ class Library:
                         delimiter=delimiter,
                         encoding=encoding,
                         on_collection=remember,
+                        parsing_threads=parsing_threads,
                     )
                 with self._lock:
                     job["result"] = result
@@ -5135,7 +5175,13 @@ class Library:
 
     DISK_KINDS = ("mounted", "image", "physical")
 
-    def start_disk_job(self, identifier: str, source: str, kind: str = "mounted") -> dict:
+    def start_disk_job(
+        self,
+        identifier: str,
+        source: str,
+        kind: str = "mounted",
+        parsing_threads: int | None = None,
+    ) -> dict:
         """Walk a volume or an image the way the desktop's "Analyser un disque…" does.
 
         `DiskCollection` copies the artifacts it recognises out of the source, then
@@ -5147,6 +5193,7 @@ class Library:
             raise ServiceError(f"Unknown disk source: {kind}")
         if kind != "physical" and not Path(str(source or "")).expanduser().exists():
             raise ServiceError(f"This path does not exist on the server: {source}")
+        settings = self._import_settings(parsing_threads)
         folder = self.library.folder(identifier)
         stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         workspace = folder / "Disks" / (stamp + "-" + uuid.uuid4().hex[:8])
@@ -5194,7 +5241,12 @@ class Library:
                 )
                 with cancellation_scope(cancel):
                     collection = DiskCollection(
-                        source, workspace, pack, progress=progress, source_kind=kind
+                        source,
+                        workspace,
+                        pack,
+                        settings=settings,
+                        progress=progress,
+                        source_kind=kind,
                     )
                     with self._lock:
                         job["collection"] = collection

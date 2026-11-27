@@ -6,24 +6,60 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-def auto_threads(cpu=None):
-    """What an automatic thread count means: the measured knee, capped by the machine.
+def _cgroup_paths(controller, root=Path("/sys/fs/cgroup"), membership=Path("/proc/self/cgroup")):
+    """Directories constraining this process, including limits inherited from parents."""
+    try:
+        rows = membership.read_text().splitlines()
+    except OSError:
+        rows = []
+    seen = set()
+    for row in rows:
+        fields = row.split(":", 2)
+        if len(fields) != 3:
+            continue
+        _, controllers, path = fields
+        if controllers and controller not in controllers.split(","):
+            continue
+        relative = Path(path.lstrip("/"))
+        if ".." in relative.parts:
+            continue
+        mounts = (root,) if not controllers else (root / controllers, root / controller)
+        for mount in mounts:
+            for scope in (relative, *relative.parents):
+                directory = mount / scope
+                if directory not in seen:
+                    seen.add(directory)
+                    yield directory
+    if root not in seen:
+        yield root
 
-    Eight files at once is where the parsers stop gaining on a shared disk, so the
-    value never promises more than that, and never more than the machine has.
-    """
-    if not cpu:
+
+def cpu_threads():
+    """Logical CPUs available to this process after affinity and its cgroup quotas."""
+    try:
+        cpu = len(os.sched_getaffinity(0))
+    except (OSError, AttributeError):
+        cpu = os.cpu_count() or 1
+    for directory in _cgroup_paths("cpu"):
         try:
-            cpu = len(os.sched_getaffinity(0))
-        except (OSError, AttributeError):
-            cpu = os.cpu_count() or 1
-        try:
-            quota, period = Path("/sys/fs/cgroup/cpu.max").read_text().split()
-            if quota != "max":
+            unified = directory / "cpu.max"
+            if unified.is_file():
+                quota, period = unified.read_text().split()
+                if quota == "max":
+                    continue
+            else:
+                quota = (directory / "cpu.cfs_quota_us").read_text()
+                period = (directory / "cpu.cfs_period_us").read_text()
+            if int(quota) > 0 and int(period) > 0:
                 cpu = min(cpu, max(1, int(quota) // int(period)))
         except (OSError, ValueError, ZeroDivisionError):
-            pass
-    return max(1, min(8, cpu))
+            continue
+    return max(1, cpu)
+
+
+def auto_threads(cpu=None):
+    """The measured worker limit for a shared disk, capped by the machine."""
+    return max(1, min(8, cpu or cpu_threads()))
 
 
 @dataclass(frozen=True)
@@ -102,6 +138,20 @@ def physical_memory_mb():
         )
     except Exception:
         return 4096
+
+
+def available_memory_mb():
+    """Physical RAM available under this process's tightest cgroup memory limit."""
+    memory = physical_memory_mb()
+    for directory in _cgroup_paths("memory"):
+        for name in ("memory.max", "memory.limit_in_bytes"):
+            try:
+                limit = int((directory / name).read_text())
+            except (OSError, ValueError):
+                continue
+            if limit > 0:
+                memory = min(memory, max(1, limit // (1024 * 1024)))
+    return memory
 
 
 def grown_memory(current, factor=4, ceiling_mb=None):

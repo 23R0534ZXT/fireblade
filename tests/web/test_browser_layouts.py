@@ -10,6 +10,7 @@ Skipped without Playwright and a Chromium; never failed for lack of them.
 import os
 
 import pytest
+from _audit import pick_import_source
 from _browser import serving  # noqa: E402
 
 pytest.importorskip("playwright.sync_api")
@@ -66,7 +67,7 @@ def test_two_files_chosen_together_follow_the_layout(browser_page, host, layout,
         f"document.getElementById('casecombo-label').innerText.includes('Layout {layout}')"
     )
     page.select_option("#import-layout", layout)
-    page.click('.toolbar .tb[data-act="import-file"]')
+    pick_import_source(page, "import-file")
     page.wait_for_selector("#import-modal.show")
     page.set_input_files("#preview-input", [str(first), str(second)])
     page.wait_for_function("!document.getElementById('preview-import').disabled", timeout=15000)
@@ -100,7 +101,7 @@ def test_the_layout_changes_on_the_fly_on_what_is_already_imported(browser_page,
         "document.getElementById('casecombo-label').innerText.includes('Layout artifacts')"
     )
     page.select_option("#import-layout", "artifacts")
-    page.click('.toolbar .tb[data-act="import-file"]')
+    pick_import_source(page, "import-file")
     page.wait_for_selector("#import-modal.show")
     page.set_input_files("#preview-input", [str(first), str(second)])
     page.wait_for_function("!document.getElementById('preview-import').disabled", timeout=15000)

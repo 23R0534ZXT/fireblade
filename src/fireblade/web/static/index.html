@@ -23,10 +23,7 @@
       aria-controls="artifacts" aria-expanded="false">Artifacts</button>
 
     <div class="menu" data-for="case">
-      <div class="item" data-act="import-file">Import a file…<span class="key">Ctrl+O</span></div>
-      <div class="item" data-act="import-folder">Parse a folder…<span class="key">Ctrl+Shift+I</span></div>
-      <div class="item" data-act="disk-open">Analyse a disk…</div>
-      <div class="item" data-act="disk-explorer">Explore disk image…</div>
+      <div class="item" data-act="import-evidence">Import evidence…</div>
       <div class="sep"></div>
       <div class="item" data-act="new-case">New case…</div>
       <div class="item" data-act="case-save">Save case<span class="key">Ctrl+S</span></div>
@@ -154,11 +151,11 @@
     <button class="btn" id="update-dismiss">Dismiss</button>
   </div>
   <div class="toolbar">
-    <div class="tb" data-act="import-file" title="Send a file to the server and read it">
+    <div class="tb" data-act="import-evidence" title="Import a file, folder or disk">
       <svg class="ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
         <path d="M1.5 4.5h5l1.2 1.5h6.8v7.5H1.5z" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
         <path d="M1.5 4.5V3h4l1.2 1.5" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
-      </svg>Import a file</div>
+      </svg>Import evidence</div>
     <div class="tb" data-act="export-csv">
       <svg class="ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
         <path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
@@ -166,8 +163,6 @@
       </svg>Export</div>
     <div class="tbsep"></div>
     <div class="tb" data-act="case-save">Save case</div>
-    <div class="tb" data-act="import-folder">Parse a folder</div>
-    <div class="tb" data-act="disk-open">Analyze a disk</div>
     <div class="tb" data-act="display-settings">Workspace…</div>
     <div class="tb" data-act="global-search">Global search</div>
     <div class="tb" data-act="rules">Rules</div>
@@ -358,8 +353,7 @@
           <p>Windows artifacts, Linux logs and CatScale collections.</p>
         </div>
         <div class="filterbar">
-          <button class="btn" data-act="import-file">Import a file…</button>
-          <button class="btn" data-act="import-folder">Parse a folder…</button>
+          <button class="btn" data-act="import-evidence">Import evidence…</button>
           <button class="btn" id="retry-open" title="A file that could not be read: try another reader">Read again with a reader…</button>
           <button class="btn" id="coverage-open" data-act="coverage-open" title="Reopen every analysis and check what could not be attested">Full report</button>
           <button class="btn" data-act="case-history">History…</button>
@@ -786,13 +780,25 @@
   <div class="item" data-act="alert-source" hidden>Open the source EVTX event</div>
 </div>
 
+<div class="modal" id="import-source-modal">
+  <div class="dialog" style="--dialog-width:440px" role="dialog" aria-labelledby="import-source-title" aria-modal="true">
+    <h3 id="import-source-title">Import evidence</h3>
+    <div class="body import-source-choices">
+      <button type="button" class="btn" data-act="import-file">Import a file…<span class="key">Ctrl+O</span></button>
+      <button type="button" class="btn" data-act="import-folder">Parse a folder…<span class="key">Ctrl+Shift+I</span></button>
+      <button type="button" class="btn" data-act="disk-open">Analyse a disk or image…</button>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Cancel</button></div>
+  </div>
+</div>
+
 <div class="modal" id="import-modal">
   <div class="dialog" style="width:min(1040px,94vw)">
     <h3 id="import-title">Import a file</h3>
     <div class="body">
       <div class="row">
-        <label>Files</label>
-        <button class="btn" data-act="preview-choose">Choose a file…</button>
+        <label id="preview-source-label">Files</label>
+        <button class="btn" id="preview-choose" data-act="preview-choose">Choose a file…</button>
         <input type="file" id="preview-input" multiple hidden>
         <span class="note" style="max-width:none">or a path on the server</span>
         <input id="preview-server" placeholder="/data/cases/…" style="flex:1">
@@ -803,6 +809,15 @@
         <select class="select" id="preview-delimiter" aria-label="CSV delimiter"></select>
         <select class="select" id="preview-encoding" aria-label="CSV encoding"></select>
         <span class="note" style="max-width:none">a native CSV is read with these instead of the detection</span>
+      </div>
+      <div id="import-capacity" class="import-capacity" hidden>
+        <div class="row">
+          <label for="import-threads">Import threads</label>
+          <input id="import-threads" type="range" min="1" max="1" value="1"
+            aria-describedby="import-capacity-info" disabled>
+          <output id="import-thread-count" for="import-threads" aria-live="polite"></output>
+        </div>
+        <div id="import-capacity-info" class="note" role="status"></div>
       </div>
       <div class="row" id="preview-sheet-row" style="display:none">
         <label for="preview-sheet">Sheet</label>
@@ -846,6 +861,15 @@
       </div>
       <div class="note">The walk copies the artifacts it recognises out of the source, then the
         ordinary collection reads them. The case must live outside the analysed volume.</div>
+      <div class="import-capacity">
+        <div class="row">
+          <label for="disk-threads">Import threads</label>
+          <input id="disk-threads" type="range" min="1" max="1" value="1"
+            aria-describedby="disk-capacity-info" disabled>
+          <output id="disk-thread-count" for="disk-threads" aria-live="polite"></output>
+        </div>
+        <div id="disk-capacity-info" class="note" role="status"></div>
+      </div>
     </div>
     <div class="foot">
       <button class="btn" id="disk-browse">Explore disk images…</button>

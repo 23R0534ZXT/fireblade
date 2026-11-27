@@ -1014,6 +1014,10 @@ def create_app(
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.get("/api/import-capacity")
+    def import_capacity():
+        return library.import_capacity()
+
     @app.post("/api/cases/{identifier}/import-jobs")
     def start_import_job(
         identifier: str,
@@ -1023,6 +1027,7 @@ def create_app(
         sheet: str = Form(""),
         source: str = Form(""),
         sources: list[str] = Form([]),
+        parsing_threads: str | None = Form(None),
         file: UploadFile | None = File(None),
     ):
         """Start an import in the background; the caller polls it and can stop it.
@@ -1030,7 +1035,12 @@ def create_app(
         `sources` is the files of one selection, read together as one collection."""
         library.library.folder(identifier)
         try:
+            workers = (
+                _whole(parsing_threads, "import threads") if parsing_threads is not None else None
+            )
             if file is not None:
+                if workers is not None:
+                    raise ValueError("An import thread override is available for folders only.")
                 target = _store_upload(library.library.folder(identifier), file)
             elif sources:
                 target = sources
@@ -1045,6 +1055,7 @@ def create_app(
                 delimiter=delimiter,
                 encoding=encoding,
                 sheet=sheet,
+                parsing_threads=workers,
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1057,7 +1068,10 @@ def create_app(
             raise HTTPException(status_code=400, detail="A 'source' is required.")
         try:
             return library.start_disk_job(
-                identifier, source, str((payload or {}).get("kind") or "mounted")
+                identifier,
+                source,
+                str((payload or {}).get("kind") or "mounted"),
+                parsing_threads=(payload or {}).get("parsing_threads"),
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -95,3 +95,30 @@ def test_parsing_threads_ship_on_automatic():
     preferences = Preferences()
     assert preferences.parsing_threads == 0
     preferences.validate()
+
+
+def test_capacity_obeys_inherited_container_cpu_and_memory_limits(tmp_path, monkeypatch):
+    from functools import partial
+
+    from fireblade.core import settings
+
+    root = tmp_path / "cgroup"
+    child = root / "container" / "task"
+    child.mkdir(parents=True)
+    membership = tmp_path / "membership"
+    membership.write_text("0::/container/task\n")
+    (root / "cpu.max").write_text("max 100000\n")
+    (child.parent / "cpu.max").write_text("350000 100000\n")
+    (child / "cpu.max").write_text("max 100000\n")
+    (child.parent / "memory.max").write_text(str(768 * 1024**2))
+    (child / "memory.max").write_text("max\n")
+    monkeypatch.setattr(
+        settings.os, "sched_getaffinity", lambda _pid: set(range(12)), raising=False
+    )
+    monkeypatch.setattr(settings, "physical_memory_mb", lambda: 4096)
+    monkeypatch.setattr(
+        settings, "_cgroup_paths", partial(settings._cgroup_paths, root=root, membership=membership)
+    )
+    assert settings.cpu_threads() == 3
+    assert settings.auto_threads() == 3
+    assert settings.available_memory_mb() == 768

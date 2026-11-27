@@ -2,6 +2,8 @@
 
 import json
 
+from _audit import pick_import_source
+
 
 def test_wide_configuration_documents_are_named_and_collapsed_behind_the_artifacts(
     empty_page, server
@@ -17,7 +19,7 @@ def test_wide_configuration_documents_are_named_and_collapsed_behind_the_artifac
             json.dumps({f"{prefix}_setting_{i}": i for i in range(1600)})
         )
     page.select_option("#import-layout", "artifacts")
-    page.click('.toolbar [data-act="import-file"]')
+    pick_import_source(page, "import-file")
     page.fill("#preview-server", str(folder))
     page.click('[data-act="preview-path"]')
     page.wait_for_selector("#preview-body .preview-card")

@@ -331,10 +331,10 @@ def test_every_dialog_a_menu_opens_keeps_its_buttons_on_screen(page):
 
 
 def test_every_shortcut_a_menu_announces_is_wired(page):
-    """A hint that does nothing is a lie: each announced combination opens what it says."""
+    """Each shortcut announced in the menu or source chooser must open its destination."""
     hints = page.eval_on_selector_all(
-        ".menu .item .key",
-        "els => els.map(e => [e.closest('.item').dataset.act, e.textContent.trim()])",
+        ".menu .item .key, #import-source-modal [data-act] .key",
+        "els => els.map(e => [e.closest('[data-act]').dataset.act, e.textContent.trim()])",
     )
     announced = {act: keys for act, keys in hints}
     # What each combination opens, by the command it is announced beside.

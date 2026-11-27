@@ -1,11 +1,13 @@
 """Malformed evidence must be refused with a useful result, never called imported."""
 
+from _audit import pick_import_source
+
 
 def test_empty_file_is_refused_before_import(empty_page, tmp_path):
     page = empty_page
     source = tmp_path / "invalid.csv"
     source.write_bytes(b"")
-    page.click('.toolbar [data-act="import-file"]')
+    pick_import_source(page, "import-file")
     page.set_input_files("#preview-input", str(source))
     page.wait_for_selector("#preview-body .preview-bad")
     assert page.locator("#preview-import").is_disabled()
@@ -18,7 +20,7 @@ def test_a_late_csv_parse_failure_is_not_reported_as_import_success(empty_page, 
     source.write_bytes(
         b"Time,User\n" + b"2026-11-01T12:00:00Z,alice\n" * 100000 + b"2026-11-01T12:00:00Z,\xff\n"
     )
-    page.click('.toolbar [data-act="import-file"]')
+    pick_import_source(page, "import-file")
     page.set_input_files("#preview-input", str(source))
     page.wait_for_selector("#preview-body .preview-card")
     page.click("#preview-import")
@@ -42,7 +44,7 @@ def test_truncated_final_quote_does_not_silently_drop_the_last_row(empty_page, t
         + "2026-11-01T12:00:00Z,alice\n" * 100000
         + '2026-11-01T12:00:00Z,"unfinished\n'
     )
-    page.click('.toolbar [data-act="import-file"]')
+    pick_import_source(page, "import-file")
     page.set_input_files("#preview-input", str(source))
     page.wait_for_selector("#preview-body .preview-card")
     page.click("#preview-import")
@@ -58,7 +60,7 @@ def test_a_partly_read_folder_counts_only_read_files_and_reports_failure(empty_p
     folder.mkdir()
     (folder / "good.csv").write_text("Time,User\n2026-11-01T12:00:00Z,bob\n")
     (folder / "broken.csv").write_bytes(b"Time,User\n2026-11-01T12:00:00Z,\xff\n")
-    page.click('.toolbar [data-act="import-file"]')
+    pick_import_source(page, "import-file")
     page.fill("#preview-server", str(folder))
     page.click('[data-act="preview-path"]')
     page.wait_for_selector("#preview-body .preview-card")

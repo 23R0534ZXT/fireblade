@@ -7,13 +7,13 @@ Skipped without Playwright and a Chromium; never failed for lack of them.
 import re
 
 import pytest
-from _audit import rows, status
+from _audit import pick_import_source, rows, status
 
 # the hidden controls of the toolbar open the browser's own chooser; a test hands it files
 
 
 def _open_import(page):
-    page.click('.toolbar .tb[data-act="import-file"]')
+    pick_import_source(page, "import-file")
     page.wait_for_selector("#import-modal.show")
 
 
@@ -128,7 +128,7 @@ def test_a_folder_sent_from_the_browser_is_rebuilt_in_the_case_and_imported(empt
     (folder / "a.csv").write_text("Time,Host\n2026-11-01T10:00:00Z,PC01\n")
     (folder / "logs" / "b.csv").write_text("Time,Host\n2026-11-01T10:01:00Z,PC02\n")
     page = empty_page
-    page.click('.toolbar .tb[data-act="import-folder"]')
+    pick_import_source(page, "import-folder")
     page.set_input_files("#folder-input", str(folder))
     page.wait_for_function(
         "document.getElementById('preview-note').innerText.includes('file(s) ready')", timeout=30000
@@ -256,3 +256,51 @@ def test_committed_sqlite_wal_records_survive_generic_fallback_in_the_gui(
     assert rows(page) == 1
     assert all(path.read_bytes() == data for path, data in before.items())
     assert not source.with_name(source.name + "-shm").exists()
+
+
+def test_import_thread_choices_are_sent_for_folder_and_disk(empty_page, server):
+    page = empty_page
+    folder = _case_folder(page, server) / "thread-test"
+    folder.mkdir()
+    (folder / "event.csv").write_text("Time,Host\n2026-11-01T10:00:00Z,PC01\n")
+    page.route(
+        "**/api/import-capacity",
+        lambda route: route.fulfill(
+            json={"max_threads": 4, "recommended_threads": 2, "cpu_threads": 8, "memory_mb": 8192}
+        ),
+    )
+    page.click('.toolbar [data-act="import-evidence"]')
+    page.click('#import-source-modal [data-act="import-file"]')
+    assert page.locator("#import-capacity").is_hidden()
+    page.locator('#import-modal [data-act="settings-close"]').click()
+    pick_import_source(page, "import-folder")
+    assert page.get_by_role("button", name="Choose a folder…").is_visible()
+    slider = page.get_by_role("slider", name="Import threads")
+    page.wait_for_function("document.querySelector('#import-threads').value === '2'")
+    assert "2 of 4" in page.locator("#import-thread-count").inner_text()
+    slider.press("Home")
+    assert "1 of 4" in page.locator("#import-thread-count").inner_text()
+    page.fill("#preview-server", str(folder))
+    page.click('[data-act="preview-path"]')
+    with page.expect_request(lambda request: request.url.endswith("/import-jobs")) as started:
+        page.click("#preview-import")
+    assert 'name="parsing_threads"\r\n\r\n1\r\n' in started.value.post_data
+    page.wait_for_selector("#body tr[data-row]")
+
+    page.route(
+        "**/disk-jobs",
+        lambda route: route.fulfill(status=400, json={"detail": "Synthetic disk response"}),
+    )
+    page.click('.toolbar [data-act="import-evidence"]')
+    page.click('#import-source-modal [data-act="disk-open"]')
+    page.fill("#disk-source", str(folder))
+    page.wait_for_function("document.querySelector('#disk-threads').value === '2'")
+    page.get_by_role("slider", name="Import threads").press("End")
+    assert "4 of 4" in page.locator("#disk-thread-count").inner_text()
+    with page.expect_request(lambda request: request.url.endswith("/disk-jobs")) as started:
+        page.click("#disk-start")
+    assert started.value.post_data_json == {
+        "source": str(folder),
+        "kind": "mounted",
+        "parsing_threads": 4,
+    }

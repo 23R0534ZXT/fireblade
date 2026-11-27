@@ -3,7 +3,7 @@
 import re
 
 import pytest
-from _audit import column_values, command, headers, rows, total
+from _audit import column_values, command, headers, pick_import_source, rows, total
 
 
 def _root_condition(page, group, column, operator, value):
@@ -73,7 +73,7 @@ def test_the_disk_window_walks_a_mounted_folder_and_adds_what_it_reads(page, ser
     volume.mkdir(parents=True)
     (volume / "System.evtx").write_text("Time,Host\n2026-11-01T10:00:00Z,PC1\n")
     before = page.evaluate("state.openCase.analyses.length")
-    command(page, "disk-open")
+    pick_import_source(page, "disk-open", entry="menu")
     page.fill("#disk-source", str(evidence / case / "volume"))
     assert page.eval_on_selector_all("#disk-kind option", "els => els.map(e => e.value)") == [
         "mounted",

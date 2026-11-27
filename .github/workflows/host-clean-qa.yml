@@ -77,10 +77,17 @@ jobs:
                       page.locator(f"[data-tab={view}]").click(timeout=10000)
                       page.wait_for_timeout(850 if view == "timeline" else 160)
                       page.screenshot(path=root / f"{width}-{view}.png")
+                      if width == 390 and view in ("analyses", "timeline", "graph"):
+                          thumb = page.screenshot(type="jpeg", quality=32, clip={"x": 0, "y": 0, "width": 390, "height": 430})
+                          print(f"AUDIT_THUMB|{width}-{view}|{base64.b64encode(thumb).decode()}", flush=True)
                   page.locator("[data-tab=analyses]").click()
                   for menu in page.locator(".menubar [data-menu]").all():
                       name = menu.get_attribute("data-menu")
-                      menu.click(timeout=6000)
+                      try:
+                          menu.click(timeout=2500)
+                      except Exception:
+                          checks.append({"width": width, "menu": name, "pointer_unreachable": True})
+                          menu.dispatch_event("mousedown", {"button": 0})
                       popup = page.locator(f".menu[data-for={name}]")
                       rect = popup.bounding_box()
                       if rect:

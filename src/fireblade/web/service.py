@@ -73,11 +73,12 @@ def _case_operation(method):
     """
 
     @wraps(method)
-    def guarded(self, identifier, *args, **kwargs):
+    def guarded(self, *args, **kwargs):
+        identifier = args[0] if args else kwargs.get("identifier")
         with self._lock:
             gate = self._case_operations.setdefault(identifier, threading.RLock())
         with gate:
-            return method(self, identifier, *args, **kwargs)
+            return method(self, *args, **kwargs)
 
     return guarded
 
@@ -607,6 +608,7 @@ class Library:
 
     # -- Hayabusa ----------------------------------------------------------
 
+    @_case_operation
     def detect(self, identifier: str, min_level: str = "low", progress=None) -> dict:
         """Run the detection engine over the case's verified EVTX copies.
 
@@ -750,6 +752,7 @@ class Library:
                 return position
         return None
 
+    @_case_operation
     def bookmark_finding(
         self, identifier: str, index: int, finding: dict, note: str | None = None
     ) -> dict:
@@ -816,6 +819,7 @@ class Library:
             raise ServiceError("The collection that produced this alert is not beside it.")
         return folder
 
+    @_case_operation
     def alert_context(self, identifier: str, index: int, row_id: int, minutes: int = 5) -> dict:
         """The EVTX events around an alert, built by the core's own builder.
 
@@ -867,6 +871,7 @@ class Library:
         summary["notes"] = list(result.get("notes") or [])
         return summary
 
+    @_case_operation
     def alert_source_event(self, identifier: str, index: int, row_id: int) -> dict:
         """Where the event an alert came from lives, and how to filter on it."""
         case = self._case_for(identifier, index)
@@ -927,6 +932,7 @@ class Library:
 
     # -- archive and release -----------------------------------------------
 
+    @_case_operation
     def archive_case(self, identifier: str) -> dict:
         """Pack the case into an archive outside its folder, then free the folder."""
         from fireblade.core.case_storage import archive_and_release
@@ -1136,6 +1142,7 @@ class Library:
             },
         }
 
+    @_case_operation
     def create_profile(self, identifier: str, index: int, name: str) -> dict:
         """Build a profile from an open analysis, as the desktop's dialog does.
 
@@ -1208,6 +1215,7 @@ class Library:
             snapshots.append(AnalysisSnapshot(path, info, View(), b""))
         return snapshots, repaired
 
+    @_case_operation
     def export_package(self, identifier: str, include_sources: bool = True, progress=None) -> dict:
         """Write the case as a portable .fireblade archive and hand back a URL."""
         from fireblade.core.case_package import export_package
@@ -1271,6 +1279,7 @@ class Library:
 
     # -- cell notes --------------------------------------------------------
 
+    @_case_operation
     def cell_notes(self, identifier: str, index: int, row_ids: list[int] | None = None) -> dict:
         """Cell notes grouped by row, for the page on screen or a single row."""
         case = self._case_for(identifier, index)
@@ -1281,6 +1290,7 @@ class Library:
             grouped.setdefault(str(row), {})[str(column)] = note
         return {"notes": grouped}
 
+    @_case_operation
     def cell_note(self, identifier: str, index: int, row_id: int, column: int, note: str) -> dict:
         case = self._case_for(identifier, index)
         clean = (note or "").strip()
@@ -1292,6 +1302,7 @@ class Library:
 
     DISPLAY_VIEW = "__fireblade_display__"
 
+    @_case_operation
     def display(self, identifier: str, index: int) -> dict:
         """Widths, hidden and pinned columns, kept in the analysis like a view."""
         case = self._case_for(identifier, index)
@@ -1307,6 +1318,7 @@ class Library:
         layout.setdefault("order", [])
         return layout
 
+    @_case_operation
     def save_display(self, identifier: str, index: int, layout: dict) -> dict:
         clean = {
             "widths": {
@@ -1332,12 +1344,14 @@ class Library:
 
     # -- saved views -------------------------------------------------------
 
+    @_case_operation
     def views(self, identifier: str, index: int) -> dict:
         case = self._case_for(identifier, index)
         with case.lock:
             stored = case.views()
         return {"views": sorted(name for name in stored if not name.startswith("__"))}
 
+    @_case_operation
     def save_view(self, identifier: str, index: int, name: str, view: dict) -> dict:
         """Keep the grid state under a name, as the core's own View: the whole of what the grid shows.
 
@@ -1392,6 +1406,7 @@ class Library:
             case.save_view(clean, saved)
         return {"name": clean}
 
+    @_case_operation
     def view(self, identifier: str, index: int, name: str) -> dict:
         case = self._case_for(identifier, index)
         with case.lock:
@@ -1496,6 +1511,7 @@ class Library:
             "all_source_rows": bool(getattr(rule, "all_source_rows", False)),
         }
 
+    @_case_operation
     def rules(self, identifier: str, index: int) -> dict:
         """The colour rules of this analysis, kept in its own views table.
 
@@ -1633,6 +1649,7 @@ class Library:
                 return True
         return True
 
+    @_case_operation
     def global_rules(self, identifier: str | None = None, index: int | None = None) -> dict:
         """The rules that follow the analyst from one analysis to the next."""
         book, error, _store = self._global_rules_book()
@@ -1825,6 +1842,7 @@ class Library:
             **icons,
         )
 
+    @_case_operation
     def save_rules(self, identifier: str, index: int, rules: list) -> dict:
         """Store the rules with the core's own FormatRule/FilterGroup objects."""
         cleaned = []
@@ -1841,6 +1859,7 @@ class Library:
 
     # -- process pivot -----------------------------------------------------
 
+    @_case_operation
     def pivot(self, identifier: str, index: int, row_id: int) -> dict:
         """What launched this process: the anchor the desktop derives from one row,
         then the events around it across the case.
@@ -1937,6 +1956,7 @@ class Library:
 
     # -- derived columns ---------------------------------------------------
 
+    @_case_operation
     def add_derived(self, identifier: str, index: int, definition: dict) -> dict:
         """Add a computed column the way the desktop does: a validated definition,
         compiled to SQL over the raw rows, stored in the analysis itself."""
@@ -1970,6 +1990,7 @@ class Library:
             "zones": ["UTC", "Europe/Paris", *sorted(WINDOWS_ZONES)],
         }
 
+    @_case_operation
     def derived_columns(self, identifier: str, index: int) -> dict:
         case = self._case_for(identifier, index)
         with case.lock:
@@ -2312,6 +2333,7 @@ class Library:
 
     # -- global search -----------------------------------------------------
 
+    @_case_operation
     def search(self, identifier: str, text: str, limit: int = 50, progress=None) -> dict:
         """Search every analysis of the case, and say where the hits are."""
         needle = (text or "").strip()
@@ -2641,6 +2663,7 @@ class Library:
         data = self.library.update(identifier, **fields)
         return self._summary(data)
 
+    @_case_operation
     def destroy(
         self,
         identifier: str,
@@ -2881,6 +2904,7 @@ class Library:
 
     # -- reports -----------------------------------------------------------
 
+    @_case_operation
     def report(
         self,
         identifier: str,
@@ -3067,6 +3091,7 @@ class Library:
             "url": f"/api/cases/{identifier}/reports/{target.name}",
         }
 
+    @_case_operation
     def findings(self, identifier: str) -> tuple[list, list]:
         """The grouped findings of the case's latest detection run, as the desktop groups them."""
         from fireblade.core.findings import group_alerts, group_alerts_sql
@@ -3135,6 +3160,7 @@ class Library:
                     offset += len(page)
                 return group_alerts(rows)
 
+    @_case_operation
     def _rows_of(self, identifier: str, index: int) -> int:
         try:
             case = self._case_for(identifier, index)
@@ -3168,6 +3194,7 @@ class Library:
 
     # -- IOC hunting -------------------------------------------------------
 
+    @_case_operation
     def ioc_scan(
         self,
         identifier: str,
@@ -3589,6 +3616,7 @@ class Library:
             _rename_csv_header(target, COVERAGE_HEADER)
         return target.read_bytes()
 
+    @_case_operation
     def _live_view(self, identifier: str, live: dict | None) -> View | None:
         """The filters the analyst has on screen, as the core's View.
 
@@ -3871,6 +3899,7 @@ class Library:
         self._timelines[key] = store
         return store
 
+    @_case_operation
     def timeline_source_row(self, identifier: str, index: int, row_id: int) -> dict:
         """The row a timeline entry came from, read in its own analysis."""
         case = self._case_for(identifier, index)
@@ -3944,6 +3973,7 @@ class Library:
 
     # -- importing ---------------------------------------------------------
 
+    @_case_operation
     def _merge_session(
         self,
         identifier: str,
@@ -4444,6 +4474,7 @@ class Library:
 
     # -- one analysis ------------------------------------------------------
 
+    @_case_operation
     def close_analysis(self, identifier: str, index: int) -> dict:
         """Take one analysis out of the workspace; its file stays in the case.
 
@@ -4516,6 +4547,7 @@ class Library:
             ]
         }
 
+    @_case_operation
     def reopen_analysis(self, identifier: str, position: int) -> dict:
         """Open a closed analysis again: it goes back to the end of the tabs."""
         data = self.library.read(identifier)
@@ -4540,6 +4572,7 @@ class Library:
         )
         return {"index": len(opened) - 1, "analyses": len(opened), "closed": len(remaining)}
 
+    @_case_operation
     def profiles_for(self, identifier: str, index: int) -> dict:
         """The profile this analysis matches, and what applying it would set."""
         from fireblade.core.profiles import detect_profile, profile_transformations, profile_view
@@ -4573,6 +4606,7 @@ class Library:
             "headers": len(headers),
         }
 
+    @_case_operation
     def apply_profile(self, identifier: str, index: int) -> dict:
         """Apply the recognised profile to this analysis' view, as the desktop's command does.
 
@@ -4802,6 +4836,7 @@ class Library:
             "sha256": record.get("sha256", ""),
         }
 
+    @_case_operation
     def retry_file(
         self, identifier: str, collection_name: str, path: str, reader: str = "text"
     ) -> dict:
@@ -5345,6 +5380,7 @@ class Library:
                 event.set()
         return {"job": job_id, "status": "cancelling", "cancelled": True}
 
+    @_case_operation
     def reorder_analyses(self, identifier: str, order: list[int]) -> dict:
         """Put the open analyses in the order the analyst wants, as the desktop's dialog does.
 
@@ -5388,6 +5424,7 @@ class Library:
             "labels": [self._label(item.source_info, item.path) for item in ordered],
         }
 
+    @_case_operation
     def save_case(
         self, identifier: str, index: int | None = None, display: dict | None = None
     ) -> dict:
@@ -5479,6 +5516,7 @@ class Library:
         payload = json.loads(path.read_text(encoding="utf-8"))
         return {"name": path.name, "content": payload}
 
+    @_case_operation
     def restore_history(self, identifier: str, name: str) -> dict:
         """Put a recorded state back, after keeping the current one.
 
@@ -5529,6 +5567,7 @@ class Library:
             "updated": recorded.get("updated"),
         }
 
+    @_case_operation
     def filter_text(self, identifier: str, index: int, text: str) -> dict:
         """Parse a text filter (``Contains([User], 'a') And [ID] >= 10``) with the desktop's parser."""
         from fireblade.core.filter_text import parse_filter
@@ -5562,11 +5601,21 @@ class Library:
                 )
             path = Path(entry["path"])
             if len(self._open) >= self.MAX_OPEN:
-                oldest = next(iter(self._open))
-                try:
-                    self._open.pop(oldest).close()
-                except Exception:  # a broken handle must not block the new one
-                    pass
+                # A different case may be rendering outside the service lock. Never
+                # close its handle in the middle of that operation, or wait for its
+                # gate while holding the job/status lock. The cache may briefly grow
+                # beyond its target when every other case is busy.
+                for oldest in list(self._open):
+                    gate = self._case_operations.setdefault(oldest[0], threading.RLock())
+                    if not gate.acquire(blocking=False):
+                        continue
+                    try:
+                        self._open.pop(oldest).close()
+                    except Exception:  # a broken handle must not block the new one
+                        pass
+                    finally:
+                        gate.release()
+                    break
             # Writable: the analyst books rows and writes notes from the grid, and
             # DuckDB refuses two connections with different configurations on the
             # same file, so one handle serves reads and writes.
@@ -5589,10 +5638,12 @@ class Library:
                     pass
             self._timelines.clear()
 
+    @_case_operation
     def columns(self, identifier: str, index: int) -> list[str]:
         case = self._case_for(identifier, index)
         return META_COLUMNS + column_labels(case)
 
+    @_case_operation
     def empty_columns(self, identifier: str, index: int) -> list[int]:
         """Grid positions whose source column contains no non-whitespace value."""
         case = self._case_for(identifier, index)
@@ -5932,6 +5983,7 @@ class Library:
 
         return {"ranges": [{"name": name} for name in RANGES]}
 
+    @_case_operation
     def bookmarks(self, identifier: str, index: int) -> dict:
         case = self._case_for(identifier, index)
         with case.lock:
@@ -5942,6 +5994,7 @@ class Library:
             ]
         }
 
+    @_case_operation
     def bookmark(
         self, identifier: str, index: int, row_id: int, note: str = "", column: int | None = None
     ) -> dict:
@@ -5973,6 +6026,7 @@ class Library:
         )
         return f"{stem}.{extension}"
 
+    @_case_operation
     def export(
         self,
         identifier: str,

@@ -738,6 +738,8 @@ def test_global_rules_reach_every_analysis_that_has_the_column(service, tmp_path
         headers=["User", "SourceIP"],
     )
     assert saved["saved"] == 1
+    assert library.global_rules()["stored"] == 1
+    assert library.global_rules(identifier=identifier, index=0)["applied"] == 1
 
     state = library.global_rules(identifier, 0)
     assert state["stored"] == 1
@@ -1782,8 +1784,12 @@ def test_a_disconnected_download_releases_its_temporary_file(tmp_path):
             disconnected_send,
         )
 
-    with pytest.raises((OSError, ClientDisconnect)):
-        asyncio.run(transfer())
+    # A session-scoped synchronous Playwright fixture may own this thread's loop.
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with pytest.raises((OSError, ClientDisconnect)):
+            pool.submit(lambda: asyncio.run(transfer())).result(timeout=5)
     assert not target.exists()
 
 
@@ -1817,3 +1823,72 @@ def test_case_close_waits_until_a_rows_request_finishes_painting(service, monkey
             release.set()
         assert rows.result(timeout=5)["total"] == 3
         closing.result(timeout=5)
+
+
+@pytest.mark.parametrize("operation", ["bookmarks", "views", "rules", "columns", "empty_columns"])
+def test_analysis_queries_wait_for_a_layout_change(service, monkeypatch, operation):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    lib, identifier = service
+    closed = threading.Event()
+    release = threading.Event()
+    original_close = lib.close_case
+
+    def delayed_close(case_id):
+        original_close(case_id)
+        closed.set()
+        assert release.wait(5)
+
+    monkeypatch.setattr(lib, "close_case", delayed_close)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        layout = pool.submit(lib.reorganize, identifier, "files")
+        assert closed.wait(5)
+        query = pool.submit(getattr(lib, operation), identifier, 0)
+        try:
+            threading.Event().wait(0.1)
+            assert not query.done(), f"{operation} reopened an analysis during a layout change"
+        finally:
+            release.set()
+        layout.result(timeout=5)
+        assert query.result(timeout=5) is not None
+
+
+def test_busy_case_is_not_evicted_and_other_cases_remain_usable(service, monkeypatch):
+    import shutil
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    lib, identifier = service
+    other = lib.library.create("Independent case")
+    source = lib._analyses(lib.library.read(identifier))[0]["path"]
+    target = lib.library.folder(other["id"]) / "other.duckdb"
+    shutil.copyfile(source, target)
+    lib.library.save(
+        other["id"],
+        [AnalysisSnapshot(str(target), {}, View(), b"")],
+        0,
+        [],
+        None,
+        other["revision"],
+    )
+    lib.MAX_OPEN = 1
+    entered = threading.Event()
+    release = threading.Event()
+    paint = lib._painting
+
+    def delayed(*args, **kwargs):
+        if threading.current_thread().name.startswith("busy-case"):
+            entered.set()
+            assert release.wait(5)
+        return paint(*args, **kwargs)
+
+    monkeypatch.setattr(lib, "_painting", delayed)
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="busy-case") as pool:
+        busy = pool.submit(lib.rows, identifier, 0)
+        assert entered.wait(5)
+        try:
+            assert lib.rows(other["id"], 0)["total"] == 3
+        finally:
+            release.set()
+        assert busy.result(timeout=5)["total"] == 3

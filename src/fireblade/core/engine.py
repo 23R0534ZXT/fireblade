@@ -270,12 +270,16 @@ class Case:
             # Hash before and after parsing detects source changes during acquisition.
             progress("Calcul SHA-256 de la source…")
 
+            has_quotes = False
+
             def digest():
+                nonlocal has_quotes
                 h = hashlib.sha256()
                 with source.open("rb") as f:
                     while chunk := f.read(4 * 1024 * 1024):
                         self.check_cancelled()
                         h.update(chunk)
+                        has_quotes = has_quotes or b'"' in chunk
                 return h.hexdigest()
 
             before = source.stat()
@@ -314,6 +318,28 @@ class Case:
                     incoming = self.utf8_input(source, encoding)
                 with incoming as input_path:
                     self.check_cancelled()
+                    if has_quotes:
+                        # The native reader can silently drop an unterminated final
+                        # quoted record beyond its sample. Validate quoting before
+                        # accepting its count as the complete evidence.
+                        separator = (
+                            delimiter
+                            or self.db.execute(
+                                "SELECT Delimiter FROM sniff_csv(?, header=true, sample_size=20480)",
+                                [str(input_path)],
+                            ).fetchone()[0]
+                        )
+                        csv.field_size_limit(max(csv.field_size_limit(), 16 * 1024 * 1024))
+                        with input_path.open(encoding="utf-8-sig", newline="") as quoted:
+                            reader = csv.reader(quoted, delimiter=separator, strict=True)
+                            try:
+                                for position, _record in enumerate(reader):
+                                    if position % 1024 == 0:
+                                        self.check_cancelled()
+                            except csv.Error as exc:
+                                raise ValueError(
+                                    f"CSV quoting is invalid near line {reader.line_num}: {exc}"
+                                ) from exc
                     headers = None
                     relation = None
                     # Declared before the read: the memory fallback below runs even
@@ -511,8 +537,7 @@ class Case:
 
     def huge_threshold(self):
         """Above this, one transaction stops being the right promise."""
-        budget = (getattr(self.settings, "memory_mb", None) or 1024) * 1024 * 1024
-        return max(2 * 1024**3, 8 * budget)
+        return csv_chunks.transaction_limit(getattr(self.settings, "memory_mb", None))
 
     def single_pass_limit(self):
         """Above this size the file is read chunk by chunk, not in one pass.

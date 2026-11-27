@@ -19,6 +19,7 @@ from pathlib import Path
 
 import duckdb
 
+from fireblade.core import csv_chunks
 from fireblade.core.engine import Case
 from fireblade.core.errors import OperationCancelled, job_cancelled
 from fireblade.core.generic_files import classify as generic_classify
@@ -296,13 +297,20 @@ def fit_budget_to_file(budget, csv, progress=lambda _: None, ceiling_mb=None):
     the retry loop multiplies the budget, and every attempt re-reads the whole file.
     The analyst waits several times longer than the work needs, with one unchanging
     message. Sizing the first attempt from the file replaces those passes with one,
-    still bounded by half the physical memory.
+    still bounded by half the physical memory. Multi-gigabyte imports use
+    checkpointed chunks instead: retain their configured budget so that increasing
+    the budget cannot move the streaming threshold out of reach.
     """
     if budget is None:
         return budget
     try:
-        size_mb = Path(csv).stat().st_size // (1024 * 1024)
+        size_bytes = Path(csv).stat().st_size
+        size_mb = size_bytes // (1024 * 1024)
     except OSError:
+        return budget
+    # The engine checkpoints these imports. Growing the budget from their total
+    # size would also grow the checkpoint threshold and silently disable streaming.
+    if size_bytes > csv_chunks.transaction_limit(getattr(budget, "memory_mb", None)):
         return budget
     needed = size_mb + size_mb // 4 + 64
     current = int(getattr(budget, "memory_mb", 0) or 0)

@@ -30,3 +30,15 @@ def test_the_budget_stops_at_the_machine_ceiling(tmp_path):
 def test_a_missing_file_keeps_the_budget(tmp_path):
     budget = Settings(memory_mb=128)
     assert fit_budget_to_file(budget, tmp_path / "absent.csv").memory_mb == 128
+
+
+def test_a_multi_gigabyte_file_keeps_the_budget_that_enables_streaming(tmp_path):
+    from fireblade.core.engine import Case
+
+    path = make_file(tmp_path, 3000)
+    configured = Settings(memory_mb=512)
+    effective = fit_budget_to_file(configured, path, ceiling_mb=8192)
+    engine = Case.__new__(Case)
+    engine.settings = effective
+    assert path.stat().st_size > engine.single_pass_limit()
+    assert effective.memory_mb == configured.memory_mb

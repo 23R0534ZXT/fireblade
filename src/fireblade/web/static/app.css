@@ -5,7 +5,7 @@
   --window:#f0f0f0; --text:#202020; --base:#ffffff; --alt:#f6f6f6;
   --border:#b5b5b5; --header:#eeeeee; --header-sep:#c5c5c5; --toolbar-sep:#bcbcbc;
   --sel:#cce8ff; --sel-text:#101010; --disabled:#686868; --link:#0645ad;
-  --hint:#ffffe1;
+  --hint:#ffffe1; --status-error:#a02020;
   /* The rest of the surface, named once: a theme or a custom palette only has to
      move these six plus the ones above, never the rules below. */
   --grid-line:#e2e2e2; --row-hover:#eaf5ff; --head-sorted:#e4eef6; --btn-hover:#e4f2fc;
@@ -21,7 +21,7 @@
   --window:#1f1f1f; --text:#e6e6e6; --base:#262626; --alt:#2b2b2b;
   --border:#454545; --header:#2a2a2a; --header-sep:#3d3d3d; --toolbar-sep:#3d3d3d;
   --sel:#2f5d80; --sel-text:#ffffff; --disabled:#8a8a8a; --link:#7fb3e8;
-  --hint:#3a3a2a;
+  --hint:#3a3a2a; --status-error:#ffaaa3;
   --grid-line:#3a3a3a; --row-hover:#333333; --head-sorted:#33414d; --btn-hover:#333333;
   --btn-active:#2f4a5e; --input-focus:#333333; --soft:#2a2a2a; --muted:#a8a8a8;
   --border-strong:#5a5a5a; --menu-border:#555555; --border-soft:#3d3d3d; --accent:#4f8bb5;
@@ -208,7 +208,7 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
   flex:0 0 auto;background:var(--base)}
 .note-editor label{font-size:11px;color:var(--muted);white-space:nowrap}
 .note-editor input{flex:1;min-width:0;height:20px;border:1px solid var(--border);background:var(--base);font-family:inherit;font-size:11px;padding:0 4px;outline:none}
-.rowid{color:#404040}
+.rowid{color:var(--muted)}
 .emptygrid{padding:10px 12px;color:var(--disabled);font-size:11px;line-height:1.6}
 
 .details{display:flex;flex-direction:column;flex:0 0 116px;min-height:0;margin:4px 6px 0;border:1px solid var(--border);background:var(--base);position:relative;overflow:hidden}
@@ -227,7 +227,7 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
 .statusbar .right{margin-left:auto;display:flex;gap:14px}
 #status{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .statusbar .right{flex-shrink:0}
-.statusbar .err{color:#a02020}
+.statusbar .err{color:var(--status-error)}
 
 /* cases table */
 .caseswrap{flex:1;min-height:0;margin:4px 6px;border:1px solid var(--border);background:var(--base);display:flex;flex-direction:column;overflow:auto}
@@ -597,6 +597,10 @@ tr.gtotal td{background:var(--header);border-top:2px solid var(--border-strong)}
   & .pane>[id$="-view"]{overflow-y:auto}
   & #analysis-view.details-right:not([style*="none"]){display:flex!important}
   & #analysis-view.details-right>.details{margin:4px 6px 0}
+  & .details{max-height:calc(40dvh / var(--ui-scale))}
+  & .details:has(>.ph:only-child){flex:0 0 auto!important;height:auto!important}
+  & .details>.ph{position:static;padding:5px 6px}
+  & #analysis-view:has(>.details>.ph:only-child)>.hsplit{display:none}
   & #timeline-view .gridwrap,& #ioc-view .gridwrap,& #actions-view .gridwrap{min-height:105px}
   & .statusbar{gap:6px}
   & #caseroot{display:none}

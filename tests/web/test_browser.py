@@ -84,6 +84,11 @@ def test_narrow_workspaces_keep_their_controls_and_artifact_drawer(page):
     drawer = page.locator("#artifacts")
     toggle = page.get_by_role("button", name="Artifacts", exact=True)
     drawer.wait_for(state="hidden")
+    details = page.locator("#details")
+    assert details.bounding_box()["height"] < 40
+    page.locator("#body tr[data-row] td[data-cell]").first.click()
+    page.locator(".detail-fields").wait_for()
+    assert details.bounding_box()["height"] > 40
     toggle.click()
     assert drawer.is_visible()
     close = drawer.get_by_role("button", name="Close artifacts panel")
@@ -136,6 +141,32 @@ def test_workspace_zoom_keeps_the_status_and_uses_the_available_width(page):
     bounds = page.locator('.menu[data-for="exporter"]').bounding_box()
     assert 0 <= bounds["x"] and bounds["x"] + bounds["width"] <= 851
     assert 0 <= bounds["y"] and bounds["y"] + bounds["height"] <= 701
+
+
+def test_dark_rows_and_errors_keep_readable_contrast(page):
+    page.locator('.toolbar [data-act="display-settings"]').click()
+    page.locator("#palette-theme").select_option("dark")
+    page.locator('#settings-modal [data-act="settings-close"]').click()
+    page.evaluate("say('Analysis file missing', true)")
+    ratios = page.evaluate(r"""() => {
+      const luminance = (color) => color.match(/\d+/g).slice(0, 3).map(Number)
+        .map(value => value / 255).map(value => value <= .04045
+          ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
+        .reduce((total, value, index) => total + value * [.2126, .7152, .0722][index], 0);
+      return ['#status', '#body .rowid'].map(selector => {
+        const element = document.querySelector(selector);
+        const foreground = luminance(getComputedStyle(element).color);
+        let surface = element;
+        let background = getComputedStyle(surface).backgroundColor;
+        while (background === 'rgba(0, 0, 0, 0)' && surface.parentElement) {
+          surface = surface.parentElement;
+          background = getComputedStyle(surface).backgroundColor;
+        }
+        const base = luminance(background);
+        return (Math.max(foreground, base) + .05) / (Math.min(foreground, base) + .05);
+      });
+    }""")
+    assert all(ratio >= 4.5 for ratio in ratios), ratios
 
 
 def test_a_narrow_toolbar_keeps_case_controls_and_the_view_menu_keeps_workspace(page):

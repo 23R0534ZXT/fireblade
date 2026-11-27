@@ -1438,7 +1438,7 @@ function renderCases() {
     <tr data-case="${escapeHtml(item.id)}" class="${
       [state.openCase && state.openCase.id === item.id ? "sel" : "",
        state.selectedCase === item.id ? "selected" : ""].filter(Boolean).join(" ")}">
-      <td title="${escapeHtml(item.description || "")}">${escapeHtml(item.name || "(unnamed)")}</td>
+      <td title="${escapeHtml([item.name, item.description].filter(Boolean).join(" — "))}">${escapeHtml(item.name || "(unnamed)")}</td>
       <td>${escapeHtml(String(item.collection_count ?? (item.collections || []).length ?? 0))}</td>
       <td>${escapeHtml(CASE_STATUS[item.status] || item.status || "—")}${item.storage_archive ? " · kept in an archive" : ""}</td>
       <td>${escapeHtml(String(item.analysis_count ?? 0))}</td>

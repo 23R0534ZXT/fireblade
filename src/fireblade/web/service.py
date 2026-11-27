@@ -219,6 +219,8 @@ class Library:
         for item in summary["analyses"]:
             item["collection"] = self._tree_collection(folder, item, collection_cache)
             item["family"] = self._family_of(item)
+            if item["family"] == "Supporting files":
+                self._supporting_tree_name(item, collection_cache)
         layouts = {info["layout"] for info in collection_cache.values()}
         summary["layout"] = next(iter(layouts)) if len(layouts) == 1 else None
         return summary
@@ -233,12 +235,19 @@ class Library:
         except (ValueError, IndexError):
             return {"key": "", "name": "Analyses outside a collection"}
         if key in cache:
-            return cache[key]
+            return {field: cache[key][field] for field in ("key", "name", "layout")}
         name = key
         report = base / key / "collection.json"
         layout = None
+        supporting = {}
         try:
             metadata = json.loads(report.read_text(encoding="utf-8"))
+            for document in metadata.get("raw_documents") or metadata.get("documents") or []:
+                info = document.get("source") or {}
+                if info.get("parser") == "Files":
+                    shape = tuple(info.get("headers") or [])
+                    source_name = str(info.get("label") or info.get("path") or "")
+                    supporting.setdefault(shape, set()).add(source_name)
             source = metadata.get("source")
             layout = metadata.get("organization")
             if layout not in ("files", "artifacts", "combined", "schemas"):
@@ -247,8 +256,29 @@ class Library:
                 name = Path(str(source).replace("\\", "/")).name or key
         except (OSError, ValueError, AttributeError):
             pass
-        cache[key] = {"key": key, "name": name, "layout": layout}
-        return cache[key]
+        cache[key] = {"key": key, "name": name, "layout": layout, "supporting": supporting}
+        return {"key": key, "name": name, "layout": layout}
+
+    @staticmethod
+    def _supporting_tree_name(item: dict, cache: dict) -> None:
+        info = item.get("source_info") or {}
+        headers = list(info.get("headers") or [])
+        organized = "/results/organisation-" in str(item.get("source") or "").replace("\\", "/")
+        if organized:
+            headers = headers[3:]  # the organized grid adds its three provenance columns
+            owner = cache.get((item.get("collection") or {}).get("key"), {})
+            sources = sorted(owner.get("supporting", {}).get(tuple(headers), []))
+        else:
+            sources = [str(info.get("label") or info.get("path") or item.get("source") or "")]
+        if not sources:
+            return
+        names = [Path(source.replace("\\", "/")).name for source in sources]
+        if organized and headers[:2] == ["Line", "Text"]:
+            label = f"Text and collection logs ({len(sources)} files)"
+        else:
+            label = names[0] + (f" +{len(sources) - 1} files" if len(sources) > 1 else "")
+        item["tree_label"] = label
+        item["tree_sources"] = sources
 
     def _family_of(self, item: dict) -> str:
         """What an analysis is, as the desktop's tree names it: a recognised profile, else a family by name."""
@@ -259,7 +289,17 @@ class Library:
         raw = str(item.get("source") or "").replace("\\", "/")
         stem = source.stem
         if "/results/organisation-" in raw:
-            return str(item.get("label") or stem)  # a family Kagarasu organised is its own group
+            family = str(item.get("label") or stem).split(" · ", 1)[0]
+            return "Supporting files" if family == "Files" else family
+        if info.get("parser") == "Files":
+            return "Supporting files"
+        from fireblade.core.collection_organization import ARTIFACTS
+
+        if info.get("parser") == "Inventory":
+            return "Files inventory"
+        family = ARTIFACTS.get(info.get("parser"))
+        if family:
+            return english.english_text(family)
         if "hayabusa" in stem.casefold():
             return "Hayabusa detection"
         if stem == "Contexte EVTX":
@@ -294,13 +334,13 @@ class Library:
         if not session or not Path(session).is_file():
             return []
         folder = Path(session).parent
-        if Path(session).stat().st_size > 4 * 1024 * 1024:
+        if Path(session).stat().st_size > MAX_SESSION_BYTES:
             raise ServiceError("The session file is too large.")
         payload = json.loads(Path(session).read_text(encoding="utf-8"))
         if payload.get("format") != "fireblade-session" or payload.get("version") != 1:
             raise ServiceError("Unknown Kagarasu session format.")
         documents = payload.get("documents") or []
-        if not isinstance(documents, list) or len(documents) > 1000:
+        if not isinstance(documents, list):
             raise ServiceError("Invalid Kagarasu session.")
         active = payload.get("active", 0)
         entries = []
@@ -2001,6 +2041,20 @@ class Library:
 
     # -- import history ----------------------------------------------------
 
+    @staticmethod
+    def _import_output_info(item: dict) -> dict:
+        analyses = {
+            output["analysis"]
+            for run in item.get("runs") or []
+            for output in run.get("outputs") or []
+            if output.get("analysis")
+        }
+        count = len(analyses)
+        return {
+            "output_count": count,
+            "outputs": ("1 analysis" if count == 1 else f"{count} analyses") if count else "",
+        }
+
     def imports(self, identifier: str) -> dict:
         """Every import of the case, file by file, with its verdict and its reason.
 
@@ -2034,6 +2088,7 @@ class Library:
                             str(item.get("reason") or item.get("error") or "")
                         ),
                         "tools": list(item.get("tools") or []),
+                        **self._import_output_info(item),
                     }
                 )
             counts = {}
@@ -4768,6 +4823,7 @@ class Library:
                         "tools": item.get("tools") or [],
                         "sha256": item.get("sha256") or "",
                         "ignored": bool(item.get("ignored")),
+                        **self._import_output_info(item),
                     }
                 )
         return {

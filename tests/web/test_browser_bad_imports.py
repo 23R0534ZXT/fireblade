@@ -69,3 +69,16 @@ def test_a_partly_read_folder_counts_only_read_files_and_reports_failure(empty_p
     )
     assert "1 file(s) imported" in page.inner_text("#status")
     assert page.evaluate("state.openCase.analyses.length") == 1
+    page.click('[data-tab="imports"]')
+    page.wait_for_function(
+        "document.getElementById('imports-summary').innerText.includes('1 file(s) read, 1 not read')"
+    )
+    good = page.locator("#imports-rows tr[data-import]", has_text="good.csv")
+    assert good.locator("td").nth(4).inner_text().strip(), "The produced analysis must be listed"
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    page.click('[data-act="import-copy-unread"]')
+    page.wait_for_function(
+        "document.getElementById('status').innerText.includes('1 unprocessed path')"
+    )
+    copied = page.evaluate("navigator.clipboard.readText()")
+    assert "broken.csv" in copied and "good.csv" not in copied

@@ -126,6 +126,7 @@ body{
 .tree .node.sel{background:var(--sel);color:var(--sel-text)}
 .tree .node:hover:not(.sel){background:var(--row-hover)}
 .tree .grp{font-weight:400;color:var(--text)}
+.tree .grp.contains-active{font-weight:600}
 .tree .child{padding-left:20px}
 .tree .nlabel{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .tree .caret{font-size:9px;color:var(--muted);width:9px;display:inline-block}

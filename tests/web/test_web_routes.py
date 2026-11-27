@@ -1892,3 +1892,36 @@ def test_busy_case_is_not_evicted_and_other_cases_remain_usable(service, monkeyp
         finally:
             release.set()
         assert busy.result(timeout=5)["total"] == 3
+
+
+def test_import_file_outputs_distinguish_failed_and_partly_read_sources(service):
+    import json
+
+    lib, identifier = service
+    folder = lib.library.folder(identifier) / "collections" / "import-outcomes"
+    folder.mkdir(parents=True)
+    entries = [
+        {"path": "good.csv", "status": "complete", "runs": [{"outputs": [{"analysis": "a"}]}]},
+        {"path": "failed.csv", "status": "attention", "runs": [{"error": "bad data"}]},
+        {
+            "path": "partial.db",
+            "status": "attention",
+            "runs": [{"outputs": [{"analysis": "b"}]}, {"error": "unread table"}],
+        },
+    ]
+    (folder / "collection.json").write_text(json.dumps({"files": entries}))
+    for files in [
+        lib.collection_files(identifier)["files"],
+        lib.imports(identifier)["collections"][0]["files"],
+    ]:
+        assert [file["output_count"] for file in files] == [1, 0, 1]
+        assert [file["outputs"] for file in files] == ["1 analysis", "", "1 analysis"]
+
+
+@pytest.mark.parametrize(
+    "parser,family",
+    [("EvtxECmd", "EVTX"), ("RECmd", "Registry"), ("PECmd", "Prefetch"), ("SQLECmd", "SQLite")],
+)
+def test_individual_reader_tables_share_their_forensic_family(service, parser, family):
+    lib, _identifier = service
+    assert lib._family_of({"source_info": {"path": "opaque-table.csv", "parser": parser}}) == family

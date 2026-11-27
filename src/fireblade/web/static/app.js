@@ -1988,7 +1988,7 @@ async function copyUnprocessedFiles() {
   const paths = [];
   for (const collection of importState.collections) {
     for (const file of collection.files || []) {
-      if (!["complete", "attention", "duplicate"].includes(file.status)) paths.push(file.path);
+      if (["unread", "partial"].includes(importReadState(file))) paths.push(file.path);
     }
   }
   if (!paths.length) { say("Every collected file was read", true); return; }
@@ -4826,6 +4826,13 @@ async function loadImports() {
 
 /* The imports table is the desktop's: one row per collected file, its status, the
    readers that ran, the reason when it did not, and where its output went. */
+function importReadState(file) {
+  if (file.ignored) return "parked";
+  if (file.status === "companion") return "companion";
+  if (["complete", "duplicate"].includes(file.status)) return "read";
+  return file.status === "attention" && Number(file.output_count) > 0 ? "partial" : "unread";
+}
+
 function renderImports() {
   const wanted = $("imports-status").value;
   const term = ($("imports-search").value || "").trim().toLowerCase();
@@ -4835,13 +4842,15 @@ function renderImports() {
     if (analysis.source) outputs.set(analysis.source, analysis.label);
   }
   const rows = [];
-  let imported = 0, failed = 0, companions = 0;
+  let imported = 0, failed = 0, companions = 0, partial = 0, parked = 0;
   for (const collection of importState.collections) {
     for (const file of collection.files || []) {
-      const ok = ["complete", "attention", "duplicate"].includes(file.status);
-      // A transaction log kept beside its hive is read with it: it is not a file left unread.
-      if (file.status === "companion") companions += 1;
-      else if (ok) imported += 1; else failed += 1;
+      const readState = importReadState(file);
+      if (readState === "parked") parked += 1;
+      else if (readState === "companion") companions += 1;
+      else if (readState === "read") imported += 1;
+      else if (readState === "partial") partial += 1;
+      else failed += 1;
       if (wanted === "ignored" ? !file.ignored : (wanted && file.status !== wanted)) continue;
       if (!wanted && file.ignored) continue;
       if (term && !`${file.name} ${file.path} ${file.reason} ${(file.tools || []).join(" ")}`
@@ -4866,7 +4875,9 @@ function renderImports() {
   });
   $("imports-summary").textContent =
     `${importState.collections.length} import(s) — ${imported} file(s) read, ${failed} not read`
-    + (companions ? `, ${companions} companion file(s) read with their hive` : "");
+    + (partial ? `, ${partial} partially read` : "")
+    + (companions ? `, ${companions} companion file(s) read with their hive` : "")
+    + (parked ? `, ${parked} parked` : "");
   if ($("imports-view").style.display !== "none") say($("imports-summary").textContent);
 }
 
@@ -6041,7 +6052,7 @@ function timelineDrag(box, hist) {
 /* The Artifacts tree, as the desktop groups it: the collections, then (by family) what each analysis is.
    "families": Collection → artifact family → analyses; "flat": Collection → analyses;
    "folders": Collection → partition → folders, for the evidence that carries its origin. */
-const treeState = { mode: "families", collapsed: new Set() };
+const treeState = { mode: "families", collapsed: new Set(), initialized: new Set(), caseId: null };
 
 function loadTreeMode() {
   try {
@@ -6050,14 +6061,15 @@ function loadTreeMode() {
   } catch (_) { /* a first visit */ }
 }
 
-function treeLeaf(item, depth) {
+function treeLeaf(item, depth, label = item.tree_label || item.label) {
+  const title = [item.label, ...(item.tree_sources || []), item.source || item.path].filter(Boolean).join("\n");
   return `<div class="node child ${item.index === state.analysis ? "sel" : ""}" data-analysis="${item.index}"
-       style="padding-left:${20 + depth * 12}px" title="${escapeHtml(item.source || item.path)}">
-      <span class="caret"></span><span class="nlabel">${escapeHtml(item.label)}</span></div>`;
+       style="padding-left:${20 + depth * 12}px" title="${escapeHtml(title)}">
+      <span class="caret"></span><span class="nlabel">${escapeHtml(label)}</span></div>`;
 }
 
-function treeGroup(key, label, depth, open) {
-  return `<div class="node grp" data-group-key="${escapeHtml(key)}" style="padding-left:${6 + depth * 12}px">
+function treeGroup(key, label, depth, open, active = false) {
+  return `<div class="node grp ${active && !open ? "contains-active" : ""}" data-group-key="${escapeHtml(key)}" style="padding-left:${6 + depth * 12}px" title="${escapeHtml(label)}" aria-expanded="${open}">
       <span class="caret">${open ? "▼" : "▷"}</span><span class="nlabel">${escapeHtml(label)}</span></div>`;
 }
 
@@ -6085,10 +6097,21 @@ function treeHtml(analyses) {
       if (!families.has(family)) families.set(family, []);
       families.get(family).push(item);
     }
-    for (const [family, members] of families) {
+    const rank = (family) => family === "Supporting files" ? 2 : family === "Files inventory" ? 1 : 0;
+    for (const [family, members] of [...families].sort(([a], [b]) => rank(a) - rank(b))) {
+      if (members.length === 1) {
+        const item = members[0];
+        html.push(treeLeaf(item, 1));
+        continue;
+      }
       const familyKey = `f|${key}|${family}`;
+      if (family === "Supporting files" && !treeState.initialized.has(familyKey)) {
+        treeState.initialized.add(familyKey);
+        treeState.collapsed.add(familyKey);
+      }
       const familyOpen = searching || !treeState.collapsed.has(familyKey);
-      html.push(treeGroup(familyKey, `${family} (${members.length})`, 1, familyOpen));
+      html.push(treeGroup(familyKey, `${family} (${members.length})`, 1, familyOpen,
+        members.some((item) => item.index === state.analysis)));
       if (familyOpen) for (const item of members) html.push(treeLeaf(item, 2));
     }
   }
@@ -6101,9 +6124,15 @@ function renderTree() {
     tree.innerHTML = '<div class="empty">No case open.</div>';
     return;
   }
-  const term = ($("tree-search").value || "").toLowerCase();
+  if (treeState.caseId !== state.openCase.id) {
+    treeState.caseId = state.openCase.id;
+    treeState.collapsed.clear();
+    treeState.initialized.clear();
+  }
+  const term = ($("tree-search").value || "").trim().toLowerCase();
   const analyses = state.openCase.analyses.filter((item) =>
-    !term || item.label.toLowerCase().includes(term));
+    !term || [item.label, item.tree_label, item.family, item.source, ...(item.tree_sources || [])]
+      .some((value) => String(value || "").toLowerCase().includes(term)));
   if (!analyses.length) {
     tree.innerHTML = '<div class="empty">' + (state.openCase.analyses.length ? "No analysis matches this filter." : "No analysis in this case.") + "</div>";
     return;

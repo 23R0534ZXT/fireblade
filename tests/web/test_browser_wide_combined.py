@@ -50,6 +50,9 @@ def test_wide_rows_are_projected_without_losing_far_fields(wide_case):
         assert len(page["columns"]) == 3206
         assert len(page["projection"]) == 64
         assert all(len(row) == 64 for row in page["rows"])
+        large_window = httpx.get(endpoint, params=[("column", i) for i in range(300)]).json()
+        assert large_window["projection"] == list(range(300))
+        assert all(len(row) == 300 for row in large_window["rows"])
         far = page["columns"].index("field3_799")
         selected = httpx.get(
             endpoint, params={"column": far, "filter": f"{far - 1}:eq:value-3-799"}

@@ -5966,7 +5966,7 @@ class Library:
         projection = None
         if not grouped and (columns is not None or len(labels) > 128):
             requested = list(range(min(64, len(labels)))) if columns is None else columns
-            if len(requested) > 256 or any(
+            if len(requested) > len(labels) or any(
                 type(i) is not int or not 0 <= i < len(labels) for i in requested
             ):
                 raise ServiceError("Invalid column window")

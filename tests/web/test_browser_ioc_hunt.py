@@ -112,3 +112,17 @@ def test_importing_a_list_fills_the_box_and_hunts_nothing(page, tmp_path):
     assert page.evaluate("iocState.hunt") is None  # nothing was hunted
     assert "valid IOC" in page.inner_text("#ioc-summary")
     assert "rejected" in page.inner_text("#ioc-summary")
+
+
+def test_a_short_indicator_list_leaves_room_for_details_and_a_long_list_scrolls(hunted):
+    page = hunted
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    summary = page.locator(".ioc-summary-grid")
+    details = page.locator("#ioc-rows").locator("xpath=ancestor::div[@class='gridwrap']")
+    assert summary.bounding_box()["height"] < 150
+    assert details.bounding_box()["height"] > summary.bounding_box()["height"] * 2
+    page.fill("#ioc-input", "\n".join(f"10.0.0.{i}" for i in range(1, 121)))
+    page.click("#ioc-scan")
+    page.wait_for_function("iocState.list.length === 120", timeout=60000)
+    assert summary.locator(".gridbody").evaluate("n => n.scrollHeight > n.clientHeight")
+    assert details.bounding_box()["height"] > summary.bounding_box()["height"]

@@ -609,3 +609,6 @@ tr.gtotal td{background:var(--header);border-top:2px solid var(--border-strong)}
   & .statusbar{gap:6px}
   & #caseroot{display:none}
 }
+
+/* Let a short indicator list give its unused space to the evidence details. */
+.ioc-summary-grid{flex:0 1 auto;max-height:34%;min-height:48px}

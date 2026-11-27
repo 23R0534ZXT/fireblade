@@ -385,11 +385,6 @@ class DiskCollection(Collection):
                             dirs.remove(name)
                     for name in names:
                         check_cancel()
-                        if len(self.report["documents"]) >= 1000:
-                            self.disk["errors"].append(
-                                "Limite de 1000 analyses atteinte ; parcours interrompu."
-                            )
-                            raise OperationCancelled()
                         source = directory / name
                         self.disk["visited"] += 1
                         if self.disk["visited"] % 100 == 0:

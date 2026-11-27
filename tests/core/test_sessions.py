@@ -10,13 +10,13 @@ def snapshot(tmp_path, name="analysis", search=""):
     return AnalysisSnapshot(str(path), {}, View(search=search), b"header")
 
 
-@pytest.mark.parametrize("count", [0, 1001])
+@pytest.mark.parametrize("count", [0])
 def test_invalid_document_count_preserves_previous_session(tmp_path, count):
     document = snapshot(tmp_path)
     target = tmp_path / "workspace.fireblade-session"
     sessions.write_session(target, [document], 0)
     before = target.read_bytes()
-    with pytest.raises(ValueError, match="1 à 1000"):
+    with pytest.raises(ValueError, match="au moins une analyse"):
         sessions.write_session(target, [document] * count, 0)
     assert target.read_bytes() == before
     assert sessions.read_session(target)[0] == [document]
@@ -42,7 +42,7 @@ def test_oversized_utf8_session_is_rejected_and_temporary_removed(tmp_path, exis
         sessions.write_session(target, [document], 0)
     before = target.read_bytes() if existing else None
     document.view.search = "😀" * (sessions.MAX_SESSION_BYTES // 4)
-    with pytest.raises(ValueError, match="4 Mo"):
+    with pytest.raises(ValueError, match="memory budget"):
         sessions.write_session(target, [document], 0)
     assert (target.read_bytes() if target.exists() else None) == before
     assert not list(tmp_path.glob("*.partial"))
@@ -57,7 +57,7 @@ def test_exact_byte_limit_roundtrips_and_one_extra_byte_is_rejected(tmp_path, mo
     sessions.write_session(target, [document], 0)
     assert sessions.read_session(target) == ([document], 0)
     document.view.search += "a"
-    with pytest.raises(ValueError, match="4 Mo"):
+    with pytest.raises(ValueError, match="memory budget"):
         sessions.write_session(target, [document], 0)
     assert target.read_bytes() == before
     assert not list(tmp_path.glob("*.partial"))
@@ -102,3 +102,35 @@ def test_a_session_written_before_closed_existed_still_opens(tmp_path):
     target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     documents, _, closed = sessions.read_session(target, with_closed=True)
     assert len(documents) == 1 and closed == []
+
+
+def test_more_than_a_thousand_wide_analyses_roundtrip_as_a_persistent_case(tmp_path):
+    from fireblade.core.investigations import InvestigationLibrary
+    from fireblade.web.service import Library
+
+    root = tmp_path / "cases"
+    root.mkdir()
+    library = InvestigationLibrary(root)
+    data = library.create("Large individual-file layout")
+    folder = library.folder(data["id"])
+    documents = [snapshot(folder, str(index)) for index in range(1100)]
+    for document in documents:
+        document.source_info = {"headers": [f"column_{index:04d}" for index in range(420)]}
+    saved = library.save(data["id"], documents, 1099, [], None, data["revision"])
+    path = library.session_path(saved)
+    assert path.stat().st_size > 4 * 1024**2  # the previous byte cap also rejected real collections
+    assert sessions.read_session(path) == (documents, 1099)
+    host = Library(root)
+    try:
+        assert len(host.case(data["id"])["analyses"]) == 1100
+        assert library.read(data["id"])["analysis_count"] == 1100
+    finally:
+        host.close()
+
+
+def test_analysis_counts_have_no_fixed_thousand_or_five_thousand_ceiling(tmp_path):
+    documents = [snapshot(tmp_path, str(index)) for index in range(5100)]
+    target = tmp_path / "all-files.fireblade-session"
+    sessions.write_session(target, documents, len(documents) - 1)
+    restored, active = sessions.read_session(target)
+    assert len(restored) == 5100 and active == 5099

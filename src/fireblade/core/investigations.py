@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fireblade.core.layout import write_json
-from fireblade.core.sessions import write_session
+from fireblade.core.sessions import MAX_SESSION_BYTES, write_session
 
 ENVIRONMENTS = {
     "unspecified": "Non précisé",
@@ -100,7 +100,7 @@ class InvestigationLibrary:
             or not re.fullmatch(r"session-[0-9a-f]{32}\.fireblade-session", session)
         ):
             raise ValueError("Référence de session invalide")
-        if type(data.get("analysis_count")) is not int or not 0 <= data["analysis_count"] <= 1000:
+        if type(data.get("analysis_count")) is not int or data["analysis_count"] < 0:
             raise ValueError("Nombre d’analyses invalide")
         if (session is None) != (data["analysis_count"] == 0):
             raise ValueError("Session et nombre d’analyses incohérents")
@@ -335,10 +335,8 @@ class InvestigationLibrary:
         expected_revision,
         closed=(),
     ):
-        if (
-            len(snapshots) > 1000
-            or (snapshots and (type(active) is not int or not 0 <= active < len(snapshots)))
-            or (not snapshots and active != -1)
+        if (snapshots and (type(active) is not int or not 0 <= active < len(snapshots))) or (
+            not snapshots and active != -1
         ):
             raise ValueError("Session ou onglet actif invalide")
         with self.lock(identifier):
@@ -349,9 +347,9 @@ class InvestigationLibrary:
             if snapshots or closed:
                 session = folder / ("session-" + uuid.uuid4().hex + ".fireblade-session")
                 write_session(session, snapshots, active, closed)
-                if session.stat().st_size > 4 * 1024 * 1024:
+                if session.stat().st_size > MAX_SESSION_BYTES:
                     session.unlink()
-                    raise ValueError("Session limitée à 4 Mo")
+                    raise ValueError("Session metadata exceeds its memory budget")
             previous = data["session"]
             data.update(
                 session=session.name if session else None,

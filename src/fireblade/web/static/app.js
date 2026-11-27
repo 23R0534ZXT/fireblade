@@ -7650,7 +7650,8 @@ function wire() {
     try {
       const done = await apiPost(`/api/cases/${id}/reorganize`, { mode });
       if (state.openCase?.id === id && await openCase(id)) {
-        say(done.collections ? "Layout changed" : "Already laid out that way");
+        const message = done.collections ? "Layout changed" : "Already laid out that way";
+        say([message, ...(done.notices || [])].join(" · "));
       }
     } catch (error) {
       if (state.openCase?.id === id) {

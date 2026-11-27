@@ -33,7 +33,7 @@ from fireblade.core.errors import OperationCancelled
 from fireblade.core.investigations import InvestigationLibrary
 from fireblade.core.models import OPERATORS as CORE_OPERATORS
 from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View
-from fireblade.core.sessions import read_session
+from fireblade.core.sessions import MAX_SESSION_BYTES, read_session
 from fireblade.core.summaries import BOOKMARK_GROUP_COLUMN
 from fireblade.core.timeline import TimelineStore
 from fireblade.core.workspace_reader import WorkspaceReader
@@ -4108,47 +4108,37 @@ class Library:
         )
         return len(earlier), len(fresh)
 
-    SESSION_LIMIT = 1000  # analyses a case can hold open at once (the desktop's own limit)
+    @staticmethod
+    def _session_metadata_bytes(documents):
+        payload = {"documents": documents}
+        return sum(
+            len(part.encode("utf-8"))
+            for part in json.JSONEncoder(ensure_ascii=False, indent=2).iterencode(payload)
+        )
 
     def _fit_session_limit(self, output: Path, pack, progress=None) -> str:
-        """A collection that made more grids than a case can open is grouped, not lost.
-
-        "One grid per file" on 1400 files makes 1400 grids; a case holds 1000. Rather than
-        failing after everything was read, the collection is laid out by artifact family (then
-        as one grid if that is still too many) from the grids it already wrote: nothing is read
-        again. The notice says what happened and how to choose another layout.
-        """
+        """Only oversized metadata triggers automatic grouping; analysis counts are unrestricted."""
         from fireblade.core.collection import Collection
         from fireblade.core.collection_organization import organize
 
-        collection = Collection.reopen(output, pack, settings=self._settings("parsing"))
+        collection = Collection.reopen(output, pack)
         report = collection.report
-        count = len(report.get("documents") or [])
-        if count <= self.SESSION_LIMIT or report.get("organization") != "files":
-            return ""
-        raw = report.get("raw_documents") or report["documents"]
-        for mode, label in (
-            ("schemas", "identical columns"),
-            ("artifacts", "artifact family"),
-            ("combined", "a single grid"),
+        if (
+            report.get("organization") != "files"
+            or self._session_metadata_bytes(report.get("documents") or []) <= MAX_SESSION_BYTES
         ):
-            if progress:
-                progress(f"{count} grids are more than a case holds: laying them out by {label}…")
-            report["raw_documents"] = raw
+            return ""
+        raw = list(report["documents"])
+        for mode in ("schemas", "artifacts", "combined"):
             report["documents"] = list(raw)
+            report["raw_documents"] = raw
             report["organization"] = mode
             organize(collection)
-            if len(report["documents"]) <= self.SESSION_LIMIT:
+            if self._session_metadata_bytes(report["documents"]) <= MAX_SESSION_BYTES:
                 collection.save()
-                grouped = len(report["documents"])
-                return (
-                    f"{count} files made {count} grids, more than the {self.SESSION_LIMIT} a case "
-                    f"can open at once: they are laid out by "
-                    f"{dict(schemas='files with identical columns', artifacts='artifact family', combined='a single grid')[mode]} "
-                    f"({grouped} grid(s)). The layout selector in the toolbar changes it."
-                )
+                return f"The per-file session metadata exceeds its memory budget; laid out by {mode} ({len(report['documents'])} grids). The layout selector changes it."
         raise ServiceError(
-            f"{count} files cannot be laid out in fewer than {self.SESSION_LIMIT} grids."
+            "The session metadata exceeds its memory budget even after grouping. Import smaller parts."
         )
 
     @_case_operation
@@ -4164,21 +4154,20 @@ class Library:
         folder = self.library.folder(identifier)
         pack = ToolPack(Path(self.tools_root or tempfile.gettempdir()))
         if mode == "files":
-            grids = 0
+            documents = []
             for entry in (folder / "collections").glob("import-*"):
                 try:
                     report = json.loads((entry / "collection.json").read_text(encoding="utf-8"))
                 except (OSError, ValueError):
                     continue
-                grids += len(report.get("raw_documents") or report.get("documents") or [])
-            if grids > self.SESSION_LIMIT:
+                documents.extend(report.get("raw_documents") or report.get("documents") or [])
+            if self._session_metadata_bytes(documents) > MAX_SESSION_BYTES:
                 raise ServiceError(
-                    f"One grid per file would make {grids} grids, more than the "
-                    f"{self.SESSION_LIMIT} a case can open at once. Choose one grid per "
-                    "artifact family, or one grid for everything."
+                    "The per-file layout's metadata exceeds its memory budget. Choose artifact families or import smaller parts."
                 )
         self.close_case(identifier)  # DuckDB refuses a second connection with another configuration
         changed = 0
+        notices = []
         for entry in sorted((folder / "collections").glob("import-*")):
             if not (entry / "collection.json").is_file():
                 continue
@@ -4190,16 +4179,18 @@ class Library:
             report["raw_documents"] = raw
             report["documents"] = list(raw)
             report["organization"] = mode
+            report.pop("organization_notes", None)
             if mode != "files":
                 organize(collection)
             collection.save()
+            notices.extend(report.get("organization_notes") or [])
             self._merge_session(
                 identifier,
                 entry / "collection.fireblade-session",
                 drop_under=entry,
             )
             changed += 1
-        return {"layout": mode, "collections": changed}
+        return {"layout": mode, "collections": changed, "notices": list(dict.fromkeys(notices))}
 
     EXCEL_SUFFIXES = (".xlsx", ".xlsm", ".xls")
 

@@ -43,7 +43,7 @@ def test_arguments_are_the_same_on_both_platforms(tmp_path, monkeypatch):
     monkeypatch.setattr(collection, "WINDOWS", False)
     pack = _pack(tmp_path, "dotnet")
     args = pack.arguments("WxTCmd", "/data/x.db", "/data/out")
-    assert args[2:] == ["-f", "/data/x.db", "--csv", "/data/out"]
+    assert args[2:] == ["-f", "/data/x.db", "--csv", "/data/out", "--temp", "/data/out/sqlite-temp"]
 
 
 def test_a_missing_dll_is_refused(tmp_path, monkeypatch):
@@ -64,15 +64,16 @@ def test_hayabusa_binary_is_found_with_or_without_extension(tmp_path, monkeypatc
     assert pack.command("Hayabusa") == [str(binary)]
 
 
+@pytest.mark.parametrize("tool", ["SQLECmd", "WxTCmd"])
 def test_sqlite_temporary_copies_belong_to_each_output_not_the_read_only_tool_pack(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, tool
 ):
     monkeypatch.setattr(collection, "WINDOWS", False)
-    pack = _pack(tmp_path / "installed-read-only", "dotnet", tool="SQLECmd")
+    pack = _pack(tmp_path / "installed-read-only", "dotnet", tool=tool)
     outputs = [tmp_path / "case" / "reader-a", tmp_path / "case" / "reader-b"]
     temporary = []
     for output in outputs:
-        args = pack.arguments("SQLECmd", tmp_path / "evidence.sqlite", output)
+        args = pack.arguments(tool, tmp_path / "evidence.sqlite", output)
         assert "--temp" in args, "SQLECmd defaults to a shared Temp directory beside its DLL"
         work = Path(args[args.index("--temp") + 1])
         assert work.parent == output

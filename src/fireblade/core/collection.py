@@ -276,7 +276,7 @@ class ToolPack:
 
     def arguments(self, name, source, output):
         args = self.command(name) + ["-f", str(source), "--csv", str(output)]
-        if name == "SQLECmd":
+        if name in ("SQLECmd", "WxTCmd"):
             # The default is a shared Temp folder beside the installed DLL. That
             # location may be read-only, and parallel readers can remove each
             # other's copies. Every invocation already has its own writable output.
@@ -692,8 +692,6 @@ class Collection:
 
     def import_result(self, csv, kind, view=None, register=True, evidence=None):
         check_cancel()
-        if register and len(self.report["documents"]) >= 1000:
-            raise ValueError("Limite de 1000 analyses atteinte ; résultat conservé sur disque")
         # Fireblade must read a folder whatever the machine: a collection running out
         # of memory is a budget problem, not a reason to fail. Each attempt raises the
         # budget (x4, at least +256 MB) up to half the physical RAM, then leans on the

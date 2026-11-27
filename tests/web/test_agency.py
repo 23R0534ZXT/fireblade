@@ -75,7 +75,8 @@ def test_the_ceiling_stops_the_oldest_case_container(driver):
     assert driver.container(first).exists(), "stopping is not destroying"
 
 
-def test_destroying_a_case_removes_its_container_volume_and_residue(driver):
+@pytest.mark.parametrize("method", ["dod3", "quick"])
+def test_destroying_a_case_removes_its_container_volume_and_residue(driver, method):
     kept = driver.create("Kept case")["id"]
     gone = driver.create("Gone case")["id"]
     driver.open(kept)
@@ -86,7 +87,7 @@ def test_destroying_a_case_removes_its_container_volume_and_residue(driver):
     archive = driver.volumes.folder(gone) / "archives" / f"{prefix}.zip"
     archive.write_bytes(b"archive")
 
-    result = driver.destroy(gone, {"confirmation": "Gone case", "method": "dod3"})
+    result = driver.destroy(gone, {"confirmation": "Gone case", "method": method})
 
     assert not driver.container(gone).exists()
     assert not driver.volumes.folder(gone).exists()
@@ -94,6 +95,8 @@ def test_destroying_a_case_removes_its_container_volume_and_residue(driver):
     certificate = Path(result["certificate"])
     assert certificate.is_file() and certificate.parent == driver.certificates
     assert result["outside"] == 2
+    assert result["deleted_files"] == result["files"]
+    assert result["verified_files"] == (0 if method == "quick" else result["files"])
     # The other case is untouched, container included.
     assert driver.volumes.has(kept)
     assert driver.container(kept).running()

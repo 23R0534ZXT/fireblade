@@ -818,6 +818,7 @@
           <output id="import-thread-count" for="import-threads" aria-live="polite"></output>
         </div>
         <div id="import-capacity-info" class="note" role="status"></div>
+        <div id="import-space" class="note import-space" role="status" hidden></div>
       </div>
       <div class="row" id="preview-sheet-row" style="display:none">
         <label for="preview-sheet">Sheet</label>
@@ -869,6 +870,7 @@
           <output id="disk-thread-count" for="disk-threads" aria-live="polite"></output>
         </div>
         <div id="disk-capacity-info" class="note" role="status"></div>
+        <div id="disk-space" class="note import-space" role="status" hidden></div>
       </div>
     </div>
     <div class="foot">
@@ -1707,11 +1709,12 @@
   <div class="dialog">
     <h3>Erase this case</h3>
     <div class="body">
-      <div class="note"><b>This cannot be undone.</b> Every file of the case is overwritten, the folders are removed, and a certificate is written outside the case folder.</div>
+      <div class="note"><b>This cannot be undone.</b> The case files are removed and a certificate is written outside the case folder. Quick erase deletes the files without overwriting them.</div>
       <div class="row"><label for="destroy-method">Method</label>
         <select id="destroy-method">
           <option value="dod3">DoD 5220.22-M — 3 passes</option>
           <option value="dod7">DoD 5220.22-M — 7 passes</option>
+          <option value="quick">Quick erase (delete only)</option>
         </select>
       </div>
       <div class="row"><label for="destroy-operator">Operator</label><input id="destroy-operator" placeholder="Your name"></div>

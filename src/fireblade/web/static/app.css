@@ -261,6 +261,8 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
 .import-source-choices .key{color:var(--muted);white-space:nowrap}
 .import-capacity{margin:4px 0}
 .import-capacity .note{max-width:none}
+.import-space{margin-top:4px;overflow-wrap:anywhere}
+.import-space.space-warning{font-weight:600}
 .import-capacity input[type=range]{
   appearance:none;flex:1;min-width:116px;height:8px;border:0;border-radius:4px;
   background:linear-gradient(90deg,#2f985f,#d4ab32 58%,#c44945);margin:8px 0

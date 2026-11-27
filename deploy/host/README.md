@@ -51,6 +51,28 @@ docker run -d --name fireblade-host -p 8080:8080 \
 Open <http://localhost:8080>. The health check is `/health`; the API documents itself at
 `/api/docs`.
 
+## Storage for imports
+
+The import dialogs compare free space on the case filesystem with a planning estimate.
+The recommended working space is three times the source size plus 256 MiB and an
+additional 1 MiB per known input or extraction candidate. The browser folder estimate
+also includes the copy staged for upload. When the copy is in the case filesystem,
+Host refreshes the comparison against the remaining free space.
+
+For a mounted volume, Host estimates the bytes in recognized artifact candidates and
+their likely transaction sidecars. For a disk image, it prefers the logical disk size
+and can use the stored image segments as a fallback. A physical device whose size
+cannot be measured shows an unknown estimate. Reader output, combined grids and other
+writes can change peak usage. At job start, Host refuses a folder import below its
+existing minimum of 1.5 times the source size plus 256 MiB. Disk estimates are advisory.
+
+If Docker runs in a VMware guest, check the guest filesystem containing the case
+directory and the physical host volume or datastore holding the VMDK and snapshots.
+Guest free space can be high while the physical datastore lacks room for a thin or
+dynamically growing disk. Deleting a case can free guest filesystem space while the
+VMDK stays the same size on the datastore. Use VMware's storage tools to monitor
+host-side capacity and reclaim it when appropriate.
+
 ## One container per case
 
 ```bash

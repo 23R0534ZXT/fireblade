@@ -1,9 +1,8 @@
 """Irreversible destruction of collected evidence, and the record of it.
 
 An incident-response engagement ends with evidence that must not leave the premises.
-This module overwrites each file with the selected multi-pass scheme, verifies the
-result by reading the file back, then removes it — and returns a record that the
-certificate is built from.
+The multi-pass methods overwrite each file, verify the final pass and remove the file.
+Quick erasure deletes the file directly. Both return a record for the certificate.
 
 What it does **not** claim: overwriting a file through the operating system rewrites
 the logical blocks the filesystem hands back. On flash storage with wear levelling,
@@ -36,6 +35,13 @@ METHODS = {
         passes=("zero", "one", "random", "zero", "one", "random", "zero"),
     ),
 }
+QUICK = "quick"
+QUICK_LABEL = "Quick erase (delete only)"
+QUICK_LIMITATIONS = (
+    "Quick erasure uses filesystem deletion without overwriting file contents or computing "
+    "erasure fingerprints. Deleted data may remain recoverable from the medium, snapshots "
+    "or backups."
+)
 CHUNK = 4 * 1024 * 1024
 MAX_FILES = 5000
 
@@ -66,14 +72,17 @@ def sha256_file(path, progress=None):
     return digest.hexdigest()
 
 
-def plan(paths, root, limit=None):
+def plan(paths, root, limit=None, *, method="dod3"):
     """Validate what is about to be destroyed, and fingerprint it first.
 
     ``root`` is the case folder: nothing outside it can be listed, which is what keeps
     a mistyped path from reaching the analyst's collection source or a system file.
-    A directory, a symbolic link or a hard-linked file is refused with the reason,
-    because in each case "the file" is not a single unambiguous object.
+    Directories and symbolic links are refused. Overwriting also refuses hard links
+    because it would modify the content of every link to the file.
     """
+    if method != QUICK and method not in METHODS:
+        raise ValueError("Unknown destruction method")
+    quick = method == QUICK
     root = Path(root).resolve()
     if not root.is_dir():
         raise ValueError("The case folder does not exist")
@@ -101,7 +110,7 @@ def plan(paths, root, limit=None):
             continue
         seen.add(resolved)
         status = resolved.stat()
-        if status.st_nlink and status.st_nlink > 1:
+        if not quick and status.st_nlink > 1:
             raise ValueError(
                 f"{resolved} has {status.st_nlink} hard links; overwriting it would affect every link"
             )
@@ -112,7 +121,7 @@ def plan(paths, root, limit=None):
                 path=str(resolved),
                 relative=resolved.relative_to(root).as_posix(),
                 size=status.st_size,
-                sha256_before=sha256_file(resolved),
+                sha256_before=None if quick else sha256_file(resolved),
             )
         )
     if not entries:
@@ -177,26 +186,26 @@ def _tick(progress, base, span, path=None):
 def destroy(
     entries, method, *, operator="", witness="", reason="", progress=None, cancel=lambda: False
 ):
-    """Overwrite, verify and remove each planned file; return the certificate record.
+    """Remove planned files using the chosen method and return the certificate record.
 
     Cancellation is honoured between files only: once a file's first pass has begun,
     its whole scheme runs, so no file is left in a state whose remaining passes are
     unknown. A failure on one file does not stop the others; it is recorded.
     """
-    if method not in METHODS:
+    if method != QUICK and method not in METHODS:
         raise ValueError("Unknown destruction method")
     for field_name, value in (("operator", operator), ("witness", witness)):
         if not isinstance(value, str) or len(value) > 200 or "\0" in value:
             raise ValueError(f"{field_name} must be text of at most 200 characters")
     if not isinstance(reason, str) or len(reason) > 4000 or "\0" in reason:
         raise ValueError("reason must be text of at most 4000 characters")
-    scheme = METHODS[method]["passes"]
-    per_byte = len(scheme) + 1  # every pass, then the verification read
-    total = sum(entry["size"] for entry in entries) * per_byte
+    quick = method == QUICK
+    scheme = () if quick else METHODS[method]["passes"]
+    total = len(entries) if quick else sum(entry["size"] for entry in entries) * (len(scheme) + 1)
     record = dict(
         id=uuid.uuid4().hex,
         method=method,
-        label=METHODS[method]["label"],
+        label=QUICK_LABEL if quick else METHODS[method]["label"],
         passes=len(scheme),
         operator=operator.strip(),
         witness=witness.strip(),
@@ -206,7 +215,7 @@ def destroy(
         status="complete",
         files=[],
         bytes=sum(entry["size"] for entry in entries),
-        limitations=LIMITATIONS,
+        limitations=QUICK_LIMITATIONS if quick else LIMITATIONS,
         attachments=[],
     )
     base = 0
@@ -240,46 +249,53 @@ def destroy(
             finished=None,
         )
         path = Path(entry["path"])
+        work = 1 if quick else entry["size"] * (len(scheme) + 1)
         try:
-            _make_writable(path)
-            with open(path, "r+b", buffering=0) as stream:
-                written_digest = None
-                for index, pattern in enumerate(scheme, 1):
-                    written_digest = _write_pass(
-                        stream,
-                        pattern,
-                        entry["size"],
-                        _tick(progress, base + entry["size"] * (index - 1), span, entry["path"]),
-                    )
-                    item["passes_done"] = index
-                verified, digest = _verify(
-                    stream,
-                    entry["size"],
-                    written_digest,
-                    scheme[-1],
-                    _tick(progress, base + entry["size"] * len(scheme), span, entry["path"]),
-                )
-                item["verified"], item["sha256_after"] = verified, digest
-                if verified:
-                    stream.truncate(0)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-            base += entry["size"] * per_byte
-            if progress:
-                progress(base, span, entry["path"])
-            if not item["verified"]:
-                item["state"] = "failed"
-                item["error"] = "The final pass could not be verified; the file was left in place."
-            else:
+            if quick:
                 path.unlink()
-                item["deleted"] = True
-                item["state"] = "destroyed"
+                item.update(deleted=True, state="deleted")
+            else:
+                _make_writable(path)
+                with open(path, "r+b", buffering=0) as stream:
+                    written_digest = None
+                    for index, pattern in enumerate(scheme, 1):
+                        written_digest = _write_pass(
+                            stream,
+                            pattern,
+                            entry["size"],
+                            _tick(
+                                progress, base + entry["size"] * (index - 1), span, entry["path"]
+                            ),
+                        )
+                        item["passes_done"] = index
+                    verified, digest = _verify(
+                        stream,
+                        entry["size"],
+                        written_digest,
+                        scheme[-1],
+                        _tick(progress, base + entry["size"] * len(scheme), span, entry["path"]),
+                    )
+                    item["verified"], item["sha256_after"] = verified, digest
+                    if verified:
+                        stream.truncate(0)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                if not item["verified"]:
+                    item["state"] = "failed"
+                    item["error"] = (
+                        "The final pass could not be verified; the file was left in place."
+                    )
+                else:
+                    path.unlink()
+                    item["deleted"] = True
+                    item["state"] = "destroyed"
         except PermissionError as exc:
-            base += entry["size"] * per_byte
             item.update(state="failed", error="Write access refused: " + str(exc))
         except OSError as exc:
-            base += entry["size"] * per_byte
             item.update(state="failed", error=str(exc))
+        base += work
+        if progress:
+            progress(base, span, entry["path"])
         item["finished"] = stamp()
         if item["state"] == "failed":
             record["status"] = "partial"

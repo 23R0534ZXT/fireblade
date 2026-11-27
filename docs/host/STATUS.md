@@ -18,6 +18,11 @@ regressions and limits. The HTTP API remains an internal interface that may evol
 - **The evidence is read, never modified.** Sources are copied into the case and
   hashed; the readers only read.
 - **A long command tells you what it is doing** and can be stopped at a checkpoint.
+- **Import storage planning.** Folder and disk previews compare available case
+  storage with an estimate. Reader output, layout rebuilding and other writes can
+  change the final peak. The figure comes from the case filesystem, so a VMware
+  deployment also needs a check of the physical volume or datastore that backs it.
+  See [storage for imports](../../deploy/host/README.md#storage-for-imports).
 
 ## What you cannot rely on
 
@@ -26,10 +31,10 @@ regressions and limits. The HTTP API remains an internal interface that may evol
 - **Access control.** There is none: the Host is for the analyst's own machine and must listen
   on it alone (`-p 127.0.0.1:8080:8080`). Collaboration, accounts and an audit log belong to the
   planned Server edition.
-- **Erasure as a physical guarantee.** The Host overwrites the case's files in several passes
-  and writes a certificate stating the method. On an SSD, a copy-on-write or a journaled file
-  system that is not a guarantee that the bytes are gone from the medium; the plan for it is a
-  per-case encrypted volume whose key is destroyed.
+- **Erasure as a physical guarantee.** The Host offers quick deletion and multi-pass overwriting,
+  and writes a certificate stating the method. Deleted data can remain recoverable. SSDs,
+  copy-on-write and journaled filesystems can also retain copies after overwriting.
+  A future per-case encrypted volume would support erasure by destroying its key.
 - **Unbounded scale or instant layout changes.** The latest measured collection has 1,386,061
   rows and 12,559 data columns. Layout rebuilding takes minutes; hardware, source formats and
   query shape affect performance. Fixed analysis-count ceilings have been removed, with

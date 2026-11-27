@@ -753,3 +753,84 @@ def test_folder_and_disk_jobs_use_local_thread_choices(tmp_path, monkeypatch):
                 json={"source": str(inputs), "kind": "mounted", "parsing_threads": value},
             )
             assert refused.status_code == 400
+
+
+def test_import_space_estimates_preview_work_and_browser_staging(tmp_path, monkeypatch):
+    import shutil
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    from fastapi.testclient import TestClient
+
+    from fireblade.web.server import create_app
+
+    mib = 1024**2
+    free = 300 * mib
+    monkeypatch.setattr(shutil, "disk_usage", lambda _folder: SimpleNamespace(free=free))
+    root = tmp_path / "cases"
+    library = InvestigationLibrary(root)
+    identifier = library.create("Storage estimate", "", "windows")["id"]
+    source = tmp_path / "mounted"
+    source.mkdir()
+    (source / "NTUSER.DAT").write_bytes(b"regf" + b"\0" * 36)
+    (source / "ntuser.dat.LOG1").write_bytes(b"\0" * 16)
+    (source / "notes.txt").write_bytes(b"notes")
+    image = Path(__file__).resolve().parents[1] / "data/ewf/synthetic-fat.E01"
+    base = f"/api/cases/{identifier}"
+
+    with TestClient(create_app(root)) as client:
+
+        def estimate(**payload):
+            response = client.post(base + "/import-space", json=payload)
+            assert response.status_code == 200, response.text
+            return response.json()
+
+        direct = estimate(kind="folder", source=str(source))
+        assert direct == {
+            "size": 61,
+            "files": 3,
+            "free": free,
+            "recommended": 259 * mib + 3 * 61,
+            "basis": "folder",
+            "status": "ok",
+        }
+        with monkeypatch.context() as patch:
+
+            def walk_again(*_args, **_kwargs):
+                pytest.fail("Folder previews should estimate space without a second walk.")
+
+            patch.setattr(Library, "_estimate_folder", walk_again)
+            preview = client.post(base + "/preview", json={"source": str(source)})
+            assert preview.status_code == 200, preview.text
+            assert preview.json()["count"] == 3
+            assert preview.json()["space"] == direct
+        upload = estimate(kind="folder", size=61, files=3)
+        assert upload["basis"] == "upload"
+        assert upload["recommended"] == direct["recommended"] + 61
+        assert estimate(kind="folder", size=100 * mib, files=2)["status"] == "insufficient"
+
+        mounted = estimate(kind="mounted", source=str(source))
+        assert (mounted["size"], mounted["files"], mounted["basis"]) == (56, 2, "mounted")
+        e01 = estimate(kind="image", source=str(image))
+        assert (e01["size"], e01["files"], e01["basis"]) == (1474560, None, "image-logical")
+        physical = estimate(kind="physical")
+        assert physical == {
+            "size": None,
+            "files": None,
+            "free": free,
+            "recommended": None,
+            "basis": "physical-unknown",
+            "status": "unknown",
+        }
+        for payload in (
+            {"kind": "folder", "size": -1},
+            {"kind": "folder", "size": True},
+            {"kind": "folder", "files": 2},
+            {"kind": "image", "source": 42},
+            {"kind": "other"},
+        ):
+            assert client.post(base + "/import-space", json=payload).status_code == 400
+
+    folder = library.folder(identifier)
+    assert not (folder / "evidence").exists()
+    assert not (folder / "collections").exists()

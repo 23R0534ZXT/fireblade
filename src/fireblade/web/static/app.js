@@ -88,12 +88,14 @@ async function applyDetectedProfile() {
 /* ---------- analysing a disk ---------- */
 
 let diskCapacity = null;
+let diskSpaceFree = null;
 
 function openDiskDialog() {
   if (!state.openCase) { say("Open a case first", true); return; }
   const caseId = state.openCase.id;
   const capacity = { loading: true };
   diskCapacity = capacity;
+  diskSpaceFree = null;
   $("disk-source").value = "";
   $("disk-kind").value = "mounted";
   $("disk-modal").classList.add("show");
@@ -102,6 +104,7 @@ function openDiskDialog() {
   loadImportCapacity("disk", capacity, current).then(() => {
     if (current()) $("disk-start").disabled = false;
   });
+  refreshDiskSpace(0);
 }
 
 async function startDiskAnalysis() {
@@ -858,6 +861,93 @@ function openImportDialog(folder = false) {
   $("preview-note").classList.remove("err");
   renderPreview();
   $("import-modal").classList.add("show");
+  importSpaceRequests.import = null;
+  $("import-space").hidden = true;
+  if (folder) refreshImportSpace("import", { kind: "folder" });
+}
+
+const importSpaceRequests = { import: null, disk: null };
+
+function storageSize(bytes) {
+  const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+  let unit = 0;
+  while (bytes >= 1024 && unit < units.length - 1) {
+    bytes /= 1024;
+    unit += 1;
+  }
+  return `${bytes.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${units[unit]}`;
+}
+
+function showImportSpace(id, space, checking = false, prompt = "") {
+  const panel = $(`${id}-space`);
+  panel.hidden = false;
+  const warning = space?.status === "tight" || space?.status === "insufficient";
+  panel.classList.toggle("space-warning", warning);
+  if (checking) {
+    panel.textContent = "Checking available case storage…";
+    return;
+  }
+  const available = Number.isFinite(space?.free) ? storageSize(space.free) : "unavailable";
+  const details = [`Available case storage: ${available}`];
+  if (Number.isFinite(space?.recommended)) {
+    details.push(`Recommended free space: ${storageSize(space.recommended)}`);
+  }
+  const basis = {
+    upload: "Includes upload staging",
+    mounted: "Based on recognized artifacts",
+    "image-logical": "Based on the full logical image size",
+    "image-segments": "Based on stored image segments and may underestimate",
+    "physical-unknown": "A physical device cannot be estimated before scanning",
+  }[space?.basis];
+  if (basis) details.push(basis);
+  if (warning) details.push(
+    space.status === "insufficient" ? "Below the minimum free space" : "Below the recommendation");
+  if (prompt) details.push(prompt);
+  panel.textContent = details.join(" · ");
+}
+
+async function refreshImportSpace(id, fields, debounce = 0) {
+  const caseId = state.openCase?.id;
+  if (!caseId) return;
+  const request = {};
+  const modal = $(`${id}-modal`);
+  importSpaceRequests[id] = request;
+  const current = () => importSpaceRequests[id] === request &&
+    state.openCase?.id === caseId && modal.classList.contains("show");
+  showImportSpace(id, null, true);
+  if (debounce) await new Promise(resolve => setTimeout(resolve, debounce));
+  if (!current()) return;
+  let estimate = null;
+  try {
+    estimate = await apiPost(`/api/cases/${caseId}/import-space`, fields, AbortSignal.timeout(8000));
+  } catch (_) { /* the import's normal checks still apply */ }
+  if (current()) {
+    if (id === "disk" && Number.isFinite(estimate?.free)) diskSpaceFree = estimate.free;
+    const prompt = !fields.source && fields.size === undefined
+      ? "Choose a source to see a recommendation" : "";
+    showImportSpace(id, estimate, false, prompt);
+  }
+}
+
+function refreshDiskSpace(debounce = 350) {
+  const kind = $("disk-kind").value;
+  const source = $("disk-source").value.trim();
+  refreshImportSpace("disk", source ? { kind, source } : { kind }, debounce);
+}
+
+function diskSourceEdited() {
+  importSpaceRequests.disk = null;
+  const prompt = $("disk-source").value.trim()
+    ? "Press Enter or leave the path field to estimate the required space"
+    : "Enter a source path to see a recommendation";
+  showImportSpace("disk", { free: diskSpaceFree }, false, prompt);
+}
+
+function showFolderPreviewSpace(payload) {
+  if (payload?.kind !== "folder") return;
+  importSpaceRequests.import = null;
+  if (payload.space) showImportSpace("import", payload.space);
+  else refreshImportSpace("import", { kind: "folder", source: payload.path });
 }
 
 function showImportThreadCount(id) {
@@ -923,6 +1013,13 @@ async function importFolder(files) {
   renderPreview();
   const note = $("preview-note");
   note.classList.remove("err");
+  const items = previewState.items;
+  const current = () => state.openCase?.id === identifier && previewState.items === items &&
+    $("import-modal").classList.contains("show");
+  const size = files.reduce((total, file) => total + file.size, 0);
+  note.textContent = `Estimating storage for ${files.length} file(s)…`;
+  await refreshImportSpace("import", { kind: "folder", size, files: files.length });
+  if (!current()) return;
   let root = "";
   let index = 0;
   for (const file of files) {
@@ -947,7 +1044,9 @@ async function importFolder(files) {
   note.textContent = `${files.length} file(s) sent — reading the folder…`;
   try {
     const payload = await apiPost(`/api/cases/${identifier}/preview`, { source: root, ...csvOptions() });
+    if (!current()) return;
     previewState.items = [{ name: payload.name || root, payload }];
+    showFolderPreviewSpace(payload);
     note.textContent = `${files.length} file(s) ready. Nothing has been read into the case yet.`;
   } catch (error) {
     previewState.items = [{ name: root, error: error.message }];
@@ -988,9 +1087,14 @@ async function previewFiles(files) {
 async function previewServerPath() {
   const source = $("preview-server").value.trim();
   if (!source) { $("preview-note").textContent = "Give a path on the server first."; return; }
+  const identifier = state.openCase.id;
+  const items = previewState.items;
   try {
-    const payload = await apiPost(`/api/cases/${state.openCase.id}/preview`, { source, ...csvOptions() });
+    const payload = await apiPost(`/api/cases/${identifier}/preview`, { source, ...csvOptions() });
+    if (state.openCase?.id !== identifier || previewState.items !== items ||
+        !$("import-modal").classList.contains("show")) return;
     previewState.items.push({ name: payload.name, payload });
+    showFolderPreviewSpace(payload);
     $("preview-note").textContent = "Preview ready. Nothing has been read into the case yet.";
     $("preview-note").classList.remove("err");
     await offerSheets(payload);
@@ -1360,6 +1464,7 @@ async function openDestroyDialog() {
   const caseId = state.openCase.id;
   const name = state.openCase.name;
   $("destroy-confirm").value = "";
+  $("destroy-method").value = "dod3";
   $("destroy-target").textContent = `Case: ${name} — type that name to confirm.`;
   $("destroy-modal").classList.add("show");
   /* Where the certificate goes: the analyst decides, because a document nobody can find
@@ -1442,7 +1547,10 @@ async function runDestroy() {
     const error = payload.certificate_word_error ? ` · Word export failed: ${payload.certificate_word_error}` : "";
     const partial = payload.status === "partial";
     const outcome = partial ? "Erasure incomplete" : "Case erased";
-    say(`${outcome}: ${payload.verified_files ?? payload.files}/${payload.files} file(s) verified and removed${outside}, certificate ${payload.certificate}${word}${error}`, partial || Boolean(error));
+    const files = payload.method === "quick"
+      ? `${payload.deleted_files}/${payload.files} file(s) deleted without overwrite`
+      : `${payload.verified_files ?? payload.files}/${payload.files} file(s) verified and removed`;
+    say(`${outcome}: ${files}${outside}, certificate ${payload.certificate}${word}${error}`, partial || Boolean(error));
   } catch (error) {
     say(error.message, true);
   }
@@ -1476,9 +1584,9 @@ async function apiDelete(path) {
   return response.json();
 }
 
-async function apiPost(path, body) {
+async function apiPost(path, body, signal) {
   const response = await fetch(url(path), { method: "POST", headers: { "Content-Type": "application/json" },
-                                       body: JSON.stringify(body) });
+                                       body: JSON.stringify(body), signal });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.detail || response.statusText);
   return payload;
@@ -7497,6 +7605,12 @@ function wire() {
     tab.addEventListener("click", () => showRulesScope(tab.dataset.scope));
   });
   $("disk-start").addEventListener("click", startDiskAnalysis);
+  $("disk-source").addEventListener("input", diskSourceEdited);
+  $("disk-source").addEventListener("change", () => refreshDiskSpace());
+  $("disk-source").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") refreshDiskSpace();
+  });
+  $("disk-kind").addEventListener("change", () => refreshDiskSpace());
   $("import-progress-stop").addEventListener("click", stopImportJob);
   $("retry-open").addEventListener("click", openRetry);
   $("coverage-open").addEventListener("click", openCoverage);

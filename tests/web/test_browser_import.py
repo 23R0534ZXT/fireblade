@@ -304,3 +304,49 @@ def test_import_thread_choices_are_sent_for_folder_and_disk(empty_page, server):
         "kind": "mounted",
         "parsing_threads": 4,
     }
+
+
+def test_folder_and_disk_show_space_estimates_before_parsing(empty_page, tmp_path):
+    page = empty_page
+    folder = tmp_path / "space-check"
+    folder.mkdir()
+    source = folder / "event.csv"
+    source.write_text("Time,Host\n2026-11-01T10:00:00Z,PC01\n")
+    requests = []
+    gib = 1024**3
+
+    def estimate(route):
+        fields = route.request.post_data_json
+        requests.append(fields)
+        route.fulfill(
+            json={
+                "free": 8 * gib,
+                "recommended": (9 * gib if fields.get("kind") == "image" else 3 * gib)
+                if "source" in fields or "size" in fields
+                else None,
+                "basis": "image-logical" if fields.get("kind") == "image" else "upload",
+                "status": "tight" if fields.get("kind") == "image" else "ok",
+            }
+        )
+
+    def observe_upload(route):
+        assert requests[-1] == {"kind": "folder", "size": source.stat().st_size, "files": 1}
+        route.continue_()
+
+    page.route("**/import-space", estimate)
+    page.route("**/upload-folder", observe_upload)
+    pick_import_source(page, "import-folder")
+    page.wait_for_function("document.querySelector('#import-space').textContent.includes('8 GiB')")
+    page.set_input_files("#folder-input", str(folder))
+    page.wait_for_function("document.querySelector('#preview-note').textContent.includes('ready')")
+    assert {"kind": "folder", "size": source.stat().st_size, "files": 1} in requests
+    page.locator('#import-modal [data-act="settings-close"]').click()
+
+    pick_import_source(page, "disk-open")
+    page.wait_for_function("document.querySelector('#disk-space').textContent.includes('8 GiB')")
+    page.fill("#disk-source", "/images/evidence.E01")
+    page.select_option("#disk-kind", "image")
+    page.wait_for_function("document.querySelector('#disk-space').textContent.includes('9 GiB')")
+    assert "Based on the full logical image size" in page.locator("#disk-space").inner_text()
+    assert "Below the recommendation" in page.locator("#disk-space").inner_text()
+    assert requests[-1] == {"kind": "image", "source": "/images/evidence.E01"}

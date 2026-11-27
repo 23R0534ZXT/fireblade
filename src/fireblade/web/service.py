@@ -18,6 +18,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import tempfile
 import threading
 import time as clock
@@ -2250,7 +2251,12 @@ class Library:
         }
 
     def preview_source(
-        self, source: str | Path, delimiter: str | None = None, encoding: str | None = None
+        self,
+        source: str | Path,
+        delimiter: str | None = None,
+        encoding: str | None = None,
+        *,
+        identifier: str | None = None,
     ) -> dict:
         """What reading this file would produce, before anything is written.
 
@@ -2267,11 +2273,16 @@ class Library:
             raise ServiceError("The file to preview does not exist.")
         if path.is_dir():
             entries = []
-            total = 0
+            total = size = 0
             for item in sorted(path.rglob("*")):
-                if not item.is_file():
+                try:
+                    info = item.stat(follow_symlinks=False)
+                except OSError:
+                    continue
+                if not stat.S_ISREG(info.st_mode):
                     continue
                 total += 1
+                size += info.st_size
                 if len(entries) >= 200:  # only the list shown is bounded, never the count
                     continue
                 try:
@@ -2279,7 +2290,7 @@ class Library:
                 except (OSError, ValueError):
                     tools = []
                 entries.append({"name": str(item.relative_to(path)), "readers": tools})
-            return {
+            preview = {
                 "kind": "folder",
                 "name": path.name,
                 "path": str(path),
@@ -2287,6 +2298,9 @@ class Library:
                 "count": total,
                 "note": "A folder is inventoried file by file: each format is read by its own reader.",
             }
+            if identifier is not None:
+                preview["space"] = self._estimate_import_space(identifier, size, total, "folder")
+            return preview
 
         size = path.stat().st_size
         if not size:
@@ -2827,6 +2841,7 @@ class Library:
             "residue": extras,
             "certificate": str(certificate),
             "status": record.get("status"),
+            "deleted_files": sum(bool(item.get("deleted")) for item in record["files"]),
             "verified_files": sum(
                 bool(item.get("verified") and item.get("deleted")) for item in record["files"]
             ),
@@ -4368,6 +4383,7 @@ class Library:
     SPACE_REFUSE = 1.5  # below this many times the source (plus the margin) it cannot fit
     SPACE_WARN = 3.0  # below this it may stop: said before it starts
     SPACE_MARGIN = 256 * 1024 * 1024
+    SPACE_PER_ANALYSIS = 1024 * 1024
 
     @staticmethod
     def _source_bytes(source: Path) -> tuple[int, int]:
@@ -4391,6 +4407,123 @@ class Library:
                 return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
             value /= 1024
         return f"{value:.1f} TB"
+
+    def _estimate_import_space(self, identifier, size, files, basis):
+        folder = self.library.folder(identifier)
+        try:
+            free = shutil.disk_usage(folder).free
+        except OSError:
+            free = None
+        recommended, status = None, "unknown"
+        if size is not None:
+            staging = size if basis == "upload" else 0
+            recommended = (
+                staging
+                + int(size * self.SPACE_WARN)
+                + self.SPACE_MARGIN
+                + (files or 0) * self.SPACE_PER_ANALYSIS
+            )
+            if free is not None:
+                floor = staging + int(size * self.SPACE_REFUSE) + self.SPACE_MARGIN
+                if basis in ("folder", "upload") and free < floor:
+                    status = "insufficient"
+                else:
+                    status = "tight" if free < recommended else "ok"
+        return {
+            "free": free,
+            "recommended": recommended,
+            "size": size,
+            "files": files,
+            "basis": basis,
+            "status": status,
+        }
+
+    def import_space(
+        self,
+        identifier: str,
+        kind: str,
+        source: str | None = None,
+        size: int | None = None,
+        files: int | None = None,
+    ) -> dict:
+        """Estimate working space without copying files or starting an import."""
+        if not self.library.folder(identifier).is_dir():
+            raise ServiceError("The case does not exist on the Host.")
+        if kind not in ("folder", "mounted", "image", "physical"):
+            raise ServiceError("Choose a folder, mounted volume, image or physical disk.")
+        if source is not None and (not isinstance(source, str) or "\0" in source):
+            raise ServiceError("The source must be a valid path.")
+        for value in (size, files):
+            if value is not None and (type(value) is not int or not 0 <= value < 2**53):
+                raise ServiceError("The estimate needs nonnegative whole byte and file counts.")
+        if size is None and files is not None:
+            raise ServiceError("Supply the total size with the file count.")
+        if kind != "folder" and size is not None:
+            raise ServiceError("Browser file sizes apply only to a folder upload.")
+
+        if kind == "physical":
+            return self._estimate_import_space(identifier, None, None, "physical-unknown")
+        if not source:
+            basis = "upload" if size is not None else "image-segments" if kind == "image" else kind
+            return self._estimate_import_space(identifier, size, files, basis)
+
+        path = Path(source).expanduser().resolve()
+        if kind in ("folder", "mounted"):
+            if not path.is_dir():
+                raise ServiceError("The source folder does not exist on the Host.")
+            size, files = self._estimate_folder(path, mounted=kind == "mounted")
+            return self._estimate_import_space(identifier, size, files, kind)
+        if not path.is_file():
+            raise ServiceError("The image file does not exist on the Host.")
+        size, basis = self._estimate_image(path)
+        return self._estimate_import_space(identifier, size, None, basis)
+
+    @staticmethod
+    def _estimate_folder(path, *, mounted):
+        from fireblade.core.disk import candidate
+
+        total = count = 0
+        for directory, _dirs, names in os.walk(path):
+            for name in names:
+                file = Path(directory) / name
+                try:
+                    info = file.stat(follow_symlinks=False)
+                except OSError:
+                    continue
+                if not stat.S_ISREG(info.st_mode):
+                    continue
+                if mounted and not candidate(file):
+                    suffix = next(
+                        (
+                            ext
+                            for ext in (".log1", ".log2", "-wal", "-shm", "-journal")
+                            if name.casefold().endswith(ext)
+                        ),
+                        None,
+                    )
+                    if not suffix or not candidate(file.with_name(name[: -len(suffix)] or name)):
+                        continue
+                total += info.st_size
+                count += 1
+        return total, count
+
+    @staticmethod
+    def _estimate_image(path):
+        from fireblade.core.disk import image_segments
+
+        size = sum(segment.stat().st_size for segment in image_segments(path))
+        if path.suffix.casefold() != ".e01":
+            return size, "image-segments"
+        from dissect.evidence.exception import EWFError
+        from dissect.target.exceptions import Error as DiskError
+
+        from fireblade.core.disk_browser import open_image
+
+        try:
+            with open_image(path) as target:
+                return sum(int(disk.size) for disk in target.disks), "image-logical"
+        except (OSError, ValueError, DiskError, EWFError, AttributeError):
+            return size, "image-segments"
 
     def check_room(self, identifier: str, source: str | Path) -> dict:
         """Refuse an import that cannot fit, before it writes anything.

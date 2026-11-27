@@ -117,7 +117,8 @@ def destruction(record, client, images, *, doc=None):
             ("Dossier", record.get("case_name")),
             ("Organisation", client.get("name")),
             ("Référence client", client.get("reference")),
-            ("Méthode", record.get("method")),
+            ("Méthode", record.get("label") or record.get("method")),
+            ("Passes", str(record.get("passes", ""))),
             ("Motif", record.get("reason")),
             ("Début et fin (UTC)", f"{record.get('started', '')} / {record.get('finished', '')}"),
             ("Statut", record.get("status")),
@@ -134,6 +135,8 @@ def destruction(record, client, images, *, doc=None):
                 item.get("size"),
                 "Vérifié et supprimé"
                 if item.get("verified") and item.get("deleted")
+                else "Supprimé sans réécriture"
+                if item.get("deleted")
                 else item.get("error") or item.get("state"),
                 f"{item.get('sha256_before') or '—'} / {item.get('sha256_after') or '—'}",
             )

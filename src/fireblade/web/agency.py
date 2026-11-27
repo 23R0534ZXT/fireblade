@@ -512,6 +512,7 @@ class Agency:
             "residue": extras,
             "certificate": str(reported),
             "status": record.get("status"),
+            "deleted_files": sum(bool(item.get("deleted")) for item in record["files"]),
             "verified_files": sum(
                 bool(item.get("verified") and item.get("deleted")) for item in record["files"]
             ),
@@ -568,11 +569,15 @@ def page(catalogue: dict, *, version: str = "", error: str = "", update: dict | 
             + "</div></td>"
             "<td>" + escape(case["status"] or "—") + "</td>"
             '<td class="when">' + escape((case["updated"] or "")[:19].replace("T", " ")) + "</td>"
-            '<td><form class="rowform" method="post" action="/destroy/'
+            '<td><form class="rowform erase-form" method="post" action="/destroy/'
             + escape(identifier)
             + '"'
             + " onsubmit=\"return confirm('Erase this case, its container and its volume?')\">"
             + '<input class="search" name="confirmation" placeholder="type the name" required>'
+            + '<select name="method" aria-label="Erasure method">'
+            + '<option value="dod3">DoD — 3 passes</option>'
+            + '<option value="dod7">DoD — 7 passes</option>'
+            + '<option value="quick">Quick erase (delete only)</option></select>'
             + '<button class="btn" type="submit">Erase</button></form></td>'
             "</tr>"
         )
@@ -600,6 +605,7 @@ def page(catalogue: dict, *, version: str = "", error: str = "", update: dict | 
         ".topline a.btn{text-decoration:none}"
         ".statusbar .note{color:#8a5a00}"
         ".rowform .search{width:118px;flex:none}"
+        ".erase-form{flex-wrap:wrap}.erase-form select{max-width:100%}"
         ".caseswrap td .ref{font:9px monospace;color:var(--muted);line-height:10px}"
         ".caseswrap td.when{color:var(--muted)}"
         ".caseswrap td:first-child{line-height:13px;height:30px}"

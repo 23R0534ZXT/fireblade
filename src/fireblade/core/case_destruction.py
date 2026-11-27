@@ -13,8 +13,7 @@ removed when nothing is left inside it.
 
 A case also leaves things outside its folder: the portable packages it exported, its archive,
 the annex of a certificate. `outside_entries` names them, and `destroy_case(..., extras=...)`
-overwrites and removes them in the same pass, so the folder is not the only thing that
-disappears.
+applies the selected method to them as well.
 """
 
 from __future__ import annotations
@@ -166,7 +165,7 @@ def destroy_case(
     extras=(),
     on_certificate=None,
 ):
-    """Overwrite every file of a case, remove the folders, and write the certificate outside.
+    """Erase the files of a case, remove the folders, and write the certificate outside.
 
     Returns the certificate record. The victim folder is removed only when it is empty, so an
     incomplete destruction keeps what is left and says so instead of pretending.
@@ -181,7 +180,17 @@ def destroy_case(
         raise ValueError("Le case ne contient aucun fichier à détruire")
     total = sum(item["size"] for item in files)
     progress(f"Destruction du case : {len(files)} fichier(s), {total / 1e6:.1f} Mo")
-    entries = basis.plan([item["path"] for item in files], root, limit=MAX_CASE_FILES)
+    entries = basis.plan(
+        [item["path"] for item in files], root, limit=MAX_CASE_FILES, method=method
+    )
+    images = _attachment_images(attachments, root)
+    paths = _outside_files(extras)
+    extra_entries = []
+    if paths:
+        plan_root = Path(os.path.commonpath([str(Path(path).resolve()) for path in paths]))
+        if not plan_root.is_dir():
+            plan_root = plan_root.parent
+        extra_entries = basis.plan(paths, plan_root, limit=MAX_CASE_FILES, method=method)
 
     def report(done, total, path=None):
         # The engine counts bytes; the analyst wants to know which file is going.
@@ -204,7 +213,6 @@ def destroy_case(
         # Photos of the media and of the witness, already fingerprinted by
         # store_attachments: the certificate embeds them as data URIs.
         record["attachments"] = list(attachments)
-    images = _attachment_images(record.get("attachments"), root)
     if links:
         record["skipped_links"] = links[:200]
     failed = [item for item in record["files"] if not item.get("deleted")]
@@ -222,14 +230,9 @@ def destroy_case(
     record["folder_removed"] = not root.exists()
     # What the case left outside its folder goes too: a portable package or an
     # archive of the case is the case, and a certificate annex holds its photos.
-    paths = _outside_files(extras)
     outside = []
     if paths:
         progress(f"Résidus du case : {len(paths)} fichier(s) hors du dossier")
-        plan_root = Path(os.path.commonpath([str(Path(path).resolve()) for path in paths]))
-        if not plan_root.is_dir():
-            plan_root = plan_root.parent
-        extra_entries = basis.plan(paths, plan_root, limit=MAX_CASE_FILES)
         extra_record = basis.destroy(
             extra_entries,
             method,
@@ -261,6 +264,7 @@ def destroy_case(
                     pass
         record["files"] = outside + record["files"]
     record["outside"] = len(outside)
+    record["bytes"] = sum(item["size"] for item in record["files"])
     progress("Procès-verbal : " + str(certificate_path))
     document = build_certificate(
         record,

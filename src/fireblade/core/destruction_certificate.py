@@ -173,7 +173,8 @@ def build(
         )
         + "</table>"
     )
-    parts.append("<h2>1. Fichiers détruits</h2>")
+    quick = record.get("method") == "quick"
+    parts.append("<h2>1. Deleted files</h2>" if quick else "<h2>1. Fichiers détruits</h2>")
     files = record.get("files", [])
     if not files:
         parts.append('<p class="ko">Aucun fichier n\'a été détruit.</p>')
@@ -183,20 +184,19 @@ def build(
         )
         for item in files:
             state = item.get("state")
-            label = (
-                "détruit et vérifié"
-                if state == "destroyed" and item.get("verified")
-                else "ÉCHEC : " + str(item.get("error") or state)
-            )
-            css = "ok" if state == "destroyed" and item.get("verified") else "ko"
-            started = str(item.get("started") or "")[11:19]
-            finished = str(item.get("finished") or "")[11:19]
+            if state == "deleted" and item.get("deleted"):
+                label, css = "Deleted without overwrite", "ok"
+            elif state == "destroyed" and item.get("verified"):
+                label, css = "détruit et vérifié", "ok"
+            else:
+                label, css = "ÉCHEC : " + str(item.get("error") or state), "ko"
             parts.append(
                 "<tr><td>" + escape(short_path(item.get("relative") or item.get("path"))) + "</td>"
                 "<td>" + escape(f"{item.get('size', 0):,}".replace(",", " ")) + "</td>"
                 '<td class="' + css + '">' + escape(label) + "</td></tr>"
             )
         parts.append("</tbody></table>")
+    if files and not quick:
         # The table has to stay readable: the full hashes go to an appendix, one per line.
         parts.append(
             '<p class="muted">Empreintes abrégées dans le tableau ; les valeurs complètes '
@@ -218,11 +218,14 @@ def build(
                 "avant : <code>" + escape(item.get("sha256_before") or "—") + "</code><br>"
                 "après : <code>" + escape(item.get("sha256_after") or "—") + "</code></p>"
             )
-    destroyed = sum(1 for item in files if item.get("state") == "destroyed")
-    parts.append(
-        f"<p>{destroyed} fichier(s) détruit(s) sur {len(files)} listé(s) · "
-        f"{len({item.get('sha256_before') for item in files})} empreinte(s) distincte(s).</p>"
-    )
+    removed = sum(1 for item in files if item.get("deleted"))
+    if quick:
+        parts.append(f"<p>{removed} of {len(files)} listed file(s) deleted.</p>")
+    else:
+        parts.append(
+            f"<p>{removed} fichier(s) détruit(s) sur {len(files)} listé(s) · "
+            f"{len({item.get('sha256_before') for item in files})} empreinte(s) distincte(s).</p>"
+        )
     attachments = record.get("attachments") or []
     if attachments:
         parts.append("<h2>3. Annexes photographiques</h2>")
@@ -291,7 +294,10 @@ def build(
         "</body></html>"
     )
     return dict(
-        html="\n".join(parts), files=len(files), destroyed=destroyed, attachments=len(attachments)
+        html="\n".join(parts),
+        files=len(files),
+        destroyed=0 if quick else removed,
+        attachments=len(attachments),
     )
 
 

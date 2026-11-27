@@ -1,10 +1,11 @@
 """Destroying a case: every file overwritten, the folder removed, the certificate outside."""
 
 import json
+import os
 
 import pytest
 
-from fireblade.core import case_destruction
+from fireblade.core import case_destruction, destruction
 
 
 def make_case(tmp_path, name="CASE-1"):
@@ -95,3 +96,22 @@ def test_the_certificate_keeps_its_table_readable_and_hashes_complete(tmp_path):
     table = html.split("<h2>2. Empreintes complètes</h2>")[0]
     assert digest not in table, "a 64-character hash is back in the summary table"
     assert digest[:12] + "…" + digest[-6:] not in table
+
+
+def test_quick_erasure_does_not_read_or_overwrite_file_contents(tmp_path, monkeypatch):
+    folder = make_case(tmp_path)
+    source = folder / "evidence" / "poste.bin"
+    surviving_link = tmp_path / "original.bin"
+    os.link(source, surviving_link)
+
+    def reject_content_io(*_args):
+        pytest.fail("Quick erase must not fingerprint or overwrite files")
+
+    monkeypatch.setattr(destruction, "sha256_file", reject_content_io)
+    monkeypatch.setattr(destruction, "_write_pass", reject_content_io)
+    record = case_destruction.destroy_case(folder, "quick", certificate_path=tmp_path / "pv.html")
+
+    assert record["folder_removed"]
+    assert record["passes"] == 0
+    assert all(item["deleted"] and not item["verified"] for item in record["files"])
+    assert surviving_link.read_bytes() == b"EVTX" * 500

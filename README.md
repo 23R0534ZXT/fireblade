@@ -51,8 +51,11 @@ See [deployment and per-case isolation](deploy/host/README.md).
    intake form (DOCX), six-sheet follow-up workbook (XLSX), or editable investigation
    report (DOCX). The standard reports still support HTML and PDF.
 5. **Close the case.** Export a portable case with verified hashes, or use case erasure.
-   Erasure records the applied method and verification results in HTML and in an editable
-   Word certificate written outside the case. See [erasure limits](docs/host/STATUS.md).
+   In the development image (`:edge`), **Quick erase** deletes the case files without
+   overwriting them. The DoD modes overwrite them and verify the last pass before deletion.
+   Both produce HTML and editable Word records outside the case. Deletion frees space in the
+   case filesystem once the files are closed and have no remaining links. A VMware snapshot or growing virtual disk can
+   retain its size on the physical host. See [erasure limits](docs/host/STATUS.md).
 
 ## Import source and resources
 
@@ -74,10 +77,16 @@ default for other imports.
 
 </details>
 
-Imports write analysis databases and can use considerably more space than the
-input files. Host checks the free space visible at the case directory. For a
-VM with a dynamically growing disk, also check the free space on the physical
-volume that stores the virtual disk and snapshots.
+Folder and disk dialogs show the space available in the case filesystem and the
+recommended free space before analysis. For a folder selected in the browser,
+the first estimate includes room for the uploaded copy. Host refreshes the
+estimate once the folder is staged. For disk images, the estimate uses the
+logical image size when available. Actual storage use depends on the readers
+and analysis layouts.
+
+In VMware, check the physical host's volume or datastore as well. The free
+space displayed by Host comes from inside the guest. VMware must also have
+room to grow the VMDK and any snapshots. See [storage planning](deploy/host/README.md#storage-for-imports).
 
 ## Explore an E01 image
 

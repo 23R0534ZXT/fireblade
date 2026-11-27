@@ -7,9 +7,12 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+- Added quick case erasure with deletion-only records in HTML and Word.
 - Unified file, folder and disk workflows under **Import evidence**.
 - Added a host-aware worker slider for folder imports and disk analysis, with a
   recommendation and per-job override based on the resources available to Host.
+- Show available case storage and a recommended free-space estimate for folder
+  and disk imports, including the staging copy for browser uploads.
 
 ## [0.10.1] — 2026-11-27
 

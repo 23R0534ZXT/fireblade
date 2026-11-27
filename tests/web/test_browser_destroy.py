@@ -59,7 +59,7 @@ def _plain(html):
 def test_the_dialog_offers_both_methods_and_says_where_the_certificate_will_go(page):
     _open_dialog(page)
     options = page.eval_on_selector_all("#destroy-method option", "els => els.map(e => e.value)")
-    assert options == ["dod3", "dod7"]
+    assert options == ["dod3", "dod7", "quick"]
     assert page.input_value("#destroy-method") == "dod3"
     assert page.input_value("#destroy-certificate").endswith("certificates")
     assert "outside the case" in page.inner_text("#destroy-certificate-note")
@@ -124,8 +124,8 @@ def test_the_certificate_carries_the_operator_the_witness_the_reason_the_method_
     assert not any(item.name == name for item in server[1].iterdir() if item.is_dir())
 
 
-@pytest.mark.parametrize("method", ["dod3", "dod7"])
-def test_each_method_names_its_number_of_passes(page, tmp_path, method):
+@pytest.mark.parametrize(("method", "passes"), [("dod3", 3), ("dod7", 7), ("quick", 0)])
+def test_each_method_names_its_number_of_passes(page, tmp_path, method, passes):
     name = page.inner_text("#casecombo-label")
     folder = tmp_path / "certs"
     _open_dialog(page)
@@ -138,5 +138,9 @@ def test_each_method_names_its_number_of_passes(page, tmp_path, method):
         "document.getElementById('status').innerText.startsWith('Case erased')", timeout=90000
     )
     text = _plain(next(folder.glob("*.html")).read_text(encoding="utf-8"))
-    passes = "7" if method == "dod7" else "3"
     assert f"Passes {passes}" in text, text[:400]
+    if method == "quick":
+        assert "deleted without overwrite" in page.inner_text("#status")
+        assert "Deleted without overwrite" in text
+        assert "destroyed and verified" not in text
+        assert next(folder.glob("*.docx")).is_file()

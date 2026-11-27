@@ -373,6 +373,7 @@ def create_app(
                 source,
                 delimiter=(payload or {}).get("delimiter") or None,
                 encoding=(payload or {}).get("encoding") or None,
+                identifier=identifier,
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1017,6 +1018,19 @@ def create_app(
     @app.get("/api/import-capacity")
     def import_capacity():
         return library.import_capacity()
+
+    @app.post("/api/cases/{identifier}/import-space")
+    def import_space(identifier: str, payload: dict):
+        try:
+            return library.import_space(
+                identifier,
+                kind=payload.get("kind"),
+                source=payload.get("source"),
+                size=payload.get("size"),
+                files=payload.get("files"),
+            )
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/api/cases/{identifier}/import-jobs")
     def start_import_job(

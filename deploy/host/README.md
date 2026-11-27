@@ -15,13 +15,13 @@ the root — this folder only keeps the entry point and the instructions.
 
 ## Published images
 
-```bash
-ghcr.io/23r0534zxt/kagarasu-host     # the case image
-ghcr.io/23r0534zxt/kagarasu-driver   # the driver: one container per case
-```
+| Image | Purpose |
+| --- | --- |
+| `ghcr.io/23r0534zxt/kagarasu` | Host with the readers, .NET runtime and browser client. The `kagarasu-host` image name is an alias. |
+| `ghcr.io/23r0534zxt/kagarasu-driver` | Local case manager for deployments that isolate each case in a separate container. |
 
-`:edge` follows `main`; `:X.Y.Z`, `:X.Y` and `:latest` come from a version tag. The
-workflow is `.github/workflows/containers.yml`; nothing is built on a machine of ours.
+The `:latest` tag follows stable releases and `:edge` follows `main`. Use the same release
+tag on the driver and case images for a reproducible deployment. [Release tags](https://github.com/23R0534ZXT/kagarasu/releases)
 
 ## Build
 
@@ -31,7 +31,7 @@ docker build -t fireblade:host .
 
 The readers are downloaded during the build (the pinned versions in
 `config/forensic-toolchain.json`), so the first build needs network access and a few
-minutes. Nothing else is fetched at run time.
+minutes. For an isolated deployment, set `FIREBLADE_UPDATE_CHECK=off` to disable the optional release check.
 
 ## Run
 
@@ -42,7 +42,7 @@ FIREBLADE_CASES=/srv/fireblade/cases FIREBLADE_PORT=8080 docker compose up -d
 or, without compose:
 
 ```bash
-docker run -d --name fireblade-host -p 8080:8080 \
+docker run -d --name fireblade-host -p 127.0.0.1:8080:8080 \
     -v /srv/fireblade/cases:/data/cases \
     -v /srv/fireblade/plugins:/data/plugins \
     fireblade:host
@@ -75,72 +75,48 @@ host-side capacity and reclaim it when appropriate.
 
 ## One container per case
 
+From a clone, start the published driver with Docker Compose. The Compose file creates
+the named `fireblade-cases` network and binds the user interface to loopback. Set the
+case and certificate paths to absolute directories on the Docker host. The driver uses
+them when requesting mounts from the Docker daemon.
+
 ```bash
-docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v /srv/fireblade/volumes:/data/volumes \
-    -v /srv/fireblade/certificates:/data/certificates \
-    ghcr.io/23r0534zxt/kagarasu-driver:latest \
-    python -m fireblade.web.agency serve \
-      --image ghcr.io/23r0534zxt/kagarasu:latest \
-      --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
-      --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
-      --host 0.0.0.0 --port 8080
+export FIREBLADE_VOLUMES=/srv/kagarasu/volumes
+export FIREBLADE_CERTIFICATES=/srv/kagarasu/certificates
+export FIREBLADE_TAG=0.15.0
+docker pull "ghcr.io/23r0534zxt/kagarasu:${FIREBLADE_TAG}"
+docker compose -f deploy/host/docker-compose.driver.yml up -d --pull always --no-build
 ```
 
-From a clone: `docker compose -f deploy/host/docker-compose.driver.yml up -d --build`
-(built as `fireblade:driver`).
+Open <http://localhost:8080>. The driver serves each case under `/case/<id>/`. It holds
+the Docker socket, which grants control of the host Docker daemon. Only the driver uses
+the socket. Each case container sees its own case volume. The driver writes destruction
+certificates outside those volumes.
 
-The driver creates `fireblade-case-<id8>` containers from the `fireblade:host` image, joins
-them to the private `fireblade-cases` network and serves each case under `/case/<id>/`. It
-needs the docker socket — that is root on the host, and the one privileged process of this
-edition (see `docs/host/HOST-EDITION.md`). The certificates are written outside the volumes,
-which is why an erasure can take the whole volume with it.
+```mermaid
+flowchart LR
+    B[Browser] --> D[Driver]
+    D -->|/case/id1/| C1[Case 1 container and volume]
+    D -->|/case/id2/| C2[Case 2 container and volume]
+    D -.->|Docker API| E[Docker engine]
+    D --> P[Certificates outside case volumes]
+```
+
+To build the driver from the checkout, use
+`docker compose -f deploy/host/docker-compose.driver.yml up -d --build`.
+Case containers use the published case image selected by `FIREBLADE_TAG`.
 
 ## Upgrade to a new release
 
-```bash
-docker pull ghcr.io/23r0534zxt/kagarasu:0.8.8
-docker pull ghcr.io/23r0534zxt/kagarasu-driver:0.8.8
-docker rm -f fireblade-driver
-docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v /srv/fireblade/volumes:/data/volumes \
-    -v /srv/fireblade/certificates:/data/certificates \
-    ghcr.io/23r0534zxt/kagarasu-driver:0.8.8 \
-    python -m fireblade.web.agency serve \
-      --image ghcr.io/23r0534zxt/kagarasu:0.8.8 \
-      --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
-      --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
-      --host 0.0.0.0 --port 8080
-```
+For a single Host container, follow the [container operations](../../README.md#operate-the-container).
+For the driver, select the new release in `FIREBLADE_TAG`, keep the existing volume and
+certificate paths, and repeat the pull and Compose commands above.
 
-The volumes are the contract: a case keeps its folder and its format, nothing is migrated.
-The driver compares the image id of every case container with the image it is configured
-with — a container built from another image is stopped, removed and rebuilt on the next
-open, and the stale ones are swept at start-up. A case nobody opens is upgraded the day it
-is opened, not before.
-
-Without `--image`, the driver uses the published `ghcr.io/23r0534zxt/kagarasu:latest`;
-pinning the same tag as the driver is what makes an upgrade reproducible.
-
-The client says when a newer release exists: a band across the window, the version you
-run, and the command to paste (dismissable, remembered per version). The check is cached
-for six hours and never reports a failed request as "up to date" — `/api/version` carries
-the answer, `/health` repeats it.
-
-Nothing updates itself. If you want the host to follow the releases on its own, Watchtower
-does it with the labels it already understands:
-
-```bash
-docker run -d --name watchtower \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    containrrr/watchtower --label-enable --interval 3600 fireblade-driver
-# and add  --label com.centurylinklabs.watchtower.enable=true  to the driver's run
-```
-
-Case containers need nothing: the driver rebuilds them from the new image the next time
-a case is opened, and sweeps the stale ones when it starts.
+From 0.15, the driver manages containers belonging to its own case library and recognizes
+older case containers by their labels and matching `/data/library` bind mount.
+The driver compares each case container's image ID with the configured image. It removes
+stale containers at startup and rebuilds them on demand when the analyst opens a case.
+The case files stay in their existing host directories.
 
 ## Smoke test of an image
 

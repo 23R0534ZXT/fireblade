@@ -1,10 +1,9 @@
 # Kagarasu Host — status and what is verified
 
-The Host is the reference edition, served from Docker and exercised through its actual browser
-interface. The historical Desktop is frozen at 0.7.9. The latest qualification covers a real
-2,674-file collection with 1,386,061 rows and a 12,559-column combined grid; the
-[report](../validation/reports/20261127-host-gui/REAL_COLLECTION.md) records the checks,
-regressions and limits. The HTTP API remains an internal interface that may evolve.
+Kagarasu Host is the maintained edition. The [0.15.0 GUI qualification](../validation/reports/20261127-host-0150/README.md)
+records the workflows exercised for this release. The [0.10.0 real-collection qualification](../validation/reports/20261127-host-gui/REAL_COLLECTION.md)
+measured 2,674 source files, 1,386,061 rows and a 12,559-column combined grid. The historical
+Desktop edition is frozen at 0.7.9. The HTTP API is internal and may evolve.
 
 ## What you can rely on
 
@@ -47,12 +46,12 @@ regressions and limits. The HTTP API remains an internal interface that may evol
 | --- | --- |
 | Imports | every reader exercised on real artifacts, through the page, from the raw reference pack and the Windows 11 sample collection; `SrumECmd` cannot run on Linux, and `SRUDB.dat` is read by Fireblade's own reader instead ([LINUX-READERS.md](LINUX-READERS.md)) |
 | Screens | the nine tabs and about fifty dialogs compared with the Desktop ([HOST-AUDIT.md](HOST-AUDIT.md)) |
-| Engine and service | latest broad qualification: 1,342 passed, 23 skipped; subsequent targeted runs cover time fields, reader diagnostics and viewport regressions. Runs overlap and are not added together. See the report for exact XML receipts. |
+| Engine and service | Historical qualification recorded 1,342 passes and 23 skips. Subsequent targeted runs cover time fields, reader diagnostics and viewport regressions. The versioned reports give the scope of each run. |
 | Client | `tests/web/test_browser*.py` drive the page with a real mouse: every menu command and every shortcut, every dialog's buttons kept on screen, dialogs moved and resized, splitters, filters, grouping, bookmarks, views, colour rules, derived columns, global search, indicator hunt, timeline, actions, reports, export, portable round trip, case creation to erasure |
-| One container per case | the driver's decisions are tested against a fake Docker; the page behind the driver (prefix, reports, export, erasure) is tested in a browser with the real case service. A real Docker daemon is not part of the automated tests |
+| One container per case | In 0.15.0, Chromium drove two drivers on separate private networks sharing one rootless Docker daemon. The review created a case, imported two CSV records, reconciled the second driver, reopened the first case, then verified quick erasure and the external HTML and DOCX certificates. Mock-Docker regressions cover upgrades and legacy-container recognition. |
 | Language | English interface and standard reports. The investigation DOCX and follow-up workbook retain the French headings of their reference models |
 | Detection | Hayabusa 4.3.1 run through the page on the Windows 11 sample (183 event logs, 613 alerts), with the attack graph, the alert context and both reports built from it |
-| Docker qualification | actual container imports, browser workflows, layout rebuilding and persistence after container recreation; the driver's orchestration remains covered separately by simulated-Docker tests |
+| Docker qualification | The real-collection report covers imports, layout rebuilding and persistence after container recreation. The 0.15.0 GUI report records the per-case driver checks. |
 
 ## Why it exists
 

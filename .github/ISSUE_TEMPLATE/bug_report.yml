@@ -1,5 +1,5 @@
 name: Report a bug
-description: Describe a problem that can be reproduced in Fireblade.
+description: Report a reproducible issue with Kagarasu Host or the historical Desktop edition.
 title: "[Bug] "
 labels: ["bug"]
 body:
@@ -8,19 +8,29 @@ body:
       value: |
         One problem per issue. Please search the existing issues first, and remove
         anything sensitive from screenshots, paths and logs before posting.
-  - type: input
-    id: version
+  - type: dropdown
+    id: edition
     attributes:
-      label: Fireblade version
-      description: Shown in Help → About, and in the release tag you downloaded.
-      placeholder: 0.4.2 (v0.4.2)
+      label: Deployment
+      options:
+        - Host (single container)
+        - Host (per-case driver)
+        - Host (source checkout)
+        - Windows Desktop
     validations:
       required: true
   - type: input
-    id: windows
+    id: version
     attributes:
-      label: Windows version
-      placeholder: Windows 11 x64, 24H2
+      label: Version or commit
+      description: For Host, see the status bar or /health. For Desktop, open Help → About.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Runtime environment
+      description: For Host, include the OS, browser and Docker version if applicable. For Desktop, include the Windows version.
     validations:
       required: true
   - type: dropdown

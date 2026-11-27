@@ -1,26 +1,27 @@
-# Contributing to Fireblade
+# Contributing to Kagarasu
 
-Fireblade is a forensic tool: people rely on what it shows them and on what it erases. A change
-is accepted when its behaviour is observable, tested, and honest about what it does not do.
+An investigator needs to trace an imported value, a detection or an erasure record back to its source.
+Changes that affect these workflows need an observable result and a reproducible check.
 
 ## Set up
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-python -m pip install -e '.[dev,web,browser]'
-python -m playwright install chromium   # for the browser tests
+python -m pip install -e '.[dev,web,browser,pdf]'
+python -m playwright install --with-deps chromium
 python -m scripts.dev_check --quick     # version, ruff, client JavaScript, the Desktop window
 ```
 
-Python 3.11 or newer. The Host runs on Linux; the frozen Desktop is built on Windows
-([build notes](docs/development/CONTRIBUER.md)).
+Host CI uses Python 3.12 on Linux. Install Node.js for JavaScript checks. On a minimal
+Ubuntu machine the Qt smoke test also needs `libegl1`, `libopengl0`, `libxkbcommon0`
+and `libgl1`. The historical Desktop build runs on Windows. [Windows build notes](docs/development/CONTRIBUER.md)
 
 ## The checks a change must pass
 
 ```bash
 python -m ruff format --check src scripts tests
 python -m ruff check src scripts tests
-python -m pytest tests -q --ignore=tests/windows --ignore=tests/ui
+QT_QPA_PLATFORM=offscreen python -m pytest tests -q --ignore=tests/windows --ignore=tests/ui
 ```
 
 `tests/web/test_browser*.py` drive the client with a real mouse and need Playwright and a Chromium
@@ -65,11 +66,11 @@ Keep a pull request to one subject so it can be reviewed, reverted, or bisected 
 
 ## Releases
 
-A release is a `vX.Y.Z` tag on `main` whose notes are the top section of
-[docs/development/RELEASE-NOTES.md](docs/development/RELEASE-NOTES.md); the workflows build and
-publish the images and the Windows build from the tag. Update [CHANGELOG.md](CHANGELOG.md) with the
-release. Versioning follows [Semantic Versioning](https://semver.org/): the case format on disk is
-the compatibility promise, the HTTP API is not one yet.
+For Host, a `vX.Y.Z` tag on `main` triggers publication of the Host and driver images.
+The release notes and changelog describe the analyst-visible changes and the checks
+run against that version. The on-disk case format is the compatibility commitment.
+The HTTP API is internal. Windows Desktop is frozen at 0.7.9.
+[Publication guide](docs/development/PUBLICATION.md) · [Release notes](docs/development/RELEASE-NOTES.md) · [Changelog](CHANGELOG.md)
 
 ## Reporting a problem
 

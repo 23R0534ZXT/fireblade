@@ -2,104 +2,66 @@
 
 [![Release](https://img.shields.io/github/v/release/23R0534ZXT/kagarasu)](https://github.com/23R0534ZXT/kagarasu/releases/latest)
 [![Host validation](https://github.com/23R0534ZXT/kagarasu/actions/workflows/host.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/host.yml)
-[![Container images](https://github.com/23R0534ZXT/kagarasu/actions/workflows/containers.yml/badge.svg)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/containers.yml)
-[![Windows validation](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml)
+[![Container build](https://github.com/23R0534ZXT/kagarasu/actions/workflows/containers.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/containers.yml)
 
-Kagarasu Host is a local DFIR workspace for investigating Windows artifacts, Linux logs,
-disk images and tabular evidence. Import a collection, inspect its source records, track
-findings and actions, and produce evidence-backed reports from the same case.
+Kagarasu Host is a local forensic investigation workspace for incident responders.
+Read Windows artifacts, Linux logs, disk images and tabular exports in one case.
+A finding can take you back to its source row, file and reader. Bookmarks, notes and
+row marks stay attached to those records when you regroup a collection or export the case.
 
-Kagarasu Host 0.14.0 adds source-aware artifact review, RECmd batch grouping, continuous
-grid scrolling and scoped search. Trace timeline events, findings and analyst marks
-back to their source records.
+[Quick start](#quick-start) · [Investigation workflow](#investigation-workflow) · [Deployment](deploy/host/README.md) · [Reader coverage](docs/host/LINUX-READERS.md) · [Qualification](#qualification-and-scope) · [Release notes](docs/development/RELEASE-NOTES.md)
 
-![A synthetic workstation investigation in Kagarasu Host](docs/assets/host/host-workspace.png)
-
-## Editions
-
-| | **Host** | **Desktop** | **Server** |
-| --- | --- | --- | --- |
-| Status | **maintained** | frozen at 0.7.9 | planned |
-| Runs on | a Linux container, in a browser | Windows x64 | planned Linux Docker deployment |
-| Users | one analyst, on their own machine | one analyst | several analysts at once, on the same case or on different ones |
-| Cases | persistent case folders; optional container per case | files on disk | one container per case |
-| Access control | none — local use only | none | accounts, roles, audit log |
-
-Host and Desktop share the analysis engine and reader toolchain. Host opens Desktop case
-folders. Open newer Host workspaces, including sparse combined analyses, with a current
-Host release. The Server edition is a planned collaboration deployment. See the
-[Server roadmap](#roadmap).
+![An analyst reviews a High-marked service installation (Windows Event ID 7045) in the synthetic Northwind case](docs/assets/host/host-workspace.png)
 
 ## Quick start
 
-Run the current stable release on a workstation with Docker.
+On a workstation running Docker with Linux containers, start the stable release with one command.
+Host serves one local analyst. The loopback binding keeps the interface on that workstation.
 
 ```bash
-sudo docker run --pull always -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" ghcr.io/23r0534zxt/kagarasu:latest && echo "Kagarasu is starting. Open http://localhost:8080 in a few seconds."
+docker run --pull always -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" -v kagarasu-plugins:/data/plugins ghcr.io/23r0534zxt/kagarasu:latest
 ```
 
-Open <http://localhost:8080>. The directory mounted at `/data/cases` contains the persistent
-case files. On Windows PowerShell, start the command with `docker run` and use
-`"$HOME\kagarasu-cases:/data/cases"` for the mount.
-Host is designed for one local analyst and has no application accounts. Bind the port to
-loopback. For upgrades, stop and recreate the container with the new version and the same
-case mount. The `:latest` tag follows stable releases. The `:edge` tag follows `main`.
-See [deployment and per-case isolation](deploy/host/README.md).
+Open <http://localhost:8080>. Case folders are under `$HOME/kagarasu-cases`. Docker keeps
+presentation plug-ins in the named volume `kagarasu-plugins`. On Linux, use `sudo docker`
+if your account requires it. On Windows PowerShell, use `"${HOME}/kagarasu-cases:/data/cases"`
+for the case mount. Check the running version and status at <http://localhost:8080/health>.
 
-### Operating the container
+### Try a first case
 
-| Task | Command |
+1. Save [demo.csv](examples/demo.csv) with GitHub’s **Download raw file** control. On the
+   Host start screen, select **New case…**, enter a name and choose **Create**.
+2. Select **Import evidence → Import a file… → Choose a file…**. Open the CSV, inspect the
+   preview and select **Import**. The **Analyses** grid contains 80 records from `WS-LAB-01`.
+3. In **Analyses**, leave the search scope on **This grid**, enter `Interactive logon` and
+   press Enter. The grid shows 20 matching events. Open **Row details** to inspect the
+   fields of a selected record.
+
+For a larger exercise, the [Windows 11 sample collection](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip)
+contains 183 event logs, Amcache, 60 Prefetch entries and 251 scheduled tasks.
+Additional fixtures are available in the [discovery pack](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
+and [raw artifact pack](https://github.com/23R0534ZXT/kagarasu/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip).
+
+### Operate the container
+
+| Task | Action |
 | --- | --- |
-| Stop or start | `docker stop kagarasu` or `docker start kagarasu` |
-| Upgrade | Stop the container, remove it with `docker rm kagarasu`, and repeat the run command with the same case mount. For a pinned release, set the new version tag |
-| Pin a release | Replace `:latest` with `:0.14.0` |
-| Preview changes on `main` | Replace the version tag with `:edge` |
-| Remove the container | Stop it, then run `docker rm kagarasu`. The case files remain in the mounted directory |
-| Build locally | `docker build -t kagarasu:host .` |
+| Check startup | Run `docker logs kagarasu` and check the version reported by `/health`. |
+| Stop or resume | Run `docker stop kagarasu` or `docker start kagarasu`. |
+| Upgrade | Stop the container, remove it with `docker rm kagarasu`, then repeat the quick start with the same case directory and plug-in volume. |
+| Select a version | The `:latest` tag follows stable releases. Use a published version tag for a repeatable deployment or `:edge` to follow `main`. |
+| Work offline | Pull the image while connected. Then replace `--pull always` with `--pull never` and add `-e FIREBLADE_UPDATE_CHECK=off` before the image name. The image includes the readers and .NET 10 runtime. |
 
-If your account already has Docker access, run the command without `sudo`. The image includes the
-.NET 10 runtime and the pinned readers. See [deployment notes](deploy/host/README.md).
-
-### Updates
-
-Host can display a release notice with the notes and the command to pull a newer image.
-The optional release check uses GitHub's public releases API and caches the result for six
-hours. Set `FIREBLADE_UPDATE_CHECK=off` for an isolated deployment. Upgrades are applied by
-recreating the container with the same case mount. See [published releases](https://github.com/23R0534ZXT/kagarasu/releases).
+The optional update notice checks GitHub's public releases API and caches the result for
+six hours. The release notes identify the changes to review before an upgrade. [Published releases](https://github.com/23R0534ZXT/kagarasu/releases)
 
 ## One container per case
 
-The default deployment above serves every case from one container. For isolation, run the
-driver: it creates a container for each case that is opened, mounts that case's volume and
-nothing else, and removes the container and the volume when the case is erased. The
-destruction certificate is written outside the volumes.
-
-```mermaid
-flowchart LR
-    B[Browser] --> D[Driver<br/>lists, opens, erases]
-    D -->|/case/id1/| C1[Case container 1<br/>volume: case 1]
-    D -->|/case/id2/| C2[Case container 2<br/>volume: case 2]
-    D -.->|docker API| E[(Docker engine)]
-    D --> P[(Certificates<br/>outside the volumes)]
-```
-
-```bash
-docker network create kagarasu-cases 2>/dev/null || true
-docker run -d --name kagarasu-driver -p 127.0.0.1:8080:8080 --network kagarasu-cases \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v /srv/kagarasu/volumes:/data/volumes \
-    -v /srv/kagarasu/certificates:/data/certificates \
-    ghcr.io/23r0534zxt/kagarasu-driver:latest \
-    python -m fireblade.web.agency serve \
-      --image ghcr.io/23r0534zxt/kagarasu:latest \
-      --volumes /data/volumes --host-volumes /srv/kagarasu/volumes \
-      --certificates /data/certificates --host-certificates /srv/kagarasu/certificates \
-      --host 0.0.0.0 --port 8080
-```
-
-From a clone, run `docker compose -f deploy/host/docker-compose.driver.yml up -d --build`.
-The driver needs privileged access to Docker through its socket. Pin the same release tag
-on both images for a reproducible deployment. See the [Driver deployment and upgrade guide](deploy/host/README.md#one-container-per-case).
+The quick start keeps the analyst's cases in one library and supports searches across cases.
+For isolated storage, the optional driver opens each case in its own container and mounts
+only that case's volume there. The driver manages the Docker socket and stores destruction
+certificates outside the case volumes. Use the [driver deployment and upgrade guide](deploy/host/README.md#one-container-per-case)
+for the Compose configuration, mounts and release tags.
 
 ## Investigation workflow
 
@@ -115,6 +77,7 @@ on both images for a reproducible deployment. See the [Driver deployment and upg
    row bookmark. Right-click a row to record an observation with its date, machine,
    tags, confidence and verdict.
    From an IP cell, hunt across the case or declare an indicator with its source record.
+   Save a session to reopen its analysis tabs, active grid, filters and column display.
 3. **Reconstruct the sequence.** Use the **Timeline** for cross-analysis chronology,
    **IOC hunting** for indicator matches, and the **Attack graph** for Hayabusa findings,
    ATT&CK mappings, saved tags and row marks. In **Actions & tracking → Investigation log**,
@@ -125,9 +88,11 @@ on both images for a reproducible deployment. See the [Driver deployment and upg
 4. **Track and report.** Record actions, owners, machines and accounts. View actions in
    the current case, across the same client or across the library. Export the incident
    intake form (DOCX), six-sheet follow-up workbook (XLSX), or editable investigation
-   report (DOCX). The standard reports still support HTML and PDF.
-5. **Close the case.** Export a portable case with verified hashes, or use case erasure.
-   **Quick erase** deletes the case files without overwriting them. The DoD modes overwrite
+   report (DOCX). For a read-only deliverable, generate an investigation or client
+   report as HTML or PDF.
+5. **Close or hand off the case.** **Close case** leaves the case available in the library.
+   For handoff, export a portable case with verified hashes. To remove a case,
+   **Quick erase** deletes its files. The DoD modes overwrite
    the files and verify the last pass before deletion. Both produce HTML and editable Word
    records outside the case. Deletion frees space in the case filesystem once the files
    are closed and have no remaining links. A VMware snapshot or growing virtual disk can
@@ -153,21 +118,11 @@ and notes follow their source records when the layout changes.
   **Across cases** before searching. Case results show matching fields and link to the
   source row. **Across cases** is available in the single-container deployment.
   **Back** restores the previous workspace view. Grouped views retain a path back to
-  their parent groups.
+  their parent groups. Press **Ctrl+K** to find a command by name or shortcut, use the
+  arrow keys to select a result and press **Enter** to run it.
 - **Timeline.** The UTC chart legend lets you toggle individual data sources. Shortcut (LNK)
   details distinguish the timestamps of the shortcut file from target metadata embedded in
   it. Choose **Use in timeline** next to the timestamp that fits the question you are investigating.
-
-| Workflow | Available controls and output |
-| --- | --- |
-| Review an analysis | Value checklists, nested grouping, multi-column sorting, pinned and derived columns, saved views, color rules and visual formats |
-| Record findings | Custom row marks, bookmarks, row and cell notes, and observations linked to source records |
-| Build a timeline | Cross-analysis chronology with selected date fields, source lanes, nested groups and undated records counted |
-| Hunt indicators | Case-wide matches for IPs, domains, URLs and hashes, with grouped match review |
-| Run detections | Local Hayabusa analysis of EVTX, findings grouped by rule and mapped to ATT&CK in the attack graph |
-| Follow an investigation | Actions, machines, accounts, indicators, client scope and a tagged chronology |
-| Deliver findings | Analyst and client reports in HTML and PDF, editable Word reports and follow-up workbooks |
-| Keep or move a case | Verified portable `.fireblade` packages, case history and recovery |
 
 Background jobs expose progress, parser messages and a Stop control where cancellation is
 supported. See [Host status and verified coverage](docs/host/STATUS.md).
@@ -238,6 +193,8 @@ check makes an outbound request. Disable it with `FIREBLADE_UPDATE_CHECK=off`.
 
 ## Qualification and scope
 
+The 0.15.0 [GUI qualification report](docs/validation/reports/20261127-host-0150/README.md) records the browser workflows exercised for this release.
+
 The 0.10.0 Docker GUI qualification imported **2,674 source files** into **1,386,061 rows**
 and **1,478 source analyses**. The three layouts retained the same row total.
 
@@ -272,9 +229,24 @@ layout, hardware and available resources. See the [0.10.1 qualification](docs/va
 
 [Host status](docs/host/STATUS.md) · [Reader coverage](docs/host/LINUX-READERS.md)
 
+## Editions
+
+| | **Host** | **Desktop** | **Server** |
+| --- | --- | --- | --- |
+| Status | **maintained** | frozen at 0.7.9 | planned |
+| Runs on | a Linux container, in a browser | Windows x64 | planned Linux Docker deployment |
+| Users | one analyst, on their own machine | one analyst | several analysts at once, on the same case or on different ones |
+| Cases | persistent case folders; optional container per case | files on disk | one container per case |
+| Access control | none — local use only | none | accounts, roles, audit log |
+
+Host and Desktop share the analysis engine and reader toolchain. Host opens Desktop case
+folders. Open newer Host workspaces, including sparse combined analyses, with a current
+Host release. The Server edition is a planned collaboration deployment. See the
+[Server roadmap](#roadmap).
+
 ## Desktop
 
-The Windows edition is frozen: version 0.7.9 is its last build and receives no changes.
+Fireblade 0.7.9 is the final Windows Desktop release.
 
 **[Download Fireblade 0.7.9 — Windows x64](https://github.com/23R0534ZXT/kagarasu/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.7.9)
 
@@ -283,12 +255,6 @@ folder. Windows SmartScreen or Smart App Control may block the unsigned executab
 the download against the SHA-256 in the release notes. See the [Desktop documentation](docs/desktop).
 
 ![The Desktop workspace](docs/assets/fireblade-workspace.png)
-
-Sample data: the
-[sample collection](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip)
-(a Windows 11 machine: 183 event logs, Amcache, 60 Prefetch entries, 251 scheduled tasks), the
-[discovery pack](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
-and the [raw artifact pack](https://github.com/23R0534ZXT/kagarasu/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip).
 
 ## Roadmap
 
@@ -299,7 +265,9 @@ erasure by key destruction. See the [Docker architecture handoff](docs/host/HAND
 
 ## Repository
 
-```
+The Python package retains its historical name, `fireblade`.
+
+```text
 src/fireblade/
   core/        the engine every edition runs: cases, readers, grid, timeline, reports
   web/         the Host: FastAPI service, per-case driver, browser client in static/
@@ -314,20 +282,25 @@ tests/         core, web (including real-browser tests), runtime, ui, fixtures
 
 ## Develop
 
-The shared Python and DuckDB engine is in `src/fireblade/core`. The FastAPI service,
-browser client and case-isolation driver are in `src/fireblade/web`. For a local
-development check, install Python dependencies and Chromium, then run the project checks.
+For Host development on Linux, use Python 3.12, Node.js for the JavaScript syntax check,
+and Chromium for browser tests. From the repository root, install the development dependencies
+and run the same format, lint and test checks as the Host workflow.
 
 ```bash
 python -m venv .venv
 . .venv/bin/activate
 python -m pip install -e '.[dev,web,browser,pdf]'
-python -m playwright install chromium
-python -m scripts.dev_check
+python -m playwright install --with-deps chromium
+python -m ruff format --check src scripts tests
+python -m ruff check src scripts tests
+for file in src/fireblade/web/static/*.js; do node --check "$file" || exit 1; done
+QT_QPA_PLATFORM=offscreen python -m pytest tests -q --ignore=tests/windows --ignore=tests/ui
 ```
 
-Chromium tests in `tests/web/test_browser*.py` exercise the interface with Playwright.
-Set `FIREBLADE_CHROMIUM` to use an existing Chromium installation. See [Contributing](CONTRIBUTING.md).
+For a targeted run, `tests/web/test_browser_lifecycle.py` exercises case creation,
+import, save and erasure on temporary data. Set `FIREBLADE_CHROMIUM` to use a locally
+installed browser. Image-specific checks use the Docker image and reference pack described in
+the [Host workflow](.github/workflows/host.yml). [Contribution guide](CONTRIBUTING.md)
 
 ## Documentation
 

@@ -1,68 +1,34 @@
-# Fireblade Host
+# Kagarasu Host
 
-> **Status:** functional and tested in a real browser; for the analyst's own machine, with no
-> access control. What is and is not verified: [STATUS.md](STATUS.md).
+Host runs the shared Fireblade analysis engine in a Linux container and serves its
+interface in a browser on the analyst's workstation. The standard deployment keeps
+multiple cases in one persistent library. The optional driver gives each case its own
+container and volume. For installation and a first investigation, follow the
+[quick start](../../README.md#quick-start).
 
-The Host is the desktop's engine behind HTTP: the same `src/fireblade/core`, the same
-readers, the same case format on disk — without Qt, without a Windows session. One
-analyst, one container per case, a browser as the window.
+![Artifact review in a synthetic Host case](../assets/host/host-workspace.png)
 
-![The Host workspace on a real case](../assets/host/host-workspace.png)
+## From evidence to a finding
 
-*A case opened in the Host: analyses, grid, artifacts, and the nine tabs of the desktop.*
-
-## What it does
-
-- **Imports what the desktop imports**, with the same pinned readers (EvtxECmd,
-  PECmd, MFTECmd, RECmd, LECmd, JLECmd, WxTCmd, RBCmd, AmcacheParser,
-  AppCompatCacheParser, SrumECmd, RecentFileCacheParser, SQLECmd) run by the .NET 10
-  runtime inside the image.
-- **Works a case like the desktop**: filters, groups, colour rules, derived columns,
-  views, bookmarks and cell notes, timeline and correlations, IOC hunting, Hayabusa
-  findings with their maps, attack graph, actions and tracking, reports (HTML, PDF,
-  client), portable `.fireblade` packages, history and recovery.
-- **Shows its work**: every long command — import, IOC scan, timeline build,
-  Hayabusa, report, portable case — runs as a job with a percentage, the engine's own
-  messages, and a Stop.
+- **Import.** Review the source, reader and import result for each file. Windows artifacts
+  use the pinned toolchain shipped with the image. Linux logs and supported disk images
+  use the appropriate readers for each source. The Linux SRUM reader exposes the database
+  columns. Import a Desktop-generated CSV if you need its exact SrumECmd layout.
+- **Review.** Inspect records in the grid, select date fields for the UTC timeline and
+  follow indicator matches or Hayabusa findings back to individual records.
+- **Document.** Add observations, bookmarks and notes, assign follow-up actions and export
+  an incident report. A portable case carries the investigation to another Host instance.
+- **Deploy.** Bind the port to loopback for single-analyst operation. Case storage, private
+  Office templates and the optional draft rewrite service are configured on the workstation.
+  [Deployment guide](../../deploy/host/README.md)
 
 ![Timeline build with its progress bar](../assets/host/host-timeline-progress.png)
 
-*The timeline builds five analyses here; the bar counts them and the message is the
-core's own.*
+*During timeline indexing, the progress window identifies the analysis being processed.*
 
-## What it does not do — measured, not guessed
+## Technical references
 
-| | |
-| --- | --- |
-| `SRUDB.dat` (SRUM) | `SrumECmd` refuses to run outside Windows (ESE libraries). The Host says so and points at the desktop's CSV. |
-| Assistant IA | no model is connected; the button that would lie is absent. |
-| Langue | English only, by product decision since 0.3.2. |
-| Fenêtres | no detach/dock, no splash: a browser tab has no window manager. |
-| Fichiers | no "show in Explorer", no "open with": a browser has no file manager. |
-| Timeline Explorer | the .NET plugin is not in the container. |
-
-The measured import run (333 files of real artifacts) is in
-[LINUX-READERS.md](LINUX-READERS.md): 327 files read, EVTX 1 327 rows and
-AppCompatCache 239 rows — the Windows counts, on the same files.
-
-## Run it
-
-```bash
-# from the repository root: the image needs the core, the readers and the config
-docker build -t fireblade:host .
-docker run --rm -p 8080:8080 \
-    -v /srv/fireblade/cases:/data/cases \
-    -v /srv/fireblade/plugins:/data/plugins \
-    fireblade:host
-# then open http://localhost:8080
-```
-
-The container needs the .NET runtime (it is inside the image) and reads the cases from
-`/data/cases`. A case written by the desktop opens as soon as its folder is there.
-
-## The documents of this edition
-
-| | |
+| Document | Scope |
 | --- | --- |
 | [HOST-EDITION.md](HOST-EDITION.md) | what the edition is, and the decisions behind it |
 | [HOST-AUDIT.md](HOST-AUDIT.md) | the feature-by-feature audit against the desktop, and the seven defects the comparison recette found |
@@ -73,10 +39,8 @@ The container needs the .NET runtime (it is inside the image) and reads the case
 
 ![Hayabusa clock map in the Host](../assets/host/host-hayabusa-clock.png)
 
-*The findings of a Hayabusa run, drawn as a clock — the desktop's four views are all
-in the Host.*
+*Hayabusa findings in the clock view.*
 
 ![Attack graph in the Host](../assets/host/host-attack-graph.png)
 
-*The attack graph, drawn server-side: hosts, techniques and free nodes, with the
-ATT&CK layer and the PNG export.*
+*The attack graph links hosts and techniques. Analysts can export the graph as a PNG or an ATT&CK Navigator layer.*

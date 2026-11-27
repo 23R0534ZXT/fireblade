@@ -11,6 +11,7 @@ Windows opens here and the other way round.
 
 from __future__ import annotations
 
+import base64
 import csv
 import hashlib
 import io
@@ -23,10 +24,10 @@ import tempfile
 import threading
 import time as clock
 import uuid
-from contextlib import suppress
+from contextlib import closing, nullcontext, suppress
 from dataclasses import replace
 from datetime import UTC, date, datetime, time
-from functools import wraps
+from functools import lru_cache, wraps
 from pathlib import Path
 
 from fireblade.core.collection import Collection, ToolPack, settle_empty_runs
@@ -249,6 +250,8 @@ class Library:
         folder = self.library.folder(identifier)
         collection_cache: dict = {}
         for item in summary["analyses"]:
+            if (item.get("web_display") or {}).get("session_view"):
+                item["session_view"] = self._view_fields(View.from_json(json.dumps(item["view"])))
             item["collection"] = self._tree_collection(folder, item, collection_cache)
             item["family"] = self._family_of(item)
             if item["family"] == "Supporting files":
@@ -1383,17 +1386,38 @@ class Library:
 
     DISPLAY_VIEW = "__fireblade_display__"
 
+    @staticmethod
+    @lru_cache(maxsize=2)
+    def _restored_layouts(session: Path) -> dict:
+        # Each case revision names an immutable session file. Cache only the
+        # restored layouts so reading a grid page need not parse the metadata again.
+        if session.stat().st_size > MAX_SESSION_BYTES:
+            raise ServiceError("The session file is too large.")
+        documents = json.loads(session.read_bytes()).get("documents") or []
+        return {
+            i: layout
+            for i, doc in enumerate(documents)
+            if isinstance(layout := doc.get("web_display"), dict) and layout.get("restore_id")
+        }
+
+    def _restored_layout(self, identifier, index):
+        session = self.library.session_path(self.library.read(identifier))
+        return self._restored_layouts(session).get(index) if session else None
+
     @_case_operation
     def display(self, identifier: str, index: int) -> dict:
         """Widths, hidden and pinned columns, kept in the analysis like a view."""
         case = self._case_for(identifier, index)
         with case.lock:
             stored = case.views().get(self.DISPLAY_VIEW)
-        if stored is None or not stored.header_state:
-            return {"widths": {}, "hidden": [], "pinned": [], "pinned_right": [], "order": []}
+        restored = self._restored_layout(identifier, index)
         try:
-            layout = json.loads(stored.header_state)
+            layout = json.loads(stored.header_state) if stored and stored.header_state else {}
         except ValueError:
+            layout = {}
+        if restored and restored["restore_id"] != layout.get("restore_id"):
+            layout = dict(restored)
+        if not layout:
             return {"widths": {}, "hidden": [], "pinned": [], "pinned_right": [], "order": []}
         layout.setdefault("pinned_right", [])
         layout.setdefault("order", [])
@@ -1402,7 +1426,19 @@ class Library:
 
     @_case_operation
     def save_display(self, identifier: str, index: int, layout: dict) -> dict:
-        clean = {
+        clean = self._display_fields(layout)
+        restored = self._restored_layout(identifier, index)
+        if restored:
+            clean["restore_id"] = restored["restore_id"]
+            clean["session_view"] = True
+        case = self._case_for(identifier, index)
+        with case.lock:
+            case.save_view(self.DISPLAY_VIEW, View(header_state=json.dumps(clean)))
+        return clean
+
+    @staticmethod
+    def _display_fields(layout: dict) -> dict:
+        return {
             "widths": {
                 str(key): int(value)
                 for key, value in (layout.get("widths") or {}).items()
@@ -1418,11 +1454,6 @@ class Library:
                 dict.fromkeys(int(value) for value in layout.get("order") or [] if int(value) >= 0)
             ),
         }
-        case = self._case_for(identifier, index)
-        view = View(header_state=json.dumps(clean))
-        with case.lock:
-            case.save_view(self.DISPLAY_VIEW, view)
-        return clean
 
     # -- saved views -------------------------------------------------------
 
@@ -1445,7 +1476,12 @@ class Library:
         if not clean or len(clean) > 120:
             raise ServiceError("Invalid view name (1 to 120 characters).")
         case = self._case_for(identifier, index)
-        fields = view or {}
+        saved = self._grid_view(case, view or {})
+        with case.lock:
+            case.save_view(clean, saved)
+        return {"name": clean}
+
+    def _grid_view(self, case, fields: dict) -> View:
         saved = self._view_from(
             case,
             search=str(fields.get("search") or ""),
@@ -1484,9 +1520,7 @@ class Library:
             show_total=fields.get("show_total") is not False,
         )
         saved.highlight = str(fields.get("highlight") or "")
-        with case.lock:
-            case.save_view(clean, saved)
-        return {"name": clean}
+        return saved
 
     @_case_operation
     def view(self, identifier: str, index: int, name: str) -> dict:
@@ -1495,9 +1529,12 @@ class Library:
             stored = case.views().get(name)
         if stored is None:
             raise ServiceError("View not found.")
+        return {"name": name, **self._view_fields(stored)}
+
+    @staticmethod
+    def _view_fields(stored: View) -> dict:
         interval = next(iter((stored.group_intervals or {}).values()), "")
         return {
-            "name": name,
             "search": stored.search,
             "filters": [
                 {"column": f.column, "operator": f.operator, "value": f.value}
@@ -2940,117 +2977,157 @@ class Library:
         }
 
     # --- the session: the desktop's own file, written by the core module -----------
-    SESSION_FIELDS = (
-        "search",
-        "groups",
-        "sort_column",
-        "descending",
-        "sort_type",
-        "bookmarks_only",
-        "highlight",
-        "header_state",
-        "global_rules_enabled",
-        "summaries",
-        "group_order",
-        "group_descending",
-        "group_summary",
-        "expand_all",
-        "pinned_columns",
-        "pinned_widths",
-    )
-
-    def save_session(self, identifier: str) -> dict:
-        """The case's tabs as a `.fireblade-session` the desktop opens as they are."""
-        import base64
-        import tempfile
-
-        from fireblade.core.sessions import AnalysisSnapshot, View, write_session
-
+    @_case_operation
+    def save_session(self, identifier: str, current: dict | None = None) -> dict:
+        """Export the native session with the selected Host tab's live grid settings."""
         data = self.library.read(identifier)
-        session = self.library.session_path(data)
-        if not session or not Path(session).is_file():
+        path = self.library.session_path(data)
+        if not path or not path.is_file():
             raise ServiceError("This case has no session to save.")
-        payload = json.loads(Path(session).read_text(encoding="utf-8"))
-        documents = payload.get("documents") or []
-        snapshots = []
-        for document in documents:
-            if not isinstance(document, dict) or not document.get("path"):
-                continue
-            state = document.get("view") if isinstance(document.get("view"), dict) else {}
-            fields = {key: value for key, value in state.items() if key in self.SESSION_FIELDS}
-            snapshots.append(
-                AnalysisSnapshot(
-                    path=str(document["path"]),
-                    source_info=document.get("source") or {},
-                    view=View(**fields),
-                    header_state=b"",
-                )
-            )
-        if not snapshots:
-            raise ServiceError("This case has no analysis to put in a session.")
-        handle, raw = tempfile.mkstemp(suffix=".fireblade-session")
-        os.close(handle)
-        try:
-            write_session(raw, snapshots, int(payload.get("active") or 0))
-            content = Path(raw).read_bytes()
-        finally:
-            Path(raw).unlink(missing_ok=True)
-        name = data.get("name") or "case"
+        if path.stat().st_size > MAX_SESSION_BYTES:
+            raise ServiceError("The session file is too large.")
+        session = json.loads(path.read_bytes())
+        documents = session["documents"]
+        if current:
+            index = current.get("analysis")
+            if type(index) is not int or not 0 <= index < len(documents):
+                raise ServiceError("This analysis does not exist in the case.")
+            case = self._case_for(identifier, index)
+            with case.lock:
+                live = self._grid_view(case, current.get("view") or {})
+            # Retain Desktop-only settings when updating the shared grid fields.
+            exported = json.loads(live.to_json())
+            fields = self._view_fields(live)
+            desktop_names = {
+                "sort": "sort_column",
+                "interval": "group_intervals",
+                "order": "group_order",
+                "order_descending": "group_descending",
+                "order_summary": "group_summary",
+                "footer_mode": "group_footer_mode",
+                "show_total": "show_total_footer",
+            }
+            view = documents[index].setdefault("view", {})
+            for key in fields:
+                field = desktop_names.get(key, key)
+                view[field] = exported[field]
+            documents[index]["web_display"] = self._display_fields(current.get("display") or {})
+            session["active"] = index
+        content = json.dumps(session, ensure_ascii=False).encode("utf-8")
+        if len(content) > MAX_SESSION_BYTES:
+            raise ServiceError("The session file is too large.")
         return {
-            "name": f"{name.replace('/', '-')}.fireblade-session",
-            "documents": len(snapshots),
+            "name": f"{Path(data.get('name') or 'case').name}.fireblade-session",
+            "documents": len(documents),
             "bytes": len(content),
             "content": base64.b64encode(content).decode("ascii"),
         }
 
+    @_case_operation
     def open_session(self, identifier: str, content: str) -> dict:
-        """Read a session file and add the tabs it names to this case."""
-        import base64
-        import tempfile
-
-        from fireblade.core.sessions import read_session
-
+        """Reopen registered analyses. The case supplies file paths and source metadata."""
+        if not isinstance(content, str) or len(content) > ((MAX_SESSION_BYTES + 2) // 3) * 4:
+            raise ServiceError("Invalid or oversized session file.")
         try:
-            raw = base64.b64decode(content or "")
-        except (ValueError, TypeError) as exc:
-            raise ServiceError("This is not a Kagarasu session file.") from exc
-        handle, path = tempfile.mkstemp(suffix=".fireblade-session")
-        os.write(handle, raw)
-        os.close(handle)
-        try:
-            snapshots, _active = read_session(path)
-        except (ValueError, OSError, KeyError) as exc:
-            raise ServiceError(f"This session cannot be read: {exc}") from exc
-        finally:
-            Path(path).unlink(missing_ok=True)
+            raw = base64.b64decode(content, validate=True)
+            if len(raw) > MAX_SESSION_BYTES:
+                raise ValueError
+            session = json.loads(raw)
+            docs, selected = session["documents"], session.get("active", 0)
+            if (
+                session.get("format") != "fireblade-session"
+                or session.get("version") != 1
+                or not isinstance(docs, list)
+                or type(selected) is not int
+                or not 0 <= selected < len(docs)
+            ):
+                raise ValueError
+        except (KeyError, ValueError, TypeError, RecursionError) as exc:
+            raise ServiceError("This is not a valid Kagarasu session file.") from exc
+
         data = self.library.read(identifier)
         folder = self.library.folder(identifier)
-        added, missing = [], []
-        for snapshot in snapshots or []:
-            resolved = self._resolve_analysis(folder, str(snapshot.path))
-            if resolved is None:
-                missing.append(Path(str(snapshot.path)).name)
-                continue
-            added.append(
-                {
-                    "path": str(resolved),
-                    "source": snapshot.source_info or {},
-                    "view": {
-                        key: getattr(snapshot.view, key)
-                        for key in self.SESSION_FIELDS
-                        if getattr(snapshot.view, key, None) not in (None, [], "", {})
-                    },
-                }
-            )
-        if not added:
-            raise ServiceError(
-                "None of the analyses of this session is in this case: " + ", ".join(missing[:5])
-            )
+        opened, _, closed = self._session_snapshots(identifier, with_closed=True)
+        known = {}
+        for snapshot in [*opened, *closed]:
+            path = Path(snapshot.path)
+            known[path.as_posix()] = snapshot
+            if path.is_relative_to(folder):
+                known[path.relative_to(folder).as_posix()] = snapshot
+
+        live_indices = {item.path: i for i, item in enumerate(opened)}
+        restored, missing = {}, []
+        restore_id = uuid.uuid4().hex
+        active_path = None
+        try:
+            for position, doc in enumerate(docs):
+                recorded = doc["path"].replace("\\", "/")
+                parts = Path(recorded).parts
+                key = Path(recorded).as_posix()
+                if identifier in parts and ".." not in parts:
+                    key = Path(*parts[parts.index(identifier) + 1 :]).as_posix()
+                original = known.get(key)
+                if original is None:
+                    missing.append(Path(recorded).name)
+                    continue
+                if original.path in restored:
+                    raise ServiceError("The session lists the same analysis twice.")
+                view = View.from_json(json.dumps(doc["view"]))
+                # Validate changed view settings against the registered database
+                # before any tab or column layout is replaced.
+                if view != original.view:
+                    index = live_indices.get(original.path)
+                    handle = (
+                        nullcontext(self._case_for(identifier, index))
+                        if index is not None
+                        else closing(Case(original.path, settings=self._settings()))
+                    )
+                    with handle as case, case.lock:
+                        case.validate_view(view)
+                    self._view_fields(view)
+                layout = dict(original.web_display or {})
+                if doc.get("web_display") is not None:
+                    layout = self._display_fields(doc["web_display"])
+                    layout["restore_id"] = restore_id
+                layout["session_view"] = True
+                restored[original.path] = replace(
+                    original,
+                    view=view,
+                    header_state=base64.b64decode(doc["header"], validate=True),
+                    web_display=layout,
+                )
+                if position == selected:
+                    active_path = original.path
+        except (AttributeError, KeyError, TypeError, ValueError, RecursionError) as exc:
+            raise ServiceError("The session contains invalid analysis settings.") from exc
+        if not restored:
+            raise ServiceError("None of the analyses in this session belong to this case.")
+        tabs = list(restored.values()) + [item for item in opened if item.path not in restored]
+        active_path = active_path or next(iter(restored))
+        active = next(i for i, item in enumerate(tabs) if item.path == active_path)
+        self.close_case(identifier)
+        self.library.save(
+            identifier,
+            tabs,
+            active,
+            data.get("collections") or [],
+            data.get("active_collection"),
+            data["revision"],
+            closed=[item for item in closed if item.path not in restored],
+        )
         return {
-            "added": len(added),
+            "added": len(restored),
             "missing": missing,
-            "documents": added,
-            "case": data.get("name"),
+            "active": active,
+            "documents": [
+                {
+                    "path": item.path,
+                    "source": item.source_info,
+                    "view": json.loads(item.view.to_json()),
+                }
+                for item in restored.values()
+            ],
+            "case": data["name"],
         }
 
     def store_destruction_attachments(self, identifier: str, sources) -> dict:
@@ -3177,13 +3254,13 @@ class Library:
         if source.suffix.casefold() != ".html":
             raise ServiceError("Only a report written by this instance can be turned into a PDF.")
         target = source.with_suffix(".pdf")
-        title = source.stem
         try:
             text_pdf(
                 source.read_text(encoding="utf-8", errors="replace"),
                 target,
-                title=title,
-                subject="Client report",
+                subject="Client report"
+                if source.name.startswith("client-")
+                else "Investigation report",
             )
         except (OSError, ValueError) as exc:
             raise ServiceError(f"The PDF could not be written: {exc}") from exc
@@ -5848,7 +5925,10 @@ class Library:
         if display is not None:
             if index is None or not 0 <= index < len(snapshots):
                 raise ServiceError("This analysis does not exist in the case.")
-            snapshots[index].web_display = self.save_display(identifier, index, display)
+            saved_layout = self.save_display(identifier, index, display)
+            if (snapshots[index].web_display or {}).get("session_view"):
+                saved_layout["session_view"] = True
+            snapshots[index].web_display = saved_layout
         if snapshots:
             collections = [
                 entry for entry in (data.get("collections") or []) if isinstance(entry, dict)

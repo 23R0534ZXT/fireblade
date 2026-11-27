@@ -47,12 +47,12 @@ jobs:
           title, _, rest = body.partition("\n")
           text = [rest.strip(), "", "---", "", "## Container images — Host edition", "",
                   "```bash",
-                  f'docker run -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" ghcr.io/{repo}:{tag}',
+                  f'docker run -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" -v kagarasu-plugins:/data/plugins ghcr.io/{repo}:{tag}',
                   "```", "",
                   "Then open http://localhost:8080. The Host is for the analyst's own machine and has "
                   "no access control: keep it bound to localhost.", "",
-                  f"One container per case (the 0.8 shape): `ghcr.io/{repo}-driver:{tag}`, "
-                  "started with its compose — see `deploy/host/README.md`.", "",
+                  f"One container per case: `ghcr.io/{repo}-driver:{tag}`. "
+                  f"See the [driver deployment guide](https://github.com/{repo}/blob/v{tag}/deploy/host/README.md).", "",
                   "The Windows edition is frozen at 0.7.9 and is not part of this release."]
           Path("release-body.md").write_text("\n".join(text).strip() + "\n", encoding="utf-8")
           Path("release-title.txt").write_text(title.strip(), encoding="utf-8")

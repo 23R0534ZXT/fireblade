@@ -26,6 +26,15 @@ def test_a_summary_tile_reads_number_then_label(tmp_path):
     assert "3 Critical" in text and "1 High" in text
 
 
+def test_document_properties_use_the_report_heading_and_preserve_unicode(tmp_path):
+    target = text_pdf(
+        "<h1>Étude &amp; 報告</h1>", tmp_path / "r.pdf", subject="Investigation report"
+    )
+    metadata = pypdf.PdfReader(target).metadata
+    assert metadata.title == "Étude & 報告"
+    assert metadata.subject == "Investigation report"
+
+
 def test_a_table_keeps_its_columns_and_an_arrow_is_not_lost(tmp_path):
     text = read(text_pdf(REPORT, tmp_path / "r.pdf"))[0]
     assert "Level" in text and "Finding" in text

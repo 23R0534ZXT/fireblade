@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import tempfile
 from contextlib import suppress
+from itertools import count
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
@@ -96,24 +98,33 @@ def _store_upload(folder: Path, file: UploadFile, relative: str = "") -> Path:
         raise HTTPException(status_code=400, detail="Invalid relative path.")
     if parts:
         target = evidence.joinpath(*parts)
+        if not target.parent.resolve().is_relative_to(evidence.resolve()):
+            raise HTTPException(status_code=400, detail="Invalid evidence directory.")
         target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("wb") as stream:
-            while chunk := file.file.read(1024 * 1024):
-                stream.write(chunk)
-        return target
-    name = Path(file.filename or "evidence").name
-    if not name or name in (".", ".."):
-        raise HTTPException(status_code=400, detail="Invalid file name.")
-    target = evidence / name
-    if target.exists():
-        stem, suffix = Path(name).stem, Path(name).suffix
-        index = 2
-        while target.exists():
-            target = evidence / f"{stem}-{index}{suffix}"
-            index += 1
-    with target.open("wb") as stream:
-        while chunk := file.file.read(1024 * 1024):
-            stream.write(chunk)
+        try:
+            stream = target.open("xb")
+        except FileExistsError as exc:
+            raise HTTPException(
+                status_code=409, detail="This collected file already exists."
+            ) from exc
+    else:
+        name = Path(file.filename or "evidence").name
+        if not name or name in (".", ".."):
+            raise HTTPException(status_code=400, detail="Invalid file name.")
+        original = evidence / name
+        for number in count(1):
+            target = original if number == 1 else original.with_stem(f"{original.stem}-{number}")
+            try:
+                stream = target.open("xb")
+                break
+            except FileExistsError:
+                continue
+    try:
+        with stream:
+            shutil.copyfileobj(file.file, stream, length=1024 * 1024)
+    except OSError:
+        target.unlink(missing_ok=True)
+        raise
     return target
 
 
@@ -292,6 +303,13 @@ def create_app(
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/session")
+    def save_live_session(identifier: str, payload: dict):
+        try:
+            return library.save_session(identifier, payload)
+        except (ServiceError, ValueError, TypeError, AttributeError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.post("/api/cases/{identifier}/session/open")
     def open_session(identifier: str, payload: dict):
         try:
@@ -399,7 +417,12 @@ def create_app(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/api/cases/{identifier}/upload-folder")
-    def upload_folder(identifier: str, file: UploadFile = File(...), relative: str = Form(...)):
+    def upload_folder(
+        identifier: str,
+        file: UploadFile = File(...),
+        relative: str = Form(...),
+        batch: str = Form(""),
+    ):
         """One file of a folder the browser sent, at its own path under evidence/.
 
         The browser can hand over a whole directory (`webkitdirectory`): each file arrives
@@ -407,17 +430,26 @@ def create_app(
         previewed and imported exactly as the desktop imports a collection.
         """
         folder = library.library.folder(identifier)
+        evidence = folder / "evidence"
+        parts = Path(relative.replace("\\", "/")).parts
+        if not parts or ".." in parts or parts[0] == "/":
+            raise HTTPException(status_code=400, detail="Invalid relative path.")
         try:
-            target = _store_upload(folder, file, relative=relative)
+            if batch == "new":
+                evidence.mkdir(parents=True, exist_ok=True)
+                batch = Path(tempfile.mkdtemp(prefix="upload-", dir=evidence)).name
+            elif batch and (
+                not re.fullmatch(r"upload-[a-z0-9_]+", batch)
+                or not (evidence / batch).is_dir()
+                or (evidence / batch).is_symlink()
+            ):
+                raise HTTPException(status_code=400, detail="Unknown folder upload.")
+            path = Path(batch, *parts)
+            target = _store_upload(folder, file, relative=str(path))
         except (ValueError, OSError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        parts = [
-            part
-            for part in Path(relative.replace("\\", "/")).parts
-            if part not in ("", ".", "..", "/")
-        ]
-        root = folder / "evidence" / parts[0] if parts else target
-        return {"path": str(target), "root": str(root)}
+        root = evidence / batch / parts[0]
+        return {"path": str(target), "root": str(root), "batch": batch}
 
     @app.post("/api/cases/{identifier}/upload")
     def upload(
@@ -906,7 +938,7 @@ def create_app(
             path = library.report_file(identifier, name)
         except ServiceError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
-        return FileResponse(path, media_type="text/html", filename=name)
+        return FileResponse(path, filename=name)
 
     @app.post("/api/cases/{identifier}/analyses/{index}/rows/{row_id}/context")
     def alert_context(identifier: str, index: int, row_id: int, minutes: int = 5):

@@ -1,29 +1,28 @@
-# Publishing a version
+# Publishing Kagarasu Host
 
-## Checks and a release are two separate operations
+Host ships as a case image and a per-case driver image. Both use the same version.
+The Windows Desktop release is frozen at 0.7.9.
 
-Pull requests and code changes on `main` run the Windows checks. A change to
-`README.md`, `docs/` or the notices alone does not launch the full build on a push.
-An ordinary successful build keeps the EXE in the Actions artefacts and creates no
-public release.
+## Prepare the release
 
-A release is created by hand, from a tag, in one of two ways:
+1. Set the same version in `pyproject.toml` and `src/fireblade/__init__.py`.
+2. Add the release to `CHANGELOG.md`. Start the release notes with a heading in the form
+   `# Kagarasu X.Y.Z — Release title`. The publication workflow extracts that section for GitHub.
+3. Qualify the release candidate against the [Host workflow](../../.github/workflows/host.yml).
+   Check the browser journeys and run the public test pack against the built image.
+   Record the tested environments, omissions and results in [the validation reports](../validation/reports).
+4. Merge the qualified changes into `main` and verify the release commit and notes before tagging.
 
-1. **`workflow_dispatch` on `windows.yml`** with `publish_release` set — the workflow
-   builds, qualifies, then publishes.
-2. **`scripts/release.py`** on the workstation that holds the `gh` session — it reads
-   `docs/development/RELEASE-NOTES.md`, checks the SHA-256 of the zip it publishes, and
-   links the release from `README.md` through `scripts/update_release_readme.py`.
+## Publish and verify
 
-## What a release must carry
+Push an annotated `vX.Y.Z` tag on the release commit. The [release workflow](../../.github/workflows/release.yml)
+creates the GitHub release. The [containers workflow](../../.github/workflows/containers.yml)
+publishes the case image as both `kagarasu` and `kagarasu-host`, and the driver as
+`kagarasu-driver`. The release and image builds run independently.
 
-- The zip, its SHA-256 in the notes, and the same hash in the release body.
-- A title and notes in UTF-8 (pass them through the API, not through a console code
-  page, or the accents arrive mangled).
-- A link back from `README.md`; the release script writes it, and refuses to promote a
-  draft, a mismatched tag or a release without its asset.
+Wait for both workflows. Check the release notes on GitHub and pull the exact version
+of both images. The case service's `/health` endpoint should return the same version.
+The per-case driver and the case containers should use matching tags.
 
-## The rule that keeps a version readable
-
-Nothing is pushed to `main` while a single check is red. A version is a documented
-batch: the notes say why each group exists, not only what changed.
+An operator can also dispatch the release workflow manually on `main` with the new tag
+as input. That workflow creates the release and dispatches the image builds.

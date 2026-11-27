@@ -323,6 +323,12 @@ def workbook(sections):
         else:
             sheet = book.create_sheet(name)
             sheet.append(headings)
+            sheet.sheet_properties.pageSetUpPr.fitToPage = True
+            sheet.page_setup.orientation = sheet.ORIENTATION_LANDSCAPE
+            sheet.page_setup.paperSize = sheet.PAPERSIZE_A4
+            sheet.page_setup.fitToWidth = 1
+            sheet.page_setup.fitToHeight = 0
+            sheet.print_title_rows = "1:1"
             for cell in sheet[1]:
                 cell.font = Font(color="FFFFFF", bold=True)
                 cell.fill = PatternFill("solid", fgColor="31364C")
@@ -401,6 +407,9 @@ table{{border-collapse:collapse;width:100%}}td,th{{border:1px solid #c7c9d0;padd
 
 def word_report(case_name, data, sections):
     from docx import Document
+    from docx.enum.section import WD_ORIENT
+    from docx.oxml import OxmlElement
+    from docx.shared import Mm
     from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 
     def clean(value):
@@ -412,6 +421,13 @@ def word_report(case_name, data, sections):
         # Retain the template's page setup, styles and headers/footers.
         # Its example report body must never be repeated in a new case.
         doc.element.body.clear_content()
+    else:
+        # Source paths, timestamps and hashes share a row in the evidence tables.
+        section = doc.sections[0]
+        section.orientation = WD_ORIENT.LANDSCAPE
+        section.page_width, section.page_height = Mm(297), Mm(210)
+        section.left_margin = section.right_margin = Mm(16)
+        section.top_margin = section.bottom_margin = Mm(16)
     doc.core_properties.title = "Rapport d’investigation"
     doc.core_properties.subject = clean(case_name)
 
@@ -442,6 +458,7 @@ def word_report(case_name, data, sections):
             table = doc.add_table(rows=1, cols=len(headers))
             if "Light Shading Accent 1" in doc.styles:
                 table.style = "Light Shading Accent 1"
+            table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
             for cell, value in zip(table.rows[0].cells, headers, strict=True):
                 cell.text = clean(value)
             for values in rows:

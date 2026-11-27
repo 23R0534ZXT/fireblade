@@ -73,7 +73,7 @@ function renderGridPreferences(item) {
   $("pane-tabs").insertAdjacentHTML("beforeend", `
     <button class="ptab grid-preferences${firstVisit ? " first-visit" : ""}" type="button" data-grid-preferences
       title="${firstVisit ? "Set and save the column layout for this artifact family" : "Arrange, hide or restore columns"}">Grid preferences</button>
-    <button class="btn grid-source" type="button" data-grid-provenance title="${escapeHtml(source)}">${escapeHtml(isFamily ? source : source.split(/[\\/]/).at(-1))}</button>`);
+    <button class="btn grid-source" type="button" data-grid-provenance title="${escapeHtml(source)}">${escapeHtml(isFamily ? source : "Source details")}</button>`);
 }
 
 function resetGridReview() {
@@ -246,6 +246,8 @@ async function selectReviewAnalysis(index, filter = null) {
   if (index !== state.analysis || filter) rememberReviewPlace();
   state.analysis = index;
   resetAnalysisQuery();
+  const restored = currentAnalysis()?.session_view;
+  if (!filter && restored) applyViewFields(restored);
   if (filter) state.filters = [filter];
   renderTree();
   return loadRows(true);
@@ -547,6 +549,11 @@ const defaultQuickMarks = [
   { code: "L", label: "Low" }, { code: "FP", label: "False positive" },
 ];
 const markRequests = new Set();
+const ROW_MARK_HELP = "Click to cycle row marks. Shift-click to toggle a bookmark.";
+
+function rowMarkLabel(id, quick, bookmark) {
+  return [`Mark row ${id}`, quick?.label, bookmark && "bookmarked"].filter(Boolean).join(", ");
+}
 
 function quickMarks() {
   return reviewSetting("fireblade.quickMarks", defaultQuickMarks);
@@ -581,10 +588,11 @@ async function cycleRowMark(id, bookmark) {
     const mark = $("body").querySelector(`tr[data-row="${id}"] .markcell button`);
     if (mark) {
       mark.textContent = result.code || "";
-      mark.title = result.label || "Mark this row";
-      mark.setAttribute("aria-label", `Mark row ${id}${result.label ? ", " + result.label : ""}`);
+      const bookmark = state.bookmarks.get(String(id));
+      mark.title = bookmark || result.label || ROW_MARK_HELP;
+      mark.setAttribute("aria-label", rowMarkLabel(id, result, bookmark));
       mark.classList.toggle("quick-mark", Boolean(result.code));
-      mark.classList.toggle("marked", !result.code && state.bookmarks.has(String(id)));
+      mark.classList.toggle("marked", Boolean(bookmark));
     }
   } finally { markRequests.delete(key); }
 }

@@ -201,6 +201,20 @@ function selectImage() {
   readImageDirectory();
 }
 
+function imageHexDump(content) {
+  const bytes = content.split(" ");
+  const rows = [];
+  for (let offset = 0; offset < bytes.length; offset += 16) {
+    const group = bytes.slice(offset, offset + 16);
+    const printable = group.map(hex => {
+      const value = parseInt(hex, 16);
+      return value >= 32 && value < 127 ? String.fromCharCode(value) : ".";
+    }).join("");
+    rows.push(`${offset.toString(16).padStart(8, "0")}  ${group.join(" ").padEnd(47)}  ${printable}`);
+  }
+  return rows.join("\n");
+}
+
 async function readImageDirectory(path = "/", offset = 0) {
   const image = $("image-list").value;
   const partition = $("image-partition").value;
@@ -337,15 +351,24 @@ document.addEventListener("DOMContentLoaded", () => {
     if (dir) { readImageDirectory(path); return; }
     const { caseId, revision } = explorer;
     if (preview) {
+      const request = {};
+      explorer.previewRequest = request;
+      $("image-preview").hidden = true;
+      $("image-status").textContent = `Reading ${entry.name}…`;
       try {
         const params = new URLSearchParams({ partition: $("image-partition").value, path });
         const sample = await api(`/api/cases/${caseId}/disk-images/${$("image-list").value}/preview?${params}`);
-        if (explorer.revision !== revision) return;
+        if (explorer.revision !== revision || explorer.previewRequest !== request) return;
         const panel = $("image-preview");
-        panel.textContent = sample.content + (sample.truncated ? "\n[…]" : "");
+        const content = sample.binary ? imageHexDump(sample.content) : sample.content;
+        panel.textContent = content + (sample.truncated ? "\n[…]" : "");
+        panel.classList.toggle("binary-preview", sample.binary);
+        $("image-preview-title").textContent = `${entry.name} · ${sample.binary ? "Hexadecimal preview" : "Text preview"}`;
         panel.hidden = false;
-        $("image-status").textContent = sample.binary ? "Hexadecimal preview" : "Text preview";
-      } catch (error) { if (explorer.revision === revision) $("image-status").textContent = error.message; }
+        $("image-status").textContent = "";
+      } catch (error) {
+        if (explorer.revision === revision && explorer.previewRequest === request) $("image-status").textContent = error.message;
+      }
       return;
     }
     file.disabled = true;

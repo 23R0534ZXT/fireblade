@@ -1,12 +1,12 @@
-# Fireblade Host — the containerised edition
+# Kagarasu Host architecture
 
 Three editions share one repository:
 
 | Edition | What it is | State |
 | --- | --- | --- |
-| **Fireblade Desktop** | the Windows application (`Fireblade.exe`), the reference | shipped (0.7.9) |
-| **Fireblade Host** | the same core served over HTTP, one analyst or a small team, cases on the local disk | usable slice, this document |
-| **Fireblade Server** | the multi-analyst edition: central API, one container per case, RBAC, audit log | not started |
+| **Fireblade Desktop** | Windows application (`Fireblade.exe`) | frozen at 0.7.9 |
+| **Kagarasu Host** | the shared core served over HTTP, one local analyst, persistent case folders | maintained |
+| **Kagarasu Server** | the multi-analyst edition: central API, one container per case, RBAC, audit log | not started |
 
 ## What is in place
 
@@ -34,16 +34,16 @@ Three editions share one repository:
   reads it back through the service.
 - `requirements-core.txt`, `Dockerfile`, `docker-compose.yml`, `.dockerignore`.
 
-## One container per case (0.8.0)
+## One container per case
 
-The Host used to serve every case from a single container. A case is now an object of its
-own: `src/fireblade/web/agency.py` is a driver that creates one container per case opened,
-proxies `/case/<id>/` to it, and erases the container with the case.
+The default Host serves the entire case library in one container. For case isolation,
+the optional driver in `src/fireblade/web/agency.py` creates a container for each case
+opened, proxies `/case/<id>/` to it and removes the container when the case is erased.
 
 ```
-navigateur ──► driver :8080 ──► fireblade-case-<id8> (image fireblade:host)
-                 │                    montage : /srv/fireblade/volumes/<id> → /data/library
-                 └─ socket docker, /srv/fireblade/certificates
+browser ──► driver :8080 ──► fireblade-case-<driver>-<id>
+              │                mount: /srv/fireblade/volumes/<id> → /data/library
+              └─ Docker socket, /srv/fireblade/certificates
 ```
 
 - **One volume per case** — `/srv/fireblade/volumes/<id>/` holds the case folder, `exports/`,

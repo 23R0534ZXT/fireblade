@@ -50,12 +50,16 @@ jobs:
         run: |
           for file in src/fireblade/web/static/*.js; do node --check "$file"; done
       - name: Suite, browser tests included (the Desktop's Qt tests run in the Windows workflow)
+        env:
+          FIREBLADE_SCREENSHOTS: ${{ github.workspace }}/artifacts/host-browser
         run: python -m pytest tests -q --ignore=tests/windows --ignore=tests/ui --junitxml=artifacts/host-tests.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Host-test-results
-          path: artifacts/*.xml
+          path: |
+            artifacts/*.xml
+            artifacts/host-browser/
           retention-days: 14
 
   images:

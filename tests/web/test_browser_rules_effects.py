@@ -83,11 +83,10 @@ def add_rule(
     page.select_option("#rule-column", label=column)
     page.select_option("#rule-operator", operator)
     page.fill("#rule-value", value)
-    page.evaluate(
-        "([bg, ink]) => { document.getElementById('rule-colour').value = bg;"
-        " document.getElementById('rule-ink').value = ink; }",
-        [background, ink],
-    )
+    colour = page.get_by_label("Background", exact=True)
+    colour.fill(background)
+    colour.press("Tab")
+    page.locator("#rule-ink").fill(ink)
     page.set_checked("#rule-bold", bold)
     page.select_option("#rule-target", target)
     for column_name, op, text in extra:

@@ -141,6 +141,9 @@ def test_continuous_columns_group_parents_and_marks(server):
         mark = page.locator("#body .markcell button").first
         mark.click()
         page.get_by_role("button", name="Mark row 1, High").wait_for()
+        mark.click(modifiers=["Shift"])
+        page.get_by_role("button", name="Mark row 1, High, bookmarked").wait_for()
+        assert mark.inner_text() == "H"
         page.get_by_role("button", name="Configure row marks").click()
         page.fill("#quick-marks-text", "H = High\nV = Verify")
         page.click("#quick-marks-save")
@@ -225,6 +228,14 @@ def test_scoped_search_and_lnk_timeline(server):
         page.fill("#search", "BoundaryCaseNeedle")
         page.click("#search-submit")
         page.locator("#global-results h4").get_by_text("Search other case", exact=True).wait_for()
+        page.select_option("#global-scope", "case")
+        page.click('[data-act="global-run"]')
+        page.wait_for_function(
+            "document.getElementById('global-summary').textContent.startsWith('0 hit')"
+        )
+        assert page.locator("#global-results [data-review-row]").count() == 0
+        page.select_option("#global-scope", "library")
+        page.click('[data-act="global-run"]')
         page.locator(f"#global-results [data-review-case='{other}'][data-review-row]").click()
         page.wait_for_selector("#source-row-modal :text-is('BoundaryCaseNeedle')")
         assert page.evaluate("state.openCase.id") == other

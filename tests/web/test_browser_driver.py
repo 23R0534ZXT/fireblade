@@ -223,3 +223,24 @@ def test_erasing_through_the_prefix_reaches_the_driver_and_leaves_only_the_certi
         else []
     )
     assert isinstance(calls, list)
+
+
+def test_driver_library_discloses_erasure_controls_on_demand_at_compact_width(page, driver):
+    base, _live, identifier, _tmp = driver
+    page.set_viewport_size({"width": 390, "height": 660})
+    page.goto(base)
+    expect(page.get_by_role("heading", name="Case library")).to_be_visible()
+    expect(page.get_by_role("link", name="Container case")).to_have_attribute(
+        "href", f"/case/{identifier}/"
+    )
+    field = page.get_by_label("Confirm case name")
+    expect(field).to_be_hidden()
+    disclosure = page.locator("summary")
+    disclosure.focus()
+    page.keyboard.press("Enter")
+    expect(field).to_be_visible()
+    page.keyboard.press("Tab")
+    expect(field).to_be_focused()
+    assert page.get_by_label("Erasure method").bounding_box()["width"] >= 220
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    assert page.locator(".caseswrap").evaluate("el => el.scrollWidth <= el.clientWidth")

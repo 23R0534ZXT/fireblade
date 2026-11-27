@@ -1,3 +1,47 @@
+# Kagarasu 0.15.0 — Investigation workspace and evidence handling
+
+## Work in the case library
+
+Open or create a case directly from the start screen. The tab strip now follows the investigation
+from Cases and Imports through analysis, detection and follow-up. Import and refresh commands
+keep a single place in the toolbar. The library supports keyboard
+navigation between cases. History, portable export and case management actions use
+the selected case. Filtering a selection out of the list clears its actions.
+
+## Review the evidence
+
+The workspace retains the compact Fusion grid and adds a branded menu bar, a quieter
+start screen and clearer control states in the light and dark palettes. The command
+palette groups duplicate entry points under a single result. Search by action or
+shortcut, choose with the arrow keys and press Enter to run it.
+
+Row marks and bookmarks stay distinguishable. Sort controls expose their direction to
+keyboard and screen-reader users. Source filters in the UTC timeline can be reset
+without losing the confirmation message.
+
+## Resume and report
+
+Saving a session captures the active analysis, filters and column layout. Reopening
+it restores registered analyses, including closed tabs, and identifies missing ones.
+Bookmarks written while switching analyses stay attached to their original case.
+
+Investigation and client PDFs now download with their correct media type and report
+title. The generated follow-up workbook prints one page wide per sheet and repeats
+the heading row. User-provided Office templates retain their page setup.
+
+## Import and deployment
+
+Folder uploads preserve independent acquisitions, including repeat imports with
+identical relative paths. Disk previews identify the selected file and show binary
+samples with offsets and a printable character column. The release banner offers
+the image pull command so operators can reuse their deployment settings when
+recreating the service. The per-case driver checks container ownership against its
+deployment and mounted case directory before reconciling containers.
+
+The README includes a first investigation with a sample CSV and expected results.
+See the [GUI qualification report](https://github.com/23R0534ZXT/kagarasu/blob/v0.15.0/docs/validation/reports/20261127-host-0150/README.md)
+for tested workflows, screenshots and coverage limits.
+
 # Kagarasu 0.14.0 — Source-aware artifact review
 
 ## Review artifact grids

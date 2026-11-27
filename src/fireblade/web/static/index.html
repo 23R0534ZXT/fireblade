@@ -11,13 +11,14 @@
 <div class="app">
 
   <div class="menubar" id="menubar">
+    <span class="product-name"><img src="static/favicon.svg" width="20" height="20" alt=""><span>Kagarasu</span></span>
     <div class="m" data-menu="case"><span class="mnemonic">C</span>ase</div>
     <div class="m" data-menu="analysis">A<span class="mnemonic">n</span>alysis</div>
     <div class="m" data-menu="detection"><span class="mnemonic">D</span>etection</div>
     <div class="m" data-menu="edit"><span class="mnemonic">E</span>dit</div>
     <div class="m" data-menu="view"><span class="mnemonic">V</span>iew</div>
     <div class="m" data-menu="filters">Fi<span class="mnemonic">l</span>ters</div>
-    <div class="m" data-menu="exporter">E<span class="mnemonic">x</span>porter</div>
+    <div class="m" data-menu="exporter">E<span class="mnemonic">x</span>port</div>
     <div class="m" data-menu="help"><span class="mnemonic">H</span>elp</div>
     <button type="button" class="btn" id="artifacts-toggle" data-act="toggle-artifacts"
       aria-controls="artifacts" aria-expanded="false">Artifacts</button>
@@ -185,14 +186,14 @@
   </div>
 
   <div class="tabs" id="doctabs" role="tablist" aria-label="Workspace views">
-    <button type="button" class="tab active" data-tab="analyses" id="tab-analyses" role="tab" aria-controls="analysis-view" aria-selected="true" tabindex="0">Analyses</button>
-    <button type="button" class="tab" data-tab="imports" id="tab-imports" role="tab" aria-controls="imports-view" aria-selected="false" tabindex="-1">Imports</button>
     <button type="button" class="tab" data-tab="cases" id="tab-cases" role="tab" aria-controls="cases-view" aria-selected="false" tabindex="-1">Cases</button>
+    <button type="button" class="tab" data-tab="imports" id="tab-imports" role="tab" aria-controls="imports-view" aria-selected="false" tabindex="-1">Imports</button>
+    <button type="button" class="tab active" data-tab="analyses" id="tab-analyses" role="tab" aria-controls="analysis-view" aria-selected="true" tabindex="0">Analyses</button>
     <button type="button" class="tab" data-tab="timeline" id="tab-timeline" role="tab" aria-controls="timeline-view" aria-selected="false" tabindex="-1">Timeline &amp; correlations</button>
     <button type="button" class="tab" data-tab="ioc" id="tab-ioc" role="tab" aria-controls="ioc-view" aria-selected="false" tabindex="-1">IOC hunting</button>
     <button type="button" class="tab" data-tab="hayabusa" id="tab-hayabusa" role="tab" aria-controls="hayabusa-view" aria-selected="false" tabindex="-1">Hayabusa findings</button>
-    <button type="button" class="tab" data-tab="actions" id="tab-actions" role="tab" aria-controls="actions-view" aria-selected="false" tabindex="-1">Actions &amp; tracking</button>
     <button type="button" class="tab" data-tab="graph" id="tab-graph" role="tab" aria-controls="graph-view" aria-selected="false" tabindex="-1">Attack graph</button>
+    <button type="button" class="tab" data-tab="actions" id="tab-actions" role="tab" aria-controls="actions-view" aria-selected="false" tabindex="-1">Actions &amp; tracking</button>
   </div>
   <div class="tabbar-line"></div>
 
@@ -206,7 +207,7 @@
             <option value="analysis">This grid</option><option value="case">In this case</option>
             <option value="library">Across cases</option>
           </select>
-          <input class="search" id="search" placeholder="Text, IP, path, hash…  Enter to search">
+          <input class="search" id="search" aria-label="Search records" placeholder="Text, IP, path, hash…  Enter to search">
           <button class="btn" id="search-submit">Search</button>
           <button class="btn" id="clear">Clear the filters</button>
           <button class="btn" id="bookmarks-only" title="Show bookmarked rows only">Bookmarks</button>
@@ -352,7 +353,6 @@
           <p>Windows artifacts, Linux logs and CatScale collections.</p>
         </div>
         <div class="filterbar">
-          <button class="btn" data-act="import-evidence">Import evidence…</button>
           <button class="btn" id="retry-open" title="A file that could not be read: try another reader">Read again with a reader…</button>
           <button class="btn" id="coverage-open" data-act="coverage-open" title="Reopen every analysis and check what could not be attested">Full report</button>
           <button class="btn" data-act="case-history">History…</button>
@@ -668,19 +668,19 @@
         <div class="panel-title">
           <h2>Cases</h2>
         </div>
-        <div class="filterbar">
+        <div class="filterbar case-library-actions">
           <button class="btn" data-act="new-case">New case…</button>
-          <button class="btn" data-act="open-selected-case">Open</button>
-          <button class="btn" data-act="rename-case">Edit…</button>
-          <button class="btn" data-act="archive-case" id="archive-case">Archive</button>
-          <button class="btn" data-act="free-space" title="Pack the case into an archive outside its folder, then free the folder">Archive and free the space…</button>
-          <button class="btn" data-act="restore-case" id="restore-case" hidden title="Bring the archived case back as a working case">Restore…</button>
-          <button class="btn" data-act="destroy-case">Erase the case…</button>
+          <button class="btn" data-act="import-portable">Import a portable case…</button>
+          <button class="btn" data-case-selection data-act="open-selected-case">Open</button>
+          <button class="btn" data-case-selection data-act="rename-case">Edit…</button>
+          <button class="btn" data-case-selection data-act="archive-case" id="archive-case">Archive</button>
+          <button class="btn" data-case-selection data-act="free-space" title="Pack the case into an archive outside its folder, then free the folder">Archive and free the space…</button>
+          <button class="btn" data-case-selection data-act="restore-case" id="restore-case" hidden title="Bring the archived case back as a working case">Restore…</button>
+          <button class="btn" data-case-selection data-act="destroy-case">Erase the case…</button>
         </div>
         <div class="filterbar">
-          <input class="search" id="case-search" placeholder="Search for a name, a description…">
+          <input class="search" id="case-search" aria-label="Search the case library" placeholder="Search for a name, a description…">
           <label><input type="checkbox" id="case-archived"> Include archived</label>
-          <button class="btn" data-act="refresh-cases">Refresh</button>
         </div>
         <div class="caseswrap">
           <table>
@@ -688,8 +688,8 @@
               <col style="width:26%"><col style="width:8%"><col style="width:9%">
               <col style="width:8%"><col style="width:16%"><col style="width:16%"><col style="width:17%">
             </colgroup>
-            <thead><tr><th>Name</th><th>Collects</th><th>Status</th><th>Analyses</th>
-              <th>Created on</th><th>Modified on</th><th>Last opened</th></tr></thead>
+            <thead><tr><th>Name</th><th>Collections</th><th>Status</th><th>Analyses</th>
+              <th>Created on</th><th>Modified on</th><th>Environment</th></tr></thead>
             <tbody id="cases-body"></tbody>
           </table>
           <div class="emptygrid" id="cases-empty" hidden></div>
@@ -698,8 +698,8 @@
           <span class="info" id="case-footer-description">Select a case to read its description.</span>
           <div class="grow"></div>
           <span class="info" id="case-count"></span>
-          <button class="btn" data-act="case-history">History / recovery…</button>
-          <button class="btn" data-act="export-portable">Export the portable case…</button>
+          <button class="btn" data-case-selection data-act="case-history">History / recovery…</button>
+          <button class="btn" data-case-selection data-act="export-portable">Export the portable case…</button>
           <button class="btn" data-act="import-portable">Import a portable case…</button>
         </div>
       </div>
@@ -707,14 +707,14 @@
     <div class="artifacts" id="artifacts">
       <div class="head"><span>Artifacts</span><button type="button" class="x" id="artifacts-close"
         data-act="toggle-artifacts" aria-label="Close artifacts panel">✕</button></div>
-      <select class="select" id="tree-mode" title="How the tree groups the analyses">
+      <select class="select" id="tree-mode" aria-label="Artifact tree arrangement" title="How the tree groups the analyses">
         <option value="families">Collection → artifact family</option>
         <option value="flat">Analysis list by collection</option>
         <option value="folders">Disk → partition → folders</option>
       </select>
       <div class="tree-tools"><button class="btn" id="tree-expand" title="Expand the whole tree">Expand</button>
         <button class="btn" id="tree-collapse" title="Collapse the whole tree">Collapse</button></div>
-      <input class="tree-search" id="tree-search" placeholder="Filter artifact names…">
+      <input class="tree-search" id="tree-search" aria-label="Filter artifact names" placeholder="Filter artifact names…">
       <div class="tree" id="tree"></div>
     </div>
   </div>
@@ -803,7 +803,7 @@
   <div class="dialog" style="--dialog-width:440px" role="dialog" aria-labelledby="import-source-title" aria-modal="true">
     <h3 id="import-source-title">Import evidence</h3>
     <div class="body import-source-choices">
-      <button type="button" class="btn" data-act="import-file">Import a file…<span class="key">Ctrl+O</span></button>
+      <button type="button" class="btn" data-act="import-file" data-initial-focus>Import a file…<span class="key">Ctrl+O</span></button>
       <button type="button" class="btn" data-act="import-folder">Parse a folder…<span class="key">Ctrl+Shift+I</span></button>
       <button type="button" class="btn" data-act="disk-open">Analyse a disk or image…</button>
     </div>
@@ -812,14 +812,14 @@
 </div>
 
 <div class="modal" id="import-modal">
-  <div class="dialog" style="width:min(1040px,94vw)">
+  <div class="dialog" style="width:min(920px,94vw)">
     <h3 id="import-title">Import a file</h3>
     <div class="body">
-      <div class="row">
+      <div class="row import-source-row">
         <label id="preview-source-label">Files</label>
-        <button class="btn" id="preview-choose" data-act="preview-choose">Choose a file…</button>
+        <button class="btn" id="preview-choose" data-act="preview-choose" data-initial-focus>Choose a file…</button>
         <input type="file" id="preview-input" multiple hidden>
-        <span class="note" style="max-width:none">or a path on the server</span>
+        <label for="preview-server">Server path</label>
         <input id="preview-server" placeholder="/data/cases/…" style="flex:1">
         <button class="btn" data-act="preview-path">Preview the path</button>
       </div>
@@ -827,7 +827,7 @@
         <label>CSV options</label>
         <select class="select" id="preview-delimiter" aria-label="CSV delimiter"></select>
         <select class="select" id="preview-encoding" aria-label="CSV encoding"></select>
-        <span class="note" style="max-width:none">a native CSV is read with these instead of the detection</span>
+        <span class="note" style="max-width:none">Override automatic detection for native CSV files.</span>
       </div>
       <div id="import-capacity" class="import-capacity" hidden>
         <div class="row">
@@ -901,7 +901,7 @@
 </div>
 
 <div class="modal" id="disk-explorer-modal">
-  <div class="dialog" style="--dialog-width:1000px">
+  <div class="dialog" style="width:min(1060px,96vw)">
     <h3>Disk explorer</h3>
     <div class="body">
       <div class="row"><label for="image-source">Image on the Host</label>
@@ -917,7 +917,10 @@
         <tbody id="image-entries"></tbody></table>
       </div></div>
       <p class="note" id="image-status" role="status"></p>
-      <pre id="image-preview" hidden></pre>
+      <figure class="image-preview-block">
+        <figcaption id="image-preview-title"></figcaption>
+        <pre id="image-preview" tabindex="0" aria-labelledby="image-preview-title" hidden></pre>
+      </figure>
     </div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
   </div>
@@ -1087,8 +1090,9 @@
   <div class="dialog" style="--dialog-width:560px">
     <h3>Commands</h3>
     <div class="body">
-      <input class="search" id="palette-input" placeholder="Type a command, Enter runs the first one…">
-      <div class="columns-list" id="palette-list" style="max-height:340px"></div>
+      <input class="search" id="palette-input" role="combobox" aria-label="Find a command" aria-controls="palette-list"
+        aria-expanded="true" aria-autocomplete="list" autocomplete="off" placeholder="Find a command or shortcut…">
+      <div class="columns-list" id="palette-list" role="listbox" aria-label="Matching commands" style="max-height:340px"></div>
     </div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
   </div>

@@ -127,7 +127,7 @@ def test_the_grid_filters_searches_and_clears(page):
 
 def test_bookmarking_a_row_makes_it_the_only_row_of_the_bookmark_view(page):
     _open(page, "access.log")
-    page.click("#body tr[data-row] >> nth=2 >> .markcell")
+    page.locator("#body tr[data-row] .markcell button").nth(2).click(modifiers=["Shift"])
     page.wait_for_function(
         "document.querySelectorAll('#body .cb.on, #body .cb.checked, #body .cb.marked').length > 0",
         timeout=8000,
@@ -167,9 +167,14 @@ def test_the_timeline_dates_the_access_log_and_leaves_the_year_less_log_undated(
     page.wait_for_function(
         "document.getElementById('timeline-info').innerText.includes('dated')", timeout=30000
     )
-    legend = page.inner_text("#timeline-legend")
-    assert re.search(r"access\.log\s*—\s*400 dated", legend), legend
-    assert re.search(r"auth\.log\s*—\s*0 dated", legend), legend
+    legend = page.locator("#timeline-legend")
+    assert (
+        "400 dated / 400"
+        in legend.get_by_role("button", name=re.compile(r"access\.log")).inner_text()
+    )
+    assert (
+        "0 dated / 120" in legend.get_by_role("button", name=re.compile(r"auth\.log")).inner_text()
+    )
     options = page.eval_on_selector_all(
         "#timeline-dates select option", "o => o.map(x => x.textContent)"
     )

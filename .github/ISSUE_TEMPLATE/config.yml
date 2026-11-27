@@ -3,6 +3,6 @@ contact_links:
   - name: Documentation
     url: https://github.com/23R0534ZXT/kagarasu/blob/main/docs/README.md
     about: Guides, architecture, benchmark and release notes.
-  - name: Latest release and checksums
+  - name: Latest Host release
     url: https://github.com/23R0534ZXT/kagarasu/releases/latest
-    about: Download the executable and verify its SHA-256.
+    about: Read the release notes and identify the container image tag.

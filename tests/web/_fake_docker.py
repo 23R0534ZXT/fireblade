@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import sys
+import uuid
 from pathlib import Path
 
 
@@ -95,7 +96,11 @@ def main(argv) -> int:
                 key, _, content = args[index + 1].partition("=")
                 labels[key] = content
         image = positional(args)
+        if name in containers:
+            print("container name already exists", file=sys.stderr)
+            return 1
         containers[name] = {
+            "id": uuid.uuid4().hex,
             "state": "running",
             "labels": labels,
             "args": args,
@@ -105,6 +110,22 @@ def main(argv) -> int:
         save(state)
         print("fake-" + name)
         return 0
+
+    if command == "container" and args[0] == "inspect":
+        item = containers.get(args[-1])
+        if item is None:
+            return 1
+        mount = flag(item["args"], "-v")
+        source, _, destination = mount.partition(":")
+        print(item["id"], item["state"], item["image_id"], sep="\n")
+        print(json.dumps(item["labels"]))
+        print(json.dumps([{"Source": source, "Destination": destination, "Type": "bind"}]))
+        return 0
+
+    if command in ("start", "stop", "rm"):
+        args[-1] = next(
+            (name for name, item in containers.items() if item["id"] == args[-1]), args[-1]
+        )
 
     if command == "inspect":
         name = args[-1]

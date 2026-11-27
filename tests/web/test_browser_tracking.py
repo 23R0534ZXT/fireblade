@@ -228,6 +228,8 @@ def test_every_kind_of_entity_is_declared_edited_and_removed(page, kind):
     page.fill("#entity-hostname", "HOST-01")
     page.fill("#entity-ip", "10.1.2.3")
     page.fill("#entity-os", "Windows 11")
+    page.fill("#entity-notes", "Matched source record 14")
+    page.check("#entity-compromised")
     page.click("#entity-add")
     page.wait_for_function(
         f"document.getElementById('entity-rows').innerText.includes('{kind} one')"
@@ -238,12 +240,14 @@ def test_every_kind_of_entity_is_declared_edited_and_removed(page, kind):
     page.locator("[data-entity-edit]").first.click()
     assert page.inner_text("#entity-add") == "Save" and page.is_visible("#entity-cancel")
     assert page.input_value("#entity-label") == f"{kind} one"
+    assert page.input_value("#entity-notes") == "Matched source record 14"
+    assert page.locator("#entity-compromised").is_checked()
     page.fill("#entity-label", f"{kind} renamed")
     page.click("#entity-add")
     page.wait_for_function(
         f"document.getElementById('entity-rows').innerText.includes('{kind} renamed')"
     )
-    assert page.inner_text("#entity-add") == "Add" or True
+    assert page.inner_text("#entity-add") == "Add"
     page.once("dialog", lambda dialog: dialog.accept())
     page.locator("[data-entity-remove]").first.click()
     page.wait_for_function(

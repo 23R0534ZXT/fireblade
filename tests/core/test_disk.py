@@ -129,16 +129,33 @@ def test_bad_image_reports_failure(tmp_path):
     assert not collection.report["documents"]
 
 
+def two_partition_image(path, volumes):
+    """Place the two supplied FAT volumes in a synthetic MBR image."""
+    first, second = volumes
+    first_sector = 2048
+    second_sector = first_sector + len(first) // 512
+    disk = bytearray(second_sector * 512 + len(second))
+    disk[510:512] = b"\x55\xaa"
+    for index, (start, volume) in enumerate(((first_sector, first), (second_sector, second))):
+        struct.pack_into(
+            "<B3sB3sII",
+            disk,
+            446 + index * 16,
+            0,
+            b"\0" * 3,
+            1,
+            b"\0" * 3,
+            start,
+            len(volume) // 512,
+        )
+        disk[start * 512 : start * 512 + len(volume)] = volume
+    path.write_bytes(disk)
+    return path
+
+
 def test_complete_mbr_disk_exposes_both_partitions(tmp_path):
     volume = fat_image(tmp_path / "volume.img").read_bytes()
-    first, second = 2048, 2048 + 2880
-    disk = bytearray((second + 2880) * 512)
-    disk[510:512] = b"\x55\xaa"
-    for i, start in enumerate((first, second)):
-        struct.pack_into("<B3sB3sII", disk, 446 + i * 16, 0, b"\0" * 3, 1, b"\0" * 3, start, 2880)
-        disk[start * 512 : start * 512 + len(volume)] = volume
-    image = tmp_path / "full-disk.raw"
-    image.write_bytes(disk)
+    image = two_partition_image(tmp_path / "full-disk.raw", (volume, volume))
     collection = DiskCollection(
         image, tmp_path / "work", ToolPack(tmp_path / "tools"), source_kind="image"
     )

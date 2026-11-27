@@ -7,6 +7,26 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-11-27
+
+- Added direct case creation and library access from the Host start screen, refined the
+  Fusion palettes and clarified navigation in compact windows.
+- Ordered the workspace tabs from case intake through analysis and follow-up, with a single
+  toolbar entry for evidence import and library refresh.
+- Made the command palette keyboard navigable and grouped duplicate command entries.
+- Scoped library actions and portable exports to the selected case and cleared actions
+  when filtering hides the selection.
+- Improved grid sorting, row marks, bookmark feedback and timeline source controls.
+- Preserved independently uploaded collections with identical names and bound pending
+  preview work to the originating case.
+- Restored saved session tabs, filters and column layout. Kept pending bookmark writes
+  with their originating analysis.
+- Added byte offsets and printable characters to binary disk previews.
+- Corrected PDF downloads, report metadata and workbook print layouts.
+- Isolated Docker reconciliation by deployment and case mount. Upgrade commands now pull
+  the new images while the existing deployment continues to serve.
+- Added a guided sample investigation and linked the browser qualification evidence.
+
 ## [0.14.0] — 2026-11-27
 
 - Show source files and readers in row details. Expand collected files from the artifact tree.

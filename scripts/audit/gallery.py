@@ -1,7 +1,7 @@
-"""A tour of the Host: every menu entry, tab and window, photographed and linted.
+"""A screenshot tour of the Host tabs, menus and commands.
 
-The tour opens a case in a real browser, presses every command of every menu, every tab, every
-toolbar button and the cell menu, and for each state it
+The tour opens a case, visits each workspace tab, opens the cell menu and tries each menu
+command except those in SKIP. For each state it
 
 * saves a screenshot (``<out>/NN-<name>.png``),
 * lints the page: text cut off by its box, controls outside the window, controls on top of one
@@ -63,10 +63,26 @@ LINT = r"""
     }
   }
   // 3. controls on top of one another
-  const boxes = controls.map((el) => [el, el.getBoundingClientRect()]);
+  const visibleBox = (el) => {
+    let {left, top, right, bottom} = el.getBoundingClientRect();
+    for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+      const style = getComputedStyle(parent);
+      const clipX = /^(auto|scroll|hidden|clip)$/.test(style.overflowX);
+      const clipY = /^(auto|scroll|hidden|clip)$/.test(style.overflowY);
+      if (!clipX && !clipY) continue;
+      const rect = parent.getBoundingClientRect();
+      const x = rect.left + parent.clientLeft, y = rect.top + parent.clientTop;
+      if (clipX) { left = Math.max(left, x); right = Math.min(right, x + parent.clientWidth); }
+      if (clipY) { top = Math.max(top, y); bottom = Math.min(bottom, y + parent.clientHeight); }
+    }
+    return {left, top, right, bottom, width: right - left, height: bottom - top};
+  };
+  // Popup commands intentionally cover a different layer of the workspace.
+  const popup = ".menu.show, .row-menu:not([hidden]), .fmenu:not([hidden]), [role=menu]";
+  const boxes = controls.map((el) => [el, visibleBox(el), el.closest(popup)]);
   for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
-    const [a, ra] = boxes[i], [b, rb] = boxes[j];
-    if (a.contains(b) || b.contains(a)) continue;
+    const [a, ra, layerA] = boxes[i], [b, rb, layerB] = boxes[j];
+    if (layerA !== layerB || a.contains(b) || b.contains(a)) continue;
     const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
     const h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
     if (w > 4 && h > 4 && w * h > 0.3 * Math.min(ra.width * ra.height, rb.width * rb.height)) {

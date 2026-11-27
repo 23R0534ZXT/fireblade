@@ -345,7 +345,7 @@ def _layout(blocks):
     return pages
 
 
-def text_pdf(markup: str, target: Path, title: str = "Kagarasu", subject: str = "") -> Path:
+def text_pdf(markup: str, target: Path, title: str = "", subject: str = "") -> Path:
     """Write `markup` (the report's own HTML) as a PDF at `target`.
 
     Headings are bold, a table keeps its columns (the header's own widths when it declares
@@ -356,6 +356,8 @@ def text_pdf(markup: str, target: Path, title: str = "Kagarasu", subject: str = 
     parser = _Blocks()
     parser.feed(str(markup or ""))
     parser.close()
+    if not title:
+        title = next((value for kind, value in parser.blocks if kind == "h1"), "Kagarasu")
     pages = _layout(parser.blocks)
 
     objects: list[bytes] = []
@@ -390,8 +392,8 @@ def text_pdf(markup: str, target: Path, title: str = "Kagarasu", subject: str = 
     objects[pages_id - 1] = f"<< /Type /Pages /Kids [{kids}] /Count {len(page_ids)} >>".encode()
     objects[catalog_id - 1] = f"<< /Type /Catalog /Pages {pages_id} 0 R >>".encode()
     info_id = add(
-        f"<< /Title ({_escape_pdf(title).decode('latin-1')}) "
-        f"/Subject ({_escape_pdf(subject).decode('latin-1')}) "
+        f"<< /Title <FEFF{title.encode('utf-16-be').hex()}> "
+        f"/Subject <FEFF{subject.encode('utf-16-be').hex()}> "
         f"/Producer (Kagarasu Host) >>".encode()
     )
 

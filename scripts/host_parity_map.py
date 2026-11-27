@@ -546,7 +546,7 @@ COMMANDS = {
     "Recherche globale": (
         T,
         T,
-        "Global search in the toolbar.",
+        "Analyses > Search scope > In this case.",
         "test_a_global_search_finds_the_value_and_names_its_analysis",
         "",
         "",
@@ -554,7 +554,7 @@ COMMANDS = {
     "Rechercher dans tous les artefacts": (
         T,
         T,
-        "Global search in the toolbar.",
+        "Analyses > Search scope > In this case.",
         "test_a_global_search_finds_the_value_and_names_its_analysis",
         "",
         "",

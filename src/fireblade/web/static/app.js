@@ -435,10 +435,8 @@ function renderAnalysesDialog(entries) {
     || '<div class="emptygrid">No analysis in this case.</div>';
   $("analyses-list").querySelectorAll("[data-analysis-open]").forEach((node) => {
     node.addEventListener("click", async () => {
-      state.analysis = Number(node.dataset.analysisOpen);
-      state.path = [];
       closeModals();
-      await loadRows(true);
+      await selectReviewAnalysis(Number(node.dataset.analysisOpen));
       say(`Analysis ${state.analysis + 1} opened`);
     });
   });
@@ -521,9 +519,8 @@ async function restoreHistory(name) {
   if (!state.openCase) return;
   if (!window.confirm(`Restore the state ${name}? The present state is kept in the same folder first.`)) return;
   const identifier = state.openCase.id;
-  clearTimeout(layoutTimer);
   try {
-    await layoutWrite;
+    await flushLayouts();
     const payload = await apiPost(
       `/api/cases/${identifier}/history/${encodeURIComponent(name)}/restore`, {});
     closeModals();
@@ -1370,9 +1367,8 @@ async function saveCase() {
   const identifier = state.openCase.id;
   const payload = state.openCase.analyses.length
     ? { analysis: state.analysis, display: currentDisplay() } : {};
-  clearTimeout(layoutTimer);
   try {
-    await layoutWrite;
+    await flushLayouts();
     const saved = await apiPost(`/api/cases/${identifier}/save`, payload);
     const now = new Date();
     say(`Case saved at ${now.toLocaleTimeString([], { hour12: false })} — `
@@ -1690,6 +1686,7 @@ async function openCase(identifier, analysisIndex = null) {
     if (revision !== caseOpenRevision) return false;
     detail.closed = closed.closed || [];
     const changedCase = state.openCase?.id !== detail.id;
+    if (changedCase) rememberReviewPlace();
     state.openCase = detail;
     if (changedCase) {
       resetTimeline();
@@ -1725,6 +1722,7 @@ async function openCase(identifier, analysisIndex = null) {
 }
 
 function closeCase() {
+  rememberReviewPlace();
   caseOpenRevision += 1;
   state.openCase = null;
   syncArtifacts();
@@ -1748,7 +1746,7 @@ function closeCase() {
 
 /* ---------- column layout ---------- */
 
-let layoutTimer = null;
+const pendingLayouts = new Map();
 let layoutWrite = Promise.resolve();
 
 function currentDisplay() {
@@ -1764,8 +1762,10 @@ async function loadLayout(signal) {
   const analysis = state.analysis;
   try {
     const path = `/api/cases/${id}/analyses/${analysis}/display`;
-    const payload = signal ? await apiAbortable(path, signal) : await api(path);
+    const stored = pendingLayouts.get(path)?.display
+      || (signal ? await apiAbortable(path, signal) : await api(path));
     if (signal?.aborted || state.openCase?.id !== id || state.analysis !== analysis) return;
+    const payload = familyDisplay(stored);
     state.widths = payload.widths || {};
     state.hidden = new Set(payload.hidden || []);
     state.pinned = new Set(payload.pinned || []);
@@ -1779,14 +1779,32 @@ async function loadLayout(signal) {
   } catch (_) { /* no saved layout is not an error */ }
 }
 
+function flushLayouts() {
+  for (const [path, entry] of pendingLayouts) {
+    if (!entry.timer) continue;
+    clearTimeout(entry.timer);
+    queueLayoutWrite(path, entry);
+  }
+  return layoutWrite;
+}
+
+function queueLayoutWrite(path, entry) {
+  entry.timer = null;
+  layoutWrite = layoutWrite.then(async () => {
+    try { await apiPost(path, entry.display); }
+    catch (error) { say(error.message, true); }
+    finally { if (pendingLayouts.get(path) === entry) pendingLayouts.delete(path); }
+  });
+}
+
 function saveLayoutSoon() {
-  clearTimeout(layoutTimer);
   if (!state.openCase) return;
   const path = `/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`;
-  const display = currentDisplay();
-  layoutTimer = setTimeout(() => {
-    layoutWrite = layoutWrite.then(() => apiPost(path, display)).catch(() => {});
-  }, 600);
+  const display = { ...currentDisplay(), configured: true };
+  clearTimeout(pendingLayouts.get(path)?.timer);
+  const entry = { display };
+  pendingLayouts.set(path, entry);
+  entry.timer = setTimeout(() => queueLayoutWrite(path, entry), 300);
 }
 
 /* A layout leaves as a file and comes back the same way: the desktop exports and
@@ -1853,9 +1871,8 @@ async function importLayout(file) {
 async function saveDisplayNow() {
   const path = `/api/cases/${state.openCase.id}/analyses/${state.analysis}/display`;
   const display = currentDisplay();
-  clearTimeout(layoutTimer);
   try {
-    await layoutWrite;
+    await flushLayouts();
     await apiPost(path, display);
   } catch (_) { /* a layout that cannot be saved must not interrupt the work */ }
 }
@@ -2064,6 +2081,7 @@ function resetAnalysisQuery() {
   clearTimeout(filterTimer);
   showDetails(null);
   state.columnContext = null;
+  resetGridReview();
   $("gridbody").scrollLeft = 0;
   state.filters = []; state.search = ""; state.expression = null; state.bookmarksOnly = false;
   state.sort = null; state.descending = false; state.multiSort = []; state.groups = []; state.path = [];
@@ -2415,13 +2433,7 @@ function stepAnalysis(direction) {
   if (analyses.length < 2) { say("This case holds a single analysis", true); return; }
   const here = analyses.findIndex((item) => item.index === state.analysis);
   const next = analyses[(here + direction + analyses.length) % analyses.length];
-  state.analysis = next.index;
-  state.filters = [];
-  state.offset = 0;
-  state.selected = null;
-  state.path = [];
-  renderTree();
-  loadRows(true);
+  selectReviewAnalysis(next.index);
   say(`Analysis: ${next.label}`);
 }
 
@@ -2451,9 +2463,13 @@ async function openIntegrity() {
     const source = String((entry && entry.source) || "");
     const match = (payload.files || []).find((item) => item.path === source)
       || (payload.files || []).find((item) => source.endsWith("/" + item.name));
+    const { parser, working_path: working } = entry?.source_info || {};
     const lines = [
       ["Analysis", entry ? entry.label : ""],
       ["Source", source || "(nothing recorded)"],
+      ["Reader", parser || ""],
+      ...(parser === "RECmd" ? [["Registry batch", "Kroll_Batch.reb — reads keys and values from the selected registry hive."]] : []),
+      ...(working ? [["Parser output", working]] : []),
       ["SHA-256", match ? match.sha256 || "(not recorded)" : "(this source is not in a collection report)"],
       ["Status", match ? match.status : "unknown"],
       ["Reason", match ? match.reason || "" : ""],
@@ -3362,6 +3378,7 @@ async function showAlertContext() {
   try {
     const payload = await apiPost(
       `/api/cases/${state.openCase.id}/analyses/${state.analysis}/rows/${contextRow.dataset.row}/context`);
+    rememberReviewPlace();
     state.analysis = payload.analysis;
     state.groups = []; state.path = []; state.interval = ""; state.expression = null;
     state.summaries = []; state.order = "";
@@ -3384,6 +3401,7 @@ async function openSourceEvent() {
   try {
     const payload = await apiPost(
       `/api/cases/${state.openCase.id}/analyses/${state.analysis}/rows/${contextRow.dataset.row}/source`);
+    rememberReviewPlace();
     state.analysis = payload.analysis;
     state.groups = []; state.path = []; state.interval = "";
     state.filters = []; state.search = ""; state.sort = null; state.multiSort = [];
@@ -3445,8 +3463,7 @@ function valueOfActiveCell() {
 async function searchValueEverywhere() {
   const value = valueOfActiveCell();
   if (!value) { say("Right-click a cell with a value first", true); return; }
-  $("global-text").value = value;
-  $("search-modal").classList.add("show");
+  openReviewSearch("case", value);
   await runGlobalSearch();
 }
 
@@ -3670,7 +3687,7 @@ async function exportGraphPng() {
     }
     context.fillStyle = "#6b7a8a";
     context.font = "10px 'Segoe UI', Arial, sans-serif";
-    context.fillText(`Kagarasu — ${state.openCase.name || "case"} — every node rests on rows of the alert analysis; open the graph to see them.`,
+    context.fillText(`Kagarasu — ${state.openCase.name || "case"} — open the graph to inspect the evidence behind each node.`,
       GRAPH_LEFT, layout.height + 14);
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
@@ -3709,6 +3726,7 @@ let graphReadRevision = 0;
 function resetGraph() {
   graphReadRevision += 1;
   graphSelection = null;
+  $("graph-tag-filter").value = "";
   renderGraph({ nodes: [], edges: [] });
   $("graph-summary").textContent = "";
 }
@@ -3719,14 +3737,21 @@ const GRAPH_GAP_X = 70;
 const GRAPH_GAP_Y = 14;
 const GRAPH_TOP = 34;
 const GRAPH_LEFT = 24;
-const GRAPH_KIND = { host: "Host", account: "Account", technique: "Technique", stage: "Tactic", ioc: "Indicator", custom: "Free node" };
-const GRAPH_COLOUR = { host: "#4c9a5e", account: "#4c9a5e", technique: "#d28a3c", stage: "#7b6cc4", ioc: "#c4506e", custom: "#6f7f90" };
+const GRAPH_KIND = { host: "Host", account: "Account", technique: "Technique", stage: "Tactic", ioc: "Indicator", custom: "Free node", tag: "Saved tag" };
+const GRAPH_COLOUR = { host: "#4c9a5e", account: "#4c9a5e", technique: "#d28a3c", stage: "#7b6cc4", ioc: "#c4506e", custom: "#6f7f90", tag: "#6a49b2" };
 
 /* "Which levels of the chain to show": hosts, techniques or indicators; free nodes always stay. */
 function graphVisible(payload) {
   const level = $("graph-level").value;
-  if (!level) return payload;
-  const nodes = payload.nodes.filter((node) => node.kind === level || !["host", "technique", "ioc"].includes(node.kind));
+  const tag = $("graph-tag-filter").value;
+  if (!level && !tag) return payload;
+  const related = new Set([tag]);
+  for (const edge of payload.edges) {
+    if (edge.source === tag) related.add(edge.target);
+    if (edge.target === tag) related.add(edge.source);
+  }
+  const nodes = payload.nodes.filter(node => (!tag || related.has(node.id))
+    && (!level || node.kind === level || !["host", "technique", "ioc"].includes(node.kind)));
   const kept = new Set(nodes.map((node) => node.id));
   return { ...payload, nodes, edges: payload.edges.filter((edge) => kept.has(edge.source) && kept.has(edge.target)) };
 }
@@ -3737,6 +3762,9 @@ function graphKindLabel(node) {
 }
 
 function graphMeta(node) {
+  if (node.kind === "tag") return `${node.records} marked record(s)`;
+  const labels = (node.tags || []).join(" · ");
+  if (labels) return labels;
   const alerts = Number(node.alerts || 0);
   if (alerts) return `${alerts} alert(s)${node.level ? " · " + node.level : ""}`;
   if (node.kind === "ioc") return node.level ? `status ${node.level}` : "tracked indicator";
@@ -3760,6 +3788,7 @@ function graphLayout(payload) {
   }
   const columns = [];
   const add = (title, members) => { if (members.length) columns.push({ title, members }); };
+  add("Saved tags and row marks", nodes.filter(node => node.kind === "tag").sort(order));
   add("Indicators", nodes.filter((node) => node.kind === "ioc").sort(order));
   add("Hosts and accounts", nodes.filter((node) => node.kind === "host" || node.kind === "account").sort(order));
   const stages = nodes.filter((node) => node.kind === "stage").sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
@@ -3769,7 +3798,7 @@ function graphLayout(payload) {
   }
   const placed = new Set(columns.flatMap((column) => column.members.map((node) => node.id)));
   add("Technique without tactic", nodes.filter((node) => node.kind === "technique" && !placed.has(node.id)).sort(order));
-  add("Added by hand", nodes.filter((node) => !placed.has(node.id) && !["technique", "ioc", "host", "account", "stage"].includes(node.kind)).sort(order));
+  add("Added by hand", nodes.filter((node) => !placed.has(node.id) && !["technique", "ioc", "host", "account", "stage", "tag"].includes(node.kind)).sort(order));
   const where = new Map();
   columns.forEach((column, index) => {
     column.x = GRAPH_LEFT + index * (GRAPH_CARD_W + GRAPH_GAP_X);
@@ -3823,6 +3852,12 @@ function graphLayout(payload) {
 
 function renderGraph(whole) {
   graphPayload = whole;
+  const tags = $("graph-tag-filter");
+  const selectedTag = tags.value;
+  const nodesWithTags = whole.nodes.filter(node => node.kind === "tag");
+  tags.replaceChildren(new Option("All saved tags", ""), ...nodesWithTags.map(node => new Option(node.label, node.id)));
+  tags.value = nodesWithTags.some(node => node.id === selectedTag) ? selectedTag : "";
+  tags.disabled = !nodesWithTags.length;
   const payload = graphVisible(whole);
   const layout = graphLayout(payload);
   const width = Math.max(layout.width, 420);
@@ -3866,7 +3901,8 @@ function renderGraph(whole) {
   const kinds = {};
   for (const node of payload.nodes) kinds[node.kind] = (kinds[node.kind] || 0) + 1;
   $("graph-summary").textContent = `${payload.nodes.length} node(s), ${payload.edges.length} edge(s) — ` +
-    Object.entries(kinds).map(([kind, count]) => `${count} ${kind}`).join(", ");
+    Object.entries(kinds).map(([kind, count]) => `${count} ${kind}`).join(", ")
+    + (whole.tags_omitted ? ` · ${whole.tags_omitted} additional tags beyond the graph limit` : "");
   $("graph-legend").innerHTML = payload.nodes.length
     ? graphLegendItems() + '<span class="gnote">Click a card or a link: its evidence opens, with the exact lines it rests on. The colour bar is the worst alert level; the badge on a link is its alert count.</span>' : "";
   const known = graphSelection && (graphSelection.type === "node"
@@ -3926,7 +3962,7 @@ function graphMoment(value) {
 }
 
 function graphLegendItems() {
-  const kinds = [["host", "Host or account"], ["technique", "ATT&CK technique"], ["stage", "ATT&CK tactic"], ["ioc", "Tracked indicator"], ["custom", "Free node"]];
+  const kinds = [["host", "Host or account"], ["technique", "ATT&CK technique"], ["stage", "ATT&CK tactic"], ["ioc", "Tracked indicator"], ["custom", "Free node"], ["tag", "Saved tag or mark"]];
   return kinds.map(([kind, label]) => `<span style="--gcolor:${GRAPH_COLOUR[kind]}"><i></i>${label}</span>`).join("");
 }
 
@@ -3971,12 +4007,19 @@ function renderGraphEvidence() {
     ? `<h4>Recorded by the analyst</h4><div class="gdecl">${Object.entries(evidence.declared).map(([key, value]) =>
       `<div><span class="gm">${escapeHtml(key)}</span> ${escapeHtml(Array.isArray(value) ? value.join(", ") : String(value))}</div>`).join("")}</div>` : "";
   const items = (evidence.items || []).map((item) => graphItemHtml(item, analysis)).join("");
+  const records = (evidence.records || []).map(item => `<div class="graph-record">
+    ${item.event ? `<button class="btn" data-graph-observation="${escapeHtml(item.event)}">Open observation</button>` : ""}
+    ${item.record ? `<button class="btn" data-graph-record="${escapeHtml(item.record)}" data-graph-record-line="${item.line}">Open source row</button>` : ""}
+    <b>${escapeHtml(item.description || "")}</b>
+    <div class="note">${escapeHtml([item.machine, item.file, `row ${item.line}`].filter(Boolean).join(" · "))}</div>
+    </div>`).join("");
   const span = evidence.first ? `<p class="gm">First alert ${escapeHtml(graphMoment(evidence.first))} · last ${escapeHtml(graphMoment(evidence.last))}</p>` : "";
   box.innerHTML = `<button class="gclose" data-act="graph-close" title="Close the evidence">✕</button><h3>${escapeHtml(title)}</h3>
     <p><span class="gk">${escapeHtml(kind)}</span>${evidence.level ? `<span class="gk" style="border-color:${findingLevelColour(evidence.level)}">worst: ${escapeHtml(evidence.level)}</span>` : ""}</p>
     <h4>What this is</h4><p>${escapeHtml(evidence.what || "")}</p>
     <h4>How Kagarasu got it</h4><p>${escapeHtml(evidence.how || "")}</p>
     ${stats ? `<div class="gstats">${stats}</div>` : ""}${span}${declared}
+    ${records ? `<h4>Marked evidence · ${evidence.records.length} of ${evidence.records_total}</h4>${records}` : ""}
     ${items ? `<h4>Evidence — ${evidence.items_total} alert group(s)${evidence.items_total > evidence.items.length ? `, ${evidence.items.length} shown` : ""}</h4>${items}` : ""}`;
 }
 
@@ -4050,6 +4093,7 @@ async function showFindingInGrid(group) {
     say("The alert analysis of this detection is not open in the case", true);
     return;
   }
+  rememberReviewPlace();
   state.analysis = findingState.analysis;
   state.groups = []; state.path = []; state.interval = ""; state.expression = null;
   state.summaries = []; state.order = "";
@@ -5102,22 +5146,27 @@ async function runGlobalSearch() {
   if (!state.openCase) { say("Open a case first", true); return; }
   const text = $("global-text").value.trim();
   if (!text) { say("Type something to search", true); return; }
+  const scope = $("global-scope").value;
+  const caseId = state.openCase.id;
+  const revision = ++reviewSearchRevision;
+  $("global-results").replaceChildren();
   $("global-summary").textContent = "Searching…";
   try {
     // A case of hundreds of analyses takes a while: it runs as a job, with progress and a Stop.
-    const payload = (state.openCase.analyses || []).length > 40
-      ? await runTask("search", { text }, "Global search")
-      : await api(`/api/cases/${state.openCase.id}/search?text=${encodeURIComponent(text)}`);
+    const payload = scope === "library"
+      ? await runTask("search-library", { text }, "Search across cases")
+      : state.openCase.analyses.length > 40
+        ? await runTask("search", { text }, "Search this case")
+        : await api(`/api/cases/${caseId}/search?text=${encodeURIComponent(text)}&limit=8`);
+    if (revision !== reviewSearchRevision || state.openCase?.id !== caseId) return;
+    $("search-modal").classList.add("show");
     if (!payload) { $("global-summary").textContent = "Search stopped"; return; }
-    $("global-summary").textContent = `${payload.total} hit(s) in ${payload.analyses.filter((a) => a.count).length} analysis(es)`;
-    $("global-results").innerHTML = payload.analyses.map((analysis) => {
-      if (!analysis.count) return "";
-      const rows = analysis.rows.slice(0, 8).map((row) =>
-        `<div class="hit">row ${escapeHtml(String(row.row_id))} · ${escapeHtml(row.cells.filter((c) => c !== null && c !== "").slice(0, 4).join(" · ")).slice(0, 160)}</div>`).join("");
-      return `<div class="analysis-hit"><b>${escapeHtml(analysis.label)}</b> — ${analysis.count} hit(s)${rows}</div>`;
-    }).join("") || '<div class="emptygrid">No hit.</div>';
+    renderReviewSearch(payload, scope);
   } catch (error) {
-    $("global-summary").textContent = error.message;
+    if (revision === reviewSearchRevision && state.openCase?.id === caseId) {
+      $("global-summary").textContent = error.message;
+      $("search-modal").classList.add("show");
+    }
   }
 }
 
@@ -5181,6 +5230,7 @@ async function loadActions() {
 }
 
 function showWorkspaceSub(name) {
+  if (document.querySelector(".subtab.active")?.dataset.sub !== name) rememberReviewPlace();
   document.querySelectorAll(".subtab[data-sub]").forEach((tab) =>
     tab.classList.toggle("active", tab.dataset.sub === name));
   for (const view of ["actions", "indicators", "entities", "tracking"]) {
@@ -5514,6 +5564,7 @@ async function toggleAction(actionId) {
 const iocState = { hits: [], summary: "", rejected: [], hunt: null, list: [], count: 0, offset: 0, pageSize: 250, selected: null, payload: null, revision: 0 };
 
 function resetIoc() {
+  resetIocGrouping();
   Object.assign(iocState, { hits: [], summary: "", rejected: [], hunt: null, list: [], count: 0, offset: 0,
     pageSize: 250, selected: null, payload: null, revision: iocState.revision + 1 });
   $("ioc-input").value = "";
@@ -5555,6 +5606,7 @@ function iocSummary(payload) {
 
 /* A hunt, as the desktop shows it: the indicators with their counters, then one page of details. */
 function applyHunt(payload) {
+  resetIocGrouping();
   iocState.payload = payload;
   iocState.rejected = payload.rejected_lines || [];
   iocState.hunt = payload.hunt;
@@ -5576,10 +5628,15 @@ async function iocPage(delta, ioc) {
   const offset = ioc === undefined ? Math.max(0, iocState.offset + delta) : 0;
   const params = new URLSearchParams({ offset: String(offset) });
   if (selected) params.set("ioc", String(selected));
+  if (ioc !== undefined) iocGrouping.path = [];
+  for (const field of iocGrouping.levels) params.append("groups", field);
+  if (iocGrouping.path.length) params.set("group_path", JSON.stringify(iocGrouping.path));
   try {
     const payload = await api(`/api/cases/${state.openCase.id}/hunts/${iocState.hunt}?${params}`);
     if (revision !== iocState.revision) return;
     iocState.hits = payload.hits || [];
+    iocState.groups = payload.groups;
+    iocState.groupSources = payload.group_sources || {};
     iocState.count = payload.count;
     iocState.offset = payload.offset;
     iocState.selected = selected || null;
@@ -5713,6 +5770,7 @@ function renderIoc() {
     `<tr title="${escapeHtml(item.reason)}"><td>—</td><td>${escapeHtml(item.value)}</td><td></td><td></td>
       <td>0</td><td>0</td><td>not searched: ${escapeHtml(item.reason)}</td></tr>`).join("");
 
+  if (renderIocGrouped()) return;
   $("ioc-rows").innerHTML = iocState.hits.map((hit, position) =>
     `<tr data-hit="${position}" title="Double-click to open the source row">
      <td>${escapeHtml(hit.when || "")}</td>
@@ -5759,6 +5817,11 @@ function resetTimeline() {
   }
   document.querySelector('[data-act="tl-clear-range"]').disabled = true;
   document.querySelector('[data-act="timeline-open-row"]').disabled = true;
+  Object.assign(timelineGrouping, { levels: [], path: [], parents: new Map() });
+  $("timeline-group").classList.remove("active");
+  $("timeline-group-path").hidden = true;
+  $("timeline-key").textContent = "";
+  $("timeline-axis").hidden = true;
   renderTimelineLanes([]);
   clearTimelineOverview();
 }
@@ -5772,11 +5835,7 @@ function clearTimelineOverview() {
 /* The desktop chooses, per analysis, how its dates are read. The choice travels
    with every timeline request, so a rebuild reads the case the same way. */
 function timelineDatesParam() {
-  const chosen = {};
-  document.querySelectorAll('#timeline-dates select[data-source]').forEach((select) => {
-    if (select.value && select.value !== "auto") chosen[select.dataset.source] = select.value;
-  });
-  timelineState.dates = chosen;
+  const chosen = timelineState.dates;
   return Object.keys(chosen).length ? JSON.stringify(chosen) : "";
 }
 
@@ -5796,8 +5855,11 @@ function renderTimelineDates(payload) {
       const label = (source.labels && source.labels[position]) || name;
       options.push(`<option value="${escapeHtml(name)}" ${chosen === name ? "selected" : ""}>${escapeHtml(label)}</option>`);
     });
+    const help = source.date_help?.[chosen === "auto" ? source.column_name : chosen];
+    const counts = `${source.dated} dated · ${source.undated} undated`;
     return `<div class="tsrc"><span class="tname" title="${escapeHtml(source.original || source.name)}">${escapeHtml(source.name)}</span>
-      <select class="select" data-source="${source.id}" aria-label="Date column for ${escapeHtml(source.name)}">${options.join("")}</select></div>`;
+      <select class="select" data-source="${source.id}" aria-label="Date column for ${escapeHtml(source.name)}">${options.join("")}</select>
+      <span class="tdates-description" title="${escapeHtml(counts)}">${escapeHtml(help || counts)}</span></div>`;
   }).join("");
   // A collection of hundreds of analyses has hundreds of selectors: folded, they would push the
   // chart and the rows off the screen. The choice stays one click away, and still travels.
@@ -5832,7 +5894,10 @@ async function openSourceRow(index, rowId) {
       `/api/cases/${caseId}/timeline/row/${index}/${rowId}`);
     if (!current()) return;
     $("source-row-title").textContent = `${payload.label} — row ${payload.row_id}`;
-    $("source-row-list").innerHTML = payload.columns.map((name, position) => {
+    $("source-row-list").reviewDateContext = payload;
+    $("source-row-list").innerHTML = provenanceSummary(payload.provenance)
+      + reviewDateRows(payload.columns, payload.values, payload.date_help)
+      + payload.columns.map((name, position) => {
       const value = payload.values[position];
       if (payload.columns.length > 128 && (value === null || value === "")) return "";
       const shown = value === null || value === "" ? "(empty)" : String(value).slice(0, 160);
@@ -5880,6 +5945,8 @@ async function loadTimeline(reset, force) {
   }
   const visible = timelineVisibleSources();
   if (visible) params.set("sources", visible.join(","));
+  for (const field of timelineGrouping.levels) params.append("groups", field);
+  if (timelineGrouping.path.length) params.set("group_path", JSON.stringify(timelineGrouping.path));
   // Reads overlap (a search typed while a window loads): only the latest one may paint, or a slower
   // earlier answer would put an older state back on the screen.
   const mine = ++timelineState.seq;
@@ -5898,6 +5965,8 @@ async function loadTimeline(reset, force) {
       wanted.respect_filters = $("timeline-filters").checked;
       if (wanted.respect_filters) wanted.live = liveView();
       if (visible) wanted.sources = visible;
+      wanted.groups = timelineGrouping.levels;
+      wanted.group_path = timelineGrouping.path;
       payload = await runTask("timeline", wanted, "Timeline");
       if (!payload) return;
     } else {
@@ -5907,6 +5976,7 @@ async function loadTimeline(reset, force) {
     timelineState.payload = payload;
     renderTimelineLanes(payload.sources);
     renderTimeline(payload);
+    return true;
   } catch (error) {
     if (mine === timelineState.seq) say(error.message, true);
   }
@@ -5930,9 +6000,9 @@ function renderTimeline(payload) {
     .filter(({ source }) => !timelineState.hidden.has(source.id));
   $("timeline-legend").innerHTML = payload.sources.map((source, index) => {
     const off = timelineState.hidden.has(source.id);
-    return `<span class="chip${off ? " off" : ""}" data-tl-source-chip="${source.id}"
-      title="${off ? "Show this source again" : "Hide this source"}"
-      style="${off ? "opacity:.45" : ""}"><span class="swatch" style="background:${TIMELINE_COLORS[index % 8]}"></span>${escapeHtml(source.name)} — ${source.dated} dated / ${source.rows} row(s)</span>`;
+    return `<button type="button" class="chip${off ? " off" : ""}" data-tl-source-chip="${source.id}"
+      aria-pressed="${!off}" title="${off ? "Show this source again" : "Hide this source"}"
+      style="${off ? "opacity:.55" : ""}"><span class="swatch" style="background:${TIMELINE_COLORS[index % TIMELINE_COLORS.length]}"></span>${escapeHtml(source.name)} · ${source.dated} dated / ${source.rows} row(s)</button>`;
   }).join("");
   $("timeline-legend").querySelectorAll("[data-tl-source-chip]").forEach((chip) => {
     chip.addEventListener("click", () => {
@@ -5955,8 +6025,11 @@ function renderTimeline(payload) {
     timelineWindowLabel(hist);
     timelineDrag(box, hist);
   }
+  renderTimelineAxis(hist);
 
-  // Keep the visible selection aligned with the source-row command across redraws.
+  $("timeline-key").textContent = hist?.rows.length
+    ? "Bar height shows the number of events. Colors identify sources. Drag to select a time range." : "";
+  if (renderTimelineGrouped(payload)) return;
   const selected = payload.rows.some((row) =>
     row[0] === timelineState.source && row[1] === timelineState.row);
   if (!selected) { timelineState.row = null; timelineState.source = null; }
@@ -5964,10 +6037,13 @@ function renderTimeline(payload) {
     ? `row ${timelineState.row} of ${timelineState.source}` : "";
   document.querySelector('[data-act="timeline-open-row"]').disabled = !selected;
   $("timeline-rows").innerHTML = payload.rows.map((row) => {
-    const [source, rowId, timeNs, sourceTime, summary, note, bookmarked] = row;
+    const [source, rowId, timeNs, sourceTime, summary, note, bookmarked, assumedZone] = row;
+    const analysis = payload.sources.find(item => item.id === source);
+    const color = TIMELINE_COLORS[Math.max(0, payload.sources.indexOf(analysis)) % TIMELINE_COLORS.length];
+    const dateTitle = [analysis?.column_label, sourceTime, assumedZone && "No source offset; displayed as UTC"].filter(Boolean).join(" · ");
     return `<tr class="${source === timelineState.source && rowId === timelineState.row ? "sel" : ""}" data-tl-row="${rowId}" data-tl-source="${source}" title="Open the source line">
-      <td>${timeNs === null ? "(undated)" : escapeHtml(utcLabel(timeNs))}</td>
-      <td>${payload.sources[source] ? escapeHtml(payload.sources[source].name) : source}</td>
+      <td title="${escapeHtml(dateTitle)}">${timeNs === null ? "(undated)" : escapeHtml(utcLabel(timeNs))}</td>
+      <td title="${escapeHtml(analysis?.original || analysis?.name || "")}"><span class="timeline-date-swatch" style="background:${color}"></span>${escapeHtml(analysis?.name || String(source))}</td>
       <td class="rowid">${escapeHtml(String(rowId))}</td>
       <td title="${escapeHtml(summary)}">${bookmarked ? "\u2605 " : ""}${escapeHtml(summary)}</td>
       <td>${escapeHtml(note)}</td></tr>`;
@@ -6032,8 +6108,9 @@ async function timelineDuration() {
   }
   timelineState.start = Math.round(start);
   timelineState.end = Math.round(end);
-  loadTimeline(true);
-  say(`Duration: ${band(timelineState.start)} → ${band(timelineState.end)}`);
+  if (await loadTimeline(true)) {
+    say(`Duration: ${band(timelineState.start)} → ${band(timelineState.end)}`);
+  }
 }
 
 function timelinePage(direction) {
@@ -6073,16 +6150,36 @@ function timelineBars(hist, shown) {
     .filter(([bucket]) => bucket >= start && bucket <= end)
     .map(([, segments]) => segments.reduce((sum, seg) => sum + seg[1], 0)));
   const bars = [];
+  const chartHeight = Math.max(24, $("timeline-hist").clientHeight - 6);
   for (let bucket = start; bucket <= end; bucket += 1) {
     const segments = totals.get(bucket) || [];
     const height = segments.reduce((sum, seg) => sum + seg[1], 0);
+    const at = Number(hist.start) + Number(hist.width) * bucket;
     const inner = segments.map(([sourceIndex, count]) =>
-      `<span class="seg" style="height:${Math.max(1, Math.round(count / peak * 56))}px;`
-      + `background:${TIMELINE_COLORS[sourceIndex % 8]}"></span>`).join("");
-    bars.push(`<span class="bar" data-bucket="${bucket}" title="${height} event(s)" `
-      + `style="height:${Math.max(height ? 2 : 0, Math.round(height / peak * 56))}px">${inner}</span>`);
+      `<span class="seg" style="height:${Math.max(1, Math.round(count / peak * chartHeight))}px;`
+      + `background:${TIMELINE_COLORS[sourceIndex % TIMELINE_COLORS.length]}"></span>`).join("");
+    bars.push(`<span class="bar" data-bucket="${bucket}" title="${utcLabel(at)} · ${height} event(s)" `
+      + `style="height:${Math.max(height ? 2 : 0, Math.round(height / peak * chartHeight))}px">${inner}</span>`);
   }
   return bars.join("");
+}
+
+function renderTimelineAxis(hist) {
+  const axis = $("timeline-axis");
+  axis.hidden = !hist?.rows.length;
+  if (axis.hidden) return;
+  const { start, end } = timelineRange(hist);
+  const low = Number(hist.start) + start * Number(hist.width);
+  const high = Math.min(Number(hist.end), Number(hist.start) + (end + 1) * Number(hist.width) - 1);
+  const short = high - low < 24 * 60 * 60 * 1e9;
+  const points = [...new Set([low, Math.round((low + high) / 2), high])];
+  axis.replaceChildren(...points.map(value => {
+    const label = document.createElement("time");
+    const stamp = utcLabel(value);
+    label.title = stamp;
+    label.textContent = short ? stamp.slice(11, 19) + " UTC" : stamp.slice(0, 10);
+    return label;
+  }));
 }
 
 /* The whole extent, the events as a thin profile, and the window on screen as a band
@@ -6298,7 +6395,8 @@ function treeLeaf(item, depth, label = item.tree_label || item.label) {
   const title = [item.label, ...(item.tree_sources || []), item.source || item.path].filter(Boolean).join("\n");
   return `<div class="node child ${item.index === state.analysis ? "sel" : ""}" data-analysis="${item.index}"
        style="padding-left:${20 + depth * 12}px" title="${escapeHtml(title)}">
-      <span class="caret"></span><span class="nlabel">${escapeHtml(label)}</span></div>`;
+      <span class="caret"></span><span class="nlabel">${escapeHtml(label)}</span></div>`
+    + treeSourceChildren(item, depth + 1);
 }
 
 function treeGroup(key, label, depth, open, active = false) {
@@ -6413,11 +6511,12 @@ async function reopenAnalysis(position) {
 
 function renderPaneTabs() {
   if (!state.openCase) { $("pane-tabs").innerHTML = ""; return; }
-  const current = state.openCase.analyses.find((item) => item.index === state.analysis);
+  const current = currentAnalysis();
   $("pane-tabs").innerHTML = current
     ? `<div class="ptab active" title="${escapeHtml(current.label)}">${escapeHtml(current.label)}
          <span class="ptab-close" id="close-analysis" title="Close this analysis — the file stays in the case">✕</span></div>`
     : '<div class="ptab active">No analysis</div>';
+  if (current) renderGridPreferences(current);
 }
 
 /* ---------- grid ---------- */
@@ -6449,7 +6548,7 @@ function query() {
     params.set("order_descending", state.orderDesc === false ? "false" : "true");
     params.set("order_summary", String(state.orderSummary || 0));
   }
-  for (const value of state.path) params.append("path", value === null ? "" : String(value));
+  if (state.path.length) params.set("group_path", JSON.stringify(state.path));
   if (state.multiSort.length) {
     for (const key of state.multiSort) params.append("sortkey", `${key.column}:${key.descending ? "desc" : "asc"}:${key.kind || state.sortType}`);
   } else if (state.sort !== null) {
@@ -6485,9 +6584,12 @@ function stopQuery() {
   say("Query stopped — the page stays as it was");
 }
 
-async function loadRows(reset, preserveSelection = false) {
+async function loadRows(reset, preserveSelection = false, viewport = false) {
   if (!state.openCase) return;
-  if (reset) state.offset = 0;
+  if (reset) {
+    state.offset = 0;
+    $("gridbody").scrollTop = 0;
+  }
   // A new page is a new set of rows: a selection of ids that are no longer on
   // screen must not survive into "copy the selected rows".
   if (!preserveSelection) {
@@ -6517,6 +6619,12 @@ async function loadRows(reset, preserveSelection = false) {
     state.timestamps = payload.timestamps || [];
     state.styles = payload.styles || {};
     state.ruleSet = payload.rule_set || [];
+    if (viewport) {
+      await loadCellNotes();
+      if (controller.signal.aborted) return false;
+      renderGrid();
+      return true;
+    }
     await loadBookmarks();
     if (controller.signal.aborted) return false;
     await loadCellNotes();
@@ -6594,6 +6702,7 @@ function clearGrid(message, actions = []) {
     empty.append(controls);
   }
   $("pageinfo").textContent = "";
+  updateGridPager();
 }
 
 /* Every column in the order the analyst gave them: the row id first, then the order kept with the analysis,
@@ -6726,7 +6835,9 @@ const GROUP_LEVEL_MIME = "application/x-fireblade-group-level";
 const BOOKMARK_GROUP_COLUMN = -2;
 const BOOKMARK_GROUP_LABEL = "Bookmark status";
 const BOOKMARK_GROUP_HEADER = `<th draggable="true" data-bookmark-group
-  aria-label="${BOOKMARK_GROUP_LABEL}" title="Drag to group marked and unmarked rows">☆</th>`;
+  aria-label="${BOOKMARK_GROUP_LABEL}" title="Drag to group bookmarked rows">
+  <button type="button" class="mark-settings" data-row-mark-settings aria-label="Configure row marks"
+    title="Configure the row mark cycle. Shift-click a row mark to toggle its bookmark.">☆</button></th>`;
 
 function groupColumnName(column) {
   return column === BOOKMARK_GROUP_COLUMN ? BOOKMARK_GROUP_LABEL : state.columns[column + 1];
@@ -6737,10 +6848,10 @@ function renderGroupBar() {
   const hint = $("group-label");
   const clear = $("group-clear");
   if (!chips) return;
-  $("group-path").textContent = state.path.map((value, depth) => {
-    const name = groupColumnName(state.groups[depth]) || "";
-    return `${name}: ${value ?? "(empty)"}`;
-  }).join(" › ");
+  $("recmd-review").hidden = !Object.keys(currentRecmdColumns()).length;
+  renderGroupTrail($("group-path"), state.path, (value, depth) =>
+    `${groupColumnName(state.groups[depth])}: ${groupPathValue(value)}`, returnToGridGroup);
+  $("grid-group-back").hidden = !state.path.length;
   chips.innerHTML = "";
   if (!state.groups.length) {
     hint.hidden = false;
@@ -6831,6 +6942,7 @@ function renderGrid(deferColumns = false) {
   const empty = $("grid-empty");
   renderGroupBar();
   if (!state.grouped) $("group-chart").hidden = true;
+  updateGridPager();
   if (state.grouped) { renderGroupedGrid(); return; }
   const shown = columnWindow(visibleColumns());
   if (!state.columns.length) {
@@ -6860,7 +6972,8 @@ function renderGrid(deferColumns = false) {
     const flag = state.sort === index - 1 ? state.descending : (multi >= 0 ? state.multiSort[multi].descending : false);
     const arrow = sorted ? (flag ? "▼" : "▲") + (multi >= 0 ? String(multi + 1) : "") : "▲▼";
     head.push(`<th class="${sorted ? "sorted" : ""}" data-column="${index}" draggable="${index === 0 ? "false" : "true"}" title="${escapeHtml(name)}">
-      ${index === 0 ? "Ro…" : escapeHtml(name)}<span class="sort">${arrow}</span>
+      <span class="column-name">${index === 0 ? "Ro…" : escapeHtml(name)}</span><span class="sort">${arrow}</span>
+      ${index ? `<button type="button" class="column-values" data-column-values="${index - 1}" aria-label="Values in ${escapeHtml(name)}" title="View values or hide this column"></button>` : ""}
       <span class="grip" data-grip="${index}"></span></th>`);
   });
   head.push("</tr>");
@@ -6874,8 +6987,9 @@ function renderGrid(deferColumns = false) {
     // field holds the value alone. (Typing a prefix such as "=" or "!=" still works.)
     const operator = current ? current.operator : (state.filterOps[index - 1] || "contains");
     const meaning = (FILTER_OPERATORS.find(([code]) => code === operator) || [])[2] || operator;
+    const valueFilter = operator === "one_of" ? JSON.parse(current.value).length + " selected" : null;
     head.push(`<th data-filter-column="${index}"><div class="fcell"><button class="fop" data-fop="${index - 1}" title="Comparison: ${escapeHtml(meaning)}">${FILTER_GLYPHS[operator] || "≈"}</button>`
-      + `<input data-filter="${index - 1}" placeholder="Filter…" value="${escapeHtml(current ? current.value : "")}"></div></th>`);
+      + `<input data-filter="${index - 1}" placeholder="${valueFilter || "Filter…"}" value="${escapeHtml(current && !valueFilter ? current.value : "")}"></div></th>`);
   });
   head.push("</tr>");
   $("head").innerHTML = head.join("");
@@ -6916,6 +7030,7 @@ function renderGrid(deferColumns = false) {
         + `${noted ? '<span class="notemark"></span>' : ""}${close}</td>`;
     }).join("");
     const marked = state.bookmarks.has(String(id)) ? "marked" : "";
+    const quick = state.payload?.row_marks?.[id];
     // "none" is a string, and a string is true: a rule without a visual format must
     // still paint its row. (This cost a silent regression: every plain colour rule
     // stopped painting the day the server started sending visual: "none".)
@@ -6925,15 +7040,19 @@ function renderGrid(deferColumns = false) {
       ? ` style="${ruleCss(rule)}"`
       : "";
     return `<tr data-row="${escapeHtml(String(id))}" class="${rowSelected(id) ? "sel" : ""}"${style}>
-      <td class="markcell"><span class="cb ${marked}" title="${marked ? escapeHtml(String(state.bookmarks.get(String(id)) || "Bookmarked")) : "Bookmark this row"}"></span></td>${cells}</tr>`;
+      <td class="markcell"><button class="cb ${quick ? "quick-mark" : marked}" type="button"
+        title="${quick ? escapeHtml(quick.label) : marked ? escapeHtml(String(state.bookmarks.get(String(id)) || "Bookmarked")) : "Mark this row"}"
+        aria-label="Mark row ${id}${quick ? `, ${escapeHtml(quick.label)}` : ""}">${quick ? escapeHtml(quick.code) : ""}</button></td>${cells}</tr>`;
   });
   let nextRow = 0;
   const rendered = outline
     ? outline.map((record) => record ? outlineRow(record, shown.length + 1) : dataRows[nextRow++])
     : dataRows;
-  $("body").innerHTML = rendered.join("") + footerRowsHtml(shown, 0);
+  $("body").innerHTML = gridVirtualSpacer(shown.length + 1, state.offset) + rendered.join("")
+    + gridVirtualSpacer(shown.length + 1, gridPageTotal() - state.offset - rendered.length)
+    + footerRowsHtml(shown, 0);
 
-  const total = state.payload?.outline_total ?? state.total;
+  const total = gridPageTotal();
   const from = total ? state.offset + 1 : 0;
   const to = Math.min(state.offset + rendered.length, total);
   $("pageinfo").textContent = `${from}–${to} / ${total} ${outline ? "entries" : "row(s)"}`;
@@ -6999,11 +7118,12 @@ function renderGroupedGrid() {
     + summaries.map((item) => `<th title="${escapeHtml(item.name)}">`
       + `${escapeHtml(item.operation)} ${escapeHtml(item.name)}</th>`).join("") + "</tr>";
 
-  $("body").innerHTML = state.rows.map((row, position) => {
+  const colspan = 4 + summaries.length;
+  $("body").innerHTML = gridVirtualSpacer(colspan, state.offset) + state.rows.map((row, position) => {
     const value = row[0];
     const count = row[1];
     const text = value === null || value === "" ? "(empty)" : String(value);
-    return `<tr data-group="${escapeHtml(text)}" data-value="${escapeHtml(String(value ?? ""))}">
+    return `<tr data-group="${escapeHtml(text)}" data-group-depth="${state.path.length}" data-value="${escapeHtml(String(value ?? ""))}"${value === null ? " data-group-null" : ""}>
       <td><span class="cb"></span></td>
       <td class="rowid">${state.offset + position + 1}</td>
       <td title="${escapeHtml(text)}">▸ ${escapeHtml(text)}</td>
@@ -7012,12 +7132,14 @@ function renderGroupedGrid() {
         const value = row[2 + offset];
         return `<td>${value === null || value === undefined ? "" : escapeHtml(String(value))}</td>`;
       }).join("")}</tr>`;
-  }).join("") + footerRowsHtml([], 3 + summaries.length);
+  }).join("") + gridVirtualSpacer(colspan, gridPageTotal() - state.offset - state.rows.length)
+    + footerRowsHtml([], 3 + summaries.length);
 
-  const from = state.total ? state.offset + 1 : 0;
-  const to = Math.min(state.offset + state.rows.length, state.total);
+  const count = gridPageTotal();
+  const from = count ? state.offset + 1 : 0;
+  const to = Math.min(state.offset + state.rows.length, count);
   renderGroupChart();
-  $("pageinfo").textContent = `${from}–${to} / ${state.rows.length} group(s) — ${state.total} row(s)`;
+  $("pageinfo").textContent = `${from}–${to} / ${count} group(s) — ${state.total} row(s)`;
   if ($("analysis-view").style.display !== "none") {
     say(`Grouped by ${name} — ${state.rows.length} group(s) on this page, ${state.total} row(s) in the analysis`);
   }
@@ -7052,13 +7174,15 @@ function footerRowsHtml(columns, leading) {
   return html;
 }
 
-async function completeRow(row) {
-  if (!row || !state.payload?.projection || row._complete) return row;
+async function completeRow(row, readProvenance = false) {
+  const projected = state.payload?.projection;
+  if (!row || (!projected && !readProvenance) || row._complete) return row;
   const caseId = state.openCase.id, analysis = state.analysis;
   const payload = await api(`/api/cases/${caseId}/timeline/row/${analysis}/${row[0]}`);
   if (state.openCase?.id !== caseId || state.analysis !== analysis) return null;
-  payload.values.forEach((value, index) => { row[index + 1] = value; });
+  if (projected) payload.values.forEach((value, index) => { row[index + 1] = value; });
   row._complete = true;
+  row.provenance = payload.provenance;
   return row;
 }
 
@@ -7070,13 +7194,16 @@ async function showDetails(row) {
     box.innerHTML = '<div class="ph">Details of the selected row</div>';
     return;
   }
-  if (state.payload?.projection && !row._complete) {
+  const recmd = Object.keys(currentRecmdColumns()).length > 0;
+  if ((state.payload?.projection || recmd) && !row._complete) {
     box.innerHTML = '<div class="ph">Reading all fields of the selected row…</div>';
-    try { row = await completeRow(row); }
+    try { row = await completeRow(row, recmd); }
     catch (error) { if (request === detailsRequest) box.textContent = error.message; return; }
     if (request !== detailsRequest || !row) return;
   }
   const rowNotes = notesForRow(row[0]);
+  const dates = reviewDateRows(state.columns.slice(1), row.slice(1));
+  const source = reviewRowProvenance(row);
   const pairs = visibleColumns().map(({ name, index }) => {
     const value = row[index];
     if (index === 0) return "";
@@ -7089,7 +7216,7 @@ async function showDetails(row) {
   }).join("");
   const id = String(row[0]);
   const note = state.bookmarks.get(id) || "";
-  box.innerHTML = `<div class="detail-fields"><table>${pairs}</table></div>
+  box.innerHTML = `<div class="detail-fields">${source}${dates}<table>${pairs}</table></div>
     <div class="note-editor">
       <label for="note-input">Bookmark note</label>
       <input id="note-input" value="${escapeHtml(note)}" placeholder="What to remember about this row…">
@@ -7170,6 +7297,7 @@ function showTab(name) {
   const tabs = workspaceTabs();
   const selected = tabs.find(tab => tab.dataset.tab === name);
   if (!selected) return;
+  if (!selected.classList.contains("active")) rememberReviewPlace();
   const focused = document.activeElement;
   const previousPanel = focused?.closest('[role="tabpanel"]');
   tabChosen = true;
@@ -7235,10 +7363,17 @@ function moveColumn(header, direction) {
 let columnManagerOffset = 0;
 function openColumnManager() {
   if (!state.columns.length) { say("Open an analysis first", true); return; }
-  if (!$("columns-modal").classList.contains("show")) { $("column-search").value = ""; columnManagerOffset = 0; }
+  if (!$("columns-modal").classList.contains("show")) {
+    $("column-search").value = "";
+    $("columns-hidden-only").checked = false;
+    columnManagerOffset = 0;
+  }
+  $("family-save").hidden = !reviewFamilyKey();
   const list = $("columns-list");
   const query = $("column-search").value.trim().toLocaleLowerCase();
-  const matches = orderedColumns().filter(({ name, index }) => (index === 0 ? "Row number" : name).toLocaleLowerCase().includes(query));
+  const hiddenOnly = $("columns-hidden-only").checked;
+  const matches = orderedColumns().filter(({ name, index }) =>
+    (!hiddenOnly || state.hidden.has(index)) && (index === 0 ? "Row number" : name).toLocaleLowerCase().includes(query));
   columnManagerOffset = Math.min(columnManagerOffset, Math.max(0, Math.floor((matches.length - 1) / 100) * 100));
   const page = matches.slice(columnManagerOffset, columnManagerOffset + 100);
   const pager = matches.length > 100 ? `<div class="row"><button class="btn" data-column-page="-1" ${columnManagerOffset ? "" : "disabled"}>Previous</button>
@@ -7337,11 +7472,11 @@ function updateColumnList() {
 }
 
 async function hideEmptyColumns() {
-  if (!state.openCase) return;
+  if (!state.openCase || !currentAnalysis()) return;
   const { id } = state.openCase;
   const analysis = state.analysis;
-  const button = $("hide-empty-columns");
-  button.disabled = true;
+  const buttons = [$("hide-empty-columns"), $("grid-hide-empty")];
+  buttons.forEach(button => { button.disabled = true; });
   say("Checking all rows for empty columns…");
   try {
     const { columns } = await api(`/api/cases/${id}/analyses/${analysis}/empty-columns`);
@@ -7355,7 +7490,7 @@ async function hideEmptyColumns() {
   } catch (error) {
     if (state.openCase?.id === id && state.analysis === analysis) say(error.message, true);
   } finally {
-    button.disabled = false;
+    buttons.forEach(button => { button.disabled = false; });
   }
 }
 
@@ -7757,10 +7892,7 @@ function wire() {
     }
     const node = event.target.closest("[data-analysis]");
     if (!node) return;
-    state.analysis = Number(node.dataset.analysis);
-    resetAnalysisQuery();
-    renderTree();
-    loadRows(true);
+    selectReviewAnalysis(Number(node.dataset.analysis));
   });
   $("tree-search").addEventListener("input", renderTree);
   $("tree-mode").value = treeState.mode;
@@ -7776,10 +7908,7 @@ function wire() {
   $("tree-collapse").addEventListener("click", () => treeExpandAll(false));
 
   $("search").addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      state.search = $("search").value.trim();
-      loadRows(true);
-    }
+    if (event.key === "Enter") { event.preventDefault(); submitReviewSearch(); }
   });
   $("bookmarks-only").addEventListener("click", () => {
     state.bookmarksOnly = !state.bookmarksOnly;
@@ -7819,7 +7948,7 @@ function wire() {
 
   $("head").addEventListener("click", (event) => {
     const th = event.target.closest("th[data-column]");
-    if (!th || event.target.closest("[data-grip]")) return;
+    if (!th || event.target.closest("[data-grip], [data-column-values]")) return;
     const index = Number(th.dataset.column);
     if (index === 0) return;
     const column = index - 1;
@@ -8010,23 +8139,20 @@ function wire() {
     const outline = event.target.closest("tr[data-outline-path]");
     if (outline) {
       state.expandAll = false;
-      state.path = JSON.parse(outline.dataset.outlinePath);
-      loadRows(true);
+      drillGridGroup(JSON.parse(outline.dataset.outlinePath));
       return;
     }
     const group = event.target.closest("tr[data-group]");
     if (group) {
-      const raw = group.dataset.value;
-      state.path.push(raw === "" ? null : raw);
-      loadRows(true);
+      if (Number(group.dataset.groupDepth) !== state.path.length) return;
+      drillGridGroup([...state.path, group.hasAttribute("data-group-null") ? null : group.dataset.value]);
       return;
     }
     const tr = event.target.closest("tr[data-row]");
     if (!tr) return;
     if (event.target.closest(".markcell")) {
       const id = tr.dataset.row;
-      const current = state.bookmarks.get(String(id)) || "";
-      toggleBookmark(id, current ? "" : "bookmarked").catch((error) => say(error.message, true));
+      cycleRowMark(id, event.shiftKey).catch((error) => say(error.message, true));
       return;
     }
     // The cell clicked is the active cell, as in the desktop: the commands that act on "the
@@ -8042,16 +8168,16 @@ function wire() {
   });
 
   $("first").addEventListener("click", () => {
-    state.offset = 0;
-    if (state.path.length) { state.path = []; loadRows(true); } else { loadRows(false); }
+    if (state.path.length) { returnToGridGroup(0); return; }
+    loadRows(true);
   });
   $("prev").addEventListener("click", () => {
-    if (state.path.length) { state.path.pop(); state.offset = 0; loadRows(true); return; }
+    if (!state.offset && state.path.length) { returnToGridGroup(state.path.length - 1); return; }
     state.offset = Math.max(0, state.offset - (state.payload?.limit ?? PAGE));
     loadRows(false);
   });
   $("next").addEventListener("click", () => {
-    const total = state.payload?.outline_total ?? state.total;
+    const total = gridPageTotal();
     const step = state.payload?.limit ?? PAGE;
     if (state.offset + step < total) { state.offset += step; loadRows(false); }
   });
@@ -8371,6 +8497,8 @@ function wire() {
     }
     const visible = timelineVisibleSources();
     if (visible) params.set("sources", visible.join(","));
+    for (const field of timelineGrouping.levels) params.append("groups", field);
+    if (timelineGrouping.path.length) params.set("group_path", JSON.stringify(timelineGrouping.path));
     // The run is verified server-side; the receipt comes back in the response headers.
     window.location.href = url(`/api/cases/${state.openCase.id}/timeline/export?${params}`);
     say("Timeline exported: the file carries only rows that were written and counted");
@@ -8707,7 +8835,7 @@ async function act(name, node) {
     case "pin-column-right": pinFromCell("right"); break;
     case "hide-column": hideFromCell(); break;
     case "unmark-selection": await markSelection(""); break;
-    case "group-column": openGroupPicker(); break;
+    case "group-column": openCurrentGrouping(); break;
     case "row-height": openRowHeight(); break;
     case "coverage-open": await openCoverage(); break;
     case "detrules-open": await openDetectionRules(); break;
@@ -8761,8 +8889,8 @@ async function act(name, node) {
     case "help-ioc": showHelp("ioc"); break;
     case "help-timeline": showHelp("timeline"); break;
     case "help-licenses": showHelp("licenses"); break;
-    case "global-search": $("search-modal").classList.add("show"); break;
-    case "global-run": await runGlobalSearch(); $("search-modal").classList.add("show"); break;
+    case "global-search": openReviewSearch("case"); break;
+    case "global-run": await runGlobalSearch(); break;
     case "new-case": openCaseDialog("create"); break;
     case "open-selected-case":
       if (state.selectedCase) await openCase(state.selectedCase);

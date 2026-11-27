@@ -173,7 +173,20 @@ class HuntStore:
                 )
             return result
 
-    def page(self, offset=0, ioc=None, source=None):
+    GROUP_FIELDS = {
+        "indicator": "i.value",
+        "source": "CAST(h.source AS TEXT)",
+        "column": "h.column_name",
+        "rule": "h.rule",
+    }
+
+    def page(self, offset=0, ioc=None, source=None, groups=(), path=()):
+        if (
+            any(field not in self.GROUP_FIELDS for field in groups)
+            or len(path) > len(groups)
+            or len(set(groups)) != len(groups)
+        ):
+            raise ValueError("Invalid IOC grouping.")
         clauses = []
         args = []
         if ioc is not None:
@@ -182,16 +195,36 @@ class HuntStore:
         if source is not None:
             clauses.append("h.source=?")
             args.append(int(source))
+        for field, value in zip(groups, path):
+            clauses.append(f"{self.GROUP_FIELDS[field]} IS ?")
+            args.append(value)
         where = " WHERE " + " AND ".join(clauses) if clauses else ""
+        tables = " FROM hits h JOIN indicators i ON i.id=h.ioc JOIN sources s ON s.id=h.source"
+        bounds = [self.PAGE_SIZE, max(0, int(offset))]
         with self.lock:
-            count = self.db.execute("SELECT count(*) FROM hits h" + where, args).fetchone()[0]
+            if len(path) < len(groups):
+                field = self.GROUP_FIELDS[groups[len(path)]]
+                grouped = (
+                    f"SELECT {field} AS value, count(*) AS hits" + tables + where + " GROUP BY 1"
+                )
+                count = self.db.execute(f"SELECT count(*) FROM ({grouped})", args).fetchone()[0]
+                values = self.db.execute(
+                    grouped + " ORDER BY hits DESC, value LIMIT ? OFFSET ?", args + bounds
+                ).fetchall()
+                return {
+                    "count": count,
+                    "rows": [],
+                    "groups": [[key, total] for key, total in values],
+                }
+            count_from = tables if path else " FROM hits h"
+            count = self.db.execute("SELECT count(*)" + count_from + where, args).fetchone()[0]
             rows = self.db.execute(
                 "SELECT h.id,h.ioc,h.source,h.row_id,h.column_id,h.column_name,h.observed,h.snippet,h.source_time,h.rule,"
-                "i.kind,i.value,i.raw,i.label,s.path,s.info FROM hits h "
-                "JOIN indicators i ON i.id=h.ioc JOIN sources s ON s.id=h.source"
+                "i.kind,i.value,i.raw,i.label,s.path,s.info"
+                + tables
                 + where
                 + " ORDER BY h.id LIMIT ? OFFSET ?",
-                args + [self.PAGE_SIZE, max(0, int(offset))],
+                args + bounds,
             ).fetchall()
         return dict(count=count, rows=rows)
 

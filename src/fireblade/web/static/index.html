@@ -164,7 +164,7 @@
     <div class="tbsep"></div>
     <button type="button" class="tb" data-act="case-save">Save case</button>
     <button type="button" class="tb" data-act="display-settings">Workspace…</button>
-    <button type="button" class="tb" data-act="global-search">Global search</button>
+    <button type="button" class="tb" id="workspace-back" title="Return to the previous workspace view (Alt+Left)" disabled>← Back</button>
     <button type="button" class="tb" data-act="rules">Rules</button>
     <button type="button" class="tb" data-act="profiles-plugins">Plugins</button>
     <div class="tbsep"></div>
@@ -202,17 +202,26 @@
 
       <div id="analysis-view" role="tabpanel" aria-labelledby="tab-analyses" tabindex="0" style="display:flex;flex-direction:column;flex:1;min-height:0">
         <div class="filterbar">
+          <select class="select" id="search-scope" aria-label="Search scope">
+            <option value="analysis">This grid</option><option value="case">In this case</option>
+            <option value="library">Across cases</option>
+          </select>
           <input class="search" id="search" placeholder="Text, IP, path, hash…  Enter to search">
+          <button class="btn" id="search-submit">Search</button>
           <button class="btn" id="clear">Clear the filters</button>
           <button class="btn" id="bookmarks-only" title="Show bookmarked rows only">Bookmarks</button>
         </div>
         <div class="groupbar" id="groupbar">
           <div class="hint" id="group-label">Drag a header here to group the results</div>
           <div class="chips" id="group-chips"></div>
-          <div class="hint" id="group-path" aria-live="polite"></div>
+          <div class="hint group-trail" id="group-path" aria-live="polite"></div>
+          <button class="btn" id="grid-group-back" hidden>← Parent group</button>
           <div class="grow"></div>
           <button class="btn" id="group-clear" hidden title="Remove every grouping level">Clear</button>
           <button class="btn" data-act="group-column" title="Grouping options and date interval">Group…</button>
+          <button class="btn" id="recmd-review" title="Sort, group or filter RECmd results" hidden>RECmd…</button>
+          <button class="btn" id="grid-hide-empty" data-act="hide-empty-columns" title="Hide columns with no values">Hide empty</button>
+          <button class="btn" id="grid-hidden-columns" hidden>Hidden columns</button>
           <button class="btn" data-act="open-view-menu" title="Columns, rules, views, filters, summaries">More…</button>
           <button class="btn" id="details-toggle">Row details</button>
         </div>
@@ -236,6 +245,7 @@
           <button class="btn" id="first">Root</button>
           <button class="btn" id="prev">Previous</button>
           <button class="btn" id="next">Next</button>
+          <button class="btn" id="grid-scroll-mode" aria-pressed="false">Continuous scroll</button>
           <div class="spacer"></div>
           <div class="info" id="pageinfo"></div>
         </div>
@@ -254,6 +264,9 @@
             <option value="host">Hosts</option>
             <option value="technique">Techniques</option>
             <option value="ioc">Indicators</option>
+          </select>
+          <select class="select" id="graph-tag-filter" aria-label="Filter the graph by saved tag">
+            <option value="">All saved tags</option>
           </select>
           <span class="note">Zoom:</span>
           <button class="btn" data-act="graph-zoom-out">−</button>
@@ -312,6 +325,7 @@
             <option value="title">rule</option>
             <option value="channel">channel</option>
           </select>
+          <button class="btn" id="finding-table-group">Group table…</button>
           <div class="grow"></div>
           <div class="info" id="finding-summary"></div>
         </div>
@@ -555,11 +569,13 @@
             </table>
           </div>
         </div>
+        <div class="filterbar"><button class="btn" id="ioc-group">Group matches…</button>
+          <nav class="group-trail" id="ioc-group-path" aria-label="IOC grouping path" hidden></nav></div>
         <div class="gridwrap" style="flex:1">
           <div class="gridbody">
             <table>
-              <colgroup><col style="width:150px"><col style="width:150px"><col style="width:140px"><col style="width:80px"><col style="width:110px"><col style="width:20%"><col><col style="width:150px"></colgroup>
-              <thead><tr><th>Source date</th><th>IOC</th><th>Analysis</th><th>Source row</th><th>Column</th><th>Observed value</th><th>Excerpt</th><th>Rule</th></tr></thead>
+              <colgroup id="ioc-match-cols"><col style="width:150px"><col style="width:150px"><col style="width:140px"><col style="width:80px"><col style="width:110px"><col style="width:20%"><col><col style="width:150px"></colgroup>
+              <thead id="ioc-match-head"><tr><th>Source date</th><th>IOC</th><th>Analysis</th><th>Source row</th><th>Column</th><th>Observed value</th><th>Excerpt</th><th>Rule</th></tr></thead>
               <tbody id="ioc-rows"></tbody>
             </table>
           </div>
@@ -576,7 +592,7 @@
       </div>
 
       <div id="timeline-view" role="tabpanel" aria-labelledby="tab-timeline" tabindex="0" style="display:none;flex-direction:column;flex:1;min-height:0">
-        <div class="filterbar">
+        <div class="filterbar timeline-search-bar">
           <select class="select" id="timeline-kind" aria-label="Correlation field">
             <option value="text">Any text</option>
             <option value="user">User</option>
@@ -587,6 +603,8 @@
           <input class="search" id="timeline-search" placeholder="Correlate an entity across the case…  Enter to search">
           <button class="btn" id="timeline-correlate" title="Look for the entity in every analysis">Correlate</button>
           <label title="Compare the whole value of the field, case-insensitive; nothing is deduced"><input type="checkbox" id="timeline-exact"> Exact value</label>
+        </div>
+        <div class="filterbar timeline-options">
           <label><input type="checkbox" id="timeline-bookmarks"> Bookmarks</label>
           <label><input type="checkbox" id="timeline-undated" checked> Include rows without a date</label>
           <label><input type="checkbox" id="timeline-filters"
@@ -606,6 +624,7 @@
             <option value="0">Centred range…</option><option value="900">15 minutes</option><option value="3600">1 hour</option>
             <option value="86400">24 hours</option><option value="604800">7 days</option></select>
           <button class="btn" data-act="tl-clear-range" title="Remove the time filter and show events at all dates" disabled>Clear time range</button>
+          <button class="btn" id="timeline-group">Group events…</button>
           <span class="info" id="timeline-selection"></span>
         </div>
         <div class="filterbar" id="timeline-controls">
@@ -617,18 +636,20 @@
           <button class="btn" data-act="tl-back" title="Back to the previous chart window; the time filter is kept">Back</button>
           <button class="btn" data-act="tl-isolate" title="Show every source again">Show all sources</button>
           <span class="info" id="timeline-window"></span>
-          <span class="note">drag on the chart to select a duration · shift-drag to pan · wheel to zoom · double-click to fit · click a legend chip to hide a source</span>
         </div>
         <div class="timeline-overview" id="timeline-overview" title="Overview of the whole extent — click to move the window">
           <canvas id="timeline-overview-canvas" height="34"></canvas>
         </div>
         <div class="timeline-legend" id="timeline-legend"></div>
         <div class="timeline-hist" id="timeline-hist"></div>
+        <div class="timeline-axis" id="timeline-axis" aria-label="UTC time axis" hidden></div>
+        <div class="timeline-key note" id="timeline-key"></div>
+        <nav class="group-trail" id="timeline-group-path" aria-label="Timeline grouping path" hidden></nav>
         <div class="gridwrap" style="flex:1">
           <div class="gridbody" id="timeline-body">
             <table>
-              <colgroup><col style="width:170px"><col style="width:150px"><col style="width:100px"><col><col style="width:200px"></colgroup>
-              <thead><tr><th>Date UTC</th><th>Analysis</th><th>Source row</th><th>Summary</th><th>Note</th></tr></thead>
+              <colgroup id="timeline-table-cols"><col style="width:170px"><col style="width:150px"><col style="width:100px"><col><col style="width:200px"></colgroup>
+              <thead id="timeline-table-head"><tr><th>Date UTC</th><th>Analysis</th><th>Source row</th><th>Summary</th><th>Note</th></tr></thead>
               <tbody id="timeline-rows"></tbody>
             </table>
           </div>
@@ -1622,7 +1643,8 @@
   <div class="dialog" style="--dialog-width:760px">
     <h3>Global search</h3>
     <div class="body">
-      <div class="row"><label for="global-text">Text</label><input id="global-text" placeholder="Search every analysis of the case"></div>
+      <div class="row"><label for="global-text">Text</label><input id="global-text" placeholder="Search text, IP, path or hash">
+        <select class="select" id="global-scope" aria-label="Search scope"><option value="case">In this case</option><option value="library">Across cases</option></select></div>
       <div class="note" id="global-summary">Nothing searched yet.</div>
       <div class="columns-list" id="global-results" style="max-height:320px"></div>
     </div>
@@ -1810,11 +1832,12 @@
 
 <div class="modal" id="columns-modal">
   <div class="dialog">
-    <h3>Columns</h3>
+    <h3 id="columns-title">Grid preferences</h3>
     <div class="body">
       <div class="row">
         <label for="column-search">Find a column</label>
         <input id="column-search" type="search" autocomplete="off">
+        <label><input type="checkbox" id="columns-hidden-only"> Hidden only</label>
         <span id="column-visibility" class="note" role="status"></span>
       </div>
       <div id="columns-list" class="columns-list"></div>
@@ -1823,10 +1846,70 @@
     <div class="foot">
       <button class="btn" id="hide-empty-columns" data-act="hide-empty-columns">Hide empty columns</button>
       <button class="btn" data-act="columns-reset">Show all</button>
+      <button class="btn" id="family-save" hidden>Save for this family</button>
       <button class="btn" data-act="derived">Add a derived column…</button>
       <button class="btn" data-act="settings-close">Close</button>
     </div>
   </div>
+</div>
+
+<div class="modal" id="column-values-modal">
+  <div class="dialog" style="--dialog-width:540px">
+    <h3 id="column-values-title">Column values</h3>
+    <div class="body">
+      <input id="column-values-search" type="search" placeholder="Find a value" aria-label="Find a column value">
+      <div class="note" id="column-values-status" role="status"></div>
+      <div class="columns-list" id="column-values-list"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="column-values-prev">Previous</button>
+      <button class="btn" id="column-values-more">Next values</button>
+      <button class="btn" id="column-values-hide">Hide column</button>
+      <button class="btn" id="column-values-apply">Apply selection</button>
+      <button class="btn" data-act="settings-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="recmd-modal">
+  <div class="dialog" style="--dialog-width:520px">
+    <h3>RECmd batch results</h3>
+    <div class="body">
+      <div class="row" id="recmd-presets"></div>
+      <div class="row" id="recmd-filters" aria-label="Filter RECmd results"></div>
+    </div>
+    <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
+  </div>
+</div>
+
+<div class="modal" id="quick-marks-modal">
+  <div class="dialog" style="--dialog-width:460px">
+    <h3>Row mark cycle</h3>
+    <div class="body">
+      <label for="quick-marks-text">One code and label per line. An empty list uses bookmarks.</label>
+      <textarea id="quick-marks-text" rows="6" placeholder="H = High"></textarea>
+      <div class="note" id="quick-marks-error" role="alert"></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="quick-marks-save">Save</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="table-group-modal">
+  <div class="dialog" style="--dialog-width:430px">
+    <h3>Group rows</h3>
+    <div class="body"><div class="columns-list" id="table-group-levels"></div></div>
+    <div class="foot">
+      <button class="btn" id="table-group-apply">Apply grouping</button>
+      <button class="btn" data-act="settings-close">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="row-menu" id="tree-menu" hidden>
+  <button class="item" id="tree-expose-sources">Show source files</button>
 </div>
 
 <div class="modal" id="group-modal">
@@ -1868,5 +1951,6 @@
 <script src="static/app.js"></script>
 <script src="static/windows.js"></script>
 <script src="static/investigation.js"></script>
+<script src="static/review.js"></script>
 </body>
 </html>

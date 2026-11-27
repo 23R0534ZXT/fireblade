@@ -1,5 +1,7 @@
 """Shared, parameterized SQL for filters and per-page format rules. No Qt."""
 
+import json
+
 from fireblade.core.models import Filter, FilterGroup
 
 
@@ -45,6 +47,15 @@ def compile_condition(condition, column, numeric_expression, depth=0, budget=Non
         ), []
     if op in ("eq", "ne"):
         return f"{col} {'=' if op == 'eq' else 'IS DISTINCT FROM'} ?", [value]
+    if op == "one_of":
+        choices = json.loads(value)
+        if (
+            not isinstance(choices, list)
+            or len(choices) > 100
+            or any(not isinstance(choice, str) for choice in choices)
+        ):
+            raise ValueError("Select up to 100 column values.")
+        return f"coalesce(CAST({col} AS VARCHAR), '') IN (SELECT unnest(?::VARCHAR[]))", [choices]
     if op in ("contains", "not_contains", "starts", "ends", "regex"):
         fn = {
             "contains": "contains",

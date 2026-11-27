@@ -97,6 +97,30 @@ def relocate(value, mapping, key=None):
     return value
 
 
+def rebind_row_marks(destination, original_id, mapping):
+    """Keep saved row classifications attached to the repacked analysis paths."""
+    from fireblade.core import case_workspace as workspace
+
+    if not workspace.path_of(destination).is_file():
+        return
+    data = workspace.load(destination)
+    marks = data.get("row_marks", {})
+    if not marks:
+        return
+    destinations = {}
+    for old, new in mapping.items():
+        parts = PurePosixPath(old.replace("\\", "/")).parts
+        if original_id not in parts:
+            continue
+        record = PurePosixPath(*parts[parts.index(original_id) + 1 :]).as_posix()
+        destinations[record] = Path(new).relative_to(destination).as_posix()
+    rebound = {}
+    for record, entries in marks.items():
+        rebound.setdefault(destinations.get(record, record), {}).update(entries)
+    data["row_marks"] = rebound
+    workspace.save(destination, data)
+
+
 def export_package(
     library,
     data,
@@ -621,6 +645,7 @@ def import_package(library, source, *, max_bytes=None):
             from fireblade.core.layout import write_json
 
             write_json(destination / "package-provenance.json", manifest)
+            rebind_row_marks(destination, original["id"], mapping)
             result = library.save(
                 created["id"],
                 snapshots,

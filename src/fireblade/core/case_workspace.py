@@ -190,6 +190,21 @@ def validate(data):
         raise ValueError("Invalid case workspace date")
     datetime.fromisoformat(data["updated"])
 
+    marks = data.get("row_marks", {})
+    if not isinstance(marks, dict):
+        raise ValueError("Invalid row marks")
+    for record, entries in marks.items():
+        _text(record, "Source record", 4096)
+        if not isinstance(entries, dict):
+            raise ValueError("Invalid row marks")
+        for row, mark in entries.items():
+            if not re.fullmatch(r"[1-9][0-9]{0,18}", row) or not isinstance(mark, dict):
+                raise ValueError("Invalid marked row")
+            _text(mark.get("code"), "Mark code", 8)
+            _text(mark.get("label"), "Mark label", 80)
+            _text(mark.get("file"), "Source file", 4096, allow_empty=True)
+            _text(mark.get("machine", ""), "Machine", 200, allow_empty=True)
+
     client = data.get("client")
     if not isinstance(client, dict):
         raise ValueError("Invalid client record")

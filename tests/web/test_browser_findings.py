@@ -233,3 +233,18 @@ def test_findings_are_reloaded_for_the_new_case(findings, server):
         "document.getElementById('finding-summary').innerText.includes('no finding yet')"
     )
     assert _rows(page).inner_text() == "No finding matches this filter."
+
+
+def test_the_findings_table_retains_its_parent_group(findings):
+    page = findings
+    page.click("#finding-table-group")
+    page.locator("#table-group-levels input[value='1']").check()
+    page.locator("#table-group-levels input[value='3']").check()
+    page.click("#table-group-apply")
+    page.locator("#hayabusa-rows button").get_by_text("Severity · high (2)", exact=False).click()
+    page.locator("#hayabusa-rows button").get_by_text("Computer · PC-2 (1)", exact=False).click()
+    assert page.locator("#hayabusa-rows tr:visible").count() == 1
+    page.locator("#finding-table").locator(
+        "xpath=preceding-sibling::div[contains(@class,'table-group-controls')][1]"
+    ).get_by_role("button", name="← Parent").click()
+    assert page.locator("#hayabusa-rows .table-review-group").count() == 2

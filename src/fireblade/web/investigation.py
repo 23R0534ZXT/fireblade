@@ -258,6 +258,17 @@ def register(app, library):
             "suggestions": tracking.suggest_fields(values),
         }
 
+    @app.get(base + "/tracking/events/{event_id}")
+    @operation
+    def get_event(library, identifier: str, event_id: str):
+        data = ws.load(library.library.folder(identifier))
+        entry = next(
+            (item for item in data.get("evidence_events", []) if item["id"] == event_id), None
+        )
+        if entry is None:
+            raise ValueError("This observation is no longer in the investigation log.")
+        return entry
+
     @app.delete(base + "/tracking/events/{event_id}")
     @operation
     def delete_event(library, identifier: str, event_id: str):

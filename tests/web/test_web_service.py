@@ -834,3 +834,42 @@ def test_import_space_estimates_preview_work_and_browser_staging(tmp_path, monke
     folder = library.folder(identifier)
     assert not (folder / "evidence").exists()
     assert not (folder / "collections").exists()
+
+
+def test_row_marks_keep_the_raw_record_through_layout_and_package(tmp_path):
+    root = tmp_path / "cases"
+    evidence = tmp_path / "collection"
+    evidence.mkdir()
+    for name in ("one.csv", "two.csv"):
+        (evidence / name).write_text(f"Host,Detail\nPC,{name}\n")
+    service = Library(root)
+    try:
+        identifier = service.create_case("Review", "", "windows")["id"]
+        service.import_source(identifier, evidence, organization="artifacts")
+        original = service.rows(identifier, 0)
+        row = next(item[0] for item in original["rows"] if item[-1] == "two.csv")
+        original_mark = service.row_mark(identifier, 0, row, "V", "Verify", "")
+        assert original_mark["code"] == "V"
+        tag = next(node for node in service.graph(identifier)["nodes"] if node["kind"] == "tag")
+        record = tag["evidence"]["records"][0]
+        assert service.marked_row(identifier, record["record"], record["line"]) == {
+            "analysis": 0,
+            "row": row,
+        }
+
+        service.reorganize(identifier, "files")
+        target = next(
+            item["index"]
+            for item in service.case(identifier)["analyses"]
+            if item["label"] == "two.csv"
+        )
+        assert service.rows(identifier, target)["row_marks"][1]["code"] == "V"
+
+        service.export_package(identifier)
+        copied = service.import_package(service.package_file(identifier))["id"]
+        target = next(
+            item["index"] for item in service.case(copied)["analyses"] if item["label"] == "two.csv"
+        )
+        assert service.rows(copied, target)["row_marks"][1]["code"] == "V"
+    finally:
+        service.close()

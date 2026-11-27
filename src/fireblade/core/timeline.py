@@ -79,6 +79,15 @@ COMBINED_NAMES = (
 )
 SPLIT_NAMES = (("date", "time"), ("logdate", "logtime"), ("jour", "heure"))
 SINGLE_NAMES = ("date", "time", "horodatage", "dateheure")
+TIMELINE_GROUPS = {
+    "analysis": "cast(source AS VARCHAR)",
+    "day": (
+        "CAST(DATE '1970-01-01' + CAST(time_ns // 86400000000000 "
+        "- CASE WHEN time_ns % 86400000000000 < 0 THEN 1 ELSE 0 END AS INTEGER) AS VARCHAR)"
+    ),
+    "date_status": "CASE WHEN time_ns IS NULL THEN 'Undated' ELSE 'Dated' END",
+    "bookmark": "CASE WHEN bookmarked THEN 'Bookmarked' ELSE 'Unmarked' END",
+}
 
 
 def normalized_headers(headers):
@@ -123,6 +132,8 @@ def guess_time_columns(headers, preferred=()):
     for name in SINGLE_NAMES:
         if name in normalized:
             return normalized.index(name)
+    if {"sourcecreated", "sourcemodified", "targetcreated"}.issubset(normalized):
+        return normalized.index("sourcemodified")
     return next((i for i, name in enumerate(normalized) if name.endswith("utc")), None)
 
 
@@ -463,6 +474,7 @@ class TimelineStore:
         exact=False,
         bookmarks=False,
         include_undated=False,
+        grouping=(),
     ):
         clauses, args = [], []
         if sources is not None:
@@ -481,6 +493,9 @@ class TimelineStore:
             )
         if bookmarks:
             clauses.append("bookmarked")
+        for field, value in grouping:
+            clauses.append(f"{TIMELINE_GROUPS[field]} IS NOT DISTINCT FROM ?")
+            args.append(value)
         if kind not in KINDS:
             raise ValueError("Type de corrélation invalide")
         if text:
@@ -520,6 +535,21 @@ class TimelineStore:
                 args + [self.PAGE_SIZE, max(0, int(offset))],
             ).fetchall()
             return dict(count=count, rows=rows)
+
+    def grouped(self, field, offset=0, **filters):
+        value = TIMELINE_GROUPS[field]
+        where, args = self.where(**filters)
+        with self.lock:
+            rows = self.db.execute(
+                f"SELECT {value} AS value, count(*) AS total, count(*) OVER () FROM events{where} "
+                "GROUP BY 1 ORDER BY total DESC, value LIMIT ? OFFSET ?",
+                [*args, self.PAGE_SIZE, max(0, int(offset))],
+            ).fetchall()
+        return {
+            "count": rows[0][2] if rows else 0,
+            "groups": [[value, count] for value, count, _ in rows],
+            "rows": [],
+        }
 
     def histogram(self, start, end, bins=120, **filters):
         if int(end) < int(start):

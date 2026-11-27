@@ -37,16 +37,16 @@ from fireblade.core.models import OPERATORS as CORE_OPERATORS
 from fireblade.core.models import AnalysisSnapshot, Filter, SortKey, View
 from fireblade.core.sessions import MAX_SESSION_BYTES, read_session
 from fireblade.core.summaries import BOOKMARK_GROUP_COLUMN
-from fireblade.core.timeline import TimelineStore
+from fireblade.core.timeline import TIMELINE_GROUPS, TimelineStore
 from fireblade.core.workspace_reader import WorkspaceReader
-from fireblade.web import english
+from fireblade.web import english, grid_review
 
 # Columns the grid always shows before the analysis own columns, in display order.
 META_COLUMNS = ["__row_id"]
 
 # The comparisons are the core's own list, never a copy of it: a filter or a rule the desktop can
 # write must be one the Host accepts.
-OPERATORS = {code for _label, code in CORE_OPERATORS}
+OPERATORS = {code for _label, code in CORE_OPERATORS} | {"one_of"}
 
 
 class ServiceError(Exception):
@@ -536,7 +536,14 @@ class Library:
         except (OSError, ValueError):
             workspace = {}
         manual = (workspace.get("graph") or {}).get("nodes") or []
-        if not groups and not (workspace.get("entities")) and not manual:
+        has_tags = bool(workspace.get("evidence_events") or workspace.get("row_marks"))
+        if (
+            not groups
+            and not workspace.get("entities")
+            and not manual
+            and not has_tags
+            and not workspace.get("iocs")
+        ):
             # An empty graph is a state of the case, not a failure: the window says what to do.
             message = (
                 "No finding, no entity and no free node: run a detection, "
@@ -564,11 +571,13 @@ class Library:
         from fireblade.web import graph_evidence
 
         graph_evidence.build(positioned, groups, workspace, source)
+        omitted_tags = grid_review.graph_tags(positioned, workspace)
         return {
             "nodes": positioned.get("nodes", []),
             "edges": positioned.get("edges", []),
             "groups": len(groups),
             "source": source,
+            "tags_omitted": omitted_tags,
         }
 
     def _graph_groups(self, identifier: str, folder: Path) -> tuple[list, dict]:
@@ -1388,6 +1397,7 @@ class Library:
             return {"widths": {}, "hidden": [], "pinned": [], "pinned_right": [], "order": []}
         layout.setdefault("pinned_right", [])
         layout.setdefault("order", [])
+        layout["configured"] = True
         return layout
 
     @_case_operation
@@ -2442,7 +2452,10 @@ class Library:
             raise ServiceError("Type some text to search for.")
         results = []
         total = 0
-        entries = [item for item in self._analyses(self.library.read(identifier)) if item["found"]]
+        case_record = self.library.read(identifier)
+        entries = [item for item in self._analyses(case_record) if item["found"]]
+        previews = 200
+        limit = max(0, min(int(limit), 50))
         for position, entry in enumerate(entries, start=1):
             if progress:
                 progress(f"Searching · analysis {position}/{len(entries)} — {entry['label']}")
@@ -2452,18 +2465,68 @@ class Library:
                 count = int(case.count(view))
                 total += count
                 rows = []
-                if count:
-                    for row in case.page(view, offset=0, limit=min(limit, 50)):
+                if count and limit and previews:
+                    headers = column_labels(case)
+                    for row in case.page(view, offset=0, limit=min(limit, previews)):
+                        values = [json_value(value) for value in row[1:]]
+                        matches = [
+                            {"column": name, "value": str(value)[max(0, at - 64) : at + 180]}
+                            for name, value in zip(headers, values)
+                            if value is not None
+                            and (at := str(value).lower().find(needle.lower())) >= 0
+                        ][:4]
                         rows.append(
                             {
                                 "row_id": json_value(row[0]),
-                                "cells": [json_value(value) for value in row[1:]],
+                                "cells": [json_value(value) for value in row[1:]]
+                                if len(headers) <= 128
+                                else [],
+                                "matches": matches,
+                                "file": grid_review.provenance(case, values)["file"],
                             }
                         )
+                    previews -= len(rows)
             results.append(
                 {"index": entry["index"], "label": entry["label"], "count": count, "rows": rows}
             )
-        return {"text": needle, "total": total, "analyses": results}
+        return {
+            "text": needle,
+            "total": total,
+            "analyses": results,
+            "case": identifier,
+            "case_name": case_record.get("name", ""),
+        }
+
+    def search_library(self, identifier, text, progress):
+        """Search readable cases in the library, with a separate lock per case."""
+        cases = [item for item in self.cases()["cases"] if not item["storage_archive"]]
+        cases.sort(key=lambda item: item["id"] != identifier)
+        results, skipped = [], []
+        for position, item in enumerate(cases, 1):
+            prefix = f"Case {position}/{len(cases)} · {item['name']}"
+            progress(prefix)
+            try:
+                result = self.search(
+                    item["id"],
+                    text,
+                    limit=8,
+                    progress=lambda message, prefix=prefix: progress(f"{prefix} · {message}"),
+                )
+            except (ServiceError, OSError, ValueError, KeyError) as exc:
+                skipped.append({"case": item["name"], "error": str(exc)})
+                continue
+            if result["total"]:
+                result["analyses"] = [
+                    analysis for analysis in result["analyses"] if analysis["count"]
+                ]
+                results.append(result)
+        return {
+            "text": text,
+            "total": sum(case["total"] for case in results),
+            "cases": results,
+            "skipped": skipped,
+            "searched": len(cases),
+        }
 
     # -- actions and tracking ----------------------------------------------
 
@@ -3452,7 +3515,14 @@ class Library:
         return HuntStore(path)
 
     def _hunt_payload(
-        self, identifier: str, store, name: str, offset: int = 0, ioc: int | None = None
+        self,
+        identifier: str,
+        store,
+        name: str,
+        offset: int = 0,
+        ioc: int | None = None,
+        groups=(),
+        path=(),
     ) -> dict:
         """One hunt as the page reads it: the indicators with their counts and a page of details."""
         from fireblade.core.ioc_hunt import KINDS
@@ -3460,7 +3530,7 @@ class Library:
 
         meta = dict(store.metadata)
         listing = store.indicators()
-        page = store.page(max(0, int(offset)), ioc=ioc)
+        page = store.page(max(0, int(offset)), ioc=ioc, groups=groups, path=path)
         sources = store.sources()
         entries = {
             str(Path(str(item["path"])).resolve()): item
@@ -3499,6 +3569,13 @@ class Library:
             by_kind[row[1]] = by_kind.get(row[1], 0) + int(row[5] or 0)
         return {
             "hunt": name,
+            "groups": page.get("groups"),
+            "group_sources": {
+                str(item["id"]): analysis_of(item["path"])[1] or Path(item["path"]).name
+                for item in sources
+            }
+            if groups
+            else {},
             "indicators": len(listing),
             "list": [
                 {
@@ -3579,11 +3656,21 @@ class Library:
             "errors": [_english(item) for item in errors],
         }
 
-    def hunt(self, identifier: str, name: str, offset: int = 0, ioc: int | None = None) -> dict:
+    def hunt(
+        self,
+        identifier: str,
+        name: str,
+        offset: int = 0,
+        ioc: int | None = None,
+        groups=(),
+        path=(),
+    ) -> dict:
         """A saved hunt replayed from its store: no analysis is read again."""
         store = self._hunt_store(identifier, name)
         try:
-            return self._hunt_payload(identifier, store, name, offset=offset, ioc=ioc)
+            return self._hunt_payload(
+                identifier, store, name, offset=offset, ioc=ioc, groups=groups, path=path
+            )
         finally:
             store.close()
 
@@ -3833,6 +3920,7 @@ class Library:
             column_label=shown.get(item.get("column_name") or "", item.get("column_name")),
             split=bool(headers and split_date_time(headers)),
             chosen=(dates or {}).get(str(item.get("id")), "auto"),
+            date_help=grid_review.date_help(headers),
         )
         return source
 
@@ -3903,6 +3991,8 @@ class Library:
         live: dict | None = None,
         sources: list[int] | None = None,
         rebuild: bool = False,
+        groups: list[str] | None = None,
+        group_path: list[str | None] | None = None,
     ) -> dict:
         """Counts the case's rows over time with the desktop's own TimelineStore.
 
@@ -3918,7 +4008,11 @@ class Library:
             live=live,
             rebuild=rebuild,
         )
-        filters = {"include_undated": bool(include_undated)}
+        groups, group_path = groups or [], group_path or []
+        filters = {
+            "include_undated": bool(include_undated),
+            "grouping": self._timeline_grouping(groups, group_path),
+        }
         if sources is not None:
             filters["sources"] = [int(item) for item in sources]
         if text:
@@ -3933,9 +4027,13 @@ class Library:
         if end is not None:
             filters["end"] = int(end)
         low, high, total, dated = store.extent(**filters)
-        page = store.page(offset, **filters)
+        page = (
+            store.grouped(groups[len(group_path)], offset, **filters)
+            if len(group_path) < len(groups)
+            else store.page(offset, **filters)
+        )
         payload = {
-            "sources": [self._timeline_source(item, dates) for item in store.sources],
+            "sources": store.host_sources,
             "extent": {
                 "start": low,
                 "end": high,
@@ -3943,6 +4041,7 @@ class Library:
                 "dated": int(dated or 0),
             },
             "count": int(page["count"]),
+            "groups": page.get("groups"),
             "page_size": store.PAGE_SIZE,
             "offset": int(offset),
             "rows": [
@@ -4006,6 +4105,7 @@ class Library:
             respect_filters=bool(respect_filters),
             progress=(lambda text: progress(text)) if progress else (lambda _text: None),
         )
+        store.host_sources = [self._timeline_source(item, dates) for item in store.sources]
         for old in list(self._timelines):
             if old[0] == identifier or old == key:
                 try:
@@ -4014,6 +4114,19 @@ class Library:
                     pass
         self._timelines[key] = store
         return store
+
+    @staticmethod
+    def _timeline_grouping(groups, path):
+        if (
+            not isinstance(groups, list)
+            or any(not isinstance(key, str) or key not in TIMELINE_GROUPS for key in groups)
+            or len(set(groups)) != len(groups)
+            or not isinstance(path, list)
+            or len(path) > len(groups)
+            or any(value is not None and not isinstance(value, str) for value in path)
+        ):
+            raise ServiceError("Invalid timeline grouping.")
+        return list(zip(groups, path))
 
     @_case_operation
     def timeline_source_row(self, identifier: str, index: int, row_id: int) -> dict:
@@ -4041,6 +4154,8 @@ class Library:
             "row_id": json_value(row[0]),
             "columns": headers,
             "values": values,
+            "provenance": grid_review.provenance(case, values),
+            "date_help": grid_review.date_help(headers),
         }
 
     def timeline_export(self, *args, **kwargs) -> tuple[bytes, dict]:
@@ -4062,6 +4177,8 @@ class Library:
         respect_filters: bool = False,
         live: dict | None = None,
         sources: list[int] | None = None,
+        groups: list[str] | None = None,
+        group_path: list[str | None] | None = None,
     ) -> tuple[bytes, dict]:
         """The timeline as the desktop exports it: verified rows, and a receipt.
 
@@ -4069,7 +4186,10 @@ class Library:
         the SHA-256 of the content; a short write raises instead of returning.
         """
         store = self._timeline_store(identifier, dates, respect_filters=respect_filters, live=live)
-        filters = {"include_undated": bool(include_undated)}
+        filters = {
+            "include_undated": bool(include_undated),
+            "grouping": self._timeline_grouping(groups or [], group_path or []),
+        }
         if sources is not None:
             filters["sources"] = [int(item) for item in sources]
         if text:
@@ -5551,6 +5671,8 @@ class Library:
         """The callable a task runs, bound to the method the window already knows."""
         if kind == "search":
             return lambda note: self.search(identifier, payload.get("text", ""), progress=note)
+        if kind == "search-library":
+            return lambda note: self.search_library(identifier, payload.get("text", ""), note)
         if kind == "scan":
             return lambda note: self.ioc_scan(
                 identifier,
@@ -5584,6 +5706,8 @@ class Library:
                 live=payload.get("live") or None,
                 sources=payload.get("sources"),
                 rebuild=bool(payload.get("rebuild")),
+                groups=payload.get("groups"),
+                group_path=payload.get("group_path"),
             )
         if kind == "detect":
             return lambda note: self.detect(
@@ -5929,6 +6053,55 @@ class Library:
         return META_COLUMNS + column_labels(case)
 
     @_case_operation
+    def column_values(self, identifier, index, column, text="", offset=0, context=None):
+        case = self._case_for(identifier, index)
+        context = context or {}
+        source_files = column is None
+        if source_files:
+            if not grid_review.organized(case):
+                return {
+                    "column": None,
+                    "values": [[case.info.get("path", ""), case.info.get("rows", 0)]],
+                    "next": None,
+                }
+            column = 1
+        fields = ("search", "expression", "bookmarks_only", "groups", "interval")
+        filters = [
+            item for item in context.get("filters", []) if len(item) == 3 and item[0] != column
+        ]
+        view = self._view_from(
+            case, filters=filters, **{key: context[key] for key in fields if key in context}
+        )
+        result = grid_review.facets(
+            case, column, view, context.get("path") or (), text[:500], offset
+        )
+        if source_files:
+            result["column"] = column
+        return result
+
+    @_case_operation
+    def row_mark(self, identifier, index, row, code, label, expected):
+        case = self._case_for(identifier, index)
+        folder = self.library.folder(identifier)
+        return grid_review.save_mark(self, folder, case, row, code, label, expected)
+
+    @_case_operation
+    def marked_row(self, identifier, record, line):
+        folder = self.library.folder(identifier)
+        aliases = grid_review.portable_aliases(folder)
+        entries = self._analyses(self.library.read(identifier))
+        for entry in entries:
+            if not entry["found"]:
+                continue
+            case = self._case_for(identifier, entry["index"], entry)
+            for item in grid_review.source_ranges(case):
+                if not 1 <= line <= item["rows"]:
+                    continue
+                if grid_review.record_path(self, folder, case, item["path"], aliases) == record:
+                    return {"analysis": entry["index"], "row": item["first_row"] + line - 1}
+        raise ServiceError("This marked record is outside the currently open grids.")
+
+    @_case_operation
     def empty_columns(self, identifier: str, index: int) -> list[int]:
         """Grid positions whose source column contains no non-whitespace value."""
         case = self._case_for(identifier, index)
@@ -6157,6 +6330,19 @@ class Library:
                 ).fetchone()[0]
             else:
                 page = case.page(view, path=depth, offset=offset, limit=limit)
+                from fireblade.core.summaries import group_expression
+
+                page_total = total
+                if depth or view.groups:
+                    where, args = case.where(view, depth)
+                    count = "count(*)"
+                    if len(depth) < len(view.groups):
+                        field = group_expression(case, view, view.groups[len(depth)])
+                        count = f"count(DISTINCT {field}) + coalesce(max(({field} IS NULL)::INT),0)"
+                    with case.operation():
+                        page_total = case.db.execute(
+                            f"SELECT {count} FROM events{where}", args
+                        ).fetchone()[0]
             rows = [[json_value(value) for value in row] for row in page]
             totals = footer = None
             if view.total_summaries and view.show_total_footer:
@@ -6212,8 +6398,12 @@ class Library:
                 raise ServiceError("Invalid column window")
             projection = list(dict.fromkeys([0, *requested]))
             rows = [[row[i] for i in projection] for row in rows]
+        recmd = grid_review.recmd_columns(case.headers)
+        if recmd and grid_review.organized(case):
+            recmd["file"] = 1  # the collection's source-file column
         return {
             "columns": labels,
+            "recmd_columns": recmd,
             "rows": rows,
             "projection": projection,
             # which colour rule each row of the page answers to, and what each rule paints
@@ -6225,6 +6415,12 @@ class Library:
             "grouped": grouped,
             "outline": outline,
             "outline_total": outline_total,
+            "page_total": outline_total if outline is not None else int(page_total),
+            "row_marks": {}
+            if grouped
+            else grid_review.marks(
+                self, self.library.folder(identifier), case, [row[0] for row in page]
+            ),
             "path": list(depth),
             "timestamps": timestamps,
             "summaries": [

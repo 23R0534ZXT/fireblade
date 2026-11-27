@@ -81,8 +81,8 @@ still missing, read `HOST-AUDIT.md`.
 | Ouvrir l’événement EVTX source | Alert row menu: the EVTX analysis, filtered on the record. | `test_an_alert_points_to_its_source_event` |
 | Plugins | Preferences > Profiles and plugins…: catalogue, installed plugins, errors. | `test_a_presentation_plugin_is_installed_and_listed` |
 | Qu’est-ce qui a lancé {} ? | Row menu > What launched this process? | `test_pivot_answers_what_launched_a_process` |
-| Recherche globale | Global search in the toolbar. | `test_a_global_search_finds_the_value_and_names_its_analysis` |
-| Rechercher dans tous les artefacts | Global search in the toolbar. | `test_a_global_search_finds_the_value_and_names_its_analysis` |
+| Recherche globale | Analyses > Search scope > In this case. | `test_a_global_search_finds_the_value_and_names_its_analysis` |
+| Rechercher dans tous les artefacts | Analyses > Search scope > In this case. | `test_a_global_search_finds_the_value_and_names_its_analysis` |
 | Rechercher des IOC | IOC hunting tab. | `test_an_ioc_scan_matches_the_pasted_indicator` |
 | Regrouper les dates par | Group… with a date interval. | `test_search_and_column_filter` |
 | Retirer | Actions & tracking > remove. | `test_tracking_actions_are_created_updated_and_exported` |

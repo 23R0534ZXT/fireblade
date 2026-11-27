@@ -996,7 +996,7 @@
       "label": "Recherche globale",
       "kind": "command",
       "status": "covered",
-      "where": "Global search in the toolbar.",
+      "where": "Analyses > Search scope > In this case.",
       "test": "test_a_global_search_finds_the_value_and_names_its_analysis",
       "reason": "",
       "plan": ""
@@ -1005,7 +1005,7 @@
       "label": "Rechercher dans tous les artefacts",
       "kind": "command",
       "status": "covered",
-      "where": "Global search in the toolbar.",
+      "where": "Analyses > Search scope > In this case.",
       "test": "test_a_global_search_finds_the_value_and_names_its_analysis",
       "reason": "",
       "plan": ""

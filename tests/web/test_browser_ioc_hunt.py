@@ -126,3 +126,19 @@ def test_a_short_indicator_list_leaves_room_for_details_and_a_long_list_scrolls(
     page.wait_for_function("iocState.list.length === 120", timeout=60000)
     assert summary.locator(".gridbody").evaluate("n => n.scrollHeight > n.clientHeight")
     assert details.bounding_box()["height"] > summary.bounding_box()["height"]
+
+
+def test_grouped_matches_drill_to_a_source_and_return(hunted):
+    page = hunted
+    page.click("#ioc-group")
+    page.locator("#table-group-levels input[value='indicator']").check()
+    page.locator("#table-group-levels input[value='source']").check()
+    page.click("#table-group-apply")
+    page.locator("#ioc-rows [data-group-depth='0']").filter(has_text="10.0.0.1").click()
+    page.locator("#ioc-rows [data-group-depth='1']").first.click()
+    page.wait_for_selector("#ioc-rows [data-hit]")
+    assert {row.inner_text() for row in page.locator("#ioc-rows tr td:nth-child(2)").all()} == {
+        "10.0.0.1",
+    }
+    page.locator("#ioc-group-path").get_by_role("button", name="All groups").click()
+    page.wait_for_selector("#ioc-rows [data-group-depth='0']")

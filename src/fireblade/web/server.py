@@ -455,9 +455,21 @@ def create_app(
         return library.hunts(identifier)
 
     @app.get("/api/cases/{identifier}/hunts/{name}")
-    def hunt(identifier: str, name: str, offset: int = 0, ioc: int | None = None):
+    def hunt(
+        identifier: str,
+        name: str,
+        offset: int = 0,
+        ioc: int | None = None,
+        groups: list[str] = Query(default=[]),
+        group_path: str = "",
+    ):
         try:
-            return library.hunt(identifier, name, offset=offset, ioc=ioc)
+            path = json.loads(group_path) if group_path else []
+            if not isinstance(path, list) or any(
+                value is not None and not isinstance(value, str) for value in path
+            ):
+                raise ValueError("Invalid IOC grouping path.")
+            return library.hunt(identifier, name, offset=offset, ioc=ioc, groups=groups, path=path)
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -947,6 +959,8 @@ def create_app(
         respect_filters: bool = False,
         live: str = "",
         sources: str | None = None,
+        groups: list[str] = Query(default=[]),
+        group_path: str = "",
     ):
         """The timeline as a verified CSV: the receipt rides in the headers."""
         options = None
@@ -971,6 +985,8 @@ def create_app(
                 respect_filters=respect_filters,
                 live=_json_object(live),
                 sources=_id_list(sources),
+                groups=groups,
+                group_path=json.loads(group_path) if group_path else [],
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1481,6 +1497,8 @@ def create_app(
         respect_filters: bool = False,
         live: str = "",
         sources: str | None = None,
+        groups: list[str] = Query(default=[]),
+        group_path: str = "",
     ):
         options = None
         if dates:
@@ -1505,6 +1523,8 @@ def create_app(
                 respect_filters=respect_filters,
                 live=_json_object(live),
                 sources=_id_list(sources),
+                groups=groups,
+                group_path=json.loads(group_path) if group_path else [],
             )
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1539,6 +1559,41 @@ def create_app(
         except (ServiceError, ValueError, OSError, KeyError) as exc:
             raise HTTPException(status_code=400, detail=_english(exc)) from exc
 
+    @app.post("/api/cases/{identifier}/analyses/{index}/column-values")
+    def column_values(identifier: str, index: int, payload: dict):
+        try:
+            return library.column_values(
+                identifier,
+                index,
+                payload.get("column"),
+                str(payload.get("text") or ""),
+                int(payload.get("offset") or 0),
+                payload.get("context"),
+            )
+        except (ServiceError, ValueError, OSError, KeyError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/row-mark")
+    def row_mark(identifier: str, index: int, payload: dict):
+        try:
+            return library.row_mark(
+                identifier,
+                index,
+                payload["row"],
+                payload.get("code", ""),
+                payload.get("label", ""),
+                payload.get("expected", ""),
+            )
+        except (ServiceError, ValueError, OSError, KeyError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+
+    @app.get("/api/cases/{identifier}/marked-row")
+    def marked_row(identifier: str, record: str, line: int):
+        try:
+            return library.marked_row(identifier, record, line)
+        except (ServiceError, ValueError, OSError, KeyError) as exc:
+            raise HTTPException(status_code=400, detail=_english(exc)) from exc
+
     @app.get("/api/cases/{identifier}/analyses/{index}/rows")
     def rows(
         identifier: str,
@@ -1552,6 +1607,7 @@ def create_app(
         bookmarks_only: bool = False,
         group: list[int] = Query(default=[]),
         path: list[str] = Query(default=[]),
+        group_path: str = "",
         expanded: bool = False,
         sortkey: list[str] = Query(default=[]),
         interval: str = "",
@@ -1572,6 +1628,15 @@ def create_app(
         sorts = _sort_keys(sortkey)
         summaries = _summaries(summary)
         expression = _expression(expression_json)
+        if group_path:
+            try:
+                path = json.loads(group_path)
+                if not isinstance(path, list) or any(
+                    value is not None and not isinstance(value, str) for value in path
+                ):
+                    raise ValueError
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="Invalid grouping path.") from exc
         return library.rows(
             identifier,
             index,

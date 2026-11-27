@@ -1,0 +1,517 @@
+area	control	interaction evidence
+artifact tree	button#artifacts-close	Host GUI, Targeted browser replay
+artifact tree	button#tree-collapse	Host GUI
+artifact tree	button#tree-expand	Host GUI
+artifact tree	input#tree-search	Host GUI
+artifact tree	select#tree-mode	Host GUI
+cell menu	div[data-act=alert-source]	Docker image browser
+cell menu	div[data-act=bookmark-row]	Host GUI
+cell menu	div[data-act=cell-note]	Host GUI
+cell menu	div[data-act=copy-value]	Host GUI
+cell menu	div[data-act=correlate-value]	Host GUI
+cell menu	div[data-act=exclude-value]	Host GUI
+cell menu	div[data-act=filter-value]	Host GUI
+cell menu	div[data-act=group-by-column]	Host GUI
+cell menu	div[data-act=hide-column]	Host GUI
+cell menu	div[data-act=pin-column-right]	Host GUI
+cell menu	div[data-act=pin-column]	Host GUI
+cell menu	div[data-act=pivot]	Host GUI
+cell menu	div[data-act=rule-from-cell]	Host GUI
+cell menu	div[data-act=search-value]	Host GUI
+cell menu	div[data-act=sort-asc]	Host GUI
+cell menu	div[data-act=sort-desc]	Host GUI
+menu bar	button#artifacts-toggle	Host GUI, Targeted browser replay
+menu bar	div[data-menu=analysis]	Host GUI, Menu gallery, Targeted browser replay
+menu bar	div[data-menu=case]	Host GUI, Menu gallery, Targeted browser replay
+menu bar	div[data-menu=detection]	Host GUI, Menu gallery, Targeted browser replay
+menu bar	div[data-menu=edit]	Host GUI, Menu gallery, Targeted browser replay
+menu bar	div[data-menu=exporter]	Host GUI, Menu gallery, Targeted browser replay
+menu bar	div[data-menu=filters]	Host GUI, Menu gallery, Targeted browser replay
+menu bar	div[data-menu=help]	Host GUI, Menu gallery, Targeted browser replay
+menu bar	div[data-menu=view]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=cell-json]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=coverage-open]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=date-filter]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=derived-check]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=derived]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=detrules-open]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=highlight-text]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=integrity]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=layout-export]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=layout-import]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=profile-apply]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=reload-analysis]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=rules]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=show-imports]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=show-timeline]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=stop-query]	Host GUI, Menu gallery, Targeted browser replay
+menu: analysis	div[data-act=views]	Host GUI, Menu gallery, Targeted browser replay
+menu: case	div[data-act=case-autosave]	Host GUI, Menu gallery, Targeted browser replay
+menu: case	div[data-act=case-history]	Host GUI, Menu gallery, Targeted browser replay
+menu: case	div[data-act=case-save]	Host GUI, Menu gallery, Targeted browser replay
+menu: case	div[data-act=cases-list]	Host GUI, Menu gallery, Targeted browser replay
+menu: case	div[data-act=close-case]	Host GUI
+menu: case	div[data-act=destroy-case]	Host GUI
+menu: case	div[data-act=import-evidence]	Host GUI, Menu gallery, Targeted browser replay
+menu: case	div[data-act=new-case]	Host GUI, Menu gallery, Targeted browser replay
+menu: case	div[data-act=report]	Host GUI, Menu gallery, Targeted browser replay
+menu: detection	div[data-act=alert-context]	Host GUI, Menu gallery, Docker image browser, Targeted browser replay
+menu: detection	div[data-act=detect-run]	Host GUI, Menu gallery, Targeted browser replay
+menu: detection	div[data-act=show-ioc]	Host GUI, Menu gallery, Targeted browser replay
+menu: edit	div[data-act=bookmark-note]	Host GUI, Menu gallery, Targeted browser replay
+menu: edit	div[data-act=copy-row]	Host GUI, Menu gallery, Targeted browser replay
+menu: edit	div[data-act=hunt-ip]	Host GUI, Menu gallery, Targeted browser replay
+menu: edit	div[data-act=mark-selection]	Host GUI, Menu gallery, Targeted browser replay
+menu: edit	div[data-act=note-replace]	Host GUI, Menu gallery, Targeted browser replay
+menu: edit	div[data-act=note-selection]	Host GUI, Menu gallery, Targeted browser replay
+menu: edit	div[data-act=track-bookmarks]	Host GUI, Menu gallery, Targeted browser replay
+menu: edit	div[data-act=track-ip]	Host GUI, Menu gallery, Targeted browser replay
+menu: edit	div[data-act=track-row]	Host GUI, Menu gallery, Targeted browser replay
+menu: edit	div[data-act=unmark-selection]	Host GUI, Menu gallery, Targeted browser replay
+menu: exporter	div[data-act=export-annotations]	Host GUI, Menu gallery, Targeted browser replay
+menu: exporter	div[data-act=export-csv]	Host GUI, Menu gallery, Targeted browser replay
+menu: exporter	div[data-act=export-groups]	Host GUI, Menu gallery, Targeted browser replay
+menu: exporter	div[data-act=export-portable]	Host GUI, Menu gallery, Targeted browser replay
+menu: exporter	div[data-act=export-xlsx]	Host GUI, Menu gallery, Targeted browser replay
+menu: exporter	div[data-act=session-open]	Host GUI, Menu gallery, Targeted browser replay
+menu: exporter	div[data-act=session-save]	Host GUI, Menu gallery, Targeted browser replay
+menu: filters	div[data-act=add-filter]	Host GUI, Menu gallery, Targeted browser replay
+menu: filters	div[data-act=clear-filters]	Host GUI, Menu gallery, Targeted browser replay
+menu: filters	div[data-act=expression-andor]	Host GUI, Menu gallery, Targeted browser replay
+menu: filters	div[data-act=expression-text]	Host GUI, Menu gallery, Targeted browser replay
+menu: filters	div[data-act=filter-active-cell]	Host GUI, Menu gallery, Targeted browser replay
+menu: filters	div[data-act=global-search]	Host GUI, Menu gallery, Targeted browser replay
+menu: help	div[data-act=about]	Host GUI, Menu gallery, Targeted browser replay
+menu: help	div[data-act=help-coverage]	Host GUI, Menu gallery, Targeted browser replay
+menu: help	div[data-act=help-guide]	Host GUI, Menu gallery, Targeted browser replay
+menu: help	div[data-act=help-hayabusa-source]	Host GUI, Menu gallery, Targeted browser replay
+menu: help	div[data-act=help-ioc]	Host GUI, Menu gallery, Targeted browser replay
+menu: help	div[data-act=help-licenses]	Host GUI, Menu gallery, Targeted browser replay
+menu: help	div[data-act=help-timeline]	Host GUI, Menu gallery, Targeted browser replay
+menu: help	div[data-act=help-tutorial]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=collapse-groups]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=columns]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=details-toggle]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=display-settings]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=expand-groups]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=group-column]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=legend]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=messages]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=next-tab]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=open-analyses]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=palette]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=preferences]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=previous-tab]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=profiles-plugins]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=reset-view]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=reset-widths]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=row-height]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=sort-priority]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=summaries]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=toggle-artifacts]	Host GUI, Menu gallery, Targeted browser replay
+menu: view	div[data-act=workspace-guide]	Host GUI, Menu gallery, Targeted browser replay
+page	button#tree-expose-sources	Host GUI
+page	button#update-copy	Host GUI
+page	button#update-dismiss	Host GUI
+page	button#update-link	Host GUI
+tab: actions	button#action-add	Host GUI
+tab: actions	button#action-delete	Host GUI
+tab: actions	button#action-edit	Host GUI
+tab: actions	button#action-export	Host GUI
+tab: actions	button#action-refresh	Host GUI
+tab: actions	button#client-open	Host GUI
+tab: actions	button#entity-add	Host GUI
+tab: actions	button#entity-cancel	Host GUI
+tab: actions	button#incident-open	Host GUI
+tab: actions	button#indicator-add	Host GUI
+tab: actions	button#indicator-remove	Host GUI
+tab: actions	button#tracking-docx	Host GUI
+tab: actions	button#tracking-xlsx	Host GUI
+tab: actions	div[data-sub=actions]	Host GUI
+tab: actions	div[data-sub=entities]	Host GUI
+tab: actions	div[data-sub=indicators]	Host GUI
+tab: actions	div[data-sub=tracking]	Host GUI
+tab: actions	input#action-open-only	Host GUI
+tab: actions	input#action-search	Host GUI
+tab: actions	input#action-title	Host GUI
+tab: actions	input#entity-compromised	Host GUI
+tab: actions	input#entity-hostname	Host GUI
+tab: actions	input#entity-ip	Host GUI
+tab: actions	input#entity-label	Host GUI
+tab: actions	input#entity-notes	Host GUI
+tab: actions	input#entity-os	Host GUI
+tab: actions	input#indicator-label	Host GUI
+tab: actions	input#tracking-fp	Host GUI
+tab: actions	input#tracking-minutes	Host GUI
+tab: actions	select#action-owner	Host GUI
+tab: actions	select#action-priority	Host GUI
+tab: actions	select#action-scope	Host GUI
+tab: actions	select#action-type	Host GUI
+tab: actions	select#entity-kind	Host GUI
+tab: actions	select#tracking-tags	Host GUI
+tab: actions	summary.	Host GUI
+tab: actions	textarea#indicator-values	Host GUI
+tab: analysis	button#bookmarks-only	Host GUI
+tab: analysis	button#clear	Host GUI
+tab: analysis	button#details-toggle	Host GUI
+tab: analysis	button#first	Host GUI
+tab: analysis	button#grid-group-back	Host GUI
+tab: analysis	button#grid-hidden-columns	Host GUI
+tab: analysis	button#grid-hide-empty	Host GUI
+tab: analysis	button#grid-scroll-mode	Host GUI
+tab: analysis	button#group-clear	Host GUI
+tab: analysis	button#next	Host GUI
+tab: analysis	button#prev	Host GUI
+tab: analysis	button#recmd-review	Host GUI
+tab: analysis	button#search-submit	Host GUI, Targeted browser replay
+tab: analysis	button.btn	Host GUI, Targeted browser replay
+tab: analysis	button[data-act=group-column]	Host GUI
+tab: analysis	button[data-act=open-view-menu]	Host GUI, Targeted browser replay
+tab: analysis	input#search	Host GUI, Targeted browser replay
+tab: analysis	select#search-scope	Host GUI, Targeted browser replay
+tab: cases	button#archive-case	Host GUI
+tab: cases	button#restore-case	Host GUI
+tab: cases	button[data-act=destroy-case]	Host GUI
+tab: cases	button[data-act=export-portable]	Host GUI
+tab: cases	button[data-act=free-space]	Host GUI
+tab: cases	button[data-act=import-portable]	Host GUI
+tab: cases	button[data-act=new-case]	Host GUI
+tab: cases	button[data-act=open-selected-case]	Host GUI
+tab: cases	button[data-act=rename-case]	Host GUI
+tab: cases	input#case-archived	Host GUI
+tab: cases	input#case-search	Host GUI
+tab: finding	select#finding-view	Host GUI, Docker image browser
+tab: graph	button#graph-build	Host GUI, Docker image browser
+tab: graph	button#graph-navigator	Docker image browser
+tab: graph	button#graph-node	Host GUI
+tab: graph	button#graph-png	Host GUI, Docker image browser
+tab: graph	button[data-act=graph-recentre]	Host GUI
+tab: graph	button[data-act=graph-zoom-in]	Host GUI
+tab: graph	button[data-act=graph-zoom-out]	Host GUI
+tab: graph	button[data-act=tracking-open]	Host GUI, Targeted browser replay
+tab: graph	select#graph-level	Host GUI
+tab: graph	select#graph-tag-filter	Host GUI
+tab: hayabusa	button#detrules-open	Docker image browser
+tab: hayabusa	button#finding-table-group	Host GUI
+tab: hayabusa	button#hayabusa-run	Docker image browser
+tab: hayabusa	input#finding-search	Host GUI
+tab: hayabusa	select#finding-group	Host GUI
+tab: hayabusa	select#finding-level	Host GUI
+tab: hayabusa	select#hayabusa-level	Docker image browser
+tab: imports	button#coverage-open	Host GUI, Targeted browser replay
+tab: imports	button#imports-refresh	Host GUI, Targeted browser replay
+tab: imports	button#retry-open	Host GUI
+tab: imports	button[data-act=case-history]	Host GUI, Targeted browser replay
+tab: imports	button[data-act=import-copy-unread]	Host GUI
+tab: imports	button[data-act=import-delete]	Host GUI
+tab: imports	button[data-act=import-export-list]	Host GUI
+tab: imports	button[data-act=import-park]	Host GUI
+tab: imports	button[data-act=import-view-file]	Host GUI
+tab: imports	input#imports-search	Host GUI
+tab: imports	select#imports-status	Host GUI
+tab: ioc	button#ioc-all-iocs	Host GUI
+tab: ioc	button#ioc-file-open	Host GUI
+tab: ioc	button#ioc-group	Host GUI, Targeted browser replay
+tab: ioc	button#ioc-next	Host GUI
+tab: ioc	button#ioc-prev	Host GUI
+tab: ioc	button#ioc-scan	Host GUI
+tab: ioc	button#ioc-stop	Host GUI
+tab: ioc	button[data-act=ioc-export-matches]	Host GUI
+tab: ioc	button[data-act=ioc-export-summary]	Host GUI
+tab: ioc	input#ioc-all	Host GUI
+tab: ioc	input#ioc-file	Host GUI
+tab: ioc	input#ioc-filters	Host GUI
+tab: ioc	input#ioc-limit	Host GUI
+tab: ioc	input#ioc-subdomains	Host GUI
+tab: ioc	select#ioc-history	Host GUI
+tab: ioc	textarea#ioc-input	Host GUI
+tab: timeline	button#timeline-build	Host GUI
+tab: timeline	button#timeline-correlate	Host GUI
+tab: timeline	button#timeline-export	Host GUI
+tab: timeline	button#timeline-group	Host GUI, Targeted browser replay
+tab: timeline	button#timeline-next	Host GUI
+tab: timeline	button#timeline-prev	Host GUI
+tab: timeline	button[data-act=timeline-duration]	Host GUI
+tab: timeline	button[data-act=timeline-open-row]	Host GUI
+tab: timeline	button[data-act=tl-back]	Host GUI
+tab: timeline	button[data-act=tl-clear-range]	Host GUI
+tab: timeline	button[data-act=tl-fit]	Host GUI
+tab: timeline	button[data-act=tl-isolate]	Host GUI
+tab: timeline	button[data-act=tl-pan-left]	Host GUI
+tab: timeline	button[data-act=tl-pan-right]	Host GUI
+tab: timeline	button[data-act=tl-zoom-in]	Host GUI
+tab: timeline	button[data-act=tl-zoom-out]	Host GUI
+tab: timeline	input#timeline-bookmarks	Host GUI
+tab: timeline	input#timeline-exact	Host GUI
+tab: timeline	input#timeline-filters	Host GUI
+tab: timeline	input#timeline-search	Host GUI
+tab: timeline	input#timeline-undated	Host GUI
+tab: timeline	select#timeline-kind	Host GUI
+tab: timeline	select#timeline-lane	Host GUI
+tab: timeline	select#timeline-preset	Host GUI
+tabs	button#tab-actions	Host GUI, Menu gallery, Targeted browser replay
+tabs	button#tab-analyses	Host GUI, Menu gallery, Docker image browser, Targeted browser replay
+tabs	button#tab-cases	Host GUI, Menu gallery, Docker image browser, Targeted browser replay
+tabs	button#tab-graph	Host GUI, Menu gallery, Docker image browser, Targeted browser replay
+tabs	button#tab-hayabusa	Host GUI, Menu gallery, Docker image browser
+tabs	button#tab-imports	Host GUI, Menu gallery, Targeted browser replay
+tabs	button#tab-ioc	Host GUI, Menu gallery
+tabs	button#tab-timeline	Host GUI, Menu gallery, Targeted browser replay
+toolbar	button#casecombo	Host GUI, Targeted browser replay
+toolbar	button#workspace-back	Host GUI, Targeted browser replay
+toolbar	button[data-act=case-save]	Host GUI, Targeted browser replay
+toolbar	button[data-act=close-case]	Host GUI, Targeted browser replay
+toolbar	button[data-act=display-settings]	Host GUI, Targeted browser replay
+toolbar	button[data-act=export-csv]	Host GUI, Targeted browser replay
+toolbar	button[data-act=import-evidence]	Host GUI, Targeted browser replay
+toolbar	button[data-act=profiles-plugins]	Host GUI, Targeted browser replay
+toolbar	button[data-act=refresh-cases]	Host GUI, Targeted browser replay
+toolbar	button[data-act=rules]	Host GUI, Targeted browser replay
+toolbar	input#folder-input	Host GUI, Targeted browser replay
+toolbar	input#layout-file	Host GUI, Menu gallery, Targeted browser replay
+toolbar	input#package-input	Host GUI
+toolbar	input#session-file	Host GUI, Menu gallery, Targeted browser replay
+toolbar	select#import-layout	Host GUI
+window: about	button[data-act=about-close]	Host GUI
+window: action	button#ae-save	Host GUI
+window: action	input#ae-date	Host GUI
+window: action	input#ae-due	Host GUI
+window: action	input#ae-machine	Host GUI
+window: action	input#ae-person	Host GUI
+window: action	input#ae-reference	Host GUI
+window: action	input#ae-title	Host GUI
+window: action	select#ae-owner	Host GUI
+window: action	select#ae-priority	Host GUI
+window: action	select#ae-status	Host GUI
+window: action	select#ae-type	Host GUI
+window: action	textarea#ae-detail	Host GUI
+window: analyses	button#analyses-save	Host GUI
+window: ask	button[data-act=ask-cancel]	Host GUI
+window: ask	button[data-act=ask-ok]	Host GUI
+window: ask	input#ask-input	Host GUI, Menu gallery
+window: case	button#case-confirm	Host GUI
+window: case	input#case-name	Host GUI
+window: case	select#case-environment	Host GUI
+window: case	select#case-status	Host GUI
+window: case	textarea#case-description	Host GUI
+window: cell	button[data-act=cell-copy]	Host GUI
+window: cell	textarea#cell-full	Host GUI
+window: client	button#client-save	Host GUI
+window: client	input#cm-contact	Host GUI
+window: client	input#cm-contract	Host GUI
+window: client	input#cm-end	Host GUI
+window: client	input#cm-lead	Host GUI
+window: client	input#cm-name	Host GUI
+window: client	input#cm-reference	Host GUI
+window: client	input#cm-sector	Host GUI
+window: client	input#cm-start	Host GUI
+window: client	textarea#cm-notes	Host GUI
+window: column-values	button#column-values-apply	Host GUI
+window: column-values	button#column-values-hide	Host GUI
+window: column-values	button#column-values-more	Host GUI
+window: column-values	button#column-values-prev	Host GUI
+window: column-values	input#column-values-search	Host GUI
+window: columns	button#family-save	Host GUI
+window: columns	button#hide-empty-columns	Host GUI
+window: columns	button[data-act=columns-reset]	Host GUI, Targeted browser replay
+window: columns	button[data-act=derived]	Host GUI
+window: columns	input#column-search	Host GUI, Targeted browser replay
+window: columns	input#columns-hidden-only	Host GUI, Targeted browser replay
+window: compat	button[data-act=compat-reload]	Host GUI
+window: compat	button[data-act=plugin-install]	Host GUI
+window: compat	button[data-act=profile-create]	Host GUI
+window: compat	input#compat-name	Host GUI
+window: compat	input#plugin-input	Host GUI
+window: coverage	button#coverage-export-csv	Host GUI
+window: coverage	button#coverage-export-json	Host GUI
+window: coverage	button#coverage-plan	Host GUI
+window: coverage	button#coverage-run	Host GUI
+window: coverage	input#coverage-deep	Host GUI
+window: coverage	input#coverage-hashes	Host GUI
+window: coverage	input#coverage-search	Host GUI
+window: coverage	select#coverage-level	Host GUI
+window: coverage	select#coverage-profile	Host GUI
+window: coverage-plan	button#coverage-plan-apply	Host GUI
+window: date	button#date-add	Host GUI
+window: date	input#date-day	Host GUI
+window: date	select#date-column	Host GUI
+window: date	select#date-mode	Host GUI
+window: date	select#date-range	Host GUI
+window: derived	button[data-act=derived-add]	Host GUI
+window: derived	input#derived-expression	Host GUI
+window: derived	input#derived-name	Host GUI
+window: derived	input#derived-zone	Host GUI
+window: derived	select#derived-format	Host GUI
+window: derived	select#derived-operation	Host GUI
+window: derived	select#derived-source	Host GUI
+window: derived	select#derived-time	Host GUI
+window: destroy	button[data-act=destroy-run]	Host GUI
+window: destroy	input#destroy-certificate	Host GUI
+window: destroy	input#destroy-confirm	Host GUI
+window: destroy	input#destroy-operator	Host GUI
+window: destroy	input#destroy-photos	Host GUI
+window: destroy	input#destroy-reason	Host GUI
+window: destroy	input#destroy-witness	Host GUI
+window: destroy	select#destroy-method	Host GUI
+window: detrules	button#detrules-reload	Docker image browser
+window: detrules	button#detrules-reset	Docker image browser
+window: detrules	button#detrules-save	Docker image browser
+window: detrules	button#detrules-toggle	Docker image browser
+window: detrules	input#detrules-changed	Docker image browser
+window: detrules	input#detrules-filter	Docker image browser
+window: detrules	textarea#detrules-text	Docker image browser
+window: disk	button#disk-browse	Host GUI, Targeted browser replay
+window: disk	button#disk-start	Host GUI
+window: disk	input#disk-source	Host GUI
+window: disk	input#disk-threads	Host GUI
+window: disk	select#disk-kind	Host GUI
+window: disk-explorer	button#image-next	Host GUI, Targeted browser replay
+window: disk-explorer	button#image-open	Host GUI, Targeted browser replay
+window: disk-explorer	button#image-prev	Host GUI, Targeted browser replay
+window: disk-explorer	button#image-up	Host GUI, Targeted browser replay
+window: disk-explorer	input#image-source	Host GUI, Targeted browser replay
+window: disk-explorer	select#image-list	Host GUI, Targeted browser replay
+window: disk-explorer	select#image-partition	Host GUI, Targeted browser replay
+window: expression	button[data-act=expr-apply]	Host GUI
+window: expression	button[data-act=expr-clear]	Host GUI
+window: graph-node	button[data-act=graph-node-save]	Host GUI
+window: graph-node	input#graph-node-label	Host GUI
+window: graph-node	input#graph-node-tags	Host GUI
+window: group	button[data-act=group-apply]	Host GUI
+window: group	button[data-act=group-remove]	Host GUI
+window: group	select#group-interval	Host GUI
+window: import	button#preview-choose	Host GUI, Targeted browser replay
+window: import	button#preview-import	Host GUI
+window: import	button[data-act=preview-path]	Host GUI
+window: import	input#import-threads	Host GUI
+window: import	input#preview-input	Host GUI
+window: import	input#preview-server	Host GUI
+window: import	select#preview-delimiter	Host GUI
+window: import	select#preview-encoding	Host GUI
+window: import	select#preview-sheet	Host GUI
+window: import-progress	button#import-progress-stop	Host GUI
+window: import-source	button[data-act=disk-open]	Host GUI, Targeted browser replay
+window: import-source	button[data-act=import-file]	Host GUI, Menu gallery, Targeted browser replay
+window: import-source	button[data-act=import-folder]	Host GUI, Targeted browser replay
+window: messages	button#messages-clear	Host GUI
+window: palette	input#palette-input	Host GUI, Menu gallery, Targeted browser replay
+window: prefs	button[data-act=compat-open]	Host GUI
+window: prefs	input#prefs-auto-profile	Host GUI
+window: prefs	input#prefs-copy-headers	Host GUI
+window: prefs	input#prefs-date-pattern	Host GUI
+window: prefs	input#prefs-memory	Host GUI
+window: prefs	input#prefs-parsing-threads	Host GUI
+window: prefs	input#prefs-query-threads	Host GUI
+window: prefs	input#prefs-right-copy	Host GUI
+window: prefs	select#prefs-date-format	Host GUI
+window: prefs	select#prefs-details	Host GUI
+window: prefs	select#prefs-scale	Host GUI
+window: prefs	select#prefs-tree	Host GUI
+window: prefs	textarea#prefs-pins	Host GUI
+window: quick-marks	button#quick-marks-save	Host GUI
+window: quick-marks	textarea#quick-marks-text	Host GUI
+window: report	button[data-act=report-build-pdf]	Host GUI
+window: report	button[data-act=report-build]	Host GUI
+window: report	input#client-analyst	Host GUI
+window: report	input#client-coverage	Host GUI
+window: report	input#client-findings	Host GUI
+window: report	input#client-title	Host GUI
+window: report	input#report-filters	Host GUI
+window: report	input#report-limit	Host GUI
+window: report	input#report-selection	Host GUI
+window: report	input#report-timeline	Host GUI
+window: report	input#report-title	Host GUI
+window: report	select#report-bookmarks	Host GUI
+window: report	select#report-type	Host GUI
+window: report	textarea#report-description	Host GUI
+window: retry	button#retry-bulk-run	Host GUI
+window: retry	button#retry-tick-all	Host GUI
+window: retry	button#retry-tick-none	Host GUI
+window: retry	select#report-filter	Host GUI
+window: retry	select#retry-bulk-reader	Host GUI
+window: rowheight	button[data-act=rowheight-apply]	Host GUI
+window: rowheight	input#rowheight-fit	Host GUI
+window: rowheight	input#rowheight-groups	Host GUI
+window: rowheight	input#rowheight-headers	Host GUI
+window: rowheight	input#rowheight-rows	Host GUI
+window: rowheight	input#rowheight-wrap	Host GUI
+window: rules	button#rule-add-condition	Host GUI
+window: rules	button#rule-global-export	Host GUI
+window: rules	button#rule-global-import	Host GUI
+window: rules	button[data-act=rule-add]	Host GUI, Targeted browser replay
+window: rules	input#rule-axis	Host GUI
+window: rules	input#rule-axis-colour	Host GUI
+window: rules	input#rule-bold	Host GUI, Targeted browser replay
+window: rules	input#rule-colour	Host GUI, Targeted browser replay
+window: rules	input#rule-font-family	Host GUI
+window: rules	input#rule-font-size	Host GUI
+window: rules	input#rule-global-enabled	Host GUI
+window: rules	input#rule-global-file	Host GUI
+window: rules	input#rule-icon-colours	Host GUI
+window: rules	input#rule-icon-thresholds	Host GUI
+window: rules	input#rule-ink	Host GUI, Targeted browser replay
+window: rules	input#rule-italic	Host GUI
+window: rules	input#rule-max	Host GUI
+window: rules	input#rule-middle-colour	Host GUI
+window: rules	input#rule-middle-value	Host GUI
+window: rules	input#rule-min	Host GUI
+window: rules	input#rule-negative	Host GUI
+window: rules	input#rule-stat-all	Host GUI
+window: rules	input#rule-stat-null	Host GUI
+window: rules	input#rule-stat-percent	Host GUI
+window: rules	input#rule-stat-rank	Host GUI
+window: rules	input#rule-stop	Host GUI
+window: rules	input#rule-strikeout	Host GUI
+window: rules	input#rule-underline	Host GUI
+window: rules	input#rule-use-background	Host GUI
+window: rules	input#rule-use-font	Host GUI
+window: rules	input#rule-use-foreground	Host GUI
+window: rules	input#rule-value	Host GUI, Targeted browser replay
+window: rules	select#rule-bound	Host GUI, Targeted browser replay
+window: rules	select#rule-column	Host GUI, Targeted browser replay
+window: rules	select#rule-icon-mode	Host GUI
+window: rules	select#rule-logic	Host GUI, Targeted browser replay
+window: rules	select#rule-operator	Host GUI, Targeted browser replay
+window: rules	select#rule-statistic	Host GUI, Targeted browser replay
+window: rules	select#rule-target	Host GUI, Targeted browser replay
+window: rules	select#rule-visual	Host GUI, Targeted browser replay
+window: search	button[data-act=global-run]	Host GUI, Targeted browser replay
+window: search	input#global-text	Host GUI, Menu gallery, Targeted browser replay
+window: search	select#global-scope	Host GUI, Targeted browser replay
+window: settings	button#palette-reset	Host GUI
+window: settings	button[data-act=settings-close]	Host GUI, Targeted browser replay
+window: settings	input[data-colour]	Host GUI
+window: settings	select#palette-theme	Host GUI, Targeted browser replay
+window: settings	select#scale	Host GUI, Targeted browser replay
+window: sort	button#sort-add	Host GUI, Targeted browser replay
+window: sort	button#sort-apply	Host GUI, Targeted browser replay
+window: sort	select#sort-header-type	Host GUI, Targeted browser replay
+window: summaries	button#summary-add	Host GUI
+window: summaries	button#summary-apply	Host GUI
+window: summaries	button#total-add	Host GUI
+window: summaries	input#summary-desc	Host GUI
+window: summaries	input#summary-show-total	Host GUI
+window: summaries	select#summary-footer-mode	Host GUI
+window: summaries	select#summary-order	Host GUI
+window: summaries	select#summary-which	Host GUI
+window: table-group	button#table-group-apply	Host GUI, Targeted browser replay
+window: tracking	button#track-rewrite	Host GUI, Targeted browser replay
+window: tracking	button#track-use-suggestion	Host GUI, Targeted browser replay
+window: tracking	button#tracking-delete	Host GUI
+window: tracking	input#track-destination-ip	Host GUI
+window: tracking	input#track-file	Host GUI
+window: tracking	input#track-machine	Host GUI
+window: tracking	input#track-source-ip	Host GUI
+window: tracking	input#track-tags	Host GUI
+window: tracking	input#track-time	Host GUI
+window: tracking	select#track-confidence	Host GUI
+window: tracking	select#track-direction	Host GUI
+window: tracking	select#track-kind	Host GUI
+window: tracking	select#track-level	Host GUI
+window: tracking	select#track-verdict	Host GUI
+window: tracking	textarea#track-comment	Host GUI
+window: tracking	textarea#track-description	Host GUI, Targeted browser replay
+window: tracking	textarea#track-suggestion	Host GUI, Targeted browser replay
+window: views	button[data-act=profile-apply]	Host GUI
+window: views	button[data-act=view-save]	Host GUI
+window: views	input#view-name	Host GUI

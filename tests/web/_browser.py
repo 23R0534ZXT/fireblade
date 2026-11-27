@@ -3,8 +3,12 @@
 import contextlib
 import os
 import socket
+import subprocess
 import threading
 import time
+import urllib.error
+import urllib.request
+import uuid
 
 import pytest
 
@@ -25,6 +29,11 @@ def free_port():
 @contextlib.contextmanager
 def serving(root):
     """The Host over a cases folder, on a free port, for the length of the block."""
+    image = os.environ.get("FIREBLADE_TEST_IMAGE")
+    if image:
+        with container_serving(root, image) as url:
+            yield url
+        return
     port = free_port()
     server = uvicorn.Server(
         uvicorn.Config(create_app(root), host="127.0.0.1", port=port, log_level="warning")
@@ -40,6 +49,67 @@ def serving(root):
     finally:
         server.should_exit = True
         thread.join(timeout=10)
+
+
+@contextlib.contextmanager
+def container_serving(root, image):
+    """Run the same browser contracts against a built image, with real on-disk cases.
+
+    Tests create sibling evidence folders; keep their absolute paths valid in Docker too.
+    Only that test's temporary parent is mounted, never the Docker socket.
+    """
+    root = root.resolve()
+    port = free_port()
+    name = "kagarasu-browser-" + uuid.uuid4().hex[:12]
+    subprocess.run(
+        [
+            "docker",
+            "run",
+            "-d",
+            "--name",
+            name,
+            "--user",
+            f"{os.getuid()}:{os.getgid()}",
+            "-p",
+            f"127.0.0.1:{port}:8080",
+            "-v",
+            f"{root.parent}:{root.parent}",
+            "-e",
+            "FIREBLADE_UPDATE_CHECK=off",
+            image,
+            "python",
+            "-m",
+            "fireblade.web",
+            "serve",
+            "--root",
+            str(root),
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "8080",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    url = f"http://127.0.0.1:{port}"
+    try:
+        deadline = time.monotonic() + 60
+        while True:
+            try:
+                with urllib.request.urlopen(url + "/health", timeout=2) as response:
+                    if response.status == 200:
+                        break
+            except (OSError, urllib.error.URLError):
+                pass
+            if time.monotonic() >= deadline:
+                logs = subprocess.run(["docker", "logs", name], capture_output=True, text=True)
+                raise AssertionError("Container did not start: " + logs.stdout + logs.stderr)
+            time.sleep(0.1)
+        yield url
+    finally:
+        subprocess.run(["docker", "rm", "-f", name], check=True, capture_output=True, timeout=30)
 
 
 @contextlib.contextmanager
@@ -81,6 +151,14 @@ def browser_page(url, case_name, width=1400, height=850, wait_rows=True):
             )
         page.click('.tabs .tab:text-is("Analyses")')
         yield page
+        snapshots = os.environ.get("FIREBLADE_SCREENSHOTS")
+        if snapshots and not page.is_closed():
+            from pathlib import Path
+
+            destination = Path(snapshots)
+            destination.mkdir(parents=True, exist_ok=True)
+            safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in case_name)
+            page.screenshot(path=str(destination / f"{safe}-{uuid.uuid4().hex[:8]}.png"))
         assert not page.errors, page.errors
     finally:
         browser.close()

@@ -53,7 +53,7 @@ jobs:
         env:
           FIREBLADE_SCREENSHOTS: ${{ github.workspace }}/artifacts/host-browser
         run: python -m pytest tests -q --ignore=tests/windows --ignore=tests/ui --junitxml=artifacts/host-tests.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Host-test-results
@@ -145,7 +145,7 @@ jobs:
           FIREBLADE_IMAGE_URL=http://127.0.0.1:8080 FIREBLADE_IMAGE_PACK=/pack \
           FIREBLADE_IMAGE_PACK_LOCAL="$PWD/artifacts/pack/Fireblade-Test-Pack-v1" \
             python -m pytest tests/image -q -p no:cacheprovider --confcutdir=tests/image
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Recette-report

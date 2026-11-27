@@ -71,7 +71,7 @@ jobs:
         run: |
           python -m pytest -q --junitxml=artifacts/windows-source-tests.xml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Windows-tests-python-${{ matrix.python }}
@@ -123,7 +123,7 @@ jobs:
       - run: >-
           python -m pip install --only-binary=:all: -r requirements/runtime.txt pytest
       - run: python -m pytest tests/core/test_native_windows_storage.py -q --junitxml=artifacts/windows-storage.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Windows-native-storage
@@ -147,13 +147,13 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Build one EXE and run it alone in an empty folder
         run: python -m scripts.windows.build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Windows-single-file-verification
           path: artifacts/
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Fireblade-exe
           # The folder and the archive: a consumer restores dist/ and finds both.
@@ -181,7 +181,7 @@ jobs:
           python -m pip install --only-binary=:all: -r requirements/runtime.txt
       - run: dotnet publish src/fireblade/plugin_host/Fireblade.PluginHost.csproj -c Release -r win-x64 --self-contained true -o build/reader-host
       - run: python -m scripts.windows.reader_matrix --host build/reader-host/Fireblade.PluginHost.exe --out artifacts/readers
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Windows-upstream-reader-matrix
@@ -205,7 +205,7 @@ jobs:
           name: Fireblade-exe
           path: dist
       - run: python -m scripts.windows.workspace --exe dist/Fireblade/Fireblade.exe --out artifacts/workspace
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Windows-320-analysis-report-and-captures
@@ -243,7 +243,7 @@ jobs:
       - name: Import group sort filter annotate export cancel and reopen in the actual EXE
         if: ${{ !cancelled() && steps.dataset.outcome == 'success' }}
         run: python -m scripts.windows.qualify run --directory "$env:RUNNER_TEMP/fireblade-data" --out artifacts/large-data --exe dist/Fireblade/Fireblade.exe
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Windows-3GiB-report-and-captures
@@ -271,7 +271,7 @@ jobs:
           path: dist
       - name: Render light and dark Windows preferences at 100 125 150 200 percent
         run: python -m scripts.windows.visual_matrix --exe dist/Fireblade/Fireblade.exe --out artifacts/visual
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Windows-visual-captures
@@ -303,7 +303,7 @@ jobs:
       - run: python -m scripts.windows.profile_gui --out artifacts/profile --data "$env:RUNNER_TEMP/fireblade-data"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: Windows-responsiveness-profile

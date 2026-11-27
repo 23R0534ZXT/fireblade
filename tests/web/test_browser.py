@@ -147,6 +147,8 @@ def test_dark_rows_and_errors_keep_readable_contrast(page):
     page.locator('.toolbar [data-act="display-settings"]').click()
     page.locator("#palette-theme").select_option("dark")
     page.locator('#settings-modal [data-act="settings-close"]').click()
+    layout = page.locator("#import-layout")
+    assert layout.evaluate("node => getComputedStyle(node).colorScheme") == "dark"
     page.evaluate("say('Analysis file missing', true)")
     ratios = page.evaluate(r"""() => {
       const luminance = (color) => color.match(/\d+/g).slice(0, 3).map(Number)
@@ -218,6 +220,30 @@ def test_a_dialog_is_moved_by_its_title_and_resized_from_its_corner(page):
     page.mouse.up()
     resized = dialog.bounding_box()
     assert resized["width"] > moved["width"] + 50 and resized["height"] > moved["height"] + 30
+
+
+def test_wide_dialog_resizes_and_restores_inside_a_narrow_viewport(page):
+    _press(page, '.menubar .m[data-menu="filters"]')
+    page.locator('.menu.show [data-act="global-search"]').click()
+    dialog = page.locator("#search-modal .dialog")
+    page.wait_for_function("document.querySelector('#search-modal .dialog').dataset.free")
+    assert dialog.bounding_box()["width"] >= 760
+    search = dialog.get_by_role("button", name="Search", exact=True)
+    search.click()
+
+    page.set_viewport_size({"width": 390, "height": 480})
+    for reopen in (False, True):
+        if reopen:
+            _press(page, '.menubar .m[data-menu="filters"]')
+            page.locator('.menu.show [data-act="global-search"]').click()
+            page.wait_for_function("document.querySelector('#search-modal .dialog').dataset.free")
+        box = dialog.bounding_box()
+        assert 0 <= box["x"] <= box["x"] + box["width"] <= 390
+        assert 0 <= box["y"] <= box["y"] + box["height"] <= 480
+        dialog.get_by_role("textbox", name="Text").fill("alice")
+        search.click()
+        dialog.get_by_role("button", name="Close", exact=True).click()
+        assert not dialog.is_visible()
 
 
 def test_the_splitters_resize_the_tree_and_the_details_and_reset_on_double_click(page):

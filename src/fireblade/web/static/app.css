@@ -18,6 +18,7 @@
 
 /* Dark keeps the same layout and density: only the surface changes. */
 :root[data-theme="dark"]{
+  color-scheme:dark;
   --window:#1f1f1f; --text:#e6e6e6; --base:#262626; --alt:#2b2b2b;
   --border:#454545; --header:#2a2a2a; --header-sep:#3d3d3d; --toolbar-sep:#3d3d3d;
   --sel:#2f5d80; --sel-text:#ffffff; --disabled:#8a8a8a; --link:#7fb3e8;
@@ -250,7 +251,7 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
 /* dialog */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.18);display:none;align-items:center;justify-content:center;z-index:100}
 .modal.show{display:flex}
-.dialog{background:var(--window);border:1px solid #8f8f8f;box-shadow:3px 3px 8px rgba(0,0,0,.25);min-width:340px;padding:0}
+.dialog{background:var(--window);border:1px solid #8f8f8f;box-shadow:3px 3px 8px rgba(0,0,0,.25);min-width:min(var(--dialog-width,340px),calc(100% - 16px));max-width:calc(100% - 16px);padding:0}
 .dialog h3{margin:0;padding:6px 10px;font-size:12px;font-weight:400;background:var(--header);border-bottom:1px solid var(--border)}
 .dialog .body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
 .dialog .row{display:flex;align-items:center;gap:10px;font-size:12px}
@@ -494,13 +495,16 @@ td.noted .notemark{position:absolute;top:2px;right:2px;width:0;height:0;
 .expr-actions{gap:6px}
 .preview-card{max-width:100%;overflow:hidden}
 .preview-sample{display:block;overflow-x:auto;max-width:100%}
-.dialog{max-width:96vw}
-
 /* Windows: a dialog is moved by its title bar and resized from its corner, as on the desktop. */
-.dialog.window{display:flex;flex-direction:column;resize:both;overflow:hidden;max-height:96vh;min-width:260px;min-height:110px}
+.dialog.window{display:flex;flex-direction:column;resize:both;overflow:hidden;max-height:calc(100% - 16px);min-width:min(var(--dialog-width,260px),calc(100% - 16px));min-height:110px}
 .dialog.window>.body,.dialog.window>.content{flex:1 1 auto;overflow:auto;min-height:0}
 .dialog.window>h3,.dialog.window>.foot{flex:0 0 auto}
 .dialog h3.grab{cursor:move;user-select:none;touch-action:none}
+@media (max-width:700px){
+  .dialog .row{flex-wrap:wrap;gap:5px 8px}
+  .dialog .row label{min-width:0}
+  .dialog .row :is(input,textarea,select){min-width:0;max-width:100%}
+}
 
 /* Splitters: the two panes the desktop lets you drag apart. */
 .splitter{flex:0 0 5px;background:transparent;position:relative;touch-action:none;z-index:3}

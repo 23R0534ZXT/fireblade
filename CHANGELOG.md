@@ -25,6 +25,8 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 - Host menus and context menus stay within the viewport. Compact workspaces put Artifacts in a
   drawer, keep controls reachable at high interface zoom, and resize relocated panels from their
   actual dividers.
+- Host dialogs fit compact windows and keep their confirmation buttons in view after resizing or
+  restoring a saved position.
 - Opening another case clears the previous case’s IOC and import results. Late case and import
   responses can no longer replace the current selection.
 

@@ -790,7 +790,7 @@
 </div>
 
 <div class="modal" id="source-row-modal">
-  <div class="dialog" style="min-width:760px">
+  <div class="dialog" style="--dialog-width:760px">
     <h3 id="source-row-title">The source line</h3>
     <div class="body">
       <div class="note">The row this timeline entry came from, as its own analysis holds it. Nothing is
@@ -802,7 +802,7 @@
 </div>
 
 <div class="modal" id="disk-modal">
-  <div class="dialog" style="min-width:620px">
+  <div class="dialog" style="--dialog-width:620px">
     <h3>Analyse a disk</h3>
     <div class="body">
       <div class="row"><label for="disk-source">Source</label>
@@ -825,7 +825,7 @@
 </div>
 
 <div class="modal" id="import-progress-modal">
-  <div class="dialog" style="min-width:600px">
+  <div class="dialog" style="--dialog-width:600px">
     <h3 id="import-progress-title">Importing</h3>
     <div class="body">
       <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">
@@ -844,7 +844,7 @@
 </div>
 
 <div class="modal" id="retry-modal">
-  <div class="dialog" style="min-width:760px">
+  <div class="dialog" style="--dialog-width:760px">
     <h3>Import report</h3>
     <div class="body">
       <div class="note">A file the collection could not read stays unread until somebody asks. The source is
@@ -875,7 +875,7 @@
 <!-- One text box, asked the way the desktop asks it: a dialog, not the browser's
      own prompt (which blocks the page and cannot be styled). -->
 <div class="modal" id="ask-modal">
-  <div class="dialog" style="min-width:520px">
+  <div class="dialog" style="--dialog-width:520px">
     <h3 id="ask-title">Value</h3>
     <div class="body">
       <div class="note" id="ask-note" style="display:none"></div>
@@ -889,7 +889,7 @@
 </div>
 
 <div class="modal" id="rowheight-modal">
-  <div class="dialog" style="min-width:420px">
+  <div class="dialog" style="--dialog-width:420px">
     <h3>Row height</h3>
     <div class="body">
       <label class="row"><input type="checkbox" id="rowheight-wrap"> Wrap the text by default</label>
@@ -910,7 +910,7 @@
 </div>
 
 <div class="modal" id="integrity-modal">
-  <div class="dialog" style="min-width:640px">
+  <div class="dialog" style="--dialog-width:640px">
     <h3>Provenance and SHA-256</h3>
     <div class="body">
       <div class="note">What this analysis came from, and the fingerprint the collection recorded
@@ -922,7 +922,7 @@
 </div>
 
 <div class="modal" id="help-modal">
-  <div class="dialog" style="min-width:620px">
+  <div class="dialog" style="--dialog-width:620px">
     <h3 id="help-title">User guide</h3>
     <div class="body" id="help-body"></div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
@@ -930,7 +930,7 @@
 </div>
 
 <div class="modal" id="palette-modal">
-  <div class="dialog" style="min-width:560px">
+  <div class="dialog" style="--dialog-width:560px">
     <h3>Commands</h3>
     <div class="body">
       <input class="search" id="palette-input" placeholder="Type a command, Enter runs the first one…">
@@ -941,7 +941,7 @@
 </div>
 
 <div class="modal" id="messages-modal">
-  <div class="dialog" style="min-width:640px">
+  <div class="dialog" style="--dialog-width:640px">
     <h3>Messages</h3>
     <div class="body">
       <div class="note">Everything this window reported, newest first. The server's own log stays on the
@@ -956,7 +956,7 @@
 </div>
 
 <div class="modal" id="analyses-modal">
-  <div class="dialog" style="min-width:640px">
+  <div class="dialog" style="--dialog-width:640px">
     <h3>Open analyses</h3>
     <div class="body">
       <div class="note">Closing an analysis takes it out of the workspace; the file stays in the case.
@@ -971,7 +971,7 @@
 </div>
 
 <div class="modal" id="history-modal">
-  <div class="dialog" style="min-width:680px">
+  <div class="dialog" style="--dialog-width:680px">
     <h3>History and recovery</h3>
     <div class="body">
       <div class="note">Each entry is a state the case held. Restoring one keeps the present state in the
@@ -983,7 +983,7 @@
 </div>
 
 <div class="modal" id="sort-modal">
-  <div class="dialog" style="min-width:600px">
+  <div class="dialog" style="--dialog-width:600px">
     <h3>Sort priority</h3>
     <div class="body">
       <div class="note">The first key decides; the next ones break ties. Shift-clicking a column header
@@ -1006,7 +1006,7 @@
 </div>
 
 <div class="modal" id="summaries-modal">
-  <div class="dialog" style="min-width:680px">
+  <div class="dialog" style="--dialog-width:680px">
     <h3>Group summaries</h3>
     <div class="body">
       <div class="note">One line per aggregate. The desktop shows them beside the group and can order the
@@ -1049,7 +1049,7 @@
 </div>
 
 <div class="modal" id="date-modal">
-  <div class="dialog" style="min-width:520px">
+  <div class="dialog" style="--dialog-width:520px">
     <h3>Filter a date</h3>
     <div class="body">
       <div class="row"><label for="date-column">Column</label><select id="date-column"></select></div>
@@ -1134,7 +1134,7 @@
 </div>
 
 <div class="modal" id="graph-node-modal">
-  <div class="dialog" style="min-width:460px">
+  <div class="dialog" style="--dialog-width:460px">
     <h3>Free node</h3>
     <div class="body">
       <div class="note">A machine or a step the findings do not carry. It joins the graph
@@ -1152,7 +1152,7 @@
 </div>
 
 <div class="modal" id="compat-modal">
-  <div class="dialog" style="min-width:760px">
+  <div class="dialog" style="--dialog-width:760px">
     <h3>Profiles and compatibility</h3>
     <div class="body">
       <div class="note">A presentation plugin declares columns and their types; the source values stay
@@ -1180,7 +1180,7 @@
 </div>
 
 <div class="modal" id="cell-modal">
-  <div class="dialog" style="min-width:720px">
+  <div class="dialog" style="--dialog-width:720px">
     <h3 id="cell-modal-title">Cell</h3>
     <div class="body"><textarea id="cell-full" aria-label="Full cell value" rows="10" style="width:100%"></textarea></div>
     <div class="foot">
@@ -1191,7 +1191,7 @@
 </div>
 
 <div class="modal" id="prefs-modal">
-  <div class="dialog" style="min-width:640px">
+  <div class="dialog" style="--dialog-width:640px">
     <h3>Preferences</h3>
     <div class="body">
       <div class="note">What this instance runs with. Readers marked as missing are simply absent from the tool pack on this server.</div>
@@ -1246,7 +1246,7 @@
 </div>
 
 <div class="modal" id="views-modal">
-  <div class="dialog" style="min-width:600px">
+  <div class="dialog" style="--dialog-width:600px">
     <h3>Saved views</h3>
     <div class="body">
       <div class="row"><label for="view-name">Save as</label><input id="view-name" placeholder="e.g. Logons on FBVM"></div>
@@ -1311,7 +1311,7 @@
 </div>
 
 <div class="modal" id="coverage-plan-modal">
-  <div class="dialog" style="min-width:440px">
+  <div class="dialog" style="--dialog-width:440px">
     <h3>Expected families</h3>
     <div class="body">
       <div class="note">Tick only the families your collection plan expects. Their absence is a point to verify, not a proof of absence on the machine.</div>
@@ -1325,7 +1325,7 @@
 </div>
 
 <div class="modal" id="rules-modal">
-  <div class="dialog" style="min-width:760px">
+  <div class="dialog" style="--dialog-width:760px">
     <h3>Colour rules</h3>
     <div class="subtabs" style="margin-bottom:6px">
       <div class="subtab active" data-scope="analysis">This analysis</div>
@@ -1433,7 +1433,7 @@
 </div>
 
 <div class="modal" id="pivot-modal">
-  <div class="dialog" style="min-width:820px">
+  <div class="dialog" style="--dialog-width:820px">
     <h3>What launched this process?</h3>
     <div class="body">
       <div class="note" id="pivot-anchor"></div>
@@ -1444,7 +1444,7 @@
 </div>
 
 <div class="modal" id="derived-check-modal">
-  <div class="dialog" style="min-width:520px">
+  <div class="dialog" style="--dialog-width:520px">
     <h3>Derived columns</h3>
     <div class="body"><div id="derived-check-list" class="muted">No derived columns.</div></div>
     <div class="foot"><button class="btn" data-act="settings-close">Close</button></div>
@@ -1486,7 +1486,7 @@
 </div>
 
 <div class="modal" id="search-modal">
-  <div class="dialog" style="min-width:760px">
+  <div class="dialog" style="--dialog-width:760px">
     <h3>Global search</h3>
     <div class="body">
       <div class="row"><label for="global-text">Text</label><input id="global-text" placeholder="Search every analysis of the case"></div>
@@ -1501,7 +1501,7 @@
 </div>
 
 <div class="modal" id="action-modal">
-  <div class="dialog" style="min-width:640px">
+  <div class="dialog" style="--dialog-width:640px">
     <h3 id="action-modal-title">Action</h3>
     <div class="body">
       <div class="row"><label for="ae-title">Title</label><input id="ae-title" style="flex:1"></div>
@@ -1603,7 +1603,7 @@
 </div>
 
 <div class="modal" id="client-modal">
-  <div class="dialog" style="min-width:560px">
+  <div class="dialog" style="--dialog-width:560px">
     <h3>Client and mission</h3>
     <div class="body">
       <div class="row"><label for="cm-name">Client</label><input id="cm-name"></div>

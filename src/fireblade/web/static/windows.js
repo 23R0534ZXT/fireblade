@@ -39,11 +39,9 @@
     var top = parseFloat(dialog.style.top) || 0;
     var width = dialog.offsetWidth;
     var height = dialog.offsetHeight;
-    /* The title bar must stay reachable, and so must the buttons at the foot: a dialog that
-       fills in after it opened (the preferences read the server first) grows downward, and
-       would otherwise leave its Close button below the visible page. */
-    dialog.style.left = clamp(left, 40 - width, window.innerWidth - 40) + "px";
-    dialog.style.top = clamp(top, 0, Math.max(0, window.innerHeight - height - 4)) + "px";
+    /* Keep the title and footer in view after dragging, restoring, or loading more content. */
+    dialog.style.left = clamp(left, 0, window.innerWidth - width) + "px";
+    dialog.style.top = clamp(top, 0, window.innerHeight - height) + "px";
   }
 
   function arrange(modal) {
@@ -201,6 +199,9 @@
 
   function start() {
     Array.prototype.forEach.call(document.querySelectorAll(".modal"), wireDialog);
+    window.addEventListener("resize", function () {
+      document.querySelectorAll(".modal.show .dialog[data-free]").forEach(keepInside);
+    });
     wireSplitters();
   }
 

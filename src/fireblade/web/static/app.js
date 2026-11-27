@@ -5350,7 +5350,7 @@ async function stopIocHunt() {
   if (!state.openCase) return;
   try {
     const payload = await apiPost(`/api/cases/${state.openCase.id}/ioc-stop`, {});
-    say(payload.stopped ? "Hunt interrupted: the results kept before it stay" : "No hunt is running", !payload.stopped && false);
+    say(payload.stopped ? "Hunt interrupted: incomplete results are discarded; previous saved hunts stay" : "No hunt is running", !payload.stopped && false);
   } catch (error) {
     say(error.message, true);
   }
@@ -7586,11 +7586,6 @@ function wire() {
   $("details-toggle").addEventListener("click", toggleDetails);
   $("column-search").addEventListener("input", updateColumnList);
 
-  $("import-input").addEventListener("change", (event) => {
-    const files = [...(event.target.files || [])];
-    event.target.value = "";
-    if (files.length) { openImportDialog(); previewFiles(files); }
-  });
   $("palette-theme").addEventListener("change", (event) => choosePalette(event.target.value));
   $("palette-reset").addEventListener("click", () => {
     paletteState.custom = {};

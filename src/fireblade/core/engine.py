@@ -322,13 +322,17 @@ class Case:
                         # The native reader can silently drop an unterminated final
                         # quoted record beyond its sample. Validate quoting before
                         # accepting its count as the complete evidence.
-                        separator = (
-                            delimiter
-                            or self.db.execute(
-                                "SELECT Delimiter FROM sniff_csv(?, header=true, sample_size=20480)",
-                                [str(input_path)],
-                            ).fetchone()[0]
-                        )
+                        separator = delimiter
+                        if not separator:
+                            with input_path.open(encoding="utf-8-sig", newline="") as sample:
+                                try:
+                                    separator = (
+                                        csv.Sniffer()
+                                        .sniff(sample.read(65536), delimiters=",;\t|")
+                                        .delimiter
+                                    )
+                                except csv.Error:
+                                    separator = ","
                         csv.field_size_limit(max(csv.field_size_limit(), 16 * 1024 * 1024))
                         with input_path.open(encoding="utf-8-sig", newline="") as quoted:
                             reader = csv.reader(quoted, delimiter=separator, strict=True)

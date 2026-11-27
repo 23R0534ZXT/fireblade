@@ -1,3 +1,57 @@
+# Kagarasu 0.10.0 — reliable combined grids and a qualified Host workspace
+
+This Host release brings together the continued GUI review and qualification against a real
+forensic collection. It retains Kagarasu's dense desktop workspace while improving navigation,
+wide-grid responsiveness and the reliability of investigation results.
+
+## Analysis grids and navigation
+
+- One combined grid now retains all original fields, including collections with thousands of
+  distinct columns. Sparse storage and visible-column loading avoid materializing empty cells.
+- Switch between file, artifact-family and combined layouts without reimporting the evidence.
+  Row and cell notes follow their source records, including repeated layout changes.
+- Supporting files are collapsed by default, source names are clearer and redundant tree
+  levels are removed. The column manager supports search and navigation through wide schemas.
+- Continuous horizontal scrolling and desktop resizing keep the viewport populated. Sorting,
+  filters and asynchronous details cannot leave stale selections or duplicate requests behind.
+- Fixed analysis-count ceilings are removed across import, case persistence and investigation
+  tools. Resource budgets and atomic writes remain in place.
+
+## Imports, timeline and investigation workflows
+
+- SQLite readers use writable per-invocation work directories. Generic SQLite reads preserve
+  committed WAL records through private working copies and correctly escape source paths.
+- Windows registry companion files are recognized despite filename casing differences on Linux.
+- Imports distinguish complete, partial, unread and companion outcomes. Readers producing no
+  output terminate explicitly, and legacy diagnostics no longer remain falsely “running”.
+- Timeline controls distinguish duration filters from interval selection, use less toolbar space
+  and preserve zoom and source selections. Late responses cannot replace a newer selection.
+- Combined timelines and IOC result dates default to the common source clock; explicit analyst
+  choices take priority. A misleading Timestamp field from an unrelated file is not selected.
+- Wide CSV/Excel exports, reports, empty-column scans and source-row details use bounded reads.
+  Long export options use JSON requests instead of exceeding URL limits.
+- Layout changes and case access are coordinated; cancelled jobs, failed exports and report
+  options have clearer outcomes and regression coverage.
+
+## Qualification
+
+The real Docker GUI import produced **1,386,061 rows from 1,478 source analyses**:
+1,478 file grids, 56 family grids, or **one combined grid with 12,559 data columns**.
+All layouts retained the same row total. The review compared **66,308 original values**,
+independently counted **118,636 active EVTX events**, checked filtered CSV/Excel outputs,
+controlled IOC matches and **139,138 events dated by the common timeline clock**.
+Notes and case data persisted after container recreation. Desktop captures include 1920×1080
+and a resize to 2560×1440.
+
+The broad engine/API run passed **1,342 tests with 23 skipped**. Subsequent focused runs cover
+reader diagnostics, timeline/IOC dates and the final Docker viewport regressions. These runs
+overlap and are not summed. The [qualification report](../validation/reports/20261127-host-gui/REAL_COLLECTION.md)
+and preceding reports document the scope and remaining limits.
+
+Layout rebuilding can take several minutes on large collections. A dated event count depends
+on the chosen clock; undated records remain available. Private evidence, screenshots and exports
+are excluded from this public release. The Windows Desktop remains frozen at 0.7.9.
+
 # Kagarasu 0.9.4 — the import says which family it is merging
 
 During the layout step of a big import, the bar stayed on "99 % · 1236/1236" while the record counters

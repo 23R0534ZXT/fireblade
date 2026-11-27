@@ -165,8 +165,7 @@ def test_stopping_an_import_ends_it_and_keeps_what_was_written(empty_page, serve
         timeout=120000,
     )
     page.wait_for_function(
-        "document.getElementById('status').innerText.length > 0 "
-        "&& !document.getElementById('status').innerText.includes('Importing')",
+        "document.getElementById('status').innerText.startsWith('Import stopped — ')",
         timeout=60000,
     )
     message = status(page)

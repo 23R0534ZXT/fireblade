@@ -20,7 +20,17 @@ def wide_case(tmp_path):
         with (source / f"source{number}.csv").open("w", newline="") as stream:
             writer = csv.writer(stream)
             writer.writerow(["Timestamp"] + [f"field{number}_{i}" for i in range(800)])
-            writer.writerow(["2026-11-01T10:00:00Z"] + [f"value-{number}-{i}" for i in range(800)])
+            writer.writerow(
+                ["2026-11-01T10:00:00Z"]
+                + [
+                    ""
+                    if number == 2 and i == 798
+                    else " \t\r\n"
+                    if number == 2 and i == 797
+                    else f"value-{number}-{i}"
+                    for i in range(800)
+                ]
+            )
     identifier = InvestigationLibrary(root).create("Wide combined", "", "windows")["id"]
     library = Library(root)
     try:
@@ -49,6 +59,24 @@ def test_wide_rows_are_projected_without_losing_far_fields(wide_case):
         assert selected["rows"] == [[4, "value-3-799"]]
         full = httpx.get(f"{base}/api/cases/{identifier}/timeline/row/0/4").json()
         assert full["values"][far - 1] == "value-3-799"
+        empty = httpx.get(endpoint.rsplit("/", 1)[0] + "/empty-columns").json()
+        assert set(empty["columns"]) == {
+            page["columns"].index("field2_797"),
+            page["columns"].index("field2_798"),
+        }
+        exported = httpx.post(
+            endpoint.rsplit("/", 1)[0] + "/export",
+            json={
+                "column": list(reversed(range(len(page["columns"]) - 1))),
+                "filter": [f"{far - 1}:eq:value-3-799"],
+            },
+        )
+        assert exported.status_code == 200, exported.text[:500]
+        import io
+
+        records = list(csv.reader(io.StringIO(exported.content.decode("utf-8-sig"))))
+        assert len(records) == 2 and len(records[0]) == len(page["columns"]) - 1
+        assert records[0][0] == "field3_799" and records[1][0] == "value-3-799"
 
 
 def test_wide_grid_scroll_search_details_and_switch_to_narrow(wide_case):

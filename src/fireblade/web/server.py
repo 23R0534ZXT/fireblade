@@ -12,6 +12,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from fireblade.web import english
@@ -31,6 +32,33 @@ class TemporaryDownloadResponse(FileResponse):
 
 
 STATIC = Path(__file__).with_name("static")
+
+
+class ExportOptions(BaseModel):
+    """The GET export contract, also accepted as JSON for very wide layouts."""
+
+    model_config = ConfigDict(extra="forbid")
+    search: str = ""
+    sort: int | None = None
+    descending: bool = False
+    sort_type: str = "text"
+    bookmarks_only: bool = False
+    group: list[int] = Field(default_factory=list)
+    sortkey: list[str] = Field(default_factory=list)
+    interval: str = ""
+    expression_json: str = ""
+    summary: list[str] = Field(default_factory=list)
+    total: list[str] = Field(default_factory=list)
+    footer_mode: str = "hidden"
+    show_total: bool = True
+    order: str = ""
+    order_descending: bool = True
+    order_summary: int = 0
+    filter: list[str] = Field(default_factory=list)
+    column: list[int] | None = None
+    grouped: bool = False
+    annotations: bool = False
+    format: str = "csv"
 
 
 def _whole(value, name="value") -> int:
@@ -1609,6 +1637,10 @@ def create_app(
             else "text/csv"
         )
         return TemporaryDownloadResponse(target, media_type=media, filename=name)
+
+    @app.post("/api/cases/{identifier}/analyses/{index}/export")
+    def export_json(identifier: str, index: int, options: ExportOptions):
+        return export(identifier, index, **options.model_dump())
 
     @app.get("/")
     def index():

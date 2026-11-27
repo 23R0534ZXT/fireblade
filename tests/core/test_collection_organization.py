@@ -238,6 +238,14 @@ def test_sparse_combined_chronology_and_ioc_keep_original_fields(tmp_path, monke
     doc = AnalysisSnapshot(
         item["path"], item["source"], View.from_json(json.dumps(item["view"])), b""
     )
+    from fireblade.core.investigation_report import build_report
+
+    report = build_report(
+        WorkspaceReader([doc]), "Sparse evidence", bookmarks_only=False, row_ids={doc.path: [4]}
+    )
+    assert report["records"] == 1 and not report["errors"]
+    assert "<th>Application Name</th><td><pre>update.exe</pre>" in report["html"]
+    assert "<th>SHA1</th><td><pre>aa</pre>" in report["html"]
     timeline = TimelineStore(memory_mb=128)
     try:
         sources = timeline.build(WorkspaceReader([doc]), {})
@@ -252,6 +260,25 @@ def test_sparse_combined_chronology_and_ioc_keep_original_fields(tmp_path, monke
         assert store.page()["count"] == 1
     finally:
         store.close()
+    from fireblade.core.case_package import export_package, import_package
+    from fireblade.core.investigations import InvestigationLibrary
+    from fireblade.core.sessions import read_session
+
+    library = InvestigationLibrary(tmp_path / "cases")
+    data = library.create("Sparse portable", "")
+    data = library.save(data["id"], [doc], 0, [], None, data["revision"])
+    package = tmp_path / "combined.fireblade-case"
+    export_package(library, data, [doc], 0, package, include_sources=True)
+    destination = InvestigationLibrary(tmp_path / "restored")
+    restored = import_package(destination, package)["case"]
+    snapshots, active = read_session(destination.session_path(restored))
+    assert active == 0 and len(snapshots) == 1
+    portable = Case(snapshots[0].path)
+    try:
+        assert portable.sparse and portable.count(View()) == 4
+        assert portable.page(View(search="update.exe"))[0][-2:] == ("update.exe", "aa")
+    finally:
+        portable.close()
 
 
 def test_cancelled_sparse_build_keeps_sources_and_publishes_nothing(tmp_path, monkeypatch):

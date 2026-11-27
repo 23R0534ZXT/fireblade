@@ -2057,7 +2057,9 @@ function exportRows(options) {
   } else {
     const shown = visibleColumns().map((item) => item.index - 1).filter((index) => index >= 0);
     if (!shown.length) { say("Choose at least one visible column to export", true); return; }
-    for (const index of shown) params.append("column", String(index));
+    if (shown.length !== state.columns.length - 1 || shown.some((column, index) => column !== index)) {
+      for (const index of shown) params.append("column", String(index));
+    }
   }
   if (options.grouped) {
     if (!state.groups.length) { say("Group the analysis first: the counts are per group", true); return; }
@@ -2065,13 +2067,21 @@ function exportRows(options) {
   }
   if (options.annotations) params.set("annotations", "true");
   if (options.format) params.set("format", options.format);
-  return downloadFrom(`/api/cases/${state.openCase.id}/analyses/${state.analysis}/export?${params.toString()}`);
+  const path = `/api/cases/${state.openCase.id}/analyses/${state.analysis}/export`;
+  if (params.toString().length <= 6000) return downloadFrom(`${path}?${params.toString()}`);
+  const body = {};
+  const repeated = new Set(["column", "filter", "group", "sortkey", "summary", "total"]);
+  for (const [key, value] of params) {
+    if (repeated.has(key)) { (body[key] ||= []).push(value); }
+    else body[key] = value;
+  }
+  return downloadFrom(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 }
 
 /* A file the server writes: fetched, so a refusal is said in the status line instead of replacing the page. */
-async function downloadFrom(path) {
+async function downloadFrom(path, options) {
   try {
-    const response = await fetch(url(path));
+    const response = await fetch(url(path), options);
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       throw new Error(body.detail || response.statusText);

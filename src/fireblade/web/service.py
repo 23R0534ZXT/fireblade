@@ -840,12 +840,10 @@ class Library:
         displayed names beside them: the mapping is positional, never by name.
         """
         with case.lock:
-            cursor = case.db.execute("SELECT * FROM events WHERE __row_id = ?", [int(row_id)])
-            row = cursor.fetchone()
-            names = [item[0] for item in cursor.description]
+            row = case.rows_by_ids([int(row_id)]).get(int(row_id))
         if row is None:
             raise ServiceError("This row does not exist in the analysis.")
-        offset = names.index("__row_id") + 1 if "__row_id" in names else 0
+        offset = 1
         values = {}
         for position, header in enumerate(case.headers):
             index = offset + position
@@ -5694,6 +5692,27 @@ class Library:
     def empty_columns(self, identifier: str, index: int) -> list[int]:
         """Grid positions whose source column contains no non-whitespace value."""
         case = self._case_for(identifier, index)
+        if case.sparse:
+            from fireblade.core.sparse_union import FIELD_COLUMN, PREFIX
+
+            whitespace = "' ' || chr(9) || chr(10) || chr(13)"
+            with case.operation():
+                if not case.count(View()):
+                    return []
+                present = {
+                    row[0]
+                    for row in case.db.execute(
+                        f'SELECT DISTINCT unnest(list_transform(list_filter(map_entries("{FIELD_COLUMN}"), '
+                        f"entry -> trim(entry.value, {whitespace}) <> ''), entry -> entry.key)) FROM events"
+                    ).fetchall()
+                }
+                fixed = list(range(PREFIX)) + list(
+                    range(len(case.info["headers"]), len(case.headers))
+                )
+                checks = [f"bool_or(trim({case.column(i)}, {whitespace}) <> '')" for i in fixed]
+                values = case.db.execute("SELECT " + ",".join(checks) + " FROM events").fetchone()
+                present.update(i for i, value in zip(fixed, values) if value)
+            return [i + 1 for i in range(len(case.headers)) if i not in present]
         checks = [
             f"bool_or(trim(CAST({case.column(position)} AS VARCHAR), "
             "' ' || chr(9) || chr(10) || chr(13)) <> '')"

@@ -391,3 +391,35 @@ def test_timeline_selection_survives_zoom_and_clears_when_filtered_out(timeline)
     page.wait_for_function("timelineState.payload.count === 0")
     assert page.evaluate("timelineState.row") is None
     assert page.locator('[data-act="timeline-open-row"]').is_disabled()
+
+
+def test_time_range_is_distinct_from_chart_zoom_and_can_be_cleared(timeline):
+    page = timeline
+    assert page.inner_text('[data-act="timeline-duration"]') == "Time range…"
+    assert page.locator('[data-act="tl-clear-range"]').is_disabled()
+    page.select_option("#timeline-preset", "86400")
+    page.wait_for_function("timelineState.payload.count < 704")
+    assert not page.locator('[data-act="tl-clear-range"]').is_disabled()
+    narrowed = _count(page)
+    page.click('[data-act="tl-zoom-in"]')
+    page.click('[data-act="tl-fit"]')
+    assert _count(page) == narrowed  # fitting the chart must not clear the filter
+    page.click('[data-act="tl-clear-range"]')
+    page.wait_for_function("timelineState.payload.count === 704")
+    assert page.inner_text("#timeline-selection") == "All dates"
+    assert page.locator('[data-act="tl-clear-range"]').is_disabled()
+
+
+def test_undated_inventory_does_not_offer_a_spurious_1970_range(server):
+    from _browser import browser_page
+
+    make_case(server, "Undated inventory", "Name,Owner\nlaptop,alice\n")
+    with browser_page(server[0], "Undated inventory") as page:
+        page.click('.tabs .tab:text-is("Timeline & correlations")')
+        page.wait_for_function("timelineState.payload !== null")
+        page.wait_for_selector("#import-progress-modal.show", state="hidden")
+        page.click('[data-act="timeline-duration"]')
+        page.wait_for_function(
+            "document.getElementById('status').innerText.includes('No dated event')"
+        )
+        assert not page.locator("#ask-modal.show").count()

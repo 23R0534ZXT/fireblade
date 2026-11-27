@@ -5500,9 +5500,11 @@ function resetTimeline() {
     $(id).checked = $(id).defaultChecked;
   }
   for (const id of ["timeline-dates", "timeline-rows", "timeline-legend", "timeline-hist",
-                    "timeline-window", "timeline-info", "timeline-info-extra"]) {
+                    "timeline-window", "timeline-info", "timeline-info-extra", "timeline-selection"]) {
     $(id).textContent = "";
   }
+  document.querySelector('[data-act="tl-clear-range"]').disabled = true;
+  document.querySelector('[data-act="timeline-open-row"]').disabled = true;
   renderTimelineLanes([]);
   clearTimelineOverview();
 }
@@ -5658,6 +5660,10 @@ function renderTimelineLanes(sources) {
 }
 
 function renderTimeline(payload) {
+  const hasRange = timelineState.start !== null;
+  document.querySelector('[data-act="tl-clear-range"]').disabled = !hasRange;
+  $("timeline-selection").textContent = hasRange
+    ? `${utcLabel(timelineState.start)} → ${utcLabel(timelineState.end)}` : "All dates";
   renderTimelineDates(payload);
   const shown = payload.sources.map((source, index) => ({ source, index }))
     .filter(({ source }) => !timelineState.hidden.has(source.id));
@@ -5738,12 +5744,13 @@ function renderTimeline(payload) {
 async function timelineDuration() {
   const payload = timelineState.payload;
   if (!payload || !payload.extent) { say("Build the timeline first", true); return; }
+  if (payload.extent.start === null) { say("No dated event; choose a date column first", true); return; }
   const band = (ns) => utcLabel(ns).slice(0, 16).replace(" ", "T").replace("Z", "");
-  const from = await ask({ title: "Show a duration",
+  const from = await ask({ title: "Time range (UTC)",
                            label: `From (UTC, ISO — empty keeps ${band(payload.extent.start)})`,
                            value: band(payload.extent.start) });
   if (from === null) return;
-  const to = await ask({ title: "Show a duration",
+  const to = await ask({ title: "Time range (UTC)",
                          label: `To (UTC, ISO — empty keeps ${band(payload.extent.end)})`,
                          value: band(payload.extent.end) });
   if (to === null) return;
@@ -8161,6 +8168,11 @@ async function act(name, node) {
     case "tl-zoom-in": timelineZoom(0.6); break;
     case "tl-zoom-out": timelineZoom(1.8); break;
     case "tl-fit": timelineFit(); break;
+    case "tl-clear-range":
+      timelineState.start = null;
+      timelineState.end = null;
+      await loadTimeline(true);
+      break;
     case "tl-pan-left": timelinePan(-0.5); break;
     case "tl-pan-right": timelinePan(0.5); break;
     case "tl-back": timelineBack(); break;

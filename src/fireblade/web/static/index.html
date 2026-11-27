@@ -593,24 +593,20 @@
           <select class="select" id="timeline-lane" title="Show one source alone, or all of them">
             <option value="">All lanes</option>
           </select>
-          <button class="btn" data-act="timeline-duration">Duration…</button>
-          <span class="note">Duration sets the window by two dates; each analysis is read with the date column chosen above.</span>
-        </div>
-        <div class="filterbar" id="timeline-pager">
-          <button class="btn" data-act="timeline-open-row">Open the source row</button>
-          <div class="grow"></div>
-          <span class="info" id="timeline-info-extra"></span>
+          <button class="btn" data-act="timeline-duration" title="Filter events between two UTC dates">Time range…</button>
+          <select class="select" id="timeline-preset" aria-label="Centred time range" title="Filter a duration centred on the selected event, or the middle of the extent">
+            <option value="0">Centred range…</option><option value="900">15 minutes</option><option value="3600">1 hour</option>
+            <option value="86400">24 hours</option><option value="604800">7 days</option></select>
+          <button class="btn" data-act="tl-clear-range" title="Remove the time filter and show events at all dates" disabled>Clear time range</button>
+          <span class="info" id="timeline-selection"></span>
         </div>
         <div class="filterbar" id="timeline-controls">
           <button class="btn" data-act="tl-zoom-in" title="Zoom in">Zoom +</button>
           <button class="btn" data-act="tl-zoom-out" title="Zoom out">Zoom −</button>
           <button class="btn" data-act="tl-pan-left" title="Slide the window back by half its width">←</button>
           <button class="btn" data-act="tl-pan-right" title="Slide the window forward by half its width">→</button>
-          <button class="btn" data-act="tl-fit" title="Show the whole extent">Fit</button>
-          <select class="select" id="timeline-preset" title="A duration centred on the selected event (or the middle of the extent)">
-            <option value="0">Duration…</option><option value="900">15 minutes</option><option value="3600">1 hour</option>
-            <option value="86400">24 hours</option><option value="604800">7 days</option></select>
-          <button class="btn" data-act="tl-back" title="Back to the previous window">Back</button>
+          <button class="btn" data-act="tl-fit" title="Fit the chart to the whole extent; the time filter is kept">Fit chart</button>
+          <button class="btn" data-act="tl-back" title="Back to the previous chart window; the time filter is kept">Back</button>
           <button class="btn" data-act="tl-isolate" title="Show every source again">Show all sources</button>
           <span class="info" id="timeline-window"></span>
           <span class="note">drag on the chart to select a duration · shift-drag to pan · wheel to zoom · double-click to fit · click a legend chip to hide a source</span>
@@ -629,7 +625,9 @@
             </table>
           </div>
         </div>
-        <div class="pager">
+        <div class="pager" id="timeline-pager">
+          <button class="btn" data-act="timeline-open-row" disabled>Open the source row</button>
+          <span class="info" id="timeline-info-extra"></span>
           <button class="btn" id="timeline-prev">Previous</button>
           <button class="btn" id="timeline-next">Next</button>
           <div class="spacer"></div>

@@ -7,12 +7,25 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.10.2] — 2026-11-27
+
+### Imports and case storage
+
 - Added quick case erasure with deletion-only records in HTML and Word.
 - Unified file, folder and disk workflows under **Import evidence**.
 - Added a host-aware worker slider for folder imports and disk analysis, with a
   recommendation and per-job override based on the resources available to Host.
 - Show available case storage and a recommended free-space estimate for folder
   and disk imports, including the staging copy for browser uploads.
+
+### Workspace navigation
+
+- Made **Import evidence** easier to find, made the active workspace tab clearer, and
+  improved control contrast and the wrapping of long status and error messages.
+- Made case toolbar commands keyboard-accessible and added arrow-key navigation between
+  workspace tabs. Screen readers announce changes in the workspace status.
+- Gave dialogs accessible titles and moved keyboard focus into each dialog and back to
+  its originating command on close.
 
 ## [0.10.1] — 2026-11-27
 
@@ -329,7 +342,9 @@ Update band, folders sent from the browser, certificate folder chosen by the ana
 ## [0.8.0] — 2026-11-23
 One container per case, driven by a small driver; erasing a case removes its container and volume.
 
-[Unreleased]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.2...HEAD
+[0.10.2]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.1...v0.10.2
+[0.10.1]: https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.10.1
 [0.8.3]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.0...v0.8.1

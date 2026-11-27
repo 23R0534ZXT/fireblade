@@ -150,25 +150,25 @@
     <span class="grow"></span>
     <button class="btn" id="update-dismiss">Dismiss</button>
   </div>
-  <div class="toolbar">
-    <div class="tb" data-act="import-evidence" title="Import a file, folder or disk">
+  <div class="toolbar" role="group" aria-label="Case tools">
+    <button type="button" class="tb" data-act="import-evidence" title="Import a file, folder or disk">
       <svg class="ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
         <path d="M1.5 4.5h5l1.2 1.5h6.8v7.5H1.5z" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
         <path d="M1.5 4.5V3h4l1.2 1.5" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
-      </svg>Import evidence</div>
-    <div class="tb" data-act="export-csv">
+      </svg>Import evidence</button>
+    <button type="button" class="tb" data-act="export-csv">
       <svg class="ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
         <path d="M3 1.5h7l3 3v10H3z" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
         <path d="M8 5v6M5.5 8.5 8 11l2.5-2.5" fill="none" stroke="#3a3a3a" stroke-width="1.2"/>
-      </svg>Export</div>
+      </svg>Export</button>
     <div class="tbsep"></div>
-    <div class="tb" data-act="case-save">Save case</div>
-    <div class="tb" data-act="display-settings">Workspace…</div>
-    <div class="tb" data-act="global-search">Global search</div>
-    <div class="tb" data-act="rules">Rules</div>
-    <div class="tb" data-act="profiles-plugins">Plugins</div>
+    <button type="button" class="tb" data-act="case-save">Save case</button>
+    <button type="button" class="tb" data-act="display-settings">Workspace…</button>
+    <button type="button" class="tb" data-act="global-search">Global search</button>
+    <button type="button" class="tb" data-act="rules">Rules</button>
+    <button type="button" class="tb" data-act="profiles-plugins">Plugins</button>
     <div class="tbsep"></div>
-    <select class="select" id="import-layout" title="How the results are laid out">
+    <select class="select" id="import-layout" aria-label="Analysis layout" title="How the results are laid out">
       <option value="files">one grid per file</option>
       <option value="artifacts">one grid per artifact family</option>
       <option value="combined">combined view</option>
@@ -180,42 +180,27 @@
     <button type="button" class="casecombo" id="casecombo" data-act="cases-list" aria-label="Open case list"
       aria-describedby="casecombo-label"><span id="casecombo-label">No case open</span><span class="arrow" aria-hidden="true">›</span></button>
     <div class="tbsep"></div>
-    <div class="tb" data-act="refresh-cases">Refresh</div>
-    <div class="tb" data-act="close-case">Close case</div>
+    <button type="button" class="tb" data-act="refresh-cases">Refresh</button>
+    <button type="button" class="tb" data-act="close-case">Close case</button>
   </div>
 
-  <div class="tabs" id="doctabs">
-    <button type="button" class="tab active" data-tab="analyses" aria-pressed="true">Analyses</button>
-    <button type="button" class="tab" data-tab="imports" aria-pressed="false">Imports</button>
-    <button type="button" class="tab" data-tab="cases" aria-pressed="false">Cases</button>
-    <button type="button" class="tab" data-tab="timeline" aria-pressed="false">Timeline &amp; correlations</button>
-    <button type="button" class="tab" data-tab="ioc" aria-pressed="false">IOC hunting</button>
-    <button type="button" class="tab" data-tab="hayabusa" aria-pressed="false">Hayabusa findings</button>
-    <button type="button" class="tab" data-tab="actions" aria-pressed="false">Actions &amp; tracking</button>
-    <button type="button" class="tab" data-tab="graph" aria-pressed="false">Attack graph</button>
-    <div class="doctab docempty" id="doctab">Case</div>
+  <div class="tabs" id="doctabs" role="tablist" aria-label="Workspace views">
+    <button type="button" class="tab active" data-tab="analyses" id="tab-analyses" role="tab" aria-controls="analysis-view" aria-selected="true" tabindex="0">Analyses</button>
+    <button type="button" class="tab" data-tab="imports" id="tab-imports" role="tab" aria-controls="imports-view" aria-selected="false" tabindex="-1">Imports</button>
+    <button type="button" class="tab" data-tab="cases" id="tab-cases" role="tab" aria-controls="cases-view" aria-selected="false" tabindex="-1">Cases</button>
+    <button type="button" class="tab" data-tab="timeline" id="tab-timeline" role="tab" aria-controls="timeline-view" aria-selected="false" tabindex="-1">Timeline &amp; correlations</button>
+    <button type="button" class="tab" data-tab="ioc" id="tab-ioc" role="tab" aria-controls="ioc-view" aria-selected="false" tabindex="-1">IOC hunting</button>
+    <button type="button" class="tab" data-tab="hayabusa" id="tab-hayabusa" role="tab" aria-controls="hayabusa-view" aria-selected="false" tabindex="-1">Hayabusa findings</button>
+    <button type="button" class="tab" data-tab="actions" id="tab-actions" role="tab" aria-controls="actions-view" aria-selected="false" tabindex="-1">Actions &amp; tracking</button>
+    <button type="button" class="tab" data-tab="graph" id="tab-graph" role="tab" aria-controls="graph-view" aria-selected="false" tabindex="-1">Attack graph</button>
   </div>
   <div class="tabbar-line"></div>
 
   <div class="work">
-    <div class="artifacts" id="artifacts">
-      <div class="head"><span>Artifacts</span><button type="button" class="x" id="artifacts-close"
-        data-act="toggle-artifacts" aria-label="Close artifacts panel">✕</button></div>
-      <select class="select" id="tree-mode" title="How the tree groups the analyses">
-        <option value="families">Collection → artifact family</option>
-        <option value="flat">Analysis list by collection</option>
-        <option value="folders">Disk → partition → folders</option>
-      </select>
-      <div class="tree-tools"><button class="btn" id="tree-expand" title="Expand the whole tree">Expand</button>
-        <button class="btn" id="tree-collapse" title="Collapse the whole tree">Collapse</button></div>
-      <input class="tree-search" id="tree-search" placeholder="Filter artifact names…">
-      <div class="tree" id="tree"></div>
-    </div>
-
     <div class="pane">
       <div class="pane-tabs" id="pane-tabs"></div>
 
-      <div id="analysis-view" style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <div id="analysis-view" role="tabpanel" aria-labelledby="tab-analyses" tabindex="0" style="display:flex;flex-direction:column;flex:1;min-height:0">
         <div class="filterbar">
           <input class="search" id="search" placeholder="Text, IP, path, hash…  Enter to search">
           <button class="btn" id="clear">Clear the filters</button>
@@ -256,7 +241,7 @@
         </div>
       </div>
 
-      <div id="graph-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <div id="graph-view" role="tabpanel" aria-labelledby="tab-graph" tabindex="0" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="panel-title">
           <h2>Attack graph</h2>
           <p>Hosts, observed techniques and tracked indicators, ordered along the attack chain. Click anything to see what it rests on: the exact lines it was read from.</p>
@@ -291,7 +276,7 @@
         </div>
       </div>
 
-      <div id="hayabusa-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <div id="hayabusa-view" role="tabpanel" aria-labelledby="tab-hayabusa" tabindex="0" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="filterbar">
           <select class="select" id="hayabusa-level" aria-label="Minimum severity">
             <option value="informational">informational</option>
@@ -347,7 +332,7 @@
         </div>
       </div>
 
-      <div id="imports-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <div id="imports-view" role="tabpanel" aria-labelledby="tab-imports" tabindex="0" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="panel-title">
           <h2>Imports</h2>
           <p>Windows artifacts, Linux logs and CatScale collections.</p>
@@ -395,7 +380,7 @@
         </div>
       </div>
 
-      <div id="actions-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <div id="actions-view" role="tabpanel" aria-labelledby="tab-actions" tabindex="0" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="subtabs">
           <div class="subtab active" data-sub="actions">Actions</div>
           <div class="subtab" data-sub="indicators">Indicators</div>
@@ -538,7 +523,7 @@
         </div>
       </div>
 
-      <div id="ioc-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <div id="ioc-view" role="tabpanel" aria-labelledby="tab-ioc" tabindex="0" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="panel-title">
           <h2>IOC hunting</h2>
           <p>Paste IP addresses, domains, URLs or hashes, or import a list. The search runs locally in the open case.</p>
@@ -590,7 +575,7 @@
         </div>
       </div>
 
-      <div id="timeline-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <div id="timeline-view" role="tabpanel" aria-labelledby="tab-timeline" tabindex="0" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="filterbar">
           <select class="select" id="timeline-kind" aria-label="Correlation field">
             <option value="text">Any text</option>
@@ -658,7 +643,7 @@
         </div>
       </div>
 
-      <div id="cases-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <div id="cases-view" role="tabpanel" aria-labelledby="tab-cases" tabindex="0" style="display:none;flex-direction:column;flex:1;min-height:0">
         <div class="panel-title">
           <h2>Cases</h2>
         </div>
@@ -698,10 +683,23 @@
         </div>
       </div>
     </div>
+    <div class="artifacts" id="artifacts">
+      <div class="head"><span>Artifacts</span><button type="button" class="x" id="artifacts-close"
+        data-act="toggle-artifacts" aria-label="Close artifacts panel">✕</button></div>
+      <select class="select" id="tree-mode" title="How the tree groups the analyses">
+        <option value="families">Collection → artifact family</option>
+        <option value="flat">Analysis list by collection</option>
+        <option value="folders">Disk → partition → folders</option>
+      </select>
+      <div class="tree-tools"><button class="btn" id="tree-expand" title="Expand the whole tree">Expand</button>
+        <button class="btn" id="tree-collapse" title="Collapse the whole tree">Collapse</button></div>
+      <input class="tree-search" id="tree-search" placeholder="Filter artifact names…">
+      <div class="tree" id="tree"></div>
+    </div>
   </div>
 
   <div class="statusbar">
-    <span id="status">Ready</span>
+    <span id="status" role="status" aria-atomic="true">Ready</span>
     <div class="right"><span id="version">Kagarasu</span><span id="caseroot"></span></div>
   </div>
 </div>

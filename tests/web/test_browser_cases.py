@@ -26,7 +26,7 @@ def _api(server, path):
 
 def test_a_click_selects_a_case_and_the_open_button_or_a_double_click_opens_it(page, server):
     other = make_case(server, "Second case", standard_csv())
-    page.click("#doctab, .toolbar .tb[data-act='refresh-cases'], .toolbar .tb:text-is('Refresh')")
+    page.click(".toolbar .tb[data-act='refresh-cases']")
     _cases_tab(page)
     page.wait_for_selector('#cases-body tr:has(td:text-is("Second case"))')
     open_before = page.inner_text("#casecombo-label")

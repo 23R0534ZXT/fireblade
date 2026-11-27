@@ -106,25 +106,50 @@ def test_narrow_workspaces_keep_their_controls_and_artifact_drawer(page):
 
 
 def test_the_last_workspace_tab_is_reachable_in_a_narrow_window(page):
-    page.set_viewport_size({"width": 680, "height": 580})
-    strip = page.locator("#doctabs")
-    tabs = strip.locator("[data-tab]")
+    page.set_viewport_size({"width": 560, "height": 580})
+    toolbar = page.get_by_role("group", name="Case tools")
+    close_case = toolbar.get_by_role("button", name="Close case")
+    assert close_case.evaluate("(el) => el instanceof HTMLButtonElement")
+    assert toolbar.get_by_role("combobox", name="Analysis layout").count() == 1
+    strip = page.get_by_role("tablist", name="Workspace views")
+    analyses_tab = strip.get_by_role("tab", name="Analyses")
+    graph_tab = strip.get_by_role("tab", name="Attack graph")
     assert strip.evaluate("(el) => el.scrollWidth > el.clientWidth")
-    tabs.first.focus()
-    for _ in range(tabs.count() - 1):
-        page.keyboard.press("Tab")
-    graph_tab = tabs.last
+    close_case.focus()
+    page.keyboard.press("Tab")
+    assert analyses_tab.evaluate("(el) => el === document.activeElement")
+    page.keyboard.press("ArrowRight")
+    assert strip.get_by_role("tab", name="Imports").evaluate(
+        "(el) => el === document.activeElement"
+    )
+    page.keyboard.press("End")
     assert graph_tab.evaluate("(el) => el === document.activeElement")
+    assert graph_tab.get_attribute("aria-selected") == "false"
+    assert analyses_tab.get_attribute("aria-selected") == "true"
     box = graph_tab.bounding_box()
-    assert 0 <= box["x"] and box["x"] + box["width"] <= 680
+    assert 0 <= box["x"] and box["x"] + box["width"] <= 560
     page.keyboard.press("Enter")
-    graph = page.locator("#graph-view")
+    assert graph_tab.get_attribute("aria-selected") == "true"
+    graph = page.get_by_role("tabpanel", name="Attack graph")
     assert graph.is_visible()
+    page.keyboard.press("Tab")
+    assert graph.evaluate("(el) => el === document.activeElement")
+    page.keyboard.press("Shift+Tab")
+    assert graph_tab.evaluate("(el) => el === document.activeElement")
     export = graph.get_by_role("button", name="Export PNG")
     export_box = export.bounding_box()
     graph_box = graph.bounding_box()
     assert export_box["x"] + export_box["width"] <= graph_box["x"] + graph_box["width"]
     export.click(trial=True)
+    page.keyboard.press("Home")
+    assert analyses_tab.evaluate("(el) => el === document.activeElement")
+    page.keyboard.press("ArrowLeft")
+    assert graph_tab.evaluate("(el) => el === document.activeElement")
+    page.keyboard.press("ArrowRight")
+    assert analyses_tab.evaluate("(el) => el === document.activeElement")
+    page.keyboard.press("Space")
+    assert strip.get_by_role("tab", name="Analyses", selected=True).count() == 1
+    assert page.get_by_role("tabpanel", name="Analyses").is_visible()
 
 
 def test_workspace_zoom_keeps_the_status_and_uses_the_available_width(page):

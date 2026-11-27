@@ -1,3 +1,33 @@
+# Kagarasu 0.10.2 — import controls, case storage and workspace navigation
+
+## Import evidence
+
+- Import files, parse folders and analyse a mounted volume or disk image from one entry point.
+  The disk analysis dialog also opens the read-only image explorer.
+- Choose the number of workers for a folder or disk analysis. Host recommends a setting and
+  sets the upper limit using the CPU and memory available to the container. The setting applies
+  to the current job.
+- Check available case storage and recommended free space before importing a folder or disk.
+  The browser folder estimate includes room for its staging copy. Disk image estimates use
+  logical size when available. On VMware, check the guest volume and the physical host or
+  datastore separately. See [storage planning](https://github.com/23R0534ZXT/kagarasu/blob/v0.10.2/deploy/host/README.md#storage-for-imports).
+
+## Case erasure
+
+**Quick erase** deletes the case files without overwriting them and writes deletion-only
+records in HTML and Word outside the case. The existing overwrite modes still verify the last
+pass before deletion. Guest filesystem space and physical VMDK size are managed separately.
+See [erasure limits](https://github.com/23R0534ZXT/kagarasu/blob/v0.10.2/docs/host/STATUS.md).
+
+## Workspace navigation
+
+- Find **Import evidence** in the case toolbar and identify the active workspace view at a
+  glance. Controls have stronger contrast, and long status messages and errors wrap.
+- Use Tab to reach case commands. On the workspace tabs, use the arrow keys to move
+  focus and Enter or Space to select a view.
+- Screen readers announce workspace status changes and dialog titles. Opening a dialog
+  moves focus into it. Closing it returns focus to the originating command.
+
 # Kagarasu 0.10.1 — investigation workflow and disk explorer
 
 - Accelerate large collections with automatic file workers and a single automatic-profile

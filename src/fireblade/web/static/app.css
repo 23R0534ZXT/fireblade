@@ -1,11 +1,11 @@
-/* Kagarasu Host — appearance carried over from src/fireblade/ui/theme.py.
-   Same palette, same density, same flat Qt/Fusion look. */
+/* Kagarasu Host workspace and evidence views. */
 
 :root{
-  --window:#f0f0f0; --text:#202020; --base:#ffffff; --alt:#f6f6f6;
-  --border:#b5b5b5; --header:#eeeeee; --header-sep:#c5c5c5; --toolbar-sep:#bcbcbc;
+  --window:#f3f5f8; --text:#1d2939; --base:#ffffff; --alt:#f7f9fc;
+  --border:#b8c4d2; --header:#e9eef5; --header-sep:#c6d1df; --toolbar-sep:#c6d1df;
   --sel:#cce8ff; --sel-text:#101010; --disabled:#686868; --link:#0645ad;
-  --hint:#ffffe1; --status-error:#a02020;
+  --hint:#fff7df; --status-error:#9b2626; --error-surface:#fff0ef;
+  --primary:#1d537f; --primary-hover:#174367; --primary-text:#fff; --focus:#135eaa;
   /* The rest of the surface, named once: a theme or a custom palette only has to
      move these six plus the ones above, never the rules below. */
   --grid-line:#e2e2e2; --row-hover:#eaf5ff; --head-sorted:#e4eef6; --btn-hover:#e4f2fc;
@@ -22,7 +22,8 @@
   --window:#1f1f1f; --text:#e6e6e6; --base:#262626; --alt:#2b2b2b;
   --border:#454545; --header:#2a2a2a; --header-sep:#3d3d3d; --toolbar-sep:#3d3d3d;
   --sel:#2f5d80; --sel-text:#ffffff; --disabled:#8a8a8a; --link:#7fb3e8;
-  --hint:#3a3a2a; --status-error:#ffaaa3;
+  --hint:#3a3a2a; --status-error:#ffaaa3; --error-surface:#3c2628;
+  --primary:#83b7e4; --primary-hover:#acd3f3; --primary-text:#112333; --focus:#acd3f3;
   --grid-line:#3a3a3a; --row-hover:#333333; --head-sorted:#33414d; --btn-hover:#333333;
   --btn-active:#2f4a5e; --input-focus:#333333; --soft:#2a2a2a; --muted:#a8a8a8;
   --border-strong:#5a5a5a; --menu-border:#555555; --border-soft:#3d3d3d; --accent:#4f8bb5;
@@ -35,6 +36,7 @@ body{
   font:12px/1.35 "Segoe UI",-apple-system,"DejaVu Sans",sans-serif;
   -webkit-font-smoothing:antialiased; overflow:hidden; user-select:none;
 }
+:is(button,select,input,textarea,[tabindex]):focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 .app{display:flex;flex-direction:column;height:calc(100vh / var(--ui-scale));height:calc(100dvh / var(--ui-scale));zoom:var(--ui-scale)}
 
 /* menu bar */
@@ -59,19 +61,27 @@ body{
 .menu .key{position:absolute;right:10px;color:var(--muted)}
 
 /* toolbar */
-.toolbar{display:flex;align-items:center;padding:2px 4px;border-bottom:1px solid var(--toolbar-sep);min-height:26px;flex:0 0 auto;
+.toolbar{display:flex;align-items:center;gap:3px;padding:4px 6px;border-bottom:1px solid var(--toolbar-sep);min-height:26px;flex:0 0 auto;
   /* a narrow window scrolls the bar instead of cutting off the case selector and Close case */
   overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
 .toolbar>*{flex-shrink:0}
-.tb{display:flex;align-items:center;gap:4px;padding:1px 5px;height:22px;cursor:default;white-space:nowrap}
-.tb:hover{background:var(--sel)}
-.tb.off{color:var(--disabled)}
-.tb.off:hover{background:transparent}
+.tb{display:flex;align-items:center;gap:5px;padding:1px 7px;height:25px;
+  border:1px solid transparent;border-radius:4px;background:transparent;color:inherit;
+  font:inherit;cursor:pointer;white-space:nowrap}
+.tb:hover{background:var(--row-hover);border-color:var(--border)}
+.tb:is(.off,:disabled){color:var(--disabled);cursor:default;background:transparent;border-color:transparent}
+.tb .ico path{stroke:currentColor}
+.toolbar .tb[data-act="import-evidence"]:not(.off,:disabled){
+  background:var(--primary);color:var(--primary-text);font-weight:600
+}
+.toolbar .tb[data-act="import-evidence"]:not(.off,:disabled):hover{background:var(--primary-hover)}
+.toolbar .tb[data-act="import-evidence"]:not(.off,:disabled):focus-visible{outline-color:var(--primary-text)}
 .tbsep{width:6px;height:20px;margin:0 5px;border-left:1px dotted #a8a8a8}
 .casecombo{
-  height:21px;border:1px solid var(--border);background:var(--base);display:flex;align-items:center;
-  padding:0 4px;min-width:230px;gap:6px;font:inherit;color:inherit;text-align:left;cursor:pointer
+  height:25px;border:1px solid var(--border);border-radius:4px;background:var(--base);display:flex;align-items:center;
+  padding:0 7px;min-width:180px;max-width:245px;gap:6px;font:inherit;color:inherit;text-align:left;cursor:pointer
 }
+#casecombo-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .casecombo .arrow{margin-left:auto;color:var(--muted)}
 .casecombo:hover{border-color:var(--accent);background:var(--row-hover)}
 
@@ -92,18 +102,14 @@ body{
 .tabs{display:flex;align-items:flex-end;gap:2px;padding:2px 4px 0;background:var(--window);min-height:24px;flex:0 0 auto;
   overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
 .tab{
-  padding:2px 8px;border:1px solid var(--border);border-bottom:none;background:var(--header);
-  border-radius:2px 2px 0 0;height:21px;font:inherit;color:inherit;line-height:16px;cursor:default;flex:0 0 auto;white-space:nowrap
+  padding:3px 10px;border:1px solid transparent;border-bottom:2px solid transparent;background:transparent;
+  border-radius:4px 4px 0 0;height:27px;font:inherit;color:var(--muted);line-height:17px;
+  cursor:pointer;flex:0 0 auto;white-space:nowrap
 }
-.tab:focus-visible{outline:2px solid var(--accent-dark);outline-offset:-3px}
-.tab.active{background:var(--base);position:relative;top:1px;height:22px}
-.tab.off{color:var(--disabled);background:#ececec}
-.doctab{
-  margin-left:6px;align-self:center;background:var(--base);border:1px solid var(--border);
-  border-bottom:none;padding:1px 9px;height:22px;line-height:19px;flex:0 0 auto;white-space:nowrap;
-  max-width:46%;overflow:hidden;text-overflow:ellipsis
-}
-.docempty{visibility:hidden}
+.tab:hover{background:var(--row-hover);color:var(--text)}
+.tab:focus-visible{outline:2px solid var(--focus);outline-offset:-3px}
+.tab.active{border-bottom-color:var(--primary);background:var(--base);color:var(--text);font-weight:600}
+.tab.off{color:var(--disabled)}
 .tabbar-line{height:1px;background:var(--border);flex:0 0 1px;margin-top:-1px}
 
 .work{display:flex;flex:1;min-height:0;position:relative}
@@ -113,7 +119,7 @@ body{
    same order here, so a glance moves the same way in both editions. */
 .artifacts{width:212px;flex:0 0 212px;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--window);order:3}
 .pane{order:1}
-.artifacts .head{display:flex;align-items:center;height:22px;padding:0 6px}
+.artifacts .head{display:flex;align-items:center;height:25px;padding:0 7px;font-weight:600}
 .artifacts .head .x{margin-left:auto;border:0;padding:1px 5px;background:none;color:var(--text);cursor:pointer}
 .artifacts .head .x:hover{background:var(--sel)}
 .artifacts[hidden],.work.artifacts-hidden>.vsplit{display:none}
@@ -145,13 +151,13 @@ body{
 .search{flex:1;height:21px;border:1px solid var(--border);background:var(--base);padding:0 5px;font-size:11px;outline:none;color:var(--text);min-width:80px}
 .search::placeholder{color:var(--disabled)}
 .btn{
-  height:21px;border:1px solid var(--border);background:var(--window);padding:0 8px;
+  height:21px;border:1px solid var(--border);border-radius:3px;background:var(--window);padding:0 8px;
   display:inline-flex;align-items:center;justify-content:center;font-size:11px;white-space:nowrap;
-  font-family:inherit;color:var(--text);cursor:default
+  font-family:inherit;color:var(--text);cursor:pointer
 }
 .btn:hover{background:var(--btn-hover);border-color:var(--accent)}
 .btn:active{background:var(--sel)}
-.btn:disabled{color:var(--disabled);background:var(--window);border-color:var(--border)}
+.btn:disabled{cursor:default;color:var(--disabled);background:var(--window);border-color:var(--border)}
 .btn[hidden]{display:none}
 .groupbar{display:flex;align-items:center;gap:6px;padding:0 6px 3px;flex:0 0 auto}
 .hint{color:var(--text);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -225,11 +231,13 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
 .pager .spacer{flex:1}
 .pager .info{font-size:11px}
 
-.statusbar{height:22px;flex:0 0 22px;display:flex;align-items:center;padding:0 7px;border-top:1px solid var(--border);font-size:11px;gap:14px}
-.statusbar .right{margin-left:auto;display:flex;gap:14px}
-#status{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.statusbar .right{flex-shrink:0}
-.statusbar .err{color:var(--status-error)}
+.statusbar{min-height:24px;flex:0 0 auto;display:flex;align-items:center;padding:3px 8px;
+  border-top:1px solid var(--border);background:var(--header);font-size:11px;gap:14px}
+.statusbar .right{margin-left:auto;display:flex;gap:10px;max-width:44%;flex-shrink:0;color:var(--muted)}
+#caseroot{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#status{min-width:0;flex:1;overflow-wrap:anywhere;max-height:5em;overflow:auto}
+.statusbar:has(#status.err){background:var(--error-surface)}
+.statusbar .err{color:var(--status-error);font-weight:600}
 
 /* cases table */
 .caseswrap{flex:1;min-height:0;margin:4px 6px;border:1px solid var(--border);background:var(--base);display:flex;flex-direction:column;overflow:auto}
@@ -253,7 +261,7 @@ tbody tr.sel td .cb{border-color:var(--accent-dark)}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.18);display:none;align-items:center;justify-content:center;z-index:100}
 .modal.show{display:flex}
 .dialog{background:var(--window);border:1px solid #8f8f8f;box-shadow:3px 3px 8px rgba(0,0,0,.25);min-width:min(var(--dialog-width,340px),calc(100% - 16px));max-width:calc(100% - 16px);padding:0}
-.dialog h3{margin:0;padding:6px 10px;font-size:12px;font-weight:400;background:var(--header);border-bottom:1px solid var(--border)}
+.dialog h3{margin:0;padding:6px 10px;font-size:13px;font-weight:600;background:var(--header);border-bottom:1px solid var(--border)}
 .dialog .body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
 .dialog .row{display:flex;align-items:center;gap:10px;font-size:12px}
 .dialog .row label{min-width:120px}

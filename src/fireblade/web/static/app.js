@@ -1709,8 +1709,6 @@ async function openCase(identifier, analysisIndex = null) {
     if ([...layout.options].some((option) => option.value === detail.layout)) {
       layout.value = detail.layout;
     }
-    $("doctab").textContent = detail.name || "Case";
-    $("doctab").classList.remove("docempty");
     $("casecombo-label").textContent = detail.name || "Case";
     showTab("analyses");
     renderTree();
@@ -1740,8 +1738,6 @@ function closeCase() {
   state.columns = [];
   state.rows = [];
   state.total = 0;
-  $("doctab").textContent = "Case";
-  $("doctab").classList.add("docempty");
   $("casecombo-label").textContent = "No case open";
   $("tree").innerHTML = '<div class="empty">No case open.</div>';
   $("pane-tabs").innerHTML = "";
@@ -7151,23 +7147,44 @@ function syncArtifacts() {
   document.querySelector(".work").classList.toggle("artifacts-hidden", !visible);
 }
 
+function workspaceTabs() {
+  return [...$("doctabs").querySelectorAll(".tab[data-tab]")];
+}
+
+function moveWorkspaceTab(event) {
+  const tabs = workspaceTabs();
+  const index = tabs.indexOf(event.target);
+  if (index < 0 || event.altKey || event.ctrlKey || event.metaKey) return;
+  let destination;
+  if (event.key === "ArrowLeft") destination = (index - 1 + tabs.length) % tabs.length;
+  else if (event.key === "ArrowRight") destination = (index + 1) % tabs.length;
+  else if (event.key === "Home") destination = 0;
+  else if (event.key === "End") destination = tabs.length - 1;
+  else return;
+  event.preventDefault();
+  tabs.forEach((tab, i) => { tab.tabIndex = i === destination ? 0 : -1; });
+  tabs[destination].focus();
+}
+
 function showTab(name) {
+  const tabs = workspaceTabs();
+  const selected = tabs.find(tab => tab.dataset.tab === name);
+  if (!selected) return;
+  const focused = document.activeElement;
+  const previousPanel = focused?.closest('[role="tabpanel"]');
   tabChosen = true;
-  document.querySelectorAll(".tab[data-tab]").forEach((tab) => {
-    const active = tab.dataset.tab === name;
+  for (const tab of tabs) {
+    const active = tab === selected;
     tab.classList.toggle("active", active);
-    tab.setAttribute("aria-pressed", String(active));
-    if (active) tab.scrollIntoView({ block: "nearest", inline: "nearest" });
-  });
-  $("analysis-view").style.display = name === "analyses" ? "flex" : "none";
-  $("cases-view").style.display = name === "cases" ? "flex" : "none";
-  $("timeline-view").style.display = name === "timeline" ? "flex" : "none";
-  $("ioc-view").style.display = name === "ioc" ? "flex" : "none";
-  $("actions-view").style.display = name === "actions" ? "flex" : "none";
-  $("imports-view").style.display = name === "imports" ? "flex" : "none";
-  $("hayabusa-view").style.display = name === "hayabusa" ? "flex" : "none";
+    tab.setAttribute("aria-selected", String(active));
+    tab.tabIndex = active ? 0 : -1;
+    $(tab.getAttribute("aria-controls")).style.display = active ? "flex" : "none";
+  }
+  if (tabs.includes(focused) || previousPanel?.style.display === "none") {
+    selected.focus({ preventScroll: true });
+  }
+  selected.scrollIntoView({ block: "nearest", inline: "nearest" });
   if (name === "hayabusa" && state.openCase) loadFindings(false);
-  $("graph-view").style.display = name === "graph" ? "flex" : "none";
   if (name === "graph" && state.openCase) buildGraph();
   if (name === "imports" && state.openCase) loadImports();
   if (name === "actions" && state.openCase) {
@@ -7558,7 +7575,52 @@ function openMenu(name) {
   return menu;
 }
 
+function wireDialogAccessibility() {
+  const dialogs = new Map();
+  const open = [];
+  const visibility = new MutationObserver((records) => {
+    const previous = open.at(-1);
+    const active = document.activeElement;
+    for (const { target } of records) {
+      const entry = dialogs.get(target);
+      const index = open.indexOf(entry);
+      if (target.classList.contains("show")) {
+        if (index !== -1) continue;
+        entry.opener = previous?.dialog.contains(active) || active === document.body
+          ? previous?.opener : active;
+        open.push(entry);
+      } else if (index !== -1) {
+        open.splice(index, 1);
+      }
+    }
+    const current = open.at(-1);
+    if (current === previous) return;
+    if (current && !current.dialog.contains(document.activeElement)) {
+      current.dialog.focus({ preventScroll: true });
+    } else if (!current && (document.activeElement === document.body ||
+        previous?.dialog.contains(document.activeElement))) {
+      const opener = previous?.opener;
+      if (opener?.isConnected && opener.getClientRects().length) {
+        opener.focus({ preventScroll: true });
+      }
+    }
+  });
+
+  document.querySelectorAll(".modal > .dialog").forEach((dialog) => {
+    const modal = dialog.parentElement;
+    const title = dialog.querySelector(":scope > h3");
+    if (!title) return;
+    if (!title.id) title.id = `${modal.id}-title`;
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-labelledby", title.id);
+    dialog.tabIndex = -1;
+    dialogs.set(modal, { dialog, opener: null });
+    visibility.observe(modal, { attributes: true, attributeFilter: ["class"] });
+  });
+}
+
 function wire() {
+  wireDialogAccessibility();
   window.addEventListener("resize", syncArtifacts);
   document.querySelectorAll('.menubar .m').forEach((node) => {
     node.tabIndex = 0;
@@ -7658,8 +7720,17 @@ function wire() {
     }
   });
 
-  document.querySelectorAll(".tab[data-tab]").forEach((tab) => {
-    tab.addEventListener("click", () => showTab(tab.dataset.tab));
+  const tabList = $("doctabs");
+  tabList.addEventListener("click", (event) => {
+    const tab = event.target.closest(".tab[data-tab]");
+    if (tab) showTab(tab.dataset.tab);
+  });
+  tabList.addEventListener("keydown", moveWorkspaceTab);
+  tabList.addEventListener("focusout", (event) => {
+    if (tabList.contains(event.relatedTarget)) return;
+    workspaceTabs().forEach(tab => {
+      tab.tabIndex = tab.getAttribute("aria-selected") === "true" ? 0 : -1;
+    });
   });
 
   $("cases-body").addEventListener("click", (event) => {

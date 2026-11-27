@@ -8,7 +8,7 @@ Kagarasu Host is a local DFIR workspace for investigating Windows artifacts, Lin
 disk images and tabular evidence. Import a collection, inspect its source records, track
 findings and actions, and produce evidence-backed reports from the same case.
 
-![Kagarasu Host viewing a Linux log collection](docs/assets/host/host-workspace.png)
+![Kagarasu Host viewing a synthetic workstation investigation](docs/assets/host/host-workspace.png)
 
 ## Quick start
 
@@ -18,7 +18,7 @@ Run the current stable release on a workstation with Docker.
 docker run -d --name kagarasu --restart unless-stopped \
   -p 127.0.0.1:8080:8080 \
   -v "$HOME/kagarasu-cases:/data/cases" \
-  ghcr.io/23r0534zxt/kagarasu:0.10.1
+  ghcr.io/23r0534zxt/kagarasu:0.10.2
 ```
 
 Open <http://localhost:8080>. The directory mounted at `/data/cases` contains the persistent
@@ -30,12 +30,12 @@ See [deployment and per-case isolation](deploy/host/README.md).
 
 ## Investigation workflow
 
-1. **Open a case and import evidence.** Use a file or folder import, or analyze a mounted
-   volume or disk image. **Imports** shows the files accounted for, their readers and
-   any partial or unread results. Host reads independent files in parallel within the
-   configured resources and applies detected profiles in one session save.
-   Choose a grid per file, per artifact family or one
-   combined grid. Changing layouts retains the source records and their annotations.
+1. **Open a case and import evidence.** Choose **Import evidence** to import a file,
+   parse a folder, or analyze a mounted volume or disk image. **Imports** shows the files
+   accounted for, their readers and any partial or unread results. Host reads independent
+   files in parallel within the configured resources and applies detected profiles in one
+   session save. Choose a grid per file, per artifact family or one combined grid. Changing
+   layouts retains the source records and their annotations.
 2. **Investigate and tag records.** Filter and group the grid, bookmark rows or add notes.
    Right-click a row to tag it with its date, machine, interest, confidence and verdict.
    From an IP cell, hunt across the case or declare an indicator with its source record.
@@ -51,20 +51,19 @@ See [deployment and per-case isolation](deploy/host/README.md).
    intake form (DOCX), six-sheet follow-up workbook (XLSX), or editable investigation
    report (DOCX). The standard reports still support HTML and PDF.
 5. **Close the case.** Export a portable case with verified hashes, or use case erasure.
-   In the development image (`:edge`), **Quick erase** deletes the case files without
-   overwriting them. The DoD modes overwrite them and verify the last pass before deletion.
-   Both produce HTML and editable Word records outside the case. Deletion frees space in the
-   case filesystem once the files are closed and have no remaining links. A VMware snapshot or growing virtual disk can
+   **Quick erase** deletes the case files without overwriting them. The DoD modes overwrite
+   the files and verify the last pass before deletion. Both produce HTML and editable Word
+   records outside the case. Deletion frees space in the case filesystem once the files
+   are closed and have no remaining links. A VMware snapshot or growing virtual disk can
    retain its size on the physical host. See [erasure limits](docs/host/STATUS.md).
 
 ## Import source and resources
 
-In the development image (`:edge`), **Import evidence** opens a source chooser for
-files, folders and disks. **Parse a folder** and **Analyse a disk or image** offer a
-slider for the number of workers. The recommendation and upper limit use the resources
-available to Host, including Docker CPU and memory limits. Green shows lighter resource
-use and red shows the upper range. The choice applies to that job. Preferences set the
-default for other imports.
+**Import evidence** opens a source chooser for files, folders and disks. **Parse a folder**
+and **Analyse a disk or image** offer a slider for the number of workers. The recommendation
+and upper limit use the resources available to Host, including Docker CPU and memory limits.
+Green shows lighter resource use and red shows the upper range. The choice applies to
+that job. Preferences set the default for other imports.
 
 <details>
 <summary>Import workflow screenshots</summary>

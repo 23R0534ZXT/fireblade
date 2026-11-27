@@ -1866,6 +1866,7 @@ function applyStoredRowHeight() {
 /* Query indexes only have meaning for the analysis that supplied the columns. */
 function resetAnalysisQuery() {
   rowsRequest?.abort();
+  clearTimeout(filterTimer);
   showDetails(null);
   state.columnContext = null;
   $("gridbody").scrollLeft = 0;
@@ -6275,6 +6276,7 @@ async function loadRows(reset, preserveSelection = false) {
   // A new page is a new set of rows: a selection of ids that are no longer on
   // screen must not survive into "copy the selected rows".
   if (!preserveSelection) {
+    clearTimeout(filterTimer);
     state.selection.clear();
     state.anchor = null;
     state.selected = null;
@@ -6419,11 +6421,35 @@ function columnWindow(columns) {
 }
 
 let columnWindowTimer;
-$("gridbody").addEventListener("scroll", () => {
-  if (state.columns.length <= 128 || state.grouped) return;
+let columnWindowFrame = null;
+let columnWindowLeft = $("gridbody").scrollLeft;
+let columnWindowWidth = $("gridbody").clientWidth;
+function refreshColumnViewport() {
+  const current = () => state.openCase && state.columns.length > 128 && !state.grouped
+    && $("gridbody").clientWidth > 0
+    && state.columnContext === `${state.openCase.id}/${state.analysis}`;
+  if (!current()) return;
+  if (columnWindowFrame === null) columnWindowFrame = requestAnimationFrame(() => {
+    columnWindowFrame = null;
+    if (current()) renderGrid(true);
+  });
   clearTimeout(columnWindowTimer);
-  columnWindowTimer = setTimeout(() => renderGrid(), 70);
+  columnWindowTimer = setTimeout(() => {
+    if (current() && !rowsRequest) renderGrid();
+  }, 100);
+}
+$("gridbody").addEventListener("scroll", () => {
+  const left = $("gridbody").scrollLeft;
+  if (left === columnWindowLeft) return;
+  columnWindowLeft = left;
+  refreshColumnViewport();
 }, { passive: true });
+new ResizeObserver(() => {
+  const width = $("gridbody").clientWidth;
+  if (width === columnWindowWidth) return;
+  columnWindowWidth = width;
+  refreshColumnViewport();
+}).observe($("gridbody"));
 
 /* "Highlight matches (empty = disable)", the desktop's own control: the text is cut
    around the term, each piece escaped, and only the pieces are marked. */
@@ -6572,7 +6598,7 @@ function fitColumnToContent(column) {
   saveLayoutSoon();
 }
 
-function renderGrid() {
+function renderGrid(deferColumns = false) {
   const empty = $("grid-empty");
   renderGroupBar();
   if (!state.grouped) $("group-chart").hidden = true;
@@ -6686,7 +6712,7 @@ function renderGrid() {
     say(`${state.total} row(s) in this analysis${state.filters.length ? ` — ${state.filters.length} filter(s)` : ""}`);
   }
   applyPinning();
-  if (state.payload?.projection && shown.some((item) => item.index !== undefined
+  if (deferColumns !== true && state.payload?.projection && shown.some((item) => item.index !== undefined
       && !state.payload.projection.includes(item.index))) {
     loadRows(false, true);
   }
@@ -7590,6 +7616,8 @@ function wire() {
     const input = event.target.closest("input[data-filter]");
     if (!input) return;
     if (event.key !== "Enter") return;
+    event.preventDefault();
+    clearTimeout(filterTimer);
     loadRows(true);
   });
 

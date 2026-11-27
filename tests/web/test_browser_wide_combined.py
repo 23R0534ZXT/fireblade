@@ -125,3 +125,37 @@ def test_wide_grid_scroll_search_details_and_switch_to_narrow(wide_case):
         page.locator("#body tr[data-row='1'] td[data-cell]").first.click()
         page.wait_for_selector("#note-input")
         assert page.input_value("#note-input") == "Follow this source record"
+
+
+def test_wide_headers_follow_a_continuous_scroll_without_a_blank_viewport(wide_case):
+    root, _identifier = wide_case
+    with serving(root) as base, browser_page(base, "Wide combined") as page:
+        page.wait_for_function("rowsRequest === null")
+        visible = page.evaluate("""async () => {
+          const wrap = document.getElementById('gridbody');
+          for (let step = 0; step < 8; step++) {
+            wrap.scrollLeft = 40000 + step * 200;
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          }
+          const box = wrap.getBoundingClientRect();
+          return [...document.querySelectorAll('#head th[data-column]')].filter(th => {
+            const rect = th.getBoundingClientRect();
+            return rect.right > box.left && rect.left < box.right;
+          }).length;
+        }""")
+        assert visible > 0, "headers must render while scrolling, before the scroll stops"
+
+
+def test_wide_grid_fills_a_larger_desktop_after_resizing(wide_case):
+    root, _identifier = wide_case
+    with serving(root) as base, browser_page(base, "Wide combined", width=1280) as page:
+        page.wait_for_function("rowsRequest === null")
+        page.set_viewport_size({"width": 2560, "height": 1440})
+        page.wait_for_function(
+            """() => {
+          const edge = document.getElementById('gridbody').getBoundingClientRect().right;
+          return [...document.querySelectorAll('#head th[data-column]')].some(th => th.getBoundingClientRect().right >= edge);
+        }""",
+            timeout=10000,
+        )
+        assert page.locator("#head th[data-column]").count() < 40

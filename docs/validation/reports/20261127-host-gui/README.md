@@ -1,5 +1,8 @@
 # Host GUI review — 27 November 2026
 
+The [continued qualification](CONTINUED.md) records subsequent fixes, full control reachability,
+large-volume/failure tests and updated validation results. This first-pass record is retained.
+
 ## Revision and limits
 
 Work resumes from `codex/host-gui-review`, `10efc9f242cbe1494ee83faeb1ec08ca4ba2f37b`.

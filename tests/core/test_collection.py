@@ -229,6 +229,17 @@ def test_registry_logs_are_companions_and_tampering_is_detected(collection, monk
     assert next(e for e in report["files"] if e["path"] == str(log))["status"] == "companion"
 
 
+def test_windows_registry_companions_match_hive_names_without_case_on_linux(tmp_path):
+    hive = tmp_path / "NTUSER.DAT"
+    hive.write_bytes(b"regf" + b"0" * 40)
+    for suffix in ("LOG1", "LOG2"):
+        log = tmp_path / ("ntuser.dat." + suffix)
+        log.write_bytes(b"regf" + b"1" * 40)
+        assert identify(log) == ["companion"]
+    hive.unlink()
+    assert identify(log) == ["RECmd", "Shellbags"], "an orphan is not a validated companion"
+
+
 def test_cross_file_detection_keeps_all_original_evtx_references(collection, monkeypatch):
     (collection.root / "System.evtx").write_bytes(b"ElfFile\0" + b"1" * 40)
     monkeypatch.setattr("fireblade.core.collection.execute", fake_execute)

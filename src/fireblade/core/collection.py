@@ -178,10 +178,23 @@ def identify(path):
         magic = stream.read(32)
     if name.endswith((".log1", ".log2")):
         hive = path.with_name(path.name.rsplit(".", 1)[0])
-        if hive.is_file() and not hive.is_symlink():
-            with hive.open("rb") as stream:
-                if stream.read(4) == b"regf":
-                    return ["companion"]
+        # A Windows collection may pair NTUSER.DAT with ntuser.dat.LOG1.
+        # Linux paths are case-sensitive; do not feed the transaction log to
+        # a full-hive parser simply because the original names differ in case.
+        candidates = (
+            [hive]
+            if hive.is_file()
+            else [
+                sibling
+                for sibling in path.parent.iterdir()
+                if sibling.name.casefold() == hive.name.casefold()
+            ]
+        )
+        for candidate in candidates:
+            if candidate.is_file() and not candidate.is_symlink():
+                with candidate.open("rb") as stream:
+                    if stream.read(4) == b"regf":
+                        return ["companion"]
     if magic.startswith(b"ElfFile\0") or name.endswith(".evtx"):
         return ["EvtxECmd"]
     if name.startswith(("amcache", "inventory")) and (

@@ -12,7 +12,7 @@ idna==3.15
 dissect.esedb==3.18
 dissect.cstruct==4.7
 dissect.util==3.24
-lz4==4.4.4
+lz4==4.4.5
 zstandard==0.25.0
 dissect.target==3.25.1
 dissect.fat==3.13

@@ -1,8 +1,7 @@
 name: Host containers
 
-# The two images of the Host edition, published where `docker run` can reach them:
-#   ghcr.io/<owner>/kagarasu-host    the case image (readers, .NET, no Qt)
-#   ghcr.io/<owner>/kagarasu-driver  the driver that gives each case its container
+# The Host image includes the readers and .NET. The driver starts one image per case.
+# Kagarasu aliases also serve update commands embedded in releases before 0.15.1.
 #
 # main publishes `edge`; a version tag vX.Y.Z publishes X.Y.Z, X.Y and latest.
 
@@ -47,12 +46,11 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          # Two names, one image: `kagarasu` is the short one the README promises —
-          # `docker run -p 8080:8080 ghcr.io/<owner>/kagarasu` — and `kagarasu-host`
-          # keeps the name the deploy notes have always used.
           images: |
-            ghcr.io/${{ github.repository }}
-            ghcr.io/${{ github.repository }}-host
+            ghcr.io/${{ github.repository_owner }}/kogarasu
+            ghcr.io/${{ github.repository_owner }}/kogarasu-host
+            ghcr.io/${{ github.repository_owner }}/kagarasu
+            ghcr.io/${{ github.repository_owner }}/kagarasu-host
           tags: |
             type=raw,value=edge,enable={{is_default_branch}}
             type=sha,prefix=sha-
@@ -85,7 +83,9 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}-driver
+          images: |
+            ghcr.io/${{ github.repository_owner }}/kogarasu-driver
+            ghcr.io/${{ github.repository_owner }}/kagarasu-driver
           tags: |
             type=raw,value=edge,enable={{is_default_branch}}
             type=sha,prefix=sha-

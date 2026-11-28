@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please do **not** open a public issue for a security problem. Use GitHub's private report:
-**Security → Report a vulnerability** on <https://github.com/23R0534ZXT/kagarasu/security>.
+**Security → Report a vulnerability** on <https://github.com/23R0534ZXT/kogarasu/security>.
 Include the version or image tag, what you did, what you expected and what happened.
 
 You can expect an acknowledgement within a week and a fix or a decision within a month. This is a

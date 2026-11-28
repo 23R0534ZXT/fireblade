@@ -1294,7 +1294,7 @@ def test_the_help_windows_open_with_their_text(page):
         ("help-timeline", ""),
         ("help-coverage", ""),
         ("help-licenses", ""),
-        ("about", "Kagarasu"),
+        ("about", "Kogarasu"),
         ("legend", ""),
         ("workspace-guide", ""),
     ):

@@ -1,4 +1,4 @@
-# Kagarasu Host
+# Kogarasu Host
 
 Host runs the shared Fireblade analysis engine in a Linux container and serves its
 interface in a browser on the analyst's workstation. The standard deployment keeps

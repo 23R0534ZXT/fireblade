@@ -3,7 +3,7 @@
 A professional graph states nothing it cannot show. Every node and every edge carries:
 
 - ``what``  — what it represents, in a sentence;
-- ``how``   — how Kagarasu obtained it, naming the column or the record it was read from;
+- ``how``   — how Kogarasu obtained it, naming the column or the record it was read from;
 - ``items`` — the evidence itself: the alert groups behind it, each with the identifiers of
   the exact rows of the alert analysis (``analysis`` + ``rows``), so a click opens the line
   the detection engine wrote;
@@ -131,7 +131,7 @@ def build(graph, groups, workspace, source):
             )
             block["how"] = (
                 f"Read from the MitreTags column of {where}. The tag is the rule's own: "
-                "Kagarasu does not infer a technique from behaviour."
+                "Kogarasu does not infer a technique from behaviour."
             )
         elif kind == "stage":
             groups_of = by_stage.get(identifier, [])

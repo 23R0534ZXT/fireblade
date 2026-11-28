@@ -1,9 +1,9 @@
 # Documentation
 
-Kagarasu Host is the maintained browser edition. The historical Fireblade Desktop
+Kogarasu Host is the maintained browser edition. The historical Fireblade Desktop
 guides describe the Windows interface and its bundled tools.
 
-## Kagarasu Host
+## Kogarasu Host
 
 | Task | Guide |
 | --- | --- |

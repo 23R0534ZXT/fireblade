@@ -62,7 +62,7 @@ def container_serving(root, image):
     """
     root = root.resolve()
     port = free_port()
-    name = "kagarasu-browser-" + uuid.uuid4().hex[:12]
+    name = "kogarasu-browser-" + uuid.uuid4().hex[:12]
     subprocess.run(
         [
             "docker",

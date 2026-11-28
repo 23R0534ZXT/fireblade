@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Documentation
-    url: https://github.com/23R0534ZXT/kagarasu/blob/main/docs/README.md
+    url: https://github.com/23R0534ZXT/kogarasu/blob/main/docs/README.md
     about: Guides, architecture, benchmark and release notes.
   - name: Latest Host release
-    url: https://github.com/23R0534ZXT/kagarasu/releases/latest
+    url: https://github.com/23R0534ZXT/kogarasu/releases/latest
     about: Read the release notes and identify the container image tag.

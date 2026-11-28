@@ -1,4 +1,4 @@
-/* Kagarasu Host — the window manager.
+/* Kogarasu Host — the window manager.
 
    The desktop's windows can be moved, resized, and its panes can be dragged apart. A browser
    page has none of that by itself, so this file gives the client the same three gestures:

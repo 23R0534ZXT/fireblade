@@ -1,6 +1,6 @@
 """Importing the log shapes an incident actually hands over.
 
-Each test writes a real file of the format and asserts what Kagarasu reads out of it:
+Each test writes a real file of the format and asserts what Kogarasu reads out of it:
 the columns it keeps, the rows it counts, and the timestamp it understands. A format
 that is silently treated as unstructured text is a defect here, not a preference.
 """

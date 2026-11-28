@@ -1,4 +1,4 @@
-"""Kagarasu Host: the case library served over HTTP, next to the desktop app."""
+"""Kogarasu Host: the case library served over HTTP, next to the desktop app."""
 
 from __future__ import annotations
 
@@ -208,7 +208,7 @@ def create_app(
     # polled, and a failure is reported as a failure.
     updates = Checker(version or "0", os.environ.get("FIREBLADE_EDITION", "host"))
     app = FastAPI(
-        title="Kagarasu Host",
+        title="Kogarasu Host",
         version=version or "0",
         docs_url="/api/docs",
         openapi_url="/api/openapi.json",
@@ -876,7 +876,7 @@ def create_app(
         try:
             return library.report(
                 identifier,
-                payload.get("title") or "Kagarasu report",
+                payload.get("title") or "Kogarasu report",
                 payload.get("description", ""),
                 bookmarks_only=bool(payload.get("bookmarks_only", True)),
                 limit=int(payload.get("limit", 2000)),

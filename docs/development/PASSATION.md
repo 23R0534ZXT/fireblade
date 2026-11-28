@@ -141,7 +141,7 @@ maintenant, et qui a été mesuré par les tests et par la recette :
 ## 4 bis. Publier (fait pour la 0.5.0, à refaire à l'identique)
 
 - La VM **pousse en SSH** : clé `C:\Users\fb\.ssh\id_ed25519` (`fireblade-vm@proxmox`, type
-  authentification), remote `git@github.com:23R0534ZXT/kagarasu.git`. Aucun jeton n'est
+  authentification), remote `git@github.com:23R0534ZXT/kogarasu.git`. Aucun jeton n'est
   stocké sur la VM ; `GIT_SSH_COMMAND='ssh -o BatchMode=yes -o StrictHostKeyChecking=no'`.
 - La CI construit l'exe et publie la release **sous `github-actions[bot]`** : la recréer depuis
   la tour (`gh` y est authentifié) — `gh release download`, `gh release delete`, `gh release

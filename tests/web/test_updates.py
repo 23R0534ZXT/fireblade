@@ -58,17 +58,17 @@ def test_same_version_is_not_an_update():
 
 
 def test_the_command_names_the_editions_own_image():
-    driver = updates.command("driver", "0.9.0")
-    assert driver[0] == "docker pull ghcr.io/23r0534zxt/kagarasu-driver:0.9.0"
-    assert any("kagarasu:0.9.0" in line for line in driver)
-    case = updates.command("case", "0.9.0")
-    assert case == ["docker pull ghcr.io/23r0534zxt/kagarasu:0.9.0"]
+    driver = updates.command("driver", "0.15.1")
+    assert driver[0] == "docker pull ghcr.io/23r0534zxt/kogarasu-driver:0.15.1"
+    assert any("kogarasu:0.15.1" in line for line in driver)
+    case = updates.command("case", "0.15.1")
+    assert case == ["docker pull ghcr.io/23r0534zxt/kogarasu:0.15.1"]
     assert "driver" in updates.guidance("case")
 
 
 def test_upgrades_pull_images_before_the_operator_recreates_the_deployment():
-    assert updates.command("host", "0.15.0") == ["docker pull ghcr.io/23r0534zxt/kagarasu:0.15.0"]
-    assert all(line.startswith("docker pull ") for line in updates.command("driver", "0.15.0"))
+    assert updates.command("host", "0.15.1") == ["docker pull ghcr.io/23r0534zxt/kogarasu:0.15.1"]
+    assert all(line.startswith("docker pull ") for line in updates.command("driver", "0.15.1"))
     assert "mounts" in updates.guidance("host")
 
 

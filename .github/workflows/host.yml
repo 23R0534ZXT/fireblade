@@ -88,7 +88,7 @@ jobs:
           docker logs fireblade-ci
           exit 1
       - name: The page is served
-        run: curl -fsS http://127.0.0.1:8080/ | grep -q "Kagarasu"
+        run: curl -fsS http://127.0.0.1:8080/ | grep -q "Kogarasu"
       - name: Build the driver image
         uses: docker/build-push-action@v6
         with:

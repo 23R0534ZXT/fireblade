@@ -1,3 +1,13 @@
+# Kogarasu 0.15.1 — Corrected project name
+
+Kogarasu Host is the new spelling throughout the application, documentation and
+GitHub repository. The Host and case-driver images use the same spelling.
+
+Existing case folders, plug-in volumes and saved sessions remain compatible.
+Use the same mounts when recreating an existing deployment. The previous image
+names remain available for older tags and update commands.
+[Upgrade guide](https://github.com/23R0534ZXT/kogarasu/blob/v0.15.1/deploy/host/README.md#upgrading-from-kagarasu)
+
 # Kagarasu 0.15.0 — Investigation workspace and evidence handling
 
 ## Work in the case library
@@ -39,7 +49,7 @@ recreating the service. The per-case driver checks container ownership against i
 deployment and mounted case directory before reconciling containers.
 
 The README includes a first investigation with a sample CSV and expected results.
-See the [GUI qualification report](https://github.com/23R0534ZXT/kagarasu/blob/v0.15.0/docs/validation/reports/20261127-host-0150/README.md)
+See the [GUI qualification report](https://github.com/23R0534ZXT/kogarasu/blob/v0.15.0/docs/validation/reports/20261127-host-0150/README.md)
 for tested workflows, screenshots and coverage limits.
 
 # Kagarasu 0.14.0 — Source-aware artifact review
@@ -91,14 +101,14 @@ for tested workflows, screenshots and coverage limits.
 - Check available case storage and recommended free space before importing a folder or disk.
   The browser folder estimate includes room for its staging copy. Disk image estimates use
   logical size when available. On VMware, check the guest volume and the physical host or
-  datastore separately. See [storage planning](https://github.com/23R0534ZXT/kagarasu/blob/v0.10.2/deploy/host/README.md#storage-for-imports).
+  datastore separately. See [storage planning](https://github.com/23R0534ZXT/kogarasu/blob/v0.10.2/deploy/host/README.md#storage-for-imports).
 
 ## Case erasure
 
 **Quick erase** deletes the case files without overwriting them and writes deletion-only
 records in HTML and Word outside the case. The existing overwrite modes still verify the last
 pass before deletion. Guest filesystem space and physical VMDK size are managed separately.
-See [erasure limits](https://github.com/23R0534ZXT/kagarasu/blob/v0.10.2/docs/host/STATUS.md).
+See [erasure limits](https://github.com/23R0534ZXT/kogarasu/blob/v0.10.2/docs/host/STATUS.md).
 
 ## Workspace navigation
 

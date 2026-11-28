@@ -128,7 +128,7 @@ def organize_sparse(collection, sources):
     for base in ("Artefact", "Fichier source", "Parseur", "Event time"):
         label, number = base, 2
         while label.casefold() in used:
-            label = f"{base} (Kagarasu {number})"
+            label = f"{base} (Kogarasu {number})"
             number += 1
         common.append(label)
         used.add(label.casefold())

@@ -17,11 +17,11 @@ the root — this folder only keeps the entry point and the instructions.
 
 | Image | Purpose |
 | --- | --- |
-| `ghcr.io/23r0534zxt/kagarasu` | Host with the readers, .NET runtime and browser client. The `kagarasu-host` image name is an alias. |
-| `ghcr.io/23r0534zxt/kagarasu-driver` | Local case manager for deployments that isolate each case in a separate container. |
+| `ghcr.io/23r0534zxt/kogarasu` | Host with the readers, .NET runtime and browser client. The `kogarasu-host` image name is an alias. |
+| `ghcr.io/23r0534zxt/kogarasu-driver` | Local case manager for deployments that isolate each case in a separate container. |
 
 The `:latest` tag follows stable releases and `:edge` follows `main`. Use the same release
-tag on the driver and case images for a reproducible deployment. [Release tags](https://github.com/23R0534ZXT/kagarasu/releases)
+tag on the driver and case images for a reproducible deployment. [Release tags](https://github.com/23R0534ZXT/kogarasu/releases)
 
 ## Build
 
@@ -81,10 +81,10 @@ case and certificate paths to absolute directories on the Docker host. The drive
 them when requesting mounts from the Docker daemon.
 
 ```bash
-export FIREBLADE_VOLUMES=/srv/kagarasu/volumes
-export FIREBLADE_CERTIFICATES=/srv/kagarasu/certificates
-export FIREBLADE_TAG=0.15.0
-docker pull "ghcr.io/23r0534zxt/kagarasu:${FIREBLADE_TAG}"
+export FIREBLADE_VOLUMES=/srv/kogarasu/volumes
+export FIREBLADE_CERTIFICATES=/srv/kogarasu/certificates
+export FIREBLADE_TAG=0.15.1
+docker pull "ghcr.io/23r0534zxt/kogarasu:${FIREBLADE_TAG}"
 docker compose -f deploy/host/docker-compose.driver.yml up -d --pull always --no-build
 ```
 
@@ -117,6 +117,27 @@ older case containers by their labels and matching `/data/library` bind mount.
 The driver compares each case container's image ID with the configured image. It removes
 stale containers at startup and rebuilds them on demand when the analyst opens a case.
 The case files stay in their existing host directories.
+
+### Upgrading from Kagarasu
+
+From 0.15.1 the published images and the GitHub repository use the spelling
+`kogarasu`. Older version tags are still available under the original image names.
+Keep the paths and volumes from your existing deployment when you upgrade.
+
+If you used the old README's single-container command, keep
+`$HOME/kagarasu-cases` and `kagarasu-plugins` as the mount sources. Pull the
+new image before stopping the old container, then recreate it with the same mounts.
+
+```bash
+docker pull ghcr.io/23r0534zxt/kogarasu:0.15.1
+docker stop kagarasu
+docker rm kagarasu
+docker run -d --name kogarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" -v kagarasu-plugins:/data/plugins ghcr.io/23r0534zxt/kogarasu:0.15.1
+```
+
+For the driver, keep the existing Compose project name, network and
+`FIREBLADE_VOLUMES` and `FIREBLADE_CERTIFICATES` paths. Use the updated Compose
+file and follow the same upgrade procedure above.
 
 ## Smoke test of an image
 

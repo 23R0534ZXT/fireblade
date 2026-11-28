@@ -7,6 +7,11 @@ The full notes of each release are in [docs/development/RELEASE-NOTES.md](docs/d
 
 ## [Unreleased]
 
+## [0.15.1] — 2026-11-28
+
+- Corrected the spelling to Kogarasu in the Host interface, repository and deployment guides.
+- Added Kogarasu image names and documented how existing deployments reuse their storage.
+
 ## [0.15.0] — 2026-11-27
 
 - Added direct case creation and library access from the Host start screen, refined the
@@ -383,12 +388,14 @@ Update band, folders sent from the browser, certificate folder chosen by the ana
 ## [0.8.0] — 2026-11-23
 One container per case, driven by a small driver; erasing a case removes its container and volume.
 
-[Unreleased]: https://github.com/23R0534ZXT/kagarasu/compare/v0.14.0...HEAD
-[0.14.0]: https://github.com/23R0534ZXT/kagarasu/compare/v0.13.0...v0.14.0
-[0.13.0]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.2...v0.13.0
-[0.10.2]: https://github.com/23R0534ZXT/kagarasu/compare/v0.10.1...v0.10.2
-[0.10.1]: https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.10.1
-[0.8.3]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.2...v0.8.3
-[0.8.2]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.1...v0.8.2
-[0.8.1]: https://github.com/23R0534ZXT/kagarasu/compare/v0.8.0...v0.8.1
-[0.8.0]: https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.8.0
+[Unreleased]: https://github.com/23R0534ZXT/kogarasu/compare/v0.15.1...HEAD
+[0.15.1]: https://github.com/23R0534ZXT/kogarasu/compare/v0.15.0...v0.15.1
+[0.15.0]: https://github.com/23R0534ZXT/kogarasu/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/23R0534ZXT/kogarasu/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/23R0534ZXT/kogarasu/compare/v0.10.2...v0.13.0
+[0.10.2]: https://github.com/23R0534ZXT/kogarasu/compare/v0.10.1...v0.10.2
+[0.10.1]: https://github.com/23R0534ZXT/kogarasu/releases/tag/v0.10.1
+[0.8.3]: https://github.com/23R0534ZXT/kogarasu/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/23R0534ZXT/kogarasu/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/23R0534ZXT/kogarasu/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/23R0534ZXT/kogarasu/releases/tag/v0.8.0

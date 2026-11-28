@@ -41,13 +41,13 @@ jobs:
           repo = os.environ.get("GITHUB_REPOSITORY", "").lower()
           notes = Path("docs/development/RELEASE-NOTES.md").read_text(encoding="utf-8")
           sections = re.split(r"^# ", notes, flags=re.MULTILINE)
-          body = next((item for item in sections if item.startswith(f"Kagarasu {tag} ")), None)
+          body = next((item for item in sections if item.startswith(f"Kogarasu {tag} ")), None)
           if body is None:
               raise SystemExit(f"no release notes for {tag} in docs/development/RELEASE-NOTES.md")
           title, _, rest = body.partition("\n")
           text = [rest.strip(), "", "---", "", "## Container images — Host edition", "",
                   "```bash",
-                  f'docker run -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" -v kagarasu-plugins:/data/plugins ghcr.io/{repo}:{tag}',
+                  f'docker run -d --name kogarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kogarasu-cases:/data/cases" -v kogarasu-plugins:/data/plugins ghcr.io/{repo}:{tag}',
                   "```", "",
                   "Then open http://localhost:8080. The Host is for the analyst's own machine and has "
                   "no access control: keep it bound to localhost.", "",

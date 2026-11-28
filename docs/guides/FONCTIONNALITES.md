@@ -1,9 +1,9 @@
 # Fireblade 0.2.0
 
-[![Windows tests and executable](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml)
-[![Forensic test pack](https://github.com/23R0534ZXT/kagarasu/actions/workflows/test-pack.yml/badge.svg)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/test-pack.yml)
+[![Windows tests and executable](https://github.com/23R0534ZXT/kogarasu/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kogarasu/actions/workflows/windows.yml)
+[![Forensic test pack](https://github.com/23R0534ZXT/kogarasu/actions/workflows/test-pack.yml/badge.svg)](https://github.com/23R0534ZXT/kogarasu/actions/workflows/test-pack.yml)
 
-**[Download Fireblade 0.2.0 — Windows x64](https://github.com/23R0534ZXT/kagarasu/releases/download/v0.2.0/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.2.0) · [Test pack](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Give feedback](https://github.com/23R0534ZXT/kagarasu/issues/6)
+**[Download Fireblade 0.2.0 — Windows x64](https://github.com/23R0534ZXT/kogarasu/releases/download/v0.2.0/Fireblade.exe)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/kogarasu/releases/tag/v0.2.0) · [Test pack](https://github.com/23R0534ZXT/kogarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) · [Give feedback](https://github.com/23R0534ZXT/kogarasu/issues/6)
 
 **A local forensic investigation workspace for Windows artifacts, Linux CatScale collections and existing data exports.**
 
@@ -58,29 +58,29 @@ Data lives in disk-backed DuckDB `.timeline` databases. The grid loads pages; fi
 
 **Vous faites de la DFIR ou vous apprenez l’investigation numérique ? Vos retours sont les bienvenus.**
 
-- [Télécharger Fireblade 0.2.0 — Windows x64](https://github.com/23R0534ZXT/kagarasu/releases/download/v0.2.0/Fireblade.exe) · [Pack de test (~5,1 Mo)](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
-- [Parcours de test de 15 minutes et retours généraux](https://github.com/23R0534ZXT/kagarasu/issues/6)
-- [Signaler un bug ou proposer une amélioration](https://github.com/23R0534ZXT/kagarasu/issues/new/choose)
+- [Télécharger Fireblade 0.2.0 — Windows x64](https://github.com/23R0534ZXT/kogarasu/releases/download/v0.2.0/Fireblade.exe) · [Pack de test (~5,1 Mo)](https://github.com/23R0534ZXT/kogarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
+- [Parcours de test de 15 minutes et retours généraux](https://github.com/23R0534ZXT/kogarasu/issues/6)
+- [Signaler un bug ou proposer une amélioration](https://github.com/23R0534ZXT/kogarasu/issues/new/choose)
 
-**Fireblade 0.2.0 est publié.** [Cette release](https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.2.0) a réussi les contrôles Windows, les huit variantes visuelles, le parcours de 3 Gio et les 320 analyses. Vérifiez **Aide → À propos** et le commit de la release lorsque vous donnez un retour.
+**Fireblade 0.2.0 est publié.** [Cette release](https://github.com/23R0534ZXT/kogarasu/releases/tag/v0.2.0) a réussi les contrôles Windows, les huit variantes visuelles, le parcours de 3 Gio et les 320 analyses. Vérifiez **Aide → À propos** et le commit de la release lorsque vous donnez un retour.
 
 Commencez avec le pack public et son **LIRE-MOI.md** : ouvrez un CSV, filtrez les données, ajoutez une note ou un signet, puis sauvegardez et rouvrez votre travail. Partagez ce qui vous a aidé, ce qui vous a bloqué et ce qui manque à votre usage. Pour un bug, ouvrez une issue par problème avec les étapes de reproduction et vos versions de Windows et Fireblade. Un compte GitHub est nécessaire pour publier un retour ; masquez les informations sensibles dans vos pièces jointes.
 
-**English:** French-speaking testers are welcome. Use the public sample pack, report your application version, and share feedback in [the tester issue](https://github.com/23R0534ZXT/kagarasu/issues/6). For a specific problem, [open a separate issue](https://github.com/23R0534ZXT/kagarasu/issues/new/choose).
+**English:** French-speaking testers are welcome. Use the public sample pack, report your application version, and share feedback in [the tester issue](https://github.com/23R0534ZXT/kogarasu/issues/6). For a specific problem, [open a separate issue](https://github.com/23R0534ZXT/kogarasu/issues/new/choose).
 
 ## Downloads
 
 | Download | Purpose |
 |---|---|
-| [**Fireblade 0.2.0 — Fireblade.exe, Windows x64**](https://github.com/23R0534ZXT/kagarasu/releases/download/v0.2.0/Fireblade.exe) | Published prototype; [release notes and SHA-256](https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.2.0) |
-| [**Forensic test pack v1 — ZIP, about 5.1 MB**](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) | Native Windows artifacts, synthetic CatScale examples and CSV/TSV/XLSX exercises, with a French guide |
-| [Large CSV test dataset — 3 GiB ZIP](https://github.com/23R0534ZXT/kagarasu/releases/download/test-data-3gib/Fireblade-test-3GiB.zip) | Separate load-test dataset with 2,441,216 records |
+| [**Fireblade 0.2.0 — Fireblade.exe, Windows x64**](https://github.com/23R0534ZXT/kogarasu/releases/download/v0.2.0/Fireblade.exe) | Published prototype; [release notes and SHA-256](https://github.com/23R0534ZXT/kogarasu/releases/tag/v0.2.0) |
+| [**Forensic test pack v1 — ZIP, about 5.1 MB**](https://github.com/23R0534ZXT/kogarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) | Native Windows artifacts, synthetic CatScale examples and CSV/TSV/XLSX exercises, with a French guide |
+| [Large CSV test dataset — 3 GiB ZIP](https://github.com/23R0534ZXT/kogarasu/releases/download/test-data-3gib/Fireblade-test-3GiB.zip) | Separate load-test dataset with 2,441,216 records |
 
 The test-data releases contain datasets. Download the application using the **Fireblade.exe** link above. GitHub's automatic “Source code” archives contain source files that must be built.
 
 Users do not need Python, Excel, a separate .NET runtime, EZ Tools, CatScale, or Logstash installed for the bundled features. Launch the EXE and open **Aide → Tutoriel complet — toutes les fonctionnalités**; **F1** opens the quick guide. The application and linked guides currently use French; UI labels quoted here follow that interface.
 
-At startup, the EXE extracts resources into a temporary Windows directory. Allow space for this and for analysis outputs. The executable is not code-signed. Release publication waits for the required Windows checks; a running build on `main` does not make a new release available yet. [Actions artifacts](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml) also provide a **Fireblade-exe** ZIP.
+At startup, the EXE extracts resources into a temporary Windows directory. Allow space for this and for analysis outputs. The executable is not code-signed. Release publication waits for the required Windows checks; a running build on `main` does not make a new release available yet. [Actions artifacts](https://github.com/23R0534ZXT/kogarasu/actions/workflows/windows.yml) also provide a **Fireblade-exe** ZIP.
 
 ## Start an investigation
 
@@ -464,7 +464,7 @@ A failed or cancelled verification preserves the previous destination. Excel val
 
 ## Download a forensic test pack
 
-[**Download Fireblade-Test-Pack-v1.zip**](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip), extract it, and follow **LIRE-MOI.md**. The guide is French and includes case/session exercises, import instructions and expected warnings. The ZIP is about 5.1 MB; sources, licenses, expected counts and SHA-256 hashes are included.
+[**Download Fireblade-Test-Pack-v1.zip**](https://github.com/23R0534ZXT/kogarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip), extract it, and follow **LIRE-MOI.md**. The guide is French and includes case/session exercises, import instructions and expected warnings. The ZIP is about 5.1 MB; sources, licenses, expected counts and SHA-256 hashes are included.
 
 ### What the ZIP contains
 
@@ -484,7 +484,7 @@ The CatScale collection is **synthetic demonstration data** using the collector'
 
 The published ZIP was hash-verified, parsed and its outputs displayed under Windows using the engines from qualified application commit `0c36f0d` and that revision's Fireblade source. All 13 EZ Tools, Shellbags, WebCache, both CatScale forms, the 100,000-row sample and the three export formats passed. The sample set covers the bundled readers with representative inputs.
 
-[Pack release, Windows validation report and checksums](https://github.com/23R0534ZXT/kagarasu/releases/tag/test-pack-v1). The 3 GiB CSV is distributed separately below.
+[Pack release, Windows validation report and checksums](https://github.com/23R0534ZXT/kogarasu/releases/tag/test-pack-v1). The 3 GiB CSV is distributed separately below.
 
 ![Collection outcome table](../assets/fireblade-collection-report.png)
 
@@ -514,11 +514,11 @@ Processing takes place locally. The bundle includes its engines and rules; the n
 
 ## Validation and known limitations
 
-The [Windows workflow](https://github.com/23R0534ZXT/kagarasu/actions/workflows/windows.yml) tests Python 3.11, 3.12 and 3.13, then runs the EXE alone in an empty folder. Required checks cover embedded resources, all 13 EZ Tools, 70 registry plugins, Hayabusa and EVTX context, Shellbags, WebCache, CatScale, cases/sessions, annotations, exports, cancellation and mixed Windows/Linux investigations.
+The [Windows workflow](https://github.com/23R0534ZXT/kogarasu/actions/workflows/windows.yml) tests Python 3.11, 3.12 and 3.13, then runs the EXE alone in an empty folder. Required checks cover embedded resources, all 13 EZ Tools, 70 registry plugins, Hayabusa and EVTX context, Shellbags, WebCache, CatScale, cases/sessions, annotations, exports, cancellation and mixed Windows/Linux investigations.
 
 Publication also requires the upstream reader matrix, native Windows storage checks, a 320-analysis workflow, light/dark captures at 100/125/150/200 percent scaling, and the CSV of more than 3 GiB. Public fixtures are pinned and hash-verified. Check results for the specific commit you download.
 
-For reference, the [qualified `0c36f0d` EXE](https://github.com/23R0534ZXT/kagarasu/actions/runs/41444926987) passed 46 autonomous checks, the 320-analysis exercise and 43 large-dataset checks. Local follow-up tests covered 60 case switches and a 250,000-row CatScale timeline. These recorded results describe their specific platforms and workloads.
+For reference, the [qualified `0c36f0d` EXE](https://github.com/23R0534ZXT/kogarasu/actions/runs/41444926987) passed 46 autonomous checks, the 320-analysis exercise and 43 large-dataset checks. Local follow-up tests covered 60 case switches and a 250,000-row CatScale timeline. These recorded results describe their specific platforms and workloads.
 
 The DuckDB memory setting limits its buffer, not total application or external-engine RAM. Wide rows, groups, caches and plugins add costs. The 250,000-row CatScale pack prototype exceeded the default 256 MiB buffer during organization on Windows; the published pack uses a 100,000-row sample that passed with default settings. A large CSV import and collection organization have different memory workloads.
 
@@ -526,7 +526,7 @@ Allow disk space for source data, parser outputs, organized databases, timeline 
 
 ### Version 0.1.1 validation
 
-The [qualified v0.1.1 build](https://github.com/23R0534ZXT/kagarasu/actions/runs/41652792123) passed the required Windows gates, including the actual single-file EXE, matching Windows file/product version resources, Linux log corpus, eight visual profiles, 320 analyses, and the >3 GiB interactive scenario. Older screenshots and reports below retain their historical provenance.
+The [qualified v0.1.1 build](https://github.com/23R0534ZXT/kogarasu/actions/runs/41652792123) passed the required Windows gates, including the actual single-file EXE, matching Windows file/product version resources, Linux log corpus, eight visual profiles, 320 analyses, and the >3 GiB interactive scenario. Older screenshots and reports below retain their historical provenance.
 
 ### Historical version 0.7 validation
 
@@ -558,7 +558,7 @@ under a 64 MB budget per database; this is a synthetic measurement, not Windows 
 
 ### Large test dataset
 
-[Download the 3 GiB CSV ZIP](https://github.com/23R0534ZXT/kagarasu/releases/download/test-data-3gib/Fireblade-test-3GiB.zip) · [Manifest and hash](../validation/datasets/3gib.json) · [Exercise and expected results](TESTER-3GIB.md)
+[Download the 3 GiB CSV ZIP](https://github.com/23R0534ZXT/kogarasu/releases/download/test-data-3gib/Fireblade-test-3GiB.zip) · [Manifest and hash](../validation/datasets/3gib.json) · [Exercise and expected results](TESTER-3GIB.md)
 
 The synthetic dataset contains 2,441,216 records and 18 columns, totaling 3,222,648,632 bytes. It is used for load testing and does not replace parser fixtures. Measurements from older commits do not automatically qualify the current binary.
 

@@ -38,7 +38,7 @@ from starlette.background import BackgroundTask
 from fireblade.core.case_destruction import destroy_case, outside_entries
 from fireblade.core.investigations import InvestigationLibrary
 from fireblade.web import english
-from fireblade.web.updates import Checker
+from fireblade.web.updates import HOST_IMAGE, Checker
 
 STATIC = Path(__file__).with_name("static")
 CASE_ID = re.compile(r"^[0-9a-f]{32}$")
@@ -106,7 +106,7 @@ class CaseContainer:
         identifier: str,
         *,
         volume,
-        image: str = "ghcr.io/23r0534zxt/kagarasu:latest",
+        image: str = f"{HOST_IMAGE}:latest",
         network: str = "fireblade-cases",
         port: int = 8080,
         name: str = "",
@@ -396,7 +396,7 @@ class Agency:
         certificates="",
         docker=None,
         *,
-        image: str = "ghcr.io/23r0534zxt/kagarasu:latest",
+        image: str = f"{HOST_IMAGE}:latest",
         network: str = "fireblade-cases",
         max_open: int = 3,
         host_volumes="",
@@ -662,10 +662,10 @@ def page(catalogue: dict, *, version: str = "", error: str = "", update: dict | 
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        "<title>Case library · Kagarasu Host</title>"
+        "<title>Case library · Kogarasu Host</title>"
         '<link rel="stylesheet" href="/static/app.css"><link rel="stylesheet" href="/static/driver.css">'
         '</head><body><main class="driver-library">'
-        '<header class="topline"><span class="brand">Kagarasu <small>Host</small></span>'
+        '<header class="topline"><span class="brand">Kogarasu <small>Host</small></span>'
         '<form class="rowform" method="post" action="/new">'
         '<input class="search" name="name" aria-label="New case name" placeholder="New case name" required>'
         '<button class="btn" type="submit">Create case</button></form>'
@@ -698,7 +698,7 @@ def create_app(
     volumes_root,
     certificates_root="",
     *,
-    image: str = "ghcr.io/23r0534zxt/kagarasu:latest",
+    image: str = f"{HOST_IMAGE}:latest",
     network: str = "fireblade-cases",
     max_open: int = 3,
     version: str = "",
@@ -738,7 +738,7 @@ def create_app(
         finally:
             await client.aclose()
 
-    app = FastAPI(title="Kagarasu Host driver", version=version or "0", lifespan=lifespan)
+    app = FastAPI(title="Kogarasu Host driver", version=version or "0", lifespan=lifespan)
     app.state.agency = agency
     if STATIC.is_dir():
         # The driver ships the client's stylesheet: one palette, carried from the desktop.
@@ -902,7 +902,7 @@ def serve(args) -> int:
         case_gid=args.case_gid,
     )
     print(
-        f"Kagarasu Host driver {_version()} on {args.host}:{args.port} — volumes in {args.volumes}",
+        f"Kogarasu Host driver {_version()} on {args.host}:{args.port} — volumes in {args.volumes}",
         flush=True,
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level)
@@ -947,7 +947,7 @@ def main(argv=None) -> int:
     p_serve.add_argument("--case-gid", type=int, default=10001)
     p_serve.add_argument(
         "--image",
-        default="ghcr.io/23r0534zxt/kagarasu:latest",
+        default=f"{HOST_IMAGE}:latest",
         help="the case image; every case container is built from it",
     )
     p_serve.add_argument("--network", default="fireblade-cases")

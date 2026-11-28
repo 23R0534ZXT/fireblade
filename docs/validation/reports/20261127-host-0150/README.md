@@ -4,7 +4,7 @@
 
 **516 of 516 distinct static control keys received a browser input event** across the Host tests, Docker tests, menu tour and targeted replays. Keys represent commands, fields, tabs and menu entries identified on the live Host page. Repeated instances can share a key. Workflow tests check outcomes such as saved row values, restored filters, collected file hashes and downloaded document contents. [Control-by-control evidence](gui-controls.tsv)
 
-The public GUI archive contains a browsable gallery of 135 screenshots, both inventories, client asset fingerprints and SHA-256 checksums. Extract it and open `index.html`. The separate Docker archive includes native-reader results and isolated-case evidence. [GUI evidence ZIP](https://github.com/23R0534ZXT/kagarasu/releases/download/v0.15.0/Kagarasu-Host-0.15.0-GUI-evidence.zip) · [Docker QA ZIP](https://github.com/23R0534ZXT/kagarasu/releases/download/v0.15.0/Kagarasu-Host-0.15.0-Docker-QA.zip)
+The public GUI archive contains a browsable gallery of 135 screenshots, both inventories, client asset fingerprints and SHA-256 checksums. Extract it and open `index.html`. The separate Docker archive includes native-reader results and isolated-case evidence. [GUI evidence ZIP](https://github.com/23R0534ZXT/kogarasu/releases/download/v0.15.0/Kagarasu-Host-0.15.0-GUI-evidence.zip) · [Docker QA ZIP](https://github.com/23R0534ZXT/kogarasu/releases/download/v0.15.0/Kagarasu-Host-0.15.0-Docker-QA.zip)
 
 ## Analyst workflows
 

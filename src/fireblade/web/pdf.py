@@ -357,7 +357,7 @@ def text_pdf(markup: str, target: Path, title: str = "", subject: str = "") -> P
     parser.feed(str(markup or ""))
     parser.close()
     if not title:
-        title = next((value for kind, value in parser.blocks if kind == "h1"), "Kagarasu")
+        title = next((value for kind, value in parser.blocks if kind == "h1"), "Kogarasu")
     pages = _layout(parser.blocks)
 
     objects: list[bytes] = []
@@ -394,7 +394,7 @@ def text_pdf(markup: str, target: Path, title: str = "", subject: str = "") -> P
     info_id = add(
         f"<< /Title <FEFF{title.encode('utf-16-be').hex()}> "
         f"/Subject <FEFF{subject.encode('utf-16-be').hex()}> "
-        f"/Producer (Kagarasu Host) >>".encode()
+        f"/Producer (Kogarasu Host) >>".encode()
     )
 
     buffer = bytearray(b"%PDF-1.4\n")

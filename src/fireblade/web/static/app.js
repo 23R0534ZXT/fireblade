@@ -1,4 +1,4 @@
-/* Kagarasu Host — grid client. Palette and density live in app.css. */
+/* Kogarasu Host — grid client. Palette and density live in app.css. */
 "use strict";
 
 const PAGE = 200;
@@ -1923,7 +1923,7 @@ async function importLayout(file) {
     return;
   }
   if (!document_ || document_.format !== "fireblade-layout") {
-    say("This file is not a Kagarasu layout", true);
+    say("This file is not a Kogarasu layout", true);
     return;
   }
   state.widths = document_.widths || {};
@@ -2569,7 +2569,7 @@ async function openIntegrity() {
 
 function showHelp(name) {
   const pages = {
-    guide: ["Kagarasu Host — user guide", [
+    guide: ["Kogarasu Host — user guide", [
       "A case holds the evidence of one investigation: imported files, the analyses the",
       "readers produced, the indicators, the machines and the actions taken.",
       "Case > Import evidence… reads a file or a folder; the same dialog shows the columns",
@@ -2601,7 +2601,7 @@ function showHelp(name) {
       "to a case — an import, a bookmark, a rule, a note, a tab closed — is written at once,",
       "and History and recovery keeps the state it replaced.",
     ]],
-    tutorial: ["Kagarasu Host — full tutorial", [
+    tutorial: ["Kogarasu Host — full tutorial", [
       "1. A case. Case > New case… creates one; History and recovery keeps a state of it",
       "each time it changes. Case > Import evidence… reads a file or a folder.",
       "2. The grid. Click a header to sort, type in the filter row to filter, right-click a",
@@ -2642,7 +2642,7 @@ function showHelp(name) {
       "travels as a file through Analysis > Export the layout….",
     ]],
     licenses: ["Licences", [
-      "Kagarasu Host — internal edition. Python, FastAPI, DuckDB, openpyxl and PySide6",
+      "Kogarasu Host — internal edition. Python, FastAPI, DuckDB, openpyxl and PySide6",
       "(the desktop edition only) are distributed under their own licences; the case data",
       "never leaves the machine that serves it.",
     ]],
@@ -3776,7 +3776,7 @@ async function exportGraphPng() {
     }
     context.fillStyle = "#6b7a8a";
     context.font = "10px 'Segoe UI', Arial, sans-serif";
-    context.fillText(`Kagarasu — ${state.openCase.name || "case"} — open the graph to inspect the evidence behind each node.`,
+    context.fillText(`Kogarasu — ${state.openCase.name || "case"} — open the graph to inspect the evidence behind each node.`,
       GRAPH_LEFT, layout.height + 14);
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
@@ -4106,7 +4106,7 @@ function renderGraphEvidence() {
   box.innerHTML = `<button class="gclose" data-act="graph-close" title="Close the evidence">✕</button><h3>${escapeHtml(title)}</h3>
     <p><span class="gk">${escapeHtml(kind)}</span>${evidence.level ? `<span class="gk" style="border-color:${findingLevelColour(evidence.level)}">worst: ${escapeHtml(evidence.level)}</span>` : ""}</p>
     <h4>What this is</h4><p>${escapeHtml(evidence.what || "")}</p>
-    <h4>How Kagarasu got it</h4><p>${escapeHtml(evidence.how || "")}</p>
+    <h4>How Kogarasu got it</h4><p>${escapeHtml(evidence.how || "")}</p>
     ${stats ? `<div class="gstats">${stats}</div>` : ""}${span}${declared}
     ${records ? `<h4>Marked evidence · ${evidence.records.length} of ${evidence.records_total}</h4>${records}` : ""}
     ${items ? `<h4>Evidence — ${evidence.items_total} alert group(s)${evidence.items_total > evidence.items.length ? `, ${evidence.items.length} shown` : ""}</h4>${items}` : ""}`;
@@ -6778,7 +6778,7 @@ function showCaseStart() {
       "Select a case to review its evidence, findings and investigation history.");
   } else {
     clearGrid("Start an investigation", [["New case…", "new-case"], ["Import portable case…", "import-portable"]],
-      "Create a case for your evidence or open a portable Kagarasu case.");
+      "Create a case for your evidence or open a portable Kogarasu case.");
   }
 }
 
@@ -9139,7 +9139,7 @@ async function act(name, node) {
     case "profile-create": await createProfileFromAnalysis(); break;
     case "about":
       $("about-text").textContent =
-        `Kagarasu Host ${$("version").textContent.replace("Kagarasu ", "")} — the same core as the Windows edition, ` +
+        `Kogarasu Host ${$("version").textContent.replace("Kogarasu ", "")} — the same core as the Windows edition, ` +
         "served over HTTP. The palette, the density and the grid behaviour are carried over from the desktop window. " +
         "Everything stays on this machine: nothing is uploaded, and the only outbound request is the " +
         "optional check for a newer release.";
@@ -9165,7 +9165,7 @@ async function checkForUpdate() {
     if (!info || !info.available) return;
     if (localStorage.getItem("fb-update-dismissed") === info.latest) return;
     const commands = info.command || [];
-    $("update-text").textContent = `Kagarasu ${info.latest} is available — you run ${info.current}.`;
+    $("update-text").textContent = `Kogarasu ${info.latest} is available — you run ${info.current}.`;
     $("update-command").textContent = commands[0] || "";
     $("update-command").title = info.note || "";
     $("update-copy").onclick = async () => {
@@ -9194,7 +9194,7 @@ async function boot() {
   fillActionTypes();
   try {
     const health = await api("/health");
-    $("version").textContent = `Kagarasu ${health.version} · Host`;
+    $("version").textContent = `Kogarasu ${health.version} · Host`;
   } catch (_) { /* the version is cosmetic */ }
   await loadCases();
   // A first start can be slow (a case container is starting): do not take the analyst

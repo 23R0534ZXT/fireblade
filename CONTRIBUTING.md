@@ -1,4 +1,4 @@
-# Contributing to Kagarasu
+# Contributing to Kogarasu
 
 An investigator needs to trace an imported value, a detection or an erasure record back to its source.
 Changes that affect these workflows need an observable result and a reproducible check.
@@ -74,5 +74,5 @@ The HTTP API is internal. Windows Desktop is frozen at 0.7.9.
 
 ## Reporting a problem
 
-Bugs and requests: the [issue forms](https://github.com/23R0534ZXT/kagarasu/issues/new/choose).
+Bugs and requests: the [issue forms](https://github.com/23R0534ZXT/kogarasu/issues/new/choose).
 Security problems: [SECURITY.md](SECURITY.md), not a public issue.

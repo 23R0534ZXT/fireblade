@@ -1,12 +1,12 @@
-# Kagarasu Host architecture
+# Kogarasu Host architecture
 
 Three editions share one repository:
 
 | Edition | What it is | State |
 | --- | --- | --- |
 | **Fireblade Desktop** | Windows application (`Fireblade.exe`) | frozen at 0.7.9 |
-| **Kagarasu Host** | the shared core served over HTTP, one local analyst, persistent case folders | maintained |
-| **Kagarasu Server** | the multi-analyst edition: central API, one container per case, RBAC, audit log | not started |
+| **Kogarasu Host** | the shared core served over HTTP, one local analyst, persistent case folders | maintained |
+| **Kogarasu Server** | the multi-analyst edition: central API, one container per case, RBAC, audit log | not started |
 
 ## What is in place
 
@@ -87,10 +87,10 @@ Published images, so a Host starts without a clone:
 ```bash
 docker run -d --name fireblade-host -p 8080:8080 \
     -v /srv/fireblade/cases:/data/cases \
-    ghcr.io/23r0534zxt/kagarasu-host:latest
+    ghcr.io/23r0534zxt/kogarasu-host:latest
 ```
 
-One container per case, through the driver (`ghcr.io/23r0534zxt/kagarasu-driver`):
+One container per case, through the driver (`ghcr.io/23r0534zxt/kogarasu-driver`):
 
 ```bash
 docker network create fireblade-cases 2>/dev/null || true
@@ -98,9 +98,9 @@ docker run -d --name fireblade-driver -p 8080:8080 --network fireblade-cases \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /srv/fireblade/volumes:/data/volumes \
     -v /srv/fireblade/certificates:/data/certificates \
-    ghcr.io/23r0534zxt/kagarasu-driver:latest \
+    ghcr.io/23r0534zxt/kogarasu-driver:latest \
     python -m fireblade.web.agency serve \
-      --image ghcr.io/23r0534zxt/kagarasu:latest \
+      --image ghcr.io/23r0534zxt/kogarasu:latest \
       --volumes /data/volumes --host-volumes /srv/fireblade/volumes \
       --certificates /data/certificates --host-certificates /srv/fireblade/certificates \
       --host 0.0.0.0 --port 8080

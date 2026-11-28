@@ -1,10 +1,10 @@
-# Kagarasu Host
+# Kogarasu Host
 
-[![Release](https://img.shields.io/github/v/release/23R0534ZXT/kagarasu)](https://github.com/23R0534ZXT/kagarasu/releases/latest)
-[![Host validation](https://github.com/23R0534ZXT/kagarasu/actions/workflows/host.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/host.yml)
-[![Container build](https://github.com/23R0534ZXT/kagarasu/actions/workflows/containers.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kagarasu/actions/workflows/containers.yml)
+[![Release](https://img.shields.io/github/v/release/23R0534ZXT/kogarasu)](https://github.com/23R0534ZXT/kogarasu/releases/latest)
+[![Host validation](https://github.com/23R0534ZXT/kogarasu/actions/workflows/host.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kogarasu/actions/workflows/host.yml)
+[![Container build](https://github.com/23R0534ZXT/kogarasu/actions/workflows/containers.yml/badge.svg?branch=main)](https://github.com/23R0534ZXT/kogarasu/actions/workflows/containers.yml)
 
-Kagarasu Host is a local forensic investigation workspace for incident responders.
+Kogarasu Host is a local forensic investigation workspace for incident responders.
 Read Windows artifacts, Linux logs, disk images and tabular exports in one case.
 A finding can take you back to its source row, file and reader. Bookmarks, notes and
 row marks stay attached to those records when you regroup a collection or export the case.
@@ -19,12 +19,12 @@ On a workstation running Docker with Linux containers, start the stable release 
 Host serves one local analyst. The loopback binding keeps the interface on that workstation.
 
 ```bash
-docker run --pull always -d --name kagarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kagarasu-cases:/data/cases" -v kagarasu-plugins:/data/plugins ghcr.io/23r0534zxt/kagarasu:latest
+docker run --pull always -d --name kogarasu --restart unless-stopped -p 127.0.0.1:8080:8080 -v "$HOME/kogarasu-cases:/data/cases" -v kogarasu-plugins:/data/plugins ghcr.io/23r0534zxt/kogarasu:latest
 ```
 
-Open <http://localhost:8080>. Case folders are under `$HOME/kagarasu-cases`. Docker keeps
-presentation plug-ins in the named volume `kagarasu-plugins`. On Linux, use `sudo docker`
-if your account requires it. On Windows PowerShell, use `"${HOME}/kagarasu-cases:/data/cases"`
+Open <http://localhost:8080>. Case folders are under `$HOME/kogarasu-cases`. Docker keeps
+presentation plug-ins in the named volume `kogarasu-plugins`. On Linux, use `sudo docker`
+if your account requires it. On Windows PowerShell, use `"${HOME}/kogarasu-cases:/data/cases"`
 for the case mount. Check the running version and status at <http://localhost:8080/health>.
 
 ### Try a first case
@@ -37,23 +37,23 @@ for the case mount. Check the running version and status at <http://localhost:80
    press Enter. The grid shows 20 matching events. Open **Row details** to inspect the
    fields of a selected record.
 
-For a larger exercise, the [Windows 11 sample collection](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip)
+For a larger exercise, the [Windows 11 sample collection](https://github.com/23R0534ZXT/kogarasu/releases/download/test-pack-v2/Fireblade-Sample-Collection-2026-11-18.zip)
 contains 183 event logs, Amcache, 60 Prefetch entries and 251 scheduled tasks.
-Additional fixtures are available in the [discovery pack](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
-and [raw artifact pack](https://github.com/23R0534ZXT/kagarasu/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip).
+Additional fixtures are available in the [discovery pack](https://github.com/23R0534ZXT/kogarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip)
+and [raw artifact pack](https://github.com/23R0534ZXT/kogarasu/releases/download/raw-artifacts-v1/Fireblade-Raw-Artifacts-v1.zip).
 
 ### Operate the container
 
 | Task | Action |
 | --- | --- |
-| Check startup | Run `docker logs kagarasu` and check the version reported by `/health`. |
-| Stop or resume | Run `docker stop kagarasu` or `docker start kagarasu`. |
-| Upgrade | Stop the container, remove it with `docker rm kagarasu`, then repeat the quick start with the same case directory and plug-in volume. |
+| Check startup | Run `docker logs kogarasu` and check the version reported by `/health`. |
+| Stop or resume | Run `docker stop kogarasu` or `docker start kogarasu`. |
+| Upgrade | Pull the new image, stop and remove your existing container, then repeat the quick start using its case directory and plug-in volume. See the [rename migration](deploy/host/README.md#upgrading-from-kagarasu) for deployments created before 0.15.1. |
 | Select a version | The `:latest` tag follows stable releases. Use a published version tag for a repeatable deployment or `:edge` to follow `main`. |
 | Work offline | Pull the image while connected. Then replace `--pull always` with `--pull never` and add `-e FIREBLADE_UPDATE_CHECK=off` before the image name. The image includes the readers and .NET 10 runtime. |
 
 The optional update notice checks GitHub's public releases API and caches the result for
-six hours. The release notes identify the changes to review before an upgrade. [Published releases](https://github.com/23R0534ZXT/kagarasu/releases)
+six hours. The release notes identify the changes to review before an upgrade. [Published releases](https://github.com/23R0534ZXT/kogarasu/releases)
 
 ## One container per case
 
@@ -193,7 +193,7 @@ check makes an outbound request. Disable it with `FIREBLADE_UPDATE_CHECK=off`.
 
 ## Qualification and scope
 
-The 0.15.0 [GUI qualification report](docs/validation/reports/20261127-host-0150/README.md) records the browser workflows exercised for this release.
+The [0.15.0 GUI qualification report](docs/validation/reports/20261127-host-0150/README.md) records the browser workflows exercised before the 0.15.1 rename.
 
 The 0.10.0 Docker GUI qualification imported **2,674 source files** into **1,386,061 rows**
 and **1,478 source analyses**. The three layouts retained the same row total.
@@ -248,7 +248,7 @@ Host release. The Server edition is a planned collaboration deployment. See the
 
 Fireblade 0.7.9 is the final Windows Desktop release.
 
-**[Download Fireblade 0.7.9 — Windows x64](https://github.com/23R0534ZXT/kagarasu/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/kagarasu/releases/tag/v0.7.9)
+**[Download Fireblade 0.7.9 — Windows x64](https://github.com/23R0534ZXT/kogarasu/releases/download/v0.7.9/Fireblade-0.7.9-win64.zip)** · [Release notes and SHA-256](https://github.com/23R0534ZXT/kogarasu/releases/tag/v0.7.9)
 
 Unzip and run `Fireblade.exe`; Python, Qt, the parsers and the .NET readers are inside the
 folder. Windows SmartScreen or Smart App Control may block the unsigned executable. Verify
@@ -312,5 +312,5 @@ the [Host workflow](.github/workflows/host.yml). [Contribution guide](CONTRIBUTI
 
 ## License
 
-Kagarasu is distributed under the [MIT license](LICENSE). Bundled readers and third-party
+Kogarasu is distributed under the [MIT license](LICENSE). Bundled readers and third-party
 dependencies retain their [respective licenses](licenses/THIRD_PARTY.md).

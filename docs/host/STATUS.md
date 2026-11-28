@@ -1,7 +1,7 @@
-# Kagarasu Host — status and what is verified
+# Kogarasu Host — status and what is verified
 
-Kagarasu Host is the maintained edition. The [0.15.0 GUI qualification](../validation/reports/20261127-host-0150/README.md)
-records the workflows exercised for this release. The [0.10.0 real-collection qualification](../validation/reports/20261127-host-gui/REAL_COLLECTION.md)
+Kogarasu Host is the maintained edition. The [0.15.0 GUI qualification](../validation/reports/20261127-host-0150/README.md)
+records the workflows exercised before the 0.15.1 rename. The [0.10.0 real-collection qualification](../validation/reports/20261127-host-gui/REAL_COLLECTION.md)
 measured 2,674 source files, 1,386,061 rows and a 12,559-column combined grid. The historical
 Desktop edition is frozen at 0.7.9. The HTTP API is internal and may evolve.
 

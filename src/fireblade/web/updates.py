@@ -1,4 +1,4 @@
-"""Is there a newer Kagarasu? The check, and the words that tell the analyst what to run.
+"""Is there a newer Kogarasu? The check, and the words that tell the analyst what to run.
 
 A container cannot replace itself, and it should not pretend to: a tool that produces
 destruction certificates changes version when someone decides to, not between two queries.
@@ -20,8 +20,10 @@ import urllib.error
 import urllib.request
 from datetime import UTC, datetime
 
-RELEASES = "https://api.github.com/repos/23R0534ZXT/kagarasu/releases/latest"
+RELEASES = "https://api.github.com/repos/23R0534ZXT/kogarasu/releases/latest"
 REGISTRY = "ghcr.io/23r0534zxt"
+HOST_IMAGE = f"{REGISTRY}/kogarasu"
+DRIVER_IMAGE = f"{REGISTRY}/kogarasu-driver"
 TTL = 6 * 3600
 RETRY = 30 * 60
 TIMEOUT = 3.0
@@ -54,10 +56,10 @@ def parse(payload: dict) -> dict:
 def command(edition: str, tag: str) -> list:
     """Pull the release images while preserving the operator's running deployment."""
     tag = tag or "latest"
-    case = f"{REGISTRY}/kagarasu:{tag}"
+    case = f"docker pull {HOST_IMAGE}:{tag}"
     if edition == "driver":
-        return [f"docker pull {REGISTRY}/kagarasu-driver:{tag}", f"docker pull {case}"]
-    return [f"docker pull {case}"]
+        return [f"docker pull {DRIVER_IMAGE}:{tag}", case]
+    return [case]
 
 
 def guidance(edition: str) -> str:

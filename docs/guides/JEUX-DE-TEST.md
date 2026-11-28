@@ -2,7 +2,7 @@
 
 ## Découvrir les formats : pack v1
 
-[Fireblade-Test-Pack-v1.zip](https://github.com/23R0534ZXT/kagarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) est un **pack de découverte représentatif**, pas une collecte complète de poste.
+[Fireblade-Test-Pack-v1.zip](https://github.com/23R0534ZXT/kogarasu/releases/download/test-pack-v1/Fireblade-Test-Pack-v1.zip) est un **pack de découverte représentatif**, pas une collecte complète de poste.
 
 Le ZIP publié contient **49 fichiers**, pèse **5 118 829 octets** (environ 5,1 Mo) et occupe **60 599 291 octets** après extraction (environ 60,6 Mo), avant décompression éventuelle des archives CatScale et création des analyses. Les bases d’analyse et les sorties des parseurs occupent de l’espace supplémentaire. Les fichiers compressibles, notamment certaines bases d’exemple, expliquent la différence entre la taille du ZIP et la taille extraite.
 
@@ -28,7 +28,7 @@ C’est un CSV synthétique. Il ne remplace pas les fichiers natifs d’une coll
 
 ## Parser un grand dossier de fichiers bruts
 
-[Le grand pack BRUT v1](https://github.com/23R0534ZXT/kagarasu/releases/tag/raw-artifacts-v1) fournit **3 439 828 945 octets de données brutes** : 2 366 084 169 octets Windows natifs et 1 073 744 776 octets Linux. Le ZIP publié pèse **521 449 067 octets**, grâce à la compression. Aucun CSV d’analyse ni base `.timeline` n’y est distribué.
+[Le grand pack BRUT v1](https://github.com/23R0534ZXT/kogarasu/releases/tag/raw-artifacts-v1) fournit **3 439 828 945 octets de données brutes** : 2 366 084 169 octets Windows natifs et 1 073 744 776 octets Linux. Le ZIP publié pèse **521 449 067 octets**, grâce à la compression. Aucun CSV d’analyse ni base `.timeline` n’y est distribué.
 
 Les fichiers Windows publics sont conservés avec leurs empreintes et répartis par origine ; le scénario Linux est synthétique. La qualification Windows a soumis 2 795 fichiers au parsing, obtenu des sorties sur les 13 références EZ Tools ainsi que Shellbags/WebCache et compté exactement **7 585 912 lignes Linux**. Les 16 refus de lecteurs et 48 autres diagnostics observés sont joints au rapport : une entrée présente dans le pack ne garantit pas qu’un lecteur en produise un résultat complet.
 

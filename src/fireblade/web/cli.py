@@ -75,7 +75,7 @@ def serve(args) -> int:
         # keeps them elsewhere says where, so the profiles and the plugins list agree.
         os.environ["FIREBLADE_PLUGINS"] = str(Path(args.plugins).resolve())
     app = create_app(root, _version(), tools_root=args.tools, plugins_root=args.plugins or None)
-    print(f"Kagarasu Host {_version()} on {args.host}:{args.port} — cases in {root}", flush=True)
+    print(f"Kogarasu Host {_version()} on {args.host}:{args.port} — cases in {root}", flush=True)
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level)
     return 0
 

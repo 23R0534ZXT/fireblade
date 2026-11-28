@@ -322,7 +322,7 @@ conteneurisée est immédiatement vendable.
 
 ## 11. Où trouver les choses
 
-- Dépôt : `23R0534ZXT/kagarasu`, branche `main`, version dans `pyproject.toml`.
+- Dépôt : `23R0534ZXT/kogarasu`, branche `main`, version dans `pyproject.toml`.
 - Noyau réutilisable : `src/fireblade/core/` (stockage, moteur, filtres, rapports,
   destruction, i18n).
 - Interface Windows : `src/fireblade/ui/` — à ne pas toucher pendant la phase 0-2.
